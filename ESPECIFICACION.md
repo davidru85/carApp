@@ -1,7 +1,9 @@
 # Especificación — App de seguimiento de gastos de vehículo
 
-> Versión 1.0 · Documento de especificación funcional y técnica del MVP
-> Estado: **listo para planificación técnica**
+> Versión 1.1 · Documento de especificación funcional y técnica del MVP
+> Estado: **decisiones técnicas cerradas · listo para implementación**
+>
+> Cambio principal en la v1.1: el backend pasa de Firebase SQL Connect a **Cloud Firestore**. Motivo en 7.6.
 
 ---
 
@@ -74,7 +76,7 @@ Un usuario tiene N vehículos. Un vehículo pertenece a exactamente un usuario (
 | `currentOdometer` | Long | Sí | Derivado: `max(initialOdometer, odómetro del último repostaje)`. |
 | `brand` | String? | No | 0..40 caracteres. |
 | `model` | String? | No | 0..40 caracteres. |
-| `fuelType` | Enum? | No | `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `ELECTRIC`, `HYBRID`, `OTHER`. Ver decisión abierta D-4. |
+| `fuelType` | Enum | Sí | `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `ELECTRIC`, `HYBRID`, `OTHER`. Por defecto `GASOLINE`. **Presente en el esquema desde el día 1, sin selector en la UI del MVP** (D-4): añadir un campo a un esquema ya sincronizado con usuarios reales es caro; arrastrar una columna es gratis. |
 | `createdAt` | Instant | Sí | UTC. |
 | `updatedAt` | Instant | Sí | UTC. Usado en la resolución de conflictos. |
 | `deletedAt` | Instant? | No | Borrado lógico (tombstone). |
@@ -92,7 +94,7 @@ Un usuario tiene N vehículos. Un vehículo pertenece a exactamente un usuario (
 | `odometer` | Long | Sí | Kilometraje en el momento del repostaje. Ver R-1. |
 | `liters` | Decimal(7,3) | Sí | > 0 y ≤ 500. |
 | `pricePerLiter` | Decimal(6,3) | Sí* | > 0. Ver R-2. |
-| `totalCost` | Decimal(9,2) | Sí* | > 0. Ver R-2. |
+| `totalCostMinor` | Long | Sí* | Importe en **unidades menores** (céntimos). > 0. Ver R-2. Nunca `Float`/`Double`. |
 | `currency` | ISO-4217 | Sí | Heredada de ajustes; por defecto `EUR`. |
 | `isFullTank` | Boolean | Sí | Por defecto `true`. Clave para el cálculo de consumo. |
 | `hasMissedEntries` | Boolean | Sí | Por defecto `false`. El usuario marca que hubo repostajes no registrados antes de este. Invalida el tramo. |
@@ -116,13 +118,15 @@ Un usuario tiene N vehículos. Un vehículo pertenece a exactamente un usuario (
 
 ### R-2 · Precio y coste total
 
-De los tres valores `liters`, `pricePerLiter`, `totalCost`, el usuario introduce **dos cualesquiera** y el tercero se calcula automáticamente:
+De los tres valores `liters`, `pricePerLiter` y `totalCostMinor`, el usuario introduce **dos cualesquiera** y el tercero se calcula automáticamente:
 
-- `totalCost = liters × pricePerLiter`
-- `pricePerLiter = totalCost / liters`
-- `liters = totalCost / pricePerLiter`
+- `totalCostMinor = redondear(liters × pricePerLiter × 100)`
+- `pricePerLiter = totalCostMinor / 100 / liters`
+- `liters = totalCostMinor / 100 / pricePerLiter`
 
-`liters` es siempre obligatorio (es necesario para el consumo). Redondeo: `totalCost` a 2 decimales, `pricePerLiter` a 3, `liters` a 3. Todo cálculo monetario usa decimal de precisión fija, **nunca `Float`/`Double`**.
+`liters` es siempre obligatorio (es necesario para el consumo). Redondeo: `pricePerLiter` a 3 decimales, `liters` a 3.
+
+**Los importes se almacenan y se operan como enteros en unidades menores (céntimos), nunca como `Float`/`Double`.** El redondeo se aplica una sola vez, al convertir a entero. La división para derivar `pricePerLiter` o `liters` sí produce un decimal: se redondea al almacenar y **nunca se reutiliza el valor redondeado para recalcular otro de los tres campos**, para no acumular error.
 
 ### R-3 · Cálculo de consumo (método *full-to-full*)
 
@@ -205,79 +209,90 @@ Formulario optimizado para velocidad (P1): fecha prerellenada a hoy, odómetro p
 | UI Android | **Jetpack Compose** (nativa, no Compose Multiplatform) |
 | UI iOS | **SwiftUI** (nativa) |
 | Build | **Gradle con Kotlin DSL** + version catalog (`libs.versions.toml`) + convention plugins en `build-logic` |
-| Base de datos local | SQLite vía **Room KMP** o **SQLDelight** — ver decisión abierta D-1 |
-| Backend | **Firebase SQL Connect** (PostgreSQL gestionado sobre Cloud SQL, antes llamado Firebase Data Connect) |
-| Autenticación | **Firebase Authentication** |
+| Base de datos local | **Room 3.0 KMP** (`androidx.room3`) con `androidx.sqlite:sqlite-bundled` |
+| Backend | **Cloud Firestore** (réplica remota; **no** es la fuente de verdad) |
+| Autenticación | **Firebase Authentication** vía `dev.gitlive:firebase-auth` 2.6.x |
 | Asincronía | Coroutines + Flow |
-| Inyección de dependencias | Koin (compatible KMP) — ver D-3 |
+| Inyección de dependencias | **Composition root manual**, inyección por constructor |
+| Interop iOS | **SKIE**, aplicado solo en `:shared` |
 | Serialización | `kotlinx.serialization` |
 | Fechas | `kotlinx-datetime` |
 
 ### 7.2 Estilo arquitectónico
 
-**Modular Clean Architecture + modularización vertical por funcionalidad.** Cada feature es una porción vertical con sus tres capas en módulos Gradle independientes.
+**Modular Clean Architecture + modularización vertical por funcionalidad.** Cada feature es una porción vertical. Sus tres capas viven en **paquetes internos de un único módulo Gradle**, no en tres módulos: con dos entidades, tres módulos por feature dan ~18 módulos cuyo coste (tiempo de build y, sobre todo, linkado del framework de iOS) se paga cada día a cambio de un beneficio teórico. Las reglas de capa se garantizan con un test de arquitectura, no con la frontera de módulo. Los convention plugins se dejan escritos para que partirlos sea trivial el día que haya una razón real.
 
 ```
-:app-android                     ← host Android (Compose, navegación, DI raíz)
-/iosApp                          ← host iOS (SwiftUI, navegación, DI raíz)
-:shared                          ← umbrella: agrega módulos y expone el XCFramework a iOS
+build-logic/                     ← convention plugins
+gradle/libs.versions.toml        ← única fuente de versiones
 
-:core:common                     ← Result/AppError, dispatchers, utilidades, UUID
-:core:domain-model               ← tipos de dominio transversales (Money, Distance, Volume)
-:core:database                   ← driver/DB, transacciones, expect/actual por plataforma
-:core:remote                     ← contrato RemoteDataSource, cliente HTTP, manejo de errores
-:core:auth                       ← contrato AuthRepository + modelo de sesión
-:core:sync                       ← motor de sincronización genérico (cola, cursor, conflictos)
-:core:testing                    ← fakes, builders de test, reglas de coroutines
-
-:feature:onboarding:{domain,data,presentation}
-:feature:auth:{domain,data,presentation}
-:feature:vehicle:{domain,data,presentation}
-:feature:fueling:{domain,data,presentation}
-:feature:settings:{domain,data,presentation}
+:core:model                      ← modelos puros, Money (enteros en unidades menores), Result
+:core:common                     ← DispatcherProvider, Clock inyectable, Uuid, AppError, backoff
+:core:database                   ← Room 3.0: entidades, DAOs, migraciones, driver expect/actual
+:core:auth                       ← interfaces AuthClient / TokenProvider / AuthState
+:core:sync                       ← motor: outbox, cursor, push/pull, interfaz RemoteSyncSource
+:core:testing                    ← fakes, RemoteSyncSource en memoria, simulador determinista
 
 :integration:firebase-auth       ← única implementación que conoce Firebase Auth
-:integration:firebase-sqlconnect ← única implementación que conoce SQL Connect
+:integration:firebase-firestore  ← única implementación que conoce Firestore
+
+:feature:vehicle                 ← paquetes internos domain / data / presentation
+:feature:fuel                    ← ídem
+:feature:session                 ← ídem (onboarding, login, conversión de cuenta, ajustes)
+
+:shared                          ← framework iOS (SKIE aquí). Expone createAppGraph(remote, auth)
+:wiring:firebase                 ← ÚNICO módulo que nombra :integration:*
+:androidApp                      ← Compose, Navigation, ensamblado
+iosApp/                          ← Xcode/SwiftUI, consume Shared.framework vía SPM local
+firestore/                       ← firestore.rules + firestore.indexes.json
 ```
 
 ### 7.3 Reglas de dependencia (invariantes, verificables en CI)
 
-1. `:feature:X:domain` es **Kotlin puro**: no depende de Android, iOS, Firebase, Room/SQLDelight ni de ningún otro feature. Solo de `:core:common` y `:core:domain-model`.
-2. `:feature:X:data` depende de `:feature:X:domain`, `:core:database`, `:core:remote`. **Nunca** de `:integration:*`.
-3. `:feature:X:presentation` depende de `:feature:X:domain`. Nunca de `data`.
+1. El paquete `domain` de un feature es **Kotlin puro**: no depende de Android, iOS, Firebase, Room ni de ningún otro feature. Solo de `:core:model` y `:core:common`.
+2. El paquete `data` depende de `domain`, `:core:database` y `:core:sync`. **Nunca** de `:integration:*`.
+3. El paquete `presentation` depende de `domain`. Nunca de `data`.
 4. Un feature **no depende de otro feature**. Si necesita algo de otro, ese contrato sube a `:core`.
-5. Los módulos `:integration:*` implementan interfaces de `:core:*` y **solo los módulos host (`:app-android`, `iosApp`, `:shared`) los conocen**, para cablearlos en el grafo de DI.
-6. **Ningún tipo de Firebase cruza la frontera de `data`.** Los mappers viven en `:integration:*`.
+5. `:core:sync` no depende de **ningún** `:integration:*`.
+6. `:shared` no depende de `:integration:*`. Solo `:wiring:firebase` los nombra.
+7. **Ningún tipo de Firebase cruza la frontera de `data`.** Los mappers viven en `:integration:*`.
 
 > Estas reglas deben validarse automáticamente (test de arquitectura o comprobación de grafo de dependencias en CI). Un agente que introduzca una dependencia prohibida debe fallar el build, no depender de la revisión humana.
 
 ### 7.4 Capa de presentación compartida
 
-La lógica de presentación (estado de UI, validación, orquestación de casos de uso) se comparte en `commonMain` mediante *state holders* que exponen `StateFlow<UiState>` y aceptan eventos. Android los consume como `ViewModel`; iOS los envuelve en un `ObservableObject` de SwiftUI. Se evalúa **SKIE** para que los `Flow` y las `sealed class` de Kotlin se consuman de forma idiomática en Swift (ver D-2).
+La lógica de presentación (estado de UI, validación, orquestación de casos de uso) se comparte en `commonMain` mediante *state holders* que exponen `StateFlow<UiState>` y aceptan eventos. Android los consume como `ViewModel`; iOS los envuelve en un `ObservableObject` de SwiftUI. **Este es el mayor retorno de KMP en el proyecto**, y lo que justifica SKIE.
+
+Regla para el lado iOS: **cero lógica de negocio en Swift.** SwiftUI pinta y envía intenciones. La superficie que `:shared` expone a Swift debe ser **pequeña y plana** (un `StateFlow<UiState>` por pantalla + funciones de intención), evitando genéricos y jerarquías `sealed` anidadas: así, si SKIE dejara de mantenerse, sustituirlo por wrappers manuales es un trabajo de días, no un rediseño.
 
 ### 7.5 Desacoplamiento del proveedor cloud (requisito P4)
 
 ```
 domain:        VehicleRepository (interfaz)
                       ▲
-data:          VehicleRepositoryImpl ──► VehicleLocalDataSource  (interfaz)
-                                    └──► VehicleRemoteDataSource (interfaz)
+data:          VehicleRepositoryImpl ──► VehicleLocalDataSource (interfaz, Room)
+                                    └──► RemoteSyncSource       (interfaz, :core:sync)
                                                    ▲
-integration:                        SqlConnectVehicleRemoteDataSource
+integration:                        FirestoreRemoteSyncSource
 ```
 
-Migrar de Firebase a otro proveedor debe consistir en escribir un nuevo módulo `:integration:*` y cambiar una línea del grafo de DI. **Criterio de aceptación verificable:** borrar los módulos `:integration:*` del proyecto debe dejar todos los módulos `:core:*`, `:feature:*:domain` y `:feature:*:data` compilando y con sus tests en verde (usando fakes de `:core:testing`).
+`:shared` expone `fun createAppGraph(remote: RemoteSyncSource, auth: AuthClient): AppGraph`. Solo `:wiring:firebase` construye las implementaciones de Firebase.
 
-### 7.6 Nota crítica sobre Firebase SQL Connect y KMP
+**Corrección al enunciado original:** "borrar `:integration:*` y que todo lo demás compile" no es literalmente alcanzable — algo tiene que instanciar las implementaciones. El criterio correcto y verificable es: **borrar `:integration:*` + `:wiring:firebase` deja compilando y en verde todo lo demás**, usando el wiring local-only de `:core:testing`, que hay que escribir de todos modos porque es el doble de prueba.
 
-Firebase SQL Connect genera SDKs tipados **por plataforma** (Kotlin para Android, Swift para iOS) a partir del esquema GraphQL. **No existe un SDK oficial de Firebase para KMP.** Esto obliga a elegir entre dos estrategias, que es la principal decisión técnica del proyecto (D-5):
+### 7.6 Por qué Cloud Firestore y no Firebase SQL Connect
 
-- **A) `expect/actual` sobre los SDKs generados nativos.** Se usa el SDK oficial en cada plataforma y se unifica con `expect/actual` en `:integration:firebase-sqlconnect`. Ventaja: SDK soportado, caché de cliente incluida. Coste: se implementa y mantiene dos veces, y el lado iOS requiere puente Swift↔Kotlin.
-- **B) Cliente Ktor propio en `commonMain` contra el endpoint HTTP de SQL Connect.** Las operaciones de SQL Connect se despliegan en servidor y se invocan por endpoint, autenticadas con el ID token de Firebase Auth. Ventaja: una sola implementación, 100 % compartida, control total sobre la serialización y la lógica de sincronización. Coste: sin caché oficial (irrelevante, porque el motor de sincronización es propio) y dependencia del contrato del endpoint.
+La especificación original apuntaba a "SQL Connect en Firebase", identificado como **Firebase SQL Connect** (antes Firebase Data Connect): PostgreSQL gestionado sobre Cloud SQL. Se descartó por tres razones:
 
-Dado que el requisito de sincronización es **offline-first completo con motor propio**, la caché opcional del SDK oficial aporta poco valor, lo que inclina la balanza hacia B. Decisión pendiente de confirmar en la fase de planificación.
+1. **Coste fijo.** Cloud SQL es una instancia que corre 24/7 y factura aunque la app tenga cero usuarios. Firestore, con este modelo de datos (documentos por usuario, sin joins), cabe holgadamente en el *free tier*.
+2. **Sin SDK oficial para KMP**, y sus SDKs generados son por plataforma (Kotlin para Android, Swift para iOS), lo que obligaba a mantener dos implementaciones o a depender de un contrato HTTP no documentado como API pública de cliente.
+3. **Las primitivas que necesita el motor de sincronización las da Firestore de fábrica:** escritura idempotente por ID generado en cliente y `serverTimestamp()` autoritativo. En SQL Connect había que expresarlas con un `INSERT ... ON CONFLICT ... WHERE` en SQL nativo.
 
-Para **Firebase Auth** la situación es distinta: la obtención de la credencial de Google/Apple es inherentemente nativa (requiere UI del sistema). El patrón es: **la plataforma obtiene el token de la credencial → el módulo común lo intercambia por una sesión**. Se evaluará la librería community `dev.gitlive:firebase-auth` frente a `expect/actual` sobre los SDKs nativos (D-6).
+Firestore se usa **exclusivamente como réplica remota**, no como fuente de verdad: la persistencia offline propia de Firestore queda **desactivada** para no tener dos cachés con políticas de invalidación distintas. El *outbox* propio ya encola las escrituras offline.
+
+**Acceso desde KMP:** no existe SDK oficial de Firestore para KMP. Se usa el wrapper community `dev.gitlive:firebase-firestore` 2.6.x, siempre **detrás de la interfaz `RemoteSyncSource`**. *Fallback documentado:* la API REST de Firestore desde Ktor en `commonMain`, que solo afectaría a `:integration:firebase-firestore`.
+
+**Firebase Auth:** la obtención de la credencial de Google/Apple es inherentemente nativa (requiere UI del sistema). El patrón es: **la plataforma obtiene el token de la credencial → el módulo común lo intercambia por una sesión**, usando `dev.gitlive:firebase-auth` 2.6.x tras la interfaz `AuthClient`. **No usar `3.0.0-alpha01`.**
 
 ---
 
@@ -290,38 +305,84 @@ Para **Firebase Auth** la situación es distinta: la obtención de la credencial
 3. La sincronización es un proceso de fondo que puede fallar sin degradar la experiencia.
 4. Los identificadores se generan en cliente (UUID v4), de modo que un registro creado offline ya tiene su identidad definitiva.
 
-### 8.2 Mecánica
+### 8.2 Dos decisiones que gobiernan todo el motor
 
-**Push (cliente → servidor)**
+1. **Sincronización basada en estado, no en operaciones.** El *outbox* guarda el **snapshot completo** de la fila, no un delta. Aplicar el mismo snapshot dos veces produce el mismo resultado ⇒ **idempotencia por construcción**, sin tabla de deduplicación.
+2. **El outbox tiene `UNIQUE(entityType, entityId)`** con `ON CONFLICT DO UPDATE` que conserva el `seq` original. El outbox nunca crece más allá del número de entidades tocadas, y se preserva el orden causal.
 
-- Cada entidad local lleva `syncState`. Un *outbox* recorre los registros `PENDING` en orden de `updatedAt`.
-- Las operaciones remotas son **upserts idempotentes por `id`**, de modo que un reintento tras un fallo de red ambiguo no duplica datos.
-- Reintentos con *backoff* exponencial y tope. Tras N fallos → `FAILED` + indicador discreto en UI y acción de reintento manual.
+Tablas de control: `outbox` (`seq`, `entityType`, `entityId`, `payload`, `localRevision`, `attemptCount`, `nextAttemptAt`, `lastError`) y `sync_cursor` (`entityType`, `lastServerUpdatedAt`).
 
-**Pull (servidor → cliente)**
+Cada entidad sincronizable añade: `serverUpdatedAt` (timestamp **autoritativo** del servidor; `NULL` = nunca sincronizada), `deleted`, `syncState` y `localRevision` (se incrementa en cada edición local; detecta ediciones ocurridas durante un push en vuelo).
 
-- Cursor por usuario: `lastSyncedAt` (**hora del servidor**, nunca del dispositivo).
-- El servidor devuelve todos los registros del usuario con `serverUpdatedAt > lastSyncedAt`, **incluidos los tombstones**.
-- Paginación por lotes para el primer sync de un dispositivo nuevo.
+### 8.3 Push (cliente → servidor)
 
-**Resolución de conflictos**
+```
+1. SELECT outbox WHERE nextAttemptAt <= now ORDER BY seq LIMIT 50
+2. Ordenar por dependencia: TODOS los vehicle antes que cualquier fuel_entry
+3. Por item: doc(users/{uid}/{col}/{id}).set(snapshot + updatedAt: serverTimestamp())
+   y releer el documento para conocer el updatedAt autoritativo asignado
+4. Éxito, EN UNA TRANSACCIÓN LOCAL:
+   - si outbox.localRevision == entidad.localRevision:
+        borrar del outbox; syncState = SYNCED; serverUpdatedAt = respuesta.updatedAt
+   - si NO (el usuario editó mientras el push estaba en vuelo):
+        CONSERVAR la fila de outbox (ya coalescida) y actualizar solo serverUpdatedAt
+5. Fallos:
+   - PERMISSION_DENIED / token caducado → refrescar token, 1 reintento, luego backoff
+   - error de validación → marcar poisoned, mostrar al usuario, NO reintentar en bucle
+   - red / indisponible → backoff exponencial con jitter (1 s, 2 s, 4 s … tope 15 min)
+```
 
-- *Last-write-wins* a nivel de registro comparando `updatedAt`, con desempate determinista por `id` (comparación lexicográfica) para que todos los dispositivos converjan al mismo resultado.
-- Un tombstone siempre gana frente a una actualización con `updatedAt` anterior.
-- Se acepta esta estrategia porque el escenario es monousuario multidispositivo, donde la edición concurrente del mismo registro es rara. Queda documentado como limitación conocida.
+**Idempotencia:** la escritura es un `set` cuyo ID lo generó el cliente. Si la respuesta se pierde y se reintenta, se reescribe el mismo valor. No hace falta clave de idempotencia ni *exactly-once*.
 
-**Desfase de reloj**
+### 8.4 Pull (servidor → cliente)
 
-- El servidor asigna `serverUpdatedAt` de forma autoritativa. El cliente guarda ambos: su `updatedAt` local (para ordenar el outbox) y el `serverUpdatedAt` (para el cursor).
+```
+1. since = max(0, sync_cursor[entityType] - VENTANA_SOLAPE)   // VENTANA_SOLAPE = 30 s
+2. collection(users/{uid}/{col}).where(updatedAt > since).orderBy(updatedAt).limit(200)
+   Incluye tombstones: son documentos normales con deleted = true, no borrados.
+3. Aplicar la página EN UNA SOLA TRANSACCIÓN LOCAL. Para cada documento R:
+   - si existe entrada de outbox para R.id → NO tocar las columnas de datos;
+     actualizar solo serverUpdatedAt. El cambio local pendiente se reenvía y el servidor arbitra.
+   - si no hay pendiente → aplicar R si (R.updatedAt, R.id) > (local.serverUpdatedAt, local.id)
+   - R.deleted = true → marcar tombstone local, no borrar la fila
+4. Avanzar el cursor al updatedAt del último documento; repetir mientras la página venga llena
+```
 
-**Disparadores de sincronización**
+**Por qué la ventana de solape es obligatoria:** es el fallo clásico de todo *delta sync* por timestamp. Si un documento se confirma con un timestamp anterior a un cursor ya avanzado, **se pierde para siempre y en silencio**. Como el *apply* es idempotente, refetchear documentos no cuesta más que unas lecturas.
 
-- Arranque de la app · recuperación de conectividad · tras una escritura local (con *debounce* de unos segundos) · *pull-to-refresh* manual · tarea periódica en segundo plano.
+**Retención de tombstones:** purga a 90 días. Un cliente offline durante más tiempo debe hacer resync completo.
 
-### 8.3 Seguridad de datos
+### 8.5 Resolución de conflictos y convergencia
 
-- Un usuario solo puede leer y escribir filas cuyo `ownerId` coincida con su UID. Debe aplicarse **en el servidor** (reglas de autorización de SQL Connect), no solo en el cliente.
-- Todas las operaciones viajan autenticadas con el ID token de Firebase Auth.
+- *Last-write-wins* a nivel de **documento entero**, comparando el `updatedAt` sellado por el servidor, con desempate determinista por `id` (comparación lexicográfica). `max` sobre un orden total es un *join-semilattice*: el estado converge sea cual sea el orden de llegada.
+- Un tombstone participa en el mismo orden: gana frente a una actualización con `updatedAt` anterior.
+- **Desfase de reloj:** el `updatedAt` local es puramente provisional (solo ordena el outbox). El autoritativo lo sella siempre el servidor.
+
+> **Limitación aceptada conscientemente:** LWW es a nivel de documento, no de campo. Si un dispositivo edita el precio y otro el odómetro a la vez, uno de los dos cambios se pierde entero. Aceptable para un usuario con 1-2 dispositivos. Queda documentado; no se descubre en producción.
+
+**Disparadores:** app a *foreground* · recuperación de conectividad · tras una escritura local (debounce 2 s) · *pull-to-refresh* · tarea periódica (WorkManager / BGTaskScheduler). El motor **no conoce ninguna de estas APIs**: vive entero en `commonMain` y es 100 % testeable sin red ni iOS.
+
+### 8.6 Seguridad de datos
+
+Estructura en Firestore: `users/{uid}/vehicles/{id}` y `users/{uid}/fuelEntries/{id}`. Las subcolecciones bajo el documento de usuario hacen que toda consulta esté ya acotada al propietario por la propia ruta.
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /users/{uid}/{document=**} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.data.updatedAt == request.time;  // fuerza serverTimestamp
+    }
+  }
+}
+```
+
+- `request.auth != null` **incluye a los usuarios anónimos**, que son el flujo principal del MVP.
+- `request.resource.data.updatedAt == request.time` **impide que el cliente escriba su propio timestamp**: un dispositivo con la fecha mal no puede escribir `updatedAt` en 2099 y ganar todos los LWW para siempre.
+- Deben existir **tests de reglas contra el emulador**: el usuario A no puede leer ni escribir bajo `users/B`.
 
 ---
 
@@ -341,19 +402,22 @@ Para **Firebase Auth** la situación es distinta: la obtención de la credencial
 
 ---
 
-## 10. Decisiones técnicas abiertas
+## 10. Decisiones técnicas cerradas
 
-Se resuelven en la fase de planificación, antes de escribir código.
+Todas resueltas en la fase de planificación. Cada una debe quedar registrada como ADR en `docs/adr/`.
 
-| ID | Decisión | Opciones | Notas |
+| ID | Decisión | Elección | Razón |
 |----|----------|----------|-------|
-| **D-1** | Base de datos local | Room KMP vs SQLDelight | Room: familiar viniendo de Android, migraciones conocidas. SQLDelight: más maduro en KMP, SQL-first, tipado desde el esquema. |
-| **D-2** | Interoperabilidad Kotlin↔Swift | SKIE vs wrappers manuales | SKIE mejora mucho el consumo de `Flow` y `sealed class` en Swift, a cambio de una dependencia en el pipeline de build. |
-| **D-3** | Inyección de dependencias | Koin vs factories manuales | Koin es el estándar de facto en KMP; las factories manuales evitan la dependencia y los errores en tiempo de ejecución. |
-| **D-4** | `fuelType` en el MVP | Incluirlo vs posponerlo | Solo aporta valor si condiciona validaciones o unidades (p. ej. kWh en eléctricos). Si no, es ruido en el formulario. |
-| **D-5** | Acceso a SQL Connect | SDKs nativos con `expect/actual` vs cliente Ktor común | Ver 7.6. La inclinación actual es el cliente Ktor común. |
-| **D-6** | Firebase Auth en KMP | `dev.gitlive:firebase-auth` vs `expect/actual` propio | Sopesar la dependencia community frente al control total y el mantenimiento. |
-| **D-7** | Navegación | Compartida vs nativa por plataforma | Recomendación: nativa (Navigation Compose / NavigationStack). Compartir navegación en KMP con UI nativa suele generar más fricción que valor. |
+| **D-0** | Backend | **Cloud Firestore** | Coste ≈ 0 a esta escala. Upsert idempotente por ID + `serverTimestamp()` de fábrica. Ver 7.6. |
+| **D-1** | Base de datos local | **Room 3.0 KMP** con `androidx.sqlite:sqlite-bundled` | El SQLite *bundled* garantiza la misma versión de SQLite en Android e iOS y habilita la sintaxis `UPSERT` (SQLite ≥ 3.24), ausente en el SQLite del sistema con `minSdk 26`. |
+| **D-2** | Interop Kotlin↔Swift | **SKIE**, solo en `:shared` | Swift export sigue en Alpha y no soporta *sealed classes*. Fijar Kotlin y SKIE juntos en el version catalog y no perseguir releases de Kotlin. |
+| **D-3** | Inyección de dependencias | **Composition root manual** | ~25 bindings. Koin falla en *runtime*, y el peor modo de fallo posible aquí es un crash en el simulador de iOS. Inyección por constructor en todos los módulos; **ninguna anotación de DI en `domain`/`data`/`presentation`**. |
+| **D-4** | `fuelType` | **En `Vehicle`, en el esquema desde el día 1, sin selector en la UI** | Va en el vehículo, no en cada repostaje. Añadir un campo a un esquema ya sincronizado es caro; arrastrar la columna es gratis. |
+| **D-5** | Acceso a Firestore desde KMP | **`dev.gitlive:firebase-firestore` 2.6.x** tras `RemoteSyncSource` | La API de Firestore es amplia y con estado; reimplementarla con `expect/actual` no sale a cuenta. *Fallback:* API REST desde Ktor. |
+| **D-6** | Firebase Auth en KMP | **`dev.gitlive:firebase-auth` 2.6.x** tras `AuthClient` | Coherente con D-5. **No usar `3.0.0-alpha01`.** |
+| **D-7** | Navegación | **Nativa por plataforma** | Navigation Compose / `NavigationStack`. No se comparte nada, ni siquiera un `sealed class Destination`. |
+| **D-8** | Capa de presentación | **Compartida en KMP** | Es el mayor retorno de KMP en el proyecto y lo que justifica SKIE. |
+| **D-9** | Persistencia offline de Firestore | **Desactivada** | Dos cachés con políticas de invalidación distintas es una fuente de bugs. El *outbox* propio ya encola las escrituras offline. |
 
 ---
 
@@ -378,7 +442,9 @@ Se resuelven en la fase de planificación, antes de escribir código.
 | 2 | Sin modelo de repostaje | Se define `FuelEntry` completo, que era la entidad central ausente en la spec original. |
 | 3 | Sin regla de consumo | Se formaliza el método *full-to-full* (R-3) con sus 5 casos de exclusión. Es el núcleo funcional del MVP. |
 | 4 | "Se sincronizará con la base remota" | Se especifica la mecánica completa offline-first: outbox, cursor, tombstones, LWW, desfase de reloj. |
-| 5 | "SQL Connect en Firebase" | Se identifica como **Firebase SQL Connect** (antes Data Connect), PostgreSQL sobre Cloud SQL, y se documenta que **no tiene SDK oficial KMP** (7.6) — restricción con impacto arquitectónico directo. |
+| 5 | "SQL Connect en Firebase" | Identificado como **Firebase SQL Connect** (antes Data Connect), PostgreSQL sobre Cloud SQL. **Descartado** por coste fijo 24/7, ausencia de SDK oficial KMP y complejidad innecesaria del upsert LWW. Se sustituye por **Cloud Firestore** como réplica remota (7.6). |
 | 6 | Login anónimo | Se añade el flujo de conversión a cuenta permanente (F-4) y el caso de colisión de credenciales, que era el hueco funcional más peligroso. |
-| 7 | Sin mención | Se añaden: "Sign in with Apple" como requisito de App Store, eliminación de cuenta como requisito de ambas tiendas, y reglas de autorización en servidor. |
-| 8 | "Desacoplado de Firebase" | Se convierte en criterio de aceptación verificable (7.5), no en una intención. |
+| 7 | Sin mención | Se añaden: "Sign in with Apple" como requisito de App Store, eliminación de cuenta como requisito de ambas tiendas, y reglas de seguridad en servidor con tests contra el emulador. |
+| 8 | "Desacoplado de Firebase" | Se convierte en criterio de aceptación verificable (7.5), no en una intención — y se corrige su enunciado, que no era literalmente alcanzable. |
+| 9 | "3 módulos por feature" | Se reduce a **1 módulo por feature** con paquetes internos. Con dos entidades, 18 módulos penalizan el build y el linkado del framework iOS a cambio de un beneficio teórico; las reglas de capa se verifican con un test de arquitectura. |
+| 10 | Importes como decimal | Se fijan como **enteros en unidades menores** (céntimos) + código de moneda. Nunca `Float`/`Double`. |
