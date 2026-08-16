@@ -1,0 +1,43 @@
+name: Decision record
+description: Propose a technical or product decision that may need an ADR.
+title: "[Decision]: "
+labels:
+  - decision
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What decision is needed and why now?
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options considered
+      placeholder: |
+        - Option A:
+        - Option B:
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation
+      description: Preferred option and rationale.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Scope, architecture, data, security, sync, cost, or schedule impact.
+    validations:
+      required: true
+  - type: checkboxes
+    id: adr
+    attributes:
+      label: ADR required?
+      options:
+        - label: This changes or supersedes an ADR.
+        - label: This changes `SPECIFICATION.md`, `TECHNICAL_PLAN.md`, or `BACKLOG.md`.

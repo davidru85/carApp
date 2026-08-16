@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Kotlin / KMP
+.kotlin/
+
+# Android
+local.properties
+captures/
+
+# iOS / Xcode
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+
+# Secrets and local config
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+GoogleService-Info.plist
+google-services.json
+.env
+.env.*
+!.env.example
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Tool output
+*.log

@@ -1,0 +1,14 @@
+# Default ownership for all repository changes.
+* @davidru85
+
+# Product and technical definition changes require owner review.
+/README.md @davidru85
+/DEFINITION.md @davidru85
+/SPECIFICATION.md @davidru85
+/TECHNICAL_PLAN.md @davidru85
+/BACKLOG.md @davidru85
+/AGENTS.md @davidru85
+/docs/adr/ @davidru85
+
+# GitHub workflow and repository governance.
+/.github/ @davidru85

@@ -1,302 +1,408 @@
-# Backlog de implementación — App de gastos de vehículo (MVP)
+# Implementation Backlog - Vehicle Expense Tracking MVP
 
-Cada historia está pensada para ser **una unidad de trabajo entregable a un agente**: alcance cerrado, criterios de aceptación verificables y dependencias explícitas.
+Each story is designed as a deliverable unit for an AI agent: closed scope, explicit dependencies, and verifiable acceptance criteria.
 
-**Convenciones para agentes**
+Size guide: **S** up to half a day, **M** 1 to 2 days, **L** 3 to 5 days.
 
-- Referencia normativa: `ESPECIFICACION.md`. Ante conflicto entre esta lista y la spec, manda la spec.
-- Ninguna historia se da por terminada sin sus tests en verde y el lint limpio.
-- Prohibido implementar nada de la sección 2.2 de la spec ("fuera del MVP").
-- Prohibido introducir dependencias que violen las reglas 7.3 de la spec.
-- Toda historia que altere el modelo de datos debe incluir su migración.
+## Agent Conventions
 
-Leyenda de tamaño: **S** ≤ medio día · **M** 1–2 días · **L** 3–5 días.
+- Normative reference: `SPECIFICATION.md`.
+- If documents conflict, `SPECIFICATION.md` wins.
+- No story is done without relevant tests, clean lint, and acceptance criteria evidence.
+- Do not implement anything listed as out of scope.
+- Do not violate architecture rules.
+- Data model changes require migrations and migration tests.
+- Monetary values never use `Float` or `Double`.
 
----
+## Phase 0 - Foundations
 
-## Fase 0 · Fundamentos
+Goal: a project skeleton that compiles on both platforms and has enforceable architecture boundaries.
 
-> Objetivo: un esqueleto que compila en ambas plataformas, con las reglas de arquitectura ya blindadas. Sin esto, cualquier trabajo paralelo de agentes diverge.
+### E0-01 - KMP Project Bootstrap - M
 
-### E0-01 · Bootstrap del proyecto KMP — **M**
-Crear el proyecto KMP con targets `android` e `ios{X64,Arm64,SimulatorArm64}`, host `:androidApp` (Compose) y `/iosApp` (SwiftUI), y el umbrella `:shared` exportando el XCFramework.
+Create the KMP project with Android and iOS targets, Android host app, SwiftUI iOS host app, and `:shared` framework.
 
-*Criterios de aceptación*
-- `./gradlew :androidApp:assembleDebug` compila.
-- La app iOS compila y arranca en simulador mostrando una pantalla con texto proveniente de `commonMain`.
-- Todos los scripts de build en **Kotlin DSL**. Nada de Groovy.
-- `gradle/libs.versions.toml` como única fuente de versiones; ningún número de versión hardcodeado en un `build.gradle.kts`.
+Acceptance criteria:
 
-*Bloquea:* todo lo demás.
+- Android debug app builds.
+- iOS simulator app builds and shows text coming from `commonMain`.
+- Build scripts use Kotlin DSL only.
+- `gradle/libs.versions.toml` is the single source of dependency versions.
 
-### E0-02 · Convention plugins en `build-logic` — **M**
-Plugins de convención para los arquetipos de módulo: `kmp.library`, `kmp.feature`, `android.application`, `android.compose`, `room`, `skie`.
+Blocks: all other stories.
 
-*Criterios de aceptación*
-- Crear un módulo nuevo requiere ≤ 5 líneas en su `build.gradle.kts`.
-- El plugin `skie` se aplica **solo** en `:shared`.
-- Configuración de tests y toolchain de Kotlin centralizada en los plugins.
-- Los plugins quedan preparados para poder partir un feature en tres módulos el día que haga falta, sin rehacerlos.
+### E0-02 - Gradle Convention Plugins - M
 
-### E0-03 · Módulos `:core` base — **M**
-`:core:common` (tipos `Result`/`AppError`, `DispatcherProvider`, generador de UUID `expect/actual`, `Clock` inyectable, política de backoff), `:core:model` (`Money`, `Volume`, `Distance`), `:core:testing` (fakes, `RemoteSyncSource` en memoria, builders).
+Create convention plugins for KMP libraries, features, Android application, Compose, Room, and SKIE.
 
-*Criterios de aceptación*
-- `Money` se representa con **enteros en unidades menores** (céntimos) + código de moneda. Existe un test que demuestra que la suma de importes no acumula error de coma flotante.
-- `Clock` es inyectable y sustituible en tests (nada de `Clock.System.now()` disperso por el código).
-- Cobertura de tests de `:core:model` ≥ 90 %.
+Acceptance criteria:
 
-### E0-04 · Guardas de arquitectura en CI — **M**
-Test o tarea Gradle que valida las reglas 7.3 de la spec, tanto entre módulos como **entre paquetes dentro de un feature** (ésta es la parte que sustituye a la frontera de módulo que hemos renunciado a tener).
+- Creating a new module requires no more than five lines in its `build.gradle.kts`.
+- SKIE is applied only to `:shared`.
+- Test and Kotlin toolchain configuration is centralized.
+- Plugins make future feature splitting possible without redesign.
 
-*Criterios de aceptación*
-- Una dependencia del paquete `domain` de un feature sobre Room, Ktor, Firebase o Android hace **fallar el build**, con un mensaje que nombra la regla violada.
-- Una dependencia entre dos features hace fallar el build.
-- Una dependencia de `:core:sync` o `:shared` sobre `:integration:*` hace fallar el build.
-- Una dependencia del paquete `presentation` sobre el `data` de su propio feature hace fallar el build.
-- La validación corre en cada PR.
+### E0-03 - Base Core Modules - M
 
-### E0-05 · Calidad y CI — **S**
-ktlint + detekt + workflow de CI (build, tests, lint) **con runner macOS desde el primer PR**.
+Create `:core:model`, `:core:common`, and `:core:testing`.
 
-*Criterios de aceptación:* PR con violación de estilo o test rojo → CI en rojo. El build de `iosSimulatorArm64` y del framework de `:shared` corre en cada PR — un build de iOS que solo se lanza a mano se rompe y no te enteras en dos semanas. Tiempo de CI < 20 min.
+Acceptance criteria:
 
-### E0-06 · ADRs de D-0 a D-9 — **S**
-Documentar cada decisión ya cerrada (sección 10 de la spec) como un ADR corto: contexto, opciones consideradas, decisión, consecuencias.
+- `Money` uses integer minor units plus currency code.
+- A test proves money arithmetic does not accumulate floating-point error.
+- `Clock` is injectable.
+- UUID generation is abstracted.
+- `:core:model` has high coverage for value objects.
 
-*Criterios de aceptación:* un ADR por decisión, todos con estado "Aceptada", y las versiones elegidas ya fijadas en el version catalog. **Kotlin, SKIE y Xcode quedan fijados y no se actualizan durante el MVP.**
+### E0-04 - Architecture Guards - M
 
-*Bloquea:* E0-07.
+Create Gradle task or tests validating module and package dependency rules.
 
-### E0-07 · Walking skeleton — **L** ⭐
-Una única pantalla que atraviesa las tres capas en **ambas plataformas**: SwiftUI → ViewModel compartido → Room → Firestore, con login anónimo real.
+Acceptance criteria:
 
-*Criterios de aceptación*
-- Escribir un dato en Android lo hace aparecer en iOS tras sincronizar, y al revés.
-- Corre en `iosSimulatorArm64` desde CI.
-- Integración del framework por **SPM directo, nunca CocoaPods**.
+- Feature `domain` dependency on Room, Firebase, Android, Ktor, data, or presentation fails the build with a clear message.
+- Feature-to-feature dependency fails the build.
+- `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
+- Feature `presentation` dependency on feature `data` fails the build.
+- The check runs on every PR.
 
-*Por qué antes de cualquier feature:* valida de golpe los cuatro puntos de riesgo — framework iOS + SKIE, **Room 3.0 en native (KSP)**, GitLive Firestore y las reglas de seguridad. Si algo de esto no funciona, nada de lo demás importa.
+### E0-05 - Quality Tooling and CI - S
 
-*Criterio de decisión explícito:* si aparece fricción de KSP o de native con Room 3.0 durante esta historia, **se cambia a SQLDelight ese mismo día, sin debate**. La DB vive tras interfaces de repositorio en un único módulo, así que es un cambio local.
+Configure ktlint, detekt, and CI.
 
----
+Acceptance criteria:
 
-## Fase 1 · Persistencia local
+- Style violations fail CI.
+- Failing tests fail CI.
+- Android and iOS simulator/shared framework verification run on macOS CI.
+- CI target duration is under 20 minutes.
 
-> Objetivo: la app guarda vehículos y repostajes en local y los pinta. Todavía sin red ni login. **Al final de esta fase la app ya es útil.**
+### E0-06 - ADRs D-0 through D-9 - S
 
-### E1-01 · `:core:database` — **M**
-Room 3.0 KMP con `androidx.sqlite:sqlite-bundled`, `expect/actual` para el constructor de la base por plataforma, esquema inicial (`vehicle`, `fuel_entry`, `outbox`, `sync_cursor`), transacciones y estrategia de migraciones.
+Record all closed technical decisions as ADRs in `docs/adr/`.
 
-*Criterios de aceptación*
-- La base se instancia y persiste en Android e iOS (test por plataforma).
-- Se usa el SQLite *bundled*, no el del sistema: misma versión en ambas plataformas y sintaxis `UPSERT` disponible con `minSdk 26`.
-- Toda entidad sincronizable incluye las columnas de control: `serverUpdatedAt`, `deleted`, `syncState`, `localRevision`.
-- `outbox` tiene `UNIQUE(entityType, entityId)` y el `ON CONFLICT DO UPDATE` conserva el `seq` original (coalescing sin perder el orden causal).
-- Existe un test de migración desde el esquema v1 (aunque de momento sea trivial) y está documentado el procedimiento para añadir migraciones.
-- Todas las consultas devuelven `Flow` para lo observable y `suspend` para lo puntual.
+Acceptance criteria:
 
-### E1-02 · Dominio de `Vehicle` — **S**
-Paquete `domain` de `:feature:vehicle`: entidad, `VehicleRepository` (interfaz) y use cases `CreateVehicle`, `UpdateVehicle`, `DeleteVehicle`, `ObserveVehicles`, `ObserveVehicle`.
-
-*Criterios de aceptación*
-- Paquete de Kotlin puro, sin dependencias de framework (lo verifica E0-04).
-- Validaciones de la spec 4.1 implementadas: nombre no vacío y ≤ 40 caracteres, único por usuario, `initialOdometer` en rango.
-- `fuelType` presente en el modelo con valor por defecto `GASOLINE`, sin selector en la UI (D-4).
-- Todos los use cases con tests unitarios, incluidos los caminos de error.
+- One accepted ADR exists per decision D-0 through D-9.
+- Kotlin, SKIE, Xcode, Room, and GitLive versions are pinned.
+- Version choices are reflected in the version catalog.
 
-### E1-03 · Datos de `Vehicle` (solo local) — **M**
-Paquete `data` de `:feature:vehicle`: `VehicleLocalDataSource`, mappers entidad↔dominio, `VehicleRepositoryImpl` con un `RemoteSyncSource` no-op por ahora.
+Blocks: E0-07.
 
-*Criterios de aceptación*
-- Los mappers tienen tests de ida y vuelta (round-trip).
-- Todo lo creado se marca `syncState = PENDING`.
-- El borrado es lógico y en cascada sobre los repostajes.
+### E0-07 - Walking Skeleton - L
 
-### E1-04 · Dominio de `FuelEntry` — **M**
-Paquete `domain` de `:feature:fuel`: entidad, repositorio, use cases CRUD y las reglas R-1 y R-2 de la spec.
+Build a single screen crossing native UI, shared state holder, Room, Firestore, and real anonymous auth.
 
-*Criterios de aceptación*
-- R-2 implementada: dados dos de los tres valores, el tercero se deriva con el redondeo especificado. `totalCostMinor` es un entero en céntimos; **ningún importe pasa por `Float`/`Double`**.
-- R-1 implementada: la inconsistencia de odómetro **avisa pero no bloquea**, y marca el registro.
-- Fecha futura (> 1 h de margen) rechazada.
+Acceptance criteria:
 
-### E1-05 · **Cálculo de consumo (R-3)** — **M** ⭐
-Use case `CalculateConsumption` en el paquete `domain` de `:feature:fuel`. Es el corazón funcional del MVP.
+- A value written on Android appears on iOS after sync.
+- A value written on iOS appears on Android after sync.
+- `iosSimulatorArm64` runs in CI.
+- iOS consumes the shared framework through direct SPM integration, not CocoaPods.
+- Firestore offline persistence is disabled.
 
-*Criterios de aceptación* — tests obligatorios, uno por caso:
-1. Caso feliz: dos repostajes a depósito lleno → consumo correcto.
-2. Primer repostaje del vehículo → sin consumo.
-3. Repostaje parcial intermedio → sus litros se suman al tramo del siguiente lleno; el parcial no muestra consumo propio.
-4. Repostaje con `hasMissedEntries = true` en el tramo → tramo inválido.
-5. Repostaje con `odometerInconsistent = true` en el tramo → tramo inválido.
-6. `km <= 0` → tramo inválido, sin división por cero.
-7. Consumo medio del vehículo: ponderado por km, **no** media aritmética de los consumos por tramo. Test con dos tramos de longitud muy distinta que demuestre la diferencia entre ambos cálculos.
-8. Rendimiento: 1.000 repostajes procesados en < 100 ms.
+Decision gate:
 
-### E1-06 · Datos de `FuelEntry` (solo local) — **M**
-Equivalente a E1-03 para repostajes, con consultas ordenadas por odómetro y por fecha.
-
-### E1-07 · UI Android: vehículos — **M**
-Lista de vehículos, alta/edición, detalle. State holder compartido en el paquete `presentation` de `:feature:vehicle`.
-
-*Criterios de aceptación*
-- El state holder vive en `commonMain` y expone `StateFlow<UiState>`.
-- Estados de carga, vacío y error contemplados.
-- Sin cadenas hardcodeadas; ES/EN completos.
-- Test de UI del flujo de alta.
+- If Room KMP/KSP blocks iOS progress, switch to SQLDelight the same day.
 
-### E1-08 · UI Android: repostajes — **L**
-Lista de repostajes de un vehículo con su consumo por tramo, formulario de alta/edición optimizado según F-3, y consumo medio en el detalle del vehículo.
+Human review required.
 
-*Criterios de aceptación*
-- El formulario aplica los valores por defecto de F-3 (fecha de hoy, odómetro sugerido, depósito lleno activado).
-- El campo derivado de R-2 se recalcula en vivo al escribir.
-- Los tramos sin consumo muestran "—" con explicación accesible del motivo.
-- Estado vacío de consumo con el texto de la spec R-3.
+## Phase 1 - Local Persistence
 
-### E1-09 · UI iOS: vehículos y repostajes — **L**
-Equivalente SwiftUI consumiendo los mismos state holders compartidos.
+Goal: the app stores and displays vehicles and fuel entries locally. It is useful without remote sync.
 
-*Criterios de aceptación*
-- **Cero lógica de negocio duplicada en Swift.** Swift solo pinta y envía eventos.
-- Paridad funcional con Android en los flujos F-2 y F-3.
+### E1-01 - `:core:database` - M
 
----
+Implement Room 3.0 KMP with bundled SQLite, schema v1, DAOs, transactions, and migration strategy.
 
-## Fase 2 · Autenticación
+Acceptance criteria:
 
-### E2-01 · `:core:auth` — **S**
-`AuthRepository` (interfaz), modelo `AuthSession` (uid, isAnonymous, proveedores) y `AuthError` tipado (cancelado por el usuario, sin red, credencial en uso, etc.).
+- Database instantiates and persists on Android and iOS.
+- Bundled SQLite is used.
+- Tables include `vehicle`, `fuel_entry`, `outbox`, and `sync_cursor`.
+- Synchronized entities include control columns.
+- Outbox has `UNIQUE(entityType, entityId)` and preserves original `seq` when coalescing.
+- A v1 migration test exists, even if trivial.
+- Observable queries return `Flow`; one-shot queries are `suspend`.
 
-*Criterios de aceptación:* ningún tipo de Firebase asoma en este módulo.
+### E1-02 - Vehicle Domain - S
 
-### E2-02 · `:integration:firebase-auth` — **L**
-Implementación real según lo decidido en D-6: anónimo, Google (Android + iOS), Apple (iOS), enlace de credencial, cierre de sesión, eliminación de cuenta, refresco de ID token.
+Implement `:feature:vehicle` domain package: entity, repository interface, and use cases.
 
-*Criterios de aceptación*
-- Login anónimo funcional en ambas plataformas.
-- Google funcional en ambas; Apple funcional en iOS.
-- Cancelar el diálogo del sistema produce un `AuthError` tipado, no un crash ni un estado colgado.
-- La obtención de credencial es nativa; el intercambio por sesión es común.
+Acceptance criteria:
 
-### E2-03 · Onboarding y flujo F-1 — **M**
-Pantalla de bienvenida, elección de proveedor y enrutado posterior según si el usuario ya tiene vehículos.
+- Domain is Kotlin pure.
+- Name validation and uniqueness rules are implemented.
+- `initialOdometer` range is implemented.
+- `fuelType` exists with default `GASOLINE`.
+- Use cases have unit tests for success and errors.
 
-*Criterios de aceptación*
-- iOS ofrece Apple junto a Google (requisito de App Store).
-- Reintentar tras un fallo de red no deja la UI bloqueada.
-- Tras autenticar sin vehículos → alta de vehículo; con vehículos → lista.
+### E1-03 - Vehicle Data, Local Only - M
 
-### E2-04 · Conversión de cuenta anónima (F-4) — **M**
-Enlace de credencial preservando los datos, con el caso de colisión resuelto.
+Implement local data source, mappers, and repository implementation for vehicles.
 
-*Criterios de aceptación*
-- Enlace correcto: los vehículos y repostajes creados en anónimo siguen presentes tras convertir la cuenta.
-- Colisión: se ofrece elección explícita con recuento de lo que se perderá y confirmación destructiva.
-- La fusión automática **no** se implementa (fuera de alcance).
+Acceptance criteria:
 
-### E2-05 · Cierre de sesión y eliminación de cuenta (F-5) — **M**
-*Criterios de aceptación:* cerrar sesión con cambios pendientes avisa y ofrece esperar; eliminar cuenta borra datos remotos y locales tras doble confirmación y está accesible desde Ajustes.
+- Mappers have round-trip tests.
+- Created and edited rows become `PENDING`.
+- Vehicle deletion is logical and cascades to fuel entries.
+- No Firebase or GitLive type is referenced.
 
----
+### E1-04 - Fuel Entry Domain - M
 
-## Fase 3 · Backend y sincronización
+Implement `:feature:fuel` domain package, CRUD use cases, and rules R-1 and R-2.
 
-> La fase de mayor riesgo técnico. Se aborda al final, cuando el dominio ya es estable y está probado.
+Acceptance criteria:
 
-### E3-01 · Estructura y reglas de seguridad de Firestore — **M** ⭐
-Colecciones `users/{uid}/vehicles/{id}` y `users/{uid}/fuelEntries/{id}`, reglas de seguridad, índices y despliegue por Firebase CLI.
+- Price/total/liters derivation works for all valid input pairs.
+- `totalCostMinor` is integer minor units.
+- No monetary path uses `Float` or `Double`.
+- Odometer inconsistency warns but allows save with marker.
+- Future date beyond 1 hour is rejected.
 
-*Criterios de aceptación* — tests contra el **emulador de Firestore**:
-- El usuario A **no** puede leer ni escribir bajo `users/B`.
-- Una escritura cuyo `updatedAt` no sea `request.time` es **rechazada** (el cliente no puede sellar su propio timestamp).
-- Un usuario **anónimo** sí puede leer y escribir bajo su propio `uid` (es el flujo principal del MVP; una regla mal puesta lo rompe entero).
-- El delta pull devuelve tombstones (documentos con `deleted = true`, no borrados).
-- La persistencia offline de Firestore está **desactivada** en la configuración del cliente (D-9).
+### E1-05 - Consumption Calculation R-3 - M
 
-### E3-02 · `:integration:firebase-firestore` — **M**
-Implementación de `RemoteSyncSource` sobre `dev.gitlive:firebase-firestore` 2.6.x: escritura con `serverTimestamp()`, consulta delta paginada, mapeo documento↔snapshot y traducción de errores.
+Implement pure `CalculateConsumption` use case.
 
-*Criterios de aceptación*
-- Los errores de Firestore se traducen a `AppError` tipado, distinguiendo *permission denied*, red y validación.
-- El ID token caducado se refresca de forma transparente y la operación se reintenta una vez.
-- **Ningún tipo de Firestore ni de GitLive cruza la frontera de este módulo.**
+Acceptance criteria:
 
-### E3-03 · `:core:sync` — motor de sincronización — **L** ⭐
-Outbox con snapshot completo y coalescing, cursor, push idempotente, delta pull con ventana de solape, LWW con desempate por `id`, backoff exponencial y `SyncStatus` observable. **Vive entero en `commonMain`, sin una sola API de plataforma.**
+- Happy path with two full tanks.
+- First full tank produces no consumption.
+- Partial intermediate refuel contributes to next full segment.
+- Segment with `hasMissedEntries` is invalid.
+- Segment with `odometerInconsistent` is invalid.
+- `distanceKm <= 0` is invalid and cannot divide by zero.
+- Average consumption is distance-weighted, not arithmetic mean.
+- 1,000 entries are processed in under 100 ms.
 
-*Criterios de aceptación* — tests obligatorios en `commonTest` con `RemoteSyncSource` en memoria:
-1. Escritura offline → al recuperar red se sincroniza sin intervención del usuario.
-2. Reintento tras respuesta ambigua → **no duplica** el registro (idempotencia por `id`).
-3. Conflicto de edición en dos dispositivos → ambos convergen al mismo estado.
-4. Empate exacto de `updatedAt` → el desempate por `id` es determinista y ambos convergen.
-5. Tombstone frente a actualización anterior → gana el tombstone.
-6. Edición local **durante** un push en vuelo → el cambio no se pierde (comprobación de `localRevision`).
-7. Ventana de solape: un documento confirmado con timestamp anterior al cursor **no se pierde**.
-8. Reloj del dispositivo adelantado 1 h → ni gana todos los conflictos ni provoca pérdida de registros.
-9. Primer sync de dispositivo nuevo con 1.000 registros → paginado y correcto.
-10. Fallo persistente → estado `FAILED` y acción de reintento manual disponible.
+Human review required.
 
-*Además:* **simulación determinista** con semilla fija que genera interleavings aleatorios de (edición local, push, pull, fallo de red, entrega duplicada, respuesta perdida) y *asserta* que dos clientes simulados convergen al mismo estado. Es la defensa principal contra la pérdida silenciosa de datos.
+### E1-06 - Fuel Entry Data, Local Only - M
 
-*Y:* pantalla de debug que muestre outbox, cursores y `syncState` por fila. Se usa a diario durante esta fase.
+Implement local data source, mappers, and repository implementation for fuel entries.
 
-### E3-04 · Cableado de sincronización en los repositorios — **M**
-Sustituir los `RemoteSyncSource` no-op de la fase 1 por los reales y enganchar los disparadores (foreground, reconexión, post-escritura con debounce de 2 s, pull-to-refresh, tarea periódica con WorkManager / BGTaskScheduler).
+Acceptance criteria:
 
-*Criterios de aceptación:* la UI sigue observando **solo** la base local; ningún cambio en los state holders derivado de esta historia.
+- Queries support ordering by date and odometer.
+- Created and edited rows become `PENDING`.
+- Logical delete works.
+- Mappers have round-trip tests.
 
-### E3-05 · Indicador de estado de sincronización en la UI — **S**
-Discreto, no intrusivo (P2): pendiente / sincronizando / error con reintento.
+### E1-07 - Android UI: Vehicles - M
 
-### E3-06 · **Prueba de desacoplamiento del proveedor (7.5)** — **S** ⭐
-Verificar el requisito P4 de forma ejecutable.
+Implement vehicle list, create/edit form, and detail shell with shared presentation state holder.
 
-*Criterios de aceptación:* con `:integration:*` **y `:wiring:firebase`** excluidos del *settings*, todos los módulos `:core:*` y `:feature:*` compilan y sus tests pasan usando el wiring local-only de `:core:testing`. Esta comprobación corre en CI.
+Acceptance criteria:
 
----
+- State holder lives in `commonMain` and exposes `StateFlow<UiState>`.
+- Loading, empty, and error states exist.
+- No hardcoded user-facing strings.
+- Spanish and English strings exist.
+- Vehicle creation UI test exists.
 
-## Fase 4 · Cierre del MVP
+### E1-08 - Android UI: Fuel Entries - L
 
-### E4-01 · Ajustes — **S**
-Moneda, idioma (si no se hereda del sistema), sesión, eliminación de cuenta, versión de la app.
+Implement fuel entry list, create/edit form, segment consumption display, and average consumption display.
 
-### E4-02 · Accesibilidad e i18n — **M**
-*Criterios de aceptación:* auditoría con TalkBack y VoiceOver de los flujos F-1 a F-3; la app es usable al 200 % de tamaño de fuente sin recortes; ES/EN completos y revisados.
+Acceptance criteria:
 
-### E4-03 · Endurecimiento y rendimiento — **M**
-*Criterios de aceptación:* se cumplen los objetivos de la sección 9 de la spec, medidos y documentados. Sin fugas de memoria en los flujos principales.
+- Form defaults follow F-3.
+- R-2 derived value recalculates while typing.
+- Entries with no consumption show an accessible explanation.
+- Empty consumption state follows the specification.
 
-### E4-04 · Preparación para publicación — **M**
-Iconos, splash, política de privacidad, fichas de privacidad de ambas tiendas, capturas, firma y builds de release.
+### E1-09 - iOS UI: Vehicles and Fuel Entries - L
 
-*Criterios de aceptación:* build de release instalable en ambas plataformas; checklist de requisitos de tienda completado (incluye eliminación de cuenta en la app y Sign in with Apple en iOS).
+Implement SwiftUI screens consuming shared state holders.
 
----
+Acceptance criteria:
 
-## Orden de ejecución y paralelismo
+- No business logic is duplicated in Swift.
+- Functional parity with Android for F-2 and F-3.
+- Dynamic Type is usable for critical flows.
 
+## Phase 2 - Authentication
+
+### E2-01 - `:core:auth` - S
+
+Implement auth interfaces and models.
+
+Acceptance criteria:
+
+- `AuthClient`, `TokenProvider`, `AuthSession`, and typed `AuthError` exist.
+- No Firebase type appears in this module.
+
+### E2-02 - Firebase Auth Integration - L
+
+Implement anonymous, Google, Apple, credential linking, sign-out, account deletion, and token refresh.
+
+Acceptance criteria:
+
+- Anonymous login works on both platforms.
+- Google works on both platforms.
+- Apple works on iOS.
+- Cancelled system dialogs produce typed errors.
+- Native UI obtains credentials; common code exchanges them.
+
+### E2-03 - Onboarding Flow F-1 - M
+
+Implement welcome screen and provider selection.
+
+Acceptance criteria:
+
+- iOS offers Apple when Google is offered.
+- Retry after network failure does not leave the UI stuck.
+- Routing after authentication depends on whether vehicles exist.
+
+### E2-04 - Anonymous Account Conversion F-4 - M
+
+Implement account linking and credential collision handling.
+
+Acceptance criteria:
+
+- Successful linking preserves vehicles and fuel entries.
+- Collision offers explicit destructive choice with data-loss count.
+- Automatic merge is not implemented.
+
+### E2-05 - Sign-Out and Account Deletion F-5 - M
+
+Implement sign-out and account deletion.
+
+Acceptance criteria:
+
+- Sign-out warns about pending sync and offers to wait.
+- Account deletion removes remote and local data after two-step confirmation.
+- Account deletion is accessible from settings.
+
+## Phase 3 - Backend and Synchronization
+
+### E3-01 - Firestore Structure and Security Rules - M
+
+Create Firestore rules, indexes, and emulator tests.
+
+Acceptance criteria:
+
+- User A cannot read or write under `users/B`.
+- Writes with client-controlled `updatedAt` are rejected.
+- Anonymous users can read/write under their own UID.
+- Delta pull returns tombstones.
+- Firestore offline persistence is disabled in client configuration.
+
+Human review required.
+
+### E3-02 - Firestore RemoteSyncSource - M
+
+Implement Firestore remote sync integration.
+
+Acceptance criteria:
+
+- Writes use `serverTimestamp()`.
+- Delta pull is paginated.
+- Firestore errors map to typed app errors.
+- Expired token refresh is retried once.
+- No Firestore/GitLive type crosses the module boundary.
+
+### E3-03 - `:core:sync` Engine - L
+
+Implement outbox, cursor, push, pull, LWW, overlap window, backoff, observable sync status, and debug support.
+
+Acceptance criteria:
+
+- Required sync tests from `TECHNICAL_PLAN.md` pass.
+- Deterministic convergence simulation exists with fixed seed.
+- Debug screen exposes outbox, cursors, and row sync state.
+
+Human review required.
+
+### E3-04 - Repository Sync Wiring - M
+
+Replace no-op remote sources with real sync wiring and platform triggers.
+
+Acceptance criteria:
+
+- UI still observes only local database flows.
+- Foreground, connectivity recovery, post-write debounce, pull-to-refresh, and periodic triggers exist.
+- No state holder changes are required for sync correctness.
+
+### E3-05 - Sync Status UI - S
+
+Add non-intrusive sync status.
+
+Acceptance criteria:
+
+- Pending, syncing, failed, and retry states are represented.
+- Failed state offers manual retry.
+- Normal offline use is not alarming.
+
+### E3-06 - Provider Decoupling Proof - S
+
+Make P4 executable.
+
+Acceptance criteria:
+
+- Excluding `:integration:*` and `:wiring:firebase` leaves `:core:*` and `:feature:*` compiling and testing with fakes.
+- Check runs in CI.
+
+## Phase 4 - MVP Hardening
+
+### E4-01 - Settings - S
+
+Implement minimal settings.
+
+Acceptance criteria:
+
+- Currency, units, session, account deletion, and app version are visible.
+- Settings are persisted locally and synchronized where applicable.
+
+### E4-02 - Accessibility and Localization - M
+
+Harden accessibility and ES/EN localization.
+
+Acceptance criteria:
+
+- TalkBack and VoiceOver audits pass for F-1 through F-3.
+- UI is usable at 200% font size.
+- Spanish and English strings are complete.
+- No hardcoded user-facing strings remain.
+
+### E4-03 - Performance and Reliability Hardening - M
+
+Measure and fix MVP performance.
+
+Acceptance criteria:
+
+- Cold start target is met.
+- 1,000-entry list remains smooth.
+- Consumption calculation performance target is met.
+- No memory leaks in critical flows.
+
+### E4-04 - Release Preparation - M
+
+Prepare release assets and store requirements.
+
+Acceptance criteria:
+
+- App icons and splash are present.
+- Privacy policy and store privacy labels are prepared.
+- Release builds are installable on both platforms.
+- Account deletion and Apple sign-in requirements are satisfied.
+
+## Execution Order
+
+```text
+Phase 0
+  -> E0-07 walking skeleton gate
+      -> Phase 1 local persistence
+      -> Phase 2 auth can overlap with late Phase 1
+      -> Phase 3 can start E3-01 earlier, but sync wiring depends on Phase 1 and 2
+      -> Phase 4
 ```
-Fase 0 ────────────────────────────────────────► (bloqueante, secuencial)
-   └─ E0-07 walking skeleton ← PUERTA: nada sigue hasta que iOS compile y sincronice
-        │
-        ├─ Fase 1 ──► E1-01 ─► E1-02 ─► E1-03 ─┐
-        │                └──► E1-04 ─► E1-05 ──┼─► E1-07 ─┐
-        │                          └─► E1-06 ──┘   E1-08 ─┼─► E1-09
-        │
-        ├─ Fase 2 (paralelizable con el final de la fase 1: E2-01/E2-02 no dependen de la UI)
-        │
-        └─ Fase 3 (E3-01 puede empezar en paralelo a la fase 1; el resto requiere fases 1 y 2)
-                  │
-                  └─► Fase 4
-```
 
-**Puntos de sincronización humana** — no delegar a un agente sin revisión:
+## Human Review Gates
 
-- Cierre de la fase 0 (las reglas de arquitectura condicionan todo lo demás).
-- **E0-07** (walking skeleton): es la puerta que decide si la cadena de herramientas de iOS y Room 3.0 en native funcionan. Ninguna feature empieza antes.
-- **E1-05** (regla de consumo): es la definición del producto, no un detalle de implementación.
-- **E3-01** (reglas de seguridad): un error aquí es una brecha de datos.
-- **E3-03** (motor de sincronización): un error aquí es pérdida silenciosa de datos del usuario — no lanza excepción, no aparece en Crashlytics, y el usuario descubre que le faltan tres repostajes.
+- Phase 0 closure.
+- E0-07 walking skeleton.
+- E1-05 consumption calculation.
+- E3-01 Firestore rules.
+- E3-03 sync engine.
+- Any stack, scope, backend, auth, sync, architecture, or money representation change.

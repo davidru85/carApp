@@ -1,0 +1,84 @@
+name: Agent implementation story
+description: Create a scoped implementation story for an AI agent.
+title: "[Story]: "
+labels:
+  - story
+  - agent-ready
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for work that can be assigned to an AI agent. The story must stay inside MVP scope and reference the normative documents.
+  - type: input
+    id: backlog_id
+    attributes:
+      label: Backlog ID
+      description: Example: E1-05
+      placeholder: E1-05
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What should be true when this story is complete?
+      placeholder: Implement the pure consumption calculation use case...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List the exact areas the agent is allowed to touch.
+      placeholder: |
+        - :feature:fuel domain package
+        - Unit tests for R-3
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: List related work that must not be done in this story.
+      placeholder: |
+        - UI changes
+        - Remote synchronization
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Verifiable criteria. Prefer testable statements.
+      placeholder: |
+        - Happy path full-to-full consumption is calculated correctly.
+        - Partial intermediate fuel entries contribute to the next full segment.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Required references
+      description: Specification sections, ADRs, or backlog entries the agent must read.
+      placeholder: |
+        - SPECIFICATION.md section 6.3
+        - BACKLOG.md E1-05
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification expected
+      description: Commands, tests, or manual checks expected before handoff.
+      placeholder: |
+        - ./gradlew :feature:fuel:test
+        - Architecture check
+    validations:
+      required: true
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Human review gates
+      options:
+        - label: This story touches a mandatory human review gate.
+        - label: This story changes scope, stack, sync, auth, money representation, or module boundaries.
