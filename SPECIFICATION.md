@@ -8,7 +8,7 @@ The app lets a user track costs associated with their vehicles. The MVP is limit
 
 Later versions may add maintenance, insurance, taxes, and additional cost types, but those are outside the MVP.
 
-MVP success metric: a user can create a vehicle, log refueling events offline, and obtain a reliable average consumption value after enough full-tank refueling events.
+MVP success metric: a user can create a vehicle, log refueling events offline, and obtain a reliable average consumption value after at least two valid full-to-full segments. This normally requires at least three full-tank refueling events.
 
 ## 2. Product Principles
 
@@ -60,7 +60,7 @@ Rule for agents: any work touching out-of-scope functionality must be rejected o
 | Anonymous user | Uses the app immediately. Data is local and synchronized under an anonymous Firebase identity. If the user uninstalls before conversion, data loss is an accepted risk. |
 | Authenticated user | Uses Google or Apple. Data can be recovered on another device after sync. |
 
-A user owns many vehicles. A vehicle belongs to exactly one user.
+A user owns zero or more vehicles. A vehicle belongs to exactly one user. If the user has zero non-deleted vehicles after authentication, the app routes to first vehicle creation before showing the main app shell.
 
 ## 5. Domain Model
 
@@ -69,17 +69,17 @@ A user owns many vehicles. A vehicle belongs to exactly one user.
 | Field | Type | Required | Rules |
 |-------|------|----------|-------|
 | `id` | UUID string | Yes | Generated on the client. Never assigned by the server. |
-| `ownerId` | String | Yes | Backend user ID. |
+| `ownerId` | String | Yes | Backend user ID. Phase 1 local-only rows may use `LOCAL_OWNER` until authentication migration exists. |
 | `name` | String | Yes | Trimmed length 1..40. Unique per user, case-insensitive. |
-| `initialOdometer` | Long | Yes | 0..2,000,000. Immutable after creation unless explicitly edited by user. |
-| `currentOdometer` | Long | Yes | Derived as max of `initialOdometer` and latest fuel entry odometer. |
+| `initialOdometer` | Long | Yes | 0..2,000,000. Editable only while the vehicle has no non-deleted fuel entries. |
+| `currentOdometer` | Long | Yes | Derived read model as max of `initialOdometer` and latest non-deleted fuel entry odometer. Never accepted from user input or used for remote conflict arbitration. |
 | `brand` | String? | No | Trimmed length 0..40. |
 | `model` | String? | No | Trimmed length 0..40. |
 | `fuelType` | Enum | Yes | `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `ELECTRIC`, `HYBRID`, `OTHER`. Default `GASOLINE`. Stored in MVP, not exposed as selector. |
 | `createdAt` | Instant | Yes | UTC. |
 | `updatedAt` | Instant | Yes | UTC. Used locally before server timestamp is known. |
-| `deletedAt` | Instant? | No | Tombstone timestamp. |
-| `syncState` | Enum | Yes | `PENDING`, `SYNCED`, `FAILED`. Local-only. |
+| `deletedAt` | Instant? | No | Tombstone timestamp. See `CONTRACTS.md` for canonical local/remote delete schema. |
+| `syncState` | Enum | Yes | Local-only. Canonical states are defined in `CONTRACTS.md`. |
 
 ### 5.2 FuelEntry
 
@@ -90,8 +90,8 @@ A user owns many vehicles. A vehicle belongs to exactly one user.
 | `date` | Instant | Yes | Defaults to now. Cannot be more than 1 hour in the future. |
 | `odometer` | Long | Yes | Odometer at refueling time. See R-1. |
 | `liters` | Decimal(7,3) | Yes | Greater than 0 and at most 500. |
-| `pricePerLiter` | Decimal(6,3) | Conditional | Required or derived by R-2. |
-| `totalCostMinor` | Long | Conditional | Required or derived by R-2. Minor currency units. |
+| `pricePerLiter` | Decimal(6,3) | Yes after validation | Required or derived by R-2 before persistence. Draft form state may be partial. |
+| `totalCostMinor` | Long | Yes after validation | Required or derived by R-2 before persistence. Minor currency units. Draft form state may be partial. |
 | `currency` | ISO-4217 | Yes | Defaults from settings. |
 | `isFullTank` | Boolean | Yes | Default `true`. |
 | `hasMissedEntries` | Boolean | Yes | Default `false`. Invalidates the segment. |
@@ -99,26 +99,26 @@ A user owns many vehicles. A vehicle belongs to exactly one user.
 | `notes` | String? | No | Trimmed length 0..280. |
 | `createdAt` | Instant | Yes | UTC. |
 | `updatedAt` | Instant | Yes | UTC. |
-| `deletedAt` | Instant? | No | Tombstone timestamp. |
-| `syncState` | Enum | Yes | `PENDING`, `SYNCED`, `FAILED`. Local-only. |
+| `deletedAt` | Instant? | No | Tombstone timestamp. See `CONTRACTS.md` for canonical local/remote delete schema. |
+| `syncState` | Enum | Yes | Local-only. Canonical states are defined in `CONTRACTS.md`. |
 
 ### 5.3 UserSettings
 
 | Field | Type | Rules |
 |-------|------|-------|
 | `currency` | ISO-4217 | Defaults from locale, fallback `EUR`. |
-| `distanceUnit` | Enum | `KM` in MVP, `MILES` prepared. |
-| `volumeUnit` | Enum | `LITER` in MVP, `GALLON` prepared. |
+| `distanceUnit` | Enum | `KM` in MVP, `MILES` prepared but not user-switchable until explicitly implemented. |
+| `volumeUnit` | Enum | `LITER` in MVP, `GALLON` prepared but not user-switchable until explicitly implemented. |
 
 ## 6. Business Rules
 
 ### R-1 Odometer Consistency
 
-The odometer of a fuel entry should be strictly greater than the previous fuel entry odometer for the same vehicle by date and greater than or equal to `vehicle.initialOdometer`.
+The odometer of a fuel entry should be strictly greater than the previous non-deleted fuel entry odometer for the same vehicle by deterministic chronological order (`date`, `createdAt`, `id`) and greater than or equal to `vehicle.initialOdometer`.
 
-If the user enters an inconsistent value, the app warns but allows saving. The entry is marked `odometerInconsistent = true`. Segments containing an inconsistent entry produce no consumption.
+If the user enters an inconsistent value, the app returns a warning and requires explicit confirmation before saving. A confirmed save marks the entry `odometerInconsistent = true`. Segments containing an inconsistent entry produce no consumption.
 
-When a fuel entry is saved, `vehicle.currentOdometer` is updated to `max(currentOdometer, entry.odometer)`.
+When a fuel entry is saved, the local `currentOdometer` read model is updated or recomputed transactionally if it is stored.
 
 ### R-2 Price and Total Cost
 
@@ -130,7 +130,7 @@ pricePerLiter  = totalCostMinor / 100 / liters
 liters         = totalCostMinor / 100 / pricePerLiter
 ```
 
-`liters` is always required for consumption. `pricePerLiter` and `liters` are rounded to 3 decimal places when stored. Money is represented as integer minor units and currency code. `Float` and `Double` are prohibited for monetary values.
+`liters` is always required for consumption. `pricePerLiter` and `liters` are rounded to 3 decimal places when stored. Money is represented as integer minor units and currency code. `Float` and `Double` are prohibited for monetary values. Rounding mode, scaled integer storage, and serialization are defined in `CONTRACTS.md`.
 
 ### R-3 Full-to-Full Consumption
 
@@ -161,9 +161,11 @@ It is not the arithmetic mean of segment consumption values.
 
 Presentation: values are rounded to 2 decimal places. If no valid segment exists, show an empty state explaining that two full-tank entries are required.
 
+A reliable average consumption state requires at least two valid full-to-full segments.
+
 ### R-4 Deletion
 
-All synchronized deletes are logical tombstones. Deleting a vehicle tombstones its fuel entries. Synchronized tombstones may be physically purged locally after 90 days.
+All synchronized deletes are logical tombstones. Deleting a vehicle tombstones its fuel entries in one local transaction. Synchronized tombstones may be physically purged locally after 90 days. Exact local and remote tombstone fields are defined in `CONTRACTS.md`.
 
 ## 7. Functional Flows
 
@@ -204,7 +206,7 @@ Credential collision:
 
 ### F-5 Sign-Out and Account Deletion
 
-Sign-out warns if there are pending local changes and offers to wait for sync. Local data is cleared after sign-out.
+Sign-out warns if there are pending local changes and offers to wait for sync, cancel sign-out, or discard local pending changes after destructive confirmation. Local data is cleared after sign-out.
 
 Account deletion is required for store compliance. It deletes remote and local data after a two-step confirmation.
 
@@ -221,8 +223,9 @@ Account deletion is required for store compliance. It deletes remote and local d
 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
 | Remote backend | Cloud Firestore |
 | Auth | Firebase Authentication through GitLive 2.6.x |
+| Metrics | Firebase Analytics behind `AnalyticsTracker` |
 | Async | Coroutines and Flow |
-| DI | Manual composition root |
+| DI | Koin KMP for wiring, constructor injection for implementation classes |
 | iOS interop | SKIE only in `:shared` |
 | Serialization | `kotlinx.serialization` |
 | Dates | `kotlinx-datetime` |
@@ -238,10 +241,12 @@ gradle/libs.versions.toml
 :core:database
 :core:auth
 :core:sync
+:core:analytics
 :core:testing
 
 :integration:firebase-auth
 :integration:firebase-firestore
+:integration:firebase-analytics
 
 :feature:vehicle
 :feature:fuel
@@ -263,7 +268,9 @@ firestore/
 5. `:core:sync` never depends on `:integration:*`.
 6. `:shared` never depends on `:integration:*`.
 7. Firebase and GitLive types never cross integration boundaries.
-8. Only `:wiring:firebase` constructs Firebase implementations.
+8. Koin is used only for dependency wiring and must not be accessed from domain/use case logic.
+9. Ktor is deferred and must not be added until an HTTP API remote implementation is approved.
+10. Only `:wiring:firebase` constructs Firebase implementations.
 
 These rules must be executable architecture checks in CI.
 
@@ -276,10 +283,10 @@ Presentation logic is shared in `commonMain` through state holders exposing `Sta
 `:shared` exposes a graph factory that accepts abstractions:
 
 ```kotlin
-fun createAppGraph(remote: RemoteSyncSource, auth: AuthClient): AppGraph
+fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings must leave `:core:*` and `:feature:*` compiling and testing with local fakes.
+The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings must leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies` and public interface contracts are defined in `CONTRACTS.md`.
 
 ## 9. Synchronization
 
@@ -308,8 +315,9 @@ The provider decoupling criterion is executable: excluding `:integration:*` and 
 
 - `entityType`
 - `lastServerUpdatedAt`
+- `lastDocumentId`
 
-The outbox stores full snapshots. `UNIQUE(entityType, entityId)` coalesces multiple local changes to one pending snapshot.
+The outbox stores full snapshots. `UNIQUE(entityType, entityId)` coalesces multiple local changes to one pending snapshot. Payload format is defined in `CONTRACTS.md`.
 
 ### 9.3 Push
 
@@ -325,13 +333,15 @@ The outbox stores full snapshots. `UNIQUE(entityType, entityId)` coalesces multi
 
 ### 9.4 Pull
 
-1. Use `since = max(0, cursor - 30 seconds)`.
-2. Query by `updatedAt`, limit 200.
+1. Use `since = max(0, cursor.lastServerUpdatedAt - 30 seconds)`.
+2. Query by `updatedAt` and document ID, limit 200.
 3. Include tombstones.
 4. Apply each page in one local transaction.
 5. If an outbox row exists for a remote entity, do not overwrite local data.
 6. Otherwise apply remote data if `(remote.updatedAt, remote.id)` is newer than local.
 7. Advance cursor only after local apply succeeds.
+
+The exact sync state machine, cursor shape, backoff policy, and public sync contracts are defined in `CONTRACTS.md`.
 
 ### 9.5 Conflict Resolution
 
@@ -353,6 +363,8 @@ Rules must enforce:
 - `request.auth.uid == uid`.
 - Anonymous users are valid authenticated users.
 - `request.resource.data.updatedAt == request.time`.
+- `request.resource.data.ownerId == uid`.
+- `schemaVersion` is supported.
 
 Required emulator tests:
 
@@ -382,15 +394,17 @@ Required emulator tests:
 | D-0 | Backend | Cloud Firestore. |
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. |
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. |
-| D-3 | Dependency injection | Manual composition root and constructor injection. |
+| D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI. |
 | D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. |
 | D-6 | Firebase Auth from KMP | GitLive Auth 2.6.x behind `AuthClient`. |
 | D-7 | Navigation | Native navigation per platform. |
 | D-8 | Presentation layer | Shared KMP state holders. |
 | D-9 | Firestore offline persistence | Disabled. |
+| D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker`. |
+| D-11 | HTTP/API client | Ktor deferred until a future API-based remote implementation exists. |
 
-Each decision must be recorded as an ADR in `docs/adr/` during Phase 0.
+Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs must be validated against the selected tool versions and the version catalog.
 
 ## 13. Glossary
 

@@ -12,20 +12,24 @@ The MVP is intentionally limited to **fuel expenses**: users can create vehicles
 |----------|---------|
 | [DEFINITION.md](DEFINITION.md) | Executive and operational definition package: scope, features, stack, phases, agent rules, risks, and quality gates. |
 | [SPECIFICATION.md](SPECIFICATION.md) | Normative product and technical specification. Domain model, business rules, flows, architecture, sync, and non-functional requirements. |
+| [CONTRACTS.md](CONTRACTS.md) | Normative guardrail layer for API contracts, canonical data types, persistence formats, state machines, errors, and platform boundaries. |
+| [DECISION_BOARD.md](DECISION_BOARD.md) | Review board for selected, pending, deferred, and rejected technical/library decisions. |
 | [TECHNICAL_PLAN.md](TECHNICAL_PLAN.md) | Closed technical decisions, module architecture, sync design, risks, and verification strategy. |
 | [BACKLOG.md](BACKLOG.md) | Agent-sized implementation stories with dependencies and acceptance criteria. |
 | [AGENTS.md](AGENTS.md) | Operating protocol for AI agents working on this repository. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution rules, PR expectations, and human review gates. |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting and security-sensitive areas. |
-| [docs/adr/0000-template.md](docs/adr/0000-template.md) | Template for recording ADRs D-0 through D-9 during Phase 0. |
+| [docs/adr/0000-template.md](docs/adr/0000-template.md) | Template for recording future ADRs. |
 
 Conflict resolution order:
 
 1. `SPECIFICATION.md`
-2. `TECHNICAL_PLAN.md`
-3. `BACKLOG.md`
-4. `DEFINITION.md`
-5. `AGENTS.md`
+2. `CONTRACTS.md`
+3. `DECISION_BOARD.md`
+4. `TECHNICAL_PLAN.md`
+5. `BACKLOG.md`
+6. `DEFINITION.md`
+7. `AGENTS.md`
 
 ## Product Principles
 
@@ -36,7 +40,7 @@ Conflict resolution order:
 | P3 | No entry barrier | Users can start anonymously and later convert to a permanent account without data loss. |
 | P4 | Cloud provider portability | Firebase must remain behind integration boundaries and must not leak into domain, data contracts, or presentation. |
 
-MVP success metric: a user can create a vehicle, log refueling events offline, and get a reliable average consumption value after the third full-tank refueling event.
+MVP success metric: a user can create a vehicle, log refueling events offline, and get a reliable average consumption value after at least two valid full-to-full segments. This normally requires at least three full-tank refueling events.
 
 ## MVP Scope
 
@@ -104,8 +108,9 @@ Kotlin Multiplatform is used for domain, data, sync, and shared presentation log
 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
 | Remote backend | Cloud Firestore as remote replica, never as UI source of truth |
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
+| Metrics | Firebase Analytics behind `AnalyticsTracker` |
 | iOS interop | SKIE, applied only in `:shared` |
-| Dependency injection | Manual composition root and constructor injection |
+| Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 
 Planned module structure:
 
@@ -118,10 +123,12 @@ gradle/libs.versions.toml
 :core:database
 :core:auth
 :core:sync
+:core:analytics
 :core:testing
 
 :integration:firebase-auth
 :integration:firebase-firestore
+:integration:firebase-analytics
 
 :feature:vehicle
 :feature:fuel
@@ -161,10 +168,11 @@ Human review is mandatory for:
 ## Contribution Rules
 
 - Do not implement out-of-scope functionality.
-- Do not introduce Firebase, GitLive, Room, Android, or iOS APIs into feature `domain` packages.
+- Do not introduce Firebase, GitLive, Koin, Ktor, Room, Android, or iOS APIs into feature `domain` packages.
 - Do not introduce dependencies between features.
 - Do not make `:shared` depend on `:integration:*`.
 - Do not use `Float` or `Double` for money.
 - Do not observe Firestore directly from UI.
+- Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
 - Every data model change requires a migration and migration test.
 - A story is not done until tests, lint, relevant builds, and acceptance criteria pass.

@@ -20,6 +20,14 @@
 
 - 
 
+## Contract Impact
+
+- No contract changes / Updated:
+
+## Decision Board Impact
+
+- No decision changes / Updated:
+
 ## Risks or Follow-ups
 
 - 

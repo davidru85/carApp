@@ -1,4 +1,4 @@
-# ADR-0003 - Use SKIE for Kotlin-to-Swift Interop
+# ADR-0003 / D-2 - Use SKIE for Kotlin-to-Swift Interop
 
 ## Status
 

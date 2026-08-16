@@ -1,4 +1,4 @@
-# ADR-0010 - Disable Firestore Offline Persistence
+# ADR-0010 / D-9 - Disable Firestore Offline Persistence
 
 ## Status
 

@@ -7,9 +7,11 @@ This repository is currently optimized for owner-led development with AI agents.
 Before contributing, read:
 
 1. `SPECIFICATION.md`
-2. `TECHNICAL_PLAN.md`
-3. `BACKLOG.md`
-4. `AGENTS.md`
+2. `CONTRACTS.md`
+3. `DECISION_BOARD.md`
+4. `TECHNICAL_PLAN.md`
+5. `BACKLOG.md`
+6. `AGENTS.md`
 
 ## Working Rules
 

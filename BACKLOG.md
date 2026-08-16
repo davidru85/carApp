@@ -6,7 +6,7 @@ Size guide: **S** up to half a day, **M** 1 to 2 days, **L** 3 to 5 days.
 
 ## Agent Conventions
 
-- Normative reference: `SPECIFICATION.md`.
+- Normative references: `SPECIFICATION.md` and `CONTRACTS.md`.
 - If documents conflict, `SPECIFICATION.md` wins.
 - No story is done without relevant tests, clean lint, and acceptance criteria evidence.
 - Do not implement anything listed as out of scope.
@@ -49,6 +49,7 @@ Create `:core:model`, `:core:common`, and `:core:testing`.
 Acceptance criteria:
 
 - `Money` uses integer minor units plus currency code.
+- Scaled integer value classes for fuel volume and price per liter follow `CONTRACTS.md`.
 - A test proves money arithmetic does not accumulate floating-point error.
 - `Clock` is injectable.
 - UUID generation is abstracted.
@@ -60,7 +61,7 @@ Create Gradle task or tests validating module and package dependency rules.
 
 Acceptance criteria:
 
-- Feature `domain` dependency on Room, Firebase, Android, Ktor, data, or presentation fails the build with a clear message.
+- Feature `domain` dependency on Room, Firebase, Koin, Android, Ktor, data, or presentation fails the build with a clear message.
 - Feature-to-feature dependency fails the build.
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
@@ -77,14 +78,16 @@ Acceptance criteria:
 - Android and iOS simulator/shared framework verification run on macOS CI.
 - CI target duration is under 20 minutes.
 
-### E0-06 - ADRs D-0 through D-9 - S
+### E0-06 - ADRs and Decision Board Validation - S
 
-Record all closed technical decisions as ADRs in `docs/adr/`.
+Validate and update all closed technical decision ADRs in `docs/adr/`.
 
 Acceptance criteria:
 
-- One accepted ADR exists per decision D-0 through D-9.
-- Kotlin, SKIE, Xcode, Room, and GitLive versions are pinned.
+- One accepted ADR exists per accepted decision in `DECISION_BOARD.md`.
+- `docs/adr/README.md` maps every decision ID to its ADR file.
+- ADRs match `SPECIFICATION.md`, `CONTRACTS.md`, and `TECHNICAL_PLAN.md`.
+- Kotlin, SKIE, Xcode, Room, Koin, Firebase/GitLive, and analytics versions are pinned.
 - Version choices are reflected in the version catalog.
 
 Blocks: E0-07.
@@ -229,7 +232,7 @@ Implement auth interfaces and models.
 
 Acceptance criteria:
 
-- `AuthClient`, `TokenProvider`, `AuthSession`, and typed `AuthError` exist.
+- `AuthClient`, `TokenProvider`, `AuthSession`, and typed `AuthError` follow `CONTRACTS.md`.
 - No Firebase type appears in this module.
 
 ### E2-02 - Firebase Auth Integration - L
@@ -304,7 +307,7 @@ Acceptance criteria:
 
 ### E3-03 - `:core:sync` Engine - L
 
-Implement outbox, cursor, push, pull, LWW, overlap window, backoff, observable sync status, and debug support.
+Implement outbox, cursor, push, pull, LWW, overlap window, backoff, observable sync status, and debug support according to `CONTRACTS.md`.
 
 Acceptance criteria:
 

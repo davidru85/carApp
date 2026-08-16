@@ -13,15 +13,17 @@ The selected architecture is Kotlin Multiplatform for shared logic and native UI
 | D-0 | Backend | Cloud Firestore | Fits the data model, avoids fixed Cloud SQL cost, provides client-ID idempotent writes and server timestamps. |
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Same SQLite version across Android and iOS, supports modern UPSERT syntax with `minSdk 26`. |
 | D-2 | Swift interop | SKIE only in `:shared` | Better Swift ergonomics for Flow and sealed-like models than raw KMP export. |
-| D-3 | DI | Manual composition root | Small graph, compile-time clarity, fewer runtime failures. |
+| D-3 | DI | Koin KMP | Owner-selected DI. Runtime wiring is acceptable if Koin is constrained to composition/wiring and prohibited from domain logic. |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one | Schema evolution is easier before users exist; selector is not part of MVP UI. |
-| D-5 | Firestore access | GitLive Firestore 2.6.x behind `RemoteSyncSource` | Avoids duplicate native implementations while preserving replaceability. REST via Ktor is fallback. |
+| D-5 | Firestore access | Firebase Firestore integration behind `RemoteSyncSource` | Firebase is the initial database backend. The integration must be fully decoupled so a future Ktor/API implementation can replace it. |
 | D-6 | Firebase Auth | GitLive Auth 2.6.x behind `AuthClient` | Consistent with Firestore wrapper. Native UI obtains Google/Apple credentials. |
 | D-7 | Navigation | Native per platform | Compose Navigation and SwiftUI `NavigationStack`; no shared destination model. |
 | D-8 | Presentation | Shared KMP state holders | High KMP return with minimal native duplication. |
 | D-9 | Firestore offline cache | Disabled | The custom outbox is the offline strategy; two caches would create invalidation bugs. |
+| D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | Aligns with Firebase stack while keeping analytics provider replaceable. |
+| D-11 | HTTP/API client | Ktor deferred | Ktor is reserved for future API-based remote implementations; it is not an MVP dependency while Firestore is used directly behind an interface. |
 
-Do not use GitLive 3.0 alpha during the MVP.
+Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
 
 ## 3. Module Architecture
 
@@ -34,10 +36,12 @@ gradle/libs.versions.toml       single source of dependency versions
 :core:database                  Room entities, DAOs, migrations, platform builders
 :core:auth                      AuthClient, TokenProvider, AuthState
 :core:sync                      Outbox, cursor, sync engine, RemoteSyncSource
+:core:analytics                 AnalyticsTracker and metrics event contracts
 :core:testing                   fakes, builders, in-memory remote, deterministic simulator
 
 :integration:firebase-auth      Firebase Auth implementation
 :integration:firebase-firestore Firestore RemoteSyncSource implementation
+:integration:firebase-analytics Firebase Analytics implementation
 
 :feature:vehicle                domain/data/presentation packages
 :feature:fuel                   domain/data/presentation packages
@@ -57,7 +61,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | Area | Allowed | Forbidden |
 |------|---------|-----------|
 | `:core:model`, `:core:common` | Kotlin stdlib and approved primitives | platform APIs, Firebase, Room |
-| feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Room, Ktor, data, presentation |
+| feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Koin, Room, Ktor, data, presentation |
 | feature `data` | own domain, `:core:database`, `:core:sync` | `:integration:*`, other features |
 | feature `presentation` | own domain, `:core:common` | own data package, other features |
 | `:core:sync` | `:core:database`, `:core:auth`, `:core:common` | `:integration:*` |
@@ -67,15 +71,33 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 
 The architecture check must fail the build with a rule-specific message.
 
+## 4.1 Contractual Guardrails
+
+`CONTRACTS.md` defines implementation contracts that agents must not reinterpret:
+
+- Canonical data types and scaled integer formats.
+- Local row and remote document schemas.
+- Validation and warning semantics.
+- Error taxonomy and expected failure handling.
+- Sync state machine, outbox payload, cursor, backoff, and cycle ordering.
+- `RemoteSyncSource`, auth, repository, and use case interface shapes.
+- Presentation state holder lifecycle rules.
+- Allowed and forbidden `expect`/`actual` boundaries.
+- Firestore query/rule contract.
+- Logging and privacy rules.
+- Metrics and analytics event boundaries.
+
+Any change to those contracts is a human review gate and must update `CONTRACTS.md` in the same change.
+
 ## 5. Provider Decoupling
 
-`:shared` exposes a graph factory that receives abstractions:
+`:shared` exposes a graph factory that receives a platform dependency container:
 
 ```kotlin
-fun createAppGraph(remote: RemoteSyncSource, auth: AuthClient): AppGraph
+fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
+`AppGraphDependencies` is defined contractually in `CONTRACTS.md` and includes auth, remote sync, analytics, database factory, clock, dispatchers, UUID generation, logger, locale provider, connectivity, and sync trigger abstractions. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
 
 ```text
 Exclude :integration:* and :wiring:firebase from settings.
@@ -93,7 +115,7 @@ Synchronized entity control columns:
 | `updatedAt` | Local provisional timestamp. |
 | `serverUpdatedAt` | Authoritative remote timestamp, null if never synced. |
 | `deleted` | Tombstone flag. |
-| `syncState` | Local state: `PENDING`, `SYNCED`, `FAILED`. |
+| `syncState` | Local state. Canonical values are defined in `CONTRACTS.md`. |
 | `localRevision` | Incremented on each local edit to detect in-flight edits. |
 
 Tables:
@@ -119,7 +141,7 @@ CREATE TABLE outbox (
 );
 ```
 
-The outbox stores full snapshots. Re-applying the same snapshot is idempotent.
+The outbox stores full snapshots. Re-applying the same snapshot is idempotent. Payload format, sync states, and poison/retry semantics are defined in `CONTRACTS.md`.
 
 ## 7. Firestore Design
 
@@ -179,12 +201,12 @@ The engine lives fully in `commonMain`. Platform APIs only trigger it; they are 
 
 ```text
 1. cursor = sync_cursor[entityType]
-2. since = max(0, cursor - 30 seconds)
-3. Query collection where updatedAt > since ordered by updatedAt, limit 200.
+2. since = max(0, cursor.lastServerUpdatedAt - 30 seconds)
+3. Query collection where updatedAt >= since ordered by updatedAt and document ID, limit 200.
 4. Apply the page in one local transaction.
 5. If local outbox exists for entity ID, do not overwrite local data.
 6. Otherwise apply remote row if (updatedAt, id) is newer.
-7. Advance cursor to the last applied updatedAt.
+7. Advance cursor to the last applied `(updatedAt, documentId)` pair.
 8. Repeat while the page is full.
 ```
 

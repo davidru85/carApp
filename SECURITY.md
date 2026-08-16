@@ -24,6 +24,7 @@ Include:
 - User data isolation under `users/{uid}`.
 - Account deletion.
 - Offline synchronization and tombstone handling.
+- Analytics event payloads and user properties.
 - Secrets, tokens, signing credentials, and CI configuration.
 
 Changes in these areas require explicit human review.

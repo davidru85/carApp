@@ -1,4 +1,4 @@
-# ADR-0007 - Use Firebase Auth Through GitLive Behind AuthClient
+# ADR-0007 / D-6 - Use Firebase Auth Through GitLive Behind AuthClient
 
 ## Status
 

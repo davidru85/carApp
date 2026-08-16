@@ -21,18 +21,20 @@ The MVP must let a user:
 - Convert an anonymous account to Google or Apple without data loss.
 - Recover synchronized data on another device.
 
-Success metric: a user can create a vehicle and log at least three refueling events offline, including enough full-tank entries to calculate reliable average consumption, then reconnect and synchronize without manual repair.
+Success metric: a user can create a vehicle and log fuel entries offline, obtain reliable average consumption after at least two valid full-to-full segments, then reconnect and synchronize without manual repair.
 
 ## 3. Normative Documents
 
 | Document | Role |
 |----------|------|
 | `SPECIFICATION.md` | Normative source for product scope, domain model, business rules, flows, architecture, sync, and non-functional requirements. |
+| `CONTRACTS.md` | Normative guardrail layer for API contracts, canonical data types, persistence formats, state machines, errors, and platform boundaries. |
+| `DECISION_BOARD.md` | Review board for selected, pending, deferred, and rejected technical/library decisions. |
 | `TECHNICAL_PLAN.md` | Closed technical decisions, module architecture, sync algorithm, risk mitigation, and verification plan. |
 | `BACKLOG.md` | Agent-sized implementation stories with dependencies and acceptance criteria. |
 | `AGENTS.md` | Operating contract for AI agents. |
 
-Conflict order: `SPECIFICATION.md` > `TECHNICAL_PLAN.md` > `BACKLOG.md` > `DEFINITION.md` > `AGENTS.md`.
+Conflict order: `SPECIFICATION.md` > `CONTRACTS.md` > `DECISION_BOARD.md` > `TECHNICAL_PLAN.md` > `BACKLOG.md` > `DEFINITION.md` > `AGENTS.md`.
 
 ## 4. Product Principles
 
@@ -101,8 +103,8 @@ Required fields:
 - `id`: UUID string, generated on the client.
 - `ownerId`: backend user ID.
 - `name`: 1 to 40 characters after trimming, unique per user case-insensitively.
-- `initialOdometer`: immutable odometer value at vehicle creation, 0 to 2,000,000.
-- `currentOdometer`: derived value, max of `initialOdometer` and latest fuel entry odometer.
+- `initialOdometer`: odometer value at vehicle creation, 0 to 2,000,000, editable only while the vehicle has no non-deleted fuel entries.
+- `currentOdometer`: derived read model, max of `initialOdometer` and latest non-deleted fuel entry odometer.
 - `fuelType`: enum, default `GASOLINE`, stored from day one but not exposed as an MVP selector.
 - `createdAt`, `updatedAt`, `deletedAt`.
 - `syncState`: local-only sync state.
@@ -220,7 +222,8 @@ All synchronized deletions are logical tombstones. Deleting a vehicle tombstones
 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
 | Remote backend | Cloud Firestore |
 | Authentication | Firebase Auth through GitLive 2.6.x |
-| Dependency injection | Manual composition root and constructor injection |
+| Metrics | Firebase Analytics behind `AnalyticsTracker` |
+| Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Dates | `kotlinx-datetime` |
 | Serialization | `kotlinx.serialization` |
 | Quality | ktlint, detekt, tests, architecture checks in CI |
@@ -238,10 +241,12 @@ gradle/libs.versions.toml
 :core:database
 :core:auth
 :core:sync
+:core:analytics
 :core:testing
 
 :integration:firebase-auth
 :integration:firebase-firestore
+:integration:firebase-analytics
 
 :feature:vehicle
 :feature:fuel
@@ -265,7 +270,7 @@ Rules:
 - `:core:sync` does not depend on integrations.
 - `:shared` does not depend on integrations.
 - Only `:wiring:firebase` constructs Firebase implementations.
-- Firebase and GitLive types never cross the integration boundary.
+- Firebase, GitLive, Koin, and future Ktor implementation types never cross their allowed boundaries.
 
 ## 12. Local Persistence
 
@@ -500,7 +505,9 @@ Human review is mandatory for:
 - [x] Human review gates defined.
 - [x] Agent rules defined.
 - [x] Definition of Ready and Definition of Done defined.
-- [x] ADRs D-0 through D-9 materialized in `docs/adr/`.
+- [x] ADRs for accepted decisions materialized in `docs/adr/`.
+- [x] Contractual guardrail layer materialized in `CONTRACTS.md`.
+- [x] Library and technical decision board materialized in `DECISION_BOARD.md`.
 - [ ] Version catalog created and versions pinned during Phase 0.
 - [ ] Real CI commands validated during Phase 0.
 

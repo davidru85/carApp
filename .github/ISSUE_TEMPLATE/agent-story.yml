@@ -62,6 +62,8 @@ body:
       description: Specification sections, ADRs, or backlog entries the agent must read.
       placeholder: |
         - SPECIFICATION.md section 6.3
+        - CONTRACTS.md relevant API/data/sync contracts
+        - DECISION_BOARD.md relevant library/stack decision
         - BACKLOG.md E1-05
     validations:
       required: true

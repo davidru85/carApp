@@ -7,10 +7,12 @@ This file is the operating contract for AI agents working on this repository.
 Before implementation, read:
 
 1. `SPECIFICATION.md`
-2. `TECHNICAL_PLAN.md`
-3. `BACKLOG.md`
-4. `DEFINITION.md`
-5. `AGENTS.md`
+2. `CONTRACTS.md`
+3. `DECISION_BOARD.md`
+4. `TECHNICAL_PLAN.md`
+5. `BACKLOG.md`
+6. `DEFINITION.md`
+7. `AGENTS.md`
 
 If documents conflict, `SPECIFICATION.md` wins.
 
@@ -41,7 +43,7 @@ Escalate any request that touches out-of-scope functionality.
 ## Architecture Rules
 
 - Feature `domain` packages are Kotlin pure.
-- Feature `domain` packages do not depend on Android, iOS, Firebase, GitLive, Room, Ktor, data, or presentation.
+- Feature `domain` packages do not depend on Android, iOS, Firebase, GitLive, Koin, Room, Ktor, data, or presentation.
 - Feature `data` packages do not depend on `:integration:*`.
 - Feature `presentation` packages do not depend on feature `data`.
 - Features do not depend on other features.
@@ -51,6 +53,8 @@ Escalate any request that touches out-of-scope functionality.
 - Firebase and GitLive types never leave `:integration:*`.
 
 Architecture rules must be executable checks.
+
+API, data, sync, error, logging, and platform boundary contracts in `CONTRACTS.md` are mandatory.
 
 ## Product Rules
 
@@ -70,10 +74,14 @@ Architecture rules must be executable checks.
 - SKIE is applied only to `:shared`.
 - Firestore offline persistence is disabled.
 - Use GitLive 2.6.x, not 3.0 alpha.
-- Use constructor injection and manual composition roots.
+- Use Koin KMP for wiring and constructor injection for implementation classes.
+- Do not call Koin from domain, use cases, repositories, or state holder business logic.
+- Do not add Ktor unless a new ADR introduces an HTTP API implementation.
 - Data model changes require migrations and migration tests.
 - Sync changes require convergence tests.
 - Firestore rule changes require emulator tests.
+- Public repository or use case contract changes require documentation updates in `CONTRACTS.md`.
+- Library or stack decision changes require updates in `DECISION_BOARD.md` and the related ADR.
 
 ## Definition of Ready
 
@@ -121,4 +129,6 @@ Do not close these without human review:
 - E1-05 consumption calculation
 - E3-01 Firestore rules
 - E3-03 sync engine
+- changes to `CONTRACTS.md`
+- changes to `DECISION_BOARD.md`
 - any change to stack, backend, auth, sync, architecture, money representation, or scope

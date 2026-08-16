@@ -1,4 +1,4 @@
-# ADR-0002 - Use Room 3.0 KMP for Local Database
+# ADR-0002 / D-1 - Use Room 3.0 KMP for Local Database
 
 ## Status
 
