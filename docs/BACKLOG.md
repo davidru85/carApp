@@ -119,6 +119,20 @@ Acceptance criteria:
 
 Blocks: E0-07.
 
+### E0-08 - `:core:analytics` Abstraction - S
+
+Create `:core:analytics` with the `AnalyticsTracker` interface and the closed `AnalyticsEvent` hierarchy of `docs/CONTRACTS.md §16.1` and `§20.9`. Abstraction only: no Firebase dependency, no provider SDK.
+
+Acceptance criteria:
+
+- `AnalyticsTracker`, `AnalyticsEvent`, `AnalyticsUserProperties`, `SyncStatusCategory`, `ConversionFailureReason`, `DeletionFailureReason` and `CountBucket` match `docs/CONTRACTS.md §20.9` exactly.
+- `AnalyticsEvent` is a closed sealed hierarchy and no leaf carries a free-text `String`, proven by an exhaustive `when` over every leaf.
+- A no-op `AnalyticsTracker` lives in `:core:testing` and is the default in `testAppGraphDependencies(...)`, so `AppGraphDependencies` is complete without any Firebase module.
+- `setEnabled(false)` makes `track` and `setUserProperties` no-ops that buffer nothing.
+- No Firebase, GitLive or Android type appears in this module.
+
+Why Phase 0: `AnalyticsTracker` is a mandatory member of `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`), so the graph cannot be constructed or tested without it. The split mirrors `:core:auth` and `:integration:firebase-auth`.
+
 ### E0-07 - Walking Skeleton - L
 
 Build a single screen crossing native UI, shared state holder, Room, Firestore and real anonymous auth.
@@ -208,11 +222,12 @@ Acceptance criteria:
 - First full tank produces `NoPreviousFullTank`.
 - Partial intermediate refuel contributes to the next full segment.
 - An entry sharing `odometerKm` with `P` is counted in the segment litres and yields `DuplicateOdometerInSegment`.
-- `hasMissedEntries` invalidates the segment ending at that entry only.
+- `hasMissedEntries = true` on entry `E` invalidates the segment ending at `E` and any segment containing `E`, and leaves earlier segments valid — per `docs/CONTRACTS.md §3`. A partial entry flagged `hasMissedEntries` therefore invalidates the segment ending at the *next* full tank.
 - `odometerInconsistent` invalidates the containing segment.
 - `distanceKm <= 0` yields `NonPositiveDistance` and never divides by zero.
 - Calculation order is `odometerKm, date, id`, and a back-dated entry does not change the result.
-- Average consumption is distance-weighted, not an arithmetic mean.
+- Segment and average values are produced by the canonical consumption arithmetic of `docs/CONTRACTS.md §2`, and all four golden values in that section pass.
+- Average consumption is distance-weighted, not an arithmetic mean; the golden case where the two differ (`774` versus `776`) is covered by a test.
 - The function is total: no input throws.
 - 1,000 entries processed within the target of `docs/SPECIFICATION.md §11`, measured as defined in `docs/versions-matrix.md`.
 
@@ -439,6 +454,18 @@ Acceptance criteria:
 - A test proves a pending tombstone is never purged.
 - A fresh device pulling a tombstone for an entity it has never seen inserts it as a tombstone instead of failing.
 
+### E3-09 - Firebase Analytics Integration - S
+
+Implement `:integration:firebase-analytics`, the Firebase-backed `AnalyticsTracker` from `E0-08`, and bind it in `:wiring:firebase`.
+
+Acceptance criteria:
+
+- Every `AnalyticsEvent` leaf maps to a Firebase event name and parameter set, exhaustively and with no `else` branch.
+- Collection is disabled at startup and enabled only after an explicit opt-in, including on a fresh install; a test proves nothing is buffered while disabled.
+- No forbidden payload of `docs/CONTRACTS.md §16.1` can be sent: a test asserts no parameter value derives from odometer, volume, cost, notes, entity IDs or the UID.
+- Only `:wiring:firebase` constructs the implementation; no Firebase type crosses the module boundary.
+- Excluding this module leaves the app building and testing on the `:core:analytics` no-op, per `E3-06`.
+
 ### E3-06 - Provider Decoupling Proof - S
 
 Make P4 executable.
@@ -516,6 +543,7 @@ E0-00 owner decisions
 | E0-04 Architecture guards | 0 | M | — |
 | E0-05 Quality tooling and CI | 0 | M | — |
 | E0-06 ADRs and version matrix | 0 | S | — |
+| E0-08 `:core:analytics` abstraction | 0 | S | — |
 | E0-07 Walking skeleton | 0.5 | L | Yes |
 | E1-01 `:core:database` | 1 | M | — |
 | E1-02 Vehicle domain | 1 | S | — |
@@ -540,6 +568,7 @@ E0-00 owner decisions
 | E3-04 Repository sync wiring | 3 | M | — |
 | E3-05 Sync status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
+| E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof | 3 | S | — |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |

@@ -70,9 +70,17 @@ Rules:
 
 ## Language
 
-Project specifications, code comments, commit messages, ADRs, backlog updates, log entries and all development artifacts MUST be written in technical English.
+Two rules apply, and they MUST NOT be confused. The boundary between them is the repository.
 
-Conversation with the project owner may happen in Spanish, but repository artifacts remain English.
+**Repository artifacts — technical English.** Documentation and code alike. This covers specifications, contracts, ADRs, backlog entries, project log entries, README and every other document; and source code, identifiers, code comments, KDoc, test names, commit messages, branch names, pull request descriptions and GitHub issues. There is no exception.
+
+**Conversation with the project owner — Spanish (Spain).** Unless the owner states otherwise, an agent replies in Spanish using es-ES vocabulary and conventions. This covers chat replies, clarifying questions, escalation summaries delivered in conversation, and progress narration.
+
+Consequences worth stating explicitly:
+
+- A discussion held in Spanish is written into the repository in English. The language of the conversation never leaks into a file, a commit or an issue.
+- A Spanish reply that quotes an English identifier, file path, error code or document section stays a Spanish reply. Those tokens MUST NOT be translated.
+- Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
 
 ## Owner Decisions
 

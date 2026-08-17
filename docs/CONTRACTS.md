@@ -46,7 +46,9 @@ All time reads go through the injected `AppClock` (§20). Direct use of a system
 | `Money` | data class with `minorUnits: Long`, `currency: CurrencyCode` | ISO-4217 minor units | INTEGER + currency code |
 | `FuelVolume` | scaled integer value class | 3 decimals, litres × 1000 | INTEGER |
 | `PricePerLiter` | scaled integer value class | 3 decimals, currency units × 1000 | INTEGER |
-| `ConsumptionL100Km` | scaled integer value class, `scaled: Int` | 2 decimals, L/100 km × 100 | Computed read model, never persisted |
+| `ConsumptionL100Km` | scaled integer value class, `scaled: Long` | 2 decimals, L/100 km × 100 | Computed read model, never persisted |
+
+Every scaled type carries its value in a `Long`. `Int` MUST NOT be used for a scaled quantity: the distance-weighted average sums `litersScaled` across every valid segment of a vehicle, and `10 * sum(litersScaled)` overflows `Int` well inside the per-vehicle entry ceiling of §12.
 
 `Money` values of different `currency` MUST NOT be added, subtracted or compared. Any aggregation across currencies is a `ValidationError.InvalidUnit`.
 
@@ -73,6 +75,35 @@ Golden values that MUST be covered by tests in `:core:model`:
 MVP currency constraint: `MinorUnits.factorFor` supports **only** 2-decimal ISO-4217 codes in the MVP. A locale suggesting a 0-decimal or 3-decimal currency (JPY, KWD, …) falls back to `EUR`, and an explicit user selection of such a currency returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
 
 Which value is derived is never ambiguous: the caller states which two values it supplied through `MoneyInput` (§20), and the third is computed. All three are persisted; `MoneyInput` records the authoritative pair, and re-deriving the third from the stored pair MUST be stable.
+
+### Canonical consumption arithmetic
+
+Consumption uses the same HALF_UP convention as money and MUST be implemented literally. `docs/SPECIFICATION.md §6` R-3 states the mathematical definition in unscaled litres; the formulas below are the only implementable form, because `litersScaled` is litres × 1000 while `ConsumptionL100Km.scaled` is L/100 km × 100.
+
+```text
+// L/100 km       = (litersScaled / 1000) / distanceKm * 100 = litersScaled / (10 * distanceKm)
+// scaled by 100  = 10 * litersScaled / distanceKm
+
+segmentConsumptionScaled = (10 * segmentLitersScaled + distanceKm / 2) / distanceKm
+
+averageConsumptionScaled = (10 * sum(validSegmentLitersScaled) + sum(validSegmentDistanceKm) / 2)
+                           / sum(validSegmentDistanceKm)
+```
+
+Both are computed in `Long`. `distanceKm > 0` is guaranteed by the caller: a segment with `distanceKm <= 0` is `SegmentResult.Invalid(NonPositiveDistance)` and never reaches this arithmetic, so the division is total.
+
+The average divides summed litres by summed distance. It is NOT the arithmetic mean of the segment values, and it is NOT recomputed from the already-rounded `segmentConsumptionScaled` values.
+
+Golden values that MUST be covered by tests in `:core:model`:
+
+| Case | `litersScaled` | `distanceKm` | `scaled` result | Meaning |
+|------|----------------|--------------|-----------------|---------|
+| Segment, rounds down | `45_123` | `600` | `752` | 7.52 L/100 km — exact value is 7.5205 |
+| Segment, exact | `40_000` | `500` | `800` | 8.00 L/100 km |
+| Segment, rounds up | `30_000` | `397` | `756` | 7.56 L/100 km — exact value is 7.55668 |
+| Average of segments 1 and 2 | `85_123` | `1_100` | `774` | 7.74 L/100 km — exact value is 7.73845 |
+
+The last row is the regression test for the distance-weighted rule: the arithmetic mean of `752` and `800` is `776`, which is wrong.
 
 ## 3. Canonical Entity Schema
 
@@ -1143,13 +1174,7 @@ data class ConsumptionReport(
 )
 ```
 
-Average consumption is distance-weighted:
-
-```text
-average = sum(validSegmentLitersScaled) / sum(validSegmentDistanceKm) / 10
-```
-
-expressed in the 2-decimal scaled form. It is NOT the arithmetic mean of segment values.
+`SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
 
 ### 20.7 Sync types — `:core:sync`
 
