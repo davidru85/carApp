@@ -65,17 +65,18 @@ Acceptance criteria:
 
 ### E0-03 - Base Core Modules - M
 
-Create `:core:model`, `:core:common` and `:core:testing`, implementing the canonical types of `docs/CONTRACTS.md §20`.
+Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20`.
 
 Acceptance criteria:
 
 - `Outcome`, the full `AppError` hierarchy with stable codes, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
+- `:core:crash` exposes `CrashReporter` and a no-op implementation matching `docs/CONTRACTS.md §20.3.1`, with no Firebase, GitLive, Android or iOS type.
 - `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
 - None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
-- The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, and no story writes their literals inline.
+- The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, including `SUPPORTED_CURRENCY_CODES`, and no story writes their literals inline.
 - The three canonical monetary formulas and the two consumption formulas are implemented as exact integer arithmetic and pass every golden value in `docs/CONTRACTS.md §2`.
 - A test proves no monetary or consumption path uses `Float` or `Double`.
-- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake.
+- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter`.
 - Kover thresholds pass for `:core:model` and `:core:common`.
 
 ### E0-04 - Architecture Guards - M
@@ -90,6 +91,7 @@ Acceptance criteria:
 - A `:core:model` dependency on `:core:common` fails the build; the reverse is allowed (`docs/TECHNICAL_PLAN.md §4`).
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
+- `:core:crash` dependency on Firebase, GitLive, Koin, Ktor, platform APIs, integrations or features fails the build.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.
 - **Every rule has a failing fixture proving the check actually fires.**
 - The check configuration is generated from the `docs/TECHNICAL_PLAN.md §4` table.
@@ -106,6 +108,7 @@ Acceptance criteria:
 - Android and iOS simulator / shared framework verification run on macOS CI.
 - CI check names match `docs/CONTRACTS.md §18` exactly.
 - `contract-check` implements the assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
+- `contract-check` applies the external identifier allowlist of `docs/CONTRACTS.md §18`, so primitives, standard collections, coroutine types and the pinned `Instant` type do not require duplicate declarations in §20.
 - Branch protection for `main` requires those checks.
 
 CI duration under 20 minutes is an objective, monitored and reported, not a pass/fail criterion.
@@ -150,7 +153,8 @@ Acceptance criteria:
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
 - The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
-- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, type parameter or default argument in the exported API, and the generated Objective-C header is committed as a golden file.
+- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as a golden file.
+- The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
 
 Decision gate:
 
@@ -170,11 +174,12 @@ Acceptance criteria:
 
 - Database instantiates and persists on Android and iOS.
 - Bundled SQLite is used.
-- Tables: `vehicle`, `fuel_entry`, `user_settings`, `outbox`, `sync_cursor`, `quarantine`.
+- Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`.
 - Synchronized entities include every control column of `docs/TECHNICAL_PLAN.md §6`, with `CHECK(deleted = (deletedAt IS NOT NULL))`.
+- `local_sequence` assigns monotonic `localMutationSeq` values shared by `vehicle` and `fuel_entry`; pull-applied remote writes and local-owner adoption do not consume it.
 - There is **no** foreign key from `fuel_entry` to `vehicle`, and **no** unique index on the vehicle name.
 - Outbox matches the committed DDL, including `lastErrorCode` and `idx_outbox_due`, and preserves the original `seq` when coalescing.
-- `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and a test proves they stay correct after an edit and after a delete of a neighbouring entry.
+- `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and tests cover the exact recompute set of `docs/CONTRACTS.md §3.1`, including create, update that moves an entry in chronological order, update that changes only odometer comparison, single delete and vehicle cascade delete.
 - `exportSchema = true`, schema JSON committed, `fallbackToDestructiveMigration` absent, and a v1 migration test exists.
 - Observable queries return `Flow`; one-shot queries are `suspend`.
 
@@ -186,9 +191,9 @@ Acceptance criteria:
 
 - Domain is Kotlin pure.
 - Normalisation runs before validation per `docs/CONTRACTS.md §5`.
-- Name validation and `nameFold` uniqueness are implemented as a local pre-write check.
+- Name validation and `nameFold` uniqueness use `canonicalVehicleName(name).lowercase()` exactly as defined in `docs/CONTRACTS.md §5`.
 - `initialOdometerKm` range and its edit restriction are implemented.
-- `fuelType` exists with default `GASOLINE`.
+- `FuelType` exists with exactly the MVP values of `docs/CONTRACTS.md §20.4` and default `GASOLINE`; `ELECTRIC` and `HYBRID` are absent until a future energy-model story expands the enum.
 - Commands match `docs/CONTRACTS.md §20.5`; no command carries `ownerId`, `id` or timestamps.
 - Use cases have unit tests for success and for every error they declare.
 
@@ -201,7 +206,8 @@ Acceptance criteria:
 - Mappers have round-trip tests.
 - `ownerId` is stamped from `OwnerContext`; the module does not reference `AuthClient`.
 - Created and edited rows become `PENDING`.
-- **No outbox row is created while the owner is `LOCAL_OWNER`.**
+- Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
+- **No outbox row is created while the owner is `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.**
 - Vehicle deletion is logical and cascades to fuel entries in one transaction.
 - No Firebase or GitLive type is referenced.
 
@@ -212,11 +218,12 @@ Implement the `:feature:fuel` domain package, CRUD use cases and rules R-1 and R
 Acceptance criteria:
 
 - `MoneyInput` is the only way to supply monetary values, and all three derivations pass the golden values.
+- Persistence stores the canonical monetary triple only (`litersScaled`, `pricePerLiterScaled`, `totalCostMinor`); no local, remote or outbox schema contains `moneyInputKind` or any other supplied-pair marker.
 - `totalCostMinor` is integer minor units; no monetary path uses `Float` or `Double`.
 - The two-step warning protocol is implemented: an unconfirmed inconsistent odometer returns `ValidationWarning.OdometerInconsistent` and mutates nothing; the same command with the confirmation succeeds.
 - R-1 is enforced on edit as well as on create.
 - Every bound in the `docs/CONTRACTS.md §5` validation table is enforced at both ends.
-- A currency without a supported minor-unit factor returns `ValidationError.InvalidUnit`.
+- A currency outside `SUPPORTED_CURRENCY_CODES` returns `ValidationError.InvalidUnit`; supported codes all use factor `100`.
 
 ### E1-05 - Consumption Calculation R-3 - M
 
@@ -227,6 +234,7 @@ Acceptance criteria:
 - Happy path with two full tanks.
 - First full tank produces `NoPreviousFullTank`.
 - Partial intermediate refuel contributes to the next full segment.
+- Partial entries do not produce `SegmentResult`; `EndEntryNotFullTank` is not emitted by `CalculateConsumption`.
 - An entry sharing `odometerKm` with `P` is counted in the segment litres and yields `DuplicateOdometerInSegment`.
 - `hasMissedEntries = true` on entry `E` invalidates the segment ending at `E` and any segment containing `E`, and leaves earlier segments valid — per `docs/CONTRACTS.md §3`. A partial entry flagged `hasMissedEntries` therefore invalidates the segment ending at the *next* full tank.
 - `odometerInconsistent` invalidates the containing segment.
@@ -247,9 +255,11 @@ Acceptance criteria:
 
 - Queries support both orderings of `docs/CONTRACTS.md §4`.
 - `observeFuelEntries` returns the `FuelEntryListItem` projection and excludes orphan entries.
+- `FuelEntryListItem` maps partial rows to `consumption = null` and `invalidReason = EndEntryNotFullTank`, while still allowing those rows to contribute litres to the next full segment.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
-- Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`.
-- Logical delete works and triggers read-model recomputation.
+- Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
+- Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
+- Logical delete works and triggers the `docs/CONTRACTS.md §3.1` recompute set.
 - Mappers have round-trip tests.
 
 ### E1-07 - Android UI: Vehicles - M
@@ -273,7 +283,7 @@ Acceptance criteria:
 - Form defaults follow F-3, including the `hasMissedEntries` secondary toggle.
 - The derived R-2 value recalculates while typing, using `MoneyInput`.
 - The odometer warning dialog implements the two-step confirmation.
-- Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`.
+- Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`, including `EndEntryNotFullTank` for partial refuels.
 - Empty consumption state follows the specification.
 
 ### E1-09 - iOS UI: Vehicles and Fuel Entries - L
@@ -285,6 +295,7 @@ Acceptance criteria:
 - No business logic is duplicated in Swift.
 - State holder scopes are created in `init` and cancelled in `deinit`.
 - Functional parity with Android for F-2 and F-3.
+- Fuel-entry consumption and no-consumption explanations match Android, including `EndEntryNotFullTank` for partial refuels.
 - Dynamic Type is usable for critical flows.
 
 ### E1-10 - Settings Persistence - S
@@ -297,6 +308,7 @@ Acceptance criteria:
 - Only supported 2-decimal currencies are accepted.
 - Changing the currency does not rewrite existing fuel entries.
 - Settings are device-local: nothing is enqueued and there is no remote document.
+- Settings are deleted by destructive local-data flows and recreated from locale defaults with `analyticsEnabled = false`.
 
 ## Phase 2 - Authentication
 
@@ -306,7 +318,7 @@ Implement the auth interfaces and models.
 
 Acceptance criteria:
 
-- `AuthClient`, `TokenProvider`, `AuthSession`, `AuthState`, `NativeAuthCredential`, `AuthToken` and the typed `AuthError` match `docs/CONTRACTS.md §20.8`.
+- `AuthClient`, `TokenProvider`, `AuthSession`, `AuthState`, `NativeAuthCredential`, `AuthToken` and the typed `AuthError` match `docs/CONTRACTS.md §6`, `§11.1` and `§20.8`.
 - `AuthState.Unknown` is distinct from `SignedOut`.
 - `OwnerContext` is implemented here and bound in wiring; feature modules do not see `AuthClient`.
 - No Firebase type appears in this module.
@@ -320,6 +332,7 @@ Acceptance criteria:
 - Anonymous login works on both platforms; Google works on both; Apple works on iOS.
 - Cancelled system dialogs produce `AuthError.Cancelled`.
 - A provider flow that would change the UID produces `AuthError.UidWouldChange` and aborts.
+- `AuthClient.deleteAccount()` calls the `D-23` server/Admin operation and never calls the mobile Firebase Auth account deletion API directly.
 - Native UI obtains credentials; common code exchanges them.
 - No GitLive or Firebase type crosses the module boundary.
 
@@ -330,6 +343,7 @@ Implement the welcome screen and provider selection, with an offline-capable loc
 Acceptance criteria:
 
 - "Continue without account" succeeds with no connectivity and creates a `LOCAL_OWNER` session.
+- With connectivity, "Continue without account" creates a Firebase anonymous user automatically and does not enter `LOCAL_OWNER`.
 - Routing never happens while `AuthState.Unknown`.
 - iOS offers Apple whenever Google is offered.
 - Retry after network failure does not leave the UI stuck.
@@ -341,9 +355,10 @@ Adopt `LOCAL_OWNER` data into the first real UID.
 
 Acceptance criteria:
 
-- On the first successful authentication, all `LOCAL_OWNER` rows are rewritten to the new UID in one transaction, `localRevision` is bumped and an outbox snapshot is enqueued for every non-synced row, preserving `seq` causality.
+- On the first successful authentication, all `LOCAL_OWNER` rows are rewritten to the new UID in one transaction, `localRevision` is bumped and an outbox snapshot is enqueued for every non-synced row.
+- Adoption preserves existing `localMutationSeq` values and inserts outbox rows in the push dependency order of `docs/CONTRACTS.md §8`, then `localMutationSeq ASC, id ASC`.
 - The operation is idempotent: running it twice enqueues each row once.
-- A test starts from a populated `LOCAL_OWNER` database with vehicles and fuel entries and asserts nothing is lost and everything syncs.
+- A test starts from a populated `LOCAL_OWNER` database with vehicles and fuel entries, including interleaved edits, and asserts nothing is lost, outbox order is deterministic and everything syncs.
 - Adoption is triggered automatically when connectivity returns, not only from a UI action.
 
 Blocks: E3-04.
@@ -369,8 +384,9 @@ Acceptance criteria:
 
 - Sign-out is offered only to permanently authenticated users; anonymous sessions get "delete local data" with two-step confirmation.
 - Sign-out warns about pending sync and offers to wait, cancel or discard.
-- Account deletion follows the order of `docs/CONTRACTS.md §11.5`: re-authenticate if required, delete remote data in batches, then the auth account, then local data.
-- A failure during remote deletion aborts with a typed error and does NOT delete the account.
+- Account deletion follows the order of `docs/CONTRACTS.md §11.5`: re-authenticate if required, call the `D-23` server/Admin operation, wait for remote data and auth account deletion, then clear local data.
+- A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
+- Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
 - Account deletion is accessible from settings.
 
 ## Phase 3 - Backend and Synchronization
@@ -382,10 +398,27 @@ Create the Firestore rules, indexes and emulator tests.
 Acceptance criteria:
 
 - Rules match `docs/CONTRACTS.md §16`, split by operation, with `allow delete: if false`.
-- `validPayload()` enforces presence, type and range for every field.
+- `validPayload()` enforces the closed remote `Vehicle` and `FuelEntry` schemas from `docs/CONTRACTS.md §16`, including required keys, extra-key rejection, unknown-collection rejection, local-only-key rejection, primitive type, enum, nullability, range checks and `deleted == (deletedAt != null)`.
 - Every emulator test listed in `docs/CONTRACTS.md §16` passes.
 - `firestore/firestore.indexes.json` exists and the pull query runs without an index error.
 - Firestore offline persistence is disabled in client configuration.
+
+Human review required.
+
+### E3-10 - Account Deletion Server Operation - M
+
+Implement the Firebase Admin account deletion operation selected by `D-23`.
+
+Acceptance criteria:
+
+- The operation accepts only an authenticated caller and verifies that the caller UID is the target UID.
+- The operation deletes documents under `users/{uid}` in the normative order: `fuelEntries`, then `vehicles`.
+- The operation deletes the Firebase Auth user only after remote document deletion succeeds.
+- The operation is idempotent for already-deleted documents and missing auth users, but never deletes outside `users/{uid}`.
+- Failures before Firebase Auth deletion return a typed failure and are not reported as success to the app.
+- Logs are redacted according to `docs/CONTRACTS.md §17` and `docs/SECURITY.md`.
+- Emulator or server-side tests prove the happy path, retry/idempotency behavior, caller UID rejection and failure-before-auth-deletion behavior.
+- Firestore emulator tests still prove that mobile client hard deletes are rejected by `allow delete: if false`.
 
 Human review required.
 
@@ -396,7 +429,7 @@ Implement the Firestore remote sync integration.
 Acceptance criteria:
 
 - Writes use `serverTimestamp()` and the client document ID.
-- Delta pull uses `startAfter` on `(updatedAt, documentId)` and is paginated.
+- Delta pull applies the overlap once per cycle, uses `startAt(overlapSince, "")` for the first page and `startAfter(lastServerUpdatedAt, lastDocumentId)` for later pages.
 - Firestore errors map to `RemoteError` exactly as in `docs/CONTRACTS.md §6`.
 - An `Unauthenticated` response forces a token refresh and retries once inside this module.
 - On an empty page, `nextCursor` equals the input cursor and `hasMore` is false.
@@ -408,26 +441,28 @@ Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quaranti
 
 Acceptance criteria:
 
-- All 17 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
+- All 18 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
 - A cycle is not started while `ConnectivityObserver.isOnline` is false, and connectivity failures never poison a row (`docs/CONTRACTS.md §9.2`, `§9.7`).
 - The deterministic convergence simulation exists with a fixed seed and an injected jitter source.
 - The state machine matches `docs/CONTRACTS.md §7`, including `SYNCING -> SYNCING` on a local edit during an in-flight push.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.
 - Trigger constants match `docs/CONTRACTS.md §9.8`.
 - Debug screen exposes the outbox, cursors, quarantine and row sync state.
+- Quarantine records include `QuarantineReason`, raw payload JSON, `schemaVersion`, `serverUpdatedAt` and redacted logging for unsupported schema and malformed supported-version payloads.
 
 Human review required.
 
 ### E3-08 - App Graph and Firebase Wiring - M
 
-Implement `createAppGraph`, `AppGraph` and `:wiring:firebase`.
+Implement `createAppGraph`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, the Swift-facing `SwiftAppGraph` and `:wiring:firebase`.
 
 Acceptance criteria:
 
-- `AppGraphDependencies` and `AppGraph` match `docs/CONTRACTS.md §11.6` and `§20.10`.
+- `AppGraphDependencies`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, exported state holders and exported `UiState` classes match `docs/CONTRACTS.md §11.6` and `§20.10`.
 - Only `:wiring:firebase` constructs Firebase implementations.
 - Every top-level declaration in `:wiring:firebase` is a Koin module, an abstraction factory or a platform initialiser.
 - Tests build the graph from `testAppGraphDependencies(...)` without starting Koin.
+- The Swift facade exposes a sync state holder, not `SyncController`, and it owns/cancels the scopes for state holders it creates.
 
 ### E3-04 - Repository Sync Wiring - M
 
@@ -524,7 +559,7 @@ Acceptance criteria:
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
 - A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
-- `:core:crash` exposes `CrashReporter`; `:integration:firebase-crashlytics` implements it with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
+- `:integration:firebase-crashlytics` implements `CrashReporter` with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
 - Release builds are installable on both platforms.
 - Account deletion and Apple sign-in requirements are satisfied.
 - Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
@@ -573,6 +608,7 @@ E0-00 owner decisions (completed)
 | E2-04 Account conversion F-4 | 2 | M | — |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
 | E3-01 Firestore rules | 3 | M | Yes |
+| E3-10 Account deletion server operation | 3 | M | Yes |
 | E3-02 Firestore RemoteSyncSource | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring | 3 | M | — |

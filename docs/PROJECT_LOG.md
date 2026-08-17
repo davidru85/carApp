@@ -38,6 +38,160 @@
 
 ## Entries
 
+### 2026-08-17 — Temporary audit guardrails file deleted
+
+- **Type:** decision
+- **Story / Decision:** audit closure
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** deleted `docs/AUDIT_GUARDRAILS.md` after all `F-01` through `F-19` follow-up findings were absorbed into the normative and derived documentation.
+- **Why:** the file was explicitly temporary and no longer carried active work after owner review.
+- **Documents touched:** `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual search for active audit findings and `git diff --check`.
+- **Follow-ups / risks:** none.
+
+### 2026-08-17 — Partial refuel consumption explanation defined
+
+- **Type:** decision
+- **Story / Decision:** `F-15`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `EndEntryNotFullTank` is kept as the list-projection reason for partial refuels. Partial rows show no own consumption, do not produce `SegmentResult`, and still contribute litres to the next full-to-full segment when they fall inside it.
+- **Why:** the owner chose to keep a clear UI explanation for non-full refuels while preserving full-to-full consumption as the only calculation model.
+- **Documents touched:** `docs/SPECIFICATION.md §6`, `docs/CONTRACTS.md §4`, `§13`, `§20.4` and `§20.6`, `docs/BACKLOG.md` `E1-05`, `E1-06`, `E1-08` and `E1-09`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `F-15`, `EndEntryNotFullTank`, `FuelEntryListItem`, `SegmentResult`, `ConsumptionReport` and partial refuels; `git diff --check`.
+- **Follow-ups / risks:** no active audit findings remain. `docs/AUDIT_GUARDRAILS.md` is ready for owner review and later deletion.
+
+### 2026-08-17 — Firestore remote schemas closed
+
+- **Type:** decision
+- **Story / Decision:** `F-12`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** remote `Vehicle` and `FuelEntry` documents now have exact closed key sets in `docs/CONTRACTS.md §16`. Unknown collections, missing keys, extra keys, local-only metadata and inconsistent `deleted` / `deletedAt` pairs are rejected by the Firestore contract.
+- **Why:** the owner chose the strict schema option to make remote payload validation predictable and prevent malformed or locally-owned fields from entering Firestore.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §10`, `docs/CONTRACTS.md §16`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `F-12`, `validPayload`, `closed remote schema`, forbidden local-only keys, `schemaVersion` and `deletedAt`; `git diff --check`.
+- **Follow-ups / risks:** remaining audit finding is `F-15`.
+
+### 2026-08-17 — Account deletion server operation accepted
+
+- **Type:** decision
+- **Story / Decision:** `F-11` / `D-23`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** account deletion now uses a Firebase Admin server operation. The app re-authenticates if needed, calls the authenticated server operation, the server deletes `fuelEntries`, then `vehicles`, then the Firebase Auth user, and only after success does the app clear local data.
+- **Why:** the owner chose server/Admin deletion so store-required account deletion can physically purge remote data while client Firestore rules continue to reject hard deletes.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §7` and `§12`, `docs/CONTRACTS.md §6`, `§11.1`, `§11.5` and `§16`, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/adr/0024-account-deletion-server-admin.md`, `docs/BACKLOG.md`, `docs/SECURITY.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `D-23`, `F-11`, `E3-10`, `AuthError.AccountDeletionRemoteFailed`, account deletion and `allow delete`; `git diff --check`.
+- **Follow-ups / risks:** remaining audit findings are `F-12` and `F-15`. `E3-10` must implement and test the server operation before release.
+
+### 2026-08-17 — Malformed remote payload quarantine decided
+
+- **Type:** decision
+- **Story / Decision:** `F-16`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** quarantine now covers both unsupported future schema versions and malformed supported-version payloads. `QuarantineReason.MalformedPayload` and `QuarantineRecord` are canonical sync types.
+- **Why:** the owner chose to keep malformed remote documents out of product tables without blocking cursor progress, provided the quarantine row is committed successfully.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §5`, `§9.5` and `§20.7`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md §8` and `§9`, `docs/BACKLOG.md`, `docs/DEFINITION.md`, `docs/SECURITY.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `quarantine`, `MalformedPayload`, `QuarantineReason`, `schemaVersion`, `malformed` and `18 sync tests`; `git diff --check`.
+- **Follow-ups / risks:** remaining audit findings are `F-11`, `F-12` and `F-15`.
+
+### 2026-08-17 — Odometer recompute set defined
+
+- **Type:** decision
+- **Story / Decision:** `F-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `odometerInconsistent` recomputation now has an exact minimal recompute set for create, update, delete and vehicle cascade delete. `currentOdometerKm` remains recomputed for the whole vehicle in the same transaction.
+- **Why:** the owner chose the explicit minimal-set option to handle edits that move an entry in chronological order without recomputing the whole vehicle unnecessarily.
+- **Documents touched:** `docs/CONTRACTS.md §3.1` and fuel repository side effects, `docs/SPECIFICATION.md §5` / R-1, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `odometerInconsistent`, `currentOdometerKm`, `successor`, `recompute` and `F-14`; `git diff --check`.
+- **Follow-ups / risks:** `F-16` remains the next sync/database guardrail.
+
+### 2026-08-17 — Pull overlap cursor anchor fixed
+
+- **Type:** decision
+- **Story / Decision:** `F-13`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** pull pagination now uses `startAt(overlapSince, "")` for the first page of an overlapped cycle and `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)` for later pages.
+- **Why:** the owner chose the concrete-anchor option to avoid an invalid `null` document-id cursor while preserving the 30-second overlap window.
+- **Documents touched:** `docs/CONTRACTS.md §9.4` and `§16`, `docs/SPECIFICATION.md §9.3`, `docs/TECHNICAL_PLAN.md §8`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `startAt`, `startAfter`, `overlapSince`, `RemoteCursor` and `null`; `git diff --check`.
+- **Follow-ups / risks:** `F-14` and `F-16` remain the next sync/database guardrails.
+
+### 2026-08-17 — Local owner adoption ordering decided
+
+- **Type:** decision
+- **Story / Decision:** `F-10`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** first launch now attempts Firebase anonymous authentication automatically; `LOCAL_OWNER` is the offline/Auth-unavailable fallback. Local synchronized rows carry `localMutationSeq`, and adoption builds the initial outbox in dependency-group order and then by `localMutationSeq ASC, id ASC`.
+- **Why:** the owner chose deterministic local mutation ordering without creating a staging outbox for `LOCAL_OWNER`, preserving the rule that the outbox stays empty until a real UID exists.
+- **Documents touched:** `docs/CONTRACTS.md §3`, `§8`, `§11.2`, `§11.4` and repository rules, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md §6`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `localMutationSeq`, `local_sequence`, `LOCAL_OWNER`, anonymous authentication and adoption; `git diff --check`.
+- **Follow-ups / risks:** `F-13`, `F-14` and `F-16` remain the next sync/database guardrails.
+
+### 2026-08-17 — Sync state storage decided
+
+- **Type:** decision
+- **Story / Decision:** `F-09`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `syncState` is now defined as a stored local control column. The outbox influences it but does not fully define it, and `LOCAL_OWNER + PENDING + no outbox` is an explicit legal state before adoption.
+- **Why:** the owner chose the stored-state option to resolve the contradiction between first-launch offline writes and the outbox suppression rule.
+- **Documents touched:** `docs/CONTRACTS.md §7`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `syncState`, `LOCAL_OWNER`, `PENDING` and `outbox`; `git diff --check`.
+- **Follow-ups / risks:** `F-10` remains open and must define how local-owner mutations preserve causal ordering during adoption.
+
+### 2026-08-17 — MVP settings reset semantics decided
+
+- **Type:** decision
+- **Story / Decision:** `F-17`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** MVP settings now reset during destructive local-data flows. Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; defaults are recreated from locale with `analyticsEnabled = false`.
+- **Why:** the owner confirmed that settings should not survive in the MVP, while settings sync through Google Play services / Android backup / iCloud belongs to future roadmap scope.
+- **Documents touched:** `AGENTS.md`, README, `docs/SPECIFICATION.md §3`, `§5.3` and `§7 F-5`, `docs/CONTRACTS.md §3 UserSettings` and `§11.5`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `settings`, `user_settings`, `Google Play`, `Android backup`, `iCloud`, sign-out, local-data deletion and account deletion; `git diff --check`.
+- **Follow-ups / risks:** future platform settings sync requires a new story or ADR before adding platform APIs, entitlements, manifest keys or dependencies.
+
+### 2026-08-17 — Electric and hybrid fuel types deferred
+
+- **Type:** decision
+- **Story / Decision:** `D-4` / `F-08`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the MVP `FuelType` enum now excludes `ELECTRIC` and `HYBRID`; the canonical values are `GASOLINE`, `DIESEL`, `LPG`, `CNG` and `OTHER`. Electric and hybrid support is recorded as future roadmap scope requiring a dedicated energy model.
+- **Why:** the owner confirmed that electric and hybrid vehicles are not included in the MVP, and supporting them correctly requires kWh input, mixed energy units, validation, Firestore rules and migration work.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §3`, `§5` and `§20.4`, `docs/SPECIFICATION.md §3` and `§12`, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0005-vehicle-fuel-type-from-day-one.md`, `docs/adr/README.md`, `docs/BACKLOG.md`, `README.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `FuelType`, `ELECTRIC`, `HYBRID`, `energy model` and `D-4`; `git diff --check`.
+- **Follow-ups / risks:** future electric/hybrid support requires a new story or ADR before enum/schema expansion.
+
+### 2026-08-17 — Monetary and name data guardrails tightened
+
+- **Type:** correction
+- **Story / Decision:** `F-05`, `F-06`, `F-07`; `F-08` remains owner decision
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `MoneyInput` now selects the derived field only during validation, while persistence stores only the canonical monetary triple. `SUPPORTED_CURRENCY_CODES` is now the exact MVP currency allowlist, and vehicle name normalization / `nameFold` are defined as KMP-pure operations.
+- **Why:** the previous contract implied an authoritative supplied monetary pair without storing it, left currency support dependent on an unspecified ISO lookup, and described `nameFold` differently from the normalization rules.
+- **Documents touched:** `docs/CONTRACTS.md §2`, `§3`, `§5`, `§20.0.1` and `§20.3`, `docs/SPECIFICATION.md §5.3`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `MoneyInput`, `moneyInputKind`, `SUPPORTED_CURRENCY_CODES`, `MinorUnits`, `canonicalVehicleName`, `nameFold`, `FuelType`, `ELECTRIC` and `HYBRID`; `git diff --check`.
+- **Follow-ups / risks:** `F-08` still requires owner choice: reject `ELECTRIC` / `HYBRID` in MVP validation or remove them until an energy-model story exists.
+
+### 2026-08-17 — Swift-facing graph contract made explicit
+
+- **Type:** correction
+- **Story / Decision:** `D-2` / `F-02`, `F-03`, `F-04`, `F-18`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the Swift-facing ABI is now an explicit allowlist with `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders, declared `UiState` classes and `UiMessage`; Kotlin-facing graph construction remains available through `createAppGraph(AppGraphDependencies)` but is hidden from the Objective-C header.
+- **Why:** the previous contract mixed Kotlin construction APIs with Swift-exported APIs, exposed implementation-facing abstractions such as `SyncController`, and referenced state-holder / `UiState` types that were not declared.
+- **Documents touched:** `docs/CONTRACTS.md §11.6`, `§14`, `§15.3`, `§18`, `§20.7` and `§20.10`, `docs/SPECIFICATION.md §8.4` and `§8.5`, `docs/TECHNICAL_PLAN.md §5`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `SwiftAppGraph`, `AppGraphDependencies`, `createAppGraph`, `AppGraph`, `SyncController`, `CoroutineScope`, `Outcome` and `AppError`; `git diff --check`.
+- **Follow-ups / risks:** changes touch gated contract and specification documents and require human review before merge. Next open audit block is `F-05`, `F-06`, `F-07` and `F-08`.
+
+### 2026-08-17 — Crash reporting module ownership aligned
+
+- **Type:** correction
+- **Story / Decision:** `D-21` / `F-01`, `F-19`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `CrashReporter` is now owned by `:core:crash`, included in `AppGraphDependencies` from Phase 0, and represented consistently in the module lists. Firebase Crashlytics remains a Phase 4 integration behind that abstraction.
+- **Why:** the previous wording split ownership between `:core:common`, `:core:crash` and Phase 4 wiring, which made graph construction and module bootstrap ambiguous.
+- **Documents touched:** `docs/CONTRACTS.md §11.6` and `§20.3.1`, `docs/SPECIFICATION.md §8.2` and `§8.3`, `docs/TECHNICAL_PLAN.md §4`, `docs/BACKLOG.md`, `README.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `CrashReporter`, `:core:crash` and `:integration:firebase-crashlytics`.
+- **Follow-ups / risks:** changes touch gated contract and specification documents and require human review before merge. `F-02`, `F-03`, `F-04` and `F-18` remain open around the Swift-facing graph surface.
+
 ### 2026-08-17 — Empty owner-decision queue made explicit
 
 - **Type:** correction

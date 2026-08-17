@@ -28,7 +28,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 
 | Document | What it provides |
 |----------|------------------|
-| [TECHNICAL_PLAN.md](docs/TECHNICAL_PLAN.md) | Module architecture, the dependency rule table that generates the architecture checks, local data model and outbox DDL, Firestore design, sync engine pseudocode, the 17 required sync tests, phases, risks and the verification strategy. |
+| [TECHNICAL_PLAN.md](docs/TECHNICAL_PLAN.md) | Module architecture, the dependency rule table that generates the architecture checks, local data model and outbox DDL, Firestore design, sync engine pseudocode, the 18 required sync tests, phases, risks and the verification strategy. |
 | [BACKLOG.md](docs/BACKLOG.md) | Agent-sized stories with dependencies, acceptance criteria, execution order and a story index. Work is assigned one story at a time. |
 | [DEFINITION.md](docs/DEFINITION.md) | Executive overview and orientation for humans. Creates no rules. |
 | [README.md](README.md) | Public front page and documentation index. |
@@ -95,7 +95,7 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 
 ## Scope Discipline
 
-Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, and remote settings synchronization.
+Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
 
 Escalate any request that touches out-of-scope functionality.
 
@@ -126,7 +126,8 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Every MVP write works without network access, and first launch works offline.
 - Nothing is enqueued for synchronization while the owner is `LOCAL_OWNER`.
 - IDs are client-generated UUID v4.
-- Synchronized deletes are tombstones; hard deletes are rejected by the Firestore rules.
+- Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules. Account deletion hard deletes run only through the `D-23` Firebase Admin server operation.
+- Firestore remote documents use the closed schemas of `docs/CONTRACTS.md §16`; unknown collections, extra keys and local-only metadata are rejected.
 - Monetary values never use `Float` or `Double`, and the exact integer formulas of `docs/CONTRACTS.md §2` are implemented literally.
 - Consumption uses the full-to-full method, and the average is distance-weighted.
 - The odometer inconsistency warning is a two-step protocol: the first save mutates nothing.
@@ -211,6 +212,7 @@ A change is gated when it matches at least one of the following. Gated changes M
 - `E1-05` consumption calculation
 - `E2-06` local owner adoption
 - `E3-01` Firestore security rules
+- `E3-10` account deletion server operation
 - `E3-03` synchronization engine
 
 ### Gated paths

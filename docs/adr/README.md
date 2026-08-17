@@ -10,7 +10,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-1 | [ADR-0002](0002-local-database-room-kmp.md) | Use Room 3.0 KMP for the local database. | Accepted |
 | D-2 | [ADR-0003](0003-ios-interop-skie.md) | Use SKIE for Kotlin-to-Swift interop. | Accepted |
 | D-3 | [ADR-0004](0004-koin-dependency-injection.md) | Use Koin KMP for dependency injection. | Accepted |
-| D-4 | [ADR-0005](0005-vehicle-fuel-type-from-day-one.md) | Store vehicle fuel type from day one. | Accepted |
+| D-4 | [ADR-0005](0005-vehicle-fuel-type-from-day-one.md) | Store MVP fuel type from day one; defer electric/hybrid values. | Accepted |
 | D-5 | [ADR-0006](0006-firestore-remote-sync-source.md) | Use Firebase Firestore behind `RemoteSyncSource`. | Accepted |
 | D-6 | [ADR-0007](0007-firebase-auth-gitlive.md) | Use Firebase Auth through GitLive behind `AuthClient`. | Accepted |
 | D-7 | [ADR-0008](0008-native-navigation.md) | Use native navigation per platform. | Accepted |
@@ -29,5 +29,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-20 | [ADR-0020](0020-localization-native-resources.md) | Native resources; no user-facing text in `UiState`. | Accepted |
 | D-21 | [ADR-0023](0023-firebase-crashlytics.md) | Use Firebase Crashlytics behind `CrashReporter` in Phase 4. | Accepted |
 | D-22 | [ADR-0021](0021-application-identifiers.md) | Application identifiers are owner-decided and fixed in `docs/identifiers.md`. | Accepted |
+| D-23 | [ADR-0024](0024-account-deletion-server-admin.md) | Use a Firebase Admin server operation for account deletion hard deletes. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

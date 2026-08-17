@@ -18,7 +18,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Accepted | Same SQLite version across Android and iOS, supports modern UPSERT syntax with `minSdk 26`. |
 | D-2 | Swift interop | SKIE only in `:shared` | Accepted | Better Swift ergonomics for Flow and sealed-like models than raw KMP export. |
 | D-3 | DI | Koin KMP | Accepted | Owner-selected DI. Runtime wiring is acceptable if Koin is constrained to composition and wiring. |
-| D-4 | `fuelType` | Stored on `Vehicle` from day one | Accepted | Schema evolution is easier before users exist; selector is not part of MVP UI. |
+| D-4 | `fuelType` | Stored on `Vehicle` from day one, without electric/hybrid values in MVP | Accepted | Schema evolution is easier before users exist; selector is not part of MVP UI; electric/hybrid needs a future energy model. |
 | D-5 | Firestore access | Firebase Firestore integration behind `RemoteSyncSource` | Accepted | Firebase is the initial database backend, fully decoupled so a future Ktor/API implementation can replace it. |
 | D-6 | Firebase Auth | GitLive Auth 2.6.x behind `AuthClient` | Accepted | Consistent with the Firestore wrapper. Native UI obtains Google and Apple credentials. |
 | D-7 | Navigation | Native per platform | Accepted | Compose Navigation and SwiftUI `NavigationStack`; no shared destination model. |
@@ -37,8 +37,9 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-20 | Localization | Native resources, no user-facing text in `UiState` | Accepted | UI is native; shared code has no resource bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` in Phase 4 | Accepted | Not needed before release hardening. |
 | D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; the production Firebase project ID is deferred by `D-14`. |
+| D-23 | Account deletion execution | Firebase Admin server operation | Accepted | Store deletion compliance requires physical remote purge, while mobile clients must keep `allow delete: if false`. |
 
-Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
+Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
 ## 3. Module Architecture
 
@@ -89,6 +90,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
 | `:core:sync` | `:core:model`, `:core:common`, `:core:database`, `:core:auth` | `:integration:*`, features |
 | `:core:database` | `:core:model`, `:core:common`, Room | `:integration:*`, features, `:core:sync` |
+| `:core:crash` | `:core:common` | platform APIs, Firebase, GitLive, Koin, Ktor, integrations, features |
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
 | `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
 | `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
@@ -119,13 +121,13 @@ Any change to those contracts is a human review gate and MUST update `docs/CONTR
 
 ## 5. Provider Decoupling
 
-`:shared` exposes a graph factory that receives a platform dependency container:
+`:shared` exposes a Kotlin-facing graph factory that receives a platform dependency container:
 
 ```kotlin
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-`AppGraphDependencies` and `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
+`AppGraphDependencies` and the Kotlin-facing `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`; they are hidden from the Swift-facing Objective-C header. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes `SwiftAppGraph` plus the concrete state holders defined in `docs/CONTRACTS.md §20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
 
 ```text
 Exclude :integration:* and :wiring:firebase from settings.
@@ -146,9 +148,10 @@ Synchronized entity control columns:
 | `deletedAt` | Tombstone timestamp. |
 | `syncState` | Local state. Canonical values in `docs/CONTRACTS.md §7`. |
 | `localRevision` | Incremented on each local edit to detect in-flight edits. |
+| `localMutationSeq` | Monotonic database-local mutation order, shared across synchronized entity tables. |
 | `schemaVersion` | Payload schema version. |
 
-Tables: `vehicle`, `fuel_entry`, `user_settings`, `outbox`, `sync_cursor`, `quarantine`.
+Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`.
 
 There is **no enforced foreign key** from `fuel_entry` to `vehicle`: sync can legitimately deliver an entry before its vehicle, and a constraint failure inside a pull transaction would stall the cursor permanently.
 
@@ -172,6 +175,8 @@ CREATE INDEX idx_outbox_due ON outbox(nextAttemptAt, seq);
 ```
 
 The outbox stores full snapshots; re-applying the same snapshot is idempotent. Retry decisions are made on `lastErrorCode`, never on `lastError` text.
+
+`local_sequence` is a single-row local control table used only to assign `localMutationSeq`. Local creates, updates and tombstone writes consume it; pull-applied remote writes and local-owner adoption do not. The value never leaves the local database.
 
 Room configuration: `exportSchema = true`, schema JSON committed under `core/database/schemas/`. `fallbackToDestructiveMigration` is FORBIDDEN in every build type. Every version bump ships an explicit `Migration` plus a test that migrates a populated previous-version database and asserts row preservation.
 
@@ -220,16 +225,17 @@ The engine lives fully in `commonMain`. Platform APIs only trigger it; they are 
 ```text
 For entityType in [VEHICLE, FUEL_ENTRY]:
   1. cursor = sync_cursor[entityType] (created lazily as RemoteCursor.INITIAL)
-  2. anchor = (max(0, cursor.lastServerUpdatedAt - 30s), null)   // overlap applied once per cycle
-  3. Query where updatedAt >= anchor.time
+  2. overlapSince = max(0, cursor.lastServerUpdatedAt - 30s)   // overlap applied once per cycle
+  3. Query where updatedAt >= overlapSince
        orderBy updatedAt ASC, documentId ASC
-       startAfter(anchor)
+       first page: startAt(overlapSince, "")
+       later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
        limit 200
   4. Apply the page in one local transaction.
-     - quarantine documents whose schemaVersion is unsupported
+     - quarantine documents whose schemaVersion is unsupported or whose supported-version payload is malformed
      - skip entities that have an outbox row
      - otherwise apply if remote.updatedAt > local.serverUpdatedAt, or local was never synced
-  5. anchor = (lastApplied.updatedAt, lastApplied.documentId); advance the cursor.
+  5. pageCursor = (lastApplied.updatedAt, lastApplied.documentId); advance the cursor.
   6. If the page was full and the anchor did not strictly advance, fail with ConflictUnresolved.
   7. Repeat while the page is full.
 ```
@@ -240,7 +246,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
 - Push is idempotent by client-generated document ID.
 - Server `updatedAt` creates authoritative ordering; the local `updatedAt` never arbitrates.
 - `(updatedAt, documentId)` provides a deterministic total order over the pull stream.
-- Pull overlap prevents silent cursor loss; `startAfter` prevents the overlap from re-reading the same page forever.
+- Pull overlap prevents silent cursor loss; `startAt(overlapSince, "")` gives the first overlapped page a legal concrete anchor; `startAfter` on the previous page cursor prevents re-reading the same page forever.
 - Tombstones are regular LWW documents.
 
 ## 9. Sync Tests
@@ -260,10 +266,11 @@ Required tests for `:core:sync`:
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
 12. A fuel entry arriving before its vehicle is persisted, hidden from the UI, and converges without stalling.
 13. Two devices creating the same vehicle name converge into two vehicles without a constraint failure.
-14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once and is idempotent.
+14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once, is idempotent, and inserts outbox rows in dependency-group order and then by `localMutationSeq ASC, id ASC`.
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
-16. Backoff with an injected jitter source produces deterministic, capped delays.
-17. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
+16. A supported-version document with malformed payload is quarantined with `MalformedPayload`, is not applied to product tables and does not block cursor advance after quarantine is committed.
+17. Backoff with an injected jitter source produces deterministic, capped delays.
+18. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
 Add a deterministic simulation with a fixed seed that interleaves local edits, push, pull, network failure, duplicate delivery and lost responses, asserting convergence between two clients.
 
@@ -291,7 +298,7 @@ Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, 
 
 ### Phase 3 - Backend and Synchronization
 
-Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, account deletion server operation, provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 
@@ -334,4 +341,4 @@ Manual at phase gates:
 
 ## 13. Out of Plan
 
-Maintenance expenses, advanced analytics, export, receipt images, OCR, reminders, shared vehicles, widgets, wearables, web, App Check, automatic account merging, real-time Firestore listeners, and remote settings synchronization.
+Maintenance expenses, advanced analytics, export, receipt images, OCR, reminders, shared vehicles, widgets, wearables, web, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.

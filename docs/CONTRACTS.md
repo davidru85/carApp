@@ -57,7 +57,7 @@ Every scaled type carries its value in a `Long`. `Int` MUST NOT be used for a sc
 Rounding mode is HALF_UP on non-negative inputs. The formulas below are **exact integer arithmetic** and MUST be implemented literally; a floating-point or naive integer-division implementation is a contract violation.
 
 ```text
-minorUnitFactor = MinorUnits.factorFor(currency)      // EUR -> 100
+minorUnitFactor = MinorUnits.factorFor(currency)      // EUR -> 100; validation rejects null before arithmetic
 
 totalCostMinor      = (litersScaled * pricePerLiterScaled * minorUnitFactor + 500_000) / 1_000_000
 pricePerLiterScaled = (totalCostMinor * 1_000_000 + (litersScaled * minorUnitFactor) / 2) / (litersScaled * minorUnitFactor)
@@ -72,9 +72,9 @@ Golden values that MUST be covered by tests in `:core:model`:
 | `40_000` (40 L) | `1_500` (1.500 €/L) | EUR | `6_000` (60.00 €) |
 | `1` (0.001 L) | `1` (0.001 €/L) | EUR | `1` (0.01 €) — rounds up from 0.0001 |
 
-MVP currency constraint: `MinorUnits.factorFor` supports **only** 2-decimal ISO-4217 codes in the MVP. A locale suggesting a 0-decimal or 3-decimal currency (JPY, KWD, …) falls back to `EUR`, and an explicit user selection of such a currency returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
+MVP currency constraint: `MinorUnits.factorFor` returns `100` only for the codes in `SUPPORTED_CURRENCY_CODES` (§20.0.1), and returns `null` for every other code. A locale suggesting a code outside that set falls back to `EUR`, and an explicit user selection outside that set returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
 
-Which value is derived is never ambiguous: the caller states which two values it supplied through `MoneyInput` (§20), and the third is computed. All three are persisted; `MoneyInput` records the authoritative pair, and re-deriving the third from the stored pair MUST be stable.
+Which value is derived is never ambiguous during validation: the caller states which two values it supplied through `MoneyInput` (§20), and the third is computed. Persistence stores the canonical triple only: `litersScaled`, `pricePerLiterScaled` and `totalCostMinor`. The original supplied pair is not retained locally, remotely or in the outbox payload. After validation succeeds, all three persisted values are authoritative read data; later reads MUST NOT try to infer which two fields the user originally typed.
 
 ### Canonical consumption arithmetic
 
@@ -126,6 +126,7 @@ Domain models expose business concepts. Local rows add sync metadata. Remote doc
 | `deleted` | No | Yes (stored) | Yes | Stored, with the invariant `deleted == (deletedAt != null)` enforced by a `CHECK` constraint. Written only by the tombstone helper in `:core:database`. |
 | `syncState` | **No** | Yes | No | Local-only. MUST NOT be visible to feature `domain` or `presentation` code. |
 | `localRevision` | No | Yes | No | Local-only. Incremented on every local edit. |
+| `localMutationSeq` | No | Yes | No | Local-only. Monotonic database-local mutation order, used to adopt `LOCAL_OWNER` rows into the outbox deterministically. |
 | `schemaVersion` | No | Yes | Yes | Starts at `1`. |
 
 Sync status reaches the UI only through the aggregate `SyncStatus` exposed by `SyncController` (§9.6), never per entity.
@@ -139,7 +140,7 @@ Canonical fields:
 - `id`
 - `ownerId`
 - `name`
-- `nameFold` — local only, generated as `name.trim().lowercase()`, used for uniqueness checks (§5)
+- `nameFold` — local only, generated from `canonicalVehicleName(name).lowercase()`, used for uniqueness checks (§5)
 - `initialOdometerKm`
 - `currentOdometerKm` — derived read model
 - `brand`
@@ -163,7 +164,7 @@ It is a **maximum**, not a recency selector, and it includes entries flagged `od
 
 `initialOdometerKm` is editable only while the vehicle has no non-deleted fuel entries.
 
-`fuelType` is metadata only in the MVP: it does not alter validation, units or consumption. `ELECTRIC` and `HYBRID` require a separate energy model and are out of MVP scope; no agent may add kWh handling.
+`fuelType` is metadata only in the MVP: it does not alter validation, units or consumption. The MVP enum is intentionally limited to combustion or fuel-like labels. `ELECTRIC` and `HYBRID` are not legal MVP values and MUST NOT appear in commands, rows, remote documents, UI state or tests except as rejected malformed input. Electric and hybrid vehicle support requires a future energy-model scope change covering kWh input, consumption units, validation, Firestore rules and migrations.
 
 ### FuelEntry
 
@@ -192,7 +193,7 @@ Persisted fuel entries MUST contain non-null `litersScaled`, `pricePerLiterScale
 
 `hasMissedEntries = true` on entry `E` means the user did not log one or more refuels **between the previous logged entry and `E`**. It therefore invalidates the segment ending at `E` and any segment containing `E`, and has no effect on earlier segments.
 
-`odometerInconsistent` is a **derived** property cached in a column. `:core:database` recomputes it for the affected entry and its immediate successor inside the same transaction as any create, update or delete of a fuel entry for that vehicle. Application code MUST NOT write it directly.
+`odometerInconsistent` is a **derived** property cached in a column. Application code MUST NOT write it directly.
 
 The `fuel_entry` table declares **no enforced foreign key** to `vehicle`: sync can legitimately deliver a fuel entry before its vehicle (§9.4).
 
@@ -205,6 +206,8 @@ Canonical persistence is metric and **device-local**:
 - Unit settings affect presentation and input only, never domain storage.
 - Settings live in a single-row local table `user_settings`. They are **not synchronized** in the MVP; there is no remote settings document, no `EntityType` for them and no outbox participation.
 - `currency` is the default for *new* fuel entries only. Each fuel entry stores its own `currency`; changing the setting never rewrites existing entries.
+- Settings do not survive destructive local-data flows in the MVP. Sign-out, anonymous "delete local data" and account deletion all delete the `user_settings` row. The next first-launch or repository access recreates it from locale defaults with `analyticsEnabled = false`.
+- Settings synchronization through Google Play services, Android backup, iCloud or any other platform backup mechanism is out of MVP scope and requires a future ADR or story before any API, entitlement, manifest key or dependency is added.
 
 ### 3.1 Database-owned invariants
 
@@ -213,8 +216,20 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 | Invariant | Trigger |
 |-----------|---------|
 | `vehicle.currentOdometerKm` recomputation | any insert / update / delete on `fuel_entry` |
-| `fuel_entry.odometerInconsistent` recomputation for the affected entry and its successor | any insert / update / delete on `fuel_entry` |
+| `fuel_entry.odometerInconsistent` recomputation for the exact recompute set below | any insert / update / delete on `fuel_entry` |
 | `deleted == (deletedAt != null)` | `CHECK` constraint on both entity tables |
+
+`currentOdometerKm` is recomputed for the whole vehicle after every fuel-entry create, update or tombstone write, in the same transaction.
+
+`odometerInconsistent` is recomputed only for rows whose previous non-deleted chronological neighbour may have changed. The recompute set is de-duplicated by `id` and is:
+
+- Create: inserted row in its new position, plus its new successor.
+- Update where `vehicleId`, `date`, `createdAt`, `id` or `odometerKm` may affect chronological order or comparison: updated row in its new position, its old successor before the update, and its new successor after the update.
+- Update that cannot affect chronological order or odometer comparison: updated row only if its stored `odometerInconsistent` could change; otherwise no odometer-inconsistency recompute is required.
+- Tombstone: successor after the deleted row in the old chronological position.
+- Vehicle-level fuel-entry cascade tombstone: each successor after each tombstoned row, de-duplicated.
+
+All rows in the recompute set are recalculated in the same database transaction as the write that caused the recompute. A missing successor means no row is added for that position. The edited or deleted row's own stored `odometerInconsistent` remains meaningful only while the row is non-deleted; tombstoned rows are ignored by validation, projections and consumption.
 
 An architecture check MUST assert that no `UPDATE vehicle SET currentOdometerKm` and no write to `odometerInconsistent` exists outside `:core:database`.
 
@@ -237,11 +252,13 @@ Odometer validation (R-1) uses the previous non-deleted fuel entry in **chronolo
 Consumption (R-3) operates on non-deleted fuel entries of one vehicle in **calculation** order:
 
 - `P` is the nearest preceding entry with `isFullTank = true` in calculation order.
+- `E`, the segment end, MUST have `isFullTank = true`. Entries with `isFullTank = false` never close a segment and never produce a `SegmentResult`.
 - Segment membership is `P.odometerKm < X.odometerKm <= E.odometerKm`.
 - An entry whose `odometerKm` equals `P.odometerKm`, and which is not `P` itself, **is included** in the segment (its litres count) and additionally invalidates the segment with `DuplicateOdometerInSegment`.
+- Partial fuel entries inside the segment membership range are included in the segment litres.
 - Partial fuel entries before the first full-tank anchor never contribute to a valid segment.
 
-The complete and exhaustive set of invalidation reasons is `ConsumptionInvalidReason` (§20). No other document may restate that list.
+The complete set of consumption explanation reasons is `ConsumptionInvalidReason` (§20). `EndEntryNotFullTank` is a list-projection reason for partial rows; it is not a `SegmentResult.Invalid` reason.
 
 ## 5. Validation and Save Semantics
 
@@ -252,9 +269,19 @@ Write use cases validate commands before repository writes. Expected validation 
 Normalisation runs in the use case **before** validation, and the normalised value is what is persisted and what uniqueness is computed on:
 
 - All strings are `trim()`ed.
-- Internal whitespace runs in `name` collapse to a single space.
+- Internal Unicode whitespace runs in `name` collapse to one U+0020 space.
 - For nullable text fields (`brand`, `model`, `notes`), `""` becomes `null`.
 - `name` MUST NOT be null or blank.
+
+Vehicle-name normalisation is exactly:
+
+```text
+canonicalVehicleName(input) =
+    input.trim()
+         .replace(each non-empty run of Unicode whitespace with U+0020)
+```
+
+`nameFold = canonicalVehicleName(name).lowercase()` using Kotlin's locale-invariant Unicode lowercase operation. No NFC, NFD or platform-specific collation is applied in the MVP, because no approved KMP dependency provides cross-platform Unicode normalisation. Therefore composed and decomposed Unicode spellings that remain different after `lowercase()` are distinct names. Adding Unicode normalisation requires a decision update and a story that pins the library and migration behaviour.
 
 ### Warning protocol
 
@@ -275,17 +302,18 @@ Both ends of every interval are closed and MUST be enforced.
 | Vehicle `name` | Trimmed length 1..40. Unique per owner among non-deleted vehicles, compared on `nameFold`. |
 | `brand`, `model` | Null, or trimmed length 1..40. |
 | `initialOdometerKm` | 0..2_000_000. Editable only while the vehicle has no non-deleted fuel entries. |
+| `fuelType` | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. `ELECTRIC` and `HYBRID` are out of MVP scope. |
 | Fuel entry `date` | Not before `1970-01-01T00:00:00Z`, not before `vehicle.createdAt - 20 years`, and not more than 1 hour after `AppClock.now()`. |
 | `odometerKm` | 0..2_000_000; `>= vehicle.initialOdometerKm`; strictly greater than the previous non-deleted entry in chronological order unless confirmed inconsistent. |
 | `litersScaled` | 1..500_000 (0.001 L .. 500 L). |
 | `pricePerLiterScaled` | 1..999_999. |
 | `totalCostMinor` | 1..99_999_999. |
-| `currency` | A supported 2-decimal ISO-4217 code (§2). |
+| `currency` | One of `SUPPORTED_CURRENCY_CODES` (§20.0.1). |
 | `notes` | Null, or trimmed length 1..280. |
 
 Vehicle name uniqueness is a **local pre-write validation only**. There MUST NOT be a `UNIQUE` index on the synchronized table for it: two devices can legitimately create the same name offline, and a unique index would make the pull transaction fail and stall the cursor. SQLite `NOCASE` MUST NOT be used for folding, because it is ASCII-only.
 
-Remote-applied rows bypass business validation entirely. A pull transaction MUST NOT fail because of a domain constraint; the only legal pull failures are I/O, serialization and schema-version quarantine (§9.5).
+Remote-applied rows bypass business validation entirely. A pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. Documents that cannot be safely applied are quarantined (§9.5); the only legal pull-cycle failures are remote I/O, local persistence failure or failure to persist quarantine.
 
 ## 6. Result and Error Taxonomy
 
@@ -358,7 +386,15 @@ FAILED_RETRYABLE
 FAILED_POISONED
 ```
 
-`syncState` is derived from the existence and status of the outbox row. A row in `SYNCING` MUST NOT be deleted by an editor, only by the sync engine.
+`syncState` is a stored local control column on synchronized local rows. It is not persisted remotely and is not part of the domain model. The outbox influences `syncState`, but it does not fully define it: `ownerId == LOCAL_OWNER`, `syncState == PENDING` and no outbox row is a legal state before local-owner adoption.
+
+Invariants:
+
+- Local editors set `syncState = PENDING` in the same transaction as every create, update or tombstone write.
+- The outbox writer is a no-op while `ownerId == LOCAL_OWNER`; it MUST NOT downgrade `syncState` back to `SYNCED`.
+- For a real owner, a `PENDING`, `SYNCING`, `FAILED_RETRYABLE` or `FAILED_POISONED` synchronized row normally has an outbox row. The only legal exception is a transient state inside the same database transaction.
+- A row in `SYNCING` MUST NOT be deleted by an editor, only by the sync engine.
+- Pull writes from remote data set `syncState = SYNCED` only when no local outbox row exists for the entity.
 
 Allowed transitions:
 
@@ -386,7 +422,7 @@ Outbox payload format:
 - Includes `schemaVersion` and `entityType`.
 - Includes the full entity snapshot under the canonical field names of §3.
 - Encodes instants as epoch milliseconds UTC.
-- Excludes `syncState`, `localRevision`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm` and any other local-only metadata.
+- Excludes `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm` and any other local-only metadata.
 
 Outbox coalescing:
 
@@ -395,6 +431,8 @@ Outbox coalescing:
 - The original `seq` MUST be preserved to keep causal order.
 
 **The outbox MUST NOT be populated while `ownerId == LOCAL_OWNER`.** Before a real UID exists, local writes set `syncState = PENDING` but the outbox writer is a no-op. Outbox rows are created for those entities by local-owner adoption (§11.4).
+
+Every local create, update and tombstone write assigns a new `localMutationSeq` from one database-local monotonic counter shared by `vehicle` and `fuel_entry`. Pull-applied remote writes do not consume this counter. `localMutationSeq` is not a history table: it stores only the latest local mutation order for the row, which is enough because the outbox stores the latest snapshot per entity.
 
 Push dependency order — this is the normative order; a two-group "vehicles before fuel entries" reading is insufficient because it would push a vehicle tombstone ahead of its fuel-entry tombstones:
 
@@ -436,19 +474,31 @@ Once admitted, the order is deterministic, because the convergence simulation de
 - Entity types are pulled in dependency order: `VEHICLE` before `FUEL_ENTRY`.
 - Cursor stores `(lastServerUpdatedAt, lastDocumentId)`.
 - Page limit: 200 documents.
-- Query ordering is `updatedAt ASC, documentId ASC`, and pagination MUST use `startAfter(lastServerUpdatedAt, lastDocumentId)`. A query that filters only on `updatedAt >= since` without a `startAfter` anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
-- The 30-second overlap window is applied **once per cycle**, not per page: a cycle starts from `startAfter(max(0, cursor.lastServerUpdatedAt - 30 s), null)`.
+- Query ordering is `updatedAt ASC, documentId ASC`.
+- The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
+- The first page of that cycle MUST use `startAt(overlapSince, "")`. `""` is the concrete lowest document-id anchor; `null` MUST NOT be used as a cursor component.
+- Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
+- A query that filters only on `updatedAt >= since` without a concrete cursor anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
 - Tombstones are included.
 - Each page is applied in one local transaction; apply is idempotent.
 - If an outbox row exists for a remote entity, local data is not overwritten.
 - Otherwise the remote snapshot is applied iff `local.serverUpdatedAt == null || remote.updatedAt > local.serverUpdatedAt`. **`local.updatedAt` MUST NOT participate in remote conflict arbitration.**
 - The cursor advances only after the local transaction succeeds.
-- Progress invariant: if a page returns `limit` documents and the resulting cursor is not strictly greater than the cursor that produced it, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
+- Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. If not, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
 - Orphan fuel entries (vehicle not yet pulled) are legal transient state. They MUST be persisted, and MUST be excluded from all UI queries and from consumption until their vehicle arrives.
 
-### 9.5 Schema version handling
+### 9.5 Quarantine and malformed remote payloads
 
-A pulled document with `schemaVersion > CLIENT_MAX_SCHEMA_VERSION` MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance. Quarantined rows are re-evaluated on app upgrade. Firestore rules validate only a lower bound on `schemaVersion`, so rules deploys never gate app releases.
+A pulled document that cannot be safely applied MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance once the quarantine row is committed.
+
+Quarantine reasons are:
+
+- `UnsupportedSchemaVersion`: `schemaVersion > CLIENT_MAX_SCHEMA_VERSION`.
+- `MalformedPayload`: `schemaVersion <= CLIENT_MAX_SCHEMA_VERSION`, but the document is missing a required field, has an unknown enum value, violates nullability, has a primitive type mismatch, has an out-of-range value, violates `deleted == (deletedAt != null)`, has a document ID / payload ID mismatch, contains a malformed JSON payload, or cannot be deserialized into the supported DTO.
+
+Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
+
+For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. Firestore rules validate only a lower bound on `schemaVersion`, so rules deploys never gate app releases.
 
 ### 9.6 Conflict resolution
 
@@ -552,9 +602,13 @@ interface AuthClient {
 
 Platform UI obtains Google and Apple credentials; common code exchanges or links them.
 
+`deleteAccount()` is the client entry point for the `D-23` server/Admin account deletion operation. It MUST NOT call the mobile Firebase Auth account deletion API directly. It maps server operation failures to `AuthError.AccountDeletionRemoteFailed`, authentication freshness failures to `AuthError.RequiresRecentLogin`, caller mismatch or IAM rejection to `AuthError.PermissionDenied`, and connectivity failures to `AuthError.NetworkUnavailable`.
+
 ### 11.2 First launch
 
-First launch MUST succeed offline. The app creates a local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is a background task retried on connectivity; on success, local-owner adoption runs (§11.4).
+On first launch the app MUST attempt Firebase anonymous authentication automatically before the user chooses Google or Apple sign-in. If anonymous authentication succeeds, the app uses that Firebase UID immediately and normal outbox synchronization applies.
+
+First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4).
 
 ### 11.3 Anonymous conversion
 
@@ -568,22 +622,25 @@ On the first successful authentication after a `LOCAL_OWNER` period, in one tran
 
 1. Rewrite every row with `ownerId = LOCAL_OWNER` to the new UID.
 2. Increment `localRevision` on each rewritten row.
-3. Enqueue an outbox snapshot for every non-synced row, preserving `seq` causality.
+3. Enqueue an outbox snapshot for every non-synced row, ordered by the push dependency order of §8 and then by `localMutationSeq ASC, id ASC`. The inserted outbox rows receive `seq` in that order.
 
-The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
+Adoption MUST preserve each row's existing `localMutationSeq`; the adoption rewrite itself does not consume a new mutation sequence. The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
 
 ### 11.5 Sign-out and account deletion
 
-Sign-out is offered only to a permanently authenticated user. For an anonymous session the action is labelled "delete local data" and requires the same two-step destructive confirmation as account deletion. Signing out clears all local rows for that owner, including `SYNCED` ones; recovery is by re-authenticating and pulling from `RemoteCursor.INITIAL`.
+Sign-out is offered only to a permanently authenticated user. For an anonymous session the action is labelled "delete local data" and requires the same two-step destructive confirmation as account deletion. Signing out clears all local rows for that owner, including `SYNCED` ones, and deletes the device-local `user_settings` row; recovery is by re-authenticating and pulling from `RemoteCursor.INITIAL`, while settings are recreated from defaults.
+
+Anonymous "delete local data" clears every local table, including `user_settings`, `outbox`, `sync_cursor` and `quarantine`.
 
 Account deletion order is normative:
 
 1. If `AuthError.RequiresRecentLogin`, require fresh re-authentication first.
-2. Delete remote documents in batches of at most 400 per write batch: `fuelEntries`, then `vehicles`, retrying on `Unavailable`.
-3. Only after remote deletion fully succeeds, call `deleteAccount()`.
-4. Then clear local data.
+2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
+3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
+4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
+5. Only after the server operation returns success, the app clears local data, including `user_settings`.
 
-If step 2 fails, the flow aborts with a typed `AuthError` and the account is NOT deleted. Deleting the auth account before the data would leave unreachable orphan documents.
+The server operation MUST be idempotent for already-deleted documents and MUST NOT delete any document outside `users/{uid}`. It MAY page internally, but partial progress is not reported as success. If step 2, 3 or 4 fails, the app flow aborts with a typed `AuthError`, preserves local data, and does not perform client-side hard deletes. Deleting the auth account before the data would leave unreachable orphan documents.
 
 ### 11.6 App Graph Contract
 
@@ -597,6 +654,7 @@ data class AppGraphDependencies(
     val ownerContext: OwnerContext,
     val remoteSyncSource: RemoteSyncSource,
     val analyticsTracker: AnalyticsTracker,
+    val crashReporter: CrashReporter,
     val clock: AppClock,
     val dispatchers: DispatcherProvider,
     val uuidGenerator: UuidGenerator,
@@ -610,14 +668,17 @@ data class AppGraphDependencies(
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-`CrashReporter` is introduced in Phase 4 and MUST be bound through the same app graph before release builds point at Firebase. Before Phase 4, tests and local builds may use a no-op implementation.
+`CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
+
+`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)` and the Kotlin-facing `AppGraph` are construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden from the generated Objective-C header through Kotlin/Native interop controls such as `@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade declared in §20.10.
 
 Rules:
 
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Tests provide fakes without starting Koin, through the `:core:testing` factory `testAppGraphDependencies(...)` in which every parameter is defaulted. Adding a member REQUIRES updating that factory in the same change.
-- `AppGraph` (§20) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
+- The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
+- The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
 
 ## 12. Repository Contracts
 
@@ -626,7 +687,7 @@ Repositories are interfaces owned by feature domain packages. Implementations li
 All write methods:
 
 - Run in local database transactions where multiple rows or outbox entries change.
-- Stamp `ownerId` from `OwnerContext`, plus `id`, `createdAt`, `updatedAt`, `localRevision`. Commands never carry these.
+- Stamp `ownerId` from `OwnerContext`, plus `id`, `createdAt`, `updatedAt`, `localRevision` and `localMutationSeq`. Commands never carry these.
 - Enqueue outbox snapshots for synchronized entities, subject to §8.
 - Return `Outcome<..., AppError>`.
 - Never call Firebase directly.
@@ -673,7 +734,7 @@ interface FuelEntryRepository {
 | `observeFuelEntries` | none; returns a lightweight projection, excludes orphans | `PersistenceError` |
 | `getFuelEntry` | none; absence is `Ok(null)` | `PersistenceError` |
 | `createFuelEntry` | inserts one row, recomputes `currentOdometerKm` and `odometerInconsistent` (§3.1), enqueues one outbox snapshot | `ValidationError.*`, `ValidationWarning.OdometerInconsistent`, `PersistenceError` |
-| `updateFuelEntry` | as create, plus recomputation for the successor entry | as above plus `EntityNotFound`, `EntityDeleted` |
+| `updateFuelEntry` | as create, plus recomputation of the §3.1 recompute set | as above plus `EntityNotFound`, `EntityDeleted` |
 | `deleteFuelEntry` | tombstones one row, recomputes read models, enqueues a tombstone snapshot | `EntityNotFound`, `PersistenceError` |
 | `observeConsumption` | none | `PersistenceError` |
 
@@ -713,6 +774,8 @@ fun interface CalculateConsumption {
 
 Contract: `entries` MUST contain only non-deleted entries of `vehicleId`, in any order; the implementation sorts them in calculation order (§4). The function is **pure and total** — it never throws and returns no error type. Invalid segments are represented as `SegmentResult.Invalid(reason)`.
 
+`CalculateConsumption` creates one `SegmentResult` for each entry with `isFullTank = true`, in calculation order. It MUST NOT create a segment for partial entries and MUST NOT produce `SegmentResult.Invalid(EndEntryNotFullTank)`. Partial entries inside a full-to-full segment still contribute their litres to that segment.
+
 ## 14. Presentation State Contract
 
 Shared state holders:
@@ -720,12 +783,12 @@ Shared state holders:
 - Live in feature `presentation` packages.
 - Expose immutable `StateFlow<UiState>` built with `stateIn(scope, SharingStarted.WhileSubscribed(5_000), initialValue)`.
 - Accept intent functions.
-- Take `scope: CoroutineScope` in the constructor and expose `close()`. The platform adapter owns creation and cancellation: Android uses `viewModelScope`, iOS creates the scope in the `ObservableObject` `init` and cancels it in `deinit`.
+- Take `scope: CoroutineScope` in Kotlin constructors and expose `close()`. Android passes `viewModelScope`. Swift-facing factories do not expose `CoroutineScope`; `SwiftAppGraph` creates one child scope per state holder and `close()` cancels every state holder it created.
 - Emit every `UiState` on `dispatchers.main`; database and computation work uses `dispatchers.io` or `dispatchers.default`.
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
-`UiState` MUST NOT contain user-facing text. Messages are represented as typed values (`AppError` leaves, `ConsumptionInvalidReason`, enum states) that each platform maps to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
+`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
 
 Platform adapters contain rendering and lifecycle glue only. Validation, formatting decisions, repository calls and business logic remain shared.
 
@@ -763,9 +826,17 @@ Koin KMP is the accepted dependency injection library for the MVP.
 
 ### 15.3 Swift-facing surface
 
-The public API of `:shared` MUST use only `String`, `Long`, `Int`, `Boolean`, `data class`, `sealed class`, `enum class` and `Flow` of those. It MUST NOT use `value class`, type parameters, or default arguments, because inline value classes are not exported to Objective-C, generic hierarchies export poorly, and default arguments do not exist in the export.
+The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin declarations". The allowlist is:
 
-Repository and use-case interfaces are Kotlin-internal contracts and MUST NOT be exported to Swift. Only `AppGraph`, state holders, `UiState` data classes, `SyncStatus` and the typed enums they reference are exported.
+- `SwiftAppGraph`.
+- `createSwiftAppGraph(isDebugBuild: Boolean)`.
+- Concrete state-holder classes declared in §20.10.
+- `UiState` data classes and UI row data classes declared in §20.10.
+- `UiMessage`, `UiMessageKind`, `SyncStatus` and the typed enums referenced by those state classes.
+
+Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, Room types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
+
+`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)`, the Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are Kotlin-facing contracts and MUST NOT be exported to Swift.
 
 A golden file of the generated Objective-C header is committed and diffed on every PR; a change to it is a review signal.
 
@@ -797,6 +868,52 @@ users/{uid}/fuelEntries/{entryId}
 
 There is no remote settings document in the MVP (§3).
 
+The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
+
+Remote timestamp fields use Firestore `timestamp` values. The outbox JSON still encodes instants as epoch milliseconds (§8); the Firestore integration converts them at the boundary.
+
+Allowed remote `Vehicle` keys:
+
+| Key | Required | Type and constraints |
+|-----|----------|----------------------|
+| `id` | Yes | UUID v4 string; MUST equal `{vehicleId}`. |
+| `ownerId` | Yes | String; MUST equal authenticated `{uid}`. |
+| `name` | Yes | String length 1..40 after repository normalisation. |
+| `initialOdometerKm` | Yes | Integer in `0..2000000`. |
+| `brand` | Yes | Null, or string length 1..40 after repository normalisation. |
+| `model` | Yes | Null, or string length 1..40 after repository normalisation. |
+| `fuelType` | Yes | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. |
+| `createdAt` | Yes | Firestore timestamp. |
+| `updatedAt` | Yes | Firestore timestamp; MUST equal `request.time` on create/update. |
+| `deleted` | Yes | Boolean. |
+| `deletedAt` | Yes | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
+| `schemaVersion` | Yes | Integer, exactly `1` for the MVP remote schema. |
+
+Allowed remote `FuelEntry` keys:
+
+| Key | Required | Type and constraints |
+|-----|----------|----------------------|
+| `id` | Yes | UUID v4 string; MUST equal `{entryId}`. |
+| `ownerId` | Yes | String; MUST equal authenticated `{uid}`. |
+| `vehicleId` | Yes | UUID v4 string. |
+| `date` | Yes | Firestore timestamp, not before `1970-01-01T00:00:00Z` and not more than one hour after `request.time`. |
+| `odometerKm` | Yes | Integer in `0..2000000`. |
+| `litersScaled` | Yes | Integer in `1..500000`. |
+| `pricePerLiterScaled` | Yes | Integer in `1..999999`. |
+| `totalCostMinor` | Yes | Integer in `1..99999999`. |
+| `currency` | Yes | One of `SUPPORTED_CURRENCY_CODES` (§20.0.1). |
+| `isFullTank` | Yes | Boolean. |
+| `hasMissedEntries` | Yes | Boolean. |
+| `odometerInconsistent` | Yes | Boolean. It is remotely stored as part of the snapshot, but local writes to the database column remain owned by `:core:database` (§3.1). |
+| `notes` | Yes | Null, or string length 1..280 after repository normalisation. |
+| `createdAt` | Yes | Firestore timestamp. |
+| `updatedAt` | Yes | Firestore timestamp; MUST equal `request.time` on create/update. |
+| `deleted` | Yes | Boolean. |
+| `deletedAt` | Yes | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
+| `schemaVersion` | Yes | Integer, exactly `1` for the MVP remote schema. |
+
+Forbidden remote keys include `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm`, and any key not listed for the target collection. A document with `deleted = false` and non-null `deletedAt`, or `deleted = true` and null `deletedAt`, is malformed and MUST be rejected by Firestore rules on write or quarantined on pull (§9.5).
+
 Remote rules, split by operation. `allow write` is not used, because it would include delete, and on delete `request.resource` is null:
 
 ```javascript
@@ -805,14 +922,16 @@ service cloud.firestore {
   match /databases/{db}/documents {
     match /users/{uid}/{collection}/{docId} {
 
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null
+        && request.auth.uid == uid
+        && knownCollection(collection);
 
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.ownerId == uid
         && request.resource.data.updatedAt == request.time
         && request.resource.data.schemaVersion is int
-        && request.resource.data.schemaVersion >= 1
+        && request.resource.data.schemaVersion == 1
         && request.resource.data.id == docId
         && validPayload();
 
@@ -823,17 +942,20 @@ service cloud.firestore {
 }
 ```
 
-`validPayload()` MUST enforce presence, primitive type **and range** for every field, mirroring the intervals of §5 — for example `notes` size at most 280, `litersScaled` an int in `1..500000`, `odometerKm` an int in `0..2000000`. Without App Check, range validation in rules is the only thing preventing a compromised client from writing a document that breaks parsing on the user's other device.
+Account deletion hard deletes are not performed by a mobile client and are not an exception to these rules. They run only through the `D-23` Firebase Admin server operation, protected by Firebase authentication token verification and server IAM. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
+
+`knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. Without App Check, closed schema and range validation in rules are the only things preventing a compromised client from writing a document that breaks parsing on the user's other device.
 
 Anonymous users are valid authenticated users.
 
 Remote queries:
 
 ```text
-where(updatedAt >= since)
+where(updatedAt >= overlapSince)
 orderBy(updatedAt ASC)
 orderBy(documentId ASC)
-startAfter(cursor.lastServerUpdatedAt, cursor.lastDocumentId)
+first page of cycle: startAt(overlapSince, "")
+later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
 limit(200)
 ```
 
@@ -847,6 +969,11 @@ Required emulator tests:
 - Writes with a client-controlled `updatedAt` are rejected.
 - Writes with `ownerId != uid` are rejected.
 - Hard delete is rejected.
+- Reads and writes under unknown remote collections are rejected.
+- Writes missing any required key are rejected.
+- Writes with any extra key are rejected.
+- Writes with local-only keys such as `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold` or `currentOdometerKm` are rejected.
+- Writes where `deleted` and `deletedAt` disagree are rejected.
 - Out-of-range field values are rejected.
 - Tombstones are returned by delta pull.
 
@@ -909,13 +1036,17 @@ Phase 0 defines the exact CI check names. Required checks:
 
 `contract-check` is a script that asserts:
 
-1. Every type named in a code block in this document is declared in §20.
+1. Every project-owned type named in a code block in this document is declared in §20.
 2. The decision ID set and status are identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 3. Every ADR linked from `docs/adr/README.md` has a `Status` heading whose value matches the status recorded for its decision ID.
 4. Every `Proposed` or `Pending` decision in `docs/DECISION_BOARD.md` appears in the "Decisions Awaiting Owner Confirmation" section with a `Needed by` story or phase. If no such decisions exist, the section states that none are awaiting owner confirmation and contains no empty table.
 5. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
 6. `.github/pull_request_template.md` remains a superset of `docs/templates/agent-handoff.md` section headings.
 7. The committed Objective-C header golden file for `:shared` is unchanged.
+
+For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type `kotlinx.datetime.Instant`, and platform annotation names used only to hide Kotlin declarations from Objective-C export. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
+
+For the Objective-C header assertion, `contract-check` MUST fail if the header exports any forbidden type from §15.3 or omits any Swift-facing type explicitly listed in §20.10.
 
 Once CI exists, branch protection for `main` MUST require these checks before merge.
 
@@ -949,7 +1080,7 @@ data class Money(val minorUnits: Long, val currency: CurrencyCode)
 
 **Construction never validates.** These types have no `init` block, throw nothing, and reject nothing. Wrapping a malformed UUID or an unsupported currency code is legal at the type level. Validation lives in the use cases of §5, which return typed errors.
 
-This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint, and its only legal failures are I/O, serialization and schema-version quarantine. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
+This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
 
 **Every scaled value is a `Long`**, per §2. Mixing widths across these types is a contract violation.
 
@@ -964,6 +1095,31 @@ const val CLIENT_MAX_SCHEMA_VERSION: Int = 1   // §9.5  — highest schemaVersi
 const val MAX_RETRYABLE_ATTEMPTS: Int = 10     // §9.7  — attemptCount ceiling
 const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel entry load ceiling
 const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
+
+// §2 — every supported MVP currency has exactly two decimal minor units, factor 100
+val SUPPORTED_CURRENCY_CODES: Set<String> = setOf(
+    "ARS",
+    "AUD",
+    "BRL",
+    "CAD",
+    "CHF",
+    "COP",
+    "CZK",
+    "DKK",
+    "EUR",
+    "GBP",
+    "HUF",
+    "MAD",
+    "MXN",
+    "NOK",
+    "NZD",
+    "PEN",
+    "PLN",
+    "RON",
+    "SEK",
+    "USD",
+    "UYU",
+)
 
 // §9.7 — failures that MUST NOT consume the poison budget
 val CONNECTIVITY_ERROR_CODES: Set<String> = setOf(
@@ -1017,6 +1173,7 @@ sealed interface AuthError : AppError {
     data object PermissionDenied : AuthError { override val code = "AUTH.PERMISSION_DENIED" }
     data object RequiresRecentLogin : AuthError { override val code = "AUTH.REQUIRES_RECENT_LOGIN" }
     data object UidWouldChange : AuthError { override val code = "AUTH.UID_WOULD_CHANGE" }
+    data object AccountDeletionRemoteFailed : AuthError { override val code = "AUTH.ACCOUNT_DELETION_REMOTE_FAILED" }
     data object Unknown : AuthError { override val code = "AUTH.UNKNOWN" }
 }
 
@@ -1091,18 +1248,24 @@ interface OwnerContext {
 
 interface DatabaseFactory { fun create(): AppDatabase }
 
+object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
+```
+
+### 20.3.1 Crash reporting types — `:core:crash`
+
+```kotlin
 interface CrashReporter {
     fun recordNonFatal(error: AppError, fields: Map<String, String>)
     fun setEnabled(enabled: Boolean)
 }
-
-object MinorUnits { fun factorFor(currency: CurrencyCode): Int }   // 2-decimal ISO-4217 only in the MVP
 ```
+
+The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
 
 ### 20.4 Domain models — `:core:model`
 
 ```kotlin
-enum class FuelType { GASOLINE, DIESEL, LPG, CNG, ELECTRIC, HYBRID, OTHER }
+enum class FuelType { GASOLINE, DIESEL, LPG, CNG, OTHER }
 enum class DistanceUnit { KM, MILES }
 enum class VolumeUnit { LITER, GALLON }
 
@@ -1158,6 +1321,14 @@ data class UserSettings(
     val analyticsEnabled: Boolean,
 )
 ```
+
+`FuelEntryListItem` consumption mapping is exact:
+
+- For an entry with `isFullTank = false`, `consumption = null` and `invalidReason = EndEntryNotFullTank`.
+- For an entry with `isFullTank = true` whose segment result is `SegmentResult.Valid`, `consumption = segment.consumption` and `invalidReason = null`.
+- For an entry with `isFullTank = true` whose segment result is `SegmentResult.Invalid`, `consumption = null` and `invalidReason = segment.reason`.
+
+The list projection MUST NOT run a different consumption algorithm. It derives row values from the same full-to-full segment rules of §4 and §20.6.
 
 ### 20.5 Commands
 
@@ -1254,7 +1425,9 @@ data class ConsumptionReport(
 )
 ```
 
-`SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
+`EndEntryNotFullTank` is produced only by the `FuelEntryListItem` projection for an entry with `isFullTank = false`. `SegmentResult.Invalid` MUST NOT use `EndEntryNotFullTank`, because `ConsumptionReport.segments` contains one result per full-tank entry only.
+
+`SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. Partial entries inside a valid full-to-full segment are included in `SegmentResult.Valid.litersScaled`; the partial row itself has no consumption value. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
 
 ### 20.7 Sync types — `:core:sync`
 
@@ -1301,11 +1474,26 @@ data class RemotePage(
     val hasMore: Boolean,
 )
 
-sealed interface SyncStatus {
-    data object Idle : SyncStatus
-    data object Syncing : SyncStatus
-    data class Pending(val count: Int) : SyncStatus
-    data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus
+enum class QuarantineReason {
+    UnsupportedSchemaVersion,
+    MalformedPayload,
+}
+
+data class QuarantineRecord(
+    val entityType: EntityType,
+    val entityId: EntityId,
+    val reason: QuarantineReason,
+    val schemaVersion: Int,
+    val serverUpdatedAt: Instant,
+    val rawJson: String,
+    val createdAt: Instant,
+)
+
+sealed class SyncStatus {
+    data object Idle : SyncStatus()
+    data object Syncing : SyncStatus()
+    data class Pending(val count: Int) : SyncStatus()
+    data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus()
 }
 
 interface SyncController {
@@ -1382,6 +1570,7 @@ No leaf carries a free-text `String`. Adding one is a contract violation.
 ### 20.10 Shared surface — `:shared`
 
 ```kotlin
+// Kotlin-facing construction API. Hidden from Objective-C/Swift export.
 interface AppGraph {
     fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder
     fun vehicleFormStateHolder(scope: CoroutineScope, vehicleId: String?): VehicleFormStateHolder
@@ -1391,6 +1580,187 @@ interface AppGraph {
     fun syncController(): SyncController
     fun close()
 }
+
+// Swift-facing construction API. This is exported.
+fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph
+
+// Swift-facing facade. This is exported.
+class SwiftAppGraph {
+    fun vehicleListStateHolder(): VehicleListStateHolder
+    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder
+    fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder
+    fun fuelEntryFormStateHolder(vehicleId: String, entryId: String?): FuelEntryFormStateHolder
+    fun sessionStateHolder(): SessionStateHolder
+    fun syncStateHolder(): SyncStateHolder
+    fun close()
+}
+
+class VehicleListStateHolder {
+    val state: StateFlow<VehicleListUiState>
+    fun refresh()
+    fun selectVehicle(vehicleId: String?)
+    fun requestDelete(vehicleId: String)
+    fun confirmDelete(vehicleId: String, confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class VehicleFormStateHolder {
+    val state: StateFlow<VehicleFormUiState>
+    fun setName(value: String)
+    fun setInitialOdometerKm(value: Long)
+    fun setBrand(value: String?)
+    fun setModel(value: String?)
+    fun setFuelType(value: FuelType)
+    fun save()
+    fun clearMessage()
+    fun close()
+}
+
+class FuelEntryListStateHolder {
+    val state: StateFlow<FuelEntryListUiState>
+    fun refresh()
+    fun requestDelete(entryId: String)
+    fun confirmDelete(entryId: String, confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class FuelEntryFormStateHolder {
+    val state: StateFlow<FuelEntryFormUiState>
+    fun setDateEpochMillis(value: Long)
+    fun setOdometerKm(value: Long)
+    fun setMoneyInputMode(value: MoneyInputMode)
+    fun setLitersScaled(value: Long?)
+    fun setPricePerLiterScaled(value: Long?)
+    fun setTotalCostMinor(value: Long?)
+    fun setCurrencyCode(value: String)
+    fun setFullTank(value: Boolean)
+    fun setMissedEntries(value: Boolean)
+    fun setNotes(value: String?)
+    fun save()
+    fun confirmSave(confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class SessionStateHolder {
+    val state: StateFlow<SessionUiState>
+    fun startAnonymousSignIn()
+    fun startPermanentSignIn(provider: AuthProvider)
+    fun requestSignOut()
+    fun confirmSignOut(confirmation: Confirmation)
+    fun requestDeleteAccount()
+    fun confirmDeleteAccount(confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class SyncStateHolder {
+    val state: StateFlow<SyncUiState>
+    fun requestSync(reason: SyncTrigger)
+    fun retryFailed()
+    fun clearMessage()
+    fun close()
+}
+
+data class VehicleListUiState(
+    val isLoading: Boolean,
+    val vehicles: List<VehicleListItemUi>,
+    val selectedVehicleId: String?,
+    val syncStatus: SyncStatus,
+    val message: UiMessage?,
+)
+
+data class VehicleListItemUi(
+    val id: String,
+    val name: String,
+    val currentOdometerKm: Long,
+    val fuelType: FuelType,
+    val deleted: Boolean,
+)
+
+data class VehicleFormUiState(
+    val vehicleId: String?,
+    val name: String,
+    val initialOdometerKm: Long,
+    val brand: String?,
+    val model: String?,
+    val fuelType: FuelType,
+    val canEditInitialOdometer: Boolean,
+    val isSaving: Boolean,
+    val message: UiMessage?,
+)
+
+data class FuelEntryListUiState(
+    val vehicleId: String,
+    val isLoading: Boolean,
+    val entries: List<FuelEntryListItemUi>,
+    val consumptionAverageScaled: Long?,
+    val validConsumptionSegmentCount: Int,
+    val isConsumptionReliable: Boolean,
+    val syncStatus: SyncStatus,
+    val message: UiMessage?,
+)
+
+data class FuelEntryListItemUi(
+    val id: String,
+    val dateEpochMillis: Long,
+    val odometerKm: Long,
+    val litersScaled: Long,
+    val totalCostMinor: Long,
+    val currencyCode: String,
+    val isFullTank: Boolean,
+    val consumptionScaled: Long?,
+    val invalidReason: ConsumptionInvalidReason?,
+)
+
+enum class MoneyInputMode { LITERS_AND_PRICE, LITERS_AND_TOTAL, PRICE_AND_TOTAL }
+
+data class FuelEntryFormUiState(
+    val vehicleId: String,
+    val entryId: String?,
+    val dateEpochMillis: Long,
+    val odometerKm: Long,
+    val moneyInputMode: MoneyInputMode,
+    val litersScaled: Long?,
+    val pricePerLiterScaled: Long?,
+    val totalCostMinor: Long?,
+    val currencyCode: String,
+    val isFullTank: Boolean,
+    val hasMissedEntries: Boolean,
+    val notes: String?,
+    val isSaving: Boolean,
+    val message: UiMessage?,
+)
+
+enum class SessionPhase { UNKNOWN, LOCAL, ANONYMOUS, PERMANENT, SIGNED_OUT, DELETING }
+
+data class SessionUiState(
+    val phase: SessionPhase,
+    val providers: List<AuthProvider>,
+    val isBusy: Boolean,
+    val message: UiMessage?,
+)
+
+data class SyncUiState(
+    val status: SyncStatus,
+    val isOnline: Boolean,
+    val message: UiMessage?,
+)
+
+data class UiMessage(
+    val id: Long,
+    val kind: UiMessageKind,
+    val code: String,
+    val confirmation: Confirmation?,
+)
+
+enum class UiMessageKind { INFO, WARNING, ERROR }
 ```
 
-Identifiers cross this boundary as `String`, never as `EntityId`, per §15.3.
+Identifiers and currency codes cross the Swift-facing boundary as `String`, never as `EntityId`, `OwnerId` or `CurrencyCode`, per §15.3. Dates cross as epoch milliseconds in UTC. `UiMessage.code` is a stable programmatic code: for errors it is `AppError.code`; for warnings and confirmations it is the enum entry name prefixed by its owner, for example `CONFIRMATION.OdometerInconsistent`. It is never display copy.
+
+The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
+
+The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.

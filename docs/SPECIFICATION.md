@@ -24,7 +24,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 ### 3.1 In Scope
 
 - Onboarding and authentication.
-- Offline-capable first launch with a local identity, adopted into an anonymous Firebase identity when connectivity allows.
+- Automatic Firebase anonymous authentication on first launch, with an offline local fallback adopted into that anonymous identity when connectivity allows.
 - Anonymous login.
 - Google sign-in on Android and iOS.
 - Apple sign-in on iOS.
@@ -55,8 +55,16 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Automatic account merging.
 - Real-time Firestore listeners.
 - Remote synchronization of user settings.
+- Platform backup or synchronization of settings through Google Play services, Android backup or iCloud.
+- Electric and hybrid energy modelling, including kWh input, mixed energy units and non-L/100 km consumption.
 
 Rule for agents: any work touching out-of-scope functionality MUST be rejected or escalated. MVP scope changes require updating this specification and are a human review gate.
+
+### 3.3 Post-MVP Roadmap Notes
+
+Future scope may add electric and hybrid vehicles through a dedicated energy model. That work requires a new story or ADR covering `FuelType` expansion, kWh and mixed-unit input, consumption display units, validation, Firestore rules, local migrations and remote schema compatibility. Agents MUST NOT introduce `ELECTRIC` or `HYBRID` as MVP enum values.
+
+Future scope may add settings synchronization through platform mechanisms such as Google Play services / Android backup on Android and iCloud on iOS. That work requires a new story or ADR covering user consent, platform API choice, conflict resolution, privacy wording, backup exclusion rules, test strategy and interaction with app account deletion. Agents MUST NOT add settings sync or platform backup APIs in the MVP.
 
 ## 4. Actors
 
@@ -101,23 +109,23 @@ Field names, types, scales and persistence formats are normative in `docs/CONTRA
 | `currency` | Yes | Defaults from settings. Stored per entry; changing the setting never rewrites existing entries. |
 | `isFullTank` | Yes | Default `true`. |
 | `hasMissedEntries` | Yes | Default `false`. Means refuels were not logged **between the previous logged entry and this one**. Invalidates the segment ending at this entry and any segment containing it. |
-| `odometerInconsistent` | Yes | Derived, not user-editable. Recomputed whenever a neighbouring entry changes. |
+| `odometerInconsistent` | Yes | Derived, not user-editable. Recomputed whenever the entry's previous chronological neighbour may have changed. |
 | `notes` | No | Null, or trimmed length 1..280. |
 | `createdAt`, `updatedAt` | Yes | UTC. |
 | `deletedAt` | No | Tombstone timestamp. |
 
-Sync metadata (`syncState`, `localRevision`, `serverUpdatedAt`, `schemaVersion`) is **not** part of the domain model. It exists only on the local row, and reaches the UI only as the aggregate sync status.
+Sync metadata (`syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `schemaVersion`) is **not** part of the domain model. It exists only on the local row, and reaches the UI only as the aggregate sync status.
 
 ### 5.3 UserSettings
 
 | Field | Rules |
 |-------|-------|
-| `currency` | Defaults from locale, fallback `EUR`. Only 2-decimal ISO-4217 currencies are supported in the MVP. |
+| `currency` | Defaults from locale, fallback `EUR`. The exact MVP supported set is `SUPPORTED_CURRENCY_CODES` in `docs/CONTRACTS.md §20.0.1`; every supported currency has two decimal minor units. |
 | `distanceUnit` | `KM` in the MVP. `MILES` is prepared but not user-switchable. |
 | `volumeUnit` | `LITER` in the MVP. `GALLON` is prepared but not user-switchable. |
 | `analyticsEnabled` | Default `false`. Analytics collection starts only after an explicit opt-in. |
 
-Settings are device-local and are not synchronized in the MVP.
+Settings are device-local and are not synchronized in the MVP. They do not survive destructive data-clearing flows: sign-out, anonymous "delete local data" and account deletion all reset settings to defaults.
 
 ## 6. Business Rules
 
@@ -127,7 +135,7 @@ The odometer of a fuel entry MUST be strictly greater than the previous non-dele
 
 If the user enters an inconsistent value, the first save attempt MUST return a warning and mutate nothing. The UI MUST ask for explicit confirmation. A confirmed save stores the entry with `odometerInconsistent = true`. Segments containing an inconsistent entry produce no consumption.
 
-The same rule applies on **edit**, evaluated against the entry's neighbours in its target chronological position. Because editing or deleting one entry changes the validity of its neighbours, `odometerInconsistent` is recomputed for the affected entry and its immediate successor within the same transaction.
+The same rule applies on **edit**, evaluated against the entry's neighbours in its target chronological position. Because creating, editing or deleting one entry can change the validity of neighbouring entries in both the old and new chronological positions, the exact recompute set is defined in `docs/CONTRACTS.md §3.1` and is applied within the same transaction.
 
 Chronological order and the exact warning protocol are defined in `docs/CONTRACTS.md §4` and `§5`.
 
@@ -152,6 +160,8 @@ consumption = liters / distanceKm * 100
 
 A segment produces no consumption when any invalidation reason applies. The exhaustive list of reasons, the ordering used to select `P`, and the treatment of entries sharing an odometer with `P` are normative in `docs/CONTRACTS.md §4` and `ConsumptionInvalidReason` in `docs/CONTRACTS.md §20.6`. This section MUST NOT restate that list.
 
+An entry with `isFullTank = false` does not close a segment and has no own consumption value. It is still included in the litres of the next full-to-full segment when its odometer places it inside that segment. The list projection uses `ConsumptionInvalidReason.EndEntryNotFullTank` to explain why that partial row has no consumption.
+
 Average vehicle consumption is distance-weighted:
 
 ```text
@@ -175,7 +185,7 @@ Synchronized tombstones may be purged locally once they are confirmed synced, ol
 ### F-1 First Launch and Authentication
 
 1. Welcome screen with "Sign in" and "Continue without account".
-2. "Continue without account" works **offline**: the app creates a local session under `LOCAL_OWNER` and the user can immediately use every MVP feature. An anonymous Firebase UID is acquired in the background when connectivity allows, and local data is adopted into it without loss.
+2. "Continue without account" first attempts automatic Firebase anonymous authentication. If it succeeds, data is owned by that anonymous UID immediately. If it cannot complete because the app is offline or Firebase Auth is unavailable, the app creates a temporary local session under `LOCAL_OWNER` and the user can immediately use every MVP feature. Anonymous UID acquisition is retried in the background when connectivity allows, and local data is adopted into it without loss.
 3. Sign in offers providers by platform: Android offers Google; iOS offers Google and Apple.
 4. Routing MUST NOT happen while the authentication state is still undetermined. Once determined: if the user has no vehicles, route to first vehicle creation; otherwise route to the vehicle list.
 
@@ -208,11 +218,11 @@ Credential collision:
 
 ### F-5 Sign-Out and Account Deletion
 
-Sign-out is offered only to a permanently authenticated user. It warns if there are pending local changes and offers to wait for sync, cancel, or discard pending changes after destructive confirmation. All local data for that owner is cleared after sign-out; recovery is by signing in again and pulling.
+Sign-out is offered only to a permanently authenticated user. It warns if there are pending local changes and offers to wait for sync, cancel, or discard pending changes after destructive confirmation. All local data for that owner and the local `user_settings` row are cleared after sign-out; recovery is by signing in again and pulling, while settings are recreated from defaults.
 
-For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered.
+For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered. It clears all local app data, including settings.
 
-Account deletion is required for store compliance. It re-authenticates if needed, deletes remote data first, then the auth account, then local data. The exact order and failure semantics are in `docs/CONTRACTS.md §11.5`.
+Account deletion is required for store compliance. It re-authenticates if needed, requests the server/Admin account deletion operation selected by `D-23`, waits for that operation to delete remote data and the Firebase Auth account, then clears local data. The exact order and failure semantics are in `docs/CONTRACTS.md §11.5`.
 
 ## 8. Technical Architecture
 
@@ -250,11 +260,13 @@ gradle/libs.versions.toml
 :core:auth
 :core:sync
 :core:analytics
+:core:crash
 :core:testing
 
 :integration:firebase-auth
 :integration:firebase-firestore
 :integration:firebase-analytics
+:integration:firebase-crashlytics
 
 :feature:vehicle
 :feature:fuel
@@ -274,30 +286,33 @@ firestore/
 3. Feature `presentation` packages depend on their own `domain` and `:core:common`, never on `data`.
 4. Features never depend on other features.
 5. `:core:sync` depends on `:core:model`, `:core:common`, `:core:database` and `:core:auth`, never on `:integration:*`.
-6. `:shared` never depends on `:integration:*`.
-7. Firebase and GitLive types never cross integration boundaries.
-8. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
-9. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
-10. Only `:wiring:firebase` constructs Firebase implementations.
-11. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
+7. `:shared` never depends on `:integration:*`.
+8. Firebase and GitLive types never cross integration boundaries.
+9. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
+10. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
+11. Only `:wiring:firebase` constructs Firebase implementations.
+12. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
 
 Module-level rules are enforced by a Gradle configuration check; package-level rules require source analysis. Both MUST be executable checks in CI, and each rule MUST have a failing fixture test proving the check fires.
 
 ### 8.4 Shared Presentation
 
-Presentation logic is shared in `commonMain` through state holders exposing `StateFlow<UiState>` and intent functions. Android adapts them to Compose. iOS wraps them in SwiftUI `ObservableObject`s. SwiftUI and Compose contain rendering and event forwarding, not business rules.
+Presentation logic is shared in `commonMain` through state holders exposing `StateFlow<UiState>` and intent functions. Android adapts the Kotlin-facing graph to Compose. iOS consumes the Swift-facing facade and wraps the exported state holders in SwiftUI `ObservableObject`s. SwiftUI and Compose contain rendering and event forwarding, not business rules.
 
 `UiState` carries no user-facing text; each platform maps typed values to its own string resources. Lifecycle, dispatcher and threading rules are in `docs/CONTRACTS.md §14`.
 
 ### 8.5 Cloud Provider Decoupling
 
-`:shared` exposes a graph factory that accepts abstractions:
+`:shared` exposes a Kotlin-facing graph factory that accepts abstractions:
 
 ```kotlin
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies` and all public interface contracts are defined in `docs/CONTRACTS.md`.
+That factory and `AppGraphDependencies` are not part of the Swift-facing ABI. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which exposes concrete state holders and no provider dependency container.
+
+The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in `docs/CONTRACTS.md`.
 
 ## 9. Synchronization
 
@@ -317,7 +332,7 @@ The provider decoupling criterion is executable: excluding `:integration:*` and 
 
 `sync_cursor`: `entityType`, `lastServerUpdatedAt`, `lastDocumentId`.
 
-`quarantine`: documents whose `schemaVersion` exceeds what this client supports.
+`quarantine`: remote documents that cannot be safely applied, either because their `schemaVersion` exceeds what this client supports or because their supported-version payload is malformed.
 
 Payload format, coalescing semantics and purge conditions are in `docs/CONTRACTS.md §8`.
 
@@ -334,8 +349,8 @@ Payload format, coalescing semantics and purge conditions are in `docs/CONTRACTS
 ### 9.4 Pull
 
 1. Pull `VEHICLE` before `FUEL_ENTRY`.
-2. Start the cycle from `max(0, cursor.lastServerUpdatedAt - 30 seconds)`, applying the overlap once per cycle, not per page.
-3. Query ordered by `updatedAt` and document ID, paginated with `startAfter` on the stored `(lastServerUpdatedAt, lastDocumentId)`, limit 200.
+2. Start the cycle from `overlapSince = max(0, cursor.lastServerUpdatedAt - 30 seconds)`, applying the overlap once per cycle, not per page.
+3. Query ordered by `updatedAt` and document ID. The first page uses `startAt(overlapSince, "")`; later pages use `startAfter(lastServerUpdatedAt, lastDocumentId)`, limit 200.
 4. Include tombstones.
 5. Apply each page in one local transaction.
 6. If an outbox row exists for a remote entity, do not overwrite local data.
@@ -359,7 +374,7 @@ users/{uid}/vehicles/{vehicleId}
 users/{uid}/fuelEntries/{entryId}
 ```
 
-Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == request.time`, a supported `schemaVersion` lower bound, document ID consistency, and presence, type **and range** of every field. Hard deletes are rejected. The complete rule shape and the required emulator tests are in `docs/CONTRACTS.md §16`.
+Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == request.time`, the closed MVP remote `schemaVersion` contract, document ID consistency, exact allowed keys, presence, type, nullability and range of every field. Hard deletes are rejected. The complete rule shape and the required emulator tests are in `docs/CONTRACTS.md §16`.
 
 ## 11. Non-Functional Requirements
 
@@ -384,7 +399,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Accepted |
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Accepted |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
-| D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI. | Accepted |
+| D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI; electric/hybrid values are deferred. | Accepted |
 | D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
 | D-6 | Firebase Auth from KMP | GitLive Auth 2.6.x behind `AuthClient`. | Accepted |
 | D-7 | Navigation | Native navigation per platform. | Accepted |
@@ -403,6 +418,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Accepted |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, Phase 4. | Accepted |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md`; the production Firebase project ID is deferred by `D-14`. | Accepted |
+| D-23 | Account deletion execution | Firebase Admin server operation; client Firestore hard deletes remain forbidden. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
@@ -417,6 +433,6 @@ Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be
 | Outbox | Local queue of pending snapshots to push remotely. |
 | LWW | Last-write-wins conflict resolution. |
 | `LOCAL_OWNER` | Sentinel owner used before an anonymous Firebase UID exists. |
-| Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for sync. |
+| Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for sync in deterministic local mutation order. |
 | Orphan entry | A synchronized fuel entry whose vehicle has not been pulled yet. |
-| Quarantine | Local storage for remote documents with an unsupported future schema version. |
+| Quarantine | Local storage for remote documents that cannot be safely applied, including unsupported future schema versions and malformed supported-version payloads. |

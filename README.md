@@ -46,7 +46,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 
 The authoritative scope lists are in [SPECIFICATION.md §3](docs/SPECIFICATION.md). In summary: fuel expenses only, offline-first including first launch, anonymous-capable authentication with Google and Apple conversion, vehicle and fuel entry CRUD, full-to-full consumption, Firestore synchronization, minimal settings, Spanish and English.
 
-Out of scope: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets and wearables, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, and remote settings synchronization.
+Out of scope: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets and wearables, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
 
 Any task touching out-of-scope functionality must be rejected or escalated before implementation.
 
@@ -83,6 +83,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Remote backend | Cloud Firestore as a remote replica, never as UI source of truth |
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
 | iOS interop | SKIE, applied only in `:shared` |
 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Logging | Kermit behind `Logger` |
@@ -99,11 +100,13 @@ gradle/libs.versions.toml
 :core:auth
 :core:sync
 :core:analytics
+:core:crash
 :core:testing
 
 :integration:firebase-auth
 :integration:firebase-firestore
 :integration:firebase-analytics
+:integration:firebase-crashlytics
 
 :feature:vehicle
 :feature:fuel
