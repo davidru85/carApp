@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Monetary and name data guardrails tightened
+
+- **Type:** correction
+- **Story / Decision:** `F-05`, `F-06`, `F-07`; `F-08` remains owner decision
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `MoneyInput` now selects the derived field only during validation, while persistence stores only the canonical monetary triple. `SUPPORTED_CURRENCY_CODES` is now the exact MVP currency allowlist, and vehicle name normalization / `nameFold` are defined as KMP-pure operations.
+- **Why:** the previous contract implied an authoritative supplied monetary pair without storing it, left currency support dependent on an unspecified ISO lookup, and described `nameFold` differently from the normalization rules.
+- **Documents touched:** `docs/CONTRACTS.md §2`, `§3`, `§5`, `§20.0.1` and `§20.3`, `docs/SPECIFICATION.md §5.3`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `MoneyInput`, `moneyInputKind`, `SUPPORTED_CURRENCY_CODES`, `MinorUnits`, `canonicalVehicleName`, `nameFold`, `FuelType`, `ELECTRIC` and `HYBRID`; `git diff --check`.
+- **Follow-ups / risks:** `F-08` still requires owner choice: reject `ELECTRIC` / `HYBRID` in MVP validation or remove them until an energy-model story exists.
+
 ### 2026-08-17 — Swift-facing graph contract made explicit
 
 - **Type:** correction

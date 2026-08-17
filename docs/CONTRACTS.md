@@ -57,7 +57,7 @@ Every scaled type carries its value in a `Long`. `Int` MUST NOT be used for a sc
 Rounding mode is HALF_UP on non-negative inputs. The formulas below are **exact integer arithmetic** and MUST be implemented literally; a floating-point or naive integer-division implementation is a contract violation.
 
 ```text
-minorUnitFactor = MinorUnits.factorFor(currency)      // EUR -> 100
+minorUnitFactor = MinorUnits.factorFor(currency)      // EUR -> 100; validation rejects null before arithmetic
 
 totalCostMinor      = (litersScaled * pricePerLiterScaled * minorUnitFactor + 500_000) / 1_000_000
 pricePerLiterScaled = (totalCostMinor * 1_000_000 + (litersScaled * minorUnitFactor) / 2) / (litersScaled * minorUnitFactor)
@@ -72,9 +72,9 @@ Golden values that MUST be covered by tests in `:core:model`:
 | `40_000` (40 L) | `1_500` (1.500 €/L) | EUR | `6_000` (60.00 €) |
 | `1` (0.001 L) | `1` (0.001 €/L) | EUR | `1` (0.01 €) — rounds up from 0.0001 |
 
-MVP currency constraint: `MinorUnits.factorFor` supports **only** 2-decimal ISO-4217 codes in the MVP. A locale suggesting a 0-decimal or 3-decimal currency (JPY, KWD, …) falls back to `EUR`, and an explicit user selection of such a currency returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
+MVP currency constraint: `MinorUnits.factorFor` returns `100` only for the codes in `SUPPORTED_CURRENCY_CODES` (§20.0.1), and returns `null` for every other code. A locale suggesting a code outside that set falls back to `EUR`, and an explicit user selection outside that set returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
 
-Which value is derived is never ambiguous: the caller states which two values it supplied through `MoneyInput` (§20), and the third is computed. All three are persisted; `MoneyInput` records the authoritative pair, and re-deriving the third from the stored pair MUST be stable.
+Which value is derived is never ambiguous during validation: the caller states which two values it supplied through `MoneyInput` (§20), and the third is computed. Persistence stores the canonical triple only: `litersScaled`, `pricePerLiterScaled` and `totalCostMinor`. The original supplied pair is not retained locally, remotely or in the outbox payload. After validation succeeds, all three persisted values are authoritative read data; later reads MUST NOT try to infer which two fields the user originally typed.
 
 ### Canonical consumption arithmetic
 
@@ -139,7 +139,7 @@ Canonical fields:
 - `id`
 - `ownerId`
 - `name`
-- `nameFold` — local only, generated as `name.trim().lowercase()`, used for uniqueness checks (§5)
+- `nameFold` — local only, generated from `canonicalVehicleName(name).lowercase()`, used for uniqueness checks (§5)
 - `initialOdometerKm`
 - `currentOdometerKm` — derived read model
 - `brand`
@@ -252,9 +252,19 @@ Write use cases validate commands before repository writes. Expected validation 
 Normalisation runs in the use case **before** validation, and the normalised value is what is persisted and what uniqueness is computed on:
 
 - All strings are `trim()`ed.
-- Internal whitespace runs in `name` collapse to a single space.
+- Internal Unicode whitespace runs in `name` collapse to one U+0020 space.
 - For nullable text fields (`brand`, `model`, `notes`), `""` becomes `null`.
 - `name` MUST NOT be null or blank.
+
+Vehicle-name normalisation is exactly:
+
+```text
+canonicalVehicleName(input) =
+    input.trim()
+         .replace(each non-empty run of Unicode whitespace with U+0020)
+```
+
+`nameFold = canonicalVehicleName(name).lowercase()` using Kotlin's locale-invariant Unicode lowercase operation. No NFC, NFD or platform-specific collation is applied in the MVP, because no approved KMP dependency provides cross-platform Unicode normalisation. Therefore composed and decomposed Unicode spellings that remain different after `lowercase()` are distinct names. Adding Unicode normalisation requires a decision update and a story that pins the library and migration behaviour.
 
 ### Warning protocol
 
@@ -280,7 +290,7 @@ Both ends of every interval are closed and MUST be enforced.
 | `litersScaled` | 1..500_000 (0.001 L .. 500 L). |
 | `pricePerLiterScaled` | 1..999_999. |
 | `totalCostMinor` | 1..99_999_999. |
-| `currency` | A supported 2-decimal ISO-4217 code (§2). |
+| `currency` | One of `SUPPORTED_CURRENCY_CODES` (§20.0.1). |
 | `notes` | Null, or trimmed length 1..280. |
 
 Vehicle name uniqueness is a **local pre-write validation only**. There MUST NOT be a `UNIQUE` index on the synchronized table for it: two devices can legitimately create the same name offline, and a unique index would make the pull transaction fail and stall the cursor. SQLite `NOCASE` MUST NOT be used for folding, because it is ASCII-only.
@@ -981,6 +991,31 @@ const val MAX_RETRYABLE_ATTEMPTS: Int = 10     // §9.7  — attemptCount ceilin
 const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel entry load ceiling
 const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
 
+// §2 — every supported MVP currency has exactly two decimal minor units, factor 100
+val SUPPORTED_CURRENCY_CODES: Set<String> = setOf(
+    "ARS",
+    "AUD",
+    "BRL",
+    "CAD",
+    "CHF",
+    "COP",
+    "CZK",
+    "DKK",
+    "EUR",
+    "GBP",
+    "HUF",
+    "MAD",
+    "MXN",
+    "NOK",
+    "NZD",
+    "PEN",
+    "PLN",
+    "RON",
+    "SEK",
+    "USD",
+    "UYU",
+)
+
 // §9.7 — failures that MUST NOT consume the poison budget
 val CONNECTIVITY_ERROR_CODES: Set<String> = setOf(
     "REMOTE.UNAVAILABLE",
@@ -1107,7 +1142,7 @@ interface OwnerContext {
 
 interface DatabaseFactory { fun create(): AppDatabase }
 
-object MinorUnits { fun factorFor(currency: CurrencyCode): Int }   // 2-decimal ISO-4217 only in the MVP
+object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
 ```
 
 ### 20.3.1 Crash reporting types — `:core:crash`

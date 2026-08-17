@@ -73,7 +73,7 @@ Acceptance criteria:
 - `:core:crash` exposes `CrashReporter` and a no-op implementation matching `docs/CONTRACTS.md §20.3.1`, with no Firebase, GitLive, Android or iOS type.
 - `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
 - None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
-- The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, and no story writes their literals inline.
+- The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, including `SUPPORTED_CURRENCY_CODES`, and no story writes their literals inline.
 - The three canonical monetary formulas and the two consumption formulas are implemented as exact integer arithmetic and pass every golden value in `docs/CONTRACTS.md §2`.
 - A test proves no monetary or consumption path uses `Float` or `Double`.
 - `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter`.
@@ -190,7 +190,7 @@ Acceptance criteria:
 
 - Domain is Kotlin pure.
 - Normalisation runs before validation per `docs/CONTRACTS.md §5`.
-- Name validation and `nameFold` uniqueness are implemented as a local pre-write check.
+- Name validation and `nameFold` uniqueness use `canonicalVehicleName(name).lowercase()` exactly as defined in `docs/CONTRACTS.md §5`.
 - `initialOdometerKm` range and its edit restriction are implemented.
 - `fuelType` exists with default `GASOLINE`.
 - Commands match `docs/CONTRACTS.md §20.5`; no command carries `ownerId`, `id` or timestamps.
@@ -216,11 +216,12 @@ Implement the `:feature:fuel` domain package, CRUD use cases and rules R-1 and R
 Acceptance criteria:
 
 - `MoneyInput` is the only way to supply monetary values, and all three derivations pass the golden values.
+- Persistence stores the canonical monetary triple only (`litersScaled`, `pricePerLiterScaled`, `totalCostMinor`); no local, remote or outbox schema contains `moneyInputKind` or any other supplied-pair marker.
 - `totalCostMinor` is integer minor units; no monetary path uses `Float` or `Double`.
 - The two-step warning protocol is implemented: an unconfirmed inconsistent odometer returns `ValidationWarning.OdometerInconsistent` and mutates nothing; the same command with the confirmation succeeds.
 - R-1 is enforced on edit as well as on create.
 - Every bound in the `docs/CONTRACTS.md §5` validation table is enforced at both ends.
-- A currency without a supported minor-unit factor returns `ValidationError.InvalidUnit`.
+- A currency outside `SUPPORTED_CURRENCY_CODES` returns `ValidationError.InvalidUnit`; supported codes all use factor `100`.
 
 ### E1-05 - Consumption Calculation R-3 - M
 

@@ -112,7 +112,7 @@ Sync metadata (`syncState`, `localRevision`, `serverUpdatedAt`, `schemaVersion`)
 
 | Field | Rules |
 |-------|-------|
-| `currency` | Defaults from locale, fallback `EUR`. Only 2-decimal ISO-4217 currencies are supported in the MVP. |
+| `currency` | Defaults from locale, fallback `EUR`. The exact MVP supported set is `SUPPORTED_CURRENCY_CODES` in `docs/CONTRACTS.md §20.0.1`; every supported currency has two decimal minor units. |
 | `distanceUnit` | `KM` in the MVP. `MILES` is prepared but not user-switchable. |
 | `volumeUnit` | `LITER` in the MVP. `GALLON` is prepared but not user-switchable. |
 | `analyticsEnabled` | Default `false`. Analytics collection starts only after an explicit opt-in. |
