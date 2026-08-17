@@ -18,10 +18,10 @@
 | Item | Value | Notes |
 |------|-------|-------|
 | Product name | `carApp` | Working name. The store display name may differ and is decided in `E4-04`. |
-| Android `applicationId` | `com.davidru85.carapp` | Immutable once published to Google Play. |
-| Android namespace | `com.davidru85.carapp` | Kotlin/Java package root for `:androidApp`. |
-| iOS bundle identifier | `com.davidru85.carapp` | Immutable once published to the App Store. |
-| Shared module package root | `com.davidru85.carapp` | Sub-packages follow the module path, e.g. `com.davidru85.carapp.core.model`. |
+| Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
+| Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
+| iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
+| Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM. |
 | Android `minSdk` / `targetSdk` | `26` / pinned in `docs/versions-matrix.md` | `minSdk` is fixed by `docs/SPECIFICATION.md §11`. |
 | iOS deployment target | `16.0` | Fixed by `docs/SPECIFICATION.md §11`. |

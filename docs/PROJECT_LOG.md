@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-22 application package prefix changed
+
+- **Type:** decision
+- **Story / Decision:** `D-22`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the proposed Android `applicationId`, Android namespace, iOS bundle identifier and shared package root changed from `com.davidru85.carapp` to `com.ruizurraca.carapp`.
+- **Why:** the owner selected the `ruizurraca` package prefix.
+- **Documents touched:** `docs/identifiers.md`, `docs/adr/0021-application-identifiers.md`, and this log.
+- **Verification:** manual cross-document search for `com.davidru85.carapp` and `com.ruizurraca.carapp`.
+- **Follow-ups / risks:** `D-22` still requires owner confirmation for the remaining identifier values, including the product name and development Firebase project ID.
+
 ### 2026-08-17 — D-14 Firebase project topology accepted for development
 
 - **Type:** decision

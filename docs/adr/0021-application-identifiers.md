@@ -24,7 +24,7 @@ This is the same class of problem as the Firestore location: a one-way door bein
 
 Fix all application identifiers in `docs/identifiers.md`, together with the Firebase project IDs and the Firestore location. `E0-01` reads that file and MUST NOT invent or alter any value in it.
 
-The proposed values are `com.davidru85.carapp` for the Android `applicationId`, the namespace and the iOS bundle identifier, with a `.debug` suffix for debug builds so both can coexist on one device.
+The proposed values are `com.ruizurraca.carapp` for the Android `applicationId`, the namespace and the iOS bundle identifier, with a `.debug` suffix for debug builds so both can coexist on one device.
 
 ## Consequences
 
