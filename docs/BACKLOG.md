@@ -205,7 +205,7 @@ Acceptance criteria:
 - Mappers have round-trip tests.
 - `ownerId` is stamped from `OwnerContext`; the module does not reference `AuthClient`.
 - Created and edited rows become `PENDING`.
-- **No outbox row is created while the owner is `LOCAL_OWNER`.**
+- **No outbox row is created while the owner is `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.**
 - Vehicle deletion is logical and cascades to fuel entries in one transaction.
 - No Firebase or GitLive type is referenced.
 
@@ -253,7 +253,7 @@ Acceptance criteria:
 - Queries support both orderings of `docs/CONTRACTS.md §4`.
 - `observeFuelEntries` returns the `FuelEntryListItem` projection and excludes orphan entries.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
-- Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`.
+- Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
 - Logical delete works and triggers read-model recomputation.
 - Mappers have round-trip tests.
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Sync state storage decided
+
+- **Type:** decision
+- **Story / Decision:** `F-09`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `syncState` is now defined as a stored local control column. The outbox influences it but does not fully define it, and `LOCAL_OWNER + PENDING + no outbox` is an explicit legal state before adoption.
+- **Why:** the owner chose the stored-state option to resolve the contradiction between first-launch offline writes and the outbox suppression rule.
+- **Documents touched:** `docs/CONTRACTS.md §7`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `syncState`, `LOCAL_OWNER`, `PENDING` and `outbox`; `git diff --check`.
+- **Follow-ups / risks:** `F-10` remains open and must define how local-owner mutations preserve causal ordering during adoption.
+
 ### 2026-08-17 — MVP settings reset semantics decided
 
 - **Type:** decision

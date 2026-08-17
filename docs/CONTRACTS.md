@@ -371,7 +371,15 @@ FAILED_RETRYABLE
 FAILED_POISONED
 ```
 
-`syncState` is derived from the existence and status of the outbox row. A row in `SYNCING` MUST NOT be deleted by an editor, only by the sync engine.
+`syncState` is a stored local control column on synchronized local rows. It is not persisted remotely and is not part of the domain model. The outbox influences `syncState`, but it does not fully define it: `ownerId == LOCAL_OWNER`, `syncState == PENDING` and no outbox row is a legal state before local-owner adoption.
+
+Invariants:
+
+- Local editors set `syncState = PENDING` in the same transaction as every create, update or tombstone write.
+- The outbox writer is a no-op while `ownerId == LOCAL_OWNER`; it MUST NOT downgrade `syncState` back to `SYNCED`.
+- For a real owner, a `PENDING`, `SYNCING`, `FAILED_RETRYABLE` or `FAILED_POISONED` synchronized row normally has an outbox row. The only legal exception is a transient state inside the same database transaction.
+- A row in `SYNCING` MUST NOT be deleted by an editor, only by the sync engine.
+- Pull writes from remote data set `syncState = SYNCED` only when no local outbox row exists for the entity.
 
 Allowed transitions:
 
