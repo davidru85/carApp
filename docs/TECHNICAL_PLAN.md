@@ -29,7 +29,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-12 | Image loading | Coil if ever needed | Deferred | Prevents agents from choosing competing loaders. |
 | D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation. |
 | D-14 | Firebase project topology | one development project plus emulator; production deferred | Accepted | Keeps development setup small while retaining emulator-only CI. Production topology is decided before release. |
-| D-15 | Logging implementation | Kermit behind `Logger` | Proposed | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
+| D-15 | Logging implementation | Kermit behind `Logger` | Accepted | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Proposed | Gradle cannot express intra-module package rules. |
 | D-17 | Flow testing helper | Turbine | Proposed | Confirm compatibility during version pinning. |
 | D-18 | Coverage | Kover with thresholds | Proposed | Makes "high coverage" a pass/fail criterion. |

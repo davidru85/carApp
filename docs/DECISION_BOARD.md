@@ -34,7 +34,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-12 | Image loading | Coil, if image loading ever becomes necessary | SDWebImage, platform-native loaders, none | Deferred | No image loading dependency until a story requires it; Coil is then the only approved library. |
 | D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
 | D-14 | Firebase project topology | One development Firebase project plus the local emulator; production topology deferred until release preparation | Two projects from day one, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and production Firebase topology MUST be decided before public release. |
-| D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | **Proposed** | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
+| D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | **Proposed** | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
 | D-17 | Flow testing helper | Turbine | Manual collection | **Proposed** | Confirm compatibility during version pinning in `E0-06`. |
 | D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | **Proposed** | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
@@ -50,7 +50,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Coroutines and streams | `kotlinx.coroutines` + Flow | callbacks, Rx | Accepted | Required for KMP async and state streams. |
 | Serialization | `kotlinx.serialization-json` | Moshi, manual JSON | Accepted | Required for outbox payloads and remote DTOs. |
 | Date/time | `kotlinx-datetime` | platform date APIs only | Accepted | UTC instants only in persistence. The exact `Instant` package is pinned in `docs/versions-matrix.md`. |
-| Logging | Kermit behind `Logger` | Napier, custom sinks | Proposed (D-15) | Abstraction mandatory; implementation swappable. |
+| Logging | Kermit behind `Logger` | Napier, custom sinks | Accepted (D-15) | Abstraction mandatory; implementation swappable. |
 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending (D-21) | Phase 4. |
 | Flow testing | Turbine | manual collection | Proposed (D-17) | Validate against the pinned coroutines version. |
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
@@ -101,7 +101,6 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-15 | Logging implementation | Kermit | Before `E0-03` | `Logger` is part of `AppGraphDependencies` from Phase 0. |
 | D-16 | Architecture checks | Konsist + custom Gradle check | Before `E0-04` | Package-level rules cannot be enforced. |
 | D-19 | Result type | `Outcome<T, E>` | Before `E0-03` | Every public signature in `docs/CONTRACTS.md` depends on it. |
 | D-17 | Flow testing helper | Turbine | Before `E0-05` | Falls back to hand-written collection helpers in `:core:testing`. |

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-15 logging implementation accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-15`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Kermit was accepted as the logging implementation behind the common `Logger` abstraction.
+- **Why:** the owner selected the existing recommendation; Kermit provides KMP platform sinks while remaining hidden behind the repository-owned logging contract.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0016-logging-kermit.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-15`, Kermit and logging status references.
+- **Follow-ups / risks:** Kermit version pinning remains part of `E0-06`; `D-16`, `D-17`, `D-18`, `D-19`, `D-20` and `D-21` remain unresolved.
+
 ### 2026-08-17 — D-22 application identifiers accepted
 
 - **Type:** decision

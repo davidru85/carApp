@@ -21,7 +21,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-12 | [ADR-0013](0013-defer-coil-image-loading.md) | Use Coil if image loading becomes necessary. | Deferred |
 | D-13 | [ADR-0014](0014-firestore-location-europe-west1.md) | Create the Firestore database in `europe-west1`. | Accepted |
 | D-14 | [ADR-0015](0015-firebase-project-topology.md) | One development Firebase project plus the emulator; production topology deferred. | Accepted |
-| D-15 | [ADR-0016](0016-logging-kermit.md) | Use Kermit behind the `Logger` abstraction. | Proposed |
+| D-15 | [ADR-0016](0016-logging-kermit.md) | Use Kermit behind the `Logger` abstraction. | Accepted |
 | D-16 | [ADR-0017](0017-architecture-checks-konsist.md) | Konsist for package rules, custom Gradle check for module rules. | Proposed |
 | D-17, D-18 | [ADR-0019](0019-test-tooling-turbine-kover.md) | Turbine for Flow testing, Kover for coverage thresholds. | Proposed |
 | D-19 | [ADR-0018](0018-outcome-result-type.md) | Custom `Outcome<T, E>` as the result channel. | Proposed |
