@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Temporary audit guardrails file deleted
+
+- **Type:** decision
+- **Story / Decision:** audit closure
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** deleted `docs/AUDIT_GUARDRAILS.md` after all `F-01` through `F-19` follow-up findings were absorbed into the normative and derived documentation.
+- **Why:** the file was explicitly temporary and no longer carried active work after owner review.
+- **Documents touched:** `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual search for active audit findings and `git diff --check`.
+- **Follow-ups / risks:** none.
+
 ### 2026-08-17 — Partial refuel consumption explanation defined
 
 - **Type:** decision
