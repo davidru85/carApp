@@ -163,7 +163,7 @@ It is a **maximum**, not a recency selector, and it includes entries flagged `od
 
 `initialOdometerKm` is editable only while the vehicle has no non-deleted fuel entries.
 
-`fuelType` is metadata only in the MVP: it does not alter validation, units or consumption. `ELECTRIC` and `HYBRID` require a separate energy model and are out of MVP scope; no agent may add kWh handling.
+`fuelType` is metadata only in the MVP: it does not alter validation, units or consumption. The MVP enum is intentionally limited to combustion or fuel-like labels. `ELECTRIC` and `HYBRID` are not legal MVP values and MUST NOT appear in commands, rows, remote documents, UI state or tests except as rejected malformed input. Electric and hybrid vehicle support requires a future energy-model scope change covering kWh input, consumption units, validation, Firestore rules and migrations.
 
 ### FuelEntry
 
@@ -285,6 +285,7 @@ Both ends of every interval are closed and MUST be enforced.
 | Vehicle `name` | Trimmed length 1..40. Unique per owner among non-deleted vehicles, compared on `nameFold`. |
 | `brand`, `model` | Null, or trimmed length 1..40. |
 | `initialOdometerKm` | 0..2_000_000. Editable only while the vehicle has no non-deleted fuel entries. |
+| `fuelType` | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. `ELECTRIC` and `HYBRID` are out of MVP scope. |
 | Fuel entry `date` | Not before `1970-01-01T00:00:00Z`, not before `vehicle.createdAt - 20 years`, and not more than 1 hour after `AppClock.now()`. |
 | `odometerKm` | 0..2_000_000; `>= vehicle.initialOdometerKm`; strictly greater than the previous non-deleted entry in chronological order unless confirmed inconsistent. |
 | `litersScaled` | 1..500_000 (0.001 L .. 500 L). |
@@ -1159,7 +1160,7 @@ The no-op implementation lives in `:core:crash` and is the default fake used by 
 ### 20.4 Domain models — `:core:model`
 
 ```kotlin
-enum class FuelType { GASOLINE, DIESEL, LPG, CNG, ELECTRIC, HYBRID, OTHER }
+enum class FuelType { GASOLINE, DIESEL, LPG, CNG, OTHER }
 enum class DistanceUnit { KM, MILES }
 enum class VolumeUnit { LITER, GALLON }
 

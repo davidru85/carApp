@@ -192,7 +192,7 @@ Acceptance criteria:
 - Normalisation runs before validation per `docs/CONTRACTS.md §5`.
 - Name validation and `nameFold` uniqueness use `canonicalVehicleName(name).lowercase()` exactly as defined in `docs/CONTRACTS.md §5`.
 - `initialOdometerKm` range and its edit restriction are implemented.
-- `fuelType` exists with default `GASOLINE`.
+- `FuelType` exists with exactly the MVP values of `docs/CONTRACTS.md §20.4` and default `GASOLINE`; `ELECTRIC` and `HYBRID` are absent until a future energy-model story expands the enum.
 - Commands match `docs/CONTRACTS.md §20.5`; no command carries `ownerId`, `id` or timestamps.
 - Use cases have unit tests for success and for every error they declare.
 

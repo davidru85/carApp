@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Electric and hybrid fuel types deferred
+
+- **Type:** decision
+- **Story / Decision:** `D-4` / `F-08`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the MVP `FuelType` enum now excludes `ELECTRIC` and `HYBRID`; the canonical values are `GASOLINE`, `DIESEL`, `LPG`, `CNG` and `OTHER`. Electric and hybrid support is recorded as future roadmap scope requiring a dedicated energy model.
+- **Why:** the owner confirmed that electric and hybrid vehicles are not included in the MVP, and supporting them correctly requires kWh input, mixed energy units, validation, Firestore rules and migration work.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §3`, `§5` and `§20.4`, `docs/SPECIFICATION.md §3` and `§12`, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0005-vehicle-fuel-type-from-day-one.md`, `docs/adr/README.md`, `docs/BACKLOG.md`, `README.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `FuelType`, `ELECTRIC`, `HYBRID`, `energy model` and `D-4`; `git diff --check`.
+- **Follow-ups / risks:** future electric/hybrid support requires a new story or ADR before enum/schema expansion.
+
 ### 2026-08-17 — Monetary and name data guardrails tightened
 
 - **Type:** correction

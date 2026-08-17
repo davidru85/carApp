@@ -55,8 +55,13 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Automatic account merging.
 - Real-time Firestore listeners.
 - Remote synchronization of user settings.
+- Electric and hybrid energy modelling, including kWh input, mixed energy units and non-L/100 km consumption.
 
 Rule for agents: any work touching out-of-scope functionality MUST be rejected or escalated. MVP scope changes require updating this specification and are a human review gate.
+
+### 3.3 Post-MVP Roadmap Notes
+
+Future scope may add electric and hybrid vehicles through a dedicated energy model. That work requires a new story or ADR covering `FuelType` expansion, kWh and mixed-unit input, consumption display units, validation, Firestore rules, local migrations and remote schema compatibility. Agents MUST NOT introduce `ELECTRIC` or `HYBRID` as MVP enum values.
 
 ## 4. Actors
 
@@ -389,7 +394,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Accepted |
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Accepted |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
-| D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI. | Accepted |
+| D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI; electric/hybrid values are deferred. | Accepted |
 | D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
 | D-6 | Firebase Auth from KMP | GitLive Auth 2.6.x behind `AuthClient`. | Accepted |
 | D-7 | Navigation | Native navigation per platform. | Accepted |
