@@ -205,6 +205,8 @@ Canonical persistence is metric and **device-local**:
 - Unit settings affect presentation and input only, never domain storage.
 - Settings live in a single-row local table `user_settings`. They are **not synchronized** in the MVP; there is no remote settings document, no `EntityType` for them and no outbox participation.
 - `currency` is the default for *new* fuel entries only. Each fuel entry stores its own `currency`; changing the setting never rewrites existing entries.
+- Settings do not survive destructive local-data flows in the MVP. Sign-out, anonymous "delete local data" and account deletion all delete the `user_settings` row. The next first-launch or repository access recreates it from locale defaults with `analyticsEnabled = false`.
+- Settings synchronization through Google Play services, Android backup, iCloud or any other platform backup mechanism is out of MVP scope and requires a future ADR or story before any API, entitlement, manifest key or dependency is added.
 
 ### 3.1 Database-owned invariants
 
@@ -585,14 +587,16 @@ The operation MUST be idempotent and MUST be covered by a test that starts from 
 
 ### 11.5 Sign-out and account deletion
 
-Sign-out is offered only to a permanently authenticated user. For an anonymous session the action is labelled "delete local data" and requires the same two-step destructive confirmation as account deletion. Signing out clears all local rows for that owner, including `SYNCED` ones; recovery is by re-authenticating and pulling from `RemoteCursor.INITIAL`.
+Sign-out is offered only to a permanently authenticated user. For an anonymous session the action is labelled "delete local data" and requires the same two-step destructive confirmation as account deletion. Signing out clears all local rows for that owner, including `SYNCED` ones, and deletes the device-local `user_settings` row; recovery is by re-authenticating and pulling from `RemoteCursor.INITIAL`, while settings are recreated from defaults.
+
+Anonymous "delete local data" clears every local table, including `user_settings`, `outbox`, `sync_cursor` and `quarantine`.
 
 Account deletion order is normative:
 
 1. If `AuthError.RequiresRecentLogin`, require fresh re-authentication first.
 2. Delete remote documents in batches of at most 400 per write batch: `fuelEntries`, then `vehicles`, retrying on `Unavailable`.
 3. Only after remote deletion fully succeeds, call `deleteAccount()`.
-4. Then clear local data.
+4. Then clear local data, including `user_settings`.
 
 If step 2 fails, the flow aborts with a typed `AuthError` and the account is NOT deleted. Deleting the auth account before the data would leave unreachable orphan documents.
 

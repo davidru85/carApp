@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — MVP settings reset semantics decided
+
+- **Type:** decision
+- **Story / Decision:** `F-17`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** MVP settings now reset during destructive local-data flows. Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; defaults are recreated from locale with `analyticsEnabled = false`.
+- **Why:** the owner confirmed that settings should not survive in the MVP, while settings sync through Google Play services / Android backup / iCloud belongs to future roadmap scope.
+- **Documents touched:** `AGENTS.md`, README, `docs/SPECIFICATION.md §3`, `§5.3` and `§7 F-5`, `docs/CONTRACTS.md §3 UserSettings` and `§11.5`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `settings`, `user_settings`, `Google Play`, `Android backup`, `iCloud`, sign-out, local-data deletion and account deletion; `git diff --check`.
+- **Follow-ups / risks:** future platform settings sync requires a new story or ADR before adding platform APIs, entitlements, manifest keys or dependencies.
+
 ### 2026-08-17 — Electric and hybrid fuel types deferred
 
 - **Type:** decision

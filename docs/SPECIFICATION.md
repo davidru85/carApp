@@ -55,6 +55,7 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Automatic account merging.
 - Real-time Firestore listeners.
 - Remote synchronization of user settings.
+- Platform backup or synchronization of settings through Google Play services, Android backup or iCloud.
 - Electric and hybrid energy modelling, including kWh input, mixed energy units and non-L/100 km consumption.
 
 Rule for agents: any work touching out-of-scope functionality MUST be rejected or escalated. MVP scope changes require updating this specification and are a human review gate.
@@ -62,6 +63,8 @@ Rule for agents: any work touching out-of-scope functionality MUST be rejected o
 ### 3.3 Post-MVP Roadmap Notes
 
 Future scope may add electric and hybrid vehicles through a dedicated energy model. That work requires a new story or ADR covering `FuelType` expansion, kWh and mixed-unit input, consumption display units, validation, Firestore rules, local migrations and remote schema compatibility. Agents MUST NOT introduce `ELECTRIC` or `HYBRID` as MVP enum values.
+
+Future scope may add settings synchronization through platform mechanisms such as Google Play services / Android backup on Android and iCloud on iOS. That work requires a new story or ADR covering user consent, platform API choice, conflict resolution, privacy wording, backup exclusion rules, test strategy and interaction with app account deletion. Agents MUST NOT add settings sync or platform backup APIs in the MVP.
 
 ## 4. Actors
 
@@ -122,7 +125,7 @@ Sync metadata (`syncState`, `localRevision`, `serverUpdatedAt`, `schemaVersion`)
 | `volumeUnit` | `LITER` in the MVP. `GALLON` is prepared but not user-switchable. |
 | `analyticsEnabled` | Default `false`. Analytics collection starts only after an explicit opt-in. |
 
-Settings are device-local and are not synchronized in the MVP.
+Settings are device-local and are not synchronized in the MVP. They do not survive destructive data-clearing flows: sign-out, anonymous "delete local data" and account deletion all reset settings to defaults.
 
 ## 6. Business Rules
 
@@ -213,9 +216,9 @@ Credential collision:
 
 ### F-5 Sign-Out and Account Deletion
 
-Sign-out is offered only to a permanently authenticated user. It warns if there are pending local changes and offers to wait for sync, cancel, or discard pending changes after destructive confirmation. All local data for that owner is cleared after sign-out; recovery is by signing in again and pulling.
+Sign-out is offered only to a permanently authenticated user. It warns if there are pending local changes and offers to wait for sync, cancel, or discard pending changes after destructive confirmation. All local data for that owner and the local `user_settings` row are cleared after sign-out; recovery is by signing in again and pulling, while settings are recreated from defaults.
 
-For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered.
+For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered. It clears all local app data, including settings.
 
 Account deletion is required for store compliance. It re-authenticates if needed, deletes remote data first, then the auth account, then local data. The exact order and failure semantics are in `docs/CONTRACTS.md §11.5`.
 

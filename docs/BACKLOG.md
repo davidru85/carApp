@@ -302,6 +302,7 @@ Acceptance criteria:
 - Only supported 2-decimal currencies are accepted.
 - Changing the currency does not rewrite existing fuel entries.
 - Settings are device-local: nothing is enqueued and there is no remote document.
+- Settings are deleted by destructive local-data flows and recreated from locale defaults with `analyticsEnabled = false`.
 
 ## Phase 2 - Authentication
 
@@ -376,6 +377,7 @@ Acceptance criteria:
 - Sign-out warns about pending sync and offers to wait, cancel or discard.
 - Account deletion follows the order of `docs/CONTRACTS.md §11.5`: re-authenticate if required, delete remote data in batches, then the auth account, then local data.
 - A failure during remote deletion aborts with a typed error and does NOT delete the account.
+- Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
 - Account deletion is accessible from settings.
 
 ## Phase 3 - Backend and Synchronization

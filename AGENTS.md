@@ -95,7 +95,7 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 
 ## Scope Discipline
 
-Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, and electric or hybrid energy modelling.
+Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
 
 Escalate any request that touches out-of-scope functionality.
 
