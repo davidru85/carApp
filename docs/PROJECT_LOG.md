@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit verification hooks tightened
+
+- **Type:** decision
+- **Story / Decision:** `docs/DOCUMENTATION_AUDIT.md`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** remaining recommended audit guardrails were folded into executable story criteria: `Instant` stays an `E0-06` blocker until the version matrix pins its package, `outbox.lastError` is debug/UI-only, Swift scale suffixes require `shared/README.md`, and supported currencies require platform minor-unit verification with `EUR` fallback.
+- **Why:** the owner authorised using the recommended option while away, and these entries make already-accepted prose rules testable by the stories that will implement them.
+- **Documents touched:** `docs/CONTRACTS.md`, `docs/BACKLOG.md`, and this log.
+- **Verification:** documentation-only change; `git diff --check`.
+- **Follow-ups / risks:** changes touch gated documentation and still require normal human review before merge.
+
 ### 2026-08-18 — Documentation audit review decisions recorded
 
 - **Type:** decision

@@ -103,6 +103,7 @@ Acceptance criteria:
 - `Float` and `Double` usage in `:core:*`, `:feature:*` or `:shared` arithmetic paths fails unless it is an explicitly allowlisted platform display conversion.
 - `Logger.log` calls with string field values outside stable code, enum-name or `cycleId` patterns fail the source rule.
 - `Logger.log` calls from `:core:database` are rejected except for local-database-only failures.
+- Reads of `outbox.lastError` outside logging, debug UI and mapper projections fail; sync logic may read only `lastErrorCode`.
 - Image-loading dependencies in `gradle/libs.versions.toml` fail unless a story reference and the Coil decision path of `docs/CONTRACTS.md §15.5` are present.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.
 - **Every rule has a failing fixture proving the check actually fires.**
@@ -122,6 +123,7 @@ Acceptance criteria:
 - `contract-check` implements the assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
 - The first `contract-check` invocation uses the Phase 0 type set (`Outcome`, `AppError`, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger`, `MinorUnits`, `AnalyticsTracker`, `AnalyticsEvent` and `CrashReporter`) as the source of truth. Walking-skeleton types are added in `E0-07` and the check is re-run there to verify the Swift-facing ABI.
 - `contract-check` applies the external identifier allowlist of `docs/CONTRACTS.md §18`, so primitives, standard collections, coroutine types and the pinned `Instant` type do not require duplicate declarations in §20.
+- Until `E0-06` replaces the datetime `TBD`, `contract-check` reports `Instant` as a known `E0-06` blocker; after `E0-06`, it reads the exact fully-qualified `Instant` package from `docs/versions-matrix.md` and fails on any different package.
 - Branch protection for `main` requires those checks.
 
 CI duration under 20 minutes is an objective, monitored and reported, not a pass/fail criterion.
@@ -171,6 +173,7 @@ Acceptance criteria:
 - The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as `shared/build/generated/objc-header/Shared.h.golden`.
 - The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
 - The `objc-header-golden-check` CI step compares the generated header with the committed golden file.
+- `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
 
 Decision gate:
 
@@ -242,6 +245,7 @@ Acceptance criteria:
 - R-1 is enforced on edit as well as on create.
 - Every bound in the `docs/CONTRACTS.md §5` validation table is enforced at both ends.
 - A currency outside `SUPPORTED_CURRENCY_CODES` returns `ValidationError.InvalidUnit`; supported codes all use factor `100`.
+- Platform currency tests verify every `SUPPORTED_CURRENCY_CODES` entry reports two minor digits through Android/JVM and iOS/native locale APIs, or falls back to `EUR` if the runtime reports a different factor.
 - Boundary monetary tests include `litersScaled = 500_000`, `pricePerLiterScaled = 999_999`, `minorUnitFactor = 100`, proving every intermediate arithmetic step is `Long`.
 
 ### E1-05 - Consumption Calculation R-3 - M
@@ -326,6 +330,7 @@ Acceptance criteria:
 
 - A single row is created on first launch with the locale-derived currency, `EUR` fallback, and `analyticsEnabled = false`.
 - Only supported 2-decimal currencies are accepted.
+- Locale-derived defaults use platform currency APIs; any supported code whose runtime minor-unit factor is not `100` falls back to `EUR`.
 - Changing the currency does not rewrite existing fuel entries.
 - Settings are device-local: nothing is enqueued and there is no remote document.
 - An update with both fields `null` returns `ValidationError.NoOp` and mutates nothing.
@@ -484,6 +489,7 @@ Acceptance criteria:
 - `retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING` with cleared error context.
 - Cold-start sync pulls before pushing only when `vehicle` and `fuel_entry` are empty for the owner and the outbox is empty.
 - Debug screen exposes the outbox, cursors, quarantine and row sync state.
+- Sync retry and poison decisions read `lastErrorCode` only; `lastError` is debug/UI context and is never read by sync logic.
 - Quarantine records include `QuarantineReason`, raw payload JSON, `schemaVersion`, `serverUpdatedAt` and redacted logging for unsupported schema and malformed supported-version payloads.
 
 Human review required.
