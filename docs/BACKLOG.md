@@ -67,9 +67,11 @@ Create `:core:model`, `:core:common` and `:core:testing`, implementing the canon
 Acceptance criteria:
 
 - `Outcome`, the full `AppError` hierarchy with stable codes, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
-- `Money` uses integer minor units plus a currency code; `FuelVolume`, `PricePerLiter` and `ConsumptionL100Km` are scaled value classes.
-- The three canonical monetary formulas are implemented as exact integer arithmetic and pass the golden values in `docs/CONTRACTS.md §2`.
-- A test proves no monetary path uses `Float` or `Double`.
+- `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
+- None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
+- The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, and no story writes their literals inline.
+- The three canonical monetary formulas and the two consumption formulas are implemented as exact integer arithmetic and pass every golden value in `docs/CONTRACTS.md §2`.
+- A test proves no monetary or consumption path uses `Float` or `Double`.
 - `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake.
 - Kover thresholds pass for `:core:model` and `:core:common`.
 
@@ -82,6 +84,7 @@ Acceptance criteria:
 - Feature `domain` dependency on Room, Firebase, Koin, Android, Ktor, own `data` or own `presentation` fails the build with a rule-specific message.
 - Feature `data` dependency on `:core:auth` or `:integration:*` fails the build.
 - Feature-to-feature dependency fails the build.
+- A `:core:model` dependency on `:core:common` fails the build; the reverse is allowed (`docs/TECHNICAL_PLAN.md §4`).
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.

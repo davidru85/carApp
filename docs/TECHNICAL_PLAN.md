@@ -48,7 +48,8 @@ gradle/libs.versions.toml       single source of dependency versions
 
 :core:model                     pure models, Money, scaled value classes
 :core:common                    AppClock, UuidGenerator, DispatcherProvider, Outcome, AppError,
-                                OwnerContext, Logger, LocaleProvider, ConnectivityObserver, backoff
+                                OwnerContext, Logger, LocaleProvider, ConnectivityObserver, backoff,
+                                named constants (docs/CONTRACTS.md §20.0.1). Depends on :core:model.
 :core:database                  Room entities, DAOs, migrations, platform builders, read-model invariants
 :core:auth                      AuthClient, TokenProvider, AuthState
 :core:sync                      Outbox, cursor, sync engine, SyncController, RemoteSyncSource
@@ -79,7 +80,8 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 
 | Area | Allowed | Forbidden |
 |------|---------|-----------|
-| `:core:model`, `:core:common` | Kotlin stdlib, coroutines, `kotlinx-datetime`, `kotlinx.serialization` | platform APIs, Firebase, Room, Koin, Ktor |
+| `:core:model` | Kotlin stdlib, coroutines, `kotlinx-datetime`, `kotlinx.serialization` | platform APIs, Firebase, Room, Koin, Ktor, **`:core:common`** |
+| `:core:common` | `:core:model`, plus the same libraries as `:core:model` | platform APIs, Firebase, Room, Koin, Ktor |
 | feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Koin, Room, Ktor, own `data`, own `presentation` |
 | feature `data` | own `domain`, `:core:model`, `:core:common`, `:core:database`, `:core:sync` | `:integration:*`, `:core:auth`, other features |
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
@@ -88,6 +90,8 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
 | `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
 | `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
+
+`:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
 Feature `data` cannot depend on `:core:auth`, so the current owner reaches repositories through `OwnerContext` (`:core:common`), implemented by `:core:auth` and bound in wiring. An architecture rule asserts that no feature module references `AuthClient`.
 

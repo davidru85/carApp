@@ -920,6 +920,53 @@ The canonical human review gate list lives in `AGENTS.md` and MUST NOT be restat
 
 Every type referenced by a signature in this document is declared here. Implementations MUST match these shapes.
 
+### 20.0 Identifiers, money and scaled values — `:core:model`
+
+The foundational types of §2. They were previously described only in prose tables, which left their property names, widths and construction semantics open.
+
+```kotlin
+@JvmInline value class EntityId(val value: String)         // lowercase canonical UUID v4
+@JvmInline value class OwnerId(val value: String)          // Firebase UID, or LOCAL_OWNER
+@JvmInline value class CurrencyCode(val value: String)     // ISO-4217 uppercase
+
+val LOCAL_OWNER: OwnerId = OwnerId("LOCAL_OWNER")          // §11.2, §11.4
+
+data class Money(val minorUnits: Long, val currency: CurrencyCode)
+
+@JvmInline value class FuelVolume(val scaled: Long)          // litres × 1000
+@JvmInline value class PricePerLiter(val scaled: Long)       // currency units × 1000
+@JvmInline value class ConsumptionL100Km(val scaled: Long)   // L/100 km × 100
+```
+
+**Property naming is canonical.** Identifier types expose `value`; scaled quantity types expose `scaled`. An implementation using `raw`, `id`, `amount` or a unit-specific name is a contract violation. `scaled` deliberately matches the `…Scaled` field suffix of §3, so `fuelEntry.litersScaled` and `FuelVolume.scaled` name the same idea with the same word.
+
+**Construction never validates.** These types have no `init` block, throw nothing, and reject nothing. Wrapping a malformed UUID or an unsupported currency code is legal at the type level. Validation lives in the use cases of §5, which return typed errors.
+
+This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint, and its only legal failures are I/O, serialization and schema-version quarantine. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
+
+**Every scaled value is a `Long`**, per §2. Mixing widths across these types is a contract violation.
+
+All of the above are Kotlin-internal and MUST NOT appear on the Swift-facing surface (§15.3).
+
+### 20.0.1 Named constants — `:core:common`
+
+Constants referred to by name elsewhere in this document. Writing the literal inline instead of referencing one of these is a contract violation. They live beside the backoff helper in `:core:common` (`docs/TECHNICAL_PLAN.md §3`), which every module that needs them already depends on; `LOCAL_OWNER` is the exception and lives with `OwnerId` in §20.0.
+
+```kotlin
+const val CLIENT_MAX_SCHEMA_VERSION: Int = 1   // §9.5  — highest schemaVersion this client applies
+const val MAX_RETRYABLE_ATTEMPTS: Int = 10     // §9.7  — attemptCount ceiling
+const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel entry load ceiling
+const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
+
+// §9.7 — failures that MUST NOT consume the poison budget
+val CONNECTIVITY_ERROR_CODES: Set<String> = setOf(
+    "REMOTE.UNAVAILABLE",
+    "REMOTE.DEADLINE_EXCEEDED",
+)
+```
+
+`CLIENT_MAX_SCHEMA_VERSION` is bumped only by a story that also ships the migration able to read the new version, and bumping it REQUIRES re-evaluating the `quarantine` table on upgrade (§9.5).
+
 ### 20.1 Result channel — `:core:common`
 
 ```kotlin
