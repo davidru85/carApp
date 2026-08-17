@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Malformed remote payload quarantine decided
+
+- **Type:** decision
+- **Story / Decision:** `F-16`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** quarantine now covers both unsupported future schema versions and malformed supported-version payloads. `QuarantineReason.MalformedPayload` and `QuarantineRecord` are canonical sync types.
+- **Why:** the owner chose to keep malformed remote documents out of product tables without blocking cursor progress, provided the quarantine row is committed successfully.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §5`, `§9.5` and `§20.7`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md §8` and `§9`, `docs/BACKLOG.md`, `docs/DEFINITION.md`, `docs/SECURITY.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `quarantine`, `MalformedPayload`, `QuarantineReason`, `schemaVersion`, `malformed` and `18 sync tests`; `git diff --check`.
+- **Follow-ups / risks:** remaining audit findings are `F-11`, `F-12` and `F-15`.
+
 ### 2026-08-17 — Odometer recompute set defined
 
 - **Type:** decision

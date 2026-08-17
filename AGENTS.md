@@ -28,7 +28,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 
 | Document | What it provides |
 |----------|------------------|
-| [TECHNICAL_PLAN.md](docs/TECHNICAL_PLAN.md) | Module architecture, the dependency rule table that generates the architecture checks, local data model and outbox DDL, Firestore design, sync engine pseudocode, the 17 required sync tests, phases, risks and the verification strategy. |
+| [TECHNICAL_PLAN.md](docs/TECHNICAL_PLAN.md) | Module architecture, the dependency rule table that generates the architecture checks, local data model and outbox DDL, Firestore design, sync engine pseudocode, the 18 required sync tests, phases, risks and the verification strategy. |
 | [BACKLOG.md](docs/BACKLOG.md) | Agent-sized stories with dependencies, acceptance criteria, execution order and a story index. Work is assigned one story at a time. |
 | [DEFINITION.md](docs/DEFINITION.md) | Executive overview and orientation for humans. Creates no rules. |
 | [README.md](README.md) | Public front page and documentation index. |

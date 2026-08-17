@@ -54,7 +54,7 @@ Requirements:
 
 ## Accepted Residual Risks
 
-- **No Firebase App Check in the MVP** (`docs/SPECIFICATION.md §3.2`). Anyone holding a valid UID can write to their own subtree with a non-official client. This is mitigated, not removed, by per-field range validation in the Firestore rules and by client-side quarantine of unsupported documents. Revisit before any public launch beyond the MVP.
+- **No Firebase App Check in the MVP** (`docs/SPECIFICATION.md §3.2`). Anyone holding a valid UID can write to their own subtree with a non-official client. This is mitigated, not removed, by per-field range validation in the Firestore rules and by client-side quarantine of unsupported or malformed documents. Revisit before any public launch beyond the MVP.
 - **Last-write-wins conflict resolution** can lose one whole-document update when two devices edit different fields concurrently. Documented in `docs/SPECIFICATION.md §9.5`.
 - **Anonymous data loss** if the user uninstalls before converting the account. Documented in `docs/SPECIFICATION.md §4`.
 

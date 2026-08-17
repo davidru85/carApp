@@ -231,7 +231,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
        later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
        limit 200
   4. Apply the page in one local transaction.
-     - quarantine documents whose schemaVersion is unsupported
+     - quarantine documents whose schemaVersion is unsupported or whose supported-version payload is malformed
      - skip entities that have an outbox row
      - otherwise apply if remote.updatedAt > local.serverUpdatedAt, or local was never synced
   5. pageCursor = (lastApplied.updatedAt, lastApplied.documentId); advance the cursor.
@@ -267,8 +267,9 @@ Required tests for `:core:sync`:
 13. Two devices creating the same vehicle name converge into two vehicles without a constraint failure.
 14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once, is idempotent, and inserts outbox rows in dependency-group order and then by `localMutationSeq ASC, id ASC`.
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
-16. Backoff with an injected jitter source produces deterministic, capped delays.
-17. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
+16. A supported-version document with malformed payload is quarantined with `MalformedPayload`, is not applied to product tables and does not block cursor advance after quarantine is committed.
+17. Backoff with an injected jitter source produces deterministic, capped delays.
+18. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
 Add a deterministic simulation with a fixed seed that interleaves local edits, push, pull, network failure, duplicate delivery and lost responses, asserting convergence between two clients.
 

@@ -89,7 +89,7 @@ Accepted limitation: two devices editing different fields of the same document c
 | 0.5 | Walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth | Data written on Android appears on iOS and vice versa; the Swift-facing surface constraints hold |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 17 sync tests and the emulator tests pass; provider decoupling is an executable check |
+| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 18 sync tests and the emulator tests pass; provider decoupling is an executable check |
 | 4 | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
 
 ## 10. Risks

@@ -311,7 +311,7 @@ Both ends of every interval are closed and MUST be enforced.
 
 Vehicle name uniqueness is a **local pre-write validation only**. There MUST NOT be a `UNIQUE` index on the synchronized table for it: two devices can legitimately create the same name offline, and a unique index would make the pull transaction fail and stall the cursor. SQLite `NOCASE` MUST NOT be used for folding, because it is ASCII-only.
 
-Remote-applied rows bypass business validation entirely. A pull transaction MUST NOT fail because of a domain constraint; the only legal pull failures are I/O, serialization and schema-version quarantine (§9.5).
+Remote-applied rows bypass business validation entirely. A pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. Documents that cannot be safely applied are quarantined (§9.5); the only legal pull-cycle failures are remote I/O, local persistence failure or failure to persist quarantine.
 
 ## 6. Result and Error Taxonomy
 
@@ -485,9 +485,18 @@ Once admitted, the order is deterministic, because the convergence simulation de
 - Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. If not, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
 - Orphan fuel entries (vehicle not yet pulled) are legal transient state. They MUST be persisted, and MUST be excluded from all UI queries and from consumption until their vehicle arrives.
 
-### 9.5 Schema version handling
+### 9.5 Quarantine and malformed remote payloads
 
-A pulled document with `schemaVersion > CLIENT_MAX_SCHEMA_VERSION` MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance. Quarantined rows are re-evaluated on app upgrade. Firestore rules validate only a lower bound on `schemaVersion`, so rules deploys never gate app releases.
+A pulled document that cannot be safely applied MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance once the quarantine row is committed.
+
+Quarantine reasons are:
+
+- `UnsupportedSchemaVersion`: `schemaVersion > CLIENT_MAX_SCHEMA_VERSION`.
+- `MalformedPayload`: `schemaVersion <= CLIENT_MAX_SCHEMA_VERSION`, but the document is missing a required field, has an unknown enum value, violates nullability, has a primitive type mismatch, has an out-of-range value, violates `deleted == (deletedAt != null)`, has a document ID / payload ID mismatch, contains a malformed JSON payload, or cannot be deserialized into the supported DTO.
+
+Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
+
+For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. Firestore rules validate only a lower bound on `schemaVersion`, so rules deploys never gate app releases.
 
 ### 9.6 Conflict resolution
 
@@ -1009,7 +1018,7 @@ data class Money(val minorUnits: Long, val currency: CurrencyCode)
 
 **Construction never validates.** These types have no `init` block, throw nothing, and reject nothing. Wrapping a malformed UUID or an unsupported currency code is legal at the type level. Validation lives in the use cases of §5, which return typed errors.
 
-This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint, and its only legal failures are I/O, serialization and schema-version quarantine. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
+This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
 
 **Every scaled value is a `Long`**, per §2. Mixing widths across these types is a contract violation.
 
@@ -1390,6 +1399,21 @@ data class RemotePage(
     val items: List<RemoteSnapshot>,
     val nextCursor: RemoteCursor,
     val hasMore: Boolean,
+)
+
+enum class QuarantineReason {
+    UnsupportedSchemaVersion,
+    MalformedPayload,
+}
+
+data class QuarantineRecord(
+    val entityType: EntityType,
+    val entityId: EntityId,
+    val reason: QuarantineReason,
+    val schemaVersion: Int,
+    val serverUpdatedAt: Instant,
+    val rawJson: String,
+    val createdAt: Instant,
 )
 
 sealed class SyncStatus {

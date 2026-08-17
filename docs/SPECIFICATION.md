@@ -330,7 +330,7 @@ The provider decoupling criterion is executable: excluding `:integration:*` and 
 
 `sync_cursor`: `entityType`, `lastServerUpdatedAt`, `lastDocumentId`.
 
-`quarantine`: documents whose `schemaVersion` exceeds what this client supports.
+`quarantine`: remote documents that cannot be safely applied, either because their `schemaVersion` exceeds what this client supports or because their supported-version payload is malformed.
 
 Payload format, coalescing semantics and purge conditions are in `docs/CONTRACTS.md §8`.
 
@@ -432,4 +432,4 @@ Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be
 | `LOCAL_OWNER` | Sentinel owner used before an anonymous Firebase UID exists. |
 | Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for sync in deterministic local mutation order. |
 | Orphan entry | A synchronized fuel entry whose vehicle has not been pulled yet. |
-| Quarantine | Local storage for remote documents with an unsupported future schema version. |
+| Quarantine | Local storage for remote documents that cannot be safely applied, including unsupported future schema versions and malformed supported-version payloads. |
