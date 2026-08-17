@@ -44,9 +44,9 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 
 ## MVP Scope
 
-The authoritative scope lists are in [SPECIFICATION.md §3](docs/SPECIFICATION.md). In summary: fuel expenses only, offline-first including first launch, anonymous-capable authentication with Google and Apple conversion, vehicle and fuel entry CRUD, full-to-full consumption, Firestore synchronization, minimal settings, Spanish and English.
+The authoritative scope lists are in [SPECIFICATION.md §3](docs/SPECIFICATION.md). In summary: fuel expenses only, offline-first including first launch, anonymous-capable authentication with Google and Apple conversion, vehicle and fuel entry CRUD, full-to-full consumption, single-device active use, Firestore backup for recovery on a new device, minimal settings, Spanish and English.
 
-Out of scope: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets and wearables, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+Out of scope: non-fuel expenses, advanced charts, export, receipt and odometer photos with OCR, local or on-device AI text recognition, reminders, shared vehicles, widgets and wearables, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write validation beyond account deletion, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
 
 Any task touching out-of-scope functionality must be rejected or escalated before implementation.
 
@@ -80,7 +80,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Shared presentation | KMP state holders exposing `StateFlow<UiState>` plus intent functions |
 | Build | Gradle Kotlin DSL, version catalog, convention plugins in `build-logic` |
 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
-| Remote backend | Cloud Firestore as a remote replica, never as UI source of truth |
+| Remote backend | Cloud Firestore as a backup and recovery replica, never as UI source of truth |
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
@@ -126,10 +126,10 @@ Each feature is one Gradle module with internal `domain`, `data` and `presentati
 | Phase | Goal | Main gate |
 |-------|------|-----------|
 | 0 - Foundations | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 0.5 - Walking skeleton | One real screen crosses native UI, shared presentation, Room, Firestore and anonymous auth | Data written on Android appears on iOS and vice versa |
+| 0.5 - Walking skeleton | One real screen crosses native UI, shared presentation, Room, Firestore and anonymous auth | Data can be backed up remotely and restored on a clean second device |
 | 1 - Local persistence | Vehicles and fuel entries are useful offline | Consumption calculation fully tested and reviewed |
 | 2 - Authentication | Anonymous, local owner adoption, Google, Apple, conversion, sign-out, account deletion | Adoption and conversion preserve data |
-| 3 - Backend and sync | Firestore rules, integration, sync engine, wiring, sync status | Convergence and provider decoupling are executable checks |
+| 3 - Backend and backup | Firestore rules, integration, backup engine, wiring, backup status | Recovery and provider decoupling are executable checks |
 | 4 - MVP hardening | Settings, accessibility, i18n, performance, release preparation | Store-readiness checklist complete |
 
 ## Human Review Gates

@@ -311,7 +311,7 @@ Both ends of every interval are closed and MUST be enforced.
 | `currency` | One of `SUPPORTED_CURRENCY_CODES` (§20.0.1). |
 | `notes` | Null, or trimmed length 1..280. |
 
-Vehicle name uniqueness is a **local pre-write validation only**. There MUST NOT be a `UNIQUE` index on the synchronized table for it: two devices can legitimately create the same name offline, and a unique index would make the pull transaction fail and stall the cursor. SQLite `NOCASE` MUST NOT be used for folding, because it is ASCII-only.
+Vehicle name uniqueness is a **local pre-write validation only**. There MUST NOT be a `UNIQUE` index on the backup-capable table for it: restored remote data can contain duplicate names from older clients, repair operations or future multi-device scopes, and a unique index would make the pull transaction fail and stall the cursor. SQLite `NOCASE` MUST NOT be used for folding, because it is ASCII-only.
 
 Remote-applied rows bypass business validation entirely. A pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. Documents that cannot be safely applied are quarantined (§9.5); the only legal pull-cycle failures are remote I/O, local persistence failure or failure to persist quarantine.
 
@@ -457,7 +457,7 @@ Tombstone purge: a tombstone is purgeable locally only when `syncState == SYNCED
 
 A cycle MUST NOT start while `ConnectivityObserver.isOnline` is `false`. It ends immediately as a no-op, leaving `attemptCount`, `nextAttemptAt`, `lastError` and `lastErrorCode` untouched, and the pending rows keep their existing state. This is the primary defence against burning the retry budget offline; the qualified poison rule of §9.7 is the second, for connectivity lost mid-cycle.
 
-Once admitted, the order is deterministic, because the convergence simulation depends on it:
+Once admitted, the order is deterministic, because the backup and recovery simulation depends on it:
 
 - If the local database contains no rows for the owner **and** the outbox is empty: pull, then push.
 - Otherwise: push, then pull.
@@ -506,7 +506,7 @@ Last-write-wins at whole-document level using the server `updatedAt`. Tombstones
 
 `(updatedAt, documentId)` is the **total ordering of the pull stream**, used for cursor progress and page boundaries. It is NOT a tie-breaker for arbitrating a single document: both sides of a document conflict share the same id.
 
-Accepted limitation: two devices editing different fields of the same document concurrently can lose one whole-document update.
+Accepted limitation: concurrent active editing on multiple devices is not a supported MVP workflow. If the same account writes from multiple devices before one device is treated as the recovery target, last-write-wins can lose one whole-document update.
 
 ### 9.7 Backoff and retry
 
@@ -552,7 +552,7 @@ Being offline with pending rows renders as `Pending`, never as an error. This is
 
 ## 10. RemoteSyncSource Contract
 
-`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. It represents a backup and synchronization replica only: Room remains the source of truth for product behaviour and UI reads. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
+`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. It represents a backup and recovery replica only: Room remains the source of truth for product behaviour and UI reads, the MVP supports one active device per account, and the remote database exists solely so a user can retrieve backed-up data on a new device. Future simultaneous multi-device use requires a separate story or ADR that moves the source of truth from Room to the remote database. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
 
 Required interface shape:
 

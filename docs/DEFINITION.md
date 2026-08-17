@@ -6,7 +6,7 @@
 
 ## 1. Summary
 
-`carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses. Users can create vehicles, log refueling events, review history, calculate real consumption, and keep their data available offline with background synchronization.
+`carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses and one active device per account. Users can create vehicles, log refueling events, review history, calculate real consumption, keep their data available offline, and back it up for recovery on a new device.
 
 The repository is greenfield: there is no product code yet. Owner decision closure (`E0-00`) is complete, so implementation starts at `E0-01` in `docs/BACKLOG.md`.
 
@@ -21,9 +21,10 @@ The MVP must let a user:
 - Review fuel entry history.
 - See per-segment and average fuel consumption using the full-to-full method.
 - Convert an anonymous account to Google or Apple without data loss.
-- Recover synchronized data on another device.
+- Recover backed-up data on another device.
+- Use one active device per account; simultaneous multi-device use is future scope.
 
-Success metric: a user can create a vehicle and log fuel entries offline, obtain a reliable average consumption after at least two valid full-to-full segments, then reconnect and synchronize without manual repair.
+Success metric: a user can create a vehicle and log fuel entries offline, obtain a reliable average consumption after at least two valid full-to-full segments, then reconnect, back up the data and recover it on a clean device without manual repair.
 
 ## 3. Document Map
 
@@ -79,17 +80,17 @@ GitLive 3.0 alpha is out of scope for the MVP. Kotlin, SKIE and Xcode versions a
 
 Design and algorithms: `docs/TECHNICAL_PLAN.md §8`, normative contract in `docs/CONTRACTS.md §7`–`§9`. Firestore structure and rules: `docs/SPECIFICATION.md §10` and `docs/CONTRACTS.md §16`.
 
-Accepted limitation: two devices editing different fields of the same document concurrently can lose one whole-document update. This is acceptable for the MVP and is documented in `docs/SPECIFICATION.md §9.5`.
+Accepted limitation: active multi-device editing is not a supported MVP workflow. If the same account is edited on multiple devices, last-write-wins can lose one whole-document update; this is documented in `docs/SPECIFICATION.md §9.5`.
 
 ## 9. Implementation Phases
 
 | Phase | Goal | Gate |
 |-------|------|------|
 | 0 | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every architecture rule has a failing fixture proving it fires |
-| 0.5 | Walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth | Data written on Android appears on iOS and vice versa; the Swift-facing surface constraints hold |
+| 0.5 | Walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth | Data can be backed up remotely and restored on a clean second device; the Swift-facing surface constraints hold |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 18 sync tests and the emulator tests pass; provider decoupling is an executable check |
+| 3 | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
 | 4 | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
 
 ## 10. Risks
@@ -98,7 +99,7 @@ Accepted limitation: two devices editing different fields of the same document c
 |------|--------|------------|
 | iOS/KMP/SKIE/Room toolchain friction | High | Early walking skeleton, macOS CI, pinned versions, SQLDelight fallback with a superseding ADR. |
 | Swift export rejects the shared API shape | Medium | Explicit surface constraints plus a committed Objective-C header golden file. |
-| Silent data loss in sync | Critical | Common engine, 17 required tests, deterministic simulation, debug screen. |
+| Silent data loss in backup or recovery | Critical | Common engine, required tests, deterministic simulation, debug screen. |
 | Data loss at the `LOCAL_OWNER` boundary | Critical | Outbox suppressed before a real UID exists, plus an idempotent adoption story. |
 | Incorrect Firestore rules | Critical | Emulator tests before any production deployment. |
 | Scope creep | Medium | Explicit out-of-scope list and escalation rule. |

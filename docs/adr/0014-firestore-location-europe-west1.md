@@ -12,13 +12,13 @@ A Cloud Firestore database has a location that is chosen at creation time and **
 
 The initial user base is Spanish, the project owner is in Spain, and the data is personal (vehicle usage, cost and location-adjacent patterns), so GDPR considerations favour keeping it inside the European Union.
 
-Firestore is not the primary database for product behaviour. The app is local-first: Room is the internal source of truth, all UI reads come from Room, and Firestore exists only as a backup and synchronization replica for cross-device recovery.
+Firestore is not the primary database for product behaviour. The app is local-first: Room is the internal source of truth, all UI reads come from Room, and Firestore exists only as a backup and recovery replica for retrieving backed-up data on a new device. The MVP does not support simultaneous multi-device use.
 
 ## Options Considered
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| `europe-west1` single region | Data stays in the EU. Lower cost than a multi-region. Suitable latency for backup and synchronization use. | Lower availability guarantees than a multi-region. |
+| `europe-west1` single region | Data stays in the EU. Lower cost than a multi-region. Suitable latency for backup and recovery use. | Lower availability guarantees than a multi-region. |
 | `eur3` European multi-region | Data stays in the EU. Multi-region durability. Lower latency for the target users. | Slightly higher cost than a single region. |
 | `nam5` United States multi-region | Default in many tutorials. | Data leaves the EU, which creates avoidable GDPR exposure for no benefit. |
 
@@ -32,7 +32,7 @@ Create every real Firestore database for this app in `europe-west1`, in Native m
 
 - User data stays in the EU.
 - Cost is lower than the `eur3` multi-region option.
-- Latency and availability remain suitable for a backup and synchronization replica, because Room is the user-facing source of truth.
+- Latency and availability remain suitable for a backup and recovery replica, because Room is the user-facing source of truth.
 
 ### Negative
 

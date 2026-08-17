@@ -17,7 +17,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 | P1 | Minimal logging friction | Logging a fuel entry MUST be achievable in under 15 seconds. |
 | P2 | Always works | The MVP MUST be fully usable without network coverage, **including first launch**. |
 | P3 | No entry barrier | Anonymous use is supported and can later be converted to a permanent account. |
-| P4 | Cloud provider portability | Firebase MUST NOT leak outside integration boundaries. |
+| P4 | Cloud provider portability | Firebase is a remote backup and recovery backend only, and MUST NOT leak outside integration boundaries. |
 
 ## 3. Scope
 
@@ -34,9 +34,10 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Consumption calculation per fuel entry where applicable.
 - Average vehicle consumption.
 - Local-first persistence.
-- Offline-first synchronization with Cloud Firestore.
-- Discreet sync status indicator with manual retry.
-- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), sync status, analytics opt-in, sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
+- Offline-first remote backup to Cloud Firestore for recovery on a new device.
+- Single active device per account. A backup can be restored on a new device, but simultaneous use on multiple devices is not supported in the MVP.
+- Discreet backup status indicator with manual retry.
+- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
 - Spanish and English localization.
 
 This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `docs/BACKLOG.md` MUST NOT restate a different one.
@@ -46,13 +47,14 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Non-fuel expenses.
 - Advanced charts and statistics.
 - CSV/PDF export.
-- Receipt images and OCR.
+- Receipt and odometer images with OCR, including local or on-device AI text recognition.
 - Reminders and notifications.
 - Vehicle sharing.
 - Widgets, Wear OS, watchOS, and web.
 - Official fuel-price integrations.
-- Firebase App Check.
+- Firebase App Check and Cloud Functions-mediated remote read/write validation beyond the `D-23` account deletion server operation.
 - Automatic account merging.
+- Simultaneous use on more than one device, active multi-device synchronization, and remote-database-as-source-of-truth operation.
 - Real-time Firestore listeners.
 - Remote synchronization of user settings.
 - Platform backup or synchronization of settings through Google Play services, Android backup or iCloud.
@@ -66,13 +68,19 @@ Future scope may add electric and hybrid vehicles through a dedicated energy mod
 
 Future scope may add settings synchronization through platform mechanisms such as Google Play services / Android backup on Android and iCloud on iOS. That work requires a new story or ADR covering user consent, platform API choice, conflict resolution, privacy wording, backup exclusion rules, test strategy and interaction with app account deletion. Agents MUST NOT add settings sync or platform backup APIs in the MVP.
 
+Future scope may add receipt and odometer image capture with local AI text recognition to prefill fuel-entry fields. The target fields are the receipt total amount, the receipt price per liter and the odometer reading. That work requires a new story or ADR covering the on-device OCR or AI engine, supported languages, model packaging, binary size, latency, battery impact, privacy review, image retention rules, user correction flow, confidence thresholds, validation, accessibility, tests and whether any image-loading dependency is required. Receipt images, odometer images, recognized raw text and extracted fields MUST remain local unless a later explicit owner decision changes the privacy model. Agents MUST NOT add image capture, OCR, local AI models, model downloads, image storage, image-loading dependencies or image-derived fuel-entry fields in the MVP.
+
+Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23` account deletion server operation. The intended security goal is to validate incoming user data before it is inserted or updated remotely, and to verify the user's authenticated identity and authorization before any remote database read. That work requires a new story or ADR covering whether clients stop reading or writing Firestore directly, Firebase App Check or equivalent app integrity checks, authenticated callable or HTTPS function boundaries, server-side schema validation, owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling, emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add Cloud Functions security features beyond `D-23`, App Check enforcement, server-mediated product reads or privileged server-side product writes in the MVP.
+
+Future scope may add simultaneous use on multiple devices for the same account. That work requires a new story or ADR covering the migration from Room-as-source-of-truth to remote-database-as-source-of-truth, live or near-live synchronization semantics, conflict resolution, offline edit policy, local cache behaviour, remote validation, recovery from divergent devices, UX for stale data and required data migrations. Agents MUST NOT introduce active multi-device synchronization or make the remote database the product source of truth in the MVP.
+
 ## 4. Actors
 
 | Actor | Description |
 |-------|-------------|
-| Local-only user | First launch without connectivity. Data is local under the `LOCAL_OWNER` sentinel and is not yet synchronized. Adopted into an anonymous identity as soon as connectivity allows. |
-| Anonymous user | Uses the app immediately. Data is local and synchronized under an anonymous Firebase identity. If the user uninstalls before conversion, data loss is an accepted risk. |
-| Authenticated user | Uses Google or Apple. Data can be recovered on another device after sync. |
+| Local-only user | First launch without connectivity. Data is local under the `LOCAL_OWNER` sentinel and is not yet eligible for remote backup. Adopted into an anonymous identity as soon as connectivity allows. |
+| Anonymous user | Uses the app immediately. Data is local and backed up remotely under an anonymous Firebase identity when connectivity allows. If the user uninstalls before conversion, data loss is an accepted risk. |
+| Authenticated user | Uses Google or Apple. Data can be recovered on another device from remote backup. |
 
 A user owns zero or more vehicles. A vehicle belongs to exactly one user. Shared ownership is out of scope. If the user has zero non-deleted vehicles after authentication, the app routes to first vehicle creation before showing the main app shell.
 
@@ -114,7 +122,7 @@ Field names, types, scales and persistence formats are normative in `docs/CONTRA
 | `createdAt`, `updatedAt` | Yes | UTC. |
 | `deletedAt` | No | Tombstone timestamp. |
 
-Sync metadata (`syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `schemaVersion`) is **not** part of the domain model. It exists only on the local row, and reaches the UI only as the aggregate sync status.
+Sync metadata (`syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `schemaVersion`) is **not** part of the domain model. It exists only on the local row, and reaches the UI only as the aggregate backup status.
 
 ### 5.3 UserSettings
 
@@ -314,17 +322,19 @@ That factory and `AppGraphDependencies` are not part of the Swift-facing ABI. Sw
 
 The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in `docs/CONTRACTS.md`.
 
-## 9. Synchronization
+## 9. Remote Backup and Recovery
 
 ### 9.1 Principles
 
 - The local database is the only UI source of truth.
-- Firestore is a backup and synchronization replica only; it is never the product source of truth.
+- Firestore is a backup and recovery replica only; it is never the product source of truth.
+- The remote database exists solely so a user can retrieve backed-up data on a new device.
+- The MVP does not provide active multi-device collaboration or a real-time cross-device data layer.
 - Every write is local first.
-- Remote sync is background work.
+- Remote backup is background work.
 - IDs are UUID v4 generated on the client.
 - Firestore offline persistence is disabled.
-- Nothing is enqueued for synchronization while the owner is `LOCAL_OWNER`.
+- Nothing is enqueued for remote backup while the owner is `LOCAL_OWNER`.
 
 ### 9.2 Local Control Tables
 
@@ -363,7 +373,7 @@ Fuel entries whose vehicle has not yet arrived are persisted but hidden until it
 
 Last-write-wins at document level using the server `updatedAt`. Tombstones are regular documents and win over older updates. `(updatedAt, documentId)` orders the pull stream; it is not a tie-breaker for a single document, whose two sides share the same id.
 
-Accepted limitation: two devices editing different fields of the same document concurrently can lose one whole-document update.
+Accepted limitation: concurrent active editing on multiple devices is not a supported MVP workflow. If the same account writes from multiple devices before one device is treated as the recovery target, last-write-wins can lose one whole-document update.
 
 ## 10. Firestore Security
 
@@ -385,7 +395,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | Offline | 100% of MVP functionality usable without network, including first launch. |
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
-| Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, sync convergence tests, Firestore emulator tests. |
+| Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, backup and recovery tests, Firestore emulator tests. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
 | Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
 
@@ -429,10 +439,10 @@ Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be
 | Fuel entry | A refueling event recorded by the user. |
 | Full tank | Refueling event where the tank is filled completely. |
 | Segment | Interval between two consecutive full-tank fuel entries. |
-| Tombstone | Logical deletion marker propagated through sync. |
+| Tombstone | Logical deletion marker propagated through remote backup. |
 | Outbox | Local queue of pending snapshots to push remotely. |
 | LWW | Last-write-wins conflict resolution. |
 | `LOCAL_OWNER` | Sentinel owner used before an anonymous Firebase UID exists. |
-| Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for sync in deterministic local mutation order. |
-| Orphan entry | A synchronized fuel entry whose vehicle has not been pulled yet. |
+| Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for remote backup in deterministic local mutation order. |
+| Orphan entry | A remotely restored fuel entry whose vehicle has not been pulled yet. |
 | Quarantine | Local storage for remote documents that cannot be safely applied, including unsupported future schema versions and malformed supported-version payloads. |

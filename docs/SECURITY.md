@@ -55,7 +55,9 @@ Requirements:
 ## Accepted Residual Risks
 
 - **No Firebase App Check in the MVP** (`docs/SPECIFICATION.md §3.2`). Anyone holding a valid UID can write to their own subtree with a non-official client. This is mitigated, not removed, by per-field range validation in the Firestore rules and by client-side quarantine of unsupported or malformed documents. Revisit before any public launch beyond the MVP.
-- **Last-write-wins conflict resolution** can lose one whole-document update when two devices edit different fields concurrently. Documented in `docs/SPECIFICATION.md §9.5`.
+- **No post-MVP Cloud Functions-mediated database access in the MVP** (`docs/SPECIFICATION.md §3.3`). The only MVP server/Admin operation is `D-23` account deletion. Server-side validation before remote writes, authenticated identity and authorization checks before remote reads, app integrity checks, rate limiting, abuse monitoring and broader privileged server-side product operations require a future story or ADR before implementation.
+- **No receipt, odometer image or OCR processing in the MVP** (`docs/SPECIFICATION.md §3.3`). Future local AI text recognition must keep receipt images, odometer images, recognized raw text and extracted fields local unless a later explicit owner decision changes the privacy model.
+- **Last-write-wins backup collision handling** can lose one whole-document update if the same account is actively edited on multiple devices. Active multi-device editing is not a supported MVP workflow. Documented in `docs/SPECIFICATION.md §9.5`.
 - **Anonymous data loss** if the user uninstalls before converting the account. Documented in `docs/SPECIFICATION.md §4`.
 
 ## Privacy

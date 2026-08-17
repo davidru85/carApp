@@ -95,7 +95,7 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 
 ## Scope Discipline
 
-Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt photos and OCR, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt and odometer photos and OCR, local or on-device AI text recognition, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write validation beyond account deletion, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
 
 Escalate any request that touches out-of-scope functionality.
 
@@ -123,8 +123,9 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 ## Product Rules
 
 - The UI observes only the local database.
+- The MVP supports one active device per account; the remote database is used only for backup and recovery on a new device.
 - Every MVP write works without network access, and first launch works offline.
-- Nothing is enqueued for synchronization while the owner is `LOCAL_OWNER`.
+- Nothing is enqueued for remote backup while the owner is `LOCAL_OWNER`.
 - IDs are client-generated UUID v4.
 - Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules. Account deletion hard deletes run only through the `D-23` Firebase Admin server operation.
 - Firestore remote documents use the closed schemas of `docs/CONTRACTS.md §16`; unknown collections, extra keys and local-only metadata are rejected.
@@ -147,7 +148,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Do not add image loading until a story requires it; Coil is then the only approved library.
 - `exportSchema = true`; `fallbackToDestructiveMigration` is FORBIDDEN in every build type.
 - Data model changes require migrations and migration tests.
-- Sync changes require convergence tests.
+- Remote backup or recovery changes require backup and recovery tests.
 - Firestore rule changes require emulator tests.
 - Public repository or use case contract changes require updating `docs/CONTRACTS.md` in the same change.
 - Library or stack decision changes require updating `docs/DECISION_BOARD.md` and the related ADR.
