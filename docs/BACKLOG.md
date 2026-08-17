@@ -148,7 +148,7 @@ Build a single screen crossing native UI, shared state holder, Room, Firestore a
 
 Acceptance criteria:
 
-- A value written on Android appears on iOS after sync, and the reverse.
+- A value written on one platform can be backed up remotely and restored on a clean second device.
 - `iosSimulatorArm64` runs in CI.
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
@@ -164,7 +164,7 @@ Human review required.
 
 ## Phase 1 - Local Persistence
 
-Goal: the app stores and displays vehicles and fuel entries locally. It is useful without remote sync, and works from a first launch with no connectivity.
+Goal: the app stores and displays vehicles and fuel entries locally. It is useful without remote backup, and works from a first launch with no connectivity.
 
 ### E1-01 - `:core:database` - M
 
@@ -437,13 +437,13 @@ Acceptance criteria:
 
 ### E3-03 - `:core:sync` Engine - L
 
-Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quarantine, aggregate status and debug support according to `docs/CONTRACTS.md §7`–`§9`.
+Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quarantine, aggregate backup status and debug support according to `docs/CONTRACTS.md §7`–`§9`.
 
 Acceptance criteria:
 
-- All 18 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
+- All 18 backup and recovery tests in `docs/TECHNICAL_PLAN.md §9` pass.
 - A cycle is not started while `ConnectivityObserver.isOnline` is false, and connectivity failures never poison a row (`docs/CONTRACTS.md §9.2`, `§9.7`).
-- The deterministic convergence simulation exists with a fixed seed and an injected jitter source.
+- The deterministic backup and recovery simulation exists with a fixed seed and an injected jitter source.
 - The state machine matches `docs/CONTRACTS.md §7`, including `SYNCING -> SYNCING` on a local edit during an in-flight push.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.
 - Trigger constants match `docs/CONTRACTS.md §9.8`.
@@ -475,9 +475,9 @@ Acceptance criteria:
 - Platform workers only call `SyncController.requestSync(reason)`.
 - No state holder change is required for sync correctness.
 
-### E3-05 - Sync Status UI - S
+### E3-05 - Backup Status UI - S
 
-Add a non-intrusive sync status indicator.
+Add a non-intrusive backup status indicator.
 
 Acceptance criteria:
 
@@ -613,7 +613,7 @@ E0-00 owner decisions (completed)
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring | 3 | M | — |
 | E3-04 Repository sync wiring | 3 | M | — |
-| E3-05 Sync status UI | 3 | S | — |
+| E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof | 3 | S | — |

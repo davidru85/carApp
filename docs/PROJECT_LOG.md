@@ -38,6 +38,39 @@
 
 ## Entries
 
+### 2026-08-17 — MVP single-device constraint recorded
+
+- **Type:** decision
+- **Story / Decision:** `D-0`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the MVP now explicitly supports one active device per account. Simultaneous multi-device use, active synchronization and moving the source of truth from Room to the remote database are recorded as future scope.
+- **Why:** the owner clarified that the remote database is backup-only for the MVP, while future multi-device use will require real synchronization and a remote source of truth.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md`, `docs/CONTRACTS.md §10`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/DEFINITION.md`, `README.md`, `docs/adr/0001-backend-cloud-firestore.md`, `docs/adr/0014-firestore-location-europe-west1.md`, and this log.
+- **Verification:** manual documentation update only; no product code exists for this behaviour.
+- **Follow-ups / risks:** remaining internal names such as `SyncController`, `RemoteSyncSource` and `syncState` are implementation terms unless a future contract-renaming story changes them. The change touches gated scope, backend and sync topics and requires human review before merge.
+
+### 2026-08-17 — Remote database purpose clarified as backup and recovery
+
+- **Type:** decision
+- **Story / Decision:** `D-0`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the remote database purpose is now documented as backup and recovery only, so users can retrieve backed-up data on a new device. Active multi-device collaboration is not an MVP goal.
+- **Why:** the owner clarified that the remote database exists solely as a backup, not as the product source of truth or a real-time cross-device data layer.
+- **Documents touched:** `docs/SPECIFICATION.md`, `docs/CONTRACTS.md §9` and `§10`, `docs/DECISION_BOARD.md`, `docs/SECURITY.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/DEFINITION.md`, `README.md`, `docs/adr/0001-backend-cloud-firestore.md`, `docs/adr/0015-firebase-project-topology.md`, and this log.
+- **Verification:** manual documentation update only; no product code exists for this behaviour.
+- **Follow-ups / risks:** remaining `sync` type and module names are technical implementation names unless a future contract-renaming story changes them. The change touches gated scope, backend and sync topics and requires human review before merge.
+
+### 2026-08-17 — Post-MVP OCR and Cloud Functions security recorded
+
+- **Type:** milestone
+- **Story / Decision:** —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** post-MVP roadmap notes now explicitly reserve receipt and odometer image capture with local AI text recognition, targeting receipt total amount, receipt price per liter and odometer reading, plus Cloud Functions-mediated remote read/write validation beyond the `D-23` account deletion server operation.
+- **Why:** the owner asked to keep these capabilities visible for the future without expanding MVP scope or authorizing implementation dependencies, models, receipt or odometer image storage, server-mediated product reads, App Check enforcement or broader privileged server-side writes.
+- **Documents touched:** `docs/SPECIFICATION.md §3`, `docs/SECURITY.md`, `docs/TECHNICAL_PLAN.md §13`, `README.md`, and this log.
+- **Verification:** manual documentation update only; no product code exists for these features.
+- **Follow-ups / risks:** both future areas require a dedicated story or ADR before implementation. Changes touch gated documentation and security topics and require human review before merge.
+
 ### 2026-08-17 — Temporary audit guardrails file deleted
 
 - **Type:** decision

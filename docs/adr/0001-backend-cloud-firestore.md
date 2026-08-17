@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The MVP needs a remote replica for user data so anonymous and authenticated users can synchronize vehicles and fuel entries across devices. The app remains local-first: the local database is the UI source of truth.
+The MVP needs a remote replica for user data so anonymous and authenticated users can back up vehicles and fuel entries and recover them on a new device. The app remains local-first: the local database is the UI source of truth. Firestore is not an active multi-device collaboration layer in the MVP. Future simultaneous multi-device use requires a separate decision that moves the source of truth from Room to the remote database.
 
 ## Options Considered
 
@@ -18,7 +18,7 @@ The MVP needs a remote replica for user data so anonymous and authenticated user
 
 ## Decision
 
-Use Cloud Firestore as the remote replica.
+Use Cloud Firestore as the remote backup and recovery replica.
 
 ## Consequences
 
@@ -26,7 +26,7 @@ Use Cloud Firestore as the remote replica.
 
 - Low-cost backend for MVP scale.
 - Remote writes are naturally idempotent by client-generated document ID.
-- Server timestamps support authoritative conflict ordering.
+- Server timestamps support deterministic backup collision handling if the same account writes from more than one device.
 
 ### Negative
 

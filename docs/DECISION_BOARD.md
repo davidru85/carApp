@@ -19,7 +19,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 
 | ID | Area | Choice | Alternatives Reviewed | Status | Guardrail |
 |----|------|--------|-----------------------|--------|-----------|
-| D-0 | Remote backend | Cloud Firestore | Supabase, AWS backend, custom API, local-only MVP | Accepted | Firestore is a remote replica behind `RemoteSyncSource`, never UI source of truth. |
+| D-0 | Remote backend | Cloud Firestore | Supabase, AWS backend, custom API, local-only MVP | Accepted | Firestore is a backup and recovery replica behind `RemoteSyncSource`, never UI source of truth. |
 | D-1 | Local database | Room 3 KMP | SQLDelight, Realm, DataStore-only | Accepted | `androidx.room3` with bundled SQLite. SQLDelight is a walking-skeleton fallback only, and adopting it requires a superseding ADR. |
 | D-2 | iOS interop | SKIE | Raw KMP export, manual wrappers | Accepted | SKIE applies only to `:shared`. The Swift-facing surface obeys `docs/CONTRACTS.md §15.3`. |
 | D-3 | Dependency injection | Koin KMP | Manual DI, Metro, Kotlin Inject | Accepted | Koin is wiring only. No service locator access in domain, use cases or repositories. |
@@ -32,7 +32,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | PostHog, custom metrics, none | Accepted | Closed `AnalyticsEvent` hierarchy; no analytics calls from domain or data; off by default. |
 | D-11 | HTTP/API client | Ktor, for future API-based remote implementations | Retrofit, native URLSession/OkHttp wrappers, no HTTP abstraction | Deferred | Do not add Ktor to the MVP. |
 | D-12 | Image loading | Coil, if image loading ever becomes necessary | SDWebImage, platform-native loaders, none | Deferred | No image loading dependency until a story requires it; Coil is then the only approved library. |
-| D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
+| D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and recovery replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
 | D-14 | Firebase project topology | One development Firebase project plus the local emulator now; add a separate production Firebase project before release | Two projects from day one, single project through production, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and no public release build may point at the development project. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |

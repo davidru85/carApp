@@ -8,7 +8,7 @@ Accepted by the owner on 2026-08-17.
 
 ## Context
 
-The project needs somewhere to run Firestore rules and authentication during development. Firestore is a backup and synchronization replica, not the source of truth; the Room database remains the product's primary database and the only UI source.
+The project needs somewhere to run Firestore rules and authentication during development. Firestore is a backup and recovery replica, not the source of truth; the Room database remains the product's primary database and the only UI source.
 
 During development there are no production users. CI still needs to run rule tests on every pull request without holding credentials for any real Firebase project.
 

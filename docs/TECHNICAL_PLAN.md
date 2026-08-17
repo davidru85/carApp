@@ -4,9 +4,9 @@
 
 ## 1. Context
 
-The project is greenfield. This plan closes the technical decisions needed to start implementation with multiple AI agents while keeping module boundaries, sync behavior, and quality gates explicit.
+The project is greenfield. This plan closes the technical decisions needed to start implementation with multiple AI agents while keeping module boundaries, remote backup behavior, and quality gates explicit.
 
-The selected architecture is Kotlin Multiplatform for shared logic and native UI per platform. The app is local-first. Cloud Firestore is a remote replica, not the UI source of truth.
+The selected architecture is Kotlin Multiplatform for shared logic and native UI per platform. The app is local-first, supports one active device per account in the MVP, and uses Cloud Firestore only as a backup and recovery replica, not the UI source of truth.
 
 ## 2. Closed Decisions
 
@@ -27,7 +27,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | Accepted | Aligns with the Firebase stack while keeping analytics replaceable. |
 | D-11 | HTTP/API client | Ktor deferred | Deferred | Reserved for a future API-based remote implementation. |
 | D-12 | Image loading | Coil if ever needed | Deferred | Prevents agents from choosing competing loaders. |
-| D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation. |
+| D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and recovery replica only; Room is the source of truth. The location is immutable after database creation. |
 | D-14 | Firebase project topology | one development project plus emulator now; separate production project before release | Accepted | Keeps development setup small while retaining emulator-only CI. Production project creation and its ID are deferred until release preparation. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Accepted | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Accepted | Gradle cannot express intra-module package rules. |
@@ -53,7 +53,7 @@ gradle/libs.versions.toml       single source of dependency versions
                                 named constants (docs/CONTRACTS.md §20.0.1). Depends on :core:model.
 :core:database                  Room entities, DAOs, migrations, platform builders, read-model invariants
 :core:auth                      AuthClient, TokenProvider, AuthState
-:core:sync                      Outbox, cursor, sync engine, SyncController, RemoteSyncSource
+:core:sync                      Outbox, cursor, backup/recovery engine, SyncController, RemoteSyncSource
 :core:analytics                 AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash                     CrashReporter abstraction and no-op implementation
 :core:testing                   fakes, builders, in-memory remote, deterministic simulator,
@@ -240,7 +240,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
   7. Repeat while the page is full.
 ```
 
-### Convergence
+### Recovery Guarantees
 
 - Local mutations eventually reach the outbox, except while the owner is `LOCAL_OWNER`.
 - Push is idempotent by client-generated document ID.
@@ -249,14 +249,14 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
 - Pull overlap prevents silent cursor loss; `startAt(overlapSince, "")` gives the first overlapped page a legal concrete anchor; `startAfter` on the previous page cursor prevents re-reading the same page forever.
 - Tombstones are regular LWW documents.
 
-## 9. Sync Tests
+## 9. Backup and Recovery Tests
 
 Required tests for `:core:sync`:
 
-1. Offline write syncs after connectivity returns.
+1. Offline write is backed up after connectivity returns.
 2. Ambiguous response retry does not duplicate records.
-3. Two-device edit conflict converges.
-4. Exact `updatedAt` tie converges deterministically in the pull stream order.
+3. A clean recovery device restores backed-up vehicles and fuel entries for the authenticated owner.
+4. Exact `updatedAt` tie paginates deterministically in the pull stream order.
 5. Tombstone wins over older update.
 6. Local edit during in-flight push is not lost, and the state machine follows `SYNCING -> SYNCING -> PENDING`.
 7. Pull overlap prevents missing a document with a timestamp before the cursor.
@@ -264,15 +264,15 @@ Required tests for `:core:sync`:
 9. First sync of 1,000 records is paginated correctly.
 10. After `MAX_RETRYABLE_ATTEMPTS` consecutive **non-connectivity** retryable failures the row becomes `FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it.
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
-12. A fuel entry arriving before its vehicle is persisted, hidden from the UI, and converges without stalling.
-13. Two devices creating the same vehicle name converge into two vehicles without a constraint failure.
+12. A fuel entry arriving before its vehicle during recovery is persisted, hidden from the UI, and later becomes visible without stalling.
+13. Recovery data containing two vehicle documents with the same name restores both vehicles without a local uniqueness constraint failure.
 14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once, is idempotent, and inserts outbox rows in dependency-group order and then by `localMutationSeq ASC, id ASC`.
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
 16. A supported-version document with malformed payload is quarantined with `MalformedPayload`, is not applied to product tables and does not block cursor advance after quarantine is committed.
 17. Backoff with an injected jitter source produces deterministic, capped delays.
-18. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
+18. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and backs up once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
-Add a deterministic simulation with a fixed seed that interleaves local edits, push, pull, network failure, duplicate delivery and lost responses, asserting convergence between two clients.
+Add a deterministic simulation with a fixed seed that interleaves local edits, push, recovery pull, network failure, duplicate delivery and lost responses, asserting that a clean recovery client can restore the source client's backed-up data.
 
 ## 10. Implementation Phases
 
@@ -296,9 +296,9 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion, sign-out, account deletion.
 
-### Phase 3 - Backend and Synchronization
+### Phase 3 - Backend Backup and Recovery
 
-Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, account deletion server operation, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, backup and recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account deletion server operation, provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 
@@ -310,7 +310,7 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 |------|----------------------|------------|
 | iOS toolchain friction | High / High | Walking skeleton in the first week, macOS CI from the first PR, SPM integration, pinned Kotlin/SKIE/Xcode versions. |
 | Swift-facing API shape rejected by the Obj-C export | High / Medium | `docs/CONTRACTS.md §15.3` constraints validated in `E0-07`, plus a committed header golden file. |
-| Sync convergence bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, 17 required tests, debug screen for outbox, cursors and sync state. |
+| Backup and recovery bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, required tests, debug screen for outbox, cursors and backup state. |
 | Room KMP iOS friction | Medium / Medium | Validate before features. Keep the database behind repositories. Switch to SQLDelight if blocked. |
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
@@ -326,7 +326,7 @@ Automated on every PR:
 - Unit tests with Kover thresholds.
 - Architecture rule checks, each with a failing fixture test.
 - Contract check (`docs/CONTRACTS.md §18`).
-- Sync convergence tests when sync exists.
+- Backup and recovery tests when remote backup exists.
 - Firestore emulator tests when rules exist.
 - Provider decoupling check once integrations exist.
 
@@ -341,4 +341,4 @@ Manual at phase gates:
 
 ## 13. Out of Plan
 
-Maintenance expenses, advanced analytics, export, receipt images, OCR, reminders, shared vehicles, widgets, wearables, web, App Check, automatic account merging, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+Maintenance expenses, advanced analytics, export, receipt images, odometer images, local or on-device AI text recognition, OCR, reminders, shared vehicles, widgets, wearables, web, App Check, Cloud Functions-mediated remote read/write validation beyond the `D-23` account deletion server operation, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
