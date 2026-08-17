@@ -29,5 +29,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-20 | [ADR-0020](0020-localization-native-resources.md) | Native resources; no user-facing text in `UiState`. | Accepted |
 | D-21 | [ADR-0023](0023-firebase-crashlytics.md) | Use Firebase Crashlytics behind `CrashReporter` in Phase 4. | Accepted |
 | D-22 | [ADR-0021](0021-application-identifiers.md) | Application identifiers are owner-decided and fixed in `docs/identifiers.md`. | Accepted |
+| D-23 | [ADR-0024](0024-account-deletion-server-admin.md) | Use a Firebase Admin server operation for account deletion hard deletes. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

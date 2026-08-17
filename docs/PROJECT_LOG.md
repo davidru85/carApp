@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Account deletion server operation accepted
+
+- **Type:** decision
+- **Story / Decision:** `F-11` / `D-23`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** account deletion now uses a Firebase Admin server operation. The app re-authenticates if needed, calls the authenticated server operation, the server deletes `fuelEntries`, then `vehicles`, then the Firebase Auth user, and only after success does the app clear local data.
+- **Why:** the owner chose server/Admin deletion so store-required account deletion can physically purge remote data while client Firestore rules continue to reject hard deletes.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §7` and `§12`, `docs/CONTRACTS.md §6`, `§11.1`, `§11.5` and `§16`, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/adr/0024-account-deletion-server-admin.md`, `docs/BACKLOG.md`, `docs/SECURITY.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `D-23`, `F-11`, `E3-10`, `AuthError.AccountDeletionRemoteFailed`, account deletion and `allow delete`; `git diff --check`.
+- **Follow-ups / risks:** remaining audit findings are `F-12` and `F-15`. `E3-10` must implement and test the server operation before release.
+
 ### 2026-08-17 — Malformed remote payload quarantine decided
 
 - **Type:** decision

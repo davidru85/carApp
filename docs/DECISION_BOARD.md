@@ -42,6 +42,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | Accepted | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted | Added in Phase 4. Crashlytics types never leave `:integration:firebase-crashlytics` or `:wiring:firebase`. |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. The production Firebase project ID is deferred by `D-14`. |
+| D-23 | Account deletion execution | Firebase Admin server operation | Client hard-delete exception, tombstone-only purge, manual support deletion | Accepted | Client Firestore rules keep `allow delete: if false`. Account deletion hard deletes run only in an authenticated server/Admin environment that verifies the caller UID, deletes `fuelEntries`, then `vehicles`, then the Firebase Auth user, and returns success before the app clears local data. |
 
 ## Library Review Matrix
 

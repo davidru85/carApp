@@ -63,4 +63,4 @@ Requirements:
 - Analytics collection is disabled by default and requires an explicit opt-in.
 - Analytics events carry no odometer, volume, cost, notes, entity IDs or UID.
 - Release logs never contain the Firebase UID, notes, exact odometer values or costs.
-- In-app account deletion is available and deletes remote data before the auth account.
+- In-app account deletion is available and uses the `D-23` Firebase Admin server operation to delete remote data before the auth account. Mobile clients never receive a Firestore hard-delete permission.

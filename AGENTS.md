@@ -126,7 +126,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Every MVP write works without network access, and first launch works offline.
 - Nothing is enqueued for synchronization while the owner is `LOCAL_OWNER`.
 - IDs are client-generated UUID v4.
-- Synchronized deletes are tombstones; hard deletes are rejected by the Firestore rules.
+- Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules. Account deletion hard deletes run only through the `D-23` Firebase Admin server operation.
 - Monetary values never use `Float` or `Double`, and the exact integer formulas of `docs/CONTRACTS.md §2` are implemented literally.
 - Consumption uses the full-to-full method, and the average is distance-weighted.
 - The odometer inconsistency warning is a two-step protocol: the first save mutates nothing.
@@ -211,6 +211,7 @@ A change is gated when it matches at least one of the following. Gated changes M
 - `E1-05` consumption calculation
 - `E2-06` local owner adoption
 - `E3-01` Firestore security rules
+- `E3-10` account deletion server operation
 - `E3-03` synchronization engine
 
 ### Gated paths

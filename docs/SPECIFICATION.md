@@ -220,7 +220,7 @@ Sign-out is offered only to a permanently authenticated user. It warns if there 
 
 For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered. It clears all local app data, including settings.
 
-Account deletion is required for store compliance. It re-authenticates if needed, deletes remote data first, then the auth account, then local data. The exact order and failure semantics are in `docs/CONTRACTS.md §11.5`.
+Account deletion is required for store compliance. It re-authenticates if needed, requests the server/Admin account deletion operation selected by `D-23`, waits for that operation to delete remote data and the Firebase Auth account, then clears local data. The exact order and failure semantics are in `docs/CONTRACTS.md §11.5`.
 
 ## 8. Technical Architecture
 
@@ -416,6 +416,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Accepted |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, Phase 4. | Accepted |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md`; the production Firebase project ID is deferred by `D-14`. | Accepted |
+| D-23 | Account deletion execution | Firebase Admin server operation; client Firestore hard deletes remain forbidden. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

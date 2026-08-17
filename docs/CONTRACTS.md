@@ -600,6 +600,8 @@ interface AuthClient {
 
 Platform UI obtains Google and Apple credentials; common code exchanges or links them.
 
+`deleteAccount()` is the client entry point for the `D-23` server/Admin account deletion operation. It MUST NOT call the mobile Firebase Auth account deletion API directly. It maps server operation failures to `AuthError.AccountDeletionRemoteFailed`, authentication freshness failures to `AuthError.RequiresRecentLogin`, caller mismatch or IAM rejection to `AuthError.PermissionDenied`, and connectivity failures to `AuthError.NetworkUnavailable`.
+
 ### 11.2 First launch
 
 On first launch the app MUST attempt Firebase anonymous authentication automatically before the user chooses Google or Apple sign-in. If anonymous authentication succeeds, the app uses that Firebase UID immediately and normal outbox synchronization applies.
@@ -631,11 +633,12 @@ Anonymous "delete local data" clears every local table, including `user_settings
 Account deletion order is normative:
 
 1. If `AuthError.RequiresRecentLogin`, require fresh re-authentication first.
-2. Delete remote documents in batches of at most 400 per write batch: `fuelEntries`, then `vehicles`, retrying on `Unavailable`.
-3. Only after remote deletion fully succeeds, call `deleteAccount()`.
-4. Then clear local data, including `user_settings`.
+2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
+3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
+4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
+5. Only after the server operation returns success, the app clears local data, including `user_settings`.
 
-If step 2 fails, the flow aborts with a typed `AuthError` and the account is NOT deleted. Deleting the auth account before the data would leave unreachable orphan documents.
+The server operation MUST be idempotent for already-deleted documents and MUST NOT delete any document outside `users/{uid}`. It MAY page internally, but partial progress is not reported as success. If step 2, 3 or 4 fails, the app flow aborts with a typed `AuthError`, preserves local data, and does not perform client-side hard deletes. Deleting the auth account before the data would leave unreachable orphan documents.
 
 ### 11.6 App Graph Contract
 
@@ -887,6 +890,8 @@ service cloud.firestore {
 }
 ```
 
+Account deletion hard deletes are not performed by a mobile client and are not an exception to these rules. They run only through the `D-23` Firebase Admin server operation, protected by Firebase authentication token verification and server IAM. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
+
 `validPayload()` MUST enforce presence, primitive type **and range** for every field, mirroring the intervals of §5 — for example `notes` size at most 280, `litersScaled` an int in `1..500000`, `odometerKm` an int in `0..2000000`. Without App Check, range validation in rules is the only thing preventing a compromised client from writing a document that breaks parsing on the user's other device.
 
 Anonymous users are valid authenticated users.
@@ -1111,6 +1116,7 @@ sealed interface AuthError : AppError {
     data object PermissionDenied : AuthError { override val code = "AUTH.PERMISSION_DENIED" }
     data object RequiresRecentLogin : AuthError { override val code = "AUTH.REQUIRES_RECENT_LOGIN" }
     data object UidWouldChange : AuthError { override val code = "AUTH.UID_WOULD_CHANGE" }
+    data object AccountDeletionRemoteFailed : AuthError { override val code = "AUTH.ACCOUNT_DELETION_REMOTE_FAILED" }
     data object Unknown : AuthError { override val code = "AUTH.UNKNOWN" }
 }
 

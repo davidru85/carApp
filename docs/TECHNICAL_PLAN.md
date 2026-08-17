@@ -37,8 +37,9 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-20 | Localization | Native resources, no user-facing text in `UiState` | Accepted | UI is native; shared code has no resource bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` in Phase 4 | Accepted | Not needed before release hardening. |
 | D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; the production Firebase project ID is deferred by `D-14`. |
+| D-23 | Account deletion execution | Firebase Admin server operation | Accepted | Store deletion compliance requires physical remote purge, while mobile clients must keep `allow delete: if false`. |
 
-Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
+Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
 ## 3. Module Architecture
 
@@ -297,7 +298,7 @@ Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, 
 
 ### Phase 3 - Backend and Synchronization
 
-Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, account deletion server operation, provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 

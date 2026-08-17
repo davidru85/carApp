@@ -315,7 +315,7 @@ Implement the auth interfaces and models.
 
 Acceptance criteria:
 
-- `AuthClient`, `TokenProvider`, `AuthSession`, `AuthState`, `NativeAuthCredential`, `AuthToken` and the typed `AuthError` match `docs/CONTRACTS.md §20.8`.
+- `AuthClient`, `TokenProvider`, `AuthSession`, `AuthState`, `NativeAuthCredential`, `AuthToken` and the typed `AuthError` match `docs/CONTRACTS.md §6`, `§11.1` and `§20.8`.
 - `AuthState.Unknown` is distinct from `SignedOut`.
 - `OwnerContext` is implemented here and bound in wiring; feature modules do not see `AuthClient`.
 - No Firebase type appears in this module.
@@ -329,6 +329,7 @@ Acceptance criteria:
 - Anonymous login works on both platforms; Google works on both; Apple works on iOS.
 - Cancelled system dialogs produce `AuthError.Cancelled`.
 - A provider flow that would change the UID produces `AuthError.UidWouldChange` and aborts.
+- `AuthClient.deleteAccount()` calls the `D-23` server/Admin operation and never calls the mobile Firebase Auth account deletion API directly.
 - Native UI obtains credentials; common code exchanges them.
 - No GitLive or Firebase type crosses the module boundary.
 
@@ -380,8 +381,8 @@ Acceptance criteria:
 
 - Sign-out is offered only to permanently authenticated users; anonymous sessions get "delete local data" with two-step confirmation.
 - Sign-out warns about pending sync and offers to wait, cancel or discard.
-- Account deletion follows the order of `docs/CONTRACTS.md §11.5`: re-authenticate if required, delete remote data in batches, then the auth account, then local data.
-- A failure during remote deletion aborts with a typed error and does NOT delete the account.
+- Account deletion follows the order of `docs/CONTRACTS.md §11.5`: re-authenticate if required, call the `D-23` server/Admin operation, wait for remote data and auth account deletion, then clear local data.
+- A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
 - Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
 - Account deletion is accessible from settings.
 
@@ -398,6 +399,23 @@ Acceptance criteria:
 - Every emulator test listed in `docs/CONTRACTS.md §16` passes.
 - `firestore/firestore.indexes.json` exists and the pull query runs without an index error.
 - Firestore offline persistence is disabled in client configuration.
+
+Human review required.
+
+### E3-10 - Account Deletion Server Operation - M
+
+Implement the Firebase Admin account deletion operation selected by `D-23`.
+
+Acceptance criteria:
+
+- The operation accepts only an authenticated caller and verifies that the caller UID is the target UID.
+- The operation deletes documents under `users/{uid}` in the normative order: `fuelEntries`, then `vehicles`.
+- The operation deletes the Firebase Auth user only after remote document deletion succeeds.
+- The operation is idempotent for already-deleted documents and missing auth users, but never deletes outside `users/{uid}`.
+- Failures before Firebase Auth deletion return a typed failure and are not reported as success to the app.
+- Logs are redacted according to `docs/CONTRACTS.md §17` and `docs/SECURITY.md`.
+- Emulator or server-side tests prove the happy path, retry/idempotency behavior, caller UID rejection and failure-before-auth-deletion behavior.
+- Firestore emulator tests still prove that mobile client hard deletes are rejected by `allow delete: if false`.
 
 Human review required.
 
@@ -587,6 +605,7 @@ E0-00 owner decisions (completed)
 | E2-04 Account conversion F-4 | 2 | M | — |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
 | E3-01 Firestore rules | 3 | M | Yes |
+| E3-10 Account deletion server operation | 3 | M | Yes |
 | E3-02 Firestore RemoteSyncSource | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring | 3 | M | — |
