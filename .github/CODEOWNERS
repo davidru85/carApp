@@ -1,14 +1,34 @@
 # Default ownership for all repository changes.
 * @davidru85
 
-# Product and technical definition changes require owner review.
-/README.md @davidru85
-/DEFINITION.md @davidru85
-/SPECIFICATION.md @davidru85
-/TECHNICAL_PLAN.md @davidru85
-/BACKLOG.md @davidru85
+# Entry point and public front page.
 /AGENTS.md @davidru85
+/README.md @davidru85
+
+# Normative documents. Changes here are human review gates (AGENTS.md).
+/docs/SPECIFICATION.md @davidru85
+/docs/CONTRACTS.md @davidru85
+/docs/DECISION_BOARD.md @davidru85
+
+# Derived documentation and records.
+/docs/TECHNICAL_PLAN.md @davidru85
+/docs/BACKLOG.md @davidru85
+/docs/DEFINITION.md @davidru85
+/docs/PROJECT_LOG.md @davidru85
+/docs/CONTRIBUTING.md @davidru85
+/docs/SECURITY.md @davidru85
+
+# Decision records, identifiers and pinned versions.
 /docs/adr/ @davidru85
+/docs/identifiers.md @davidru85
+/docs/versions-matrix.md @davidru85
+
+# Security-sensitive code paths.
+/firestore/ @davidru85
+/core/sync/ @davidru85
+/core/auth/ @davidru85
+/core/database/ @davidru85
+/core/model/ @davidru85
 
 # GitHub workflow and repository governance.
 /.github/ @davidru85

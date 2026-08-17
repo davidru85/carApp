@@ -2,7 +2,10 @@
 
 ## Status
 
-Proposed | Accepted | Superseded
+Proposed | Accepted | Deferred | Pending | Rejected | Superseded
+
+The ADR status MUST equal the status of the same decision ID in `docs/DECISION_BOARD.md`.
+If this ADR is superseded, name the ADR that replaces it.
 
 ## Context
 
@@ -41,5 +44,7 @@ How the decision will be enforced or checked:
 
 ## References
 
-- `SPECIFICATION.md`
-- `TECHNICAL_PLAN.md`
+- `docs/DECISION_BOARD.md` (decision ID `D-n`)
+- `docs/SPECIFICATION.md`
+- `docs/CONTRACTS.md`
+- `docs/TECHNICAL_PLAN.md`
