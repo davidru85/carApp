@@ -24,6 +24,8 @@ Logging also carries privacy obligations: release builds must never contain the 
 
 Use Kermit as the implementation behind the common `Logger` interface declared in `docs/CONTRACTS.md §20.3`.
 
+Kermit is the logging implementation only. It does not replace `AnalyticsTracker`, Firebase Analytics, `CrashReporter` or Firebase Crashlytics. A Kermit sink may forward allowed diagnostic logs or breadcrumbs to the Crashlytics integration, but analytics events and crash reports still go through their own contracts.
+
 ## Consequences
 
 ### Positive

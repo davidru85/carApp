@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-15 logging telemetry boundary clarified
+
+- **Type:** decision
+- **Story / Decision:** `D-15`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** documentation now states that Kermit is the logging implementation only and does not replace `AnalyticsTracker`, Firebase Analytics, `CrashReporter` or Firebase Crashlytics.
+- **Why:** the owner said Kermit should be used for Firebase Analytics and Crashlytics; the clarification preserves the intent that Firebase integrations may use Kermit-backed logging for diagnostics while keeping analytics events and crash reports on separate contracts.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md §17`, `docs/adr/0016-logging-kermit.md`, and this log.
+- **Verification:** manual cross-document search for Kermit, Analytics, Crashlytics, `AnalyticsTracker` and `CrashReporter`.
+- **Follow-ups / risks:** `D-21` still decides whether Firebase Crashlytics is part of the MVP hardening phase.
+
 ### 2026-08-17 — D-15 logging implementation accepted
 
 - **Type:** decision

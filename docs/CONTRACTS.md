@@ -890,6 +890,8 @@ Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes
 
 Redaction is decided from the injected `isDebugBuild` flag: debug builds may log entity IDs in full; release builds log the first 8 characters followed by an ellipsis, and never log the UID at any length.
 
+`Logger` is not an analytics or crash-reporting API. Logging events MUST NOT be treated as `AnalyticsEvent` values or crash reports. Provider integrations may use `Logger` internally for operational diagnostics, subject to the same privacy rules.
+
 ## 18. CI and Branch Protection Contract
 
 Phase 0 defines the exact CI check names. Required checks:
