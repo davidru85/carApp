@@ -38,7 +38,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
 | D-17 | Flow testing helper | Turbine | Manual collection | **Proposed** | Confirm compatibility during version pinning in `E0-06`. |
 | D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | **Proposed** | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
-| D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | **Proposed** | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
+| D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | **Proposed** | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending | Recommended for Phase 4, not Phase 0. |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. Production Firebase project IDs are deferred by `D-14`. |
@@ -101,7 +101,6 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-19 | Result type | `Outcome<T, E>` | Before `E0-03` | Every public signature in `docs/CONTRACTS.md` depends on it. |
 | D-17 | Flow testing helper | Turbine | Before `E0-05` | Falls back to hand-written collection helpers in `:core:testing`. |
 | D-18 | Coverage | Kover | Before `E0-05` | "High coverage" stays unmeasurable. |
 | D-20 | Localization | Native resources | Before `E1-07` | Shared code has no defined path to localized strings. |

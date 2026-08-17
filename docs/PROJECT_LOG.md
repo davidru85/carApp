@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-19 result channel accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-19`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner accepted the custom `Outcome<T, E>` result channel in `:core:common`.
+- **Why:** `kotlin.Result` cannot represent a typed error channel, and Arrow would add a dependency for one core type; the custom type matches the contracts exactly.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0018-outcome-result-type.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-19`, `Outcome<T, E>` and result type status references.
+- **Follow-ups / risks:** `D-17`, `D-18`, `D-20` and `D-21` remain unresolved; `E0-05` is still blocked by `D-17` and `D-18`.
+
 ### 2026-08-17 — D-16 architecture checks accepted
 
 - **Type:** decision
