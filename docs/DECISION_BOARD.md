@@ -37,7 +37,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
 | D-17 | Flow testing helper | Turbine | Manual collection | Accepted | Confirm compatibility during version pinning in `E0-06`. |
-| D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | **Proposed** | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
+| D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | Accepted | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | **Proposed** | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending | Recommended for Phase 4, not Phase 0. |
@@ -55,7 +55,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Flow testing | Turbine | manual collection | Accepted (D-17) | Validate against the pinned coroutines version. |
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
 | Test doubles | Hand-written fakes | MockK, Mockative | Accepted | Fakes are preferred for domain and sync. |
-| Coverage | Kover | JaCoCo, none | Proposed (D-18) | Thresholds enforced in CI. |
+| Coverage | Kover | JaCoCo, none | Accepted (D-18) | Thresholds enforced in CI. |
 | Android background work | WorkManager | foreground-only sync | Accepted for Phase 3 | Trigger only: it calls `SyncController.requestSync(reason)` and carries no scheduling policy. |
 | iOS background work | BGTaskScheduler | foreground-only sync | Accepted for Phase 3 | Same constraint; a single task identifier. |
 | Connectivity | `ConnectivityObserver` behind a common interface | Ktor-only detection, platform-only direct usage | Accepted | Injected, not `expect`/`actual` in public API. |
@@ -101,6 +101,5 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-18 | Coverage | Kover | Before `E0-05` | "High coverage" stays unmeasurable. |
 | D-20 | Localization | Native resources | Before `E1-07` | Shared code has no defined path to localized strings. |
 | D-21 | Crash reporting | Crashlytics | Before `E4-04` | Non-blocking until release hardening. |

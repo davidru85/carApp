@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-18 coverage measurement accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-18`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Kover was accepted as the coverage measurement tool with the existing thresholds: `:core:model` and `:core:common` at 90%, feature `domain` at 85%, and `:core:sync` at 80%.
+- **Why:** the owner selected the existing recommendation so coverage targets become CI-enforced pass/fail criteria rather than review judgement.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0022-coverage-kover.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-18`, Kover and coverage status references.
+- **Follow-ups / risks:** Kover version compatibility remains validated in `E0-06`; `D-20` and `D-21` remain unresolved.
+
 ### 2026-08-17 — D-17 Flow testing helper accepted
 
 - **Type:** decision

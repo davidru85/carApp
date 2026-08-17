@@ -397,7 +397,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-15 | Logging implementation | Kermit behind `Logger`. | Accepted |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules. | Accepted |
 | D-17 | Flow testing helper | Turbine. | Accepted |
-| D-18 | Coverage measurement | Kover with per-module thresholds. | Proposed |
+| D-18 | Coverage measurement | Kover with per-module thresholds. | Accepted |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common`; Arrow rejected for the MVP. | Accepted |
 | D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Proposed |
 | D-21 | Crash reporting | Firebase Crashlytics, Phase 4. | Pending |

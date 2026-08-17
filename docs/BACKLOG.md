@@ -19,7 +19,7 @@ Size guide: **S** up to half a day, **M** 1 to 2 days, **L** 3 to 5 days.
 
 Goal: a project skeleton that compiles on both platforms and has enforceable architecture boundaries.
 
-**Entry condition:** the owner has confirmed or changed every `Proposed` decision listed as "needed before Phase 0" in `docs/DECISION_BOARD.md` — at minimum `D-13`, `D-14`, `D-15`, `D-16`, `D-19`, `D-22`. `E0-01` MUST NOT start before that.
+**Entry condition:** every decision needed by a Phase 0 story is resolved before that story starts. No Phase 0 story is currently blocked by an unresolved owner decision.
 
 ### E0-00 - Owner Decision Closure - S
 

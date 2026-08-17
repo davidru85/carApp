@@ -24,7 +24,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-15 | [ADR-0016](0016-logging-kermit.md) | Use Kermit behind the `Logger` abstraction. | Accepted |
 | D-16 | [ADR-0017](0017-architecture-checks-konsist.md) | Konsist for package rules, custom Gradle check for module rules. | Accepted |
 | D-17 | [ADR-0019](0019-flow-testing-turbine.md) | Use Turbine for Flow testing. | Accepted |
-| D-18 | [ADR-0022](0022-coverage-kover.md) | Use Kover for coverage thresholds. | Proposed |
+| D-18 | [ADR-0022](0022-coverage-kover.md) | Use Kover for coverage thresholds. | Accepted |
 | D-19 | [ADR-0018](0018-outcome-result-type.md) | Custom `Outcome<T, E>` as the result channel. | Accepted |
 | D-20 | [ADR-0020](0020-localization-native-resources.md) | Native resources; no user-facing text in `UiState`. | Proposed |
 | D-21 | — | Crash reporting. No ADR yet; still `Pending` on the board, decided in Phase 4. | Pending |
