@@ -27,6 +27,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-19 | [ADR-0018](0018-outcome-result-type.md) | Custom `Outcome<T, E>` as the result channel. | Proposed |
 | D-20 | [ADR-0020](0020-localization-native-resources.md) | Native resources; no user-facing text in `UiState`. | Proposed |
 | D-21 | — | Crash reporting. No ADR yet; still `Pending` on the board, decided in Phase 4. | Pending |
-| D-22 | [ADR-0021](0021-application-identifiers.md) | Application identifiers are owner-decided and fixed in `docs/identifiers.md`. | Proposed |
+| D-22 | [ADR-0021](0021-application-identifiers.md) | Application identifiers are owner-decided and fixed in `docs/identifiers.md`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

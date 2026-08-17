@@ -41,7 +41,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | **Proposed** | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | **Proposed** | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending | Recommended for Phase 4, not Phase 0. |
-| D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | **Proposed** | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. |
+| D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. Production Firebase project IDs are deferred by `D-14`. |
 
 ## Library Review Matrix
 
@@ -101,7 +101,6 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-22 | Application identifiers | See `docs/identifiers.md` | Before `E0-01` | Store identifiers are effectively irreversible. |
 | D-15 | Logging implementation | Kermit | Before `E0-03` | `Logger` is part of `AppGraphDependencies` from Phase 0. |
 | D-16 | Architecture checks | Konsist + custom Gradle check | Before `E0-04` | Package-level rules cannot be enforced. |
 | D-19 | Result type | `Outcome<T, E>` | Before `E0-03` | Every public signature in `docs/CONTRACTS.md` depends on it. |

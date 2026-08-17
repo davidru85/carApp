@@ -401,7 +401,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common`; Arrow rejected for the MVP. | Proposed |
 | D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Proposed |
 | D-21 | Crash reporting | Firebase Crashlytics, Phase 4. | Pending |
-| D-22 | Application identifiers | Fixed in `docs/identifiers.md`. | Proposed |
+| D-22 | Application identifiers | Fixed in `docs/identifiers.md`; production Firebase project IDs deferred by `D-14`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

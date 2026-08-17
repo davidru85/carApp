@@ -1,6 +1,6 @@
 # Application Identifiers
 
-> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Every value below marked `Proposed` requires owner confirmation in `E0-00` before `E0-01` starts. Several of them are effectively irreversible once published or created.
+> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. Production Firebase project identifiers are deferred by `D-14` and MUST be decided before `E4-04`.
 >
 > Related decisions: `D-13` Firestore location, `D-14` Firebase project topology, `D-22` application identifiers.
 
@@ -8,8 +8,8 @@
 
 | Value | Status |
 |-------|--------|
-| Application and bundle identifiers | **Proposed** — confirm in `E0-00` |
-| Development Firebase project ID | **Proposed** — confirm in `E0-00` |
+| Application and bundle identifiers | Accepted |
+| Development Firebase project ID | Accepted |
 | Production Firebase topology and project IDs | Deferred — decide before `E4-04` release preparation |
 | Firestore location | Accepted |
 
@@ -17,7 +17,7 @@
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Product name | `carApp` | Working name. The store display name may differ and is decided in `E4-04`. |
+| Product name | `carApp` | Internal and development display name. The final store display name may still be reviewed in `E4-04`. |
 | Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
@@ -32,7 +32,7 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Development project ID | `carapp-dev` | Used by debug builds and by manual testing. |
+| Development project ID | `carapp-dev` | Accepted in `D-22`. Used by debug builds and by manual testing during development. |
 | Production project ID | Deferred until release preparation | The owner rethinks production Firebase topology before `E4-04`; agents MUST NOT invent a production project ID. |
 | CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |

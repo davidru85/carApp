@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-22 application identifiers accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-22`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner accepted `carApp` as the product name, `com.ruizurraca.carapp` as the Android application ID, Android namespace, iOS bundle identifier and shared package root, `Shared` as the iOS framework name, and `carapp-dev` as the development Firebase project ID.
+- **Why:** these identifiers are required before `E0-01` creates platform projects and Firebase app registrations.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/adr/0021-application-identifiers.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-22`, `carApp`, `carapp-dev` and `com.ruizurraca.carapp`.
+- **Follow-ups / risks:** production Firebase topology and production project identifiers remain deferred by `D-14` until `E4-04`.
+
 ### 2026-08-17 — D-22 application package prefix changed
 
 - **Type:** decision

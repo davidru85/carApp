@@ -36,7 +36,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-19 | Result type | `Outcome<T, E>` in `:core:common` | Proposed | `kotlin.Result` has one type parameter; Arrow is out of scope. |
 | D-20 | Localization | Native resources, no user-facing text in `UiState` | Proposed | UI is native; shared code has no resource bundle. |
 | D-21 | Crash reporting | Crashlytics in Phase 4 | Pending | Not needed before release hardening. |
-| D-22 | Application identifiers | `docs/identifiers.md` | Proposed | Store identifiers are effectively irreversible. |
+| D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; production Firebase project IDs are deferred by `D-14`. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
 
