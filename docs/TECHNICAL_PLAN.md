@@ -27,7 +27,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | Accepted | Aligns with the Firebase stack while keeping analytics replaceable. |
 | D-11 | HTTP/API client | Ktor deferred | Deferred | Reserved for a future API-based remote implementation. |
 | D-12 | Image loading | Coil if ever needed | Deferred | Prevents agents from choosing competing loaders. |
-| D-13 | Firestore location | `eur3` | Proposed | Spanish user base; the location is immutable after database creation. |
+| D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation. |
 | D-14 | Firebase project topology | `dev` and `prod` projects plus emulator | Proposed | Keeps test data out of production and makes rules deploys reversible. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Proposed | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Proposed | Gradle cannot express intra-module package rules. |

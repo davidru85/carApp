@@ -502,7 +502,7 @@ Being offline with pending rows renders as `Pending`, never as an error. This is
 
 ## 10. RemoteSyncSource Contract
 
-`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
+`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. It represents a backup and synchronization replica only: Room remains the source of truth for product behaviour and UI reads. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
 
 Required interface shape:
 

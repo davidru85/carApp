@@ -147,7 +147,7 @@ Acceptance criteria:
 - `iosSimulatorArm64` runs in CI.
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
-- The Firestore database exists in the location fixed by `D-13`, in the `dev` project of `D-14`.
+- The Firestore database exists in the location fixed by `D-13`, in the Firebase project governed by `D-14`.
 - The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, type parameter or default argument in the exported API, and the generated Objective-C header is committed as a golden file.
 
 Decision gate:

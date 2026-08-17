@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-13 Firestore location accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-13`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firestore location changed from the proposed `eur3` multi-region to the accepted `europe-west1` single region, and the documentation now states that Firestore is a backup and synchronization replica while Room remains the source of truth.
+- **Why:** the owner chose `europe-west1` after reviewing the cost and availability tradeoff, because Firestore is not the primary product database.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §9` and `§12`, `docs/CONTRACTS.md §10`, `docs/TECHNICAL_PLAN.md §2`, `docs/identifiers.md`, `docs/adr/0014-firestore-location-europe-west1.md`, `docs/adr/README.md`, `docs/BACKLOG.md`, and this log.
+- **Verification:** manual cross-document search for `D-13`, `eur3` and Firestore location references.
+- **Follow-ups / risks:** `D-14`, `D-15`, `D-16`, `D-17`, `D-18`, `D-19`, `D-20`, `D-21` and `D-22` remain unresolved.
+
 ### 2026-08-17 — Agent handoff and contract-check guardrails tightened
 
 - **Type:** milestone

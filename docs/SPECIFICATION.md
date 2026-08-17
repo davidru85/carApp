@@ -303,6 +303,7 @@ The provider decoupling criterion is executable: excluding `:integration:*` and 
 ### 9.1 Principles
 
 - The local database is the only UI source of truth.
+- Firestore is a backup and synchronization replica only; it is never the product source of truth.
 - Every write is local first.
 - Remote sync is background work.
 - IDs are UUID v4 generated on the client.
@@ -391,7 +392,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker`. | Accepted |
 | D-11 | HTTP/API client | Ktor deferred until a future API-based remote implementation exists. | Deferred |
 | D-12 | Image loading | Coil, only if a story ever requires image loading. | Deferred |
-| D-13 | Firestore location | `eur3` European multi-region. | Proposed |
+| D-13 | Firestore location | `europe-west1` single region. | Accepted |
 | D-14 | Firebase project topology | Separate `dev` and `prod` projects plus the local emulator. | Proposed |
 | D-15 | Logging implementation | Kermit behind `Logger`. | Proposed |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules. | Proposed |

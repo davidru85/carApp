@@ -19,7 +19,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-10 | [ADR-0011](0011-firebase-analytics.md) | Use Firebase Analytics behind `AnalyticsTracker`. | Accepted |
 | D-11 | [ADR-0012](0012-defer-ktor-api-client.md) | Defer Ktor until an API-based remote implementation exists. | Deferred |
 | D-12 | [ADR-0013](0013-defer-coil-image-loading.md) | Use Coil if image loading becomes necessary. | Deferred |
-| D-13 | [ADR-0014](0014-firestore-location-eur3.md) | Create the Firestore database in `eur3`. | Proposed |
+| D-13 | [ADR-0014](0014-firestore-location-europe-west1.md) | Create the Firestore database in `europe-west1`. | Accepted |
 | D-14 | [ADR-0015](0015-firebase-project-topology.md) | Two Firebase projects plus the emulator. | Proposed |
 | D-15 | [ADR-0016](0016-logging-kermit.md) | Use Kermit behind the `Logger` abstraction. | Proposed |
 | D-16 | [ADR-0017](0017-architecture-checks-konsist.md) | Konsist for package rules, custom Gradle check for module rules. | Proposed |

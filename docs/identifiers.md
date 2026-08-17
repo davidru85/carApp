@@ -10,7 +10,7 @@
 |-------|--------|
 | Application and bundle identifiers | **Proposed** — confirm in `E0-00` |
 | Firebase project IDs | **Proposed** — confirm in `E0-00` |
-| Firestore location | **Proposed** — confirm in `E0-00`, immutable after creation |
+| Firestore location | Accepted |
 
 ## Application
 
@@ -34,7 +34,7 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Development project ID | `carapp-dev` | Used by debug builds and by manual testing. |
 | Production project ID | `carapp-prod` | Used by release builds only. |
 | CI | Firestore emulator only | CI MUST NOT hold production credentials or write to a real project. |
-| Firestore location | `eur3` (Europe multi-region) | **Immutable after database creation.** Chosen because the initial user base is Spanish. |
+| Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
 | Registered apps per project | Android debug, Android release, iOS debug, iOS release | Each with its own `google-services.json` / `GoogleService-Info.plist`. |
 
