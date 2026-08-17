@@ -33,7 +33,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-11 | HTTP/API client | Ktor, for future API-based remote implementations | Retrofit, native URLSession/OkHttp wrappers, no HTTP abstraction | Deferred | Do not add Ktor to the MVP. |
 | D-12 | Image loading | Coil, if image loading ever becomes necessary | SDWebImage, platform-native loaders, none | Deferred | No image loading dependency until a story requires it; Coil is then the only approved library. |
 | D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
-| D-14 | Firebase project topology | Two projects, `carapp-dev` and `carapp-prod`, plus the local emulator for tests | Single project, three projects with staging | **Proposed** | Rules and data are deployed to `dev` first. CI uses the emulator only. No production credentials in CI. |
+| D-14 | Firebase project topology | One development Firebase project plus the local emulator; production topology deferred until release preparation | Two projects from day one, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and production Firebase topology MUST be decided before public release. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | **Proposed** | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | **Proposed** | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
 | D-17 | Flow testing helper | Turbine | Manual collection | **Proposed** | Confirm compatibility during version pinning in `E0-06`. |
@@ -101,7 +101,6 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-14 | Firebase project topology | `carapp-dev` + `carapp-prod` + emulator | Before `E0-07` | Test data lands in production. |
 | D-22 | Application identifiers | See `docs/identifiers.md` | Before `E0-01` | Store identifiers are effectively irreversible. |
 | D-15 | Logging implementation | Kermit | Before `E0-03` | `Logger` is part of `AppGraphDependencies` from Phase 0. |
 | D-16 | Architecture checks | Konsist + custom Gradle check | Before `E0-04` | Package-level rules cannot be enforced. |

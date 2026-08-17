@@ -9,7 +9,8 @@
 | Value | Status |
 |-------|--------|
 | Application and bundle identifiers | **Proposed** — confirm in `E0-00` |
-| Firebase project IDs | **Proposed** — confirm in `E0-00` |
+| Development Firebase project ID | **Proposed** — confirm in `E0-00` |
+| Production Firebase topology and project IDs | Deferred — decide before `E4-04` release preparation |
 | Firestore location | Accepted |
 
 ## Application
@@ -32,11 +33,11 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Item | Value | Notes |
 |------|-------|-------|
 | Development project ID | `carapp-dev` | Used by debug builds and by manual testing. |
-| Production project ID | `carapp-prod` | Used by release builds only. |
-| CI | Firestore emulator only | CI MUST NOT hold production credentials or write to a real project. |
+| Production project ID | Deferred until release preparation | The owner rethinks production Firebase topology before `E4-04`; agents MUST NOT invent a production project ID. |
+| CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
-| Registered apps per project | Android debug, Android release, iOS debug, iOS release | Each with its own `google-services.json` / `GoogleService-Info.plist`. |
+| Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until production topology is decided. |
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
 

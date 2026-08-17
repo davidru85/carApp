@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-14 Firebase project topology accepted for development
+
+- **Type:** decision
+- **Story / Decision:** `D-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase topology changed from proposed `dev` plus `prod` projects to one development Firebase project plus the local emulator; production Firebase topology is deferred until release preparation.
+- **Why:** the owner chose a simpler development setup because Firestore is only a backup and synchronization replica, while Room remains the source of truth.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/adr/0015-firebase-project-topology.md`, `docs/adr/README.md`, `docs/SECURITY.md`, and this log.
+- **Verification:** manual cross-document search for `D-14`, Firebase topology, project ID, emulator and production references.
+- **Follow-ups / risks:** development Firebase project ID remains governed by `D-22`. Production topology and production project IDs must be decided before `E4-04`.
+
 ### 2026-08-17 — D-13 Firestore location accepted
 
 - **Type:** decision

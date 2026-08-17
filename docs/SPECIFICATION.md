@@ -393,7 +393,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-11 | HTTP/API client | Ktor deferred until a future API-based remote implementation exists. | Deferred |
 | D-12 | Image loading | Coil, only if a story ever requires image loading. | Deferred |
 | D-13 | Firestore location | `europe-west1` single region. | Accepted |
-| D-14 | Firebase project topology | Separate `dev` and `prod` projects plus the local emulator. | Proposed |
+| D-14 | Firebase project topology | One development Firebase project plus the local emulator; production topology deferred until release preparation. | Accepted |
 | D-15 | Logging implementation | Kermit behind `Logger`. | Proposed |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules. | Proposed |
 | D-17 | Flow testing helper | Turbine. | Proposed |

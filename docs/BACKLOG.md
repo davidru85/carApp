@@ -147,7 +147,7 @@ Acceptance criteria:
 - `iosSimulatorArm64` runs in CI.
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
-- The Firestore database exists in the location fixed by `D-13`, in the Firebase project governed by `D-14`.
+- The Firestore database exists in the location fixed by `D-13`, in the development Firebase project governed by `D-14`.
 - The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, type parameter or default argument in the exported API, and the generated Objective-C header is committed as a golden file.
 
 Decision gate:
@@ -521,6 +521,7 @@ Acceptance criteria:
 
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
+- Production Firebase topology and project identifiers have been decided by the owner before any public release build points to Firebase.
 - Release builds are installable on both platforms.
 - Account deletion and Apple sign-in requirements are satisfied.
 - Release logging redaction is verified: no UID, notes, odometer or cost values in release logs.
