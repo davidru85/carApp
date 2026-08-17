@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-20 localization implementation accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-20`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** native Android and iOS resources were accepted for localization, with `UiState` carrying typed values only and no user-facing text.
+- **Why:** the owner selected the existing recommendation; the UI is native, so native resource catalogues keep localization idiomatic without adding a shared resource dependency.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0020-localization-native-resources.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-20`, localization, native resources and `UiState` status references.
+- **Follow-ups / risks:** `D-21` remains unresolved and is needed before `E4-04`.
+
 ### 2026-08-17 — D-18 coverage measurement accepted
 
 - **Type:** decision

@@ -34,7 +34,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-17 | Flow testing helper | Turbine | Accepted | Confirm compatibility during version pinning. |
 | D-18 | Coverage | Kover with thresholds | Accepted | Makes "high coverage" a pass/fail criterion. |
 | D-19 | Result type | `Outcome<T, E>` in `:core:common` | Accepted | `kotlin.Result` has one type parameter; Arrow is out of scope. |
-| D-20 | Localization | Native resources, no user-facing text in `UiState` | Proposed | UI is native; shared code has no resource bundle. |
+| D-20 | Localization | Native resources, no user-facing text in `UiState` | Accepted | UI is native; shared code has no resource bundle. |
 | D-21 | Crash reporting | Crashlytics in Phase 4 | Pending | Not needed before release hardening. |
 | D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; production Firebase project IDs are deferred by `D-14`. |
 

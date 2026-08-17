@@ -39,7 +39,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-17 | Flow testing helper | Turbine | Manual collection | Accepted | Confirm compatibility during version pinning in `E0-06`. |
 | D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | Accepted | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
-| D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | **Proposed** | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
+| D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | Accepted | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending | Recommended for Phase 4, not Phase 0. |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. Production Firebase project IDs are deferred by `D-14`. |
 
@@ -59,7 +59,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Android background work | WorkManager | foreground-only sync | Accepted for Phase 3 | Trigger only: it calls `SyncController.requestSync(reason)` and carries no scheduling policy. |
 | iOS background work | BGTaskScheduler | foreground-only sync | Accepted for Phase 3 | Same constraint; a single task identifier. |
 | Connectivity | `ConnectivityObserver` behind a common interface | Ktor-only detection, platform-only direct usage | Accepted | Injected, not `expect`/`actual` in public API. |
-| Localization | Native Android/iOS resources | shared resource library | Proposed (D-20) | Native resources because UI is native. |
+| Localization | Native Android/iOS resources | shared resource library | Accepted (D-20) | Native resources because UI is native. |
 | Architecture checks | Konsist + custom Gradle check | custom only, dependency-analysis plugin | Accepted (D-16) | See D-16. |
 | Charts | None for MVP | Vico, Swift Charts | Rejected for MVP | Advanced charts are out of scope. |
 | Image loading | Coil | SDWebImage, platform-native | Deferred (D-12) | Only if a story requires it. |
@@ -101,5 +101,4 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-20 | Localization | Native resources | Before `E1-07` | Shared code has no defined path to localized strings. |
 | D-21 | Crash reporting | Crashlytics | Before `E4-04` | Non-blocking until release hardening. |
