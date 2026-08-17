@@ -48,6 +48,8 @@ The decisions that originally blocked Phase 0 are now closed. `D-13` through `D-
 
 The `E0-00` acceptance criteria and document map have been aligned with `D-14`: only the development Firebase project ID is fixed during development. A separate production Firebase project is required before release, but its project ID remains deferred until `E4-04`.
 
+The empty "Decisions Awaiting Owner Confirmation" table was replaced with an explicit no-open-decisions sentence so future `contract-check` parsing has an unambiguous empty state.
+
 ## Still open
 
 The owner is continuing the audit-remediation review issue by issue. Keep this file until every theme above has been reviewed against the current documents and any remaining contradictions have been corrected.

@@ -97,8 +97,6 @@ Firebase SDK, GitLive and native Firebase types are allowed only inside integrat
 
 ## Decisions Awaiting Owner Confirmation
 
-Everything below is either `Proposed` (a recommendation is on the table) or `Pending` (no recommendation). A story named in `Needed by` MUST NOT start until its row is resolved.
-
-| ID | Area | Recommendation | Needed by | Consequence if unresolved |
-|----|------|----------------|-----------|---------------------------|
 No `Proposed` or `Pending` decisions are currently awaiting owner confirmation.
+
+When a future decision is added with status `Proposed` or `Pending`, this section MUST contain a Markdown table with columns `ID`, `Area`, `Recommendation`, `Needed by` and `Consequence if unresolved`. A story named in `Needed by` MUST NOT start until its row is resolved.

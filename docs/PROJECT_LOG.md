@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Empty owner-decision queue made explicit
+
+- **Type:** correction
+- **Story / Decision:** `E0-00`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the "Decisions Awaiting Owner Confirmation" section now has a clear no-open-decisions state instead of an empty table with a sentence where a row would normally be.
+- **Why:** the future `contract-check` should not have to parse a malformed table to determine that no `Proposed` or `Pending` decisions exist.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md §18`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual review of the decision-board empty state and the corresponding `contract-check` assertion.
+- **Follow-ups / risks:** if a future `Proposed` or `Pending` decision is introduced, this section must become a real table with a `Needed by` story or phase.
+
 ### 2026-08-17 — D-14 future production project clarified
 
 - **Type:** decision
