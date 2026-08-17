@@ -252,11 +252,13 @@ Odometer validation (R-1) uses the previous non-deleted fuel entry in **chronolo
 Consumption (R-3) operates on non-deleted fuel entries of one vehicle in **calculation** order:
 
 - `P` is the nearest preceding entry with `isFullTank = true` in calculation order.
+- `E`, the segment end, MUST have `isFullTank = true`. Entries with `isFullTank = false` never close a segment and never produce a `SegmentResult`.
 - Segment membership is `P.odometerKm < X.odometerKm <= E.odometerKm`.
 - An entry whose `odometerKm` equals `P.odometerKm`, and which is not `P` itself, **is included** in the segment (its litres count) and additionally invalidates the segment with `DuplicateOdometerInSegment`.
+- Partial fuel entries inside the segment membership range are included in the segment litres.
 - Partial fuel entries before the first full-tank anchor never contribute to a valid segment.
 
-The complete and exhaustive set of invalidation reasons is `ConsumptionInvalidReason` (§20). No other document may restate that list.
+The complete set of consumption explanation reasons is `ConsumptionInvalidReason` (§20). `EndEntryNotFullTank` is a list-projection reason for partial rows; it is not a `SegmentResult.Invalid` reason.
 
 ## 5. Validation and Save Semantics
 
@@ -771,6 +773,8 @@ fun interface CalculateConsumption {
 ```
 
 Contract: `entries` MUST contain only non-deleted entries of `vehicleId`, in any order; the implementation sorts them in calculation order (§4). The function is **pure and total** — it never throws and returns no error type. Invalid segments are represented as `SegmentResult.Invalid(reason)`.
+
+`CalculateConsumption` creates one `SegmentResult` for each entry with `isFullTank = true`, in calculation order. It MUST NOT create a segment for partial entries and MUST NOT produce `SegmentResult.Invalid(EndEntryNotFullTank)`. Partial entries inside a full-to-full segment still contribute their litres to that segment.
 
 ## 14. Presentation State Contract
 
@@ -1318,6 +1322,14 @@ data class UserSettings(
 )
 ```
 
+`FuelEntryListItem` consumption mapping is exact:
+
+- For an entry with `isFullTank = false`, `consumption = null` and `invalidReason = EndEntryNotFullTank`.
+- For an entry with `isFullTank = true` whose segment result is `SegmentResult.Valid`, `consumption = segment.consumption` and `invalidReason = null`.
+- For an entry with `isFullTank = true` whose segment result is `SegmentResult.Invalid`, `consumption = null` and `invalidReason = segment.reason`.
+
+The list projection MUST NOT run a different consumption algorithm. It derives row values from the same full-to-full segment rules of §4 and §20.6.
+
 ### 20.5 Commands
 
 ```kotlin
@@ -1413,7 +1425,9 @@ data class ConsumptionReport(
 )
 ```
 
-`SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
+`EndEntryNotFullTank` is produced only by the `FuelEntryListItem` projection for an entry with `isFullTank = false`. `SegmentResult.Invalid` MUST NOT use `EndEntryNotFullTank`, because `ConsumptionReport.segments` contains one result per full-tank entry only.
+
+`SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. Partial entries inside a valid full-to-full segment are included in `SegmentResult.Valid.litersScaled`; the partial row itself has no consumption value. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
 
 ### 20.7 Sync types — `:core:sync`
 

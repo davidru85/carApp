@@ -234,6 +234,7 @@ Acceptance criteria:
 - Happy path with two full tanks.
 - First full tank produces `NoPreviousFullTank`.
 - Partial intermediate refuel contributes to the next full segment.
+- Partial entries do not produce `SegmentResult`; `EndEntryNotFullTank` is not emitted by `CalculateConsumption`.
 - An entry sharing `odometerKm` with `P` is counted in the segment litres and yields `DuplicateOdometerInSegment`.
 - `hasMissedEntries = true` on entry `E` invalidates the segment ending at `E` and any segment containing `E`, and leaves earlier segments valid — per `docs/CONTRACTS.md §3`. A partial entry flagged `hasMissedEntries` therefore invalidates the segment ending at the *next* full tank.
 - `odometerInconsistent` invalidates the containing segment.
@@ -254,6 +255,7 @@ Acceptance criteria:
 
 - Queries support both orderings of `docs/CONTRACTS.md §4`.
 - `observeFuelEntries` returns the `FuelEntryListItem` projection and excludes orphan entries.
+- `FuelEntryListItem` maps partial rows to `consumption = null` and `invalidReason = EndEntryNotFullTank`, while still allowing those rows to contribute litres to the next full segment.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
 - Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
 - Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
@@ -281,7 +283,7 @@ Acceptance criteria:
 - Form defaults follow F-3, including the `hasMissedEntries` secondary toggle.
 - The derived R-2 value recalculates while typing, using `MoneyInput`.
 - The odometer warning dialog implements the two-step confirmation.
-- Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`.
+- Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`, including `EndEntryNotFullTank` for partial refuels.
 - Empty consumption state follows the specification.
 
 ### E1-09 - iOS UI: Vehicles and Fuel Entries - L
@@ -293,6 +295,7 @@ Acceptance criteria:
 - No business logic is duplicated in Swift.
 - State holder scopes are created in `init` and cancelled in `deinit`.
 - Functional parity with Android for F-2 and F-3.
+- Fuel-entry consumption and no-consumption explanations match Android, including `EndEntryNotFullTank` for partial refuels.
 - Dynamic Type is usable for critical flows.
 
 ### E1-10 - Settings Persistence - S

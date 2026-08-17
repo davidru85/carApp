@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Partial refuel consumption explanation defined
+
+- **Type:** decision
+- **Story / Decision:** `F-15`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `EndEntryNotFullTank` is kept as the list-projection reason for partial refuels. Partial rows show no own consumption, do not produce `SegmentResult`, and still contribute litres to the next full-to-full segment when they fall inside it.
+- **Why:** the owner chose to keep a clear UI explanation for non-full refuels while preserving full-to-full consumption as the only calculation model.
+- **Documents touched:** `docs/SPECIFICATION.md §6`, `docs/CONTRACTS.md §4`, `§13`, `§20.4` and `§20.6`, `docs/BACKLOG.md` `E1-05`, `E1-06`, `E1-08` and `E1-09`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `F-15`, `EndEntryNotFullTank`, `FuelEntryListItem`, `SegmentResult`, `ConsumptionReport` and partial refuels; `git diff --check`.
+- **Follow-ups / risks:** no active audit findings remain. `docs/AUDIT_GUARDRAILS.md` is ready for owner review and later deletion.
+
 ### 2026-08-17 — Firestore remote schemas closed
 
 - **Type:** decision

@@ -160,6 +160,8 @@ consumption = liters / distanceKm * 100
 
 A segment produces no consumption when any invalidation reason applies. The exhaustive list of reasons, the ordering used to select `P`, and the treatment of entries sharing an odometer with `P` are normative in `docs/CONTRACTS.md §4` and `ConsumptionInvalidReason` in `docs/CONTRACTS.md §20.6`. This section MUST NOT restate that list.
 
+An entry with `isFullTank = false` does not close a segment and has no own consumption value. It is still included in the litres of the next full-to-full segment when its odometer places it inside that segment. The list projection uses `ConsumptionInvalidReason.EndEntryNotFullTank` to explain why that partial row has no consumption.
+
 Average vehicle consumption is distance-weighted:
 
 ```text
