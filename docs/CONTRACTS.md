@@ -46,7 +46,9 @@ All time reads go through the injected `AppClock` (§20). Direct use of a system
 | `Money` | data class with `minorUnits: Long`, `currency: CurrencyCode` | ISO-4217 minor units | INTEGER + currency code |
 | `FuelVolume` | scaled integer value class | 3 decimals, litres × 1000 | INTEGER |
 | `PricePerLiter` | scaled integer value class | 3 decimals, currency units × 1000 | INTEGER |
-| `ConsumptionL100Km` | scaled integer value class, `scaled: Int` | 2 decimals, L/100 km × 100 | Computed read model, never persisted |
+| `ConsumptionL100Km` | scaled integer value class, `scaled: Long` | 2 decimals, L/100 km × 100 | Computed read model, never persisted |
+
+Every scaled type carries its value in a `Long`. `Int` MUST NOT be used for a scaled quantity: the distance-weighted average sums `litersScaled` across every valid segment of a vehicle, and `10 * sum(litersScaled)` overflows `Int` well inside the per-vehicle entry ceiling of §12.
 
 `Money` values of different `currency` MUST NOT be added, subtracted or compared. Any aggregation across currencies is a `ValidationError.InvalidUnit`.
 
@@ -73,6 +75,35 @@ Golden values that MUST be covered by tests in `:core:model`:
 MVP currency constraint: `MinorUnits.factorFor` supports **only** 2-decimal ISO-4217 codes in the MVP. A locale suggesting a 0-decimal or 3-decimal currency (JPY, KWD, …) falls back to `EUR`, and an explicit user selection of such a currency returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
 
 Which value is derived is never ambiguous: the caller states which two values it supplied through `MoneyInput` (§20), and the third is computed. All three are persisted; `MoneyInput` records the authoritative pair, and re-deriving the third from the stored pair MUST be stable.
+
+### Canonical consumption arithmetic
+
+Consumption uses the same HALF_UP convention as money and MUST be implemented literally. `docs/SPECIFICATION.md §6` R-3 states the mathematical definition in unscaled litres; the formulas below are the only implementable form, because `litersScaled` is litres × 1000 while `ConsumptionL100Km.scaled` is L/100 km × 100.
+
+```text
+// L/100 km       = (litersScaled / 1000) / distanceKm * 100 = litersScaled / (10 * distanceKm)
+// scaled by 100  = 10 * litersScaled / distanceKm
+
+segmentConsumptionScaled = (10 * segmentLitersScaled + distanceKm / 2) / distanceKm
+
+averageConsumptionScaled = (10 * sum(validSegmentLitersScaled) + sum(validSegmentDistanceKm) / 2)
+                           / sum(validSegmentDistanceKm)
+```
+
+Both are computed in `Long`. `distanceKm > 0` is guaranteed by the caller: a segment with `distanceKm <= 0` is `SegmentResult.Invalid(NonPositiveDistance)` and never reaches this arithmetic, so the division is total.
+
+The average divides summed litres by summed distance. It is NOT the arithmetic mean of the segment values, and it is NOT recomputed from the already-rounded `segmentConsumptionScaled` values.
+
+Golden values that MUST be covered by tests in `:core:model`:
+
+| Case | `litersScaled` | `distanceKm` | `scaled` result | Meaning |
+|------|----------------|--------------|-----------------|---------|
+| Segment, rounds down | `45_123` | `600` | `752` | 7.52 L/100 km — exact value is 7.5205 |
+| Segment, exact | `40_000` | `500` | `800` | 8.00 L/100 km |
+| Segment, rounds up | `30_000` | `397` | `756` | 7.56 L/100 km — exact value is 7.55668 |
+| Average of segments 1 and 2 | `85_123` | `1_100` | `774` | 7.74 L/100 km — exact value is 7.73845 |
+
+The last row is the regression test for the distance-weighted rule: the arithmetic mean of `752` and `800` is `776`, which is wrong.
 
 ## 3. Canonical Entity Schema
 
@@ -305,7 +336,11 @@ This table is normative; it decides retry versus poison.
 | `InvalidArgument` | `ValidationRejected` | **poison** |
 | `NotFound` on push | — | treated as success; the local row is marked synced |
 | `NotFound` on pull | — | ignored |
-| `Unknown` | `RetryableNetwork` | retry, capped at 3 attempts, then poison |
+| `Unknown` | `RetryableNetwork` | retry with backoff, `attemptCount++` |
+
+There is exactly **one** retry counter, `outbox.attemptCount`, and exactly one ceiling, `MAX_RETRYABLE_ATTEMPTS` (§9.7). No `RemoteError` carries a separate, lower cap: the outbox holds a single counter, so a per-code ceiling would not be representable and two agents would resolve it differently. `Unknown` is retried on the same terms as `Unavailable` — a rules rejection or an invalid argument poisons immediately because it is known to be permanent, whereas `Unknown` means the opposite, so giving up on it sooner than on a network error would be backwards.
+
+`outbox.lastErrorCode` stores the code of the **originating** error, which for a remote failure is the `RemoteError` code (`REMOTE.UNAVAILABLE`, `REMOTE.UNKNOWN`, …), not the `SyncError` it maps to. This granularity is load-bearing: `Unavailable` and `Unknown` both map to `RetryableNetwork`, and only the originating code separates a failure that MUST NOT poison from one that MUST.
 
 ### Read versus write absence
 
@@ -337,9 +372,9 @@ Allowed transitions:
 | `SYNCING` | `PENDING` | `localRevision` changed during push. |
 | `SYNCING` | `FAILED_RETRYABLE` | Retryable network or remote failure. |
 | `FAILED_RETRYABLE` | `PENDING` | Automatic due retry, manual retry, or a local edit. |
-| `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS`. |
+| `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS` **and** `lastErrorCode` is not a connectivity code (§9.7). |
 | `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure. |
-| `FAILED_POISONED` | `PENDING` | User or repair flow edits the entity and re-enqueues a valid snapshot. |
+| `FAILED_POISONED` | `PENDING` | User or repair flow edits the entity and re-enqueues a valid snapshot, **or** the user invokes `SyncController.retryFailed()` (§9.7). |
 
 `FAILED_POISONED` is never retried automatically.
 
@@ -380,9 +415,11 @@ Tombstone purge: a tombstone is purgeable locally only when `syncState == SYNCED
 
 `SyncController` is a singleton in the app graph holding a `Mutex`. All triggers call `requestSync(reason)`, which sets a pending flag and returns immediately; concurrent triggers coalesce into one pending cycle. Android platform triggers MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)` and MUST route through the same in-process `SyncController`; iOS uses a single `BGTaskScheduler` identifier. Cross-process sync is not supported and MUST NOT be introduced.
 
-### 9.2 Cycle order
+### 9.2 Cycle admission and order
 
-Deterministic, because the convergence simulation depends on it:
+A cycle MUST NOT start while `ConnectivityObserver.isOnline` is `false`. It ends immediately as a no-op, leaving `attemptCount`, `nextAttemptAt`, `lastError` and `lastErrorCode` untouched, and the pending rows keep their existing state. This is the primary defence against burning the retry budget offline; the qualified poison rule of §9.7 is the second, for connectivity lost mid-cycle.
+
+Once admitted, the order is deterministic, because the convergence simulation depends on it:
 
 - If the local database contains no rows for the owner **and** the outbox is empty: pull, then push.
 - Otherwise: push, then pull.
@@ -430,7 +467,20 @@ delay = base * (800 + jitter.nextInt(0, 401)) / 1000   // ±20 %
 delay = delay.coerceIn(1_000L, 900_000L)
 ```
 
-The jitter source MUST be injectable for deterministic tests. `MAX_RETRYABLE_ATTEMPTS = 10`; on reaching it the row becomes `FAILED_POISONED`. Manual retry sets `nextAttemptAt = now` and preserves `attemptCount`.
+The jitter source MUST be injectable for deterministic tests. `MAX_RETRYABLE_ATTEMPTS = 10`.
+
+**Connectivity failures MUST NOT consume the poison budget.** `attemptCount` still increments on every failure, because it is the exponent that drives the backoff, but the poison rule is qualified:
+
+```text
+CONNECTIVITY_ERROR_CODES = { "REMOTE.UNAVAILABLE", "REMOTE.DEADLINE_EXCEEDED" }
+
+poison  iff  attemptCount >= MAX_RETRYABLE_ATTEMPTS
+        and  lastErrorCode not in CONNECTIVITY_ERROR_CODES
+```
+
+A row failing only for connectivity reasons therefore stays `FAILED_RETRYABLE` indefinitely, with `attemptCount` pinned at the ceiling and the backoff at its 15-minute cap, and resumes as soon as the network returns. Without this qualification the constants above poison every pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity repair.
+
+Manual retry through `SyncController.retryFailed()` sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and clears `lastError` and `lastErrorCode`. Preserving the count would make manual retry useless on exactly the rows that need it, because the count is already at the ceiling.
 
 ### 9.8 Trigger constants
 
@@ -446,11 +496,13 @@ All five are `SyncTrigger` values passed to `requestSync(reason)` and logged wit
 
 ### 9.9 Aggregate status
 
-`SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`. Being offline with pending rows renders as `Pending`, never as an error.
+`SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`.
+
+Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a row in `FAILED_RETRYABLE` whose `lastErrorCode` is a connectivity code (§9.7) counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
 
 ## 10. RemoteSyncSource Contract
 
-`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
+`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. It represents a backup and synchronization replica only: Room remains the source of truth for product behaviour and UI reads. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
 
 Required interface shape:
 
@@ -557,6 +609,8 @@ data class AppGraphDependencies(
 
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
+
+`CrashReporter` is introduced in Phase 4 and MUST be bound through the same app graph before release builds point at Firebase. Before Phase 4, tests and local builds may use a no-op implementation.
 
 Rules:
 
@@ -838,6 +892,8 @@ Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes
 
 Redaction is decided from the injected `isDebugBuild` flag: debug builds may log entity IDs in full; release builds log the first 8 characters followed by an ellipsis, and never log the UID at any length.
 
+`Logger` is not an analytics or crash-reporting API. Logging events MUST NOT be treated as `AnalyticsEvent` values or crash reports. Provider integrations may use `Logger` internally for operational diagnostics, subject to the same privacy rules.
+
 ## 18. CI and Branch Protection Contract
 
 Phase 0 defines the exact CI check names. Required checks:
@@ -854,9 +910,12 @@ Phase 0 defines the exact CI check names. Required checks:
 `contract-check` is a script that asserts:
 
 1. Every type named in a code block in this document is declared in §20.
-2. The decision ID set is identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
-3. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
-4. The committed Objective-C header golden file for `:shared` is unchanged.
+2. The decision ID set and status are identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+3. Every ADR linked from `docs/adr/README.md` has a `Status` heading whose value matches the status recorded for its decision ID.
+4. Every `Proposed` or `Pending` decision in `docs/DECISION_BOARD.md` appears in the "Decisions Awaiting Owner Confirmation" section with a `Needed by` story or phase. If no such decisions exist, the section states that none are awaiting owner confirmation and contains no empty table.
+5. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
+6. `.github/pull_request_template.md` remains a superset of `docs/templates/agent-handoff.md` section headings.
+7. The committed Objective-C header golden file for `:shared` is unchanged.
 
 Once CI exists, branch protection for `main` MUST require these checks before merge.
 
@@ -867,6 +926,53 @@ The canonical human review gate list lives in `AGENTS.md` and MUST NOT be restat
 ## 20. Canonical Type Definitions
 
 Every type referenced by a signature in this document is declared here. Implementations MUST match these shapes.
+
+### 20.0 Identifiers, money and scaled values — `:core:model`
+
+The foundational types of §2. They were previously described only in prose tables, which left their property names, widths and construction semantics open.
+
+```kotlin
+@JvmInline value class EntityId(val value: String)         // lowercase canonical UUID v4
+@JvmInline value class OwnerId(val value: String)          // Firebase UID, or LOCAL_OWNER
+@JvmInline value class CurrencyCode(val value: String)     // ISO-4217 uppercase
+
+val LOCAL_OWNER: OwnerId = OwnerId("LOCAL_OWNER")          // §11.2, §11.4
+
+data class Money(val minorUnits: Long, val currency: CurrencyCode)
+
+@JvmInline value class FuelVolume(val scaled: Long)          // litres × 1000
+@JvmInline value class PricePerLiter(val scaled: Long)       // currency units × 1000
+@JvmInline value class ConsumptionL100Km(val scaled: Long)   // L/100 km × 100
+```
+
+**Property naming is canonical.** Identifier types expose `value`; scaled quantity types expose `scaled`. An implementation using `raw`, `id`, `amount` or a unit-specific name is a contract violation. `scaled` deliberately matches the `…Scaled` field suffix of §3, so `fuelEntry.litersScaled` and `FuelVolume.scaled` name the same idea with the same word.
+
+**Construction never validates.** These types have no `init` block, throw nothing, and reject nothing. Wrapping a malformed UUID or an unsupported currency code is legal at the type level. Validation lives in the use cases of §5, which return typed errors.
+
+This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint, and its only legal failures are I/O, serialization and schema-version quarantine. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
+
+**Every scaled value is a `Long`**, per §2. Mixing widths across these types is a contract violation.
+
+All of the above are Kotlin-internal and MUST NOT appear on the Swift-facing surface (§15.3).
+
+### 20.0.1 Named constants — `:core:common`
+
+Constants referred to by name elsewhere in this document. Writing the literal inline instead of referencing one of these is a contract violation. They live beside the backoff helper in `:core:common` (`docs/TECHNICAL_PLAN.md §3`), which every module that needs them already depends on; `LOCAL_OWNER` is the exception and lives with `OwnerId` in §20.0.
+
+```kotlin
+const val CLIENT_MAX_SCHEMA_VERSION: Int = 1   // §9.5  — highest schemaVersion this client applies
+const val MAX_RETRYABLE_ATTEMPTS: Int = 10     // §9.7  — attemptCount ceiling
+const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel entry load ceiling
+const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
+
+// §9.7 — failures that MUST NOT consume the poison budget
+val CONNECTIVITY_ERROR_CODES: Set<String> = setOf(
+    "REMOTE.UNAVAILABLE",
+    "REMOTE.DEADLINE_EXCEEDED",
+)
+```
+
+`CLIENT_MAX_SCHEMA_VERSION` is bumped only by a story that also ships the migration able to read the new version, and bumping it REQUIRES re-evaluating the `quarantine` table on upgrade (§9.5).
 
 ### 20.1 Result channel — `:core:common`
 
@@ -984,6 +1090,11 @@ interface OwnerContext {
 }
 
 interface DatabaseFactory { fun create(): AppDatabase }
+
+interface CrashReporter {
+    fun recordNonFatal(error: AppError, fields: Map<String, String>)
+    fun setEnabled(enabled: Boolean)
+}
 
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int }   // 2-decimal ISO-4217 only in the MVP
 ```
@@ -1143,13 +1254,7 @@ data class ConsumptionReport(
 )
 ```
 
-Average consumption is distance-weighted:
-
-```text
-average = sum(validSegmentLitersScaled) / sum(validSegmentDistanceKm) / 10
-```
-
-expressed in the 2-decimal scaled form. It is NOT the arithmetic mean of segment values.
+`SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
 
 ### 20.7 Sync types — `:core:sync`
 

@@ -6,9 +6,23 @@ Fill in every section. This template is the canonical field list; `AGENTS.md` li
 
 `Ex-00 - title`
 
+## Ready Check
+
+- Backlog story:
+- Acceptance criteria reviewed:
+- Dependencies checked:
+- Decisions checked:
+- Normative sections reviewed:
+- Expected verification:
+- Human review gates identified before work:
+
 ## Scope Completed
 
 - 
+
+## Acceptance Evidence
+
+-
 
 ## Out of Scope / Not Done
 

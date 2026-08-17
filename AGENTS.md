@@ -28,7 +28,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 
 | Document | What it provides |
 |----------|------------------|
-| [TECHNICAL_PLAN.md](docs/TECHNICAL_PLAN.md) | Module architecture, the dependency rule table that generates the architecture checks, local data model and outbox DDL, Firestore design, sync engine pseudocode, the 16 required sync tests, phases, risks and the verification strategy. |
+| [TECHNICAL_PLAN.md](docs/TECHNICAL_PLAN.md) | Module architecture, the dependency rule table that generates the architecture checks, local data model and outbox DDL, Firestore design, sync engine pseudocode, the 17 required sync tests, phases, risks and the verification strategy. |
 | [BACKLOG.md](docs/BACKLOG.md) | Agent-sized stories with dependencies, acceptance criteria, execution order and a story index. Work is assigned one story at a time. |
 | [DEFINITION.md](docs/DEFINITION.md) | Executive overview and orientation for humans. Creates no rules. |
 | [README.md](README.md) | Public front page and documentation index. |
@@ -42,7 +42,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [PROJECT_LOG.md](docs/PROJECT_LOG.md) | Append-only history of the project: decisions taken, stories completed, problems found, direction changes. **Every completed story appends an entry.** Read the most recent entries before starting work; they are the fastest way to learn the current state. |
 | [docs/adr/README.md](docs/adr/README.md) | ADR index, mapping every decision ID to its ADR file. |
 | [docs/adr/](docs/adr/) | One ADR per decision, with context, options, consequences, constraints introduced and verification. |
-| [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project IDs and Firestore location. Agents MUST NOT invent any of these. |
+| [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project status, development Firebase project ID and Firestore location. Agents MUST NOT invent any of these. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | Pull request template, a superset of the handoff fields. |
@@ -70,9 +70,17 @@ Rules:
 
 ## Language
 
-Project specifications, code comments, commit messages, ADRs, backlog updates, log entries and all development artifacts MUST be written in technical English.
+Two rules apply, and they MUST NOT be confused. The boundary between them is the repository.
 
-Conversation with the project owner may happen in Spanish, but repository artifacts remain English.
+**Repository artifacts — technical English.** Documentation and code alike. This covers specifications, contracts, ADRs, backlog entries, project log entries, README and every other document; and source code, identifiers, code comments, KDoc, test names, commit messages, branch names, pull request descriptions and GitHub issues. There is no exception.
+
+**Conversation with the project owner — Spanish (Spain).** Unless the owner states otherwise, an agent replies in Spanish using es-ES vocabulary and conventions. This covers chat replies, clarifying questions, escalation summaries delivered in conversation, and progress narration.
+
+Consequences worth stating explicitly:
+
+- A discussion held in Spanish is written into the repository in English. The language of the conversation never leaks into a file, a commit or an issue.
+- A Spanish reply that quotes an English identifier, file path, error code or document section stays a Spanish reply. Those tokens MUST NOT be translated.
+- Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
 
 ## Owner Decisions
 
@@ -156,11 +164,25 @@ Do not start a story if:
 
 Escalate instead of guessing.
 
+## Story Intake
+
+Before changing implementation code for a story, an agent MUST record the ready check it used. The ready check contains:
+
+- the exact backlog story ID and title,
+- the acceptance criteria that will be satisfied,
+- the dependency and decision rows checked,
+- the normative sections that govern the work,
+- the expected verification commands,
+- the human review gates that apply, or `None`.
+
+If a requested change is not tied to a backlog story, the agent may analyse, propose a story, or update definition documents, but it MUST NOT implement product code until the story is made explicit and Ready.
+
 ## Definition of Done
 
 A story is done only when:
 
 - acceptance criteria are met,
+- acceptance criteria evidence is listed in the handoff,
 - relevant tests pass, including the ones the story's acceptance criteria name explicitly,
 - lint is clean and coverage thresholds hold,
 - relevant builds pass,

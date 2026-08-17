@@ -1,6 +1,6 @@
 # Decision Board - carApp MVP
 
-> **Sole registry of decision IDs (`D-n`)** and authoritative for which libraries, services and technical options are allowed. Accepted decisions MUST be reflected in an ADR and mirrored in `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`; `contract-check` asserts the three ID sets are identical. See `AGENTS.md` for authority and normative language.
+> **Sole registry of decision IDs (`D-n`)** and authoritative for which libraries, services and technical options are allowed. Accepted decisions MUST be reflected in an ADR and mirrored in `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`; `contract-check` asserts that mirrored decision IDs and statuses stay aligned. See `AGENTS.md` for authority and normative language.
 
 ## Decision Status
 
@@ -32,16 +32,16 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | PostHog, custom metrics, none | Accepted | Closed `AnalyticsEvent` hierarchy; no analytics calls from domain or data; off by default. |
 | D-11 | HTTP/API client | Ktor, for future API-based remote implementations | Retrofit, native URLSession/OkHttp wrappers, no HTTP abstraction | Deferred | Do not add Ktor to the MVP. |
 | D-12 | Image loading | Coil, if image loading ever becomes necessary | SDWebImage, platform-native loaders, none | Deferred | No image loading dependency until a story requires it; Coil is then the only approved library. |
-| D-13 | Firestore location | `eur3` European multi-region | `nam5`, `europe-west1` single region | **Proposed** | The location is immutable after database creation and the user base is Spanish. Must be confirmed before `E0-07` creates the database. |
-| D-14 | Firebase project topology | Two projects, `carapp-dev` and `carapp-prod`, plus the local emulator for tests | Single project, three projects with staging | **Proposed** | Rules and data are deployed to `dev` first. CI uses the emulator only. No production credentials in CI. |
-| D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | **Proposed** | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
-| D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | **Proposed** | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
-| D-17 | Flow testing helper | Turbine | Manual collection | **Proposed** | Confirm compatibility during version pinning in `E0-06`. |
-| D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | **Proposed** | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
-| D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | **Proposed** | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
-| D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | **Proposed** | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
-| D-21 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending | Recommended for Phase 4, not Phase 0. |
-| D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | **Proposed** | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. |
+| D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
+| D-14 | Firebase project topology | One development Firebase project plus the local emulator now; add a separate production Firebase project before release | Two projects from day one, single project through production, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and no public release build may point at the development project. |
+| D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
+| D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
+| D-17 | Flow testing helper | Turbine | Manual collection | Accepted | Confirm compatibility during version pinning in `E0-06`. |
+| D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | Accepted | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
+| D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
+| D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | Accepted | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
+| D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted | Added in Phase 4. Crashlytics types never leave `:integration:firebase-crashlytics` or `:wiring:firebase`. |
+| D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. The production Firebase project ID is deferred by `D-14`. |
 
 ## Library Review Matrix
 
@@ -50,17 +50,17 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Coroutines and streams | `kotlinx.coroutines` + Flow | callbacks, Rx | Accepted | Required for KMP async and state streams. |
 | Serialization | `kotlinx.serialization-json` | Moshi, manual JSON | Accepted | Required for outbox payloads and remote DTOs. |
 | Date/time | `kotlinx-datetime` | platform date APIs only | Accepted | UTC instants only in persistence. The exact `Instant` package is pinned in `docs/versions-matrix.md`. |
-| Logging | Kermit behind `Logger` | Napier, custom sinks | Proposed (D-15) | Abstraction mandatory; implementation swappable. |
-| Crash reporting | Firebase Crashlytics | Sentry, none | Pending (D-21) | Phase 4. |
-| Flow testing | Turbine | manual collection | Proposed (D-17) | Validate against the pinned coroutines version. |
+| Logging | Kermit behind `Logger` | Napier, custom sinks | Accepted (D-15) | Abstraction mandatory; implementation swappable. Does not replace `AnalyticsTracker` or `CrashReporter`. |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted (D-21) | Phase 4. |
+| Flow testing | Turbine | manual collection | Accepted (D-17) | Validate against the pinned coroutines version. |
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
 | Test doubles | Hand-written fakes | MockK, Mockative | Accepted | Fakes are preferred for domain and sync. |
-| Coverage | Kover | JaCoCo, none | Proposed (D-18) | Thresholds enforced in CI. |
+| Coverage | Kover | JaCoCo, none | Accepted (D-18) | Thresholds enforced in CI. |
 | Android background work | WorkManager | foreground-only sync | Accepted for Phase 3 | Trigger only: it calls `SyncController.requestSync(reason)` and carries no scheduling policy. |
 | iOS background work | BGTaskScheduler | foreground-only sync | Accepted for Phase 3 | Same constraint; a single task identifier. |
 | Connectivity | `ConnectivityObserver` behind a common interface | Ktor-only detection, platform-only direct usage | Accepted | Injected, not `expect`/`actual` in public API. |
-| Localization | Native Android/iOS resources | shared resource library | Proposed (D-20) | Native resources because UI is native. |
-| Architecture checks | Konsist + custom Gradle check | custom only, dependency-analysis plugin | Proposed (D-16) | See D-16. |
+| Localization | Native Android/iOS resources | shared resource library | Accepted (D-20) | Native resources because UI is native. |
+| Architecture checks | Konsist + custom Gradle check | custom only, dependency-analysis plugin | Accepted (D-16) | See D-16. |
 | Charts | None for MVP | Vico, Swift Charts | Rejected for MVP | Advanced charts are out of scope. |
 | Image loading | Coil | SDWebImage, platform-native | Deferred (D-12) | Only if a story requires it. |
 | HTTP client | Ktor | Retrofit, URLSession | Deferred (D-11) | Only with an approved API implementation story. |
@@ -91,23 +91,12 @@ Firebase is an implementation detail. These abstractions are mandatory:
 - `TokenProvider`
 - `RemoteSyncSource`
 - `AnalyticsTracker`
-- `CrashReporter`, if crash reporting is added
+- `CrashReporter`
 
 Firebase SDK, GitLive and native Firebase types are allowed only inside integration and wiring modules.
 
 ## Decisions Awaiting Owner Confirmation
 
-Everything below is either `Proposed` (a recommendation is on the table) or `Pending` (no recommendation). Confirming or changing them is the first task of the project owner, and `E0-01` MUST NOT start until the Phase 0 rows are resolved.
+No `Proposed` or `Pending` decisions are currently awaiting owner confirmation.
 
-| ID | Area | Recommendation | Needed by | Consequence if unresolved |
-|----|------|----------------|-----------|---------------------------|
-| D-13 | Firestore location | `eur3` | Before `E0-07` | Irreversible once the database is created. |
-| D-14 | Firebase project topology | `carapp-dev` + `carapp-prod` + emulator | Before `E0-07` | Test data lands in production. |
-| D-22 | Application identifiers | See `docs/identifiers.md` | Before `E0-01` | Store identifiers are effectively irreversible. |
-| D-15 | Logging implementation | Kermit | Before `E0-03` | `Logger` is part of `AppGraphDependencies` from Phase 0. |
-| D-16 | Architecture checks | Konsist + custom Gradle check | Before `E0-04` | Package-level rules cannot be enforced. |
-| D-19 | Result type | `Outcome<T, E>` | Before `E0-03` | Every public signature in `docs/CONTRACTS.md` depends on it. |
-| D-17 | Flow testing helper | Turbine | Before `E0-05` | Falls back to hand-written collection helpers in `:core:testing`. |
-| D-18 | Coverage | Kover | Before `E0-05` | "High coverage" stays unmeasurable. |
-| D-20 | Localization | Native resources | Before `E1-07` | Shared code has no defined path to localized strings. |
-| D-21 | Crash reporting | Crashlytics | Before `E4-04` | Non-blocking until release hardening. |
+When a future decision is added with status `Proposed` or `Pending`, this section MUST contain a Markdown table with columns `ID`, `Area`, `Recommendation`, `Needed by` and `Consequence if unresolved`. A story named in `Needed by` MUST NOT start until its row is resolved.

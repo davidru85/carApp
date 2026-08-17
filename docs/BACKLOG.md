@@ -13,21 +13,24 @@ Size guide: **S** up to half a day, **M** 1 to 2 days, **L** 3 to 5 days.
 - Data model changes require migrations and migration tests.
 - Monetary values never use `Float` or `Double`.
 - A story whose decisions are still `Proposed` or `Pending` in `docs/DECISION_BOARD.md` is NOT Ready.
+- Each handoff includes the ready check and acceptance evidence required by `AGENTS.md`.
 
 ## Phase 0 - Foundations
 
 Goal: a project skeleton that compiles on both platforms and has enforceable architecture boundaries.
 
-**Entry condition:** the owner has confirmed or changed every `Proposed` decision listed as "needed before Phase 0" in `docs/DECISION_BOARD.md` — at minimum `D-13`, `D-14`, `D-15`, `D-16`, `D-19`, `D-22`. `E0-01` MUST NOT start before that.
+**Entry condition:** every decision needed by a Phase 0 story is resolved before that story starts. No Phase 0 story is currently blocked by an unresolved owner decision.
 
 ### E0-00 - Owner Decision Closure - S
+
+Status: completed on 2026-08-17 by the decision commits for `D-13` through `D-22`. Future implementation work starts at `E0-01` unless a new unresolved owner decision is introduced.
 
 Turn the `Proposed` and Phase-0 `Pending` rows of `docs/DECISION_BOARD.md` into `Accepted` (or a different choice), and materialise the supporting documents.
 
 Acceptance criteria:
 
 - Every Phase 0 row in "Decisions Awaiting Owner Confirmation" is `Accepted`, `Rejected` or explicitly re-`Deferred`.
-- `docs/identifiers.md` contains the final applicationId, bundle identifier, Kotlin namespace, display name, Firebase project IDs and Firestore location.
+- `docs/identifiers.md` contains the final applicationId, bundle identifier, Kotlin namespace, display name, development Firebase project ID and Firestore location; the separate production Firebase project ID is explicitly deferred by `D-14`.
 - One ADR exists per newly accepted decision.
 - `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` mirror `docs/DECISION_BOARD.md` exactly.
 
@@ -67,9 +70,11 @@ Create `:core:model`, `:core:common` and `:core:testing`, implementing the canon
 Acceptance criteria:
 
 - `Outcome`, the full `AppError` hierarchy with stable codes, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
-- `Money` uses integer minor units plus a currency code; `FuelVolume`, `PricePerLiter` and `ConsumptionL100Km` are scaled value classes.
-- The three canonical monetary formulas are implemented as exact integer arithmetic and pass the golden values in `docs/CONTRACTS.md §2`.
-- A test proves no monetary path uses `Float` or `Double`.
+- `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
+- None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
+- The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, and no story writes their literals inline.
+- The three canonical monetary formulas and the two consumption formulas are implemented as exact integer arithmetic and pass every golden value in `docs/CONTRACTS.md §2`.
+- A test proves no monetary or consumption path uses `Float` or `Double`.
 - `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake.
 - Kover thresholds pass for `:core:model` and `:core:common`.
 
@@ -82,6 +87,7 @@ Acceptance criteria:
 - Feature `domain` dependency on Room, Firebase, Koin, Android, Ktor, own `data` or own `presentation` fails the build with a rule-specific message.
 - Feature `data` dependency on `:core:auth` or `:integration:*` fails the build.
 - Feature-to-feature dependency fails the build.
+- A `:core:model` dependency on `:core:common` fails the build; the reverse is allowed (`docs/TECHNICAL_PLAN.md §4`).
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.
@@ -99,7 +105,7 @@ Acceptance criteria:
 - Style violations, failing tests and coverage below threshold fail CI.
 - Android and iOS simulator / shared framework verification run on macOS CI.
 - CI check names match `docs/CONTRACTS.md §18` exactly.
-- `contract-check` implements the four assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
+- `contract-check` implements the assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
 - Branch protection for `main` requires those checks.
 
 CI duration under 20 minutes is an objective, monitored and reported, not a pass/fail criterion.
@@ -112,12 +118,26 @@ Acceptance criteria:
 
 - One ADR exists per `Accepted` or `Deferred` decision, with the ADR `Status` equal to the board status.
 - `docs/adr/README.md` maps every decision ID to its ADR file.
-- The decision ID set is identical across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+- The decision ID set and status values are identical across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 - `docs/versions-matrix.md` pins JDK, Gradle, AGP, Kotlin, KSP, Compose, Room, `androidx.sqlite`, SKIE, Xcode, Firebase BOM, GitLive, coroutines, serialization, datetime, Koin, Kermit, Turbine and Kover, with the compatibility relation and the exact `Instant` package.
 - `docs/versions-matrix.md` fixes the reference devices and the measurement method for every performance target.
 - Version choices are reflected in `gradle/libs.versions.toml` and nowhere else.
 
 Blocks: E0-07.
+
+### E0-08 - `:core:analytics` Abstraction - S
+
+Create `:core:analytics` with the `AnalyticsTracker` interface and the closed `AnalyticsEvent` hierarchy of `docs/CONTRACTS.md §16.1` and `§20.9`. Abstraction only: no Firebase dependency, no provider SDK.
+
+Acceptance criteria:
+
+- `AnalyticsTracker`, `AnalyticsEvent`, `AnalyticsUserProperties`, `SyncStatusCategory`, `ConversionFailureReason`, `DeletionFailureReason` and `CountBucket` match `docs/CONTRACTS.md §20.9` exactly.
+- `AnalyticsEvent` is a closed sealed hierarchy and no leaf carries a free-text `String`, proven by an exhaustive `when` over every leaf.
+- A no-op `AnalyticsTracker` lives in `:core:testing` and is the default in `testAppGraphDependencies(...)`, so `AppGraphDependencies` is complete without any Firebase module.
+- `setEnabled(false)` makes `track` and `setUserProperties` no-ops that buffer nothing.
+- No Firebase, GitLive or Android type appears in this module.
+
+Why Phase 0: `AnalyticsTracker` is a mandatory member of `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`), so the graph cannot be constructed or tested without it. The split mirrors `:core:auth` and `:integration:firebase-auth`.
 
 ### E0-07 - Walking Skeleton - L
 
@@ -129,7 +149,7 @@ Acceptance criteria:
 - `iosSimulatorArm64` runs in CI.
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
-- The Firestore database exists in the location fixed by `D-13`, in the `dev` project of `D-14`.
+- The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
 - The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, type parameter or default argument in the exported API, and the generated Objective-C header is committed as a golden file.
 
 Decision gate:
@@ -208,11 +228,12 @@ Acceptance criteria:
 - First full tank produces `NoPreviousFullTank`.
 - Partial intermediate refuel contributes to the next full segment.
 - An entry sharing `odometerKm` with `P` is counted in the segment litres and yields `DuplicateOdometerInSegment`.
-- `hasMissedEntries` invalidates the segment ending at that entry only.
+- `hasMissedEntries = true` on entry `E` invalidates the segment ending at `E` and any segment containing `E`, and leaves earlier segments valid — per `docs/CONTRACTS.md §3`. A partial entry flagged `hasMissedEntries` therefore invalidates the segment ending at the *next* full tank.
 - `odometerInconsistent` invalidates the containing segment.
 - `distanceKm <= 0` yields `NonPositiveDistance` and never divides by zero.
 - Calculation order is `odometerKm, date, id`, and a back-dated entry does not change the result.
-- Average consumption is distance-weighted, not an arithmetic mean.
+- Segment and average values are produced by the canonical consumption arithmetic of `docs/CONTRACTS.md §2`, and all four golden values in that section pass.
+- Average consumption is distance-weighted, not an arithmetic mean; the golden case where the two differ (`774` versus `776`) is covered by a test.
 - The function is total: no input throws.
 - 1,000 entries processed within the target of `docs/SPECIFICATION.md §11`, measured as defined in `docs/versions-matrix.md`.
 
@@ -387,7 +408,8 @@ Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quaranti
 
 Acceptance criteria:
 
-- All 16 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
+- All 17 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
+- A cycle is not started while `ConnectivityObserver.isOnline` is false, and connectivity failures never poison a row (`docs/CONTRACTS.md §9.2`, `§9.7`).
 - The deterministic convergence simulation exists with a fixed seed and an injected jitter source.
 - The state machine matches `docs/CONTRACTS.md §7`, including `SYNCING -> SYNCING` on a local edit during an in-flight push.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.
@@ -439,6 +461,18 @@ Acceptance criteria:
 - A test proves a pending tombstone is never purged.
 - A fresh device pulling a tombstone for an entity it has never seen inserts it as a tombstone instead of failing.
 
+### E3-09 - Firebase Analytics Integration - S
+
+Implement `:integration:firebase-analytics`, the Firebase-backed `AnalyticsTracker` from `E0-08`, and bind it in `:wiring:firebase`.
+
+Acceptance criteria:
+
+- Every `AnalyticsEvent` leaf maps to a Firebase event name and parameter set, exhaustively and with no `else` branch.
+- Collection is disabled at startup and enabled only after an explicit opt-in, including on a fresh install; a test proves nothing is buffered while disabled.
+- No forbidden payload of `docs/CONTRACTS.md §16.1` can be sent: a test asserts no parameter value derives from odometer, volume, cost, notes, entity IDs or the UID.
+- Only `:wiring:firebase` constructs the implementation; no Firebase type crosses the module boundary.
+- Excluding this module leaves the app building and testing on the `:core:analytics` no-op, per `E3-06`.
+
 ### E3-06 - Provider Decoupling Proof - S
 
 Make P4 executable.
@@ -489,33 +523,38 @@ Acceptance criteria:
 
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
+- A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
+- `:core:crash` exposes `CrashReporter`; `:integration:firebase-crashlytics` implements it with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
 - Release builds are installable on both platforms.
 - Account deletion and Apple sign-in requirements are satisfied.
+- Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
 - Release logging redaction is verified: no UID, notes, odometer or cost values in release logs.
 
 ## Execution Order
 
 ```text
-E0-00 owner decisions
-  -> Phase 0
-      -> E0-07 walking skeleton gate
-          -> Phase 1 local persistence
-          -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
-          -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
-          -> Phase 4
+E0-00 owner decisions (completed)
+  -> E0-01 KMP bootstrap
+      -> remaining Phase 0 foundations
+          -> E0-07 walking skeleton gate
+              -> Phase 1 local persistence
+              -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
+              -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
+              -> Phase 4
 ```
 
 ## Story Index
 
 | Story | Phase | Size | Human gate |
 |-------|-------|------|------------|
-| E0-00 Owner decision closure | 0 | S | Yes |
+| E0-00 Owner decision closure (completed) | 0 | S | Yes |
 | E0-01 KMP bootstrap | 0 | M | — |
 | E0-02 Convention plugins | 0 | M | — |
 | E0-03 Base core modules | 0 | M | — |
 | E0-04 Architecture guards | 0 | M | — |
 | E0-05 Quality tooling and CI | 0 | M | — |
 | E0-06 ADRs and version matrix | 0 | S | — |
+| E0-08 `:core:analytics` abstraction | 0 | S | — |
 | E0-07 Walking skeleton | 0.5 | L | Yes |
 | E1-01 `:core:database` | 1 | M | — |
 | E1-02 Vehicle domain | 1 | S | — |
@@ -540,6 +579,7 @@ E0-00 owner decisions
 | E3-04 Repository sync wiring | 3 | M | — |
 | E3-05 Sync status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
+| E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof | 3 | S | — |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |

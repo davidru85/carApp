@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** definition phase complete and audited. There is no product code yet. Implementation starts with `E0-00` in `docs/BACKLOG.md`, which closes the pending owner decisions.
+> **Project status:** definition phase complete and audited. Owner decision closure (`E0-00`) is complete; there is no product code yet. Implementation starts with `E0-01` in `docs/BACKLOG.md`.
 
 ## Start here
 

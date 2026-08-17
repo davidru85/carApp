@@ -48,8 +48,9 @@ Requirements:
 
 - `.gitignore` MUST cover the entries above from the first commit.
 - Secret scanning MUST be enabled on the repository.
-- CI holds credentials only as repository secrets, and CI runs against the Firestore emulator, never against the production project.
+- CI runs against the Firestore emulator and MUST NOT hold Firebase project credentials or write to a real Firebase project.
 - If a secret is committed, treat it as compromised: rotate it first, then rewrite history.
+- Crash reports MUST NOT contain UID, tokens, notes, exact odometer values, exact costs, raw Firestore payloads or free-text user content.
 
 ## Accepted Residual Risks
 

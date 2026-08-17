@@ -2,7 +2,7 @@
 
 One ADR per decision ID. The decision ID is stable across project documents; ADR numbers are file identifiers only.
 
-`docs/DECISION_BOARD.md` is the sole registry of decision IDs, and the ADR `Status` field MUST equal the board status for the same ID. `contract-check` asserts that the ID set here is identical to `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`.
+`docs/DECISION_BOARD.md` is the sole registry of decision IDs, and the ADR `Status` field MUST equal the board status for the same ID. `contract-check` asserts that the decision ID set and status values here are identical to `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`.
 
 | Decision ID | ADR | Decision | Status |
 |-------------|-----|----------|--------|
@@ -19,14 +19,15 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-10 | [ADR-0011](0011-firebase-analytics.md) | Use Firebase Analytics behind `AnalyticsTracker`. | Accepted |
 | D-11 | [ADR-0012](0012-defer-ktor-api-client.md) | Defer Ktor until an API-based remote implementation exists. | Deferred |
 | D-12 | [ADR-0013](0013-defer-coil-image-loading.md) | Use Coil if image loading becomes necessary. | Deferred |
-| D-13 | [ADR-0014](0014-firestore-location-eur3.md) | Create the Firestore database in `eur3`. | Proposed |
-| D-14 | [ADR-0015](0015-firebase-project-topology.md) | Two Firebase projects plus the emulator. | Proposed |
-| D-15 | [ADR-0016](0016-logging-kermit.md) | Use Kermit behind the `Logger` abstraction. | Proposed |
-| D-16 | [ADR-0017](0017-architecture-checks-konsist.md) | Konsist for package rules, custom Gradle check for module rules. | Proposed |
-| D-17, D-18 | [ADR-0019](0019-test-tooling-turbine-kover.md) | Turbine for Flow testing, Kover for coverage thresholds. | Proposed |
-| D-19 | [ADR-0018](0018-outcome-result-type.md) | Custom `Outcome<T, E>` as the result channel. | Proposed |
-| D-20 | [ADR-0020](0020-localization-native-resources.md) | Native resources; no user-facing text in `UiState`. | Proposed |
-| D-21 | — | Crash reporting. No ADR yet; still `Pending` on the board, decided in Phase 4. | Pending |
-| D-22 | [ADR-0021](0021-application-identifiers.md) | Application identifiers are owner-decided and fixed in `docs/identifiers.md`. | Proposed |
+| D-13 | [ADR-0014](0014-firestore-location-europe-west1.md) | Create the Firestore database in `europe-west1`. | Accepted |
+| D-14 | [ADR-0015](0015-firebase-project-topology.md) | One development Firebase project plus the emulator now; separate production project before release. | Accepted |
+| D-15 | [ADR-0016](0016-logging-kermit.md) | Use Kermit behind the `Logger` abstraction. | Accepted |
+| D-16 | [ADR-0017](0017-architecture-checks-konsist.md) | Konsist for package rules, custom Gradle check for module rules. | Accepted |
+| D-17 | [ADR-0019](0019-flow-testing-turbine.md) | Use Turbine for Flow testing. | Accepted |
+| D-18 | [ADR-0022](0022-coverage-kover.md) | Use Kover for coverage thresholds. | Accepted |
+| D-19 | [ADR-0018](0018-outcome-result-type.md) | Custom `Outcome<T, E>` as the result channel. | Accepted |
+| D-20 | [ADR-0020](0020-localization-native-resources.md) | Native resources; no user-facing text in `UiState`. | Accepted |
+| D-21 | [ADR-0023](0023-firebase-crashlytics.md) | Use Firebase Crashlytics behind `CrashReporter` in Phase 4. | Accepted |
+| D-22 | [ADR-0021](0021-application-identifiers.md) | Application identifiers are owner-decided and fixed in `docs/identifiers.md`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

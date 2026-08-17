@@ -1,6 +1,6 @@
 # Application Identifiers
 
-> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Every value below marked `Proposed` requires owner confirmation in `E0-00` before `E0-01` starts. Several of them are effectively irreversible once published or created.
+> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. A separate production Firebase project is required before release, but its project identifier is deferred by `D-14` and MUST be decided before `E4-04`.
 >
 > Related decisions: `D-13` Firestore location, `D-14` Firebase project topology, `D-22` application identifiers.
 
@@ -8,19 +8,20 @@
 
 | Value | Status |
 |-------|--------|
-| Application and bundle identifiers | **Proposed** — confirm in `E0-00` |
-| Firebase project IDs | **Proposed** — confirm in `E0-00` |
-| Firestore location | **Proposed** — confirm in `E0-00`, immutable after creation |
+| Application and bundle identifiers | Accepted |
+| Development Firebase project ID | Accepted |
+| Production Firebase project ID | Deferred — decide before `E4-04` release preparation |
+| Firestore location | Accepted |
 
 ## Application
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Product name | `carApp` | Working name. The store display name may differ and is decided in `E4-04`. |
-| Android `applicationId` | `com.davidru85.carapp` | Immutable once published to Google Play. |
-| Android namespace | `com.davidru85.carapp` | Kotlin/Java package root for `:androidApp`. |
-| iOS bundle identifier | `com.davidru85.carapp` | Immutable once published to the App Store. |
-| Shared module package root | `com.davidru85.carapp` | Sub-packages follow the module path, e.g. `com.davidru85.carapp.core.model`. |
+| Product name | `carApp` | Internal and development display name. The final store display name may still be reviewed in `E4-04`. |
+| Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
+| Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
+| iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
+| Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM. |
 | Android `minSdk` / `targetSdk` | `26` / pinned in `docs/versions-matrix.md` | `minSdk` is fixed by `docs/SPECIFICATION.md §11`. |
 | iOS deployment target | `16.0` | Fixed by `docs/SPECIFICATION.md §11`. |
@@ -31,12 +32,12 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Development project ID | `carapp-dev` | Used by debug builds and by manual testing. |
-| Production project ID | `carapp-prod` | Used by release builds only. |
-| CI | Firestore emulator only | CI MUST NOT hold production credentials or write to a real project. |
-| Firestore location | `eur3` (Europe multi-region) | **Immutable after database creation.** Chosen because the initial user base is Spanish. |
+| Development project ID | `carapp-dev` | Accepted in `D-22`. Used by debug builds and by manual testing during development. |
+| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. |
+| CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
+| Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
-| Registered apps per project | Android debug, Android release, iOS debug, iOS release | Each with its own `google-services.json` / `GoogleService-Info.plist`. |
+| Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until the production project is created. |
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
 

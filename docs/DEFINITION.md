@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses. Users can create vehicles, log refueling events, review history, calculate real consumption, and keep their data available offline with background synchronization.
 
-The repository is greenfield: there is no product code yet. Implementation starts at `E0-00` in `docs/BACKLOG.md`.
+The repository is greenfield: there is no product code yet. Owner decision closure (`E0-00`) is complete, so implementation starts at `E0-01` in `docs/BACKLOG.md`.
 
 ## 2. MVP Objective
 
@@ -89,7 +89,7 @@ Accepted limitation: two devices editing different fields of the same document c
 | 0.5 | Walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth | Data written on Android appears on iOS and vice versa; the Swift-facing surface constraints hold |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 16 sync tests and the emulator tests pass; provider decoupling is an executable check |
+| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 17 sync tests and the emulator tests pass; provider decoupling is an executable check |
 | 4 | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
 
 ## 10. Risks
@@ -98,7 +98,7 @@ Accepted limitation: two devices editing different fields of the same document c
 |------|--------|------------|
 | iOS/KMP/SKIE/Room toolchain friction | High | Early walking skeleton, macOS CI, pinned versions, SQLDelight fallback with a superseding ADR. |
 | Swift export rejects the shared API shape | Medium | Explicit surface constraints plus a committed Objective-C header golden file. |
-| Silent data loss in sync | Critical | Common engine, 16 required tests, deterministic simulation, debug screen. |
+| Silent data loss in sync | Critical | Common engine, 17 required tests, deterministic simulation, debug screen. |
 | Data loss at the `LOCAL_OWNER` boundary | Critical | Outbox suppressed before a real UID exists, plus an idempotent adoption story. |
 | Incorrect Firestore rules | Critical | Emulator tests before any production deployment. |
 | Scope creep | Medium | Explicit out-of-scope list and escalation rule. |
@@ -127,8 +127,8 @@ Both are defined canonically in `AGENTS.md` and MUST NOT be restated elsewhere. 
 - [x] Contractual guardrail layer materialized in `docs/CONTRACTS.md`, including canonical type definitions.
 - [x] Library and technical decision board materialized in `docs/DECISION_BOARD.md`.
 - [x] Specification audit completed and folded back into the documents.
-- [ ] Owner confirmation of every `Proposed` decision (`E0-00`).
+- [x] Owner confirmation of every `Proposed` decision (`E0-00`).
 - [ ] Version catalog created and versions pinned (`E0-06`).
 - [ ] Real CI commands validated (`E0-05`).
 
-The remaining unchecked items belong to Phase 0 because they require an owner decision or the project skeleton.
+The remaining unchecked items belong to Phase 0 because they require the project skeleton, real tooling and CI validation.

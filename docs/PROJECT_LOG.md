@@ -38,6 +38,193 @@
 
 ## Entries
 
+### 2026-08-17 — Empty owner-decision queue made explicit
+
+- **Type:** correction
+- **Story / Decision:** `E0-00`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the "Decisions Awaiting Owner Confirmation" section now has a clear no-open-decisions state instead of an empty table with a sentence where a row would normally be.
+- **Why:** the future `contract-check` should not have to parse a malformed table to determine that no `Proposed` or `Pending` decisions exist.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md §18`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual review of the decision-board empty state and the corresponding `contract-check` assertion.
+- **Follow-ups / risks:** if a future `Proposed` or `Pending` decision is introduced, this section must become a real table with a `Needed by` story or phase.
+
+### 2026-08-17 — D-14 future production project clarified
+
+- **Type:** decision
+- **Story / Decision:** `D-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** documentation now states that development uses only `carapp-dev` for now, but public release requires a separate production Firebase project.
+- **Why:** the owner clarified that the future topology is two Firebase projects, development and production, while production project creation and its project ID remain deferred until release preparation.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/identifiers.md`, `docs/BACKLOG.md`, `docs/adr/0015-firebase-project-topology.md`, `docs/adr/README.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for production Firebase topology, production project ID and `D-14` wording.
+- **Follow-ups / risks:** the production Firebase project ID remains an owner decision before `E4-04`; agents MUST NOT invent it.
+
+### 2026-08-17 — Firebase identifier wording aligned with D-14
+
+- **Type:** correction
+- **Story / Decision:** `E0-00` / `D-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `E0-00` and the document map now require only the development Firebase project ID during development, while production Firebase topology and project IDs remain explicitly deferred by `D-14`.
+- **Why:** the previous wording said "Firebase project IDs" in plural and could lead an agent to invent a production project ID to satisfy an already-closed owner-decision story.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for Firebase project ID wording and production-project references.
+- **Follow-ups / risks:** production Firebase topology remains an owner decision before `E4-04`.
+
+### 2026-08-17 — E0-00 closure reflected as completed
+
+- **Type:** story
+- **Story / Decision:** `E0-00`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** orientation documents now state that owner decision closure is complete and that implementation starts at `E0-01`.
+- **Why:** after `D-13` through `D-22` were accepted and pushed, keeping `E0-00` as the next implementation step would send future agents back through already-closed decisions.
+- **Documents touched:** `README.md`, `docs/DEFINITION.md`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `E0-00`, `Proposed`, `Pending`, and owner-decision closure wording.
+- **Follow-ups / risks:** `docs/AUDIT_GUARDRAILS.md` remains temporary until the owner finishes reviewing every audit-remediation theme.
+
+### 2026-08-17 — D-21 crash reporting accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-21`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase Crashlytics was accepted for Phase 4 behind a new `CrashReporter` abstraction.
+- **Why:** the owner selected Crashlytics for release hardening while keeping crash reporting separate from Kermit logging and Firebase Analytics.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §8` and `§12`, `docs/CONTRACTS.md §11.6` and `§20.3`, `docs/TECHNICAL_PLAN.md §2` and `§3`, `docs/BACKLOG.md`, `docs/versions-matrix.md`, `docs/SECURITY.md`, `docs/adr/0016-logging-kermit.md`, `docs/adr/0023-firebase-crashlytics.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-21`, Crashlytics and `CrashReporter` references.
+- **Follow-ups / risks:** production Firebase topology remains deferred by `D-14` until `E4-04`.
+
+### 2026-08-17 — D-20 localization implementation accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-20`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** native Android and iOS resources were accepted for localization, with `UiState` carrying typed values only and no user-facing text.
+- **Why:** the owner selected the existing recommendation; the UI is native, so native resource catalogues keep localization idiomatic without adding a shared resource dependency.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0020-localization-native-resources.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-20`, localization, native resources and `UiState` status references.
+- **Follow-ups / risks:** `D-21` remains unresolved and is needed before `E4-04`.
+
+### 2026-08-17 — D-18 coverage measurement accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-18`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Kover was accepted as the coverage measurement tool with the existing thresholds: `:core:model` and `:core:common` at 90%, feature `domain` at 85%, and `:core:sync` at 80%.
+- **Why:** the owner selected the existing recommendation so coverage targets become CI-enforced pass/fail criteria rather than review judgement.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0022-coverage-kover.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-18`, Kover and coverage status references.
+- **Follow-ups / risks:** Kover version compatibility remains validated in `E0-06`; `D-20` and `D-21` remain unresolved.
+
+### 2026-08-17 — D-17 Flow testing helper accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-17`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Turbine was accepted as the Flow testing helper, and the previous combined D-17/D-18 ADR was split into separate ADRs so each decision can carry its own status.
+- **Why:** the owner selected Turbine; `D-18` remains unresolved, so sharing one ADR made status verification ambiguous.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0019-flow-testing-turbine.md`, `docs/adr/0022-coverage-kover.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-17`, `D-18`, Turbine, Kover and ADR status references.
+- **Follow-ups / risks:** Turbine compatibility remains validated in `E0-06`; `E0-05` remains blocked by `D-18`.
+
+### 2026-08-17 — D-19 result channel accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-19`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner accepted the custom `Outcome<T, E>` result channel in `:core:common`.
+- **Why:** `kotlin.Result` cannot represent a typed error channel, and Arrow would add a dependency for one core type; the custom type matches the contracts exactly.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0018-outcome-result-type.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-19`, `Outcome<T, E>` and result type status references.
+- **Follow-ups / risks:** `D-17`, `D-18`, `D-20` and `D-21` remain unresolved; `E0-05` is still blocked by `D-17` and `D-18`.
+
+### 2026-08-17 — D-16 architecture checks accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-16`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Konsist was accepted for package-level architecture rules, with a custom Gradle configuration check for module-level rules.
+- **Why:** the owner selected the existing recommendation; package rules are intra-module source rules that Gradle cannot see, while module rules remain cheaper to enforce from the Gradle graph.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0017-architecture-checks-konsist.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-16`, Konsist and architecture check status references.
+- **Follow-ups / risks:** Konsist version pinning remains part of `E0-06`; `D-17`, `D-18`, `D-19`, `D-20` and `D-21` remain unresolved.
+
+### 2026-08-17 — D-15 logging telemetry boundary clarified
+
+- **Type:** decision
+- **Story / Decision:** `D-15`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** documentation now states that Kermit is the logging implementation only and does not replace `AnalyticsTracker`, Firebase Analytics, `CrashReporter` or Firebase Crashlytics.
+- **Why:** the owner said Kermit should be used for Firebase Analytics and Crashlytics; the clarification preserves the intent that Firebase integrations may use Kermit-backed logging for diagnostics while keeping analytics events and crash reports on separate contracts.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md §17`, `docs/adr/0016-logging-kermit.md`, and this log.
+- **Verification:** manual cross-document search for Kermit, Analytics, Crashlytics, `AnalyticsTracker` and `CrashReporter`.
+- **Follow-ups / risks:** `D-21` still decides whether Firebase Crashlytics is part of the MVP hardening phase.
+
+### 2026-08-17 — D-15 logging implementation accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-15`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Kermit was accepted as the logging implementation behind the common `Logger` abstraction.
+- **Why:** the owner selected the existing recommendation; Kermit provides KMP platform sinks while remaining hidden behind the repository-owned logging contract.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0016-logging-kermit.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-15`, Kermit and logging status references.
+- **Follow-ups / risks:** Kermit version pinning remains part of `E0-06`; `D-16`, `D-17`, `D-18`, `D-19`, `D-20` and `D-21` remain unresolved.
+
+### 2026-08-17 — D-22 application identifiers accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-22`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner accepted `carApp` as the product name, `com.ruizurraca.carapp` as the Android application ID, Android namespace, iOS bundle identifier and shared package root, `Shared` as the iOS framework name, and `carapp-dev` as the development Firebase project ID.
+- **Why:** these identifiers are required before `E0-01` creates platform projects and Firebase app registrations.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/adr/0021-application-identifiers.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-22`, `carApp`, `carapp-dev` and `com.ruizurraca.carapp`.
+- **Follow-ups / risks:** production Firebase topology and production project identifiers remain deferred by `D-14` until `E4-04`.
+
+### 2026-08-17 — D-22 application package prefix changed
+
+- **Type:** decision
+- **Story / Decision:** `D-22`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the proposed Android `applicationId`, Android namespace, iOS bundle identifier and shared package root changed from `com.davidru85.carapp` to `com.ruizurraca.carapp`.
+- **Why:** the owner selected the `ruizurraca` package prefix.
+- **Documents touched:** `docs/identifiers.md`, `docs/adr/0021-application-identifiers.md`, and this log.
+- **Verification:** manual cross-document search for `com.davidru85.carapp` and `com.ruizurraca.carapp`.
+- **Follow-ups / risks:** `D-22` still requires owner confirmation for the remaining identifier values, including the product name and development Firebase project ID.
+
+### 2026-08-17 — D-14 Firebase project topology accepted for development
+
+- **Type:** decision
+- **Story / Decision:** `D-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase topology changed from proposed `dev` plus `prod` projects to one development Firebase project plus the local emulator; production Firebase topology is deferred until release preparation.
+- **Why:** the owner chose a simpler development setup because Firestore is only a backup and synchronization replica, while Room remains the source of truth.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/adr/0015-firebase-project-topology.md`, `docs/adr/README.md`, `docs/SECURITY.md`, and this log.
+- **Verification:** manual cross-document search for `D-14`, Firebase topology, project ID, emulator and production references.
+- **Follow-ups / risks:** development Firebase project ID remains governed by `D-22`. Production topology and production project IDs must be decided before `E4-04`.
+
+### 2026-08-17 — D-13 Firestore location accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-13`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firestore location changed from the proposed `eur3` multi-region to the accepted `europe-west1` single region, and the documentation now states that Firestore is a backup and synchronization replica while Room remains the source of truth.
+- **Why:** the owner chose `europe-west1` after reviewing the cost and availability tradeoff, because Firestore is not the primary product database.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §9` and `§12`, `docs/CONTRACTS.md §10`, `docs/TECHNICAL_PLAN.md §2`, `docs/identifiers.md`, `docs/adr/0014-firestore-location-europe-west1.md`, `docs/adr/README.md`, `docs/BACKLOG.md`, and this log.
+- **Verification:** manual cross-document search for `D-13`, `eur3` and Firestore location references.
+- **Follow-ups / risks:** `D-14`, `D-15`, `D-16`, `D-17`, `D-18`, `D-19`, `D-20`, `D-21` and `D-22` remain unresolved.
+
+### 2026-08-17 — Agent handoff and contract-check guardrails tightened
+
+- **Type:** milestone
+- **Story / Decision:** —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added an explicit story intake protocol, required acceptance evidence in handoffs, and expanded `contract-check` to verify decision statuses, ADR status alignment, unresolved decision tracking and PR-template/handoff coverage.
+- **Why:** the documentation already defined strong product contracts, but future agents still needed a more mechanical way to prove a story was Ready before implementation and Done after implementation.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §12`, `docs/CONTRACTS.md §18`, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/README.md`, `docs/templates/agent-handoff.md`, `.github/pull_request_template.md`, and this log.
+- **Verification:** manual documentation review with `rg` and targeted file reads. No product code or CI exists yet.
+- **Follow-ups / risks:** changes touch gated documentation paths and require human review before merge.
+
 ### 2026-08-17 — Audit findings folded back into the documentation
 
 - **Type:** milestone

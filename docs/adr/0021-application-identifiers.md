@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted
 
-Requires owner confirmation in `E0-00`, before `E0-01`.
+Accepted by the owner on 2026-08-17.
 
 ## Context
 
@@ -22,9 +22,11 @@ This is the same class of problem as the Firestore location: a one-way door bein
 
 ## Decision
 
-Fix all application identifiers in `docs/identifiers.md`, together with the Firebase project IDs and the Firestore location. `E0-01` reads that file and MUST NOT invent or alter any value in it.
+Fix all application identifiers in `docs/identifiers.md`, together with the development Firebase project ID and the Firestore location. `E0-01` reads that file and MUST NOT invent or alter any value in it.
 
-The proposed values are `com.davidru85.carapp` for the Android `applicationId`, the namespace and the iOS bundle identifier, with a `.debug` suffix for debug builds so both can coexist on one device.
+The accepted values are `carApp` for the product name, `com.ruizurraca.carapp` for the Android `applicationId`, the namespace and the iOS bundle identifier, `Shared` for the iOS framework name, and `carapp-dev` for the development Firebase project ID. Debug builds use a `.debug` suffix so debug and release builds can coexist on one device.
+
+Production Firebase topology and production project identifiers are deferred by `D-14` until release preparation. Agents MUST NOT invent them.
 
 ## Consequences
 
@@ -35,7 +37,7 @@ The proposed values are `com.davidru85.carapp` for the Android `applicationId`, 
 
 ### Negative
 
-- Phase 0 cannot start until the owner confirms.
+- Production Firebase identifiers remain undecided until release preparation.
 
 ### Constraints Introduced
 
@@ -45,6 +47,7 @@ The proposed values are `com.davidru85.carapp` for the Android `applicationId`, 
 ## Verification
 
 - `E0-01` acceptance criterion asserts the identifiers match `docs/identifiers.md` exactly.
+- `E4-04` cannot complete until production Firebase identifiers are decided.
 - `docs/identifiers.md` is a gated path in `AGENTS.md`.
 
 ## References

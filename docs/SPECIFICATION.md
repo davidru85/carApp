@@ -228,6 +228,7 @@ Account deletion is required for store compliance. It re-authenticates if needed
 | Remote backend | Cloud Firestore |
 | Auth | Firebase Authentication through GitLive 2.6.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
 | Async | Coroutines and Flow |
 | DI | Koin KMP for wiring, constructor injection for implementation classes |
 | iOS interop | SKIE only in `:shared` |
@@ -303,6 +304,7 @@ The provider decoupling criterion is executable: excluding `:integration:*` and 
 ### 9.1 Principles
 
 - The local database is the only UI source of truth.
+- Firestore is a backup and synchronization replica only; it is never the product source of truth.
 - Every write is local first.
 - Remote sync is background work.
 - IDs are UUID v4 generated on the client.
@@ -370,11 +372,11 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, sync convergence tests, Firestore emulator tests. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
-| Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion. |
+| Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
 
 ## 12. Closed Technical Decisions
 
-`docs/DECISION_BOARD.md` is the sole registry of decision IDs. This table mirrors it and MUST stay identical.
+`docs/DECISION_BOARD.md` is the sole registry of decision IDs. This table mirrors its decision IDs and statuses and MUST stay identical.
 
 | ID | Decision | Choice | Status |
 |----|----------|--------|--------|
@@ -391,16 +393,16 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker`. | Accepted |
 | D-11 | HTTP/API client | Ktor deferred until a future API-based remote implementation exists. | Deferred |
 | D-12 | Image loading | Coil, only if a story ever requires image loading. | Deferred |
-| D-13 | Firestore location | `eur3` European multi-region. | Proposed |
-| D-14 | Firebase project topology | Separate `dev` and `prod` projects plus the local emulator. | Proposed |
-| D-15 | Logging implementation | Kermit behind `Logger`. | Proposed |
-| D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules. | Proposed |
-| D-17 | Flow testing helper | Turbine. | Proposed |
-| D-18 | Coverage measurement | Kover with per-module thresholds. | Proposed |
-| D-19 | Result type | Custom `Outcome<T, E>` in `:core:common`; Arrow rejected for the MVP. | Proposed |
-| D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Proposed |
-| D-21 | Crash reporting | Firebase Crashlytics, Phase 4. | Pending |
-| D-22 | Application identifiers | Fixed in `docs/identifiers.md`. | Proposed |
+| D-13 | Firestore location | `europe-west1` single region. | Accepted |
+| D-14 | Firebase project topology | One development Firebase project plus the local emulator now; add a separate production Firebase project before release. | Accepted |
+| D-15 | Logging implementation | Kermit behind `Logger`. | Accepted |
+| D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules. | Accepted |
+| D-17 | Flow testing helper | Turbine. | Accepted |
+| D-18 | Coverage measurement | Kover with per-module thresholds. | Accepted |
+| D-19 | Result type | Custom `Outcome<T, E>` in `:core:common`; Arrow rejected for the MVP. | Accepted |
+| D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Accepted |
+| D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, Phase 4. | Accepted |
+| D-22 | Application identifiers | Fixed in `docs/identifiers.md`; the production Firebase project ID is deferred by `D-14`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

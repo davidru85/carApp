@@ -10,7 +10,7 @@ The selected architecture is Kotlin Multiplatform for shared logic and native UI
 
 ## 2. Closed Decisions
 
-Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors it and MUST stay identical; `contract-check` asserts that.
+Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decision IDs and statuses and MUST stay identical; `contract-check` asserts that.
 
 | ID | Decision | Choice | Status | Rationale |
 |----|----------|--------|--------|-----------|
@@ -27,16 +27,16 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors it and MU
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | Accepted | Aligns with the Firebase stack while keeping analytics replaceable. |
 | D-11 | HTTP/API client | Ktor deferred | Deferred | Reserved for a future API-based remote implementation. |
 | D-12 | Image loading | Coil if ever needed | Deferred | Prevents agents from choosing competing loaders. |
-| D-13 | Firestore location | `eur3` | Proposed | Spanish user base; the location is immutable after database creation. |
-| D-14 | Firebase project topology | `dev` and `prod` projects plus emulator | Proposed | Keeps test data out of production and makes rules deploys reversible. |
-| D-15 | Logging implementation | Kermit behind `Logger` | Proposed | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
-| D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Proposed | Gradle cannot express intra-module package rules. |
-| D-17 | Flow testing helper | Turbine | Proposed | Confirm compatibility during version pinning. |
-| D-18 | Coverage | Kover with thresholds | Proposed | Makes "high coverage" a pass/fail criterion. |
-| D-19 | Result type | `Outcome<T, E>` in `:core:common` | Proposed | `kotlin.Result` has one type parameter; Arrow is out of scope. |
-| D-20 | Localization | Native resources, no user-facing text in `UiState` | Proposed | UI is native; shared code has no resource bundle. |
-| D-21 | Crash reporting | Crashlytics in Phase 4 | Pending | Not needed before release hardening. |
-| D-22 | Application identifiers | `docs/identifiers.md` | Proposed | Store identifiers are effectively irreversible. |
+| D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation. |
+| D-14 | Firebase project topology | one development project plus emulator now; separate production project before release | Accepted | Keeps development setup small while retaining emulator-only CI. Production project creation and its ID are deferred until release preparation. |
+| D-15 | Logging implementation | Kermit behind `Logger` | Accepted | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
+| D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Accepted | Gradle cannot express intra-module package rules. |
+| D-17 | Flow testing helper | Turbine | Accepted | Confirm compatibility during version pinning. |
+| D-18 | Coverage | Kover with thresholds | Accepted | Makes "high coverage" a pass/fail criterion. |
+| D-19 | Result type | `Outcome<T, E>` in `:core:common` | Accepted | `kotlin.Result` has one type parameter; Arrow is out of scope. |
+| D-20 | Localization | Native resources, no user-facing text in `UiState` | Accepted | UI is native; shared code has no resource bundle. |
+| D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` in Phase 4 | Accepted | Not needed before release hardening. |
+| D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; the production Firebase project ID is deferred by `D-14`. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
 
@@ -48,17 +48,20 @@ gradle/libs.versions.toml       single source of dependency versions
 
 :core:model                     pure models, Money, scaled value classes
 :core:common                    AppClock, UuidGenerator, DispatcherProvider, Outcome, AppError,
-                                OwnerContext, Logger, LocaleProvider, ConnectivityObserver, backoff
+                                OwnerContext, Logger, LocaleProvider, ConnectivityObserver, backoff,
+                                named constants (docs/CONTRACTS.md §20.0.1). Depends on :core:model.
 :core:database                  Room entities, DAOs, migrations, platform builders, read-model invariants
 :core:auth                      AuthClient, TokenProvider, AuthState
 :core:sync                      Outbox, cursor, sync engine, SyncController, RemoteSyncSource
 :core:analytics                 AnalyticsTracker and the closed AnalyticsEvent hierarchy
+:core:crash                     CrashReporter abstraction and no-op implementation
 :core:testing                   fakes, builders, in-memory remote, deterministic simulator,
                                 testAppGraphDependencies factory
 
 :integration:firebase-auth      Firebase Auth implementation
 :integration:firebase-firestore Firestore RemoteSyncSource implementation
 :integration:firebase-analytics Firebase Analytics implementation
+:integration:firebase-crashlytics Firebase Crashlytics implementation, Phase 4
 
 :feature:vehicle                domain/data/presentation packages
 :feature:fuel                   domain/data/presentation packages
@@ -79,7 +82,8 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 
 | Area | Allowed | Forbidden |
 |------|---------|-----------|
-| `:core:model`, `:core:common` | Kotlin stdlib, coroutines, `kotlinx-datetime`, `kotlinx.serialization` | platform APIs, Firebase, Room, Koin, Ktor |
+| `:core:model` | Kotlin stdlib, coroutines, `kotlinx-datetime`, `kotlinx.serialization` | platform APIs, Firebase, Room, Koin, Ktor, **`:core:common`** |
+| `:core:common` | `:core:model`, plus the same libraries as `:core:model` | platform APIs, Firebase, Room, Koin, Ktor |
 | feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Koin, Room, Ktor, own `data`, own `presentation` |
 | feature `data` | own `domain`, `:core:model`, `:core:common`, `:core:database`, `:core:sync` | `:integration:*`, `:core:auth`, other features |
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
@@ -88,6 +92,8 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
 | `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
 | `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
+
+`:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
 Feature `data` cannot depend on `:core:auth`, so the current owner reaches repositories through `OwnerContext` (`:core:common`), implemented by `:core:auth` and bound in wiring. An architecture rule asserts that no feature module references `AuthClient`.
 
@@ -250,13 +256,14 @@ Required tests for `:core:sync`:
 7. Pull overlap prevents missing a document with a timestamp before the cursor.
 8. Device clock one hour ahead does not win all conflicts.
 9. First sync of 1,000 records is paginated correctly.
-10. After `MAX_RETRYABLE_ATTEMPTS` consecutive retryable failures the row becomes `FAILED_POISONED` and manual retry is available.
+10. After `MAX_RETRYABLE_ATTEMPTS` consecutive **non-connectivity** retryable failures the row becomes `FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it.
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
 12. A fuel entry arriving before its vehicle is persisted, hidden from the UI, and converges without stalling.
 13. Two devices creating the same vehicle name converge into two vehicles without a constraint failure.
 14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once and is idempotent.
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
 16. Backoff with an injected jitter source produces deterministic, capped delays.
+17. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
 Add a deterministic simulation with a fixed seed that interleaves local edits, push, pull, network failure, duplicate delivery and lost responses, asserting convergence between two clients.
 
@@ -284,11 +291,11 @@ Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, 
 
 ### Phase 3 - Backend and Synchronization
 
-Firestore rules and emulator tests, Firestore integration, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 
-Settings UI, accessibility, localization, performance, release builds, store requirements.
+Settings UI, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
 
 ## 11. Risks and Mitigations
 
@@ -296,7 +303,7 @@ Settings UI, accessibility, localization, performance, release builds, store req
 |------|----------------------|------------|
 | iOS toolchain friction | High / High | Walking skeleton in the first week, macOS CI from the first PR, SPM integration, pinned Kotlin/SKIE/Xcode versions. |
 | Swift-facing API shape rejected by the Obj-C export | High / Medium | `docs/CONTRACTS.md §15.3` constraints validated in `E0-07`, plus a committed header golden file. |
-| Sync convergence bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, 16 required tests, debug screen for outbox, cursors and sync state. |
+| Sync convergence bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, 17 required tests, debug screen for outbox, cursors and sync state. |
 | Room KMP iOS friction | Medium / Medium | Validate before features. Keep the database behind repositories. Switch to SQLDelight if blocked. |
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
