@@ -108,6 +108,7 @@ Acceptance criteria:
 - Android and iOS simulator / shared framework verification run on macOS CI.
 - CI check names match `docs/CONTRACTS.md §18` exactly.
 - `contract-check` implements the assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
+- `contract-check` applies the external identifier allowlist of `docs/CONTRACTS.md §18`, so primitives, standard collections, coroutine types and the pinned `Instant` type do not require duplicate declarations in §20.
 - Branch protection for `main` requires those checks.
 
 CI duration under 20 minutes is an objective, monitored and reported, not a pass/fail criterion.
@@ -152,7 +153,8 @@ Acceptance criteria:
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
 - The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
-- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, type parameter or default argument in the exported API, and the generated Objective-C header is committed as a golden file.
+- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as a golden file.
+- The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
 
 Decision gate:
 
@@ -422,14 +424,15 @@ Human review required.
 
 ### E3-08 - App Graph and Firebase Wiring - M
 
-Implement `createAppGraph`, `AppGraph` and `:wiring:firebase`.
+Implement `createAppGraph`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, the Swift-facing `SwiftAppGraph` and `:wiring:firebase`.
 
 Acceptance criteria:
 
-- `AppGraphDependencies` and `AppGraph` match `docs/CONTRACTS.md §11.6` and `§20.10`.
+- `AppGraphDependencies`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, exported state holders and exported `UiState` classes match `docs/CONTRACTS.md §11.6` and `§20.10`.
 - Only `:wiring:firebase` constructs Firebase implementations.
 - Every top-level declaration in `:wiring:firebase` is a Koin module, an abstraction factory or a platform initialiser.
 - Tests build the graph from `testAppGraphDependencies(...)` without starting Koin.
+- The Swift facade exposes a sync state holder, not `SyncController`, and it owns/cancels the scopes for state holders it creates.
 
 ### E3-04 - Repository Sync Wiring - M
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Swift-facing graph contract made explicit
+
+- **Type:** correction
+- **Story / Decision:** `D-2` / `F-02`, `F-03`, `F-04`, `F-18`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the Swift-facing ABI is now an explicit allowlist with `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders, declared `UiState` classes and `UiMessage`; Kotlin-facing graph construction remains available through `createAppGraph(AppGraphDependencies)` but is hidden from the Objective-C header.
+- **Why:** the previous contract mixed Kotlin construction APIs with Swift-exported APIs, exposed implementation-facing abstractions such as `SyncController`, and referenced state-holder / `UiState` types that were not declared.
+- **Documents touched:** `docs/CONTRACTS.md §11.6`, `§14`, `§15.3`, `§18`, `§20.7` and `§20.10`, `docs/SPECIFICATION.md §8.4` and `§8.5`, `docs/TECHNICAL_PLAN.md §5`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `SwiftAppGraph`, `AppGraphDependencies`, `createAppGraph`, `AppGraph`, `SyncController`, `CoroutineScope`, `Outcome` and `AppError`; `git diff --check`.
+- **Follow-ups / risks:** changes touch gated contract and specification documents and require human review before merge. Next open audit block is `F-05`, `F-06`, `F-07` and `F-08`.
+
 ### 2026-08-17 — Crash reporting module ownership aligned
 
 - **Type:** correction

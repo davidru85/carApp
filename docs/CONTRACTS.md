@@ -613,12 +613,15 @@ fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 
 `CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
 
+`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)` and the Kotlin-facing `AppGraph` are construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden from the generated Objective-C header through Kotlin/Native interop controls such as `@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade declared in §20.10.
+
 Rules:
 
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Tests provide fakes without starting Koin, through the `:core:testing` factory `testAppGraphDependencies(...)` in which every parameter is defaulted. Adding a member REQUIRES updating that factory in the same change.
-- `AppGraph` (§20) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
+- The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
+- The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
 
 ## 12. Repository Contracts
 
@@ -721,12 +724,12 @@ Shared state holders:
 - Live in feature `presentation` packages.
 - Expose immutable `StateFlow<UiState>` built with `stateIn(scope, SharingStarted.WhileSubscribed(5_000), initialValue)`.
 - Accept intent functions.
-- Take `scope: CoroutineScope` in the constructor and expose `close()`. The platform adapter owns creation and cancellation: Android uses `viewModelScope`, iOS creates the scope in the `ObservableObject` `init` and cancels it in `deinit`.
+- Take `scope: CoroutineScope` in Kotlin constructors and expose `close()`. Android passes `viewModelScope`. Swift-facing factories do not expose `CoroutineScope`; `SwiftAppGraph` creates one child scope per state holder and `close()` cancels every state holder it created.
 - Emit every `UiState` on `dispatchers.main`; database and computation work uses `dispatchers.io` or `dispatchers.default`.
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
-`UiState` MUST NOT contain user-facing text. Messages are represented as typed values (`AppError` leaves, `ConsumptionInvalidReason`, enum states) that each platform maps to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
+`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
 
 Platform adapters contain rendering and lifecycle glue only. Validation, formatting decisions, repository calls and business logic remain shared.
 
@@ -764,9 +767,17 @@ Koin KMP is the accepted dependency injection library for the MVP.
 
 ### 15.3 Swift-facing surface
 
-The public API of `:shared` MUST use only `String`, `Long`, `Int`, `Boolean`, `data class`, `sealed class`, `enum class` and `Flow` of those. It MUST NOT use `value class`, type parameters, or default arguments, because inline value classes are not exported to Objective-C, generic hierarchies export poorly, and default arguments do not exist in the export.
+The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin declarations". The allowlist is:
 
-Repository and use-case interfaces are Kotlin-internal contracts and MUST NOT be exported to Swift. Only `AppGraph`, state holders, `UiState` data classes, `SyncStatus` and the typed enums they reference are exported.
+- `SwiftAppGraph`.
+- `createSwiftAppGraph(isDebugBuild: Boolean)`.
+- Concrete state-holder classes declared in §20.10.
+- `UiState` data classes and UI row data classes declared in §20.10.
+- `UiMessage`, `UiMessageKind`, `SyncStatus` and the typed enums referenced by those state classes.
+
+Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, Room types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
+
+`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)`, the Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are Kotlin-facing contracts and MUST NOT be exported to Swift.
 
 A golden file of the generated Objective-C header is committed and diffed on every PR; a change to it is a review signal.
 
@@ -910,13 +921,17 @@ Phase 0 defines the exact CI check names. Required checks:
 
 `contract-check` is a script that asserts:
 
-1. Every type named in a code block in this document is declared in §20.
+1. Every project-owned type named in a code block in this document is declared in §20.
 2. The decision ID set and status are identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 3. Every ADR linked from `docs/adr/README.md` has a `Status` heading whose value matches the status recorded for its decision ID.
 4. Every `Proposed` or `Pending` decision in `docs/DECISION_BOARD.md` appears in the "Decisions Awaiting Owner Confirmation" section with a `Needed by` story or phase. If no such decisions exist, the section states that none are awaiting owner confirmation and contains no empty table.
 5. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
 6. `.github/pull_request_template.md` remains a superset of `docs/templates/agent-handoff.md` section headings.
 7. The committed Objective-C header golden file for `:shared` is unchanged.
+
+For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type `kotlinx.datetime.Instant`, and platform annotation names used only to hide Kotlin declarations from Objective-C export. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
+
+For the Objective-C header assertion, `contract-check` MUST fail if the header exports any forbidden type from §15.3 or omits any Swift-facing type explicitly listed in §20.10.
 
 Once CI exists, branch protection for `main` MUST require these checks before merge.
 
@@ -1308,11 +1323,11 @@ data class RemotePage(
     val hasMore: Boolean,
 )
 
-sealed interface SyncStatus {
-    data object Idle : SyncStatus
-    data object Syncing : SyncStatus
-    data class Pending(val count: Int) : SyncStatus
-    data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus
+sealed class SyncStatus {
+    data object Idle : SyncStatus()
+    data object Syncing : SyncStatus()
+    data class Pending(val count: Int) : SyncStatus()
+    data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus()
 }
 
 interface SyncController {
@@ -1389,6 +1404,7 @@ No leaf carries a free-text `String`. Adding one is a contract violation.
 ### 20.10 Shared surface — `:shared`
 
 ```kotlin
+// Kotlin-facing construction API. Hidden from Objective-C/Swift export.
 interface AppGraph {
     fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder
     fun vehicleFormStateHolder(scope: CoroutineScope, vehicleId: String?): VehicleFormStateHolder
@@ -1398,6 +1414,187 @@ interface AppGraph {
     fun syncController(): SyncController
     fun close()
 }
+
+// Swift-facing construction API. This is exported.
+fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph
+
+// Swift-facing facade. This is exported.
+class SwiftAppGraph {
+    fun vehicleListStateHolder(): VehicleListStateHolder
+    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder
+    fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder
+    fun fuelEntryFormStateHolder(vehicleId: String, entryId: String?): FuelEntryFormStateHolder
+    fun sessionStateHolder(): SessionStateHolder
+    fun syncStateHolder(): SyncStateHolder
+    fun close()
+}
+
+class VehicleListStateHolder {
+    val state: StateFlow<VehicleListUiState>
+    fun refresh()
+    fun selectVehicle(vehicleId: String?)
+    fun requestDelete(vehicleId: String)
+    fun confirmDelete(vehicleId: String, confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class VehicleFormStateHolder {
+    val state: StateFlow<VehicleFormUiState>
+    fun setName(value: String)
+    fun setInitialOdometerKm(value: Long)
+    fun setBrand(value: String?)
+    fun setModel(value: String?)
+    fun setFuelType(value: FuelType)
+    fun save()
+    fun clearMessage()
+    fun close()
+}
+
+class FuelEntryListStateHolder {
+    val state: StateFlow<FuelEntryListUiState>
+    fun refresh()
+    fun requestDelete(entryId: String)
+    fun confirmDelete(entryId: String, confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class FuelEntryFormStateHolder {
+    val state: StateFlow<FuelEntryFormUiState>
+    fun setDateEpochMillis(value: Long)
+    fun setOdometerKm(value: Long)
+    fun setMoneyInputMode(value: MoneyInputMode)
+    fun setLitersScaled(value: Long?)
+    fun setPricePerLiterScaled(value: Long?)
+    fun setTotalCostMinor(value: Long?)
+    fun setCurrencyCode(value: String)
+    fun setFullTank(value: Boolean)
+    fun setMissedEntries(value: Boolean)
+    fun setNotes(value: String?)
+    fun save()
+    fun confirmSave(confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class SessionStateHolder {
+    val state: StateFlow<SessionUiState>
+    fun startAnonymousSignIn()
+    fun startPermanentSignIn(provider: AuthProvider)
+    fun requestSignOut()
+    fun confirmSignOut(confirmation: Confirmation)
+    fun requestDeleteAccount()
+    fun confirmDeleteAccount(confirmation: Confirmation)
+    fun clearMessage()
+    fun close()
+}
+
+class SyncStateHolder {
+    val state: StateFlow<SyncUiState>
+    fun requestSync(reason: SyncTrigger)
+    fun retryFailed()
+    fun clearMessage()
+    fun close()
+}
+
+data class VehicleListUiState(
+    val isLoading: Boolean,
+    val vehicles: List<VehicleListItemUi>,
+    val selectedVehicleId: String?,
+    val syncStatus: SyncStatus,
+    val message: UiMessage?,
+)
+
+data class VehicleListItemUi(
+    val id: String,
+    val name: String,
+    val currentOdometerKm: Long,
+    val fuelType: FuelType,
+    val deleted: Boolean,
+)
+
+data class VehicleFormUiState(
+    val vehicleId: String?,
+    val name: String,
+    val initialOdometerKm: Long,
+    val brand: String?,
+    val model: String?,
+    val fuelType: FuelType,
+    val canEditInitialOdometer: Boolean,
+    val isSaving: Boolean,
+    val message: UiMessage?,
+)
+
+data class FuelEntryListUiState(
+    val vehicleId: String,
+    val isLoading: Boolean,
+    val entries: List<FuelEntryListItemUi>,
+    val consumptionAverageScaled: Long?,
+    val validConsumptionSegmentCount: Int,
+    val isConsumptionReliable: Boolean,
+    val syncStatus: SyncStatus,
+    val message: UiMessage?,
+)
+
+data class FuelEntryListItemUi(
+    val id: String,
+    val dateEpochMillis: Long,
+    val odometerKm: Long,
+    val litersScaled: Long,
+    val totalCostMinor: Long,
+    val currencyCode: String,
+    val isFullTank: Boolean,
+    val consumptionScaled: Long?,
+    val invalidReason: ConsumptionInvalidReason?,
+)
+
+enum class MoneyInputMode { LITERS_AND_PRICE, LITERS_AND_TOTAL, PRICE_AND_TOTAL }
+
+data class FuelEntryFormUiState(
+    val vehicleId: String,
+    val entryId: String?,
+    val dateEpochMillis: Long,
+    val odometerKm: Long,
+    val moneyInputMode: MoneyInputMode,
+    val litersScaled: Long?,
+    val pricePerLiterScaled: Long?,
+    val totalCostMinor: Long?,
+    val currencyCode: String,
+    val isFullTank: Boolean,
+    val hasMissedEntries: Boolean,
+    val notes: String?,
+    val isSaving: Boolean,
+    val message: UiMessage?,
+)
+
+enum class SessionPhase { UNKNOWN, LOCAL, ANONYMOUS, PERMANENT, SIGNED_OUT, DELETING }
+
+data class SessionUiState(
+    val phase: SessionPhase,
+    val providers: List<AuthProvider>,
+    val isBusy: Boolean,
+    val message: UiMessage?,
+)
+
+data class SyncUiState(
+    val status: SyncStatus,
+    val isOnline: Boolean,
+    val message: UiMessage?,
+)
+
+data class UiMessage(
+    val id: Long,
+    val kind: UiMessageKind,
+    val code: String,
+    val confirmation: Confirmation?,
+)
+
+enum class UiMessageKind { INFO, WARNING, ERROR }
 ```
 
-Identifiers cross this boundary as `String`, never as `EntityId`, per §15.3.
+Identifiers and currency codes cross the Swift-facing boundary as `String`, never as `EntityId`, `OwnerId` or `CurrencyCode`, per §15.3. Dates cross as epoch milliseconds in UTC. `UiMessage.code` is a stable programmatic code: for errors it is `AppError.code`; for warnings and confirmations it is the enum entry name prefixed by its owner, for example `CONFIRMATION.OdometerInconsistent`. It is never display copy.
+
+The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
+
+The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.

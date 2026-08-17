@@ -288,19 +288,21 @@ Module-level rules are enforced by a Gradle configuration check; package-level r
 
 ### 8.4 Shared Presentation
 
-Presentation logic is shared in `commonMain` through state holders exposing `StateFlow<UiState>` and intent functions. Android adapts them to Compose. iOS wraps them in SwiftUI `ObservableObject`s. SwiftUI and Compose contain rendering and event forwarding, not business rules.
+Presentation logic is shared in `commonMain` through state holders exposing `StateFlow<UiState>` and intent functions. Android adapts the Kotlin-facing graph to Compose. iOS consumes the Swift-facing facade and wraps the exported state holders in SwiftUI `ObservableObject`s. SwiftUI and Compose contain rendering and event forwarding, not business rules.
 
 `UiState` carries no user-facing text; each platform maps typed values to its own string resources. Lifecycle, dispatcher and threading rules are in `docs/CONTRACTS.md §14`.
 
 ### 8.5 Cloud Provider Decoupling
 
-`:shared` exposes a graph factory that accepts abstractions:
+`:shared` exposes a Kotlin-facing graph factory that accepts abstractions:
 
 ```kotlin
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies` and all public interface contracts are defined in `docs/CONTRACTS.md`.
+That factory and `AppGraphDependencies` are not part of the Swift-facing ABI. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which exposes concrete state holders and no provider dependency container.
+
+The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in `docs/CONTRACTS.md`.
 
 ## 9. Synchronization
 

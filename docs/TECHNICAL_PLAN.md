@@ -120,13 +120,13 @@ Any change to those contracts is a human review gate and MUST update `docs/CONTR
 
 ## 5. Provider Decoupling
 
-`:shared` exposes a graph factory that receives a platform dependency container:
+`:shared` exposes a Kotlin-facing graph factory that receives a platform dependency container:
 
 ```kotlin
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-`AppGraphDependencies` and `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
+`AppGraphDependencies` and the Kotlin-facing `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`; they are hidden from the Swift-facing Objective-C header. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes `SwiftAppGraph` plus the concrete state holders defined in `docs/CONTRACTS.md §20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
 
 ```text
 Exclude :integration:* and :wiring:firebase from settings.
