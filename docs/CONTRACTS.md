@@ -336,7 +336,11 @@ This table is normative; it decides retry versus poison.
 | `InvalidArgument` | `ValidationRejected` | **poison** |
 | `NotFound` on push | — | treated as success; the local row is marked synced |
 | `NotFound` on pull | — | ignored |
-| `Unknown` | `RetryableNetwork` | retry, capped at 3 attempts, then poison |
+| `Unknown` | `RetryableNetwork` | retry with backoff, `attemptCount++` |
+
+There is exactly **one** retry counter, `outbox.attemptCount`, and exactly one ceiling, `MAX_RETRYABLE_ATTEMPTS` (§9.7). No `RemoteError` carries a separate, lower cap: the outbox holds a single counter, so a per-code ceiling would not be representable and two agents would resolve it differently. `Unknown` is retried on the same terms as `Unavailable` — a rules rejection or an invalid argument poisons immediately because it is known to be permanent, whereas `Unknown` means the opposite, so giving up on it sooner than on a network error would be backwards.
+
+`outbox.lastErrorCode` stores the code of the **originating** error, which for a remote failure is the `RemoteError` code (`REMOTE.UNAVAILABLE`, `REMOTE.UNKNOWN`, …), not the `SyncError` it maps to. This granularity is load-bearing: `Unavailable` and `Unknown` both map to `RetryableNetwork`, and only the originating code separates a failure that MUST NOT poison from one that MUST.
 
 ### Read versus write absence
 
@@ -368,9 +372,9 @@ Allowed transitions:
 | `SYNCING` | `PENDING` | `localRevision` changed during push. |
 | `SYNCING` | `FAILED_RETRYABLE` | Retryable network or remote failure. |
 | `FAILED_RETRYABLE` | `PENDING` | Automatic due retry, manual retry, or a local edit. |
-| `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS`. |
+| `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS` **and** `lastErrorCode` is not a connectivity code (§9.7). |
 | `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure. |
-| `FAILED_POISONED` | `PENDING` | User or repair flow edits the entity and re-enqueues a valid snapshot. |
+| `FAILED_POISONED` | `PENDING` | User or repair flow edits the entity and re-enqueues a valid snapshot, **or** the user invokes `SyncController.retryFailed()` (§9.7). |
 
 `FAILED_POISONED` is never retried automatically.
 
@@ -411,9 +415,11 @@ Tombstone purge: a tombstone is purgeable locally only when `syncState == SYNCED
 
 `SyncController` is a singleton in the app graph holding a `Mutex`. All triggers call `requestSync(reason)`, which sets a pending flag and returns immediately; concurrent triggers coalesce into one pending cycle. Android platform triggers MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)` and MUST route through the same in-process `SyncController`; iOS uses a single `BGTaskScheduler` identifier. Cross-process sync is not supported and MUST NOT be introduced.
 
-### 9.2 Cycle order
+### 9.2 Cycle admission and order
 
-Deterministic, because the convergence simulation depends on it:
+A cycle MUST NOT start while `ConnectivityObserver.isOnline` is `false`. It ends immediately as a no-op, leaving `attemptCount`, `nextAttemptAt`, `lastError` and `lastErrorCode` untouched, and the pending rows keep their existing state. This is the primary defence against burning the retry budget offline; the qualified poison rule of §9.7 is the second, for connectivity lost mid-cycle.
+
+Once admitted, the order is deterministic, because the convergence simulation depends on it:
 
 - If the local database contains no rows for the owner **and** the outbox is empty: pull, then push.
 - Otherwise: push, then pull.
@@ -461,7 +467,20 @@ delay = base * (800 + jitter.nextInt(0, 401)) / 1000   // ±20 %
 delay = delay.coerceIn(1_000L, 900_000L)
 ```
 
-The jitter source MUST be injectable for deterministic tests. `MAX_RETRYABLE_ATTEMPTS = 10`; on reaching it the row becomes `FAILED_POISONED`. Manual retry sets `nextAttemptAt = now` and preserves `attemptCount`.
+The jitter source MUST be injectable for deterministic tests. `MAX_RETRYABLE_ATTEMPTS = 10`.
+
+**Connectivity failures MUST NOT consume the poison budget.** `attemptCount` still increments on every failure, because it is the exponent that drives the backoff, but the poison rule is qualified:
+
+```text
+CONNECTIVITY_ERROR_CODES = { "REMOTE.UNAVAILABLE", "REMOTE.DEADLINE_EXCEEDED" }
+
+poison  iff  attemptCount >= MAX_RETRYABLE_ATTEMPTS
+        and  lastErrorCode not in CONNECTIVITY_ERROR_CODES
+```
+
+A row failing only for connectivity reasons therefore stays `FAILED_RETRYABLE` indefinitely, with `attemptCount` pinned at the ceiling and the backoff at its 15-minute cap, and resumes as soon as the network returns. Without this qualification the constants above poison every pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity repair.
+
+Manual retry through `SyncController.retryFailed()` sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and clears `lastError` and `lastErrorCode`. Preserving the count would make manual retry useless on exactly the rows that need it, because the count is already at the ceiling.
 
 ### 9.8 Trigger constants
 
@@ -477,7 +496,9 @@ All five are `SyncTrigger` values passed to `requestSync(reason)` and logged wit
 
 ### 9.9 Aggregate status
 
-`SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`. Being offline with pending rows renders as `Pending`, never as an error.
+`SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`.
+
+Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a row in `FAILED_RETRYABLE` whose `lastErrorCode` is a connectivity code (§9.7) counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
 
 ## 10. RemoteSyncSource Contract
 

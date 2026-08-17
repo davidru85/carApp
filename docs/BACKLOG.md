@@ -402,7 +402,8 @@ Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quaranti
 
 Acceptance criteria:
 
-- All 16 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
+- All 17 sync tests in `docs/TECHNICAL_PLAN.md §9` pass.
+- A cycle is not started while `ConnectivityObserver.isOnline` is false, and connectivity failures never poison a row (`docs/CONTRACTS.md §9.2`, `§9.7`).
 - The deterministic convergence simulation exists with a fixed seed and an injected jitter source.
 - The state machine matches `docs/CONTRACTS.md §7`, including `SYNCING -> SYNCING` on a local edit during an in-flight push.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.

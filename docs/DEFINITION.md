@@ -89,7 +89,7 @@ Accepted limitation: two devices editing different fields of the same document c
 | 0.5 | Walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth | Data written on Android appears on iOS and vice versa; the Swift-facing surface constraints hold |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 16 sync tests and the emulator tests pass; provider decoupling is an executable check |
+| 3 | Firestore rules, integration, sync engine, app graph wiring, sync status, purge, decoupling proof | The 17 sync tests and the emulator tests pass; provider decoupling is an executable check |
 | 4 | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
 
 ## 10. Risks
@@ -98,7 +98,7 @@ Accepted limitation: two devices editing different fields of the same document c
 |------|--------|------------|
 | iOS/KMP/SKIE/Room toolchain friction | High | Early walking skeleton, macOS CI, pinned versions, SQLDelight fallback with a superseding ADR. |
 | Swift export rejects the shared API shape | Medium | Explicit surface constraints plus a committed Objective-C header golden file. |
-| Silent data loss in sync | Critical | Common engine, 16 required tests, deterministic simulation, debug screen. |
+| Silent data loss in sync | Critical | Common engine, 17 required tests, deterministic simulation, debug screen. |
 | Data loss at the `LOCAL_OWNER` boundary | Critical | Outbox suppressed before a real UID exists, plus an idempotent adoption story. |
 | Incorrect Firestore rules | Critical | Emulator tests before any production deployment. |
 | Scope creep | Medium | Explicit out-of-scope list and escalation rule. |

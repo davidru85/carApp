@@ -250,13 +250,14 @@ Required tests for `:core:sync`:
 7. Pull overlap prevents missing a document with a timestamp before the cursor.
 8. Device clock one hour ahead does not win all conflicts.
 9. First sync of 1,000 records is paginated correctly.
-10. After `MAX_RETRYABLE_ATTEMPTS` consecutive retryable failures the row becomes `FAILED_POISONED` and manual retry is available.
+10. After `MAX_RETRYABLE_ATTEMPTS` consecutive **non-connectivity** retryable failures the row becomes `FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it.
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
 12. A fuel entry arriving before its vehicle is persisted, hidden from the UI, and converges without stalling.
 13. Two devices creating the same vehicle name converge into two vehicles without a constraint failure.
 14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once and is idempotent.
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
 16. Backoff with an injected jitter source produces deterministic, capped delays.
+17. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
 Add a deterministic simulation with a fixed seed that interleaves local edits, push, pull, network failure, duplicate delivery and lost responses, asserting convergence between two clients.
 
@@ -296,7 +297,7 @@ Settings UI, accessibility, localization, performance, release builds, store req
 |------|----------------------|------------|
 | iOS toolchain friction | High / High | Walking skeleton in the first week, macOS CI from the first PR, SPM integration, pinned Kotlin/SKIE/Xcode versions. |
 | Swift-facing API shape rejected by the Obj-C export | High / Medium | `docs/CONTRACTS.md §15.3` constraints validated in `E0-07`, plus a committed header golden file. |
-| Sync convergence bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, 16 required tests, debug screen for outbox, cursors and sync state. |
+| Sync convergence bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, 17 required tests, debug screen for outbox, cursors and sync state. |
 | Room KMP iOS friction | Medium / Medium | Validate before features. Keep the database behind repositories. Switch to SQLDelight if blocked. |
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
