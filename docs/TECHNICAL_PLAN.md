@@ -31,7 +31,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-14 | Firebase project topology | one development project plus emulator; production deferred | Accepted | Keeps development setup small while retaining emulator-only CI. Production topology is decided before release. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Accepted | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Accepted | Gradle cannot express intra-module package rules. |
-| D-17 | Flow testing helper | Turbine | Proposed | Confirm compatibility during version pinning. |
+| D-17 | Flow testing helper | Turbine | Accepted | Confirm compatibility during version pinning. |
 | D-18 | Coverage | Kover with thresholds | Proposed | Makes "high coverage" a pass/fail criterion. |
 | D-19 | Result type | `Outcome<T, E>` in `:core:common` | Accepted | `kotlin.Result` has one type parameter; Arrow is out of scope. |
 | D-20 | Localization | Native resources, no user-facing text in `UiState` | Proposed | UI is native; shared code has no resource bundle. |

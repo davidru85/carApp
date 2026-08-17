@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-17 Flow testing helper accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-17`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Turbine was accepted as the Flow testing helper, and the previous combined D-17/D-18 ADR was split into separate ADRs so each decision can carry its own status.
+- **Why:** the owner selected Turbine; `D-18` remains unresolved, so sharing one ADR made status verification ambiguous.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0019-flow-testing-turbine.md`, `docs/adr/0022-coverage-kover.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-17`, `D-18`, Turbine, Kover and ADR status references.
+- **Follow-ups / risks:** Turbine compatibility remains validated in `E0-06`; `E0-05` remains blocked by `D-18`.
+
 ### 2026-08-17 — D-19 result channel accepted
 
 - **Type:** decision

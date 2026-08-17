@@ -36,7 +36,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-14 | Firebase project topology | One development Firebase project plus the local emulator; production topology deferred until release preparation | Two projects from day one, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and production Firebase topology MUST be decided before public release. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
-| D-17 | Flow testing helper | Turbine | Manual collection | **Proposed** | Confirm compatibility during version pinning in `E0-06`. |
+| D-17 | Flow testing helper | Turbine | Manual collection | Accepted | Confirm compatibility during version pinning in `E0-06`. |
 | D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | **Proposed** | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | **Proposed** | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
@@ -52,7 +52,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Date/time | `kotlinx-datetime` | platform date APIs only | Accepted | UTC instants only in persistence. The exact `Instant` package is pinned in `docs/versions-matrix.md`. |
 | Logging | Kermit behind `Logger` | Napier, custom sinks | Accepted (D-15) | Abstraction mandatory; implementation swappable. Does not replace `AnalyticsTracker` or `CrashReporter`. |
 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending (D-21) | Phase 4. |
-| Flow testing | Turbine | manual collection | Proposed (D-17) | Validate against the pinned coroutines version. |
+| Flow testing | Turbine | manual collection | Accepted (D-17) | Validate against the pinned coroutines version. |
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
 | Test doubles | Hand-written fakes | MockK, Mockative | Accepted | Fakes are preferred for domain and sync. |
 | Coverage | Kover | JaCoCo, none | Proposed (D-18) | Thresholds enforced in CI. |
@@ -101,7 +101,6 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-17 | Flow testing helper | Turbine | Before `E0-05` | Falls back to hand-written collection helpers in `:core:testing`. |
 | D-18 | Coverage | Kover | Before `E0-05` | "High coverage" stays unmeasurable. |
 | D-20 | Localization | Native resources | Before `E1-07` | Shared code has no defined path to localized strings. |
 | D-21 | Crash reporting | Crashlytics | Before `E4-04` | Non-blocking until release hardening. |
