@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — E0-00 closure reflected as completed
+
+- **Type:** story
+- **Story / Decision:** `E0-00`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** orientation documents now state that owner decision closure is complete and that implementation starts at `E0-01`.
+- **Why:** after `D-13` through `D-22` were accepted and pushed, keeping `E0-00` as the next implementation step would send future agents back through already-closed decisions.
+- **Documents touched:** `README.md`, `docs/DEFINITION.md`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `E0-00`, `Proposed`, `Pending`, and owner-decision closure wording.
+- **Follow-ups / risks:** `docs/AUDIT_GUARDRAILS.md` remains temporary until the owner finishes reviewing every audit-remediation theme.
+
 ### 2026-08-17 — D-21 crash reporting accepted
 
 - **Type:** decision

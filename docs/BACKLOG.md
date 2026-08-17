@@ -23,6 +23,8 @@ Goal: a project skeleton that compiles on both platforms and has enforceable arc
 
 ### E0-00 - Owner Decision Closure - S
 
+Status: completed on 2026-08-17 by the decision commits for `D-13` through `D-22`. Future implementation work starts at `E0-01` unless a new unresolved owner decision is introduced.
+
 Turn the `Proposed` and Phase-0 `Pending` rows of `docs/DECISION_BOARD.md` into `Accepted` (or a different choice), and materialise the supporting documents.
 
 Acceptance criteria:
@@ -531,20 +533,21 @@ Acceptance criteria:
 ## Execution Order
 
 ```text
-E0-00 owner decisions
-  -> Phase 0
-      -> E0-07 walking skeleton gate
-          -> Phase 1 local persistence
-          -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
-          -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
-          -> Phase 4
+E0-00 owner decisions (completed)
+  -> E0-01 KMP bootstrap
+      -> remaining Phase 0 foundations
+          -> E0-07 walking skeleton gate
+              -> Phase 1 local persistence
+              -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
+              -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
+              -> Phase 4
 ```
 
 ## Story Index
 
 | Story | Phase | Size | Human gate |
 |-------|-------|------|------------|
-| E0-00 Owner decision closure | 0 | S | Yes |
+| E0-00 Owner decision closure (completed) | 0 | S | Yes |
 | E0-01 KMP bootstrap | 0 | M | — |
 | E0-02 Convention plugins | 0 | M | — |
 | E0-03 Base core modules | 0 | M | — |

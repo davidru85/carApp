@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses. Users can create vehicles, log refueling events, review history, calculate real consumption, and keep their data available offline with background synchronization.
 
-The repository is greenfield: there is no product code yet. Implementation starts at `E0-00` in `docs/BACKLOG.md`.
+The repository is greenfield: there is no product code yet. Owner decision closure (`E0-00`) is complete, so implementation starts at `E0-01` in `docs/BACKLOG.md`.
 
 ## 2. MVP Objective
 
@@ -127,8 +127,8 @@ Both are defined canonically in `AGENTS.md` and MUST NOT be restated elsewhere. 
 - [x] Contractual guardrail layer materialized in `docs/CONTRACTS.md`, including canonical type definitions.
 - [x] Library and technical decision board materialized in `docs/DECISION_BOARD.md`.
 - [x] Specification audit completed and folded back into the documents.
-- [ ] Owner confirmation of every `Proposed` decision (`E0-00`).
+- [x] Owner confirmation of every `Proposed` decision (`E0-00`).
 - [ ] Version catalog created and versions pinned (`E0-06`).
 - [ ] Real CI commands validated (`E0-05`).
 
-The remaining unchecked items belong to Phase 0 because they require an owner decision or the project skeleton.
+The remaining unchecked items belong to Phase 0 because they require the project skeleton, real tooling and CI validation.

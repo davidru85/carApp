@@ -38,13 +38,17 @@ The definition package was complete in intent but not machine-decidable. The fai
 
 ## New documents created
 
-`docs/PROJECT_LOG.md`, `docs/identifiers.md`, `docs/versions-matrix.md`, and ADR-0014 through ADR-0021.
+`docs/PROJECT_LOG.md`, `docs/identifiers.md`, `docs/versions-matrix.md`, and ADR-0014 through ADR-0023.
+
+## Decision closure status
+
+The decisions that originally blocked Phase 0 are now closed. `D-13` through `D-22` are recorded in `docs/DECISION_BOARD.md`, mirrored in the decision tables, and backed by ADRs.
+
+`E0-00` is complete. The next implementation story is `E0-01` unless a new unresolved owner decision is introduced.
 
 ## Still open
 
-Ten decisions are `Proposed` or `Pending` and need owner confirmation before Phase 0 starts. They are listed in the "Decisions Awaiting Owner Confirmation" table of `docs/DECISION_BOARD.md` and closed by story `E0-00`.
-
-Until that table is empty of Phase 0 rows, no implementation story is Ready.
+The owner is continuing the audit-remediation review issue by issue. Keep this file until every theme above has been reviewed against the current documents and any remaining contradictions have been corrected.
 
 ## Deleting this file
 
