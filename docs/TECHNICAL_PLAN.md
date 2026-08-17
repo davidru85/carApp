@@ -28,7 +28,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-11 | HTTP/API client | Ktor deferred | Deferred | Reserved for a future API-based remote implementation. |
 | D-12 | Image loading | Coil if ever needed | Deferred | Prevents agents from choosing competing loaders. |
 | D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation. |
-| D-14 | Firebase project topology | one development project plus emulator; production deferred | Accepted | Keeps development setup small while retaining emulator-only CI. Production topology is decided before release. |
+| D-14 | Firebase project topology | one development project plus emulator now; separate production project before release | Accepted | Keeps development setup small while retaining emulator-only CI. Production project creation and its ID are deferred until release preparation. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Accepted | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Accepted | Gradle cannot express intra-module package rules. |
 | D-17 | Flow testing helper | Turbine | Accepted | Confirm compatibility during version pinning. |
@@ -36,7 +36,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-19 | Result type | `Outcome<T, E>` in `:core:common` | Accepted | `kotlin.Result` has one type parameter; Arrow is out of scope. |
 | D-20 | Localization | Native resources, no user-facing text in `UiState` | Accepted | UI is native; shared code has no resource bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` in Phase 4 | Accepted | Not needed before release hardening. |
-| D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; production Firebase project IDs are deferred by `D-14`. |
+| D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; the production Firebase project ID is deferred by `D-14`. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
 

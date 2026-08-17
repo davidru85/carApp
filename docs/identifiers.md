@@ -1,6 +1,6 @@
 # Application Identifiers
 
-> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. Production Firebase project identifiers are deferred by `D-14` and MUST be decided before `E4-04`.
+> **Owner-decided.** Agents MUST NOT invent, guess or "temporarily" change any value in this file. Several values are effectively irreversible once published or created. A separate production Firebase project is required before release, but its project identifier is deferred by `D-14` and MUST be decided before `E4-04`.
 >
 > Related decisions: `D-13` Firestore location, `D-14` Firebase project topology, `D-22` application identifiers.
 
@@ -10,7 +10,7 @@
 |-------|--------|
 | Application and bundle identifiers | Accepted |
 | Development Firebase project ID | Accepted |
-| Production Firebase topology and project IDs | Deferred — decide before `E4-04` release preparation |
+| Production Firebase project ID | Deferred — decide before `E4-04` release preparation |
 | Firestore location | Accepted |
 
 ## Application
@@ -33,11 +33,11 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Item | Value | Notes |
 |------|-------|-------|
 | Development project ID | `carapp-dev` | Accepted in `D-22`. Used by debug builds and by manual testing during development. |
-| Production project ID | Deferred until release preparation | The owner rethinks production Firebase topology before `E4-04`; agents MUST NOT invent a production project ID. |
+| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. |
 | CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
-| Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until production topology is decided. |
+| Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until the production project is created. |
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
 

@@ -30,7 +30,7 @@ Turn the `Proposed` and Phase-0 `Pending` rows of `docs/DECISION_BOARD.md` into 
 Acceptance criteria:
 
 - Every Phase 0 row in "Decisions Awaiting Owner Confirmation" is `Accepted`, `Rejected` or explicitly re-`Deferred`.
-- `docs/identifiers.md` contains the final applicationId, bundle identifier, Kotlin namespace, display name, development Firebase project ID and Firestore location; production Firebase topology and project IDs are explicitly deferred by `D-14`.
+- `docs/identifiers.md` contains the final applicationId, bundle identifier, Kotlin namespace, display name, development Firebase project ID and Firestore location; the separate production Firebase project ID is explicitly deferred by `D-14`.
 - One ADR exists per newly accepted decision.
 - `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` mirror `docs/DECISION_BOARD.md` exactly.
 
@@ -523,7 +523,7 @@ Acceptance criteria:
 
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
-- Production Firebase topology and project identifiers have been decided by the owner before any public release build points to Firebase.
+- A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
 - `:core:crash` exposes `CrashReporter`; `:integration:firebase-crashlytics` implements it with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
 - Release builds are installable on both platforms.
 - Account deletion and Apple sign-in requirements are satisfied.

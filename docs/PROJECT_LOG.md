@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-14 future production project clarified
+
+- **Type:** decision
+- **Story / Decision:** `D-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** documentation now states that development uses only `carapp-dev` for now, but public release requires a separate production Firebase project.
+- **Why:** the owner clarified that the future topology is two Firebase projects, development and production, while production project creation and its project ID remain deferred until release preparation.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/identifiers.md`, `docs/BACKLOG.md`, `docs/adr/0015-firebase-project-topology.md`, `docs/adr/README.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for production Firebase topology, production project ID and `D-14` wording.
+- **Follow-ups / risks:** the production Firebase project ID remains an owner decision before `E4-04`; agents MUST NOT invent it.
+
 ### 2026-08-17 — Firebase identifier wording aligned with D-14
 
 - **Type:** correction

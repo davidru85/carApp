@@ -33,7 +33,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-11 | HTTP/API client | Ktor, for future API-based remote implementations | Retrofit, native URLSession/OkHttp wrappers, no HTTP abstraction | Deferred | Do not add Ktor to the MVP. |
 | D-12 | Image loading | Coil, if image loading ever becomes necessary | SDWebImage, platform-native loaders, none | Deferred | No image loading dependency until a story requires it; Coil is then the only approved library. |
 | D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
-| D-14 | Firebase project topology | One development Firebase project plus the local emulator; production topology deferred until release preparation | Two projects from day one, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and production Firebase topology MUST be decided before public release. |
+| D-14 | Firebase project topology | One development Firebase project plus the local emulator now; add a separate production Firebase project before release | Two projects from day one, single project through production, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and no public release build may point at the development project. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
 | D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
 | D-17 | Flow testing helper | Turbine | Manual collection | Accepted | Confirm compatibility during version pinning in `E0-06`. |
@@ -41,7 +41,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | Accepted | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted | Added in Phase 4. Crashlytics types never leave `:integration:firebase-crashlytics` or `:wiring:firebase`. |
-| D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. Production Firebase project IDs are deferred by `D-14`. |
+| D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. The production Firebase project ID is deferred by `D-14`. |
 
 ## Library Review Matrix
 

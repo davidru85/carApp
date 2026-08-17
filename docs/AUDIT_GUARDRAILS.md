@@ -46,7 +46,7 @@ The decisions that originally blocked Phase 0 are now closed. `D-13` through `D-
 
 `E0-00` is complete. The next implementation story is `E0-01` unless a new unresolved owner decision is introduced.
 
-The `E0-00` acceptance criteria and document map have been aligned with `D-14`: only the development Firebase project ID is fixed during development, and production Firebase topology and project IDs remain deferred until `E4-04`.
+The `E0-00` acceptance criteria and document map have been aligned with `D-14`: only the development Firebase project ID is fixed during development. A separate production Firebase project is required before release, but its project ID remains deferred until `E4-04`.
 
 ## Still open
 
