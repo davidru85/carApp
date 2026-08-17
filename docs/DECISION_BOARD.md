@@ -35,7 +35,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-13 | Firestore location | `europe-west1` single region | `eur3` European multi-region, `nam5` United States multi-region | Accepted | Firestore is a backup and sync replica only; Room is the source of truth. The location is immutable after database creation and must be verified before `E0-07` creates the database. |
 | D-14 | Firebase project topology | One development Firebase project plus the local emulator; production topology deferred until release preparation | Two projects from day one, three projects with staging | Accepted | Development uses one real Firebase project for manual testing, CI uses the emulator only, and production Firebase topology MUST be decided before public release. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Napier, custom sinks, no implementation | Accepted | The `Logger` abstraction is mandatory regardless; Kermit never appears outside the sink implementation. |
-| D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | **Proposed** | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
+| D-16 | Architecture checks | Konsist for package-level rules, custom Gradle check for module-level rules | Custom checks only, dependency-analysis plugin | Accepted | Gradle cannot express intra-module package rules, and features are one module each. Every rule needs a failing fixture test. |
 | D-17 | Flow testing helper | Turbine | Manual collection | **Proposed** | Confirm compatibility during version pinning in `E0-06`. |
 | D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | **Proposed** | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | **Proposed** | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
@@ -60,7 +60,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | iOS background work | BGTaskScheduler | foreground-only sync | Accepted for Phase 3 | Same constraint; a single task identifier. |
 | Connectivity | `ConnectivityObserver` behind a common interface | Ktor-only detection, platform-only direct usage | Accepted | Injected, not `expect`/`actual` in public API. |
 | Localization | Native Android/iOS resources | shared resource library | Proposed (D-20) | Native resources because UI is native. |
-| Architecture checks | Konsist + custom Gradle check | custom only, dependency-analysis plugin | Proposed (D-16) | See D-16. |
+| Architecture checks | Konsist + custom Gradle check | custom only, dependency-analysis plugin | Accepted (D-16) | See D-16. |
 | Charts | None for MVP | Vico, Swift Charts | Rejected for MVP | Advanced charts are out of scope. |
 | Image loading | Coil | SDWebImage, platform-native | Deferred (D-12) | Only if a story requires it. |
 | HTTP client | Ktor | Retrofit, URLSession | Deferred (D-11) | Only with an approved API implementation story. |
@@ -101,7 +101,6 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-16 | Architecture checks | Konsist + custom Gradle check | Before `E0-04` | Package-level rules cannot be enforced. |
 | D-19 | Result type | `Outcome<T, E>` | Before `E0-03` | Every public signature in `docs/CONTRACTS.md` depends on it. |
 | D-17 | Flow testing helper | Turbine | Before `E0-05` | Falls back to hand-written collection helpers in `:core:testing`. |
 | D-18 | Coverage | Kover | Before `E0-05` | "High coverage" stays unmeasurable. |

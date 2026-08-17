@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted
 
-Requires owner confirmation in `E0-00`, before `E0-04`.
+Accepted by the owner on 2026-08-17.
 
 ## Context
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-16 architecture checks accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-16`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Konsist was accepted for package-level architecture rules, with a custom Gradle configuration check for module-level rules.
+- **Why:** the owner selected the existing recommendation; package rules are intra-module source rules that Gradle cannot see, while module rules remain cheaper to enforce from the Gradle graph.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/0017-architecture-checks-konsist.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-16`, Konsist and architecture check status references.
+- **Follow-ups / risks:** Konsist version pinning remains part of `E0-06`; `D-17`, `D-18`, `D-19`, `D-20` and `D-21` remain unresolved.
+
 ### 2026-08-17 — D-15 logging telemetry boundary clarified
 
 - **Type:** decision
