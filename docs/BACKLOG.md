@@ -21,6 +21,8 @@ Goal: a project skeleton that compiles on both platforms and has enforceable arc
 
 **Entry condition:** every decision needed by a Phase 0 story is resolved before that story starts. No Phase 0 story is currently blocked by an unresolved owner decision.
 
+Phase 0 ships only `:core:model`, `:core:common`, `:core:analytics`, `:core:crash` and `:core:testing` from the core layer. `:core:auth`, `:core:database` and `:core:sync` are introduced by their later stories and MUST NOT be pulled into Phase 0 early.
+
 ### E0-00 - Owner Decision Closure - S
 
 Status: completed on 2026-08-17 by the decision commits for `D-13` through `D-22`. Future implementation work starts at `E0-01` unless a new unresolved owner decision is introduced.
@@ -46,9 +48,11 @@ Acceptance criteria:
 
 - Android debug app builds.
 - iOS simulator app builds and shows text coming from `commonMain`.
+- iOS imports the shared framework as `import Shared`; this is the canonical SPM module name from `docs/identifiers.md`.
 - Build scripts use Kotlin DSL only.
 - `gradle/libs.versions.toml` is the single source of dependency versions.
 - Identifiers exactly match `docs/identifiers.md`; nothing is invented.
+- Android `AndroidManifest.xml` and iOS entitlements contain no platform backup or settings-sync API surface.
 
 Blocks: all other stories.
 
@@ -89,9 +93,17 @@ Acceptance criteria:
 - Feature `data` dependency on `:core:auth` or `:integration:*` fails the build.
 - Feature-to-feature dependency fails the build.
 - A `:core:model` dependency on `:core:common` fails the build; the reverse is allowed (`docs/TECHNICAL_PLAN.md §4`).
+- Moving `ConsumptionInvalidReason` or `SegmentResult` out of `:core:model` into `:core:common` fails the build.
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
 - `:core:crash` dependency on Firebase, GitLive, Koin, Ktor, platform APIs, integrations or features fails the build.
+- An `expect`/`actual` declaration inside `:core:crash` fails the build.
+- An `:integration:*` reference to `createAppGraph` fails the build; a Koin `Module` declaration inside `:integration:*` is allowed.
+- The Phase 0 module set above is enforced: `:core:auth`, `:core:database` and `:core:sync` are not created by Phase 0 stories.
+- `Float` and `Double` usage in `:core:*`, `:feature:*` or `:shared` arithmetic paths fails unless it is an explicitly allowlisted platform display conversion.
+- `Logger.log` calls with string field values outside stable code, enum-name or `cycleId` patterns fail the source rule.
+- `Logger.log` calls from `:core:database` are rejected except for local-database-only failures.
+- Image-loading dependencies in `gradle/libs.versions.toml` fail unless a story reference and the Coil decision path of `docs/CONTRACTS.md §15.5` are present.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.
 - **Every rule has a failing fixture proving the check actually fires.**
 - The check configuration is generated from the `docs/TECHNICAL_PLAN.md §4` table.
@@ -108,6 +120,7 @@ Acceptance criteria:
 - Android and iOS simulator / shared framework verification run on macOS CI.
 - CI check names match `docs/CONTRACTS.md §18` exactly.
 - `contract-check` implements the assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
+- The first `contract-check` invocation uses the Phase 0 type set (`Outcome`, `AppError`, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger`, `MinorUnits`, `AnalyticsTracker`, `AnalyticsEvent` and `CrashReporter`) as the source of truth. Walking-skeleton types are added in `E0-07` and the check is re-run there to verify the Swift-facing ABI.
 - `contract-check` applies the external identifier allowlist of `docs/CONTRACTS.md §18`, so primitives, standard collections, coroutine types and the pinned `Instant` type do not require duplicate declarations in §20.
 - Branch protection for `main` requires those checks.
 
@@ -123,6 +136,8 @@ Acceptance criteria:
 - `docs/adr/README.md` maps every decision ID to its ADR file.
 - The decision ID set and status values are identical across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 - `docs/versions-matrix.md` pins JDK, Gradle, AGP, Kotlin, KSP, Compose, Room, `androidx.sqlite`, SKIE, Xcode, Firebase BOM, GitLive, coroutines, serialization, datetime, Koin, Kermit, Turbine and Kover, with the compatibility relation and the exact `Instant` package.
+- Every `TBD` cell is replaced by a concrete pinned value with a citation from the corresponding ADR.
+- A unit test imports the pinned datetime type package at build time.
 - `docs/versions-matrix.md` fixes the reference devices and the measurement method for every performance target.
 - Version choices are reflected in `gradle/libs.versions.toml` and nowhere else.
 
@@ -153,8 +168,9 @@ Acceptance criteria:
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
 - The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
-- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as a golden file.
+- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as `shared/build/generated/objc-header/Shared.h.golden`.
 - The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
+- The `objc-header-golden-check` CI step compares the generated header with the committed golden file.
 
 Decision gate:
 
@@ -175,11 +191,13 @@ Acceptance criteria:
 - Database instantiates and persists on Android and iOS.
 - Bundled SQLite is used.
 - Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`.
-- Synchronized entities include every control column of `docs/TECHNICAL_PLAN.md §6`, with `CHECK(deleted = (deletedAt IS NOT NULL))`.
+- Synchronized entities include every control column of `docs/TECHNICAL_PLAN.md §6`, with `deleted INTEGER NOT NULL CHECK(deleted IN (0, 1))`, nullable `serverUpdatedAt INTEGER NULL`, and `CHECK((deleted = 0 AND deletedAt IS NULL) OR (deleted = 1 AND deletedAt IS NOT NULL))`.
+- Migration tests prove the `deleted` checks reject values outside `0`/`1` and invalid `deleted`/`deletedAt` pairs, and prove `serverUpdatedAt = NULL` round-trips.
 - `local_sequence` assigns monotonic `localMutationSeq` values shared by `vehicle` and `fuel_entry`; pull-applied remote writes and local-owner adoption do not consume it.
 - There is **no** foreign key from `fuel_entry` to `vehicle`, and **no** unique index on the vehicle name.
 - Outbox matches the committed DDL, including `lastErrorCode` and `idx_outbox_due`, and preserves the original `seq` when coalescing.
 - `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and tests cover the exact recompute set of `docs/CONTRACTS.md §3.1`, including create, update that moves an entry in chronological order, update that changes only odometer comparison, single delete and vehicle cascade delete.
+- Recompute tests include no recompute on `notes` / `currency` edits, coincident pre/post successors on update, single tombstone pre-delete successor, and the 3-row vehicle cascade case.
 - `exportSchema = true`, schema JSON committed, `fallbackToDestructiveMigration` absent, and a v1 migration test exists.
 - Observable queries return `Flow`; one-shot queries are `suspend`.
 
@@ -224,6 +242,7 @@ Acceptance criteria:
 - R-1 is enforced on edit as well as on create.
 - Every bound in the `docs/CONTRACTS.md §5` validation table is enforced at both ends.
 - A currency outside `SUPPORTED_CURRENCY_CODES` returns `ValidationError.InvalidUnit`; supported codes all use factor `100`.
+- Boundary monetary tests include `litersScaled = 500_000`, `pricePerLiterScaled = 999_999`, `minorUnitFactor = 100`, proving every intermediate arithmetic step is `Long`.
 
 ### E1-05 - Consumption Calculation R-3 - M
 
@@ -243,6 +262,7 @@ Acceptance criteria:
 - Segment and average values are produced by the canonical consumption arithmetic of `docs/CONTRACTS.md §2`, and all four golden values in that section pass.
 - Average consumption is distance-weighted, not an arithmetic mean; the golden case where the two differ (`774` versus `776`) is covered by a test.
 - The function is total: no input throws.
+- The repository filter step is covered: `observeConsumption` passes only non-deleted entries for one vehicle to `CalculateConsumption`.
 - 1,000 entries processed within the target of `docs/SPECIFICATION.md §11`, measured as defined in `docs/versions-matrix.md`.
 
 Human review required.
@@ -254,7 +274,7 @@ Implement the local data source, mappers, projections and repository implementat
 Acceptance criteria:
 
 - Queries support both orderings of `docs/CONTRACTS.md §4`.
-- `observeFuelEntries` returns the `FuelEntryListItem` projection and excludes orphan entries.
+- `observeFuelEntries` returns the `FuelEntryListItem` projection in chronological order and excludes orphan entries.
 - `FuelEntryListItem` maps partial rows to `consumption = null` and `invalidReason = EndEntryNotFullTank`, while still allowing those rows to contribute litres to the next full segment.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
 - Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
@@ -308,6 +328,7 @@ Acceptance criteria:
 - Only supported 2-decimal currencies are accepted.
 - Changing the currency does not rewrite existing fuel entries.
 - Settings are device-local: nothing is enqueued and there is no remote document.
+- An update with both fields `null` returns `ValidationError.NoOp` and mutates nothing.
 - Settings are deleted by destructive local-data flows and recreated from locale defaults with `analyticsEnabled = false`.
 
 ## Phase 2 - Authentication
@@ -333,6 +354,7 @@ Acceptance criteria:
 - Cancelled system dialogs produce `AuthError.Cancelled`.
 - A provider flow that would change the UID produces `AuthError.UidWouldChange` and aborts.
 - `AuthClient.deleteAccount()` calls the `D-23` server/Admin operation and never calls the mobile Firebase Auth account deletion API directly.
+- Account deletion verifies token freshness using `FRESH_LOGIN_THRESHOLD_MS` before calling the server operation, and triggers re-authentication if the token is stale.
 - Native UI obtains credentials; common code exchanges them.
 - No GitLive or Firebase type crosses the module boundary.
 
@@ -357,6 +379,8 @@ Acceptance criteria:
 
 - On the first successful authentication, all `LOCAL_OWNER` rows are rewritten to the new UID in one transaction, `localRevision` is bumped and an outbox snapshot is enqueued for every non-synced row.
 - Adoption preserves existing `localMutationSeq` values and inserts outbox rows in the push dependency order of `docs/CONTRACTS.md §8`, then `localMutationSeq ASC, id ASC`.
+- Adoption resets non-`SYNCED` rows, including `FAILED_POISONED`, to `PENDING`, clears error context and enqueues snapshots.
+- Outbox `seq` values assigned during adoption are monotonically increasing and the first adoption row receives `(max pre-existing seq) + 1`.
 - The operation is idempotent: running it twice enqueues each row once.
 - A test starts from a populated `LOCAL_OWNER` database with vehicles and fuel entries, including interleaved edits, and asserts nothing is lost, outbox order is deterministic and everything syncs.
 - Adoption is triggered automatically when connectivity returns, not only from a UI action.
@@ -383,8 +407,9 @@ Implement sign-out, local-data deletion and account deletion.
 Acceptance criteria:
 
 - Sign-out is offered only to permanently authenticated users; anonymous sessions get "delete local data" with two-step confirmation.
-- Sign-out warns about pending sync and offers to wait, cancel or discard.
-- Account deletion follows the order of `docs/CONTRACTS.md §11.5`: re-authenticate if required, call the `D-23` server/Admin operation, wait for remote data and auth account deletion, then clear local data.
+- Sign-out returns `ValidationWarning.PendingSyncBeforeSignOut(pendingCount)` when the outbox is non-empty, then offers to wait, cancel or discard through `Confirmation.DiscardPendingChanges`.
+- Account deletion follows the order of `docs/CONTRACTS.md §11.5`: verify token freshness and re-authenticate if stale, call the `D-23` server/Admin operation, wait for remote data and auth account deletion, then clear local data.
+- Account deletion drops any pending outbox rows only after the server operation succeeds and local data is cleared.
 - A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
 - Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
 - Account deletion is accessible from settings.
@@ -399,6 +424,9 @@ Acceptance criteria:
 
 - Rules match `docs/CONTRACTS.md §16`, split by operation, with `allow delete: if false`.
 - `validPayload()` enforces the closed remote `Vehicle` and `FuelEntry` schemas from `docs/CONTRACTS.md §16`, including required keys, extra-key rejection, unknown-collection rejection, local-only-key rejection, primitive type, enum, nullability, range checks and `deleted == (deletedAt != null)`.
+- Nullable-field emulator tests prove `brand: null` is accepted and missing `brand` is rejected.
+- Emulator tests prove `CLIENT_MAX_SCHEMA_VERSION` matches the accepted remote `schemaVersion`, orphan fuel entries are accepted, and literal `updatedAt` values that differ from `request.time` are rejected.
+- `firestore/rules/main.rules` contains the `validPayload()` helpers required by `docs/CONTRACTS.md §16`.
 - Every emulator test listed in `docs/CONTRACTS.md §16` passes.
 - `firestore/firestore.indexes.json` exists and the pull query runs without an index error.
 - Firestore offline persistence is disabled in client configuration.
@@ -413,6 +441,7 @@ Acceptance criteria:
 
 - The operation accepts only an authenticated caller and verifies that the caller UID is the target UID.
 - The operation deletes documents under `users/{uid}` in the normative order: `fuelEntries`, then `vehicles`.
+- A server-side test proves the operation does not delete vehicles before fuel entries.
 - The operation deletes the Firebase Auth user only after remote document deletion succeeds.
 - The operation is idempotent for already-deleted documents and missing auth users, but never deletes outside `users/{uid}`.
 - Failures before Firebase Auth deletion return a typed failure and are not reported as success to the app.
@@ -430,9 +459,12 @@ Acceptance criteria:
 
 - Writes use `serverTimestamp()` and the client document ID.
 - Delta pull applies the overlap once per cycle, uses `startAt(overlapSince, "")` for the first page and `startAfter(lastServerUpdatedAt, lastDocumentId)` for later pages.
+- A resumed-cycle emulator test proves `startAt(overlapSince, "")` works after the first non-empty pull.
+- Firestore `Timestamp` values are converted to epoch milliseconds at the integration boundary before conflict comparison.
 - Firestore errors map to `RemoteError` exactly as in `docs/CONTRACTS.md §6`.
 - An `Unauthenticated` response forces a token refresh and retries once inside this module.
 - On an empty page, `nextCursor` equals the input cursor and `hasMore` is false.
+- If `items` is non-empty, `nextCursor` equals the last returned item, even when the input cursor and first item share timestamp values.
 - No Firestore or GitLive type crosses the module boundary.
 
 ### E3-03 - `:core:sync` Engine - L
@@ -446,7 +478,11 @@ Acceptance criteria:
 - The deterministic backup and recovery simulation exists with a fixed seed and an injected jitter source.
 - The state machine matches `docs/CONTRACTS.md §7`, including `SYNCING -> SYNCING` on a local edit during an in-flight push.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.
+- Concurrent triggers set the single pending flag and cause exactly one follow-up cycle after the active cycle completes.
 - Trigger constants match `docs/CONTRACTS.md §9.8`.
+- `ConnectivityRecovered` moves connectivity-only `FAILED_RETRYABLE` rows due immediately while preserving `attemptCount`.
+- `retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING` with cleared error context.
+- Cold-start sync pulls before pushing only when `vehicle` and `fuel_entry` are empty for the owner and the outbox is empty.
 - Debug screen exposes the outbox, cursors, quarantine and row sync state.
 - Quarantine records include `QuarantineReason`, raw payload JSON, `schemaVersion`, `serverUpdatedAt` and redacted logging for unsupported schema and malformed supported-version payloads.
 
@@ -459,10 +495,12 @@ Implement `createAppGraph`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(i
 Acceptance criteria:
 
 - `AppGraphDependencies`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, exported state holders and exported `UiState` classes match `docs/CONTRACTS.md §11.6` and `§20.10`.
+- `testAppGraphDependencies(...)` mirrors the exact `AppGraphDependencies` parameter order and defaults every parameter.
 - Only `:wiring:firebase` constructs Firebase implementations.
 - Every top-level declaration in `:wiring:firebase` is a Koin module, an abstraction factory or a platform initialiser.
 - Tests build the graph from `testAppGraphDependencies(...)` without starting Koin.
 - The Swift facade exposes a sync state holder, not `SyncController`, and it owns/cancels the scopes for state holders it creates.
+- `SwiftAppGraph` state-holder factories are cached/idempotent for identical arguments, and throw after `SwiftAppGraph.close()`.
 
 ### E3-04 - Repository Sync Wiring - M
 
@@ -482,7 +520,7 @@ Add a non-intrusive backup status indicator.
 Acceptance criteria:
 
 - `SyncStatus` is rendered with the precedence `Failed > Syncing > Pending > Idle`.
-- Being offline with pending rows renders as `Pending`, never as an error.
+- Being offline with pending rows, or with only connectivity-code retryable failures, renders as `Pending`, never as an error.
 - The failed state offers manual retry through `SyncController.retryFailed()`.
 
 ### E3-07 - Tombstone Purge - S
@@ -570,13 +608,16 @@ Acceptance criteria:
 ```text
 E0-00 owner decisions (completed)
   -> E0-01 KMP bootstrap
-      -> remaining Phase 0 foundations
+      -> E0-02, E0-03, E0-04, E0-05, E0-06
+          -> E0-08 :core:analytics
           -> E0-07 walking skeleton gate
               -> Phase 1 local persistence
               -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
               -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
               -> Phase 4
 ```
+
+`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires `AnalyticsTracker`.
 
 ## Story Index
 

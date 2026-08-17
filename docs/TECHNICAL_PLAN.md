@@ -43,6 +43,8 @@ Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unle
 
 ## 3. Module Architecture
 
+This inventory mirrors the canonical module list in `docs/CONTRACTS.md §1.1`; the descriptions are explanatory only.
+
 ```text
 build-logic/                    convention plugins
 gradle/libs.versions.toml       single source of dependency versions
@@ -77,7 +79,7 @@ firestore/                      rules and indexes
 
 Each feature is one Gradle module. Layer separation is enforced by package-level source analysis, not by three Gradle modules per feature.
 
-`:core:database` is a **shared-write module**: it owns the Room schema, entities, DAOs and migrations for every feature, and it owns the read-model invariants of `docs/CONTRACTS.md §3.1`. A story that adds an entity MUST also bump the database version, add a `Migration` and add a migration test in the same PR. Only one story at a time may modify it; the handoff MUST declare it.
+`:core:database` is a **shared-write module**: it owns the Room schema, entities, DAOs and migrations for every feature, and it owns the read-model invariants of `docs/CONTRACTS.md §3.1`. A story that adds an entity MUST also bump the database version, add a `Migration` and add a migration test in the same PR. Only one story at a time may modify it; the handoff MUST declare it. If two implementation stories need this module concurrently, the optional `database-lock` check of `docs/CONTRACTS.md §18` uses `core/database/.story-lock` to make ownership explicit.
 
 ## 4. Dependency Rules
 
@@ -99,7 +101,9 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 
 Feature `data` cannot depend on `:core:auth`, so the current owner reaches repositories through `OwnerContext` (`:core:common`), implemented by `:core:auth` and bound in wiring. An architecture rule asserts that no feature module references `AuthClient`.
 
-"Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`.
+"Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash`.
+
+"Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 
 The architecture check MUST fail the build with a rule-specific message, and the check configuration is generated from this table so the two cannot drift.
 
@@ -143,8 +147,8 @@ Synchronized entity control columns:
 | `id` | Client-generated UUID primary key. |
 | `ownerId` | Owner ID, or `LOCAL_OWNER` before authentication. |
 | `updatedAt` | Local provisional timestamp. Never used for remote conflict arbitration. |
-| `serverUpdatedAt` | Authoritative remote timestamp, null if never synced. |
-| `deleted` | Tombstone flag, with `CHECK(deleted = (deletedAt IS NOT NULL))`. |
+| `serverUpdatedAt` | `INTEGER NULL`, authoritative remote timestamp; `NULL` means never synced. |
+| `deleted` | `INTEGER NOT NULL CHECK(deleted IN (0, 1))`, with `CHECK((deleted = 0 AND deletedAt IS NULL) OR (deleted = 1 AND deletedAt IS NOT NULL))`. |
 | `deletedAt` | Tombstone timestamp. |
 | `syncState` | Local state. Canonical values in `docs/CONTRACTS.md §7`. |
 | `localRevision` | Incremented on each local edit to detect in-flight edits. |
@@ -174,9 +178,37 @@ CREATE TABLE outbox (
 CREATE INDEX idx_outbox_due ON outbox(nextAttemptAt, seq);
 ```
 
-The outbox stores full snapshots; re-applying the same snapshot is idempotent. Retry decisions are made on `lastErrorCode`, never on `lastError` text.
+The outbox stores full snapshots; re-applying the same snapshot is idempotent. Retry decisions are made on `lastErrorCode`, never on `lastError` text. `lastError` is debug/UI context only and MUST NOT be read by the sync engine.
+
+Outbox coalescing uses the statement defined in `docs/CONTRACTS.md §8`; the existing `seq` is preserved on conflict.
 
 `local_sequence` is a single-row local control table used only to assign `localMutationSeq`. Local creates, updates and tombstone writes consume it; pull-applied remote writes and local-owner adoption do not. The value never leaves the local database.
+
+```sql
+CREATE TABLE local_sequence (
+  id INTEGER PRIMARY KEY CHECK (id = 0),
+  next INTEGER NOT NULL DEFAULT 1
+);
+```
+
+The next value is assigned by incrementing the single row inside the caller's write transaction, for example with `UPDATE local_sequence SET next = next + 1 RETURNING next`. An equivalent `INTEGER PRIMARY KEY AUTOINCREMENT` helper table is allowed only if it provides the same no-reuse guarantee.
+
+Quarantine schema:
+
+```sql
+CREATE TABLE quarantine (
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE','FUEL_ENTRY')),
+  entityId TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  schemaVersion INTEGER NOT NULL,
+  serverUpdatedAt INTEGER NOT NULL,
+  rawJson TEXT NOT NULL,
+  createdAt INTEGER NOT NULL,
+  UNIQUE(entityType, entityId)
+);
+```
+
+Future columns MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
 Room configuration: `exportSchema = true`, schema JSON committed under `core/database/schemas/`. `fallbackToDestructiveMigration` is FORBIDDEN in every build type. Every version bump ships an explicit `Migration` plus a test that migrates a populated previous-version database and asserts row preservation.
 
@@ -207,8 +239,7 @@ The engine lives fully in `commonMain`. Platform APIs only trigger it; they are 
 
 ```text
 1. SELECT outbox rows WHERE nextAttemptAt <= now ORDER BY seq LIMIT 50.
-2. Partition into dependency groups, preserving seq within each group:
-   vehicle upserts -> fuel entry upserts -> fuel entry tombstones -> vehicle tombstones.
+2. Partition into the canonical dependency groups of `docs/CONTRACTS.md §8`, preserving `seq` within each group.
 3. For each row, write doc(users/{uid}/{entityType.collection}/{id}) with serverTimestamp().
 4. Take serverUpdatedAt from the write result, or re-read the document.
 5. In a local transaction:

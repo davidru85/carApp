@@ -22,7 +22,7 @@
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
-| iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM. |
+| iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM as `import Shared`; this is the canonical SPM module name. |
 | Android `minSdk` / `targetSdk` | `26` / pinned in `docs/versions-matrix.md` | `minSdk` is fixed by `docs/SPECIFICATION.md §11`. |
 | iOS deployment target | `16.0` | Fixed by `docs/SPECIFICATION.md §11`. |
 
