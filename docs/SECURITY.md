@@ -50,6 +50,7 @@ Requirements:
 - Secret scanning MUST be enabled on the repository.
 - CI runs against the Firestore emulator and MUST NOT hold Firebase project credentials or write to a real Firebase project.
 - If a secret is committed, treat it as compromised: rotate it first, then rewrite history.
+- Crash reports MUST NOT contain UID, tokens, notes, exact odometer values, exact costs, raw Firestore payloads or free-text user content.
 
 ## Accepted Residual Risks
 

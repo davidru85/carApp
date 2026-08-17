@@ -522,8 +522,10 @@ Acceptance criteria:
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
 - Production Firebase topology and project identifiers have been decided by the owner before any public release build points to Firebase.
+- `:core:crash` exposes `CrashReporter`; `:integration:firebase-crashlytics` implements it with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
 - Release builds are installable on both platforms.
 - Account deletion and Apple sign-in requirements are satisfied.
+- Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
 - Release logging redaction is verified: no UID, notes, odometer or cost values in release logs.
 
 ## Execution Order

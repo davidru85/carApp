@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — D-21 crash reporting accepted
+
+- **Type:** decision
+- **Story / Decision:** `D-21`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase Crashlytics was accepted for Phase 4 behind a new `CrashReporter` abstraction.
+- **Why:** the owner selected Crashlytics for release hardening while keeping crash reporting separate from Kermit logging and Firebase Analytics.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §8` and `§12`, `docs/CONTRACTS.md §11.6` and `§20.3`, `docs/TECHNICAL_PLAN.md §2` and `§3`, `docs/BACKLOG.md`, `docs/versions-matrix.md`, `docs/SECURITY.md`, `docs/adr/0016-logging-kermit.md`, `docs/adr/0023-firebase-crashlytics.md`, `docs/adr/README.md`, and this log.
+- **Verification:** manual cross-document search for `D-21`, Crashlytics and `CrashReporter` references.
+- **Follow-ups / risks:** production Firebase topology remains deferred by `D-14` until `E4-04`.
+
 ### 2026-08-17 — D-20 localization implementation accepted
 
 - **Type:** decision

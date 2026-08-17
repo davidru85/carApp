@@ -40,6 +40,7 @@ These groups move together. Bumping one member REQUIRES revalidating the whole g
 | Date/time | `kotlinx-datetime` | TBD | **Record the exact fully-qualified `Instant` package here**, because recent versions relocate it. `docs/CONTRACTS.md §2` refers to this cell. |
 | DI | `io.insert-koin` Koin KMP | TBD | `D-3`. |
 | Logging | Kermit | TBD | `D-15`, behind `Logger`. |
+| Crash reporting | Firebase Crashlytics | TBD | `D-21`, behind `CrashReporter`, Phase 4. |
 | Flow testing | Turbine | TBD | `D-17`; drop to hand-written helpers if incompatible. |
 | Coverage | Kover | TBD | `D-18`. |
 | Architecture checks | Konsist | TBD | `D-16`, package-level rules. |

@@ -40,7 +40,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-18 | Coverage measurement | Kover with per-module thresholds | No measurement, JaCoCo | Accepted | `:core:model` and `:core:common` at least 90%, feature `domain` 85%, `:core:sync` 80%, enforced in CI. |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common` | `kotlin.Result`, Arrow `Either`, exceptions | Accepted | `kotlin.Result` has a single type parameter. Arrow is rejected for MVP dependency surface. Declared in `docs/CONTRACTS.md §20.1`. |
 | D-20 | Localization implementation | Native Android and iOS resources | Shared resource library (moko-resources) | Accepted | UI is native. `UiState` carries typed values only, so shared code never needs a string bundle. |
-| D-21 | Crash reporting | Firebase Crashlytics | Sentry, none | Pending | Recommended for Phase 4, not Phase 0. |
+| D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted | Added in Phase 4. Crashlytics types never leave `:integration:firebase-crashlytics` or `:wiring:firebase`. |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. Production Firebase project IDs are deferred by `D-14`. |
 
 ## Library Review Matrix
@@ -51,7 +51,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Serialization | `kotlinx.serialization-json` | Moshi, manual JSON | Accepted | Required for outbox payloads and remote DTOs. |
 | Date/time | `kotlinx-datetime` | platform date APIs only | Accepted | UTC instants only in persistence. The exact `Instant` package is pinned in `docs/versions-matrix.md`. |
 | Logging | Kermit behind `Logger` | Napier, custom sinks | Accepted (D-15) | Abstraction mandatory; implementation swappable. Does not replace `AnalyticsTracker` or `CrashReporter`. |
-| Crash reporting | Firebase Crashlytics | Sentry, none | Pending (D-21) | Phase 4. |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted (D-21) | Phase 4. |
 | Flow testing | Turbine | manual collection | Accepted (D-17) | Validate against the pinned coroutines version. |
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
 | Test doubles | Hand-written fakes | MockK, Mockative | Accepted | Fakes are preferred for domain and sync. |
@@ -91,7 +91,7 @@ Firebase is an implementation detail. These abstractions are mandatory:
 - `TokenProvider`
 - `RemoteSyncSource`
 - `AnalyticsTracker`
-- `CrashReporter`, if crash reporting is added
+- `CrashReporter`
 
 Firebase SDK, GitLive and native Firebase types are allowed only inside integration and wiring modules.
 
@@ -101,4 +101,4 @@ Everything below is either `Proposed` (a recommendation is on the table) or `Pen
 
 | ID | Area | Recommendation | Needed by | Consequence if unresolved |
 |----|------|----------------|-----------|---------------------------|
-| D-21 | Crash reporting | Crashlytics | Before `E4-04` | Non-blocking until release hardening. |
+No `Proposed` or `Pending` decisions are currently awaiting owner confirmation.

@@ -610,6 +610,8 @@ data class AppGraphDependencies(
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
+`CrashReporter` is introduced in Phase 4 and MUST be bound through the same app graph before release builds point at Firebase. Before Phase 4, tests and local builds may use a no-op implementation.
+
 Rules:
 
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
@@ -1088,6 +1090,11 @@ interface OwnerContext {
 }
 
 interface DatabaseFactory { fun create(): AppDatabase }
+
+interface CrashReporter {
+    fun recordNonFatal(error: AppError, fields: Map<String, String>)
+    fun setEnabled(enabled: Boolean)
+}
 
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int }   // 2-decimal ISO-4217 only in the MVP
 ```

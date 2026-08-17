@@ -228,6 +228,7 @@ Account deletion is required for store compliance. It re-authenticates if needed
 | Remote backend | Cloud Firestore |
 | Auth | Firebase Authentication through GitLive 2.6.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
+| Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
 | Async | Coroutines and Flow |
 | DI | Koin KMP for wiring, constructor injection for implementation classes |
 | iOS interop | SKIE only in `:shared` |
@@ -371,7 +372,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, sync convergence tests, Firestore emulator tests. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
-| Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion. |
+| Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
 
 ## 12. Closed Technical Decisions
 
@@ -400,7 +401,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | D-18 | Coverage measurement | Kover with per-module thresholds. | Accepted |
 | D-19 | Result type | Custom `Outcome<T, E>` in `:core:common`; Arrow rejected for the MVP. | Accepted |
 | D-20 | Localization implementation | Native platform resources; `UiState` carries no user-facing text. | Accepted |
-| D-21 | Crash reporting | Firebase Crashlytics, Phase 4. | Pending |
+| D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, Phase 4. | Accepted |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md`; production Firebase project IDs deferred by `D-14`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.

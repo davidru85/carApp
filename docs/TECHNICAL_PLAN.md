@@ -35,7 +35,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-18 | Coverage | Kover with thresholds | Accepted | Makes "high coverage" a pass/fail criterion. |
 | D-19 | Result type | `Outcome<T, E>` in `:core:common` | Accepted | `kotlin.Result` has one type parameter; Arrow is out of scope. |
 | D-20 | Localization | Native resources, no user-facing text in `UiState` | Accepted | UI is native; shared code has no resource bundle. |
-| D-21 | Crash reporting | Crashlytics in Phase 4 | Pending | Not needed before release hardening. |
+| D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` in Phase 4 | Accepted | Not needed before release hardening. |
 | D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; production Firebase project IDs are deferred by `D-14`. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation.
@@ -54,12 +54,14 @@ gradle/libs.versions.toml       single source of dependency versions
 :core:auth                      AuthClient, TokenProvider, AuthState
 :core:sync                      Outbox, cursor, sync engine, SyncController, RemoteSyncSource
 :core:analytics                 AnalyticsTracker and the closed AnalyticsEvent hierarchy
+:core:crash                     CrashReporter abstraction and no-op implementation
 :core:testing                   fakes, builders, in-memory remote, deterministic simulator,
                                 testAppGraphDependencies factory
 
 :integration:firebase-auth      Firebase Auth implementation
 :integration:firebase-firestore Firestore RemoteSyncSource implementation
 :integration:firebase-analytics Firebase Analytics implementation
+:integration:firebase-crashlytics Firebase Crashlytics implementation, Phase 4
 
 :feature:vehicle                domain/data/presentation packages
 :feature:fuel                   domain/data/presentation packages
@@ -289,11 +291,11 @@ Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, 
 
 ### Phase 3 - Backend and Synchronization
 
-Firestore rules and emulator tests, Firestore integration, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, sync engine, app graph wiring, repository wiring, sync status UI, tombstone purge, provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 
-Settings UI, accessibility, localization, performance, release builds, store requirements.
+Settings UI, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
 
 ## 11. Risks and Mitigations
 
