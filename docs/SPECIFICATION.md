@@ -109,7 +109,7 @@ Field names, types, scales and persistence formats are normative in `docs/CONTRA
 | `currency` | Yes | Defaults from settings. Stored per entry; changing the setting never rewrites existing entries. |
 | `isFullTank` | Yes | Default `true`. |
 | `hasMissedEntries` | Yes | Default `false`. Means refuels were not logged **between the previous logged entry and this one**. Invalidates the segment ending at this entry and any segment containing it. |
-| `odometerInconsistent` | Yes | Derived, not user-editable. Recomputed whenever a neighbouring entry changes. |
+| `odometerInconsistent` | Yes | Derived, not user-editable. Recomputed whenever the entry's previous chronological neighbour may have changed. |
 | `notes` | No | Null, or trimmed length 1..280. |
 | `createdAt`, `updatedAt` | Yes | UTC. |
 | `deletedAt` | No | Tombstone timestamp. |
@@ -135,7 +135,7 @@ The odometer of a fuel entry MUST be strictly greater than the previous non-dele
 
 If the user enters an inconsistent value, the first save attempt MUST return a warning and mutate nothing. The UI MUST ask for explicit confirmation. A confirmed save stores the entry with `odometerInconsistent = true`. Segments containing an inconsistent entry produce no consumption.
 
-The same rule applies on **edit**, evaluated against the entry's neighbours in its target chronological position. Because editing or deleting one entry changes the validity of its neighbours, `odometerInconsistent` is recomputed for the affected entry and its immediate successor within the same transaction.
+The same rule applies on **edit**, evaluated against the entry's neighbours in its target chronological position. Because creating, editing or deleting one entry can change the validity of neighbouring entries in both the old and new chronological positions, the exact recompute set is defined in `docs/CONTRACTS.md §3.1` and is applied within the same transaction.
 
 Chronological order and the exact warning protocol are defined in `docs/CONTRACTS.md §4` and `§5`.
 

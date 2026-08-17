@@ -179,7 +179,7 @@ Acceptance criteria:
 - `local_sequence` assigns monotonic `localMutationSeq` values shared by `vehicle` and `fuel_entry`; pull-applied remote writes and local-owner adoption do not consume it.
 - There is **no** foreign key from `fuel_entry` to `vehicle`, and **no** unique index on the vehicle name.
 - Outbox matches the committed DDL, including `lastErrorCode` and `idx_outbox_due`, and preserves the original `seq` when coalescing.
-- `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and a test proves they stay correct after an edit and after a delete of a neighbouring entry.
+- `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and tests cover the exact recompute set of `docs/CONTRACTS.md §3.1`, including create, update that moves an entry in chronological order, update that changes only odometer comparison, single delete and vehicle cascade delete.
 - `exportSchema = true`, schema JSON committed, `fallbackToDestructiveMigration` absent, and a v1 migration test exists.
 - Observable queries return `Flow`; one-shot queries are `suspend`.
 
@@ -257,7 +257,7 @@ Acceptance criteria:
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
 - Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
 - Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
-- Logical delete works and triggers read-model recomputation.
+- Logical delete works and triggers the `docs/CONTRACTS.md §3.1` recompute set.
 - Mappers have round-trip tests.
 
 ### E1-07 - Android UI: Vehicles - M

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Odometer recompute set defined
+
+- **Type:** decision
+- **Story / Decision:** `F-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `odometerInconsistent` recomputation now has an exact minimal recompute set for create, update, delete and vehicle cascade delete. `currentOdometerKm` remains recomputed for the whole vehicle in the same transaction.
+- **Why:** the owner chose the explicit minimal-set option to handle edits that move an entry in chronological order without recomputing the whole vehicle unnecessarily.
+- **Documents touched:** `docs/CONTRACTS.md §3.1` and fuel repository side effects, `docs/SPECIFICATION.md §5` / R-1, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `odometerInconsistent`, `currentOdometerKm`, `successor`, `recompute` and `F-14`; `git diff --check`.
+- **Follow-ups / risks:** `F-16` remains the next sync/database guardrail.
+
 ### 2026-08-17 — Pull overlap cursor anchor fixed
 
 - **Type:** decision

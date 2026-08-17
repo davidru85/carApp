@@ -193,7 +193,7 @@ Persisted fuel entries MUST contain non-null `litersScaled`, `pricePerLiterScale
 
 `hasMissedEntries = true` on entry `E` means the user did not log one or more refuels **between the previous logged entry and `E`**. It therefore invalidates the segment ending at `E` and any segment containing `E`, and has no effect on earlier segments.
 
-`odometerInconsistent` is a **derived** property cached in a column. `:core:database` recomputes it for the affected entry and its immediate successor inside the same transaction as any create, update or delete of a fuel entry for that vehicle. Application code MUST NOT write it directly.
+`odometerInconsistent` is a **derived** property cached in a column. Application code MUST NOT write it directly.
 
 The `fuel_entry` table declares **no enforced foreign key** to `vehicle`: sync can legitimately deliver a fuel entry before its vehicle (§9.4).
 
@@ -216,8 +216,20 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 | Invariant | Trigger |
 |-----------|---------|
 | `vehicle.currentOdometerKm` recomputation | any insert / update / delete on `fuel_entry` |
-| `fuel_entry.odometerInconsistent` recomputation for the affected entry and its successor | any insert / update / delete on `fuel_entry` |
+| `fuel_entry.odometerInconsistent` recomputation for the exact recompute set below | any insert / update / delete on `fuel_entry` |
 | `deleted == (deletedAt != null)` | `CHECK` constraint on both entity tables |
+
+`currentOdometerKm` is recomputed for the whole vehicle after every fuel-entry create, update or tombstone write, in the same transaction.
+
+`odometerInconsistent` is recomputed only for rows whose previous non-deleted chronological neighbour may have changed. The recompute set is de-duplicated by `id` and is:
+
+- Create: inserted row in its new position, plus its new successor.
+- Update where `vehicleId`, `date`, `createdAt`, `id` or `odometerKm` may affect chronological order or comparison: updated row in its new position, its old successor before the update, and its new successor after the update.
+- Update that cannot affect chronological order or odometer comparison: updated row only if its stored `odometerInconsistent` could change; otherwise no odometer-inconsistency recompute is required.
+- Tombstone: successor after the deleted row in the old chronological position.
+- Vehicle-level fuel-entry cascade tombstone: each successor after each tombstoned row, de-duplicated.
+
+All rows in the recompute set are recalculated in the same database transaction as the write that caused the recompute. A missing successor means no row is added for that position. The edited or deleted row's own stored `odometerInconsistent` remains meaningful only while the row is non-deleted; tombstoned rows are ignored by validation, projections and consumption.
 
 An architecture check MUST assert that no `UPDATE vehicle SET currentOdometerKm` and no write to `odometerInconsistent` exists outside `:core:database`.
 
@@ -708,7 +720,7 @@ interface FuelEntryRepository {
 | `observeFuelEntries` | none; returns a lightweight projection, excludes orphans | `PersistenceError` |
 | `getFuelEntry` | none; absence is `Ok(null)` | `PersistenceError` |
 | `createFuelEntry` | inserts one row, recomputes `currentOdometerKm` and `odometerInconsistent` (§3.1), enqueues one outbox snapshot | `ValidationError.*`, `ValidationWarning.OdometerInconsistent`, `PersistenceError` |
-| `updateFuelEntry` | as create, plus recomputation for the successor entry | as above plus `EntityNotFound`, `EntityDeleted` |
+| `updateFuelEntry` | as create, plus recomputation of the §3.1 recompute set | as above plus `EntityNotFound`, `EntityDeleted` |
 | `deleteFuelEntry` | tombstones one row, recomputes read models, enqueues a tombstone snapshot | `EntityNotFound`, `PersistenceError` |
 | `observeConsumption` | none | `PersistenceError` |
 
