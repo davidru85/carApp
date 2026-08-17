@@ -597,6 +597,7 @@ data class AppGraphDependencies(
     val ownerContext: OwnerContext,
     val remoteSyncSource: RemoteSyncSource,
     val analyticsTracker: AnalyticsTracker,
+    val crashReporter: CrashReporter,
     val clock: AppClock,
     val dispatchers: DispatcherProvider,
     val uuidGenerator: UuidGenerator,
@@ -610,7 +611,7 @@ data class AppGraphDependencies(
 fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 ```
 
-`CrashReporter` is introduced in Phase 4 and MUST be bound through the same app graph before release builds point at Firebase. Before Phase 4, tests and local builds may use a no-op implementation.
+`CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
 
 Rules:
 
@@ -1091,13 +1092,19 @@ interface OwnerContext {
 
 interface DatabaseFactory { fun create(): AppDatabase }
 
+object MinorUnits { fun factorFor(currency: CurrencyCode): Int }   // 2-decimal ISO-4217 only in the MVP
+```
+
+### 20.3.1 Crash reporting types — `:core:crash`
+
+```kotlin
 interface CrashReporter {
     fun recordNonFatal(error: AppError, fields: Map<String, String>)
     fun setEnabled(enabled: Boolean)
 }
-
-object MinorUnits { fun factorFor(currency: CurrencyCode): Int }   // 2-decimal ISO-4217 only in the MVP
 ```
+
+The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
 
 ### 20.4 Domain models — `:core:model`
 

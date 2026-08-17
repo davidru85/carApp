@@ -1,59 +1,111 @@
-# Audit Resolution Log — TEMPORARY
+# Audit Guardrails Register - TEMPORARY
 
-> **This document is temporary and NOT normative.** It records how the specification audit of 2026-08-17 was resolved. It creates no rules; every rule it refers to now lives in a normative document. Delete this file once the owner has reviewed the remediation.
+> **This document is temporary and NOT normative.** It is a management register for audit follow-up only. It creates no rules; any accepted guardrail MUST be moved into a normative document: `AGENTS.md`, `docs/SPECIFICATION.md`, `docs/CONTRACTS.md` or `docs/DECISION_BOARD.md`.
 >
-> The full original audit — 99 findings with the reasoning behind each one — is preserved in git history at commit `f8b70cb`. Recover it with `git show f8b70cb:AUDIT_GUARDRAILS.md`.
+> The original full audit - 99 findings with the reasoning behind each one - is preserved in git history at commit `f8b70cb`. Recover it with:
+>
+> ```text
+> git show f8b70cb:AUDIT_GUARDRAILS.md
+> ```
 
-## What the audit found
+## Purpose
 
-The definition package was complete in intent but not machine-decidable. The failure mode was not missing content: it was prose that reads as precise but leaves an implementer with a choice.
+This file answers three operational questions:
 
-99 findings across governance, KMP architecture, data modeling, workflows and state, error handling, API contracts, security and verifiability. 16 were blocking, meaning they would have produced divergent or incorrect implementations, or committed an irreversible decision by accident.
+1. Which findings from the original audit are already absorbed?
+2. Which residual ambiguities still need owner or documentation action?
+3. When can this temporary file be deleted?
 
-## What changed, by theme
+Use this file as a checklist while tightening the definition package. Do not cite it as implementation authority in a story handoff; cite the normative document that absorbed the accepted guardrail.
 
-| Theme | Problem | Resolution | Now lives in |
-|-------|---------|------------|--------------|
-| Document authority | A single linear ranking put the vague `docs/SPECIFICATION.md` above the precise `docs/CONTRACTS.md`, so imprecision legally won. | Authority split into a behaviour axis and a representation axis. | `AGENTS.md` |
-| Normative language | `must`, `should` and bare present tense were used interchangeably, including on critical rules. | RFC 2119 block, plus the rule that bare present tense means MUST. | `AGENTS.md` |
-| Duplicated rules | Reading order, gates, settings lists and scope appeared in four to six documents, each slightly different. | One canonical location per rule; every other document links to it. | `AGENTS.md`, `docs/SPECIFICATION.md §3.1` |
-| Undefined types | About twenty types appeared in normative signatures and were declared nowhere, including the result type itself. | Complete canonical type declarations. | `docs/CONTRACTS.md §20` |
-| Field vocabulary | Two incompatible naming schemes for the same fields, with no declared mapping. | One vocabulary with mandatory unit and scale suffixes, canonical at every layer. | `docs/CONTRACTS.md §3` |
-| Money arithmetic | The formula hard-coded a EUR factor, and the scaled version truncated before rounding. | Exact integer arithmetic with golden test values and a constrained currency set. | `docs/CONTRACTS.md §2` |
-| Ownership of `ownerId` | Dependency rules made it impossible for a repository to learn the current UID. | `OwnerContext` in `:core:common`, stamped by repositories, never by commands. | `docs/CONTRACTS.md §12`, `docs/TECHNICAL_PLAN.md §4` |
-| Read-model invariants | Two writers, one invariant, no owner. | `currentOdometerKm` and `odometerInconsistent` are owned exclusively by `:core:database`. | `docs/CONTRACTS.md §3.1` |
-| Pull pagination | The query had no `startAfter` anchor, so a timestamp cluster larger than a page looped forever. | Compound cursor in the query, overlap applied once per cycle, strict-progress invariant. | `docs/CONTRACTS.md §9.4` |
-| Conflict arbitration | Compared against the local clock and used a meaningless id tie-breaker. | Arbitration on `serverUpdatedAt`; `(updatedAt, documentId)` reclassified as stream ordering. | `docs/CONTRACTS.md §9.6` |
-| Offline first launch | "100% usable offline" contradicted "first launch requires network". | `LOCAL_OWNER` local session, outbox suppressed until a real UID exists, plus an adoption story. | `docs/SPECIFICATION.md §7`, `docs/CONTRACTS.md §11.2`–`§11.4`, story `E2-06` |
-| Error handling | A name list, not a type; no codes, no exception policy, no `RemoteError` mapping. | Sealed hierarchy with stable codes, cancellation policy, and a normative retry-versus-poison table. | `docs/CONTRACTS.md §6`, `§20.2` |
-| Swift interop | Value classes, generics and default arguments on the exported surface. | Explicit surface constraints plus a committed Objective-C header golden file. | `docs/CONTRACTS.md §15.3` |
-| Firestore rules | The sample rule enforced three of the six stated requirements and let hard deletes through. | Rules split by operation, `allow delete: if false`, per-field range validation. | `docs/CONTRACTS.md §16` |
-| One-way doors | Firestore region, project topology and application identifiers were undecided. | Recorded as decisions with ADRs and a dedicated identifiers document, gated on owner confirmation. | `docs/DECISION_BOARD.md`, `docs/identifiers.md`, ADR-0014, ADR-0015, ADR-0021 |
-| Unresolved decisions | Five `Pending` items blocked Phase 0 stories that were nominally Ready. | Recommendations recorded as `Proposed`, with an explicit blocking rule and a closure story. | `docs/DECISION_BOARD.md`, story `E0-00` |
-| Verifiability | Unmeasurable acceptance criteria, an undefined `contract-check`, and contracts with no implementing story. | Measurement baselines, a defined contract check, and five new stories. | `docs/versions-matrix.md`, `docs/CONTRACTS.md §18`, `docs/BACKLOG.md` |
+## Current Status
 
-## New stories created
+| Area | Status | Notes |
+| :--- | :--- | :--- |
+| Original audit from `f8b70cb` | Closed as an active issue list | The 99 original rows have either been absorbed into current normative docs or narrowed into follow-up findings below. |
+| Owner decision closure | Closed | `E0-00` is complete. `D-13` through `D-22` are accepted or deferred as appropriate, mirrored in the decision tables, and backed by ADRs. |
+| Implementation readiness | Partially ready | The definition package is much more decidable, but the active findings below should be resolved before implementation stories rely on the affected contracts. |
+| Temporary file deletion | Not ready | Delete this file only after every `F-xx` row is either absorbed into normative docs or explicitly rejected by the owner. |
 
-`E0-00` owner decision closure, `E1-10` settings persistence, `E2-06` local owner adoption, `E3-07` tombstone purge, `E3-08` app graph and Firebase wiring.
+## Original Audit Disposition
 
-## New documents created
+The original audit contained 99 issue rows across governance, KMP architecture, data modeling, workflows and state, error handling, API contracts, security and verifiability. Sixteen were blocking.
 
-`docs/PROJECT_LOG.md`, `docs/identifiers.md`, `docs/versions-matrix.md`, and ADR-0014 through ADR-0023.
+This disposition is a documentation-status check. It means the definition package now contains the intended guardrails, backlog stories and verification hooks. It does **not** mean Phase 0 implementation work, CI checks or product code already exist.
 
-## Decision closure status
+| Disposition | Original IDs | Management result |
+| :--- | :--- | :--- |
+| Fully absorbed into current normative docs | `G-01`..`G-11`; `K-01`..`K-07`; `K-10`..`K-14`; `D-01`..`D-19`; `W-01`..`W-11`; `W-13`..`W-16`; `W-18`..`W-20`; `E-01`..`E-10`; `C-03`..`C-08`; `C-10`, `C-11`; `S-01`, `S-02`, `S-04`..`S-07`; `V-01`, `V-03`..`V-07` | Do not keep these original rows active. Their accepted fixes now live in the normative docs, derived docs, ADRs, templates and project log. |
+| Original problem fixed, narrower residual remains | `C-01`, `C-02`, `C-09`, `K-08`, `K-09`, `S-03`, `V-02`, `W-12`, `W-17` | Track the remaining ambiguity through the `F-xx` findings below, not through the broader original rows. |
+| New follow-up findings | `F-01`..`F-19` below | Keep active until each one is resolved into the normative corpus or explicitly rejected. |
 
-The decisions that originally blocked Phase 0 are now closed. `D-13` through `D-22` are recorded in `docs/DECISION_BOARD.md`, mirrored in the decision tables, and backed by ADRs.
+## Resolved Themes
 
-`E0-00` is complete. The next implementation story is `E0-01` unless a new unresolved owner decision is introduced.
+| Theme | Original problem | Resolution now in force | Normative home |
+| :--- | :--- | :--- | :--- |
+| Authority | A vague document could outrank a precise one. | Authority is split by axis: behaviour versus representation. | `AGENTS.md` |
+| Normative language | `must`, `should`, `may` and bare present tense had unclear force. | RFC 2119 meanings and bare-present-tense rule are centralised. | `AGENTS.md` |
+| Scope and settings | Multiple documents restated slightly different MVP surfaces. | Scope lives in `docs/SPECIFICATION.md`; other docs point to it. | `docs/SPECIFICATION.md §3` |
+| Canonical types | Public signatures named project types that were not declared. | `docs/CONTRACTS.md §20` declares canonical shapes. | `docs/CONTRACTS.md §20` |
+| Field vocabulary | Domain, Room, Firestore and JSON names could diverge. | Unit and scale suffixes are canonical at every layer. | `docs/CONTRACTS.md §3` |
+| Money and consumption arithmetic | Rounding, scale and currency factors were ambiguous. | Exact integer formulas and golden tests are specified. | `docs/CONTRACTS.md §2` |
+| Ownership and local identity | Repositories had no legal owner source, and `LOCAL_OWNER` sync was unsafe. | `OwnerContext`, outbox suppression and adoption story are defined. | `docs/CONTRACTS.md §11`, `§12` |
+| Sync correctness | Pull pagination, conflict arbitration, backoff and triggers were underdefined. | Cursor, LWW, state machine, retry and trigger contracts are specified. | `docs/CONTRACTS.md §7`..`§9` |
+| Firestore safety | Rules were too weak and hard-delete behaviour was accidental. | Operation-split rules, tombstones and field ranges are specified. | `docs/CONTRACTS.md §16` |
+| Verifiability | Guardrails had no checks, stories or measurement baselines. | `contract-check`, architecture checks, story intake, baselines and sync tests are defined. | `AGENTS.md`, `docs/CONTRACTS.md §18`, `docs/BACKLOG.md`, `docs/versions-matrix.md` |
 
-The `E0-00` acceptance criteria and document map have been aligned with `D-14`: only the development Firebase project ID is fixed during development. A separate production Firebase project is required before release, but its project ID remains deferred until `E4-04`.
+## Active Follow-Up Findings
 
-The empty "Decisions Awaiting Owner Confirmation" table was replaced with an explicit no-open-decisions sentence so future `contract-check` parsing has an unambiguous empty state.
+Status values:
 
-## Still open
+- `Open`: not yet resolved in normative docs.
+- `Owner decision`: the proposed fix changes scope, stack, release compliance or another owner-owned choice.
+- `Ready to fold`: the proposed fix is straightforward documentation work.
+- `Rejected`: explicitly rejected by the owner, with the reason recorded here.
+- `Closed`: absorbed into normative docs and project log.
 
-The owner is continuing the audit-remediation review issue by issue. Keep this file until every theme above has been reviewed against the current documents and any remaining contradictions have been corrected.
+| ID | Severity | Domain | Status | Reference | Detected ambiguity / inconsistency | Proposed guardrail definition | Closure evidence required |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `F-01` | High | KMP architecture | Closed | `docs/CONTRACTS.md §11.6`, `§20.3`; `docs/TECHNICAL_PLAN.md §3` | `CrashReporter` was declared in `:core:common`, planned in `:core:crash`, omitted from `AppGraphDependencies`, and missing from some module lists. | `CrashReporter` lives in `:core:crash`; `AppGraphDependencies` includes `val crashReporter: CrashReporter` from Phase 0; tests and local builds use the no-op implementation; Firebase Crashlytics remains Phase 4. | Closed on 2026-08-17 by aligning `docs/CONTRACTS.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, README and this register. Project log entry added. |
+| `F-02` | High | Swift surface | Open | `docs/CONTRACTS.md §15.3`, `§20.10` | The Swift-facing API allows only restricted shapes, but `AppGraph` returns interfaces such as `SyncController` and undefined state-holder types. | Define the exported Swift ABI explicitly: exported state holders are concrete classes or documented facades with named, non-generic APIs; `SyncController` exposure is either a concrete facade or an explicit allowed exception. | `docs/CONTRACTS.md §15.3` and `§20.10` define the exported allowlist; `E0-07` validates the Objective-C header golden file against it. |
+| `F-03` | High | API contract | Open | `docs/CONTRACTS.md §20.10`, `§14` | `VehicleListStateHolder`, `VehicleFormStateHolder`, `FuelEntryListStateHolder`, `FuelEntryFormStateHolder`, `SessionStateHolder` and concrete `UiState` types are referenced but not declared. | Add canonical declarations for every exported state holder and `UiState`, including state property name, intent functions, close semantics and allowed typed message values. | `docs/CONTRACTS.md §20` contains these declarations, and the `contract-check` story knows how to validate project-owned public types. |
+| `F-04` | Medium | CI contract | Open | `docs/CONTRACTS.md §18` | `contract-check` says every type in code blocks must be declared in §20, which would also catch standard or external types such as `String`, `Flow`, `CoroutineScope`, `Instant`, `Map` and `Throwable`. | Define a parser allowlist: Kotlin primitives, standard collections, selected `kotlinx.coroutines` types, the pinned `Instant` type and explicitly external types are exempt; project-owned identifiers in public signatures must be declared in §20. | `docs/CONTRACTS.md §18` describes the allowlist and `E0-05` acceptance criteria cover it. |
+| `F-05` | High | Data modeling | Open | `docs/CONTRACTS.md §2`, `§3 FuelEntry`, `§20.5` | The contract says `MoneyInput` records the authoritative supplied pair, but the persisted schema has no field recording which pair was supplied. | Either add persisted `moneyInputKind` to local row, remote document and payload, or remove the authoritative-pair persistence rule and define persisted values as canonical after validation. | Owner or architect chooses one approach; `docs/CONTRACTS.md §2`, `§3`, `§20.5`, Firestore schema and backlog criteria agree. |
+| `F-06` | Medium | Data modeling | Open | `docs/CONTRACTS.md §2`, `§20.3` | `MinorUnits.factorFor` supports 2-decimal ISO-4217 codes, but no exact KMP-compatible allowlist is defined. | Add the MVP supported-currency table with exact codes and factor `100`; locale-derived unsupported currencies fall back to `EUR`; explicit unsupported selections return `ValidationError.InvalidUnit`. | `docs/CONTRACTS.md §2` or a linked canonical table lists supported codes, and settings/fuel validation criteria reference it. |
+| `F-07` | Medium | Data modeling | Open | `docs/CONTRACTS.md §5`, `§3 Vehicle` | Name normalization collapses whitespace, while `nameFold` is described as `name.trim().lowercase()`. Unicode normalization and locale-independent folding are not explicit. | Define `canonicalName = trim + collapse Unicode whitespace to U+0020 + NFC`; define `nameFold = canonicalName.lowercase()` using locale-invariant Unicode rules; uniqueness checks use only `nameFold`. | `docs/CONTRACTS.md §5` and `§3` use one normalization algorithm; vehicle-domain acceptance criteria reference it. |
+| `F-08` | Medium | Scope / data modeling | Owner decision | `docs/CONTRACTS.md §3 Vehicle`, `§20.4` | `FuelType` includes `ELECTRIC` and `HYBRID`, while electric energy handling is out of MVP scope. Commands can still carry those values. | Either MVP validation rejects `ELECTRIC` and `HYBRID` with `ValidationError.InvalidUnit`, or the enum removes them until an energy-model ADR/story exists. Firestore rules mirror the same enum set. | Owner chooses compatibility versus strict-MVP behaviour; `docs/CONTRACTS.md`, `docs/SPECIFICATION.md` and Firestore rule criteria match. |
+| `F-09` | High | Workflow / sync state | Open | `docs/CONTRACTS.md §7`, `§8` | `syncState` is said to be derived from outbox existence, but `LOCAL_OWNER` writes set `PENDING` while the outbox must remain empty. | Define `syncState` as a stored local control column. Derivation rules may update it, but `ownerId == LOCAL_OWNER && localRevision > 0` is representable as `PENDING` without an outbox row. | `docs/CONTRACTS.md §7` and `§8` remove the contradiction; `E1-03`, `E1-06` and `E2-06` criteria reflect it. |
+| `F-10` | High | Workflow / adoption | Open | `docs/CONTRACTS.md §11.4` | Adoption must enqueue rows preserving `seq` causality, but no `seq` exists for `LOCAL_OWNER` rows because the outbox is suppressed. | Add a local mutation sequence independent of the outbox, or permit a non-pushable staging outbox for `LOCAL_OWNER`. Adoption orders snapshots by that sequence, then by dependency group. | `docs/CONTRACTS.md §8`, `§11.4`, database schema and `E2-06` criteria agree. |
+| `F-11` | Blocker | Account deletion / Firestore | Owner decision | `docs/SPECIFICATION.md §7 F-5`, `docs/CONTRACTS.md §11.5`, `§16` | Account deletion requires deleting remote documents, but Firestore rules reject hard deletes and no admin or backend deletion path is defined. | Add an explicit deletion mechanism: a server/Admin operation with its own ADR and contract, a narrowly scoped client hard-delete exception for account deletion, or a tombstone-only compliance decision with remote purge semantics. | Owner-approved decision and ADR; `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, backlog and Firestore tests agree. |
+| `F-12` | High | Firestore contract | Open | `docs/CONTRACTS.md §3`, `§16` | Remote payload validation says "every field", but local-only fields are excluded elsewhere. Extra-key policy is not exact. | Add exact allowed-key schemas for remote `Vehicle` and `FuelEntry`, including required keys, forbidden keys, enum values, nullability and `deleted == (deletedAt != null)`. Emulator tests reject local-only or extra keys. | `docs/CONTRACTS.md §16` contains the remote schemas and `E3-01` acceptance criteria include extra-key rejection. |
+| `F-13` | High | Sync pagination | Open | `docs/CONTRACTS.md §9.4`, `docs/TECHNICAL_PLAN.md §8` | The overlap cursor uses `startAfter(max(0, lastServerUpdatedAt - 30s), null)`, but a null document ID is not a concrete Firestore cursor anchor. | Define a legal cursor start: for example `startAt(since, "")` for the first page of an overlapped cycle, then `startAfter(lastUpdatedAt, lastDocumentId)` for subsequent pages. | `docs/CONTRACTS.md §9.4`, `RemoteCursor` semantics, `TECHNICAL_PLAN.md §8` and sync tests agree. |
+| `F-14` | High | Odometer workflow | Open | `docs/SPECIFICATION.md §6 R-1`, `docs/CONTRACTS.md §3.1` | Recomputing only the affected entry and immediate successor is underspecified for edits that move an entry in chronological order and for deletes. | Define the recompute set as: inserted or updated row in its new position, successor in old position, successor in new position, and successor after a deleted row; all in one transaction. | `docs/CONTRACTS.md §3.1` and fuel-entry data tests define and verify the recompute set. |
+| `F-15` | Medium | Consumption contract | Open | `docs/CONTRACTS.md §20.6`, `§20.4` | `ConsumptionInvalidReason.EndEntryNotFullTank` exists, but `ConsumptionReport.segments` is one per full-tank entry, so the reason has no clear producer. `FuelEntryListItem.invalidReason` for partial entries is undefined. | Either remove `EndEntryNotFullTank`, or define that list projections may report it for non-full entries while `ConsumptionReport.segments` omits them. Specify exact mapping from entry to `FuelEntryListItem.consumption` and `invalidReason`. | `docs/CONTRACTS.md §20.4`, `§20.6` and `E1-05`/`E1-06` acceptance criteria agree. |
+| `F-16` | High | Error handling / pull robustness | Open | `docs/CONTRACTS.md §5`, `§9.5` | Pull may not fail on domain constraints, but quarantine only covers future `schemaVersion`. Malformed supported-version documents are not assigned a clear fate. | Define malformed supported-version remote documents as quarantined with reason `MalformedPayload`, skipped from entity tables, logged once with redacted fields, and not applied to product state. Cursor advance remains allowed after quarantine succeeds. | `docs/CONTRACTS.md §9.5`, quarantine schema and sync tests cover malformed supported-version payloads. |
+| `F-17` | Medium | Settings workflow | Open | `docs/SPECIFICATION.md §5.3`, `§7 F-5`; `docs/CONTRACTS.md §12` | Settings are device-local and not owner-scoped, but sign-out or local-data deletion clears local data for an owner. It is unclear whether settings survive destructive flows. | Define settings deletion semantics explicitly. Preferred: sign-out and account deletion preserve device settings; anonymous "delete local data" either preserves settings or resets them, but the choice must be stated. | `docs/SPECIFICATION.md F-5`, `docs/CONTRACTS.md §12` and `E2-05`/`E4-01` criteria agree. |
+| `F-18` | High | KMP provider wiring | Open | `docs/SPECIFICATION.md §8.5`, `docs/CONTRACTS.md §11.6`, `§15.3` | `:shared` exposes `createAppGraph(dependencies)`, but `AppGraphDependencies` contains implementation-facing abstractions that are not compatible with the Swift-facing surface. | Define platform graph construction: Android may call `createAppGraph(AppGraphDependencies)` internally; iOS gets a Swift-safe factory/facade, or `AppGraphDependencies` is explicitly non-exported and constructed by KMP wiring. | `docs/CONTRACTS.md §11.6`, `§15.3`, `§20.10` and `E0-07` criteria define and validate the platform entry points. |
+| `F-19` | Medium | Derived docs alignment | Closed | README architecture summary, `docs/SPECIFICATION.md §8.2`, `docs/TECHNICAL_PLAN.md §3` | README and Specification module lists omitted crash-reporting modules that Technical Plan and Backlog included. | The module lists now include `:core:crash` and `:integration:firebase-crashlytics` consistently where they are restated. | Closed on 2026-08-17 by aligning `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, README and backlog wording. Project log entry added. |
 
-## Deleting this file
+## Recommended Closure Order
 
-Delete it once the owner has reviewed the remediation. Nothing depends on it: it is excluded from the `README.md` documentation table on purpose, and `AGENTS.md` explicitly marks it as non-normative. The audit reasoning stays available in git history.
+| Order | Findings | Why first |
+| :--- | :--- | :--- |
+| Closed | `F-01`, `F-19` | Module ownership and crash-reporting module lists have been aligned. |
+| 1 | `F-02`, `F-03`, `F-04`, `F-18` | Swift surface and contract-check rules must be decidable before `E0-07`. |
+| 2 | `F-05`, `F-06`, `F-07`, `F-08` | Data-model choices should close before local persistence stories begin. |
+| 3 | `F-09`, `F-10`, `F-13`, `F-14`, `F-16` | Sync and database invariants need exact contracts before `:core:database`, adoption and sync implementation. |
+| 4 | `F-11`, `F-17` | Account deletion and settings semantics affect compliance and destructive user flows. |
+| 5 | `F-12`, `F-15` | Firestore schema strictness and list/consumption projection semantics can close with the related implementation stories, but earlier is better. |
+
+## How To Close A Finding
+
+For each `F-xx` row:
+
+1. Decide whether the proposed guardrail is accepted, modified or rejected.
+2. Move the accepted rule into the proper normative document.
+3. Update every derived document that repeats the same rule.
+4. Add or update backlog acceptance criteria and verification where needed.
+5. Append an entry to `docs/PROJECT_LOG.md`.
+6. Change the row status here to `Closed` or `Rejected`, with the closing evidence.
+
+Once all findings are closed or rejected, delete this file in a documentation-only cleanup and append a final project-log entry. The audit reasoning remains available in git history.

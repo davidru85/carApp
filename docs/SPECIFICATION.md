@@ -250,11 +250,13 @@ gradle/libs.versions.toml
 :core:auth
 :core:sync
 :core:analytics
+:core:crash
 :core:testing
 
 :integration:firebase-auth
 :integration:firebase-firestore
 :integration:firebase-analytics
+:integration:firebase-crashlytics
 
 :feature:vehicle
 :feature:fuel
@@ -274,12 +276,13 @@ firestore/
 3. Feature `presentation` packages depend on their own `domain` and `:core:common`, never on `data`.
 4. Features never depend on other features.
 5. `:core:sync` depends on `:core:model`, `:core:common`, `:core:database` and `:core:auth`, never on `:integration:*`.
-6. `:shared` never depends on `:integration:*`.
-7. Firebase and GitLive types never cross integration boundaries.
-8. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
-9. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
-10. Only `:wiring:firebase` constructs Firebase implementations.
-11. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
+7. `:shared` never depends on `:integration:*`.
+8. Firebase and GitLive types never cross integration boundaries.
+9. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
+10. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
+11. Only `:wiring:firebase` constructs Firebase implementations.
+12. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
 
 Module-level rules are enforced by a Gradle configuration check; package-level rules require source analysis. Both MUST be executable checks in CI, and each rule MUST have a failing fixture test proving the check fires.
 

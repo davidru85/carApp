@@ -89,6 +89,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
 | `:core:sync` | `:core:model`, `:core:common`, `:core:database`, `:core:auth` | `:integration:*`, features |
 | `:core:database` | `:core:model`, `:core:common`, Room | `:integration:*`, features, `:core:sync` |
+| `:core:crash` | `:core:common` | platform APIs, Firebase, GitLive, Koin, Ktor, integrations, features |
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
 | `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
 | `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Crash reporting module ownership aligned
+
+- **Type:** correction
+- **Story / Decision:** `D-21` / `F-01`, `F-19`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `CrashReporter` is now owned by `:core:crash`, included in `AppGraphDependencies` from Phase 0, and represented consistently in the module lists. Firebase Crashlytics remains a Phase 4 integration behind that abstraction.
+- **Why:** the previous wording split ownership between `:core:common`, `:core:crash` and Phase 4 wiring, which made graph construction and module bootstrap ambiguous.
+- **Documents touched:** `docs/CONTRACTS.md §11.6` and `§20.3.1`, `docs/SPECIFICATION.md §8.2` and `§8.3`, `docs/TECHNICAL_PLAN.md §4`, `docs/BACKLOG.md`, `README.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `CrashReporter`, `:core:crash` and `:integration:firebase-crashlytics`.
+- **Follow-ups / risks:** changes touch gated contract and specification documents and require human review before merge. `F-02`, `F-03`, `F-04` and `F-18` remain open around the Swift-facing graph surface.
+
 ### 2026-08-17 — Empty owner-decision queue made explicit
 
 - **Type:** correction

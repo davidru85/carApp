@@ -65,17 +65,18 @@ Acceptance criteria:
 
 ### E0-03 - Base Core Modules - M
 
-Create `:core:model`, `:core:common` and `:core:testing`, implementing the canonical types of `docs/CONTRACTS.md §20`.
+Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20`.
 
 Acceptance criteria:
 
 - `Outcome`, the full `AppError` hierarchy with stable codes, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
+- `:core:crash` exposes `CrashReporter` and a no-op implementation matching `docs/CONTRACTS.md §20.3.1`, with no Firebase, GitLive, Android or iOS type.
 - `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
 - None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
 - The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, and no story writes their literals inline.
 - The three canonical monetary formulas and the two consumption formulas are implemented as exact integer arithmetic and pass every golden value in `docs/CONTRACTS.md §2`.
 - A test proves no monetary or consumption path uses `Float` or `Double`.
-- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake.
+- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter`.
 - Kover thresholds pass for `:core:model` and `:core:common`.
 
 ### E0-04 - Architecture Guards - M
@@ -90,6 +91,7 @@ Acceptance criteria:
 - A `:core:model` dependency on `:core:common` fails the build; the reverse is allowed (`docs/TECHNICAL_PLAN.md §4`).
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
+- `:core:crash` dependency on Firebase, GitLive, Koin, Ktor, platform APIs, integrations or features fails the build.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.
 - **Every rule has a failing fixture proving the check actually fires.**
 - The check configuration is generated from the `docs/TECHNICAL_PLAN.md §4` table.
@@ -524,7 +526,7 @@ Acceptance criteria:
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
 - A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
-- `:core:crash` exposes `CrashReporter`; `:integration:firebase-crashlytics` implements it with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
+- `:integration:firebase-crashlytics` implements `CrashReporter` with Firebase Crashlytics; `:wiring:firebase` binds it without leaking provider types.
 - Release builds are installable on both platforms.
 - Account deletion and Apple sign-in requirements are satisfied.
 - Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
