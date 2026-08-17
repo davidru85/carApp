@@ -42,7 +42,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [PROJECT_LOG.md](docs/PROJECT_LOG.md) | Append-only history of the project: decisions taken, stories completed, problems found, direction changes. **Every completed story appends an entry.** Read the most recent entries before starting work; they are the fastest way to learn the current state. |
 | [docs/adr/README.md](docs/adr/README.md) | ADR index, mapping every decision ID to its ADR file. |
 | [docs/adr/](docs/adr/) | One ADR per decision, with context, options, consequences, constraints introduced and verification. |
-| [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project IDs and Firestore location. Agents MUST NOT invent any of these. |
+| [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project status, development Firebase project ID and Firestore location. Agents MUST NOT invent any of these. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | Pull request template, a superset of the handoff fields. |

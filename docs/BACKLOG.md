@@ -30,7 +30,7 @@ Turn the `Proposed` and Phase-0 `Pending` rows of `docs/DECISION_BOARD.md` into 
 Acceptance criteria:
 
 - Every Phase 0 row in "Decisions Awaiting Owner Confirmation" is `Accepted`, `Rejected` or explicitly re-`Deferred`.
-- `docs/identifiers.md` contains the final applicationId, bundle identifier, Kotlin namespace, display name, Firebase project IDs and Firestore location.
+- `docs/identifiers.md` contains the final applicationId, bundle identifier, Kotlin namespace, display name, development Firebase project ID and Firestore location; production Firebase topology and project IDs are explicitly deferred by `D-14`.
 - One ADR exists per newly accepted decision.
 - `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` mirror `docs/DECISION_BOARD.md` exactly.
 

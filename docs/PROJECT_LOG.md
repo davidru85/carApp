@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Firebase identifier wording aligned with D-14
+
+- **Type:** correction
+- **Story / Decision:** `E0-00` / `D-14`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `E0-00` and the document map now require only the development Firebase project ID during development, while production Firebase topology and project IDs remain explicitly deferred by `D-14`.
+- **Why:** the previous wording said "Firebase project IDs" in plural and could lead an agent to invent a production project ID to satisfy an already-closed owner-decision story.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for Firebase project ID wording and production-project references.
+- **Follow-ups / risks:** production Firebase topology remains an owner decision before `E4-04`.
+
 ### 2026-08-17 — E0-00 closure reflected as completed
 
 - **Type:** story
