@@ -864,6 +864,52 @@ users/{uid}/fuelEntries/{entryId}
 
 There is no remote settings document in the MVP (§3).
 
+The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
+
+Remote timestamp fields use Firestore `timestamp` values. The outbox JSON still encodes instants as epoch milliseconds (§8); the Firestore integration converts them at the boundary.
+
+Allowed remote `Vehicle` keys:
+
+| Key | Required | Type and constraints |
+|-----|----------|----------------------|
+| `id` | Yes | UUID v4 string; MUST equal `{vehicleId}`. |
+| `ownerId` | Yes | String; MUST equal authenticated `{uid}`. |
+| `name` | Yes | String length 1..40 after repository normalisation. |
+| `initialOdometerKm` | Yes | Integer in `0..2000000`. |
+| `brand` | Yes | Null, or string length 1..40 after repository normalisation. |
+| `model` | Yes | Null, or string length 1..40 after repository normalisation. |
+| `fuelType` | Yes | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. |
+| `createdAt` | Yes | Firestore timestamp. |
+| `updatedAt` | Yes | Firestore timestamp; MUST equal `request.time` on create/update. |
+| `deleted` | Yes | Boolean. |
+| `deletedAt` | Yes | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
+| `schemaVersion` | Yes | Integer, exactly `1` for the MVP remote schema. |
+
+Allowed remote `FuelEntry` keys:
+
+| Key | Required | Type and constraints |
+|-----|----------|----------------------|
+| `id` | Yes | UUID v4 string; MUST equal `{entryId}`. |
+| `ownerId` | Yes | String; MUST equal authenticated `{uid}`. |
+| `vehicleId` | Yes | UUID v4 string. |
+| `date` | Yes | Firestore timestamp, not before `1970-01-01T00:00:00Z` and not more than one hour after `request.time`. |
+| `odometerKm` | Yes | Integer in `0..2000000`. |
+| `litersScaled` | Yes | Integer in `1..500000`. |
+| `pricePerLiterScaled` | Yes | Integer in `1..999999`. |
+| `totalCostMinor` | Yes | Integer in `1..99999999`. |
+| `currency` | Yes | One of `SUPPORTED_CURRENCY_CODES` (§20.0.1). |
+| `isFullTank` | Yes | Boolean. |
+| `hasMissedEntries` | Yes | Boolean. |
+| `odometerInconsistent` | Yes | Boolean. It is remotely stored as part of the snapshot, but local writes to the database column remain owned by `:core:database` (§3.1). |
+| `notes` | Yes | Null, or string length 1..280 after repository normalisation. |
+| `createdAt` | Yes | Firestore timestamp. |
+| `updatedAt` | Yes | Firestore timestamp; MUST equal `request.time` on create/update. |
+| `deleted` | Yes | Boolean. |
+| `deletedAt` | Yes | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
+| `schemaVersion` | Yes | Integer, exactly `1` for the MVP remote schema. |
+
+Forbidden remote keys include `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm`, and any key not listed for the target collection. A document with `deleted = false` and non-null `deletedAt`, or `deleted = true` and null `deletedAt`, is malformed and MUST be rejected by Firestore rules on write or quarantined on pull (§9.5).
+
 Remote rules, split by operation. `allow write` is not used, because it would include delete, and on delete `request.resource` is null:
 
 ```javascript
@@ -872,14 +918,16 @@ service cloud.firestore {
   match /databases/{db}/documents {
     match /users/{uid}/{collection}/{docId} {
 
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null
+        && request.auth.uid == uid
+        && knownCollection(collection);
 
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.ownerId == uid
         && request.resource.data.updatedAt == request.time
         && request.resource.data.schemaVersion is int
-        && request.resource.data.schemaVersion >= 1
+        && request.resource.data.schemaVersion == 1
         && request.resource.data.id == docId
         && validPayload();
 
@@ -892,7 +940,7 @@ service cloud.firestore {
 
 Account deletion hard deletes are not performed by a mobile client and are not an exception to these rules. They run only through the `D-23` Firebase Admin server operation, protected by Firebase authentication token verification and server IAM. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
 
-`validPayload()` MUST enforce presence, primitive type **and range** for every field, mirroring the intervals of §5 — for example `notes` size at most 280, `litersScaled` an int in `1..500000`, `odometerKm` an int in `0..2000000`. Without App Check, range validation in rules is the only thing preventing a compromised client from writing a document that breaks parsing on the user's other device.
+`knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. Without App Check, closed schema and range validation in rules are the only things preventing a compromised client from writing a document that breaks parsing on the user's other device.
 
 Anonymous users are valid authenticated users.
 
@@ -917,6 +965,11 @@ Required emulator tests:
 - Writes with a client-controlled `updatedAt` are rejected.
 - Writes with `ownerId != uid` are rejected.
 - Hard delete is rejected.
+- Reads and writes under unknown remote collections are rejected.
+- Writes missing any required key are rejected.
+- Writes with any extra key are rejected.
+- Writes with local-only keys such as `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold` or `currentOdometerKm` are rejected.
+- Writes where `deleted` and `deletedAt` disagree are rejected.
 - Out-of-range field values are rejected.
 - Tombstones are returned by delta pull.
 

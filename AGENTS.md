@@ -127,6 +127,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Nothing is enqueued for synchronization while the owner is `LOCAL_OWNER`.
 - IDs are client-generated UUID v4.
 - Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules. Account deletion hard deletes run only through the `D-23` Firebase Admin server operation.
+- Firestore remote documents use the closed schemas of `docs/CONTRACTS.md §16`; unknown collections, extra keys and local-only metadata are rejected.
 - Monetary values never use `Float` or `Double`, and the exact integer formulas of `docs/CONTRACTS.md §2` are implemented literally.
 - Consumption uses the full-to-full method, and the average is distance-weighted.
 - The odometer inconsistency warning is a two-step protocol: the first save mutates nothing.

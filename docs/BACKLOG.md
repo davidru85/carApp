@@ -395,7 +395,7 @@ Create the Firestore rules, indexes and emulator tests.
 Acceptance criteria:
 
 - Rules match `docs/CONTRACTS.md §16`, split by operation, with `allow delete: if false`.
-- `validPayload()` enforces presence, type and range for every field.
+- `validPayload()` enforces the closed remote `Vehicle` and `FuelEntry` schemas from `docs/CONTRACTS.md §16`, including required keys, extra-key rejection, unknown-collection rejection, local-only-key rejection, primitive type, enum, nullability, range checks and `deleted == (deletedAt != null)`.
 - Every emulator test listed in `docs/CONTRACTS.md §16` passes.
 - `firestore/firestore.indexes.json` exists and the pull query runs without an index error.
 - Firestore offline persistence is disabled in client configuration.

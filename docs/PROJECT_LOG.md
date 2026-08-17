@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Firestore remote schemas closed
+
+- **Type:** decision
+- **Story / Decision:** `F-12`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** remote `Vehicle` and `FuelEntry` documents now have exact closed key sets in `docs/CONTRACTS.md §16`. Unknown collections, missing keys, extra keys, local-only metadata and inconsistent `deleted` / `deletedAt` pairs are rejected by the Firestore contract.
+- **Why:** the owner chose the strict schema option to make remote payload validation predictable and prevent malformed or locally-owned fields from entering Firestore.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §10`, `docs/CONTRACTS.md §16`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `F-12`, `validPayload`, `closed remote schema`, forbidden local-only keys, `schemaVersion` and `deletedAt`; `git diff --check`.
+- **Follow-ups / risks:** remaining audit finding is `F-15`.
+
 ### 2026-08-17 — Account deletion server operation accepted
 
 - **Type:** decision

@@ -372,7 +372,7 @@ users/{uid}/vehicles/{vehicleId}
 users/{uid}/fuelEntries/{entryId}
 ```
 
-Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == request.time`, a supported `schemaVersion` lower bound, document ID consistency, and presence, type **and range** of every field. Hard deletes are rejected. The complete rule shape and the required emulator tests are in `docs/CONTRACTS.md §16`.
+Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == request.time`, the closed MVP remote `schemaVersion` contract, document ID consistency, exact allowed keys, presence, type, nullability and range of every field. Hard deletes are rejected. The complete rule shape and the required emulator tests are in `docs/CONTRACTS.md §16`.
 
 ## 11. Non-Functional Requirements
 
