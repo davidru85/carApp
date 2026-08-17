@@ -460,14 +460,17 @@ Once admitted, the order is deterministic, because the convergence simulation de
 - Entity types are pulled in dependency order: `VEHICLE` before `FUEL_ENTRY`.
 - Cursor stores `(lastServerUpdatedAt, lastDocumentId)`.
 - Page limit: 200 documents.
-- Query ordering is `updatedAt ASC, documentId ASC`, and pagination MUST use `startAfter(lastServerUpdatedAt, lastDocumentId)`. A query that filters only on `updatedAt >= since` without a `startAfter` anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
-- The 30-second overlap window is applied **once per cycle**, not per page: a cycle starts from `startAfter(max(0, cursor.lastServerUpdatedAt - 30 s), null)`.
+- Query ordering is `updatedAt ASC, documentId ASC`.
+- The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
+- The first page of that cycle MUST use `startAt(overlapSince, "")`. `""` is the concrete lowest document-id anchor; `null` MUST NOT be used as a cursor component.
+- Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
+- A query that filters only on `updatedAt >= since` without a concrete cursor anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
 - Tombstones are included.
 - Each page is applied in one local transaction; apply is idempotent.
 - If an outbox row exists for a remote entity, local data is not overwritten.
 - Otherwise the remote snapshot is applied iff `local.serverUpdatedAt == null || remote.updatedAt > local.serverUpdatedAt`. **`local.updatedAt` MUST NOT participate in remote conflict arbitration.**
 - The cursor advances only after the local transaction succeeds.
-- Progress invariant: if a page returns `limit` documents and the resulting cursor is not strictly greater than the cursor that produced it, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
+- Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. If not, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
 - Orphan fuel entries (vehicle not yet pulled) are legal transient state. They MUST be persisted, and MUST be excluded from all UI queries and from consumption until their vehicle arrives.
 
 ### 9.5 Schema version handling
@@ -870,10 +873,11 @@ Anonymous users are valid authenticated users.
 Remote queries:
 
 ```text
-where(updatedAt >= since)
+where(updatedAt >= overlapSince)
 orderBy(updatedAt ASC)
 orderBy(documentId ASC)
-startAfter(cursor.lastServerUpdatedAt, cursor.lastDocumentId)
+first page of cycle: startAt(overlapSince, "")
+later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
 limit(200)
 ```
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Pull overlap cursor anchor fixed
+
+- **Type:** decision
+- **Story / Decision:** `F-13`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** pull pagination now uses `startAt(overlapSince, "")` for the first page of an overlapped cycle and `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)` for later pages.
+- **Why:** the owner chose the concrete-anchor option to avoid an invalid `null` document-id cursor while preserving the 30-second overlap window.
+- **Documents touched:** `docs/CONTRACTS.md §9.4` and `§16`, `docs/SPECIFICATION.md §9.3`, `docs/TECHNICAL_PLAN.md §8`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `startAt`, `startAfter`, `overlapSince`, `RemoteCursor` and `null`; `git diff --check`.
+- **Follow-ups / risks:** `F-14` and `F-16` remain the next sync/database guardrails.
+
 ### 2026-08-17 — Local owner adoption ordering decided
 
 - **Type:** decision

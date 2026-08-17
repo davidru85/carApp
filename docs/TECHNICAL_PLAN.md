@@ -224,16 +224,17 @@ The engine lives fully in `commonMain`. Platform APIs only trigger it; they are 
 ```text
 For entityType in [VEHICLE, FUEL_ENTRY]:
   1. cursor = sync_cursor[entityType] (created lazily as RemoteCursor.INITIAL)
-  2. anchor = (max(0, cursor.lastServerUpdatedAt - 30s), null)   // overlap applied once per cycle
-  3. Query where updatedAt >= anchor.time
+  2. overlapSince = max(0, cursor.lastServerUpdatedAt - 30s)   // overlap applied once per cycle
+  3. Query where updatedAt >= overlapSince
        orderBy updatedAt ASC, documentId ASC
-       startAfter(anchor)
+       first page: startAt(overlapSince, "")
+       later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
        limit 200
   4. Apply the page in one local transaction.
      - quarantine documents whose schemaVersion is unsupported
      - skip entities that have an outbox row
      - otherwise apply if remote.updatedAt > local.serverUpdatedAt, or local was never synced
-  5. anchor = (lastApplied.updatedAt, lastApplied.documentId); advance the cursor.
+  5. pageCursor = (lastApplied.updatedAt, lastApplied.documentId); advance the cursor.
   6. If the page was full and the anchor did not strictly advance, fail with ConflictUnresolved.
   7. Repeat while the page is full.
 ```
@@ -244,7 +245,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
 - Push is idempotent by client-generated document ID.
 - Server `updatedAt` creates authoritative ordering; the local `updatedAt` never arbitrates.
 - `(updatedAt, documentId)` provides a deterministic total order over the pull stream.
-- Pull overlap prevents silent cursor loss; `startAfter` prevents the overlap from re-reading the same page forever.
+- Pull overlap prevents silent cursor loss; `startAt(overlapSince, "")` gives the first overlapped page a legal concrete anchor; `startAfter` on the previous page cursor prevents re-reading the same page forever.
 - Tombstones are regular LWW documents.
 
 ## 9. Sync Tests

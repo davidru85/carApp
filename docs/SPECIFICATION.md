@@ -347,8 +347,8 @@ Payload format, coalescing semantics and purge conditions are in `docs/CONTRACTS
 ### 9.4 Pull
 
 1. Pull `VEHICLE` before `FUEL_ENTRY`.
-2. Start the cycle from `max(0, cursor.lastServerUpdatedAt - 30 seconds)`, applying the overlap once per cycle, not per page.
-3. Query ordered by `updatedAt` and document ID, paginated with `startAfter` on the stored `(lastServerUpdatedAt, lastDocumentId)`, limit 200.
+2. Start the cycle from `overlapSince = max(0, cursor.lastServerUpdatedAt - 30 seconds)`, applying the overlap once per cycle, not per page.
+3. Query ordered by `updatedAt` and document ID. The first page uses `startAt(overlapSince, "")`; later pages use `startAfter(lastServerUpdatedAt, lastDocumentId)`, limit 200.
 4. Include tombstones.
 5. Apply each page in one local transaction.
 6. If an outbox row exists for a remote entity, do not overwrite local data.
