@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Local owner adoption ordering decided
+
+- **Type:** decision
+- **Story / Decision:** `F-10`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** first launch now attempts Firebase anonymous authentication automatically; `LOCAL_OWNER` is the offline/Auth-unavailable fallback. Local synchronized rows carry `localMutationSeq`, and adoption builds the initial outbox in dependency-group order and then by `localMutationSeq ASC, id ASC`.
+- **Why:** the owner chose deterministic local mutation ordering without creating a staging outbox for `LOCAL_OWNER`, preserving the rule that the outbox stays empty until a real UID exists.
+- **Documents touched:** `docs/CONTRACTS.md §3`, `§8`, `§11.2`, `§11.4` and repository rules, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md §6`, `docs/BACKLOG.md`, `docs/AUDIT_GUARDRAILS.md`, and this log.
+- **Verification:** manual cross-document search for `localMutationSeq`, `local_sequence`, `LOCAL_OWNER`, anonymous authentication and adoption; `git diff --check`.
+- **Follow-ups / risks:** `F-13`, `F-14` and `F-16` remain the next sync/database guardrails.
+
 ### 2026-08-17 — Sync state storage decided
 
 - **Type:** decision

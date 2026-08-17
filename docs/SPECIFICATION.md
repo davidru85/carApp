@@ -24,7 +24,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 ### 3.1 In Scope
 
 - Onboarding and authentication.
-- Offline-capable first launch with a local identity, adopted into an anonymous Firebase identity when connectivity allows.
+- Automatic Firebase anonymous authentication on first launch, with an offline local fallback adopted into that anonymous identity when connectivity allows.
 - Anonymous login.
 - Google sign-in on Android and iOS.
 - Apple sign-in on iOS.
@@ -114,7 +114,7 @@ Field names, types, scales and persistence formats are normative in `docs/CONTRA
 | `createdAt`, `updatedAt` | Yes | UTC. |
 | `deletedAt` | No | Tombstone timestamp. |
 
-Sync metadata (`syncState`, `localRevision`, `serverUpdatedAt`, `schemaVersion`) is **not** part of the domain model. It exists only on the local row, and reaches the UI only as the aggregate sync status.
+Sync metadata (`syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `schemaVersion`) is **not** part of the domain model. It exists only on the local row, and reaches the UI only as the aggregate sync status.
 
 ### 5.3 UserSettings
 
@@ -183,7 +183,7 @@ Synchronized tombstones may be purged locally once they are confirmed synced, ol
 ### F-1 First Launch and Authentication
 
 1. Welcome screen with "Sign in" and "Continue without account".
-2. "Continue without account" works **offline**: the app creates a local session under `LOCAL_OWNER` and the user can immediately use every MVP feature. An anonymous Firebase UID is acquired in the background when connectivity allows, and local data is adopted into it without loss.
+2. "Continue without account" first attempts automatic Firebase anonymous authentication. If it succeeds, data is owned by that anonymous UID immediately. If it cannot complete because the app is offline or Firebase Auth is unavailable, the app creates a temporary local session under `LOCAL_OWNER` and the user can immediately use every MVP feature. Anonymous UID acquisition is retried in the background when connectivity allows, and local data is adopted into it without loss.
 3. Sign in offers providers by platform: Android offers Google; iOS offers Google and Apple.
 4. Routing MUST NOT happen while the authentication state is still undetermined. Once determined: if the user has no vehicles, route to first vehicle creation; otherwise route to the vehicle list.
 
@@ -430,6 +430,6 @@ Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be
 | Outbox | Local queue of pending snapshots to push remotely. |
 | LWW | Last-write-wins conflict resolution. |
 | `LOCAL_OWNER` | Sentinel owner used before an anonymous Firebase UID exists. |
-| Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for sync. |
+| Adoption | Rewriting `LOCAL_OWNER` rows to a real UID and enqueueing them for sync in deterministic local mutation order. |
 | Orphan entry | A synchronized fuel entry whose vehicle has not been pulled yet. |
 | Quarantine | Local storage for remote documents with an unsupported future schema version. |

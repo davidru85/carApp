@@ -174,8 +174,9 @@ Acceptance criteria:
 
 - Database instantiates and persists on Android and iOS.
 - Bundled SQLite is used.
-- Tables: `vehicle`, `fuel_entry`, `user_settings`, `outbox`, `sync_cursor`, `quarantine`.
+- Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`.
 - Synchronized entities include every control column of `docs/TECHNICAL_PLAN.md §6`, with `CHECK(deleted = (deletedAt IS NOT NULL))`.
+- `local_sequence` assigns monotonic `localMutationSeq` values shared by `vehicle` and `fuel_entry`; pull-applied remote writes and local-owner adoption do not consume it.
 - There is **no** foreign key from `fuel_entry` to `vehicle`, and **no** unique index on the vehicle name.
 - Outbox matches the committed DDL, including `lastErrorCode` and `idx_outbox_due`, and preserves the original `seq` when coalescing.
 - `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and a test proves they stay correct after an edit and after a delete of a neighbouring entry.
@@ -205,6 +206,7 @@ Acceptance criteria:
 - Mappers have round-trip tests.
 - `ownerId` is stamped from `OwnerContext`; the module does not reference `AuthClient`.
 - Created and edited rows become `PENDING`.
+- Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
 - **No outbox row is created while the owner is `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.**
 - Vehicle deletion is logical and cascades to fuel entries in one transaction.
 - No Firebase or GitLive type is referenced.
@@ -254,6 +256,7 @@ Acceptance criteria:
 - `observeFuelEntries` returns the `FuelEntryListItem` projection and excludes orphan entries.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
 - Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
+- Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
 - Logical delete works and triggers read-model recomputation.
 - Mappers have round-trip tests.
 
@@ -336,6 +339,7 @@ Implement the welcome screen and provider selection, with an offline-capable loc
 Acceptance criteria:
 
 - "Continue without account" succeeds with no connectivity and creates a `LOCAL_OWNER` session.
+- With connectivity, "Continue without account" creates a Firebase anonymous user automatically and does not enter `LOCAL_OWNER`.
 - Routing never happens while `AuthState.Unknown`.
 - iOS offers Apple whenever Google is offered.
 - Retry after network failure does not leave the UI stuck.
@@ -347,9 +351,10 @@ Adopt `LOCAL_OWNER` data into the first real UID.
 
 Acceptance criteria:
 
-- On the first successful authentication, all `LOCAL_OWNER` rows are rewritten to the new UID in one transaction, `localRevision` is bumped and an outbox snapshot is enqueued for every non-synced row, preserving `seq` causality.
+- On the first successful authentication, all `LOCAL_OWNER` rows are rewritten to the new UID in one transaction, `localRevision` is bumped and an outbox snapshot is enqueued for every non-synced row.
+- Adoption preserves existing `localMutationSeq` values and inserts outbox rows in the push dependency order of `docs/CONTRACTS.md §8`, then `localMutationSeq ASC, id ASC`.
 - The operation is idempotent: running it twice enqueues each row once.
-- A test starts from a populated `LOCAL_OWNER` database with vehicles and fuel entries and asserts nothing is lost and everything syncs.
+- A test starts from a populated `LOCAL_OWNER` database with vehicles and fuel entries, including interleaved edits, and asserts nothing is lost, outbox order is deterministic and everything syncs.
 - Adoption is triggered automatically when connectivity returns, not only from a UI action.
 
 Blocks: E3-04.

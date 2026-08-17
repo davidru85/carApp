@@ -126,6 +126,7 @@ Domain models expose business concepts. Local rows add sync metadata. Remote doc
 | `deleted` | No | Yes (stored) | Yes | Stored, with the invariant `deleted == (deletedAt != null)` enforced by a `CHECK` constraint. Written only by the tombstone helper in `:core:database`. |
 | `syncState` | **No** | Yes | No | Local-only. MUST NOT be visible to feature `domain` or `presentation` code. |
 | `localRevision` | No | Yes | No | Local-only. Incremented on every local edit. |
+| `localMutationSeq` | No | Yes | No | Local-only. Monotonic database-local mutation order, used to adopt `LOCAL_OWNER` rows into the outbox deterministically. |
 | `schemaVersion` | No | Yes | Yes | Starts at `1`. |
 
 Sync status reaches the UI only through the aggregate `SyncStatus` exposed by `SyncController` (§9.6), never per entity.
@@ -407,7 +408,7 @@ Outbox payload format:
 - Includes `schemaVersion` and `entityType`.
 - Includes the full entity snapshot under the canonical field names of §3.
 - Encodes instants as epoch milliseconds UTC.
-- Excludes `syncState`, `localRevision`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm` and any other local-only metadata.
+- Excludes `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm` and any other local-only metadata.
 
 Outbox coalescing:
 
@@ -416,6 +417,8 @@ Outbox coalescing:
 - The original `seq` MUST be preserved to keep causal order.
 
 **The outbox MUST NOT be populated while `ownerId == LOCAL_OWNER`.** Before a real UID exists, local writes set `syncState = PENDING` but the outbox writer is a no-op. Outbox rows are created for those entities by local-owner adoption (§11.4).
+
+Every local create, update and tombstone write assigns a new `localMutationSeq` from one database-local monotonic counter shared by `vehicle` and `fuel_entry`. Pull-applied remote writes do not consume this counter. `localMutationSeq` is not a history table: it stores only the latest local mutation order for the row, which is enough because the outbox stores the latest snapshot per entity.
 
 Push dependency order — this is the normative order; a two-group "vehicles before fuel entries" reading is insufficient because it would push a vehicle tombstone ahead of its fuel-entry tombstones:
 
@@ -575,7 +578,9 @@ Platform UI obtains Google and Apple credentials; common code exchanges or links
 
 ### 11.2 First launch
 
-First launch MUST succeed offline. The app creates a local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is a background task retried on connectivity; on success, local-owner adoption runs (§11.4).
+On first launch the app MUST attempt Firebase anonymous authentication automatically before the user chooses Google or Apple sign-in. If anonymous authentication succeeds, the app uses that Firebase UID immediately and normal outbox synchronization applies.
+
+First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4).
 
 ### 11.3 Anonymous conversion
 
@@ -589,9 +594,9 @@ On the first successful authentication after a `LOCAL_OWNER` period, in one tran
 
 1. Rewrite every row with `ownerId = LOCAL_OWNER` to the new UID.
 2. Increment `localRevision` on each rewritten row.
-3. Enqueue an outbox snapshot for every non-synced row, preserving `seq` causality.
+3. Enqueue an outbox snapshot for every non-synced row, ordered by the push dependency order of §8 and then by `localMutationSeq ASC, id ASC`. The inserted outbox rows receive `seq` in that order.
 
-The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
+Adoption MUST preserve each row's existing `localMutationSeq`; the adoption rewrite itself does not consume a new mutation sequence. The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
 
 ### 11.5 Sign-out and account deletion
 
@@ -653,7 +658,7 @@ Repositories are interfaces owned by feature domain packages. Implementations li
 All write methods:
 
 - Run in local database transactions where multiple rows or outbox entries change.
-- Stamp `ownerId` from `OwnerContext`, plus `id`, `createdAt`, `updatedAt`, `localRevision`. Commands never carry these.
+- Stamp `ownerId` from `OwnerContext`, plus `id`, `createdAt`, `updatedAt`, `localRevision` and `localMutationSeq`. Commands never carry these.
 - Enqueue outbox snapshots for synchronized entities, subject to §8.
 - Return `Outcome<..., AppError>`.
 - Never call Firebase directly.

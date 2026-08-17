@@ -147,9 +147,10 @@ Synchronized entity control columns:
 | `deletedAt` | Tombstone timestamp. |
 | `syncState` | Local state. Canonical values in `docs/CONTRACTS.md §7`. |
 | `localRevision` | Incremented on each local edit to detect in-flight edits. |
+| `localMutationSeq` | Monotonic database-local mutation order, shared across synchronized entity tables. |
 | `schemaVersion` | Payload schema version. |
 
-Tables: `vehicle`, `fuel_entry`, `user_settings`, `outbox`, `sync_cursor`, `quarantine`.
+Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`.
 
 There is **no enforced foreign key** from `fuel_entry` to `vehicle`: sync can legitimately deliver an entry before its vehicle, and a constraint failure inside a pull transaction would stall the cursor permanently.
 
@@ -173,6 +174,8 @@ CREATE INDEX idx_outbox_due ON outbox(nextAttemptAt, seq);
 ```
 
 The outbox stores full snapshots; re-applying the same snapshot is idempotent. Retry decisions are made on `lastErrorCode`, never on `lastError` text.
+
+`local_sequence` is a single-row local control table used only to assign `localMutationSeq`. Local creates, updates and tombstone writes consume it; pull-applied remote writes and local-owner adoption do not. The value never leaves the local database.
 
 Room configuration: `exportSchema = true`, schema JSON committed under `core/database/schemas/`. `fallbackToDestructiveMigration` is FORBIDDEN in every build type. Every version bump ships an explicit `Migration` plus a test that migrates a populated previous-version database and asserts row preservation.
 
@@ -261,7 +264,7 @@ Required tests for `:core:sync`:
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
 12. A fuel entry arriving before its vehicle is persisted, hidden from the UI, and converges without stalling.
 13. Two devices creating the same vehicle name converge into two vehicles without a constraint failure.
-14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once and is idempotent.
+14. Local owner adoption on a populated `LOCAL_OWNER` database enqueues every row exactly once, is idempotent, and inserts outbox rows in dependency-group order and then by `localMutationSeq ASC, id ASC`.
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
 16. Backoff with an injected jitter source produces deterministic, capped delays.
 17. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and converges once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
