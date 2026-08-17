@@ -10,7 +10,7 @@ The selected architecture is Kotlin Multiplatform for shared logic and native UI
 
 ## 2. Closed Decisions
 
-Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors it and MUST stay identical; `contract-check` asserts that.
+Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decision IDs and statuses and MUST stay identical; `contract-check` asserts that.
 
 | ID | Decision | Choice | Status | Rationale |
 |----|----------|--------|--------|-----------|

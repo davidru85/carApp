@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-17 — Agent handoff and contract-check guardrails tightened
+
+- **Type:** milestone
+- **Story / Decision:** —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added an explicit story intake protocol, required acceptance evidence in handoffs, and expanded `contract-check` to verify decision statuses, ADR status alignment, unresolved decision tracking and PR-template/handoff coverage.
+- **Why:** the documentation already defined strong product contracts, but future agents still needed a more mechanical way to prove a story was Ready before implementation and Done after implementation.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §12`, `docs/CONTRACTS.md §18`, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/adr/README.md`, `docs/templates/agent-handoff.md`, `.github/pull_request_template.md`, and this log.
+- **Verification:** manual documentation review with `rg` and targeted file reads. No product code or CI exists yet.
+- **Follow-ups / risks:** changes touch gated documentation paths and require human review before merge.
+
 ### 2026-08-17 — Audit findings folded back into the documentation
 
 - **Type:** milestone

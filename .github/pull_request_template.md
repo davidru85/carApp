@@ -2,25 +2,43 @@
 
 - 
 
-## Backlog story
+## Story
 
 `Ex-00 - title`
 
-## Scope completed
+## Ready Check
+
+- [ ] Backlog story is explicit
+- [ ] Acceptance criteria reviewed
+- [ ] Dependencies checked
+- [ ] Required decisions are not `Proposed` or `Pending`
+- [ ] Normative sections reviewed
+- [ ] Expected verification identified
+- [ ] Human review gates identified before work
+
+## Scope Completed
+
+-
+
+## Acceptance Evidence
+
+-
+
+## Out of Scope / Not Done
 
 - 
 
-## Out of scope / not done
+## Files Changed
 
 - 
 
-## Decisions made
+## Decisions Made
 
 Include any `SHOULD` you deviated from, and why.
 
 - 
 
-## Verification
+## Verification Run
 
 - [ ] Relevant tests pass
 - [ ] Lint passes (ktlint, detekt)
@@ -36,26 +54,26 @@ Commands or checks run:
 
 ```
 
-## Contract impact
+## Contract Impact
 
 - [ ] No contract changes
 - [ ] Updated `docs/CONTRACTS.md` §:
 
-## Decision board impact
+## Decision Board Impact
 
 - [ ] No decision changes
 - [ ] Updated `docs/DECISION_BOARD.md` (`D-n`) and the related ADR:
 
-## Shared-write modules touched
+## Shared-Write Modules Touched
 
 - [ ] None
 - [ ] `core/database` — confirm no other story is modifying it
 
-## Project log
+## Project Log Entry
 
 - [ ] Entry appended to `docs/PROJECT_LOG.md`
 
-## Human review gates
+## Human Review Gate
 
 Gates are defined canonically in `AGENTS.md`.
 
@@ -70,6 +88,6 @@ Gates are defined canonically in `AGENTS.md`.
 - [ ] Gated path (`docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `AGENTS.md`, `docs/adr/**`, `docs/identifiers.md`, `docs/versions-matrix.md`, `firestore/**`, `core/sync/**`, `core/auth/**`, `core/database/**`, money types)
 - [ ] Gated topic (scope, stack or versions, backend, auth, sync algorithm, module boundaries, money representation, error taxonomy, logging and privacy, Firestore rules, Swift-facing API surface)
 
-## Risks and follow-ups
+## Risks or Follow-ups
 
 - 

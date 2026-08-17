@@ -164,11 +164,25 @@ Do not start a story if:
 
 Escalate instead of guessing.
 
+## Story Intake
+
+Before changing implementation code for a story, an agent MUST record the ready check it used. The ready check contains:
+
+- the exact backlog story ID and title,
+- the acceptance criteria that will be satisfied,
+- the dependency and decision rows checked,
+- the normative sections that govern the work,
+- the expected verification commands,
+- the human review gates that apply, or `None`.
+
+If a requested change is not tied to a backlog story, the agent may analyse, propose a story, or update definition documents, but it MUST NOT implement product code until the story is made explicit and Ready.
+
 ## Definition of Done
 
 A story is done only when:
 
 - acceptance criteria are met,
+- acceptance criteria evidence is listed in the handoff,
 - relevant tests pass, including the ones the story's acceptance criteria name explicitly,
 - lint is clean and coverage thresholds hold,
 - relevant builds pass,

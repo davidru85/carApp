@@ -1,6 +1,6 @@
 # Decision Board - carApp MVP
 
-> **Sole registry of decision IDs (`D-n`)** and authoritative for which libraries, services and technical options are allowed. Accepted decisions MUST be reflected in an ADR and mirrored in `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`; `contract-check` asserts the three ID sets are identical. See `AGENTS.md` for authority and normative language.
+> **Sole registry of decision IDs (`D-n`)** and authoritative for which libraries, services and technical options are allowed. Accepted decisions MUST be reflected in an ADR and mirrored in `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`; `contract-check` asserts that mirrored decision IDs and statuses stay aligned. See `AGENTS.md` for authority and normative language.
 
 ## Decision Status
 

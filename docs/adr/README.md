@@ -2,7 +2,7 @@
 
 One ADR per decision ID. The decision ID is stable across project documents; ADR numbers are file identifiers only.
 
-`docs/DECISION_BOARD.md` is the sole registry of decision IDs, and the ADR `Status` field MUST equal the board status for the same ID. `contract-check` asserts that the ID set here is identical to `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`.
+`docs/DECISION_BOARD.md` is the sole registry of decision IDs, and the ADR `Status` field MUST equal the board status for the same ID. `contract-check` asserts that the decision ID set and status values here are identical to `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`.
 
 | Decision ID | ADR | Decision | Status |
 |-------------|-----|----------|--------|

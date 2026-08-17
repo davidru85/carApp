@@ -906,9 +906,12 @@ Phase 0 defines the exact CI check names. Required checks:
 `contract-check` is a script that asserts:
 
 1. Every type named in a code block in this document is declared in §20.
-2. The decision ID set is identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
-3. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
-4. The committed Objective-C header golden file for `:shared` is unchanged.
+2. The decision ID set and status are identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+3. Every ADR linked from `docs/adr/README.md` has a `Status` heading whose value matches the status recorded for its decision ID.
+4. Every `Proposed` or `Pending` decision in `docs/DECISION_BOARD.md` appears in the "Decisions Awaiting Owner Confirmation" table with a `Needed by` story or phase.
+5. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
+6. `.github/pull_request_template.md` remains a superset of `docs/templates/agent-handoff.md` section headings.
+7. The committed Objective-C header golden file for `:shared` is unchanged.
 
 Once CI exists, branch protection for `main` MUST require these checks before merge.
 

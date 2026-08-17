@@ -374,7 +374,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 
 ## 12. Closed Technical Decisions
 
-`docs/DECISION_BOARD.md` is the sole registry of decision IDs. This table mirrors it and MUST stay identical.
+`docs/DECISION_BOARD.md` is the sole registry of decision IDs. This table mirrors its decision IDs and statuses and MUST stay identical.
 
 | ID | Decision | Choice | Status |
 |----|----------|--------|--------|

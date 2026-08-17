@@ -13,6 +13,7 @@ Size guide: **S** up to half a day, **M** 1 to 2 days, **L** 3 to 5 days.
 - Data model changes require migrations and migration tests.
 - Monetary values never use `Float` or `Double`.
 - A story whose decisions are still `Proposed` or `Pending` in `docs/DECISION_BOARD.md` is NOT Ready.
+- Each handoff includes the ready check and acceptance evidence required by `AGENTS.md`.
 
 ## Phase 0 - Foundations
 
@@ -102,7 +103,7 @@ Acceptance criteria:
 - Style violations, failing tests and coverage below threshold fail CI.
 - Android and iOS simulator / shared framework verification run on macOS CI.
 - CI check names match `docs/CONTRACTS.md §18` exactly.
-- `contract-check` implements the four assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
+- `contract-check` implements the assertions of `docs/CONTRACTS.md §18` and fails when any is violated.
 - Branch protection for `main` requires those checks.
 
 CI duration under 20 minutes is an objective, monitored and reported, not a pass/fail criterion.
@@ -115,7 +116,7 @@ Acceptance criteria:
 
 - One ADR exists per `Accepted` or `Deferred` decision, with the ADR `Status` equal to the board status.
 - `docs/adr/README.md` maps every decision ID to its ADR file.
-- The decision ID set is identical across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+- The decision ID set and status values are identical across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 - `docs/versions-matrix.md` pins JDK, Gradle, AGP, Kotlin, KSP, Compose, Room, `androidx.sqlite`, SKIE, Xcode, Firebase BOM, GitLive, coroutines, serialization, datetime, Koin, Kermit, Turbine and Kover, with the compatibility relation and the exact `Instant` package.
 - `docs/versions-matrix.md` fixes the reference devices and the measurement method for every performance target.
 - Version choices are reflected in `gradle/libs.versions.toml` and nowhere else.
