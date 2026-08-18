@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-22 applied: `setUserProperties` trigger cadence defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-22` (`docs/DOCUMENTATION_AUDIT.md` §4.2, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative cadence rule in `docs/CONTRACTS.md §16.1`: `setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete, from the presentation layer. It MUST NOT be called from domain or data. Buckets are computed from the current list size. An `E3-09` fixture MUST assert the call cadence.
+- **Why:** `AnalyticsTracker.setUserProperties` carries `vehicleCountBucket` and `entryCountBucket`, but the contract did not state when it is called. Two agents could implement "set on every write" (chatty) or "set on app foreground only" (stale buckets).
+- **Documents touched:** `docs/CONTRACTS.md` (`§16.1`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 2 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-21 applied: `CrashReporter.recordNonFatal` trigger policy defined
 
 - **Type:** correction
