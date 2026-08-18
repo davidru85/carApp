@@ -740,6 +740,7 @@ fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 
 Rules:
 
+- `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on Room. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
@@ -1471,8 +1472,6 @@ interface OwnerContext {
     fun observe(): Flow<OwnerId>
 }
 
-interface DatabaseFactory { fun create(): AppDatabase }
-
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
 ```
 
@@ -1486,6 +1485,18 @@ interface CrashReporter {
 ```
 
 The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
+
+### 20.3.2 Database types — `:core:database`
+
+```kotlin
+// AppDatabase is the Room-generated database type owned by :core:database.
+// It is a Room-generated type, not a project-declared type; contract-check assertion 1
+// allows Room-generated types only in :core:database and DatabaseFactory signatures.
+
+interface DatabaseFactory { fun create(): AppDatabase }
+```
+
+`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type `AppDatabase` is a Room-generated type owned by `:core:database`, and `:core:common` is forbidden from depending on Room (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from `:core:database`. `:core:testing` is allowed to depend on `:core:database` (`docs/TECHNICAL_PLAN.md §4`) so it can provide a fake. Any appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation.
 
 ### 20.4 Domain models — `:core:model`
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-03 applied: `DatabaseFactory` moved to `:core:database`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-03` (`docs/DOCUMENTATION_AUDIT.md` §1.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** moved `interface DatabaseFactory { fun create(): AppDatabase }` out of `§20.3` (`:core:common`) into a new `§20.3.2 Database types — :core:database`, and declared `AppDatabase` as the Room-generated type owned by `:core:database`. Added a note in `§11.6` that `AppGraphDependencies.databaseFactory` imports `DatabaseFactory` from `:core:database`. Added a failing fixture to `E0-04` asserting that `:core:common` references neither `AppDatabase` nor `DatabaseFactory`, and that both types may appear only in `:core:database`, `:core:testing` fakes and the `AppGraphDependencies` field of `:shared`.
+- **Why:** `DatabaseFactory`'s return type `AppDatabase` is a Room-generated type owned by `:core:database`, but the interface lived in `:core:common`, which is forbidden from depending on Room (`docs/TECHNICAL_PLAN.md §4`). The dependency-rule table row added by `AUDIT-01` now allows `:core:testing` to depend on `:core:database`, so the fake can be provided by `:core:testing`. The audit proposed a single solution; the owner accepted it verbatim.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.3`, new `§20.3.2`, `§11.6`), `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The `contract-check` ignored-set extension for Room-generated types (audit findings 4 and 19) is still pending and will be applied when those findings are processed; until then the new `§20.3.2` code block references `AppDatabase`, which `contract-check` assertion 1 would currently flag. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "module boundaries").
+- **Follow-ups / risks:** `AUDIT-04` and `AUDIT-19` MUST extend the `contract-check` ignored-identifier set with "Room-generated types owned by `:core:database`" so `AppDatabase` and `DatabaseFactory` signatures do not trip assertion 1. The remaining 17 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-02 applied: `AuthProvider` moved to `:core:common`
 
 - **Type:** correction
