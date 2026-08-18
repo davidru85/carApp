@@ -533,7 +533,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - Page limit: 200 documents.
 - Query ordering is `updatedAt ASC, documentId ASC`.
 - The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
-- The first page of every cycle MUST use `startAt(overlapSince, "")`, including cycles that resume after the first pull. `""` is the concrete lowest document-id anchor; it is legal because Firestore range comparison treats it as the smallest lexicographic document-id string. `null` MUST NOT be used as a cursor component.
+- The first page of every cycle MUST use `startAt(overlapSince, "")`, including cycles that resume after the first pull. `""` is the concrete lowest document-id anchor; it is legal because Firestore range comparison treats it as the smallest lexicographic document-id string. `null` MUST NOT be used as a cursor component passed to `startAt`/`startAfter`; the `RemoteCursor.INITIAL` sentinel is exempt because it is translated to `(overlapSince, "")` before reaching Firestore (`§20.7`).
 - Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
 - A query that filters only on `updatedAt >= since` without a concrete cursor anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
 - Tombstones are included.
@@ -1751,6 +1751,8 @@ interface SyncController {
 ```
 
 A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`. Deleting the row is the only supported way to force a full re-pull.
+
+`RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises the first page cursor as `(overlapSince, "")` per `§9.4`. The `null` prohibition in `§9.4` applies to cursors passed to `startAt`/`startAfter`; the `INITIAL` sentinel is exempt because it is translated to the concrete anchor `(overlapSince, "")` before reaching Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
 
 ### 20.8 Auth types — `:core:auth`
 

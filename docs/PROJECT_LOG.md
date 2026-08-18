@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-11 applied: `RemoteCursor.INITIAL` null exemption clarified
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-11` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.7` that `RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet" and is never passed to `RemoteSyncSource.pullChanges`; the sync engine materialises the first page cursor as `(overlapSince, "")`. Updated `§9.4` to clarify that the `null` prohibition applies to cursors passed to `startAt`/`startAfter`; the `INITIAL` sentinel is exempt because it is translated before reaching Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
+- **Why:** `RemoteCursor.INITIAL` has `lastDocumentId = null`, but `§9.4` states "`null` MUST NOT be used as a cursor component." A literal reading makes `INITIAL` illegal. An agent could "fix" `INITIAL` by setting `lastDocumentId = ""`, which would then be passed to `startAfter` on a resumed cycle and produce wrong pagination.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.7`, `§9.4`), and this log.
+- **Verification:** documentation-only change. The test will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 10 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-09 applied: `quarantine` DDL `reason` CHECK constraint added
 
 - **Type:** correction
