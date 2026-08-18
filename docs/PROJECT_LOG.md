@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-25 applied: `SyncController.retryFailed()` error leaves defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-25` (`docs/DOCUMENTATION_AUDIT.md` §5.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.7` that `SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
+- **Why:** `SyncController.retryFailed()` returns `Outcome<Unit, AppError>`, but the `SyncController` contract had no enumeration of the `AppError` leaves it may return. An agent implementing `E3-03` could return `PersistenceError.TransactionFailed`, `SyncError.RemoteUnavailable`, or nothing.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.7`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "error taxonomy").
+- **Follow-ups / risks:** all automatic findings of `docs/DOCUMENTATION_AUDIT.md` have been applied. The 3 findings requiring owner decision (`AUDIT-10`, `AUDIT-14`, `AUDIT-16`) are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-24 applied: `VehicleListItemUi.deleted` documented as always-false in MVP
 
 - **Type:** correction

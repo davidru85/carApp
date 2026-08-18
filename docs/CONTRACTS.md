@@ -1758,6 +1758,8 @@ interface SyncController {
 
 A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`. Deleting the row is the only supported way to force a full re-pull.
 
+`SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
+
 `RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises the first page cursor as `(overlapSince, "")` per `§9.4`. The `null` prohibition in `§9.4` applies to cursors passed to `startAt`/`startAfter`; the `INITIAL` sentinel is exempt because it is translated to the concrete anchor `(overlapSince, "")` before reaching Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
 
 ### 20.8 Auth types — `:core:auth`
