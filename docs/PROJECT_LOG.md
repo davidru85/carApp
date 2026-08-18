@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-09 applied: `quarantine` DDL `reason` CHECK constraint added
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-09` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added `CHECK (reason IN ('UnsupportedSchemaVersion','MalformedPayload'))` to the `quarantine` DDL in `docs/TECHNICAL_PLAN.md §6`, matching the closed `QuarantineReason` enum (`docs/CONTRACTS.md §20.7`). An `E3-03` migration test MUST prove the constraint rejects an unknown reason.
+- **Why:** the DDL stored `reason TEXT NOT NULL` but `QuarantineReason` is a closed enum with two leaves. Without a CHECK constraint, unlike `outbox.entityType` which has one, an agent could persist an arbitrary reason string.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§6`), and this log.
+- **Verification:** documentation-only change. The migration test will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated path `docs/TECHNICAL_PLAN.md`).
+- **Follow-ups / risks:** if a new `QuarantineReason` leaf is added, the CHECK constraint MUST be updated in the same change. The remaining 11 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-08 applied: `sync_cursor` table DDL defined
 
 - **Type:** correction

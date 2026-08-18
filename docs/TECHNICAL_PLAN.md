@@ -204,7 +204,7 @@ Quarantine schema:
 CREATE TABLE quarantine (
   entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE','FUEL_ENTRY')),
   entityId TEXT NOT NULL,
-  reason TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('UnsupportedSchemaVersion','MalformedPayload')),
   schemaVersion INTEGER NOT NULL,
   serverUpdatedAt INTEGER NOT NULL,
   rawJson TEXT NOT NULL,
