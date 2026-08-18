@@ -314,6 +314,7 @@ Acceptance criteria:
 - The derived R-2 value recalculates while typing, using `MoneyInput`.
 - The odometer warning dialog implements the two-step confirmation.
 - Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`, including `EndEntryNotFullTank` for partial refuels.
+- `hasMissedEntries` and `odometerInconsistent` flags are rendered on every row, including partial refuels where `invalidReason = EndEntryNotFullTank`.
 - Empty consumption state follows the specification.
 
 ### E1-09 - iOS UI: Vehicles and Fuel Entries - L
@@ -326,6 +327,7 @@ Acceptance criteria:
 - State holder scopes are created in `init` and cancelled in `deinit`.
 - Functional parity with Android for F-2 and F-3.
 - Fuel-entry consumption and no-consumption explanations match Android, including `EndEntryNotFullTank` for partial refuels.
+- `hasMissedEntries` and `odometerInconsistent` flags are rendered on every row, including partial refuels.
 - Dynamic Type is usable for critical flows.
 
 ### E1-10 - Settings Persistence - S

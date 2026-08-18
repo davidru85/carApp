@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-12 applied: `FuelEntryListItemUi` gains `hasMissedEntries` and `odometerInconsistent`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-12` (`docs/DOCUMENTATION_AUDIT.md` §2.2, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added `hasMissedEntries: Boolean` and `odometerInconsistent: Boolean` to `FuelEntryListItemUi` in `docs/CONTRACTS.md §20.10`. Updated `E1-08` and `E1-09` acceptance criteria to render the flags on every row, including partial refuels where `invalidReason = EndEntryNotFullTank`.
+- **Why:** `invalidReason: ConsumptionInvalidReason?` covers `MissedEntriesInSegment` and `InconsistentOdometerInSegment` for full-tank entries, but for a partial (non-full-tank) entry `invalidReason = EndEntryNotFullTank` and the underlying `hasMissedEntries`/`odometerInconsistent` flags are lost. The UI cannot show a "missed refuels" or "inconsistent odometer" indicator on a partial row, even though those flags are user-visible per `SPECIFICATION.md §5.2` and F-3.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), `docs/BACKLOG.md` (E1-08, E1-09), and this log.
+- **Verification:** documentation-only change. A fixture proving a partial entry with `hasMissedEntries = true` surfaces the flag on the Swift side will be exercised by `E1-08`/`E1-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** the remaining 9 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-11 applied: `RemoteCursor.INITIAL` null exemption clarified
 
 - **Type:** correction

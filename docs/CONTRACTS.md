@@ -1966,6 +1966,8 @@ data class FuelEntryListItemUi(
     val isFullTank: Boolean,
     val consumptionScaled: Long?,
     val invalidReason: ConsumptionInvalidReason?,
+    val hasMissedEntries: Boolean,
+    val odometerInconsistent: Boolean,
 )
 
 enum class MoneyInputMode { LITERS_AND_PRICE, LITERS_AND_TOTAL, PRICE_AND_TOTAL }
