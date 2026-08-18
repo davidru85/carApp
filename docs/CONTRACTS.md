@@ -1863,7 +1863,7 @@ class VehicleListStateHolder {
     fun refresh()
     fun selectVehicle(vehicleId: String?)
     fun requestDelete(vehicleId: String)
-    fun confirmDelete(vehicleId: String, confirmation: Confirmation)
+    fun confirmDelete(vehicleId: String)
     fun clearMessage()
     fun close()
 }
@@ -1884,7 +1884,7 @@ class FuelEntryListStateHolder {
     val state: StateFlow<FuelEntryListUiState>
     fun refresh()
     fun requestDelete(entryId: String)
-    fun confirmDelete(entryId: String, confirmation: Confirmation)
+    fun confirmDelete(entryId: String)
     fun clearMessage()
     fun close()
 }
@@ -2068,5 +2068,7 @@ From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, 
 `SyncStatus` is exported through the SKIE/Kotlin-Native sealed-class shape fixed by the generated header. Swift consumers MUST be able to distinguish `Idle`, `Syncing`, `Pending(count)` and `Failed(retryableCount, poisonedCount)` exhaustively.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
+
+`VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`).
 
 The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.

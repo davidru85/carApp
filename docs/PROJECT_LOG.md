@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-14 applied: `confirmDelete` signatures simplified
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-14` (`docs/DOCUMENTATION_AUDIT.md` §3.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** changed `VehicleListStateHolder.confirmDelete(vehicleId: String, confirmation: Confirmation)` to `confirmDelete(vehicleId: String)` and `FuelEntryListStateHolder.confirmDelete(entryId: String, confirmation: Confirmation)` to `confirmDelete(entryId: String)` in `docs/CONTRACTS.md §20.10`. Added a normative statement that entity deletion is a direct action, not a typed-warning confirmation; pending-sync warnings are surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override.
+- **Why:** `Confirmation` had four leaves (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`), none of which represented "confirm vehicle deletion" or "confirm fuel-entry deletion". An agent had to either pass an unrelated confirmation or invent a new leaf.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The signature change will be exercised by `E1-07`/`E1-08`/`E1-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** if a future story requires a typed confirmation before entity deletion (e.g. "this vehicle has N fuel entries, confirm?"), it MUST be added as a new `Confirmation` leaf and the `confirmDelete` signature MUST be revisited. The remaining 1 finding requiring owner decision (`AUDIT-16`) is still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-10 applied: `cycleId` column added to `outbox` DDL
 
 - **Type:** correction
