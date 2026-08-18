@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-05 applied: removed `:core:sync -> :core:auth` dependency edge
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-05` (`docs/DOCUMENTATION_AUDIT.md` §1.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** removed `:core:auth` from the allowed-dependency list of `:core:sync` in `docs/TECHNICAL_PLAN.md §4`, moving it to the forbidden list. Updated `docs/SPECIFICATION.md §8.3` rule 5 to state that `:core:sync` depends on `:core:model`, `:core:common` and `:core:database`, never on `:core:auth` and never on `:integration:*`, and that token handling lives entirely in `RemoteSyncSource`. Added an explanatory note in `docs/CONTRACTS.md §10` that the sync engine never calls `AuthClient` or `TokenProvider`; the `AuthExpired` state-machine transition is sync-internal and re-authentication is delegated to the session/presentation layer. Added a failing fixture to `E0-04` asserting that `:core:sync` does not depend on `:core:auth` and does not reference `AuthClient` or `TokenProvider`.
+- **Why:** the `:core:sync -> :core:auth` edge was allowed by the `§4` table but no documented flow uses it: `RemoteSyncSource` (`§10`) handles token refresh on `Unauthenticated` and retries once before mapping to `RemoteError.Unauthenticated`; the sync engine only consumes the resulting `RemoteError`. The edge was dead coupling. The owner chose Option B (eliminate the edge) over Option A (justify it by documenting a `TokenProvider.getIdToken` call on the `AuthExpired` retry path), because the contracts already delegate token handling to the integration layer and aligning `:core:sync` with the "feature data MUST NOT depend on `:core:auth`" rule is cleaner.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§4`), `docs/SPECIFICATION.md` (`§8.3` rule 5), `docs/CONTRACTS.md` (`§10`), `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The new fixture will be exercised by `E0-04`; no product code exists yet. Requires human review before merge (gated paths `docs/TECHNICAL_PLAN.md` and `docs/SPECIFICATION.md`, gated topic "module boundaries and dependency rules").
+- **Follow-ups / risks:** if a future story needs `:core:sync` to call `TokenProvider` directly (e.g. to force a refresh before a critical push without going through `RemoteSyncSource`), the edge MUST be re-added with a documented justification in `§10` or `§7`. The remaining 15 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-04 applied: `contract-check` ignored-set extended with Room-generated types
 
 - **Type:** correction

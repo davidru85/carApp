@@ -640,6 +640,7 @@ Side effects:
 - On an empty page, `nextCursor` equals the input cursor and `hasMore` is `false`.
 - `pullChanges` returns `nextCursor = inputCursor` and `hasMore = false` exactly when `items` is empty. Otherwise `nextCursor.lastServerUpdatedAt` and `nextCursor.lastDocumentId` MUST equal the last item in `items`.
 - Token refresh is the responsibility of this module: on `Unauthenticated` it MUST force a token refresh through the provider SDK and retry the operation once before mapping to `RemoteError.Unauthenticated`.
+- `:core:sync` does not depend on `:core:auth`. Token handling lives entirely in `RemoteSyncSource` (the integration layer); the sync engine never calls `AuthClient` or `TokenProvider`. The `AuthExpired` state-machine transition (`§7`) is sync-internal and signals that `RemoteSyncSource` could not authenticate; re-authentication is delegated to the session/presentation layer, not to `:core:sync`.
 - No Firebase, GitLive or Ktor type appears in the interface or the DTOs.
 
 ## 11. Auth Contracts

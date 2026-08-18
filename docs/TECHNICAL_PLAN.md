@@ -90,7 +90,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Koin, Room, Ktor, own `data`, own `presentation` |
 | feature `data` | own `domain`, `:core:model`, `:core:common`, `:core:database`, `:core:sync` | `:integration:*`, `:core:auth`, other features |
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
-| `:core:sync` | `:core:model`, `:core:common`, `:core:database`, `:core:auth` | `:integration:*`, features |
+| `:core:sync` | `:core:model`, `:core:common`, `:core:database` | `:integration:*`, `:core:auth`, features |
 | `:core:database` | `:core:model`, `:core:common`, Room | `:integration:*`, features, `:core:sync` |
 | `:core:auth` | `:core:model`, `:core:common`, coroutines, `kotlinx.serialization`, `kotlinx-datetime` | platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*`, features |
 | `:core:analytics` | `:core:model`, `:core:common` | platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*`, features |
