@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-04 applied: `contract-check` ignored-set extended with Room-generated types
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-04` (`docs/DOCUMENTATION_AUDIT.md` §1.1, guardrail); also closes `AUDIT-19` (`docs/DOCUMENTATION_AUDIT.md` §5.2, guardrail), which is the same finding described from the `AppDatabase`/`DatabaseFactory` angle.
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** extended the `contract-check` assertion 1 ignored-identifier set in `docs/CONTRACTS.md §18` with an explicit "Room-generated types owned by `:core:database`" category covering `AppDatabase`, Room `Dao` supertypes, and `@Entity`-generated row classes. The extension states that these types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Added a matching failing fixture to the `E0-04` acceptance criteria: the check does not flag `AppDatabase` in a `:core:database` or `DatabaseFactory` signature, but does flag it elsewhere.
+- **Why:** the `DatabaseFactory` move in `AUDIT-03` introduced `AppDatabase` (a Room-generated type not declared in `§20`) into a `§20.3.2` code block; assertion 1 would flag it as undeclared without this extension. The owner accepted the audit's single proposed solution verbatim. `AUDIT-19` is the same issue viewed from the `DatabaseFactory.create(): AppDatabase` signature in `§20.3`, so it is closed by the same change.
+- **Documents touched:** `docs/CONTRACTS.md` (`§18`), `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `contract-check` (implemented by `E0-05`); no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface / module boundaries").
+- **Follow-ups / risks:** if Room-generated types ever need to appear outside `:core:database` and `DatabaseFactory`, this rule MUST be revisited. The remaining 16 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-03 applied: `DatabaseFactory` moved to `:core:database`
 
 - **Type:** correction

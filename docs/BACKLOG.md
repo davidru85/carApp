@@ -101,6 +101,7 @@ Acceptance criteria:
 - `:core:analytics` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build.
 - `:core:testing` dependency on `:integration:*`, `:wiring:*` or `:feature:*` fails the build; a platform API reference in the `:core:testing` `commonMain` public surface fails the build, while the same platform API inside a permitted `expect`/`actual` test double (per `docs/CONTRACTS.md §15.1`) is allowed.
 - A reference to `AppDatabase` or `DatabaseFactory` from `:core:common` fails the build; both types are owned by `:core:database` (`docs/CONTRACTS.md §20.3.2`) and may appear only in `:core:database`, `:core:testing` fakes and the `AppGraphDependencies` field of `:shared`.
+- `contract-check` assertion 1 does not flag `AppDatabase`, Room `Dao` supertypes or `@Entity`-generated row classes as undeclared when they appear in a `:core:database` signature or in `DatabaseFactory`; the same types appearing in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API fail the check.
 - An `expect`/`actual` declaration inside `:core:crash` fails the build.
 - An `:integration:*` reference to `createAppGraph` fails the build; a Koin `Module` declaration inside `:integration:*` is allowed.
 - The Phase 0 module set above is enforced: `:core:auth`, `:core:database` and `:core:sync` are not created by Phase 0 stories.
