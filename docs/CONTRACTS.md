@@ -2045,6 +2045,8 @@ DELETING -> UNKNOWN
 UNKNOWN -> SIGNED_OUT after local-data clear
 ```
 
+From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+
 `SyncStatus` is exported through the SKIE/Kotlin-Native sealed-class shape fixed by the generated header. Swift consumers MUST be able to distinguish `Idle`, `Syncing`, `Pending(count)` and `Failed(retryableCount, poisonedCount)` exhaustively.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.

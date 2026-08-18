@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-13 applied: `SessionPhase` `LOCAL -> DELETING` semantics clarified
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-13` (`docs/DOCUMENTATION_AUDIT.md` §3.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` clarifying that from `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+- **Why:** the `SessionPhase` transition table allows `LOCAL -> DELETING`, but for a `LOCAL_OWNER` session there is no Firebase Auth account, so the `D-23` server operation cannot run. `SPECIFICATION.md §7 F-5` says the anonymous equivalent is "delete local data". The contract did not distinguish the two meanings of `DELETING`.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The tests will be exercised by `E2-05`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 8 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-12 applied: `FuelEntryListItemUi` gains `hasMissedEntries` and `odometerInconsistent`
 
 - **Type:** correction
