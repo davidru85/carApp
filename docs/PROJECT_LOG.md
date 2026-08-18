@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-16 applied: `AuthToken` gains `issuedAt` for freshness check
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-16` (`docs/DOCUMENTATION_AUDIT.md` §3.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added an `issuedAt: Instant` field to `AuthToken` in `docs/CONTRACTS.md §20.8`, populated by `TokenProvider`. Updated `§11.5` step 1 to define the freshness check as `AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS`, using the new `issuedAt` field. `E2-02` and `E2-05` MUST test the freshness check.
+- **Why:** `§11.5` said the app MUST verify the Firebase ID token is "fresh", meaning "younger than `FRESH_LOGIN_THRESHOLD_MS`". `AuthToken` carried `expiresAt` but no `issuedAt`. "Younger than 5 minutes" is a statement about issuance age, not expiry. An agent cannot compute issuance age from `expiresAt` alone (Firebase tokens have a 1-hour validity, so `expiresAt - 5 min` approximates issuance, but the contract did not state this).
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.8`, `§11.5`), and this log.
+- **Verification:** documentation-only change. The freshness check will be tested by `E2-02` and `E2-05`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** `TokenProvider` implementations MUST populate `issuedAt`; a fake that omits it will fail the freshness check. All 20 findings of `docs/DOCUMENTATION_AUDIT.md` are now applied (19 closed by direct fix, 1 closed by AUDIT-04 as a duplicate).
+
 ### 2026-08-18 — Documentation audit AUDIT-14 applied: `confirmDelete` signatures simplified
 
 - **Type:** correction

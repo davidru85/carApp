@@ -695,7 +695,7 @@ Anonymous "delete local data" clears every local table, including `user_settings
 
 Account deletion order is normative:
 
-1. Before calling the server operation, the app MUST verify the Firebase ID token is fresh, meaning younger than `FRESH_LOGIN_THRESHOLD_MS`; otherwise it MUST trigger a fresh re-authentication UI flow and re-submit step 2.
+1. Before calling the server operation, the app MUST verify the Firebase ID token is fresh, meaning `AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS` (using the `issuedAt` field of `AuthToken`, §20.8); otherwise it MUST trigger a fresh re-authentication UI flow and re-submit step 2.
 2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
 3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
 4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
@@ -1784,7 +1784,7 @@ sealed interface NativeAuthCredential {
     data class Apple(val idToken: String, val rawNonce: String) : NativeAuthCredential
 }
 
-data class AuthToken(val value: String, val expiresAt: Instant)
+data class AuthToken(val value: String, val issuedAt: Instant, val expiresAt: Instant)
 
 interface TokenProvider {
     suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError>
