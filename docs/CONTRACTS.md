@@ -1207,7 +1207,7 @@ interface Logger {
 
 Levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.
 
-Every sync cycle generates a `cycleId` (§20.7) that is included as a field on every sync log line and stored in `outbox.lastError` context. Field values come from an allowlist, never raw user data. The allowlist is exactly: `AppError.code`, `SyncState` enum name, `EntityType` enum name, `SyncTrigger` enum name, `ConsumptionInvalidReason` enum name, `Confirmation` enum name, `cycleId`, integer counts and durations, and `Boolean` flags. Strings are limited to enum names, stable codes and `cycleId`.
+Every sync cycle generates a `cycleId` (§20.7) that is included as a field on every sync log line and stored in the `outbox.cycleId` column (`TECHNICAL_PLAN.md §6`) on every failed attempt. Field values come from an allowlist, never raw user data. The allowlist is exactly: `AppError.code`, `SyncState` enum name, `EntityType` enum name, `SyncTrigger` enum name, `ConsumptionInvalidReason` enum name, `Confirmation` enum name, `cycleId`, integer counts and durations, and `Boolean` flags. Strings are limited to enum names, stable codes and `cycleId`.
 
 Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes, exact odometer values, exact costs, or the Firebase UID in release builds.
 

@@ -177,11 +177,14 @@ CREATE TABLE outbox (
   nextAttemptAt INTEGER NOT NULL DEFAULT 0,   -- 0 means "due now"
   lastError TEXT,
   lastErrorCode TEXT,
+  cycleId TEXT,
   UNIQUE(entityType, entityId)
 );
 
 CREATE INDEX idx_outbox_due ON outbox(nextAttemptAt, seq);
 ```
+
+The `cycleId TEXT` column stores the `CycleId` (`§20.7`) of the sync cycle that last attempted the row, populated on every failed attempt. The sync engine reads it only for log correlation; it MUST NOT use it for retry or poison decisions (which read `lastErrorCode` only, per `§9.7`). An `E3-03` migration test MUST verify the column is populated on failure and NULL on success.
 
 The outbox stores full snapshots; re-applying the same snapshot is idempotent. Retry decisions are made on `lastErrorCode`, never on `lastError` text. `lastError` is debug/UI context only and MUST NOT be read by the sync engine.
 

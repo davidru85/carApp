@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-10 applied: `cycleId` column added to `outbox` DDL
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-10` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a `cycleId TEXT` column to the `outbox` DDL in `docs/TECHNICAL_PLAN.md §6`, populated on every failed attempt. The sync engine reads it only for log correlation; it MUST NOT use it for retry or poison decisions (which read `lastErrorCode` only, per `§9.7`). Updated `docs/CONTRACTS.md §17` to replace the ambiguous "stored in `outbox.lastError` context" wording with "stored in the `outbox.cycleId` column". An `E3-03` migration test MUST verify the column is populated on failure and NULL on success.
+- **Why:** `§17` said `cycleId` is "stored in `outbox.lastError` context", but the outbox DDL had only `lastError TEXT` and `lastErrorCode TEXT`; no `cycleId` column existed and the serialization format was undefined. `§9.7` says `lastError` is debug/UI-only and MUST NOT be read by the sync engine, so the engine cannot parse `cycleId` out of it.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§6`), `docs/CONTRACTS.md` (`§17`), and this log.
+- **Verification:** documentation-only change. The migration test will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated paths `docs/TECHNICAL_PLAN.md` and `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the `cycleId` column is nullable (NULL on success, populated on failure); a future query that filters by `cycleId` MUST handle NULL. The remaining 2 findings requiring owner decision (`AUDIT-14`, `AUDIT-16`) are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-25 applied: `SyncController.retryFailed()` error leaves defined
 
 - **Type:** correction
