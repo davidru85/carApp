@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-02 applied: `AuthProvider` moved to `:core:common`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-02` (`docs/DOCUMENTATION_AUDIT.md` §1.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** moved the `AuthProvider` enum (`ANONYMOUS, GOOGLE, APPLE`) from `§20.8` (`:core:auth`, Phase 2) to `§20.3` (`:core:common`, Phase 0). `:core:auth` now imports it from `:core:common` instead of declaring it. Added `contract-check` assertion 18 asserting that `AuthProvider` is declared in `§20.3` before any reference in `§20.8` (`:core:auth`) or `§20.9` (`:core:analytics`). No backlog or phase change: `E0-08` (Phase 0) and `E2-01` (Phase 2) keep their assignments.
+- **Why:** `AnalyticsEvent.PermanentSignInSelected(val provider: AuthProvider)` in `§20.9` is required by `E0-08` (Phase 0), but `AuthProvider` lived in `:core:auth`, created only in Phase 2 (`E2-01`). A Phase 0 module cannot compile against a Phase 2 module. `AuthProvider` is a pure enum referenced by two modules, so it belongs in `:core:common` alongside `SyncTrigger` and `LogLevel`. The owner chose Option A (move to `:core:common`) over moving it to `:core:model` (mixes identity with business vocabulary) or moving `:core:analytics` to Phase 2 (reorders the whole plan for one enum).
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.3`, `§20.8`, `§18`), and this log.
+- **Verification:** documentation-only change. The new assertion 18 will be exercised by `contract-check` (implemented by `E0-05`); no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface / module boundaries").
+- **Follow-ups / risks:** if `AuthProvider` gains non-enum semantics later it MUST stay a pure enum on the `:core:common` surface, since both `:core:analytics` and `:core:auth` depend on it. The remaining 18 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-01 applied: dependency-rule rows for `:core:auth`, `:core:analytics`, `:core:testing`
 
 - **Type:** correction

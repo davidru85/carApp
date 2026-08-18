@@ -1248,6 +1248,7 @@ Optional checks:
 15. No `TBD` remains in `docs/versions-matrix.md` after `E0-06` lands.
 16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
+18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
 
 For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, and platform annotation names used only to hide Kotlin declarations from Objective-C export. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
@@ -1462,6 +1463,8 @@ interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 
 enum class SyncTrigger { AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
+
+enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }   // shared by :core:analytics (Phase 0) and :core:auth (Phase 2); lives here so neither module depends on the other
 
 interface OwnerContext {
     val current: OwnerId
@@ -1740,7 +1743,7 @@ A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`.
 ### 20.8 Auth types — `:core:auth`
 
 ```kotlin
-enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }
+// AuthProvider is declared in §20.3 (:core:common) and imported here.
 
 data class AuthSession(
     val uid: String,
