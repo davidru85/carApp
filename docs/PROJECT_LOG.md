@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-06 applied: Swift-facing `SyncStateHolder.requestSync` trigger surface restricted
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-06` (`docs/DOCUMENTATION_AUDIT.md` §1.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` that `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban those three leaves from any `iosMain` call site of `SyncStateHolder.requestSync`.
+- **Why:** exposing system triggers to Swift invites the iOS layer to fire them manually, duplicating platform wiring and bypassing the single-`SyncController` invariant. The audit proposed a single solution.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The Konsist fixture will be exercised by `E3-08`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** if the iOS layer ever needs to emit `AppForeground` from a lifecycle hook, that leaf remains permitted. The remaining 14 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-05 applied: removed `:core:sync -> :core:auth` dependency edge
 
 - **Type:** correction
