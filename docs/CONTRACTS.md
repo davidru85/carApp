@@ -1801,6 +1801,8 @@ sealed interface AnalyticsEvent {
 }
 
 enum class SyncStatusCategory { IDLE, SYNCING, PENDING, FAILED }
+
+The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
 enum class ConversionFailureReason { CANCELLED, CREDENTIAL_IN_USE, NETWORK, UID_WOULD_CHANGE, UNKNOWN }
 enum class DeletionFailureReason { REQUIRES_RECENT_LOGIN, REMOTE_FAILED, NETWORK, UNKNOWN }
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-07 applied: `SyncStatus -> SyncStatusCategory` mapping defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-07` (`docs/DOCUMENTATION_AUDIT.md` §1.2, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative mapping in `docs/CONTRACTS.md §20.9` from `SyncStatus` to `SyncStatusCategory` using the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES`; otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations.
+- **Why:** there was no defined mapping from the sealed `SyncStatus` to the flat `SyncStatusCategory` enum used by `AnalyticsEvent.SyncStatusChanged`. An agent could map `Failed(_, _) -> FAILED` verbatim, reporting a failure event for a connectivity-only condition that `§9.9` says is `Pending`.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.9`), and this log.
+- **Verification:** documentation-only change. The unit test will be exercised by `E0-08` / `E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "error taxonomy / analytics").
+- **Follow-ups / risks:** the remaining 13 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-06 applied: Swift-facing `SyncStateHolder.requestSync` trigger surface restricted
 
 - **Type:** correction
