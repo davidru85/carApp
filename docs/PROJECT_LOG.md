@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-17 applied: `SyncStatus` convergence rule for state holders
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-17` (`docs/DOCUMENTATION_AUDIT.md` §3.2, cosmetic)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §14` that every state holder exposing `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status`) observes the same `SyncController.status` flow; values are eventually consistent and converge. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
+- **Why:** `SyncStatus` is embedded in three `UiState` classes, all derived from the same `SyncController.status` flow, but the contract did not state whether the three emissions are guaranteed to agree at any instant, or whether list state holders may snapshot a stale value while `SyncStateHolder` holds the latest.
+- **Documents touched:** `docs/CONTRACTS.md` (`§14`), and this log.
+- **Verification:** documentation-only change. The unit test will be exercised by the presentation stories; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 6 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-15 applied: `SessionStateHolder` gains F-4 conversion intents
 
 - **Type:** correction
