@@ -2048,6 +2048,8 @@ The code block declares public members, not constructors. State-holder construct
 
 `VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
 
+The MVP `VehicleListStateHolder` calls `observeVehicles(includeDeleted = false)`; `VehicleListItemUi.deleted` is present for future/debug use and is always `false` in the MVP list. A debug screen (referenced by `E3-03`) MAY call `observeVehicles(includeDeleted = true)` outside the state holder. An `E1-07` fixture MUST assert the production list never contains `deleted = true`.
+
 `SessionPhase` transitions are normative:
 
 ```text

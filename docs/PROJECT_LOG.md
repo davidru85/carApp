@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-24 applied: `VehicleListItemUi.deleted` documented as always-false in MVP
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-24` (`docs/DOCUMENTATION_AUDIT.md` §5.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` that the MVP `VehicleListStateHolder` calls `observeVehicles(includeDeleted = false)`; `VehicleListItemUi.deleted` is present for future/debug use and is always `false` in the MVP list. A debug screen (referenced by `E3-03`) MAY call `observeVehicles(includeDeleted = true)` outside the state holder. An `E1-07` fixture MUST assert the production list never contains `deleted = true`.
+- **Why:** `VehicleListItemUi` exposes `deleted: Boolean`, but `VehicleListStateHolder` had no intent that sets `includeDeleted = true` on `observeVehicles`. If `includeDeleted` is always `false`, the `deleted` flag is always `false` and the field is dead. The contract did not say whether the list ever includes deleted vehicles.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E1-07`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** all automatic findings of `docs/DOCUMENTATION_AUDIT.md` have been applied. The 3 findings requiring owner decision (`AUDIT-10`, `AUDIT-14`, `AUDIT-16`) are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-23 applied: `setFuelType` documented as MVP-hidden
 
 - **Type:** correction
