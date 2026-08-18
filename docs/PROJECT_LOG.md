@@ -38,6 +38,281 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-16 applied: `AuthToken` gains `issuedAt` for freshness check
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-16` (`docs/DOCUMENTATION_AUDIT.md` §3.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added an `issuedAt: Instant` field to `AuthToken` in `docs/CONTRACTS.md §20.8`, populated by `TokenProvider`. Updated `§11.5` step 1 to define the freshness check as `AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS`, using the new `issuedAt` field. `E2-02` and `E2-05` MUST test the freshness check.
+- **Why:** `§11.5` said the app MUST verify the Firebase ID token is "fresh", meaning "younger than `FRESH_LOGIN_THRESHOLD_MS`". `AuthToken` carried `expiresAt` but no `issuedAt`. "Younger than 5 minutes" is a statement about issuance age, not expiry. An agent cannot compute issuance age from `expiresAt` alone (Firebase tokens have a 1-hour validity, so `expiresAt - 5 min` approximates issuance, but the contract did not state this).
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.8`, `§11.5`), and this log.
+- **Verification:** documentation-only change. The freshness check will be tested by `E2-02` and `E2-05`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** `TokenProvider` implementations MUST populate `issuedAt`; a fake that omits it will fail the freshness check. All 20 findings of `docs/DOCUMENTATION_AUDIT.md` are now applied (19 closed by direct fix, 1 closed by AUDIT-04 as a duplicate).
+
+### 2026-08-18 — Documentation audit AUDIT-14 applied: `confirmDelete` signatures simplified
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-14` (`docs/DOCUMENTATION_AUDIT.md` §3.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** changed `VehicleListStateHolder.confirmDelete(vehicleId: String, confirmation: Confirmation)` to `confirmDelete(vehicleId: String)` and `FuelEntryListStateHolder.confirmDelete(entryId: String, confirmation: Confirmation)` to `confirmDelete(entryId: String)` in `docs/CONTRACTS.md §20.10`. Added a normative statement that entity deletion is a direct action, not a typed-warning confirmation; pending-sync warnings are surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override.
+- **Why:** `Confirmation` had four leaves (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`), none of which represented "confirm vehicle deletion" or "confirm fuel-entry deletion". An agent had to either pass an unrelated confirmation or invent a new leaf.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The signature change will be exercised by `E1-07`/`E1-08`/`E1-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** if a future story requires a typed confirmation before entity deletion (e.g. "this vehicle has N fuel entries, confirm?"), it MUST be added as a new `Confirmation` leaf and the `confirmDelete` signature MUST be revisited. The remaining 1 finding requiring owner decision (`AUDIT-16`) is still open.
+
+### 2026-08-18 — Documentation audit AUDIT-10 applied: `cycleId` column added to `outbox` DDL
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-10` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a `cycleId TEXT` column to the `outbox` DDL in `docs/TECHNICAL_PLAN.md §6`, populated on every failed attempt. The sync engine reads it only for log correlation; it MUST NOT use it for retry or poison decisions (which read `lastErrorCode` only, per `§9.7`). Updated `docs/CONTRACTS.md §17` to replace the ambiguous "stored in `outbox.lastError` context" wording with "stored in the `outbox.cycleId` column". An `E3-03` migration test MUST verify the column is populated on failure and NULL on success.
+- **Why:** `§17` said `cycleId` is "stored in `outbox.lastError` context", but the outbox DDL had only `lastError TEXT` and `lastErrorCode TEXT`; no `cycleId` column existed and the serialization format was undefined. `§9.7` says `lastError` is debug/UI-only and MUST NOT be read by the sync engine, so the engine cannot parse `cycleId` out of it.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§6`), `docs/CONTRACTS.md` (`§17`), and this log.
+- **Verification:** documentation-only change. The migration test will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated paths `docs/TECHNICAL_PLAN.md` and `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the `cycleId` column is nullable (NULL on success, populated on failure); a future query that filters by `cycleId` MUST handle NULL. The remaining 2 findings requiring owner decision (`AUDIT-14`, `AUDIT-16`) are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-25 applied: `SyncController.retryFailed()` error leaves defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-25` (`docs/DOCUMENTATION_AUDIT.md` §5.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.7` that `SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
+- **Why:** `SyncController.retryFailed()` returns `Outcome<Unit, AppError>`, but the `SyncController` contract had no enumeration of the `AppError` leaves it may return. An agent implementing `E3-03` could return `PersistenceError.TransactionFailed`, `SyncError.RemoteUnavailable`, or nothing.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.7`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "error taxonomy").
+- **Follow-ups / risks:** all automatic findings of `docs/DOCUMENTATION_AUDIT.md` have been applied. The 3 findings requiring owner decision (`AUDIT-10`, `AUDIT-14`, `AUDIT-16`) are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-24 applied: `VehicleListItemUi.deleted` documented as always-false in MVP
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-24` (`docs/DOCUMENTATION_AUDIT.md` §5.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` that the MVP `VehicleListStateHolder` calls `observeVehicles(includeDeleted = false)`; `VehicleListItemUi.deleted` is present for future/debug use and is always `false` in the MVP list. A debug screen (referenced by `E3-03`) MAY call `observeVehicles(includeDeleted = true)` outside the state holder. An `E1-07` fixture MUST assert the production list never contains `deleted = true`.
+- **Why:** `VehicleListItemUi` exposes `deleted: Boolean`, but `VehicleListStateHolder` had no intent that sets `includeDeleted = true` on `observeVehicles`. If `includeDeleted` is always `false`, the `deleted` flag is always `false` and the field is dead. The contract did not say whether the list ever includes deleted vehicles.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E1-07`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** all automatic findings of `docs/DOCUMENTATION_AUDIT.md` have been applied. The 3 findings requiring owner decision (`AUDIT-10`, `AUDIT-14`, `AUDIT-16`) are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-23 applied: `setFuelType` documented as MVP-hidden
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-23` (`docs/DOCUMENTATION_AUDIT.md` §5.1, drift)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` that `VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
+- **Why:** `VehicleFormUiState.fuelType: FuelType` and `VehicleFormStateHolder.setFuelType(value: FuelType)` are declared in `§20.10`, but `SPECIFICATION.md §7 F-2` says "`fuelType` is not exposed in the MVP UI" and `§5.1` says it is "Metadata only". The state holder exposes a setter for a field the UI must not show. An agent could either render a selector (violating F-2) or hide the setter (violating the contract signature).
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The acceptance criterion will be exercised by `E1-07`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** the remaining 1 finding of `docs/DOCUMENTATION_AUDIT.md` is still open.
+
+### 2026-08-18 — Documentation audit AUDIT-22 applied: `setUserProperties` trigger cadence defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-22` (`docs/DOCUMENTATION_AUDIT.md` §4.2, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative cadence rule in `docs/CONTRACTS.md §16.1`: `setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete, from the presentation layer. It MUST NOT be called from domain or data. Buckets are computed from the current list size. An `E3-09` fixture MUST assert the call cadence.
+- **Why:** `AnalyticsTracker.setUserProperties` carries `vehicleCountBucket` and `entryCountBucket`, but the contract did not state when it is called. Two agents could implement "set on every write" (chatty) or "set on app foreground only" (stale buckets).
+- **Documents touched:** `docs/CONTRACTS.md` (`§16.1`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 2 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-21 applied: `CrashReporter.recordNonFatal` trigger policy defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-21` (`docs/DOCUMENTATION_AUDIT.md` §4.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a `recordNonFatal` trigger policy in `docs/CONTRACTS.md §20.3.1`: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
+- **Why:** `CrashReporter.recordNonFatal` is the only non-fatal API, but no documented flow called it. `§17` says `Logger` is not a crash-reporting API. The boundary between "log this error" and "report this as a non-fatal crash" was unspecified. An agent could report every `UnexpectedError` as a non-fatal, or never report anything.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.3.1`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-03` / `E4-04`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 3 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-20 applied: `§16.1` allows failure event tracking
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-20` (`docs/DOCUMENTATION_AUDIT.md` §4.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** rewrote the tracking rule in `docs/CONTRACTS.md §16.1` to: "Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events." A fixture MUST assert failure events are emitted from presentation, not domain or data.
+- **Why:** `§16.1` said "track product events **after successful use case results**", but `AnalyticsEvent` includes `AccountConversionFailed`, `AccountDeletionFailed` and `SyncStatusChanged` — failure/state events, not success events. The rule contradicted the existence of failure leaves. An agent could either omit failure tracking (following the rule) or emit it (following the type), and neither was provably wrong.
+- **Documents touched:** `docs/CONTRACTS.md` (`§16.1`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "logging and privacy rules").
+- **Follow-ups / risks:** the remaining 4 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-18 applied: `AuthError` to analytics bucket enum mappings defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-18` (`docs/DOCUMENTATION_AUDIT.md` §4.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added two normative mapping tables in `docs/CONTRACTS.md §20.9`: `AuthError -> ConversionFailureReason` (`Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`) and `AuthError -> DeletionFailureReason` (`RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`). Unit tests MUST assert exhaustiveness of both mappings.
+- **Why:** `AnalyticsEvent.AccountConversionFailed(reason: ConversionFailureReason)` and `AccountDeletionFailed(reason: DeletionFailureReason)` use analytics-specific bucket enums, but there was no defined mapping from `AuthError` to those buckets. `AuthError.PermissionDenied` had no corresponding bucket in `ConversionFailureReason`; two agents could bucket `PermissionDenied` as `UNKNOWN` or as `CREDENTIAL_IN_USE`.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.9`), and this log.
+- **Verification:** documentation-only change. The unit tests will be exercised by `E2-04`/`E2-05`/`E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "error taxonomy / analytics").
+- **Follow-ups / risks:** the remaining 5 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-17 applied: `SyncStatus` convergence rule for state holders
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-17` (`docs/DOCUMENTATION_AUDIT.md` §3.2, cosmetic)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §14` that every state holder exposing `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status`) observes the same `SyncController.status` flow; values are eventually consistent and converge. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
+- **Why:** `SyncStatus` is embedded in three `UiState` classes, all derived from the same `SyncController.status` flow, but the contract did not state whether the three emissions are guaranteed to agree at any instant, or whether list state holders may snapshot a stale value while `SyncStateHolder` holds the latest.
+- **Documents touched:** `docs/CONTRACTS.md` (`§14`), and this log.
+- **Verification:** documentation-only change. The unit test will be exercised by the presentation stories; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 6 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-15 applied: `SessionStateHolder` gains F-4 conversion intents
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-15` (`docs/DOCUMENTATION_AUDIT.md` §3.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added `fun startAccountConversion(provider: AuthProvider)` and `fun confirmAccountConversion(confirmation: Confirmation)` to `SessionStateHolder` in `docs/CONTRACTS.md §20.10`. Added a normative statement that `startAccountConversion` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow. Updated `E2-04` acceptance criteria to reference the new intents.
+- **Why:** `SPECIFICATION.md §7 F-4` (Anonymous Account Conversion) is a distinct flow: from settings, the user links Google or Apple credentials to the current anonymous identity. `SessionStateHolder` had no intent for it; `startPermanentSignIn` signs in, it does not link to an existing anonymous identity. An agent implementing `E2-04` had no contract entry point.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), `docs/BACKLOG.md` (E2-04), and this log.
+- **Verification:** documentation-only change. The intents will be exercised by `E2-04`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** the remaining 7 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-13 applied: `SessionPhase` `LOCAL -> DELETING` semantics clarified
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-13` (`docs/DOCUMENTATION_AUDIT.md` §3.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` clarifying that from `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+- **Why:** the `SessionPhase` transition table allows `LOCAL -> DELETING`, but for a `LOCAL_OWNER` session there is no Firebase Auth account, so the `D-23` server operation cannot run. `SPECIFICATION.md §7 F-5` says the anonymous equivalent is "delete local data". The contract did not distinguish the two meanings of `DELETING`.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The tests will be exercised by `E2-05`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 8 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-12 applied: `FuelEntryListItemUi` gains `hasMissedEntries` and `odometerInconsistent`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-12` (`docs/DOCUMENTATION_AUDIT.md` §2.2, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added `hasMissedEntries: Boolean` and `odometerInconsistent: Boolean` to `FuelEntryListItemUi` in `docs/CONTRACTS.md §20.10`. Updated `E1-08` and `E1-09` acceptance criteria to render the flags on every row, including partial refuels where `invalidReason = EndEntryNotFullTank`.
+- **Why:** `invalidReason: ConsumptionInvalidReason?` covers `MissedEntriesInSegment` and `InconsistentOdometerInSegment` for full-tank entries, but for a partial (non-full-tank) entry `invalidReason = EndEntryNotFullTank` and the underlying `hasMissedEntries`/`odometerInconsistent` flags are lost. The UI cannot show a "missed refuels" or "inconsistent odometer" indicator on a partial row, even though those flags are user-visible per `SPECIFICATION.md §5.2` and F-3.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), `docs/BACKLOG.md` (E1-08, E1-09), and this log.
+- **Verification:** documentation-only change. A fixture proving a partial entry with `hasMissedEntries = true` surfaces the flag on the Swift side will be exercised by `E1-08`/`E1-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** the remaining 9 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-11 applied: `RemoteCursor.INITIAL` null exemption clarified
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-11` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.7` that `RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet" and is never passed to `RemoteSyncSource.pullChanges`; the sync engine materialises the first page cursor as `(overlapSince, "")`. Updated `§9.4` to clarify that the `null` prohibition applies to cursors passed to `startAt`/`startAfter`; the `INITIAL` sentinel is exempt because it is translated before reaching Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
+- **Why:** `RemoteCursor.INITIAL` has `lastDocumentId = null`, but `§9.4` states "`null` MUST NOT be used as a cursor component." A literal reading makes `INITIAL` illegal. An agent could "fix" `INITIAL` by setting `lastDocumentId = ""`, which would then be passed to `startAfter` on a resumed cycle and produce wrong pagination.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.7`, `§9.4`), and this log.
+- **Verification:** documentation-only change. The test will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 10 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-09 applied: `quarantine` DDL `reason` CHECK constraint added
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-09` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added `CHECK (reason IN ('UnsupportedSchemaVersion','MalformedPayload'))` to the `quarantine` DDL in `docs/TECHNICAL_PLAN.md §6`, matching the closed `QuarantineReason` enum (`docs/CONTRACTS.md §20.7`). An `E3-03` migration test MUST prove the constraint rejects an unknown reason.
+- **Why:** the DDL stored `reason TEXT NOT NULL` but `QuarantineReason` is a closed enum with two leaves. Without a CHECK constraint, unlike `outbox.entityType` which has one, an agent could persist an arbitrary reason string.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§6`), and this log.
+- **Verification:** documentation-only change. The migration test will be exercised by `E3-03`; no product code exists yet. Requires human review before merge (gated path `docs/TECHNICAL_PLAN.md`).
+- **Follow-ups / risks:** if a new `QuarantineReason` leaf is added, the CHECK constraint MUST be updated in the same change. The remaining 11 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-08 applied: `sync_cursor` table DDL defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-08` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added the exact DDL for the `sync_cursor` table to `docs/TECHNICAL_PLAN.md §6`: `CREATE TABLE sync_cursor (entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE','FUEL_ENTRY')), lastServerUpdatedAt INTEGER NOT NULL, lastDocumentId TEXT NOT NULL, PRIMARY KEY (entityType))`. `lastDocumentId` is `TEXT NOT NULL` because `docs/CONTRACTS.md §9.4` forbids `null` as a cursor component; the `RemoteCursor.INITIAL` sentinel is never stored as a row. An `E1-01` migration test MUST verify the constraint rejects an unknown `entityType`.
+- **Why:** `§6` listed `sync_cursor` as a table and `SPECIFICATION.md §9.2` named its columns, but no DDL with column types, nullability, primary key, or `entityType` CHECK constraint was provided. An agent implementing `E1-01` would have to invent the column types.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§6`), and this log.
+- **Verification:** documentation-only change. The migration test will be exercised by `E1-01`; no product code exists yet. Requires human review before merge (gated path `docs/TECHNICAL_PLAN.md`).
+- **Follow-ups / risks:** the remaining 12 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-07 applied: `SyncStatus -> SyncStatusCategory` mapping defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-07` (`docs/DOCUMENTATION_AUDIT.md` §1.2, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative mapping in `docs/CONTRACTS.md §20.9` from `SyncStatus` to `SyncStatusCategory` using the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES`; otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations.
+- **Why:** there was no defined mapping from the sealed `SyncStatus` to the flat `SyncStatusCategory` enum used by `AnalyticsEvent.SyncStatusChanged`. An agent could map `Failed(_, _) -> FAILED` verbatim, reporting a failure event for a connectivity-only condition that `§9.9` says is `Pending`.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.9`), and this log.
+- **Verification:** documentation-only change. The unit test will be exercised by `E0-08` / `E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "error taxonomy / analytics").
+- **Follow-ups / risks:** the remaining 13 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-06 applied: Swift-facing `SyncStateHolder.requestSync` trigger surface restricted
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-06` (`docs/DOCUMENTATION_AUDIT.md` §1.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` that `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban those three leaves from any `iosMain` call site of `SyncStateHolder.requestSync`.
+- **Why:** exposing system triggers to Swift invites the iOS layer to fire them manually, duplicating platform wiring and bypassing the single-`SyncController` invariant. The audit proposed a single solution.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The Konsist fixture will be exercised by `E3-08`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** if the iOS layer ever needs to emit `AppForeground` from a lifecycle hook, that leaf remains permitted. The remaining 14 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-05 applied: removed `:core:sync -> :core:auth` dependency edge
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-05` (`docs/DOCUMENTATION_AUDIT.md` §1.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** removed `:core:auth` from the allowed-dependency list of `:core:sync` in `docs/TECHNICAL_PLAN.md §4`, moving it to the forbidden list. Updated `docs/SPECIFICATION.md §8.3` rule 5 to state that `:core:sync` depends on `:core:model`, `:core:common` and `:core:database`, never on `:core:auth` and never on `:integration:*`, and that token handling lives entirely in `RemoteSyncSource`. Added an explanatory note in `docs/CONTRACTS.md §10` that the sync engine never calls `AuthClient` or `TokenProvider`; the `AuthExpired` state-machine transition is sync-internal and re-authentication is delegated to the session/presentation layer. Added a failing fixture to `E0-04` asserting that `:core:sync` does not depend on `:core:auth` and does not reference `AuthClient` or `TokenProvider`.
+- **Why:** the `:core:sync -> :core:auth` edge was allowed by the `§4` table but no documented flow uses it: `RemoteSyncSource` (`§10`) handles token refresh on `Unauthenticated` and retries once before mapping to `RemoteError.Unauthenticated`; the sync engine only consumes the resulting `RemoteError`. The edge was dead coupling. The owner chose Option B (eliminate the edge) over Option A (justify it by documenting a `TokenProvider.getIdToken` call on the `AuthExpired` retry path), because the contracts already delegate token handling to the integration layer and aligning `:core:sync` with the "feature data MUST NOT depend on `:core:auth`" rule is cleaner.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§4`), `docs/SPECIFICATION.md` (`§8.3` rule 5), `docs/CONTRACTS.md` (`§10`), `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The new fixture will be exercised by `E0-04`; no product code exists yet. Requires human review before merge (gated paths `docs/TECHNICAL_PLAN.md` and `docs/SPECIFICATION.md`, gated topic "module boundaries and dependency rules").
+- **Follow-ups / risks:** if a future story needs `:core:sync` to call `TokenProvider` directly (e.g. to force a refresh before a critical push without going through `RemoteSyncSource`), the edge MUST be re-added with a documented justification in `§10` or `§7`. The remaining 15 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-04 applied: `contract-check` ignored-set extended with Room-generated types
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-04` (`docs/DOCUMENTATION_AUDIT.md` §1.1, guardrail); also closes `AUDIT-19` (`docs/DOCUMENTATION_AUDIT.md` §5.2, guardrail), which is the same finding described from the `AppDatabase`/`DatabaseFactory` angle.
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** extended the `contract-check` assertion 1 ignored-identifier set in `docs/CONTRACTS.md §18` with an explicit "Room-generated types owned by `:core:database`" category covering `AppDatabase`, Room `Dao` supertypes, and `@Entity`-generated row classes. The extension states that these types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Added a matching failing fixture to the `E0-04` acceptance criteria: the check does not flag `AppDatabase` in a `:core:database` or `DatabaseFactory` signature, but does flag it elsewhere.
+- **Why:** the `DatabaseFactory` move in `AUDIT-03` introduced `AppDatabase` (a Room-generated type not declared in `§20`) into a `§20.3.2` code block; assertion 1 would flag it as undeclared without this extension. The owner accepted the audit's single proposed solution verbatim. `AUDIT-19` is the same issue viewed from the `DatabaseFactory.create(): AppDatabase` signature in `§20.3`, so it is closed by the same change.
+- **Documents touched:** `docs/CONTRACTS.md` (`§18`), `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `contract-check` (implemented by `E0-05`); no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface / module boundaries").
+- **Follow-ups / risks:** if Room-generated types ever need to appear outside `:core:database` and `DatabaseFactory`, this rule MUST be revisited. The remaining 16 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-03 applied: `DatabaseFactory` moved to `:core:database`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-03` (`docs/DOCUMENTATION_AUDIT.md` §1.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** moved `interface DatabaseFactory { fun create(): AppDatabase }` out of `§20.3` (`:core:common`) into a new `§20.3.2 Database types — :core:database`, and declared `AppDatabase` as the Room-generated type owned by `:core:database`. Added a note in `§11.6` that `AppGraphDependencies.databaseFactory` imports `DatabaseFactory` from `:core:database`. Added a failing fixture to `E0-04` asserting that `:core:common` references neither `AppDatabase` nor `DatabaseFactory`, and that both types may appear only in `:core:database`, `:core:testing` fakes and the `AppGraphDependencies` field of `:shared`.
+- **Why:** `DatabaseFactory`'s return type `AppDatabase` is a Room-generated type owned by `:core:database`, but the interface lived in `:core:common`, which is forbidden from depending on Room (`docs/TECHNICAL_PLAN.md §4`). The dependency-rule table row added by `AUDIT-01` now allows `:core:testing` to depend on `:core:database`, so the fake can be provided by `:core:testing`. The audit proposed a single solution; the owner accepted it verbatim.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.3`, new `§20.3.2`, `§11.6`), `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The `contract-check` ignored-set extension for Room-generated types (audit findings 4 and 19) is still pending and will be applied when those findings are processed; until then the new `§20.3.2` code block references `AppDatabase`, which `contract-check` assertion 1 would currently flag. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "module boundaries").
+- **Follow-ups / risks:** `AUDIT-04` and `AUDIT-19` MUST extend the `contract-check` ignored-identifier set with "Room-generated types owned by `:core:database`" so `AppDatabase` and `DatabaseFactory` signatures do not trip assertion 1. The remaining 17 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-02 applied: `AuthProvider` moved to `:core:common`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-02` (`docs/DOCUMENTATION_AUDIT.md` §1.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** moved the `AuthProvider` enum (`ANONYMOUS, GOOGLE, APPLE`) from `§20.8` (`:core:auth`, Phase 2) to `§20.3` (`:core:common`, Phase 0). `:core:auth` now imports it from `:core:common` instead of declaring it. Added `contract-check` assertion 18 asserting that `AuthProvider` is declared in `§20.3` before any reference in `§20.8` (`:core:auth`) or `§20.9` (`:core:analytics`). No backlog or phase change: `E0-08` (Phase 0) and `E2-01` (Phase 2) keep their assignments.
+- **Why:** `AnalyticsEvent.PermanentSignInSelected(val provider: AuthProvider)` in `§20.9` is required by `E0-08` (Phase 0), but `AuthProvider` lived in `:core:auth`, created only in Phase 2 (`E2-01`). A Phase 0 module cannot compile against a Phase 2 module. `AuthProvider` is a pure enum referenced by two modules, so it belongs in `:core:common` alongside `SyncTrigger` and `LogLevel`. The owner chose Option A (move to `:core:common`) over moving it to `:core:model` (mixes identity with business vocabulary) or moving `:core:analytics` to Phase 2 (reorders the whole plan for one enum).
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.3`, `§20.8`, `§18`), and this log.
+- **Verification:** documentation-only change. The new assertion 18 will be exercised by `contract-check` (implemented by `E0-05`); no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface / module boundaries").
+- **Follow-ups / risks:** if `AuthProvider` gains non-enum semantics later it MUST stay a pure enum on the `:core:common` surface, since both `:core:analytics` and `:core:auth` depend on it. The remaining 18 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
+### 2026-08-18 — Documentation audit AUDIT-01 applied: dependency-rule rows for `:core:auth`, `:core:analytics`, `:core:testing`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-01` (`docs/DOCUMENTATION_AUDIT.md` §1.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added three explicit rows to the `docs/TECHNICAL_PLAN.md §4` dependency-rule table for `:core:auth`, `:core:analytics` and `:core:testing`, which previously had no enforceable rule even though they appear in the canonical module inventory (`docs/CONTRACTS.md §1.1`). Added an explanatory paragraph pinning the `:core:testing` platform-API permission to `expect`/`actual` test doubles only (`docs/CONTRACTS.md §15.1`), keeping its `commonMain` public surface Kotlin-pure. Added matching failing fixtures to the `E0-04` acceptance criteria (one per new row). The architecture check generated from that table can now enforce the boundaries of all three modules.
+- **Why:** the architecture check is generated from the `§4` table, so the three modules were previously unenforceable; an agent could make `:core:auth` depend on `:feature:*` or `:integration:*` and the check would not fire. The owner accepted the audit's single proposed solution verbatim and the agent's interpretation that `:core:testing` forbids platform APIs only in its `commonMain` public surface (permitted in `expect`/`actual` test doubles).
+- **Documents touched:** `docs/TECHNICAL_PLAN.md §4`, `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The new architecture rules and fixtures will be exercised by `E0-04`; no product code exists yet. Requires human review before merge (gated path `docs/TECHNICAL_PLAN.md` and gated topic "module boundaries and dependency rules").
+- **Follow-ups / risks:** the `:core:testing` platform-API carve-out relies on `§15.1` boundaries; if a future change loosens `§15.1`, this row's fixture wording MUST be re-checked. The remaining 19 findings of `docs/DOCUMENTATION_AUDIT.md` are still open and will be processed one by one with their own project-log entries.
+
+### 2026-08-18 — Second documentation audit performed
+
+- **Type:** milestone
+- **Story / Decision:** `docs/DOCUMENTATION_AUDIT.md`
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** a fresh Senior KMP Architecture audit of the current documentation state (after the prior 56-finding audit was folded into the normative docs). The audit document was rewritten with 20 new findings: 5 blocking, 13 guardrails, 1 drift, 1 cosmetic. Top blockers: missing dependency-rule rows for `:core:auth`/`:core:analytics`/`:core:testing`; `:core:analytics` (Phase 0) referencing `AuthProvider` from `:core:auth` (Phase 2); `DatabaseFactory` in `:core:common` returning a `:core:database` type; `SessionStateHolder` missing an F-4 conversion intent; `Confirmation` enum missing deletion leaves for `confirmDelete`.
+- **Why:** the prior audit closure left residual gaps that would still let two competent agents produce incompatible implementations; this pass targets those.
+- **Documents touched:** `docs/DOCUMENTATION_AUDIT.md`, and this log.
+- **Verification:** documentation-only change; cross-referenced findings against the current `AGENTS.md`, `SPECIFICATION.md`, `CONTRACTS.md`, `TECHNICAL_PLAN.md`, `DECISION_BOARD.md`, `BACKLOG.md`, `SECURITY.md`, `identifiers.md` and `versions-matrix.md`.
+- **Follow-ups / risks:** the audit is non-normative; each finding must be accepted by the owner and folded into the normative docs in a separate change with a project-log entry. Blocking findings should be resolved before the dependent backlog stories start.
+
 ### 2026-08-18 — Documentation audit verification hooks tightened
 
 - **Type:** decision

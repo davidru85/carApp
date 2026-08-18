@@ -533,7 +533,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - Page limit: 200 documents.
 - Query ordering is `updatedAt ASC, documentId ASC`.
 - The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
-- The first page of every cycle MUST use `startAt(overlapSince, "")`, including cycles that resume after the first pull. `""` is the concrete lowest document-id anchor; it is legal because Firestore range comparison treats it as the smallest lexicographic document-id string. `null` MUST NOT be used as a cursor component.
+- The first page of every cycle MUST use `startAt(overlapSince, "")`, including cycles that resume after the first pull. `""` is the concrete lowest document-id anchor; it is legal because Firestore range comparison treats it as the smallest lexicographic document-id string. `null` MUST NOT be used as a cursor component passed to `startAt`/`startAfter`; the `RemoteCursor.INITIAL` sentinel is exempt because it is translated to `(overlapSince, "")` before reaching Firestore (`§20.7`).
 - Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
 - A query that filters only on `updatedAt >= since` without a concrete cursor anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
 - Tombstones are included.
@@ -640,6 +640,7 @@ Side effects:
 - On an empty page, `nextCursor` equals the input cursor and `hasMore` is `false`.
 - `pullChanges` returns `nextCursor = inputCursor` and `hasMore = false` exactly when `items` is empty. Otherwise `nextCursor.lastServerUpdatedAt` and `nextCursor.lastDocumentId` MUST equal the last item in `items`.
 - Token refresh is the responsibility of this module: on `Unauthenticated` it MUST force a token refresh through the provider SDK and retry the operation once before mapping to `RemoteError.Unauthenticated`.
+- `:core:sync` does not depend on `:core:auth`. Token handling lives entirely in `RemoteSyncSource` (the integration layer); the sync engine never calls `AuthClient` or `TokenProvider`. The `AuthExpired` state-machine transition (`§7`) is sync-internal and signals that `RemoteSyncSource` could not authenticate; re-authentication is delegated to the session/presentation layer, not to `:core:sync`.
 - No Firebase, GitLive or Ktor type appears in the interface or the DTOs.
 
 ## 11. Auth Contracts
@@ -694,7 +695,7 @@ Anonymous "delete local data" clears every local table, including `user_settings
 
 Account deletion order is normative:
 
-1. Before calling the server operation, the app MUST verify the Firebase ID token is fresh, meaning younger than `FRESH_LOGIN_THRESHOLD_MS`; otherwise it MUST trigger a fresh re-authentication UI flow and re-submit step 2.
+1. Before calling the server operation, the app MUST verify the Firebase ID token is fresh, meaning `AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS` (using the `issuedAt` field of `AuthToken`, §20.8); otherwise it MUST trigger a fresh re-authentication UI flow and re-submit step 2.
 2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
 3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
 4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
@@ -740,6 +741,7 @@ fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 
 Rules:
 
+- `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on Room. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
@@ -858,6 +860,8 @@ Shared state holders:
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
 `UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
+
+Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status` from `SyncStateHolder`) observes the same `SyncController.status: StateFlow<SyncStatus>` flow. The values are eventually consistent and converge to the same `SyncStatus`. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
 
 Platform adapters contain rendering and lifecycle glue only. Validation, formatting decisions, repository calls and business logic remain shared.
 
@@ -1183,7 +1187,9 @@ Forbidden in any payload: exact odometer values, exact fuel volume, exact cost o
 
 Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered.
 
-Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after successful use case results.
+`setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete, from the presentation layer. It MUST NOT be called from domain or data. Buckets are computed from the current list size. An `E3-09` fixture MUST assert the call cadence.
+
+Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events. A fixture MUST assert failure events are emitted from presentation, not domain or data.
 
 ## 17. Logging and Privacy
 
@@ -1201,7 +1207,7 @@ interface Logger {
 
 Levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.
 
-Every sync cycle generates a `cycleId` (§20.7) that is included as a field on every sync log line and stored in `outbox.lastError` context. Field values come from an allowlist, never raw user data. The allowlist is exactly: `AppError.code`, `SyncState` enum name, `EntityType` enum name, `SyncTrigger` enum name, `ConsumptionInvalidReason` enum name, `Confirmation` enum name, `cycleId`, integer counts and durations, and `Boolean` flags. Strings are limited to enum names, stable codes and `cycleId`.
+Every sync cycle generates a `cycleId` (§20.7) that is included as a field on every sync log line and stored in the `outbox.cycleId` column (`TECHNICAL_PLAN.md §6`) on every failed attempt. Field values come from an allowlist, never raw user data. The allowlist is exactly: `AppError.code`, `SyncState` enum name, `EntityType` enum name, `SyncTrigger` enum name, `ConsumptionInvalidReason` enum name, `Confirmation` enum name, `cycleId`, integer counts and durations, and `Boolean` flags. Strings are limited to enum names, stable codes and `cycleId`.
 
 Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes, exact odometer values, exact costs, or the Firebase UID in release builds.
 
@@ -1248,8 +1254,9 @@ Optional checks:
 15. No `TBD` remains in `docs/versions-matrix.md` after `E0-06` lands.
 16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
+18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
 
-For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, and platform annotation names used only to hide Kotlin declarations from Objective-C export. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
+For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide Kotlin declarations from Objective-C export, and **Room-generated types owned by `:core:database`** (`AppDatabase`, Room `Dao` supertypes, and `@Entity`-generated row classes). Room-generated types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
 For the Objective-C header assertion, `contract-check` MUST fail if the header exports any forbidden type from §15.3 or omits any Swift-facing type explicitly listed in §20.10.
 
@@ -1463,12 +1470,12 @@ interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 enum class SyncTrigger { AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
+enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }   // shared by :core:analytics (Phase 0) and :core:auth (Phase 2); lives here so neither module depends on the other
+
 interface OwnerContext {
     val current: OwnerId
     fun observe(): Flow<OwnerId>
 }
-
-interface DatabaseFactory { fun create(): AppDatabase }
 
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
 ```
@@ -1483,6 +1490,20 @@ interface CrashReporter {
 ```
 
 The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
+
+`recordNonFatal` trigger policy: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
+
+### 20.3.2 Database types — `:core:database`
+
+```kotlin
+// AppDatabase is the Room-generated database type owned by :core:database.
+// It is a Room-generated type, not a project-declared type; contract-check assertion 1
+// allows Room-generated types only in :core:database and DatabaseFactory signatures.
+
+interface DatabaseFactory { fun create(): AppDatabase }
+```
+
+`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type `AppDatabase` is a Room-generated type owned by `:core:database`, and `:core:common` is forbidden from depending on Room (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from `:core:database`. `:core:testing` is allowed to depend on `:core:database` (`docs/TECHNICAL_PLAN.md §4`) so it can provide a fake. Any appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation.
 
 ### 20.4 Domain models — `:core:model`
 
@@ -1737,10 +1758,14 @@ interface SyncController {
 
 A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`. Deleting the row is the only supported way to force a full re-pull.
 
+`SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
+
+`RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises the first page cursor as `(overlapSince, "")` per `§9.4`. The `null` prohibition in `§9.4` applies to cursors passed to `startAt`/`startAfter`; the `INITIAL` sentinel is exempt because it is translated to the concrete anchor `(overlapSince, "")` before reaching Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
+
 ### 20.8 Auth types — `:core:auth`
 
 ```kotlin
-enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }
+// AuthProvider is declared in §20.3 (:core:common) and imported here.
 
 data class AuthSession(
     val uid: String,
@@ -1759,7 +1784,7 @@ sealed interface NativeAuthCredential {
     data class Apple(val idToken: String, val rawNonce: String) : NativeAuthCredential
 }
 
-data class AuthToken(val value: String, val expiresAt: Instant)
+data class AuthToken(val value: String, val issuedAt: Instant, val expiresAt: Instant)
 
 interface TokenProvider {
     suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError>
@@ -1786,8 +1811,12 @@ sealed interface AnalyticsEvent {
 }
 
 enum class SyncStatusCategory { IDLE, SYNCING, PENDING, FAILED }
+
+The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
 enum class ConversionFailureReason { CANCELLED, CREDENTIAL_IN_USE, NETWORK, UID_WOULD_CHANGE, UNKNOWN }
 enum class DeletionFailureReason { REQUIRES_RECENT_LOGIN, REMOTE_FAILED, NETWORK, UNKNOWN }
+
+The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`. The `AuthError -> DeletionFailureReason` mapping is normative: `RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`. Unit tests MUST assert exhaustiveness of both mappings.
 
 data class AnalyticsUserProperties(
     val vehicleCountBucket: CountBucket,
@@ -1834,7 +1863,7 @@ class VehicleListStateHolder {
     fun refresh()
     fun selectVehicle(vehicleId: String?)
     fun requestDelete(vehicleId: String)
-    fun confirmDelete(vehicleId: String, confirmation: Confirmation)
+    fun confirmDelete(vehicleId: String)
     fun clearMessage()
     fun close()
 }
@@ -1855,7 +1884,7 @@ class FuelEntryListStateHolder {
     val state: StateFlow<FuelEntryListUiState>
     fun refresh()
     fun requestDelete(entryId: String)
-    fun confirmDelete(entryId: String, confirmation: Confirmation)
+    fun confirmDelete(entryId: String)
     fun clearMessage()
     fun close()
 }
@@ -1882,6 +1911,8 @@ class SessionStateHolder {
     val state: StateFlow<SessionUiState>
     fun startAnonymousSignIn()
     fun startPermanentSignIn(provider: AuthProvider)
+    fun startAccountConversion(provider: AuthProvider)
+    fun confirmAccountConversion(confirmation: Confirmation)
     fun requestSignOut()
     fun confirmSignOut(confirmation: Confirmation)
     fun requestDeleteAccount()
@@ -1947,6 +1978,8 @@ data class FuelEntryListItemUi(
     val isFullTank: Boolean,
     val consumptionScaled: Long?,
     val invalidReason: ConsumptionInvalidReason?,
+    val hasMissedEntries: Boolean,
+    val odometerInconsistent: Boolean,
 )
 
 enum class MoneyInputMode { LITERS_AND_PRICE, LITERS_AND_TOTAL, PRICE_AND_TOTAL }
@@ -2005,11 +2038,19 @@ Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and a
 
 It is never display copy.
 
+`SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
+
+`SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
+
 The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
 
 `SwiftAppGraph` state-holder factories are idempotent within the same graph instance: the first call creates and caches a state holder, and later calls for the same factory arguments return the same instance. After `SwiftAppGraph.close()`, cached state holders are cancelled and removed; any later factory call throws `IllegalStateException`.
 
 `FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
+
+`VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
+
+The MVP `VehicleListStateHolder` calls `observeVehicles(includeDeleted = false)`; `VehicleListItemUi.deleted` is present for future/debug use and is always `false` in the MVP list. A debug screen (referenced by `E3-03`) MAY call `observeVehicles(includeDeleted = true)` outside the state holder. An `E1-07` fixture MUST assert the production list never contains `deleted = true`.
 
 `SessionPhase` transitions are normative:
 
@@ -2022,8 +2063,12 @@ DELETING -> UNKNOWN
 UNKNOWN -> SIGNED_OUT after local-data clear
 ```
 
+From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+
 `SyncStatus` is exported through the SKIE/Kotlin-Native sealed-class shape fixed by the generated header. Swift consumers MUST be able to distinguish `Idle`, `Syncing`, `Pending(count)` and `Failed(retryableCount, poisonedCount)` exhaustively.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
+
+`VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`).
 
 The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.

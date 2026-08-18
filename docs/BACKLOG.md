@@ -97,6 +97,12 @@ Acceptance criteria:
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
 - `:core:crash` dependency on Firebase, GitLive, Koin, Ktor, platform APIs, integrations or features fails the build.
+- `:core:auth` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build with a rule-specific message.
+- `:core:analytics` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build.
+- `:core:testing` dependency on `:integration:*`, `:wiring:*` or `:feature:*` fails the build; a platform API reference in the `:core:testing` `commonMain` public surface fails the build, while the same platform API inside a permitted `expect`/`actual` test double (per `docs/CONTRACTS.md §15.1`) is allowed.
+- `:core:sync` dependency on `:core:auth`, `:integration:*` or features fails the build; the sync engine does not reference `AuthClient` or `TokenProvider` (token handling lives in `RemoteSyncSource`, per `docs/CONTRACTS.md §10`).
+- A reference to `AppDatabase` or `DatabaseFactory` from `:core:common` fails the build; both types are owned by `:core:database` (`docs/CONTRACTS.md §20.3.2`) and may appear only in `:core:database`, `:core:testing` fakes and the `AppGraphDependencies` field of `:shared`.
+- `contract-check` assertion 1 does not flag `AppDatabase`, Room `Dao` supertypes or `@Entity`-generated row classes as undeclared when they appear in a `:core:database` signature or in `DatabaseFactory`; the same types appearing in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API fail the check.
 - An `expect`/`actual` declaration inside `:core:crash` fails the build.
 - An `:integration:*` reference to `createAppGraph` fails the build; a Koin `Module` declaration inside `:integration:*` is allowed.
 - The Phase 0 module set above is enforced: `:core:auth`, `:core:database` and `:core:sync` are not created by Phase 0 stories.
@@ -308,6 +314,7 @@ Acceptance criteria:
 - The derived R-2 value recalculates while typing, using `MoneyInput`.
 - The odometer warning dialog implements the two-step confirmation.
 - Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`, including `EndEntryNotFullTank` for partial refuels.
+- `hasMissedEntries` and `odometerInconsistent` flags are rendered on every row, including partial refuels where `invalidReason = EndEntryNotFullTank`.
 - Empty consumption state follows the specification.
 
 ### E1-09 - iOS UI: Vehicles and Fuel Entries - L
@@ -320,6 +327,7 @@ Acceptance criteria:
 - State holder scopes are created in `init` and cancelled in `deinit`.
 - Functional parity with Android for F-2 and F-3.
 - Fuel-entry consumption and no-consumption explanations match Android, including `EndEntryNotFullTank` for partial refuels.
+- `hasMissedEntries` and `odometerInconsistent` flags are rendered on every row, including partial refuels.
 - Dynamic Type is usable for critical flows.
 
 ### E1-10 - Settings Persistence - S
@@ -401,6 +409,8 @@ Implement account linking and credential collision handling.
 Acceptance criteria:
 
 - Successful linking preserves vehicles and fuel entries and keeps the UID.
+- `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`).
+- `SessionStateHolder.confirmAccountConversion(confirmation)` handles the collision confirmation.
 - Collision offers an explicit destructive choice showing the data-loss count, gated by `Confirmation.AdoptExistingAccount`.
 - Cancelling leaves the anonymous session and local data untouched.
 - Automatic merge is not implemented.

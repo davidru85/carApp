@@ -266,7 +266,7 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 2. Feature `data` packages depend on their own `domain`, `:core:model`, `:core:common`, `:core:database` and `:core:sync` — never on `:integration:*` and never on `:core:auth`. The current owner reaches them through `OwnerContext` in `:core:common`.
 3. Feature `presentation` packages depend on their own `domain` and `:core:common`, never on `data`.
 4. Features never depend on other features.
-5. `:core:sync` depends on `:core:model`, `:core:common`, `:core:database` and `:core:auth`, never on `:integration:*`.
+5. `:core:sync` depends on `:core:model`, `:core:common` and `:core:database`, never on `:core:auth` and never on `:integration:*`. Token handling lives entirely in `RemoteSyncSource` (the integration layer), so the sync engine does not reference `AuthClient` or `TokenProvider`.
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
 7. `:core:database` depends on `:core:model`, `:core:common` and Room; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
