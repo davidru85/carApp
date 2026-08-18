@@ -92,6 +92,9 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
 | `:core:sync` | `:core:model`, `:core:common`, `:core:database`, `:core:auth` | `:integration:*`, features |
 | `:core:database` | `:core:model`, `:core:common`, Room | `:integration:*`, features, `:core:sync` |
+| `:core:auth` | `:core:model`, `:core:common`, coroutines, `kotlinx.serialization`, `kotlinx-datetime` | platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*`, features |
+| `:core:analytics` | `:core:model`, `:core:common` | platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*`, features |
+| `:core:testing` | every `:core:*` module plus test libraries (Turbine, `kotlin.test`) | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API (platform APIs are permitted only in `expect`/`actual` test doubles, per `docs/CONTRACTS.md §15.1`) |
 | `:core:crash` | `:core:common` | platform APIs, Firebase, GitLive, Koin, Ktor, integrations, features |
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
 | `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
@@ -101,7 +104,9 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 
 Feature `data` cannot depend on `:core:auth`, so the current owner reaches repositories through `OwnerContext` (`:core:common`), implemented by `:core:auth` and bound in wiring. An architecture rule asserts that no feature module references `AuthClient`.
 
-"Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash`.
+"Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash` and one for `:core:testing` (a platform API used in the `commonMain` public surface, not in a permitted `expect`/`actual` test double).
+
+The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids Room because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must be able to construct fakes for `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`); it remains forbidden from reaching integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure.
 
 "Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 

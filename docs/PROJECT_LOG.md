@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-01 applied: dependency-rule rows for `:core:auth`, `:core:analytics`, `:core:testing`
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-01` (`docs/DOCUMENTATION_AUDIT.md` §1.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added three explicit rows to the `docs/TECHNICAL_PLAN.md §4` dependency-rule table for `:core:auth`, `:core:analytics` and `:core:testing`, which previously had no enforceable rule even though they appear in the canonical module inventory (`docs/CONTRACTS.md §1.1`). Added an explanatory paragraph pinning the `:core:testing` platform-API permission to `expect`/`actual` test doubles only (`docs/CONTRACTS.md §15.1`), keeping its `commonMain` public surface Kotlin-pure. Added matching failing fixtures to the `E0-04` acceptance criteria (one per new row). The architecture check generated from that table can now enforce the boundaries of all three modules.
+- **Why:** the architecture check is generated from the `§4` table, so the three modules were previously unenforceable; an agent could make `:core:auth` depend on `:feature:*` or `:integration:*` and the check would not fire. The owner accepted the audit's single proposed solution verbatim and the agent's interpretation that `:core:testing` forbids platform APIs only in its `commonMain` public surface (permitted in `expect`/`actual` test doubles).
+- **Documents touched:** `docs/TECHNICAL_PLAN.md §4`, `docs/BACKLOG.md` (E0-04), and this log.
+- **Verification:** documentation-only change. The new architecture rules and fixtures will be exercised by `E0-04`; no product code exists yet. Requires human review before merge (gated path `docs/TECHNICAL_PLAN.md` and gated topic "module boundaries and dependency rules").
+- **Follow-ups / risks:** the `:core:testing` platform-API carve-out relies on `§15.1` boundaries; if a future change loosens `§15.1`, this row's fixture wording MUST be re-checked. The remaining 19 findings of `docs/DOCUMENTATION_AUDIT.md` are still open and will be processed one by one with their own project-log entries.
+
 ### 2026-08-18 — Second documentation audit performed
 
 - **Type:** milestone

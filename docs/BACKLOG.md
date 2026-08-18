@@ -97,6 +97,9 @@ Acceptance criteria:
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
 - `:core:crash` dependency on Firebase, GitLive, Koin, Ktor, platform APIs, integrations or features fails the build.
+- `:core:auth` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build with a rule-specific message.
+- `:core:analytics` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build.
+- `:core:testing` dependency on `:integration:*`, `:wiring:*` or `:feature:*` fails the build; a platform API reference in the `:core:testing` `commonMain` public surface fails the build, while the same platform API inside a permitted `expect`/`actual` test double (per `docs/CONTRACTS.md §15.1`) is allowed.
 - An `expect`/`actual` declaration inside `:core:crash` fails the build.
 - An `:integration:*` reference to `createAppGraph` fails the build; a Koin `Module` declaration inside `:integration:*` is allowed.
 - The Phase 0 module set above is enforced: `:core:auth`, `:core:database` and `:core:sync` are not created by Phase 0 stories.
