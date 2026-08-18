@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-18 applied: `AuthError` to analytics bucket enum mappings defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-18` (`docs/DOCUMENTATION_AUDIT.md` §4.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added two normative mapping tables in `docs/CONTRACTS.md §20.9`: `AuthError -> ConversionFailureReason` (`Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`) and `AuthError -> DeletionFailureReason` (`RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`). Unit tests MUST assert exhaustiveness of both mappings.
+- **Why:** `AnalyticsEvent.AccountConversionFailed(reason: ConversionFailureReason)` and `AccountDeletionFailed(reason: DeletionFailureReason)` use analytics-specific bucket enums, but there was no defined mapping from `AuthError` to those buckets. `AuthError.PermissionDenied` had no corresponding bucket in `ConversionFailureReason`; two agents could bucket `PermissionDenied` as `UNKNOWN` or as `CREDENTIAL_IN_USE`.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.9`), and this log.
+- **Verification:** documentation-only change. The unit tests will be exercised by `E2-04`/`E2-05`/`E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "error taxonomy / analytics").
+- **Follow-ups / risks:** the remaining 5 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-17 applied: `SyncStatus` convergence rule for state holders
 
 - **Type:** correction

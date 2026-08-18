@@ -1810,6 +1810,8 @@ The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code r
 enum class ConversionFailureReason { CANCELLED, CREDENTIAL_IN_USE, NETWORK, UID_WOULD_CHANGE, UNKNOWN }
 enum class DeletionFailureReason { REQUIRES_RECENT_LOGIN, REMOTE_FAILED, NETWORK, UNKNOWN }
 
+The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`. The `AuthError -> DeletionFailureReason` mapping is normative: `RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`. Unit tests MUST assert exhaustiveness of both mappings.
+
 data class AnalyticsUserProperties(
     val vehicleCountBucket: CountBucket,
     val entryCountBucket: CountBucket,
