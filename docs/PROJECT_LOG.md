@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-08 applied: `sync_cursor` table DDL defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-08` (`docs/DOCUMENTATION_AUDIT.md` §2.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added the exact DDL for the `sync_cursor` table to `docs/TECHNICAL_PLAN.md §6`: `CREATE TABLE sync_cursor (entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE','FUEL_ENTRY')), lastServerUpdatedAt INTEGER NOT NULL, lastDocumentId TEXT NOT NULL, PRIMARY KEY (entityType))`. `lastDocumentId` is `TEXT NOT NULL` because `docs/CONTRACTS.md §9.4` forbids `null` as a cursor component; the `RemoteCursor.INITIAL` sentinel is never stored as a row. An `E1-01` migration test MUST verify the constraint rejects an unknown `entityType`.
+- **Why:** `§6` listed `sync_cursor` as a table and `SPECIFICATION.md §9.2` named its columns, but no DDL with column types, nullability, primary key, or `entityType` CHECK constraint was provided. An agent implementing `E1-01` would have to invent the column types.
+- **Documents touched:** `docs/TECHNICAL_PLAN.md` (`§6`), and this log.
+- **Verification:** documentation-only change. The migration test will be exercised by `E1-01`; no product code exists yet. Requires human review before merge (gated path `docs/TECHNICAL_PLAN.md`).
+- **Follow-ups / risks:** the remaining 12 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-07 applied: `SyncStatus -> SyncStatusCategory` mapping defined
 
 - **Type:** correction

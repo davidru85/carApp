@@ -213,6 +213,19 @@ CREATE TABLE quarantine (
 );
 ```
 
+`sync_cursor` schema:
+
+```sql
+CREATE TABLE sync_cursor (
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE','FUEL_ENTRY')),
+  lastServerUpdatedAt INTEGER NOT NULL,
+  lastDocumentId TEXT NOT NULL,
+  PRIMARY KEY (entityType)
+);
+```
+
+`lastDocumentId` is `TEXT NOT NULL` because `docs/CONTRACTS.md §9.4` forbids `null` as a cursor component; the `RemoteCursor.INITIAL` sentinel is never stored as a row. An `E1-01` migration test MUST verify the constraint rejects an unknown `entityType`.
+
 Future columns MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
 Room configuration: `exportSchema = true`, schema JSON committed under `core/database/schemas/`. `fallbackToDestructiveMigration` is FORBIDDEN in every build type. Every version bump ships an explicit `Migration` plus a test that migrates a populated previous-version database and asserts row preservation.
