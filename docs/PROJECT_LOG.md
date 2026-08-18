@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-20 applied: `§16.1` allows failure event tracking
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-20` (`docs/DOCUMENTATION_AUDIT.md` §4.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** rewrote the tracking rule in `docs/CONTRACTS.md §16.1` to: "Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events." A fixture MUST assert failure events are emitted from presentation, not domain or data.
+- **Why:** `§16.1` said "track product events **after successful use case results**", but `AnalyticsEvent` includes `AccountConversionFailed`, `AccountDeletionFailed` and `SyncStatusChanged` — failure/state events, not success events. The rule contradicted the existence of failure leaves. An agent could either omit failure tracking (following the rule) or emit it (following the type), and neither was provably wrong.
+- **Documents touched:** `docs/CONTRACTS.md` (`§16.1`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-09`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "logging and privacy rules").
+- **Follow-ups / risks:** the remaining 4 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-18 applied: `AuthError` to analytics bucket enum mappings defined
 
 - **Type:** correction
