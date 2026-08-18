@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Second documentation audit performed
+
+- **Type:** milestone
+- **Story / Decision:** `docs/DOCUMENTATION_AUDIT.md`
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** a fresh Senior KMP Architecture audit of the current documentation state (after the prior 56-finding audit was folded into the normative docs). The audit document was rewritten with 20 new findings: 5 blocking, 13 guardrails, 1 drift, 1 cosmetic. Top blockers: missing dependency-rule rows for `:core:auth`/`:core:analytics`/`:core:testing`; `:core:analytics` (Phase 0) referencing `AuthProvider` from `:core:auth` (Phase 2); `DatabaseFactory` in `:core:common` returning a `:core:database` type; `SessionStateHolder` missing an F-4 conversion intent; `Confirmation` enum missing deletion leaves for `confirmDelete`.
+- **Why:** the prior audit closure left residual gaps that would still let two competent agents produce incompatible implementations; this pass targets those.
+- **Documents touched:** `docs/DOCUMENTATION_AUDIT.md`, and this log.
+- **Verification:** documentation-only change; cross-referenced findings against the current `AGENTS.md`, `SPECIFICATION.md`, `CONTRACTS.md`, `TECHNICAL_PLAN.md`, `DECISION_BOARD.md`, `BACKLOG.md`, `SECURITY.md`, `identifiers.md` and `versions-matrix.md`.
+- **Follow-ups / risks:** the audit is non-normative; each finding must be accepted by the owner and folded into the normative docs in a separate change with a project-log entry. Blocking findings should be resolved before the dependent backlog stories start.
+
 ### 2026-08-18 — Documentation audit verification hooks tightened
 
 - **Type:** decision
