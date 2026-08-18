@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-23 applied: `setFuelType` documented as MVP-hidden
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-23` (`docs/DOCUMENTATION_AUDIT.md` §5.1, drift)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a normative statement in `docs/CONTRACTS.md §20.10` that `VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
+- **Why:** `VehicleFormUiState.fuelType: FuelType` and `VehicleFormStateHolder.setFuelType(value: FuelType)` are declared in `§20.10`, but `SPECIFICATION.md §7 F-2` says "`fuelType` is not exposed in the MVP UI" and `§5.1` says it is "Metadata only". The state holder exposes a setter for a field the UI must not show. An agent could either render a selector (violating F-2) or hide the setter (violating the contract signature).
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), and this log.
+- **Verification:** documentation-only change. The acceptance criterion will be exercised by `E1-07`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** the remaining 1 finding of `docs/DOCUMENTATION_AUDIT.md` is still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-22 applied: `setUserProperties` trigger cadence defined
 
 - **Type:** correction

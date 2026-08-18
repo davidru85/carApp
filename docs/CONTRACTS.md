@@ -2046,6 +2046,8 @@ The code block declares public members, not constructors. State-holder construct
 
 `FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
 
+`VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
+
 `SessionPhase` transitions are normative:
 
 ```text
