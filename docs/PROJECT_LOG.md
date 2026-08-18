@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-21 applied: `CrashReporter.recordNonFatal` trigger policy defined
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-21` (`docs/DOCUMENTATION_AUDIT.md` §4.1, guardrail)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added a `recordNonFatal` trigger policy in `docs/CONTRACTS.md §20.3.1`: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
+- **Why:** `CrashReporter.recordNonFatal` is the only non-fatal API, but no documented flow called it. `§17` says `Logger` is not a crash-reporting API. The boundary between "log this error" and "report this as a non-fatal crash" was unspecified. An agent could report every `UnexpectedError` as a non-fatal, or never report anything.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.3.1`), and this log.
+- **Verification:** documentation-only change. The fixture will be exercised by `E3-03` / `E4-04`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md`).
+- **Follow-ups / risks:** the remaining 3 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-20 applied: `§16.1` allows failure event tracking
 
 - **Type:** correction

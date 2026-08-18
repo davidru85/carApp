@@ -1489,6 +1489,8 @@ interface CrashReporter {
 
 The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
 
+`recordNonFatal` trigger policy: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
+
 ### 20.3.2 Database types — `:core:database`
 
 ```kotlin
