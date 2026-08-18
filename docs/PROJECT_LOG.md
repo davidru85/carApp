@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit AUDIT-15 applied: `SessionStateHolder` gains F-4 conversion intents
+
+- **Type:** correction
+- **Story / Decision:** `AUDIT-15` (`docs/DOCUMENTATION_AUDIT.md` §3.1, blocking)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added `fun startAccountConversion(provider: AuthProvider)` and `fun confirmAccountConversion(confirmation: Confirmation)` to `SessionStateHolder` in `docs/CONTRACTS.md §20.10`. Added a normative statement that `startAccountConversion` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow. Updated `E2-04` acceptance criteria to reference the new intents.
+- **Why:** `SPECIFICATION.md §7 F-4` (Anonymous Account Conversion) is a distinct flow: from settings, the user links Google or Apple credentials to the current anonymous identity. `SessionStateHolder` had no intent for it; `startPermanentSignIn` signs in, it does not link to an existing anonymous identity. An agent implementing `E2-04` had no contract entry point.
+- **Documents touched:** `docs/CONTRACTS.md` (`§20.10`), `docs/BACKLOG.md` (E2-04), and this log.
+- **Verification:** documentation-only change. The intents will be exercised by `E2-04`; no product code exists yet. Requires human review before merge (gated path `docs/CONTRACTS.md` and gated topic "Swift-facing API surface").
+- **Follow-ups / risks:** the remaining 7 findings of `docs/DOCUMENTATION_AUDIT.md` are still open.
+
 ### 2026-08-18 — Documentation audit AUDIT-13 applied: `SessionPhase` `LOCAL -> DELETING` semantics clarified
 
 - **Type:** correction

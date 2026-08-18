@@ -409,6 +409,8 @@ Implement account linking and credential collision handling.
 Acceptance criteria:
 
 - Successful linking preserves vehicles and fuel entries and keeps the UID.
+- `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`).
+- `SessionStateHolder.confirmAccountConversion(confirmation)` handles the collision confirmation.
 - Collision offers an explicit destructive choice showing the data-loss count, gated by `Confirmation.AdoptExistingAccount`.
 - Cancelling leaves the anonymous session and local data untouched.
 - Automatic merge is not implemented.

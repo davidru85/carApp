@@ -1901,6 +1901,8 @@ class SessionStateHolder {
     val state: StateFlow<SessionUiState>
     fun startAnonymousSignIn()
     fun startPermanentSignIn(provider: AuthProvider)
+    fun startAccountConversion(provider: AuthProvider)
+    fun confirmAccountConversion(confirmation: Confirmation)
     fun requestSignOut()
     fun confirmSignOut(confirmation: Confirmation)
     fun requestDeleteAccount()
@@ -2027,6 +2029,8 @@ Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and a
 It is never display copy.
 
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
+
+`SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
 
 The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
 
