@@ -13,6 +13,39 @@ What that means for this document:
 - A type MAY be referenced in a signature in this document only if it is declared in §20. Introducing a new type into a public signature REQUIRES updating §20 in the same change, and is a human review gate.
 - A conflict that is behavioural, or that cannot be classified on either axis, MUST be escalated to the project owner rather than resolved by an agent.
 
+### 1.1 Canonical module inventory
+
+The module inventory below is the canonical representation list. `docs/SPECIFICATION.md §8.2` MUST reference this section instead of duplicating the inventory. `docs/TECHNICAL_PLAN.md §3` MUST reproduce the same module paths and host directories in the same order, and MAY add descriptions after the path on the same line; `contract-check` compares only the path token before whitespace.
+
+```text
+build-logic/
+gradle/libs.versions.toml
+
+:core:model
+:core:common
+:core:database
+:core:auth
+:core:sync
+:core:analytics
+:core:crash
+:core:testing
+
+:integration:firebase-auth
+:integration:firebase-firestore
+:integration:firebase-analytics
+:integration:firebase-crashlytics
+
+:feature:vehicle
+:feature:fuel
+:feature:session
+
+:shared
+:wiring:firebase
+:androidApp
+iosApp/
+firestore/
+```
+
 ## 2. Canonical Data Types
 
 ### Identifiers
@@ -39,7 +72,7 @@ All time reads go through the injected `AppClock` (§20). Direct use of a system
 
 ### Money and decimals
 
-`Float` and `Double` are FORBIDDEN for money, volume, price and consumption calculations, in every layer.
+`Float` and `Double` are FORBIDDEN for money, volume, price and consumption calculations, in every layer. Display-time conversion in SwiftUI or Compose is not arithmetic and is not covered by this ban; the ban applies to storage, transport and any computation that derives a stored or synchronized value.
 
 | Concept | Kotlin representation | Scale | Persistence |
 |---------|-----------------------|-------|-------------|
@@ -54,7 +87,7 @@ Every scaled type carries its value in a `Long`. `Int` MUST NOT be used for a sc
 
 ### Canonical monetary arithmetic
 
-Rounding mode is HALF_UP on non-negative inputs. The formulas below are **exact integer arithmetic** and MUST be implemented literally; a floating-point or naive integer-division implementation is a contract violation.
+Rounding mode is HALF_UP on non-negative inputs. The formulas below are **exact integer arithmetic** and MUST be implemented literally; a floating-point or naive integer-division implementation is a contract violation. Every intermediate expression is evaluated as `Long`; the Kotlin implementation MUST NOT narrow to `Int` at any step.
 
 ```text
 minorUnitFactor = MinorUnits.factorFor(currency)      // EUR -> 100; validation rejects null before arithmetic
@@ -71,6 +104,7 @@ Golden values that MUST be covered by tests in `:core:model`:
 | `45_123` (45.123 L) | `1_789` (1.789 €/L) | EUR | `8_073` (80.73 €) — exact value is 8072.5047, HALF_UP |
 | `40_000` (40 L) | `1_500` (1.500 €/L) | EUR | `6_000` (60.00 €) |
 | `1` (0.001 L) | `1` (0.001 €/L) | EUR | `1` (0.01 €) — rounds up from 0.0001 |
+| `500_000` (500 L) | `999_999` (999.999 €/L) | EUR | `49_999_950` (499,999.50 €) — intermediate product `49_999_950_000_000` MUST NOT overflow |
 
 MVP currency constraint: `MinorUnits.factorFor` returns `100` only for the codes in `SUPPORTED_CURRENCY_CODES` (§20.0.1), and returns `null` for every other code. A locale suggesting a code outside that set falls back to `EUR`, and an explicit user selection outside that set returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
 
@@ -121,9 +155,9 @@ Domain models expose business concepts. Local rows add sync metadata. Remote doc
 | `ownerId` | Yes | Yes | Yes | MUST equal the authenticated UID remotely. Stamped by the repository, never supplied by a command. |
 | `createdAt` | Yes | Yes | Yes | Client-created UTC timestamp. |
 | `updatedAt` | Yes | Yes | Yes | Local provisional in Room; server timestamp remotely. |
-| `serverUpdatedAt` | No | Yes | No | Local sync metadata only. |
+| `serverUpdatedAt` | No | Yes | No | Local sync metadata only. Stored as `INTEGER NULL`; `serverUpdatedAt IS NULL` is the legal "never synced" state. |
 | `deletedAt` | Yes | Yes | Yes | Null when active. |
-| `deleted` | No | Yes (stored) | Yes | Stored, with the invariant `deleted == (deletedAt != null)` enforced by a `CHECK` constraint. Written only by the tombstone helper in `:core:database`. |
+| `deleted` | No | Yes (stored) | Yes | Stored as `INTEGER NOT NULL CHECK(deleted IN (0, 1))`, with the invariant `deleted == (deletedAt != null)` enforced by a `CHECK` constraint. Written only by the tombstone helper in `:core:database`. |
 | `syncState` | **No** | Yes | No | Local-only. MUST NOT be visible to feature `domain` or `presentation` code. |
 | `localRevision` | No | Yes | No | Local-only. Incremented on every local edit. |
 | `localMutationSeq` | No | Yes | No | Local-only. Monotonic database-local mutation order, used to adopt `LOCAL_OWNER` rows into the outbox deterministically. |
@@ -224,10 +258,10 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 `odometerInconsistent` is recomputed only for rows whose previous non-deleted chronological neighbour may have changed. The recompute set is de-duplicated by `id` and is:
 
 - Create: inserted row in its new position, plus its new successor.
-- Update where `vehicleId`, `date`, `createdAt`, `id` or `odometerKm` may affect chronological order or comparison: updated row in its new position, its old successor before the update, and its new successor after the update.
-- Update that cannot affect chronological order or odometer comparison: updated row only if its stored `odometerInconsistent` could change; otherwise no odometer-inconsistency recompute is required.
-- Tombstone: successor after the deleted row in the old chronological position.
-- Vehicle-level fuel-entry cascade tombstone: each successor after each tombstoned row, de-duplicated.
+- Update where `vehicleId`, `date`, `createdAt`, `id` or `odometerKm` changes: updated row in its new position, plus its pre-update successor (the next non-deleted entry in chronological order before the update), plus its post-update successor (the next non-deleted entry in chronological order after the update). If pre- and post-successors coincide, the row is included once.
+- Update that does not modify `vehicleId`, `date`, `createdAt`, `id` or `odometerKm`: no `odometerInconsistent` recompute is required, because chronological neighbours and comparison values are unchanged.
+- Tombstone: the successor of the deleted row in its pre-delete chronological position. Subsequent tombstones or edits recompute independently.
+- Vehicle-level fuel-entry cascade tombstone: the union of the successor of each tombstoned row in its pre-cascade chronological position, de-duplicated by `id`. A successor that is itself being tombstoned is not added.
 
 All rows in the recompute set are recalculated in the same database transaction as the write that caused the recompute. A missing successor means no row is added for that position. The edited or deleted row's own stored `odometerInconsistent` remains meaningful only while the row is non-deleted; tombstoned rows are ignored by validation, projections and consumption.
 
@@ -248,6 +282,8 @@ odometerKm ASC, date ASC, id ASC
 ```
 
 Odometer validation (R-1) uses the previous non-deleted fuel entry in **chronological** order.
+
+`observeFuelEntries` returns rows in chronological order, not calculation order. The repository's `observeConsumption` sorts its filtered input in calculation order.
 
 Consumption (R-3) operates on non-deleted fuel entries of one vehicle in **calculation** order:
 
@@ -301,7 +337,7 @@ Both ends of every interval are closed and MUST be enforced.
 |-------|------|
 | Vehicle `name` | Trimmed length 1..40. Unique per owner among non-deleted vehicles, compared on `nameFold`. |
 | `brand`, `model` | Null, or trimmed length 1..40. |
-| `initialOdometerKm` | 0..2_000_000. Editable only while the vehicle has no non-deleted fuel entries. |
+| `initialOdometerKm` | `CreateVehicleCommand.initialOdometerKm` is required and must be in `0..2_000_000`. `UpdateVehicleCommand.initialOdometerKm` is editable only while the vehicle has no non-deleted fuel entries; `null` means unchanged. A non-null update outside that condition returns `ValidationError.OutOfRange` and mutates nothing. |
 | `fuelType` | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. `ELECTRIC` and `HYBRID` are out of MVP scope. |
 | Fuel entry `date` | Not before `1970-01-01T00:00:00Z`, not before `vehicle.createdAt - 20 years`, and not more than 1 hour after `AppClock.now()`. |
 | `odometerKm` | 0..2_000_000; `>= vehicle.initialOdometerKm`; strictly greater than the previous non-deleted entry in chronological order unless confirmed inconsistent. |
@@ -343,14 +379,17 @@ Full leaf lists are declared in §20.
 Every module boundary that touches a platform API (`:core:database`, `:integration:*`) MUST wrap calls so that it:
 
 1. rethrows `CancellationException` unchanged,
-2. maps known SDK failures to typed errors,
-3. maps the remainder to `UnexpectedError`, **without** including message text that may contain user data (§17).
+2. maps `kotlinx.serialization.SerializationException` to `PersistenceError.SerializationFailed`,
+3. maps Room migration failures to `PersistenceError.MigrationFailed`,
+4. maps `java.util.concurrent.TimeoutException` to `RemoteError.DeadlineExceeded`,
+5. maps known SDK failures to typed errors,
+6. maps the remainder to `UnexpectedError(origin, throwableClassName)`, **without** including message text that may contain user data (§17).
 
 Domain and presentation code MUST NOT contain `try` / `catch`.
 
 ### Logging ownership
 
-An error is logged exactly once, at the boundary that converts a platform failure into an `AppError` — that is, inside `:integration:*` and `:core:database`. Higher layers propagate silently.
+An error is logged exactly once, at the boundary that converts a platform failure into an `AppError`. `:integration:*` is the canonical log point for provider exceptions. `:core:database` logs local database failures only and MUST NOT log a wrapped exception that already originated in `:integration:*`. Higher layers propagate silently.
 
 ### RemoteError to SyncError mapping
 
@@ -362,7 +401,7 @@ This table is normative; it decides retry versus poison.
 | `Unauthenticated` | `AuthExpired` | retry after a valid auth session, `attemptCount` unchanged |
 | `PermissionDenied` | `PermissionDenied` | **poison** — a rules rejection does not fix itself |
 | `InvalidArgument` | `ValidationRejected` | **poison** |
-| `NotFound` on push | — | treated as success; the local row is marked synced |
+| `NotFound` on push | — | treated as success; the local row is marked `SYNCED` with `serverUpdatedAt = null` |
 | `NotFound` on pull | — | ignored |
 | `Unknown` | `RetryableNetwork` | retry with backoff, `attemptCount++` |
 
@@ -414,6 +453,10 @@ Allowed transitions:
 
 `FAILED_POISONED` is never retried automatically.
 
+While a row remains `SYNCING` after a local edit, its effective UI state is "pending sync after push": the user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
+
+`FAILED_RETRYABLE -> FAILED_POISONED` is governed by the qualified poison rule of §9.7. A connectivity-only failure never poisons.
+
 ## 8. Outbox Contract
 
 Outbox payload format:
@@ -429,6 +472,20 @@ Outbox coalescing:
 - At most one outbox row per `(entityType, entityId)`.
 - `ON CONFLICT DO UPDATE` replaces `payload` and `localRevision`, and resets `attemptCount = 0`, `nextAttemptAt = 0`, `lastError = NULL`, `lastErrorCode = NULL`.
 - The original `seq` MUST be preserved to keep causal order.
+
+The coalesce is performed from the repository write path, inside the same transaction as the entity row write, using this statement shape:
+
+```sql
+INSERT INTO outbox (entityType, entityId, payload, localRevision)
+VALUES (?, ?, ?, ?)
+ON CONFLICT(entityType, entityId) DO UPDATE SET
+  payload = excluded.payload,
+  localRevision = excluded.localRevision,
+  attemptCount = 0,
+  nextAttemptAt = 0,
+  lastError = NULL,
+  lastErrorCode = NULL
+```
 
 **The outbox MUST NOT be populated while `ownerId == LOCAL_OWNER`.** Before a real UID exists, local writes set `syncState = PENDING` but the outbox writer is a no-op. Outbox rows are created for those entities by local-owner adoption (§11.4).
 
@@ -451,7 +508,7 @@ Tombstone purge: a tombstone is purgeable locally only when `syncState == SYNCED
 
 ### 9.1 Concurrency
 
-`SyncController` is a singleton in the app graph holding a `Mutex`. All triggers call `requestSync(reason)`, which sets a pending flag and returns immediately; concurrent triggers coalesce into one pending cycle. Android platform triggers MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)` and MUST route through the same in-process `SyncController`; iOS uses a single `BGTaskScheduler` identifier. Cross-process sync is not supported and MUST NOT be introduced.
+`SyncController` is a singleton in the app graph holding a single `Mutex` and a single `Boolean` pending flag. All triggers call `requestSync(reason)`. Calling `requestSync` while a cycle is in progress sets the pending flag and returns immediately; when the cycle completes, the flag is checked and, if set, cleared and followed by another cycle. Android platform triggers MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)` and MUST route through the same in-process `SyncController`; iOS uses a single `BGTaskScheduler` identifier. Cross-process sync is not supported and MUST NOT be introduced.
 
 ### 9.2 Cycle admission and order
 
@@ -459,7 +516,7 @@ A cycle MUST NOT start while `ConnectivityObserver.isOnline` is `false`. It ends
 
 Once admitted, the order is deterministic, because the backup and recovery simulation depends on it:
 
-- If the local database contains no rows for the owner **and** the outbox is empty: pull, then push.
+- If the local database contains no synchronized rows for the owner (that is, `vehicle` and `fuel_entry` are both empty for that owner) **and** the outbox is empty: pull, then push.
 - Otherwise: push, then pull.
 
 ### 9.3 Push
@@ -476,13 +533,13 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - Page limit: 200 documents.
 - Query ordering is `updatedAt ASC, documentId ASC`.
 - The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
-- The first page of that cycle MUST use `startAt(overlapSince, "")`. `""` is the concrete lowest document-id anchor; `null` MUST NOT be used as a cursor component.
+- The first page of every cycle MUST use `startAt(overlapSince, "")`, including cycles that resume after the first pull. `""` is the concrete lowest document-id anchor; it is legal because Firestore range comparison treats it as the smallest lexicographic document-id string. `null` MUST NOT be used as a cursor component.
 - Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
 - A query that filters only on `updatedAt >= since` without a concrete cursor anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
 - Tombstones are included.
 - Each page is applied in one local transaction; apply is idempotent.
 - If an outbox row exists for a remote entity, local data is not overwritten.
-- Otherwise the remote snapshot is applied iff `local.serverUpdatedAt == null || remote.updatedAt > local.serverUpdatedAt`. **`local.updatedAt` MUST NOT participate in remote conflict arbitration.**
+- Otherwise the remote snapshot is applied iff `local.serverUpdatedAt == null || remote.updatedAt > local.serverUpdatedAt`. The comparison is made on epoch milliseconds as `Long`; Firestore `Timestamp` conversion happens in `:integration:firebase-firestore` at the boundary. **`local.updatedAt` MUST NOT participate in remote conflict arbitration.**
 - The cursor advances only after the local transaction succeeds.
 - Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. If not, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
 - Orphan fuel entries (vehicle not yet pulled) are legal transient state. They MUST be persisted, and MUST be excluded from all UI queries and from consumption until their vehicle arrives.
@@ -528,9 +585,9 @@ poison  iff  attemptCount >= MAX_RETRYABLE_ATTEMPTS
         and  lastErrorCode not in CONNECTIVITY_ERROR_CODES
 ```
 
-A row failing only for connectivity reasons therefore stays `FAILED_RETRYABLE` indefinitely, with `attemptCount` pinned at the ceiling and the backoff at its 15-minute cap, and resumes as soon as the network returns. Without this qualification the constants above poison every pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity repair.
+A row failing only for connectivity reasons therefore stays `FAILED_RETRYABLE` indefinitely, with `attemptCount` pinned at the ceiling and the backoff at its 15-minute cap, and resumes as soon as the network returns. On `ConnectivityRecovered`, `SyncController.requestSync(ConnectivityRecovered)` sets `nextAttemptAt = now` for every `FAILED_RETRYABLE` row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`; `attemptCount` is preserved so later failures keep the correct backoff. Without this qualification the constants above poison every pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity repair.
 
-Manual retry through `SyncController.retryFailed()` sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and clears `lastError` and `lastErrorCode`. Preserving the count would make manual retry useless on exactly the rows that need it, because the count is already at the ceiling.
+Manual retry through `SyncController.retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING`, sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and clears `lastError` and `lastErrorCode`. Connectivity-only failures already auto-resume, so this method is for user-initiated recovery from permanent failures. Preserving the count would make manual retry useless on exactly the rows that need it, because the count is already at the ceiling.
 
 ### 9.8 Trigger constants
 
@@ -539,7 +596,7 @@ Manual retry through `SyncController.retryFailed()` sets `nextAttemptAt = now`, 
 | Post-write debounce | 2 s |
 | Minimum interval between automatic cycles | 30 s |
 | Periodic background interval | 6 h (Android `WorkManager` periodic; iOS `BGAppRefresh`, best effort) |
-| Foreground | on cold start, and on resume after more than 5 min in background |
+| Foreground | on cold start, and on resume after more than `FOREGROUND_RESUME_THRESHOLD_MS` in background |
 | Pull-to-refresh | bypasses the minimum interval, never the mutex |
 
 All five are `SyncTrigger` values passed to `requestSync(reason)` and logged with the cycle id.
@@ -549,6 +606,8 @@ All five are `SyncTrigger` values passed to `requestSync(reason)` and logged wit
 `SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`.
 
 Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a row in `FAILED_RETRYABLE` whose `lastErrorCode` is a connectivity code (§9.7) counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
+
+The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES`.
 
 ## 10. RemoteSyncSource Contract
 
@@ -579,6 +638,7 @@ Side effects:
 - `pushSnapshot` performs at most one full-document remote write and at most one remote read per snapshot.
 - `pullChanges` performs no local writes.
 - On an empty page, `nextCursor` equals the input cursor and `hasMore` is `false`.
+- `pullChanges` returns `nextCursor = inputCursor` and `hasMore = false` exactly when `items` is empty. Otherwise `nextCursor.lastServerUpdatedAt` and `nextCursor.lastDocumentId` MUST equal the last item in `items`.
 - Token refresh is the responsibility of this module: on `Unauthenticated` it MUST force a token refresh through the provider SDK and retry the operation once before mapping to `RemoteError.Unauthenticated`.
 - No Firebase, GitLive or Ktor type appears in the interface or the DTOs.
 
@@ -606,7 +666,7 @@ Platform UI obtains Google and Apple credentials; common code exchanges or links
 
 ### 11.2 First launch
 
-On first launch the app MUST attempt Firebase anonymous authentication automatically before the user chooses Google or Apple sign-in. If anonymous authentication succeeds, the app uses that Firebase UID immediately and normal outbox synchronization applies.
+On first launch, when the user selects the "Continue without account" path, the app MUST attempt Firebase anonymous authentication. If anonymous authentication succeeds, the app uses that Firebase UID immediately and normal outbox synchronization applies.
 
 First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4).
 
@@ -622,9 +682,9 @@ On the first successful authentication after a `LOCAL_OWNER` period, in one tran
 
 1. Rewrite every row with `ownerId = LOCAL_OWNER` to the new UID.
 2. Increment `localRevision` on each rewritten row.
-3. Enqueue an outbox snapshot for every non-synced row, ordered by the push dependency order of §8 and then by `localMutationSeq ASC, id ASC`. The inserted outbox rows receive `seq` in that order.
+3. Reset every non-`SYNCED` synchronized row to `syncState = PENDING`, clear `lastError` / `lastErrorCode` context, and enqueue an outbox snapshot ordered by the push dependency order of §8 and then by `localMutationSeq ASC, id ASC`. The inserted outbox rows receive `seq` in that order.
 
-Adoption MUST preserve each row's existing `localMutationSeq`; the adoption rewrite itself does not consume a new mutation sequence. The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
+Adoption MUST preserve each row's existing `localMutationSeq`; the adoption rewrite itself does not consume a new mutation sequence. Outbox `seq` values assigned during adoption are sequential and strictly greater than any pre-existing outbox `seq`; the first inserted adoption row receives `(max pre-existing seq) + 1`. The adoption transaction holds the database write lock for the whole operation, and no concurrent sync writes are possible because the sync engine does not run while the owner is `LOCAL_OWNER`. `SYNCING` rows are therefore impossible under `LOCAL_OWNER`; the reset rule covers the legal `PENDING`, `FAILED_RETRYABLE` and `FAILED_POISONED` states. The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
 
 ### 11.5 Sign-out and account deletion
 
@@ -634,13 +694,17 @@ Anonymous "delete local data" clears every local table, including `user_settings
 
 Account deletion order is normative:
 
-1. If `AuthError.RequiresRecentLogin`, require fresh re-authentication first.
+1. Before calling the server operation, the app MUST verify the Firebase ID token is fresh, meaning younger than `FRESH_LOGIN_THRESHOLD_MS`; otherwise it MUST trigger a fresh re-authentication UI flow and re-submit step 2.
 2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
 3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
 4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
 5. Only after the server operation returns success, the app clears local data, including `user_settings`.
 
+The order `fuelEntries`, then `vehicles` is normative. Reversing it would leave a brief window during which a fuel entry exists without its vehicle, which is recoverable but adds an unnecessary transient state.
+
 The server operation MUST be idempotent for already-deleted documents and MUST NOT delete any document outside `users/{uid}`. It MAY page internally, but partial progress is not reported as success. If step 2, 3 or 4 fails, the app flow aborts with a typed `AuthError`, preserves local data, and does not perform client-side hard deletes. Deleting the auth account before the data would leave unreachable orphan documents.
+
+If the local database has pending outbox rows at the time of account deletion, those rows are dropped together with all local data after the server operation succeeds. The server operation is the authoritative purge; the client's outbox state is discarded. Rows typed shortly before deletion may be lost, which is the expected trade-off of the destructive operation.
 
 ### 11.6 App Graph Contract
 
@@ -670,15 +734,19 @@ fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 
 `CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
 
+`:core:crash` exposes the `CrashReporter` interface and a default no-op implementation in `commonMain`. It MUST NOT contain `expect`/`actual` declarations. Platform crash-reporting implementations live in `:integration:*` and are aggregated by `:wiring:firebase`.
+
 `AppGraphDependencies`, `createAppGraph(AppGraphDependencies)` and the Kotlin-facing `AppGraph` are construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden from the generated Objective-C header through Kotlin/Native interop controls such as `@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade declared in §20.10.
 
 Rules:
 
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
-- Tests provide fakes without starting Koin, through the `:core:testing` factory `testAppGraphDependencies(...)` in which every parameter is defaulted. Adding a member REQUIRES updating that factory in the same change.
+- Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
+- Tests provide fakes without starting Koin, through the `:core:testing` factory `testAppGraphDependencies(...)` in which every parameter is defaulted. Adding a member REQUIRES updating that factory in the same change, preserving the same parameter order.
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
+- `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider bindings. `:wiring:firebase` is the module that aggregates those bindings into the `AppGraph`; integration modules MUST NOT reference `createAppGraph`.
 
 ## 12. Repository Contracts
 
@@ -740,6 +808,8 @@ interface FuelEntryRepository {
 
 The MVP loads at most `MAX_ENTRIES_IN_MEMORY = 5_000` entries per vehicle. Consumption is computed from a dedicated projection query, not from the UI list.
 
+`FuelEntryRepository.observeConsumption` returns the full `ConsumptionReport` and is Kotlin-only. It is never observed directly from the Swift facade. Swift-facing fuel-entry list state projects it onto `FuelEntryListUiState.consumptionAverageScaled`, `validConsumptionSegmentCount`, `isConsumptionReliable` and per-row `FuelEntryListItemUi.consumptionScaled` / `invalidReason`.
+
 ### SettingsRepository
 
 ```kotlin
@@ -759,20 +829,17 @@ Every use case:
 - Accepts immutable command or query models, declared in §20. Write command models are not UI form draft models.
 - Returns `Outcome<T, AppError>` for expected failures.
 - Does not depend on platform APIs, and does not access Room, Firebase, GitLive, Koin, Ktor, Android or iOS APIs directly.
+- MAY use `kotlinx.coroutines.Flow`, `StateFlow` and `suspend` signatures. MUST NOT call `kotlinx.coroutines.GlobalScope`, `kotlinx.coroutines.runBlocking` or any `Dispatchers.*` static; execution context comes from the caller or injected abstractions.
 
 Consumption calculation:
 
 ```kotlin
 fun interface CalculateConsumption {
-    operator fun invoke(
-        vehicleId: EntityId,
-        initialOdometerKm: Long,
-        entries: List<FuelEntry>,
-    ): ConsumptionReport
+    operator fun invoke(entries: List<FuelEntry>): ConsumptionReport
 }
 ```
 
-Contract: `entries` MUST contain only non-deleted entries of `vehicleId`, in any order; the implementation sorts them in calculation order (§4). The function is **pure and total** — it never throws and returns no error type. Invalid segments are represented as `SegmentResult.Invalid(reason)`.
+Contract: `entries` MUST contain only non-deleted entries for one vehicle, in any order; the implementation sorts them in calculation order (§4). The repository's `observeConsumption` filters to a single vehicle and excludes deleted entries before invoking `CalculateConsumption`; the use case itself does not filter. The `vehicleId` is implicit in `entries`, and `initialOdometerKm` is not used because the algorithm computes segment windows from full-tank entries. The function is **pure and total** — it never throws and returns no error type. Invalid segments are represented as `SegmentResult.Invalid(reason)`.
 
 `CalculateConsumption` creates one `SegmentResult` for each entry with `isFullTank = true`, in calculation order. It MUST NOT create a segment for partial entries and MUST NOT produce `SegmentResult.Invalid(EndEntryNotFullTank)`. Partial entries inside a full-to-full segment still contribute their litres to that segment.
 
@@ -781,10 +848,12 @@ Contract: `entries` MUST contain only non-deleted entries of `vehicleId`, in any
 Shared state holders:
 
 - Live in feature `presentation` packages.
-- Expose immutable `StateFlow<UiState>` built with `stateIn(scope, SharingStarted.WhileSubscribed(5_000), initialValue)`.
+- Expose immutable `StateFlow<UiState>` built with `stateIn(scope = scope + dispatchers.main, started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS), initialValue = initialValue)`.
 - Accept intent functions.
-- Take `scope: CoroutineScope` in Kotlin constructors and expose `close()`. Android passes `viewModelScope`. Swift-facing factories do not expose `CoroutineScope`; `SwiftAppGraph` creates one child scope per state holder and `close()` cancels every state holder it created.
-- Emit every `UiState` on `dispatchers.main`; database and computation work uses `dispatchers.io` or `dispatchers.default`.
+- Kotlin-facing factories take a `scope: CoroutineScope` parameter and the caller owns that scope. Android passes `viewModelScope`.
+- Swift-facing factories take no scope parameter. `SwiftAppGraph` creates and owns one child scope per state holder.
+- Each pattern exposes `close()`, which cancels work owned by that state holder. Swift graph `close()` cancels every cached state holder it created.
+- Emit every `UiState` on `dispatchers.main`; database flows are collected on `dispatchers.io`, computation work uses `dispatchers.default`, and mapping from `Outcome<...>` to `UiState` happens on `dispatchers.main`.
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
@@ -796,22 +865,21 @@ Platform adapters contain rendering and lifecycle glue only. Validation, formatt
 
 ### 15.1 Mechanism
 
-Injection is the **only** mechanism for anything present in `AppGraphDependencies`. `expect`/`actual` is reserved for platform factory functions that construct those implementations, and for native credential acquisition.
+Injection is the **only** mechanism for anything present in `AppGraphDependencies`. Any interface already injected through `AppGraphDependencies` MUST NOT also have an `expect`/`actual` form. `expect`/`actual` is reserved for provider-free platform factory functions and for native credential acquisition.
 
 `expect`/`actual` declarations MUST be `internal` and MUST NOT appear in any public API surface.
 
 Allowed `expect`/`actual`:
 
 - Internal factories for the Room driver and database file location.
-- Internal factory for UUID generation.
-- Internal factories for connectivity, locale, logger sink and analytics sink implementations.
 - Native Google and Apple credential acquisition.
 
 Forbidden `expect`/`actual`:
 
 - Domain entities, business validation, consumption calculation.
 - Repository interfaces, sync algorithm, conflict resolution, error taxonomy.
-- Anything already injected through `AppGraphDependencies`.
+- Anything already injected through `AppGraphDependencies`, including `UuidGenerator`, `ConnectivityObserver`, `LocaleProvider`, `Logger` and `AnalyticsTracker`.
+- Provider-specific analytics, logging or crash-reporting SDK bindings.
 
 ### 15.2 Dependency Injection Contract
 
@@ -838,7 +906,17 @@ Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`
 
 `AppGraphDependencies`, `createAppGraph(AppGraphDependencies)`, the Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are Kotlin-facing contracts and MUST NOT be exported to Swift.
 
-A golden file of the generated Objective-C header is committed and diffed on every PR; a change to it is a review signal.
+`SegmentResult` and `ConsumptionReport` are domain types and MUST NOT appear on the Swift-facing ABI. Only their projected summary fields in `FuelEntryListUiState` and `FuelEntryListItemUi.consumptionScaled` / `invalidReason` cross the boundary.
+
+`SyncStatus` and all of its leaves (`Idle`, `Syncing`, `Pending`, `Failed`) are part of the Swift-facing allowlist. Both the sealed hierarchy and a separate enum-shaped DTO MUST NOT coexist.
+
+`SwiftAppGraph` MUST expose a no-argument constructor on the Swift-facing side. The `isDebugBuild` flag is consumed by `createSwiftAppGraph(isDebugBuild)` and applied during graph construction. State holders MUST NOT use Kotlin default arguments anywhere in public signatures.
+
+Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift boundary. Where SKIE or Kotlin/Native would otherwise alter names, the enum class or entries MUST use explicit Objective-C naming annotations so generated headers contain the contract names.
+
+Nullable primitives and `StateFlow<T>` / `List<T>` exports MUST use the SKIE and Kotlin/Native annotations required by the pinned SKIE version to produce stable Swift types. The generated header golden is the executable source of truth for those annotations.
+
+A golden file of the generated Objective-C header is committed at `shared/build/generated/objc-header/Shared.h.golden` and diffed on every PR by the `objc-header-golden-check` CI step; a change to it is a review signal.
 
 ### 15.4 HTTP/API Client Contract
 
@@ -846,6 +924,7 @@ Ktor is the reserved HTTP client for future API-based remote implementations.
 
 - Do not add Ktor dependencies during the MVP while Firebase Firestore is the selected remote database implementation.
 - A future Ktor implementation must implement existing provider abstractions such as `RemoteSyncSource`.
+- A future Ktor implementation MUST execute HTTP requests on `dispatchers.io`, with a 30-second connect timeout and a 60-second read timeout. Retries remain the sync engine's responsibility; the Ktor implementation MUST NOT retry on its own.
 - Ktor types must not appear in feature, domain, repository or presentation contracts.
 - Adding Ktor requires an ADR update and a backlog story defining the target API contract.
 
@@ -853,7 +932,8 @@ Ktor is the reserved HTTP client for future API-based remote implementations.
 
 Coil is the approved image loading library if the project ever needs image loading.
 
-- Do not add image loading dependencies until a backlog story requires image loading.
+- Until a backlog story requires image loading, no image-loading dependency of any kind may be added.
+- If a story requires image loading, it MUST add Coil, declare the story ID as the consumer, and update the library review matrix in `docs/DECISION_BOARD.md`.
 - No alternative image loading library may be introduced without updating `docs/DECISION_BOARD.md` and adding or updating an ADR.
 - Image loading must remain in UI and platform layers and must not enter domain, data or sync logic.
 
@@ -880,13 +960,13 @@ Allowed remote `Vehicle` keys:
 | `ownerId` | Yes | String; MUST equal authenticated `{uid}`. |
 | `name` | Yes | String length 1..40 after repository normalisation. |
 | `initialOdometerKm` | Yes | Integer in `0..2000000`. |
-| `brand` | Yes | Null, or string length 1..40 after repository normalisation. |
-| `model` | Yes | Null, or string length 1..40 after repository normalisation. |
+| `brand` | Yes (nullable) | Null, or string length 1..40 after repository normalisation. |
+| `model` | Yes (nullable) | Null, or string length 1..40 after repository normalisation. |
 | `fuelType` | Yes | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. |
 | `createdAt` | Yes | Firestore timestamp. |
 | `updatedAt` | Yes | Firestore timestamp; MUST equal `request.time` on create/update. |
 | `deleted` | Yes | Boolean. |
-| `deletedAt` | Yes | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
+| `deletedAt` | Yes (nullable) | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
 | `schemaVersion` | Yes | Integer, exactly `1` for the MVP remote schema. |
 
 Allowed remote `FuelEntry` keys:
@@ -905,14 +985,16 @@ Allowed remote `FuelEntry` keys:
 | `isFullTank` | Yes | Boolean. |
 | `hasMissedEntries` | Yes | Boolean. |
 | `odometerInconsistent` | Yes | Boolean. It is remotely stored as part of the snapshot, but local writes to the database column remain owned by `:core:database` (§3.1). |
-| `notes` | Yes | Null, or string length 1..280 after repository normalisation. |
+| `notes` | Yes (nullable) | Null, or string length 1..280 after repository normalisation. |
 | `createdAt` | Yes | Firestore timestamp. |
 | `updatedAt` | Yes | Firestore timestamp; MUST equal `request.time` on create/update. |
 | `deleted` | Yes | Boolean. |
-| `deletedAt` | Yes | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
+| `deletedAt` | Yes (nullable) | Null when `deleted = false`; Firestore timestamp when `deleted = true`. |
 | `schemaVersion` | Yes | Integer, exactly `1` for the MVP remote schema. |
 
-Forbidden remote keys include `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm`, and any key not listed for the target collection. A document with `deleted = false` and non-null `deletedAt`, or `deleted = true` and null `deletedAt`, is malformed and MUST be rejected by Firestore rules on write or quarantined on pull (§9.5).
+Forbidden remote keys include `syncState`, `localRevision`, `localMutationSeq`, `serverUpdatedAt`, `nameFold`, `currentOdometerKm`, and any key not listed for the target collection. Nullable fields MUST appear in every remote document with an explicit `null` value when empty; an absent nullable key is invalid. A document with `deleted = false` and non-null `deletedAt`, or `deleted = true` and null `deletedAt`, is malformed and MUST be rejected by Firestore rules on write or quarantined on pull (§9.5).
+
+`CLIENT_MAX_SCHEMA_VERSION` (§20.0.1) MUST equal the highest `schemaVersion` value accepted by the Firestore rules. Bumping `CLIENT_MAX_SCHEMA_VERSION` REQUIRES updating the rules in the same change.
 
 Remote rules, split by operation. `allow write` is not used, because it would include delete, and on delete `request.resource` is null:
 
@@ -942,9 +1024,115 @@ service cloud.firestore {
 }
 ```
 
-Account deletion hard deletes are not performed by a mobile client and are not an exception to these rules. They run only through the `D-23` Firebase Admin server operation, protected by Firebase authentication token verification and server IAM. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
+Account deletion hard deletes run only through the `D-23` Firebase Admin server operation. The Admin SDK bypasses Firestore rules entirely; the `allow delete: if false` rule therefore still rejects any mobile client hard delete, which is the load-bearing guarantee. The Admin operation's authorization comes from server IAM plus Firebase authentication token verification, not from Firestore rules. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
 
-`knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. Without App Check, closed schema and range validation in rules are the only things preventing a compromised client from writing a document that breaks parsing on the user's other device.
+The rule file path is `firestore/rules/main.rules`. `knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. Without App Check, closed schema and range validation in rules are the only things preventing a compromised client from writing a document that breaks parsing on the user's other device.
+
+`validPayload()` MUST be equivalent to this shape:
+
+```javascript
+function validPayload() {
+  return collection == "vehicles" ? validVehicle(docId) :
+         collection == "fuelEntries" ? validFuelEntry(docId) :
+         false;
+}
+
+function validVehicle(vehicleId) {
+  return request.resource.data.keys().hasOnly([
+      "id", "ownerId", "name", "initialOdometerKm", "brand", "model",
+      "fuelType", "createdAt", "updatedAt", "deleted", "deletedAt", "schemaVersion"
+    ])
+    && request.resource.data.keys().hasAll([
+      "id", "ownerId", "name", "initialOdometerKm", "brand", "model",
+      "fuelType", "createdAt", "updatedAt", "deleted", "deletedAt", "schemaVersion"
+    ])
+    && request.resource.data.id == vehicleId
+    && isUuid(request.resource.data.id)
+    && request.resource.data.ownerId == request.auth.uid
+    && request.resource.data.name is string
+    && request.resource.data.name.size() >= 1
+    && request.resource.data.name.size() <= 40
+    && request.resource.data.initialOdometerKm is int
+    && request.resource.data.initialOdometerKm >= 0
+    && request.resource.data.initialOdometerKm <= 2000000
+    && nullableString(request.resource.data.brand, 1, 40)
+    && nullableString(request.resource.data.model, 1, 40)
+    && request.resource.data.fuelType in ["GASOLINE", "DIESEL", "LPG", "CNG", "OTHER"]
+    && request.resource.data.createdAt is timestamp
+    && request.resource.data.updatedAt == request.time
+    && request.resource.data.deleted is bool
+    && deletedShapeIsValid()
+    && request.resource.data.schemaVersion is int
+    && request.resource.data.schemaVersion == 1;
+}
+
+function validFuelEntry(entryId) {
+  return request.resource.data.keys().hasOnly([
+      "id", "ownerId", "vehicleId", "date", "odometerKm", "litersScaled",
+      "pricePerLiterScaled", "totalCostMinor", "currency", "isFullTank",
+      "hasMissedEntries", "odometerInconsistent", "notes", "createdAt",
+      "updatedAt", "deleted", "deletedAt", "schemaVersion"
+    ])
+    && request.resource.data.keys().hasAll([
+      "id", "ownerId", "vehicleId", "date", "odometerKm", "litersScaled",
+      "pricePerLiterScaled", "totalCostMinor", "currency", "isFullTank",
+      "hasMissedEntries", "odometerInconsistent", "notes", "createdAt",
+      "updatedAt", "deleted", "deletedAt", "schemaVersion"
+    ])
+    && request.resource.data.id == entryId
+    && isUuid(request.resource.data.id)
+    && request.resource.data.ownerId == request.auth.uid
+    && isUuid(request.resource.data.vehicleId)
+    && request.resource.data.vehicleId is string
+    && request.resource.data.date is timestamp
+    && request.resource.data.date >= timestamp.date(1970, 1, 1)
+    && request.resource.data.date <= request.time + duration.value(1, "h")
+    && request.resource.data.odometerKm is int
+    && request.resource.data.odometerKm >= 0
+    && request.resource.data.odometerKm <= 2000000
+    && request.resource.data.litersScaled is int
+    && request.resource.data.litersScaled >= 1
+    && request.resource.data.litersScaled <= 500000
+    && request.resource.data.pricePerLiterScaled is int
+    && request.resource.data.pricePerLiterScaled >= 1
+    && request.resource.data.pricePerLiterScaled <= 999999
+    && request.resource.data.totalCostMinor is int
+    && request.resource.data.totalCostMinor >= 1
+    && request.resource.data.totalCostMinor <= 99999999
+    && request.resource.data.currency in [
+      "ARS", "AUD", "BRL", "CAD", "CHF", "COP", "CZK", "DKK", "EUR", "GBP", "HUF",
+      "MAD", "MXN", "NOK", "NZD", "PEN", "PLN", "RON", "SEK", "USD", "UYU"
+    ]
+    && request.resource.data.isFullTank is bool
+    && request.resource.data.hasMissedEntries is bool
+    && request.resource.data.odometerInconsistent is bool
+    && nullableString(request.resource.data.notes, 1, 280)
+    && request.resource.data.createdAt is timestamp
+    && request.resource.data.updatedAt == request.time
+    && request.resource.data.deleted is bool
+    && deletedShapeIsValid()
+    && request.resource.data.schemaVersion is int
+    && request.resource.data.schemaVersion == 1;
+}
+
+function nullableString(value, min, max) {
+  return value == null || (value is string && value.size() >= min && value.size() <= max);
+}
+
+function isUuid(value) {
+  return value is string
+      && value.matches("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
+}
+
+function deletedShapeIsValid() {
+  return (!request.resource.data.deleted && request.resource.data.deletedAt == null)
+      || (request.resource.data.deleted && request.resource.data.deletedAt is timestamp);
+}
+```
+
+Firestore rules cannot test that `fuelEntry.vehicleId` points at an existing active vehicle without creating a cross-document coupling that would reject legal transient orphans. Orphan fuel entries are legal transient state and MUST NOT be rejected by the rule; handling is defined in §9.4.
+
+The `updatedAt == request.time` comparison uses Firestore equality semantics. A client passing a `serverTimestamp()` placeholder is resolved by the server. A client passing a literal timestamp that differs from `request.time`, even by 1 ms, is rejected.
 
 Anonymous users are valid authenticated users.
 
@@ -1013,11 +1201,13 @@ interface Logger {
 
 Levels: `DEBUG`, `INFO`, `WARN`, `ERROR`.
 
-Every sync cycle generates a `cycleId` that is included as a field on every sync log line and stored in `outbox.lastError` context. Field values come from an allowlist — codes, counts, entity types, sync states — never user data.
+Every sync cycle generates a `cycleId` (§20.7) that is included as a field on every sync log line and stored in `outbox.lastError` context. Field values come from an allowlist, never raw user data. The allowlist is exactly: `AppError.code`, `SyncState` enum name, `EntityType` enum name, `SyncTrigger` enum name, `ConsumptionInvalidReason` enum name, `Confirmation` enum name, `cycleId`, integer counts and durations, and `Boolean` flags. Strings are limited to enum names, stable codes and `cycleId`.
 
 Logs MUST never include: ID tokens or credentials, raw Firestore payloads, notes, exact odometer values, exact costs, or the Firebase UID in release builds.
 
-Redaction is decided from the injected `isDebugBuild` flag: debug builds may log entity IDs in full; release builds log the first 8 characters followed by an ellipsis, and never log the UID at any length.
+Redaction is the responsibility of the `Logger` implementation, not the caller. The implementation accepts entity IDs as `String`; the caller MUST NOT pre-redact. Redaction is decided from the injected `isDebugBuild` flag: debug builds may log entity IDs in full; release builds log the first 8 characters followed by an ellipsis, and never log the UID at any length.
+
+`Throwable.message` and `Throwable.stackTrace` MUST be redacted to stable codes and MUST NOT be logged as text. The throwable class name may be logged in full at `DEBUG`; at `INFO`, `WARN` and `ERROR`, only the class name's last segment may be logged.
 
 `Logger` is not an analytics or crash-reporting API. Logging events MUST NOT be treated as `AnalyticsEvent` values or crash reports. Provider integrations may use `Logger` internally for operational diagnostics, subject to the same privacy rules.
 
@@ -1033,6 +1223,11 @@ Phase 0 defines the exact CI check names. Required checks:
 - `architecture-check`
 - `provider-decoupling`
 - `contract-check`
+- `objc-header-golden-check`
+
+Optional checks:
+
+- `database-lock` — when `core/database/.story-lock` exists, CI verifies that the current story named in the handoff owns `:core:database`. A failing lock means another in-flight story owns the shared-write module. The lock is created when a database story starts and removed in the same PR before completion; it is a coordination guard, not a permanent repository artifact.
 
 `contract-check` is a script that asserts:
 
@@ -1043,8 +1238,18 @@ Phase 0 defines the exact CI check names. Required checks:
 5. Every interface declared in this document appears in at least one `docs/BACKLOG.md` story.
 6. `.github/pull_request_template.md` remains a superset of `docs/templates/agent-handoff.md` section headings.
 7. The committed Objective-C header golden file for `:shared` is unchanged.
+8. `docs/SPECIFICATION.md §8.2` references the canonical module inventory of §1.1, and `docs/TECHNICAL_PLAN.md §3` reproduces it, comparing the path token before whitespace for technical-plan lines.
+9. The dependency allowlists in `docs/SPECIFICATION.md §8.3`, `docs/TECHNICAL_PLAN.md §4` and the Gradle module graph are generated from the same source or compare equal on module path, allowed dependencies and forbidden dependencies.
+10. Decision-table comparison uses only the `ID`, `Choice` and `Status` columns; explanatory wording outside those columns is not compared.
+11. `CLIENT_MAX_SCHEMA_VERSION` in §20.0.1 equals the highest `schemaVersion` accepted by `firestore/rules/main.rules`.
+12. §7 explicitly references the qualified poison rule of §9.7.
+13. `testAppGraphDependencies(...)` has the same parameter count and order as `AppGraphDependencies`, with every parameter defaulted.
+14. Kotlin-facing `AppGraph` factories take `scope: CoroutineScope`, Swift-facing `SwiftAppGraph` factories do not, and no exported state-holder function has a Kotlin default argument.
+15. No `TBD` remains in `docs/versions-matrix.md` after `E0-06` lands.
+16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
+17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
 
-For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type `kotlinx.datetime.Instant`, and platform annotation names used only to hide Kotlin declarations from Objective-C export. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
+For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, and platform annotation names used only to hide Kotlin declarations from Objective-C export. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
 For the Objective-C header assertion, `contract-check` MUST fail if the header exports any forbidden type from §15.3 or omits any Swift-facing type explicitly listed in §20.10.
 
@@ -1095,6 +1300,9 @@ const val CLIENT_MAX_SCHEMA_VERSION: Int = 1   // §9.5  — highest schemaVersi
 const val MAX_RETRYABLE_ATTEMPTS: Int = 10     // §9.7  — attemptCount ceiling
 const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel entry load ceiling
 const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
+const val STATE_HOLDER_TIMEOUT_MS: Long = 5_000L          // §14   — WhileSubscribed timeout
+const val FOREGROUND_RESUME_THRESHOLD_MS: Long = 300_000L // §9.8  — 5 minutes
+const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L       // §11.5 — 5 minutes
 
 // §2 — every supported MVP currency has exactly two decimal minor units, factor 100
 val SUPPORTED_CURRENCY_CODES: Set<String> = setOf(
@@ -1130,6 +1338,8 @@ val CONNECTIVITY_ERROR_CODES: Set<String> = setOf(
 
 `CLIENT_MAX_SCHEMA_VERSION` is bumped only by a story that also ships the migration able to read the new version, and bumping it REQUIRES re-evaluating the `quarantine` table on upgrade (§9.5).
 
+Every code in `SUPPORTED_CURRENCY_CODES` MUST be verified as two-decimal by the MVP platform locale APIs on Android and iOS. If a runtime reports a different minor-unit factor for any supported code, validation falls back to `EUR` rather than accepting a different factor.
+
 ### 20.1 Result channel — `:core:common`
 
 ```kotlin
@@ -1152,6 +1362,7 @@ sealed interface ValidationError : AppError {
     data class DuplicateName(val name: String) : ValidationError { override val code = "VALIDATION.DUPLICATE_NAME" }
     data object FutureDate : ValidationError { override val code = "VALIDATION.FUTURE_DATE" }
     data object InvalidMoneyInput : ValidationError { override val code = "VALIDATION.INVALID_MONEY_INPUT" }
+    data object NoOp : ValidationError { override val code = "VALIDATION.NO_OP" }
     data class InvalidUnit(val detail: String) : ValidationError { override val code = "VALIDATION.INVALID_UNIT" }
     data object EntityDeleted : ValidationError { override val code = "VALIDATION.ENTITY_DELETED" }
     data object EntityNotFound : ValidationError { override val code = "VALIDATION.ENTITY_NOT_FOUND" }
@@ -1217,6 +1428,17 @@ data class UnexpectedError(
 
 enum class Confirmation { OdometerInconsistent, DiscardPendingChanges, DeleteAccount, AdoptExistingAccount }
 ```
+
+`UnexpectedError.origin` is the Gradle module path that converted the failure, for example `":integration:firebase-firestore"`.
+
+A confirmation is required by the use case, not by the UI. The UI MUST NOT proceed without an explicit confirmation returned to the use case.
+
+| Confirmation | Flow |
+|--------------|------|
+| `OdometerInconsistent` | Odometer warning override in fuel-entry create/update. |
+| `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. |
+| `DeleteAccount` | Account deletion destructive confirmation. |
+| `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user chooses the existing account. |
 
 ### 20.3 Platform abstractions — `:core:common`
 
@@ -1390,6 +1612,10 @@ data class UpdateSettingsCommand(
 )
 ```
 
+`UpdateVehicleCommand` carries every editable field. `null` for `initialOdometerKm` means "leave unchanged"; all other fields are supplied with their current or edited values. A future patch may introduce a sparse-update variant, but the MVP uses this complete-field command shape.
+
+For `UpdateSettingsCommand`, `null` means unchanged. If both fields are `null`, `SettingsRepository.updateSettings` returns `Err(ValidationError.NoOp)` and mutates nothing.
+
 ### 20.6 Consumption
 
 ```kotlin
@@ -1428,6 +1654,10 @@ data class ConsumptionReport(
 `EndEntryNotFullTank` is produced only by the `FuelEntryListItem` projection for an entry with `isFullTank = false`. `SegmentResult.Invalid` MUST NOT use `EndEntryNotFullTank`, because `ConsumptionReport.segments` contains one result per full-tank entry only.
 
 `SegmentResult.Valid.consumption` and `ConsumptionReport.average` are both produced by the canonical consumption arithmetic of §2, which is the only normative statement of those formulas. Partial entries inside a valid full-to-full segment are included in `SegmentResult.Valid.litersScaled`; the partial row itself has no consumption value. `average` is distance-weighted over the valid segments only, and is NOT the arithmetic mean of the segment values.
+
+`isReliable == true` iff `validSegmentCount >= 2`. When `validSegmentCount == 1`, `average != null` but `isReliable == false`; a single segment is a value, not a reliable average. When `validSegmentCount == 0`, `average == null` and `isReliable == false`.
+
+`ConsumptionInvalidReason`, `SegmentResult` and `ConsumptionReport` live in `:core:model`. Moving any of them to `:core:common` would violate the `:core:model` dependency rule because `FuelEntryListItem` and the domain models depend on them.
 
 ### 20.7 Sync types — `:core:sync`
 
@@ -1473,6 +1703,8 @@ data class RemotePage(
     val nextCursor: RemoteCursor,
     val hasMore: Boolean,
 )
+
+@JvmInline value class CycleId(val value: String) // lowercase canonical UUID v4 generated per sync cycle
 
 enum class QuarantineReason {
     UnsupportedSchemaVersion,
@@ -1565,7 +1797,9 @@ data class AnalyticsUserProperties(
 enum class CountBucket { ZERO, ONE, TWO_TO_FIVE, SIX_TO_TWENTY, MORE_THAN_TWENTY }
 ```
 
-No leaf carries a free-text `String`. Adding one is a contract violation.
+No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content.
+
+`CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
 
 ### 20.10 Shared surface — `:shared`
 
@@ -1759,8 +1993,37 @@ data class UiMessage(
 enum class UiMessageKind { INFO, WARNING, ERROR }
 ```
 
-Identifiers and currency codes cross the Swift-facing boundary as `String`, never as `EntityId`, `OwnerId` or `CurrencyCode`, per §15.3. Dates cross as epoch milliseconds in UTC. `UiMessage.code` is a stable programmatic code: for errors it is `AppError.code`; for warnings and confirmations it is the enum entry name prefixed by its owner, for example `CONFIRMATION.OdometerInconsistent`. It is never display copy.
+Identifiers and currency codes cross the Swift-facing boundary as `String`, never as `EntityId`, `OwnerId` or `CurrencyCode`, per §15.3. Swift-facing `id` fields are lowercase canonical UUID v4 strings. Kotlin-to-Swift conversion is a contract: `EntityId.value` is exactly the field value, already lowercase. Dates cross as epoch milliseconds in UTC. The `litersScaled`, `totalCostMinor`, `odometerKm`, `dateEpochMillis`, `consumptionAverageScaled` and `consumptionScaled` suffixes are the Swift-facing scale documentation; `:shared` README material MUST document those factors for iOS consumers.
+
+Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and are exposed on the Swift side. Each platform maps them to localized strings in its own resource catalogue.
+
+`UiMessage.code` is exactly one of:
+
+- an `AppError.code`, for example `VALIDATION.REQUIRED_FIELD`;
+- `CONFIRMATION.<Confirmation enum name>`, for example `CONFIRMATION.OdometerInconsistent`;
+- `INFO.<stable string>` for informational messages.
+
+It is never display copy.
 
 The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
+
+`SwiftAppGraph` state-holder factories are idempotent within the same graph instance: the first call creates and caches a state holder, and later calls for the same factory arguments return the same instance. After `SwiftAppGraph.close()`, cached state holders are cancelled and removed; any later factory call throws `IllegalStateException`.
+
+`FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
+
+`SessionPhase` transitions are normative:
+
+```text
+UNKNOWN -> LOCAL | ANONYMOUS | PERMANENT | SIGNED_OUT
+ANONYMOUS -> PERMANENT | DELETING | SIGNED_OUT
+PERMANENT -> DELETING | SIGNED_OUT
+LOCAL -> ANONYMOUS | PERMANENT | DELETING
+DELETING -> UNKNOWN
+UNKNOWN -> SIGNED_OUT after local-data clear
+```
+
+`SyncStatus` is exported through the SKIE/Kotlin-Native sealed-class shape fixed by the generated header. Swift consumers MUST be able to distinguish `Idle`, `Syncing`, `Pending(count)` and `Failed(retryableCount, poisonedCount)` exhaustively.
+
+`VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
 
 The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.

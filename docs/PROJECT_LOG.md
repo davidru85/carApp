@@ -38,6 +38,39 @@
 
 ## Entries
 
+### 2026-08-18 — Documentation audit verification hooks tightened
+
+- **Type:** decision
+- **Story / Decision:** `docs/DOCUMENTATION_AUDIT.md`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** remaining recommended audit guardrails were folded into executable story criteria: `Instant` stays an `E0-06` blocker until the version matrix pins its package, `outbox.lastError` is debug/UI-only, Swift scale suffixes require `shared/README.md`, and supported currencies require platform minor-unit verification with `EUR` fallback.
+- **Why:** the owner authorised using the recommended option while away, and these entries make already-accepted prose rules testable by the stories that will implement them.
+- **Documents touched:** `docs/CONTRACTS.md`, `docs/BACKLOG.md`, and this log.
+- **Verification:** documentation-only change; `git diff --check`.
+- **Follow-ups / risks:** changes touch gated documentation and still require normal human review before merge.
+
+### 2026-08-18 — Documentation audit review decisions recorded
+
+- **Type:** decision
+- **Story / Decision:** `docs/DOCUMENTATION_AUDIT.md`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner reviewed the first documentation-audit corrections and accepted the recommended choices for `:core:database` dependency rules, dependency injection over duplicate `expect`/`actual` paths, consumption type ownership in `:core:model`, closed platform API vocabulary, `:core:crash` ownership, and a non-duplicated `SPECIFICATION.md §8.2` module inventory reference. The owner also instructed Codex to use the recommended option for remaining documentation-audit decisions while they are away.
+- **Why:** the review keeps decision ownership explicit while allowing the audit cleanup to continue without blocking on every low-risk guardrail choice.
+- **Documents touched:** `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/identifiers.md`, and this log.
+- **Verification:** manual review in conversation, followed by `git diff --check`.
+- **Follow-ups / risks:** every subsequent assumed recommendation in this review should be summarised for owner review after the remaining audit items are processed.
+
+### 2026-08-17 — Documentation audit guardrails folded into project docs
+
+- **Type:** milestone
+- **Story / Decision:** `docs/DOCUMENTATION_AUDIT.md`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** processed the documentation audit in order across architecture, data modelling, sync, auth, error handling, Swift-facing ABI and cross-document consistency. The docs now include a canonical module inventory, explicit `:core:database` dependency rules, tighter `expect`/`actual` boundaries, exact local DDL constraints, outbox coalescing SQL, Firestore `validPayload()` shape, local-owner adoption and account-deletion ordering details, logging redaction rules, `CalculateConsumption` signature cleanup, Swift ABI lifecycle rules, Phase 0 module-set constraints and expanded backlog fixtures.
+- **Why:** the audit identified places where two agents could implement different behaviours while still claiming to follow the same docs. The corrections turn those areas into precise contract language and story acceptance criteria.
+- **Documents touched:** `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/identifiers.md`, and this log.
+- **Verification:** manual documentation review with targeted searches, diff review and code-fence counts for the edited Markdown files. No product code or CI exists yet.
+- **Follow-ups / risks:** changes touch gated documentation paths and require human review before merge. `contract-check`, `architecture-check`, Firestore emulator tests and generated Objective-C header checks are specified but not yet implemented.
+
 ### 2026-08-17 — MVP single-device constraint recorded
 
 - **Type:** decision

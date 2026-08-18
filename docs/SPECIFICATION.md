@@ -66,11 +66,11 @@ Rule for agents: any work touching out-of-scope functionality MUST be rejected o
 
 Future scope may add electric and hybrid vehicles through a dedicated energy model. That work requires a new story or ADR covering `FuelType` expansion, kWh and mixed-unit input, consumption display units, validation, Firestore rules, local migrations and remote schema compatibility. Agents MUST NOT introduce `ELECTRIC` or `HYBRID` as MVP enum values.
 
-Future scope may add settings synchronization through platform mechanisms such as Google Play services / Android backup on Android and iCloud on iOS. That work requires a new story or ADR covering user consent, platform API choice, conflict resolution, privacy wording, backup exclusion rules, test strategy and interaction with app account deletion. Agents MUST NOT add settings sync or platform backup APIs in the MVP.
+Future scope may add settings synchronization through platform mechanisms such as Google Play services / Android backup on Android and iCloud on iOS. That work requires a new story or ADR covering user consent, platform API choice, conflict resolution, privacy wording, backup exclusion rules, test strategy and interaction with app account deletion. Agents MUST NOT add settings sync or platform backup APIs in the MVP. No platform API surface for settings sync — including entitlements, manifest keys, capabilities or dependencies — may be added to Android or iOS app projects in the MVP; adding an entitlement without using it is still a contract violation.
 
 Future scope may add receipt and odometer image capture with local AI text recognition to prefill fuel-entry fields. The target fields are the receipt total amount, the receipt price per liter and the odometer reading. That work requires a new story or ADR covering the on-device OCR or AI engine, supported languages, model packaging, binary size, latency, battery impact, privacy review, image retention rules, user correction flow, confidence thresholds, validation, accessibility, tests and whether any image-loading dependency is required. Receipt images, odometer images, recognized raw text and extracted fields MUST remain local unless a later explicit owner decision changes the privacy model. Agents MUST NOT add image capture, OCR, local AI models, model downloads, image storage, image-loading dependencies or image-derived fuel-entry fields in the MVP.
 
-Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23` account deletion server operation. The intended security goal is to validate incoming user data before it is inserted or updated remotely, and to verify the user's authenticated identity and authorization before any remote database read. That work requires a new story or ADR covering whether clients stop reading or writing Firestore directly, Firebase App Check or equivalent app integrity checks, authenticated callable or HTTPS function boundaries, server-side schema validation, owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling, emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add Cloud Functions security features beyond `D-23`, App Check enforcement, server-mediated product reads or privileged server-side product writes in the MVP.
+Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23` account deletion server operation. The `D-23` account deletion server operation is the only MVP server-side privileged write. No other server-mediated write is in MVP scope. The intended future security goal is to validate incoming user data before it is inserted or updated remotely, and to verify the user's authenticated identity and authorization before any remote database read. That work requires a new story or ADR covering whether clients stop reading or writing Firestore directly, Firebase App Check or equivalent app integrity checks, authenticated callable or HTTPS function boundaries, server-side schema validation, owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling, emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add Cloud Functions security features beyond `D-23`, App Check enforcement, server-mediated product reads or additional privileged server-side product writes in the MVP.
 
 Future scope may add simultaneous use on multiple devices for the same account. That work requires a new story or ADR covering the migration from Room-as-source-of-truth to remote-database-as-source-of-truth, live or near-live synchronization semantics, conflict resolution, offline edit policy, local cache behaviour, remote validation, recovery from divergent devices, UX for stale data and required data migrations. Agents MUST NOT introduce active multi-device synchronization or make the remote database the product source of truth in the MVP.
 
@@ -226,7 +226,7 @@ Credential collision:
 
 ### F-5 Sign-Out and Account Deletion
 
-Sign-out is offered only to a permanently authenticated user. It warns if there are pending local changes and offers to wait for sync, cancel, or discard pending changes after destructive confirmation. All local data for that owner and the local `user_settings` row are cleared after sign-out; recovery is by signing in again and pulling, while settings are recreated from defaults.
+Sign-out is offered only to a permanently authenticated user. If the outbox is non-empty, the sign-out use case returns `Err(ValidationWarning.PendingSyncBeforeSignOut(pendingCount))`; the UI offers to wait for sync, cancel, or discard pending changes after destructive confirmation. All local data for that owner and the local `user_settings` row are cleared after sign-out; recovery is by signing in again and pulling, while settings are recreated from defaults.
 
 For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered. It clears all local app data, including settings.
 
@@ -258,34 +258,7 @@ Exact versions are pinned in `docs/versions-matrix.md` and declared only in `gra
 
 ### 8.2 Modules
 
-```text
-build-logic/
-gradle/libs.versions.toml
-
-:core:model
-:core:common
-:core:database
-:core:auth
-:core:sync
-:core:analytics
-:core:crash
-:core:testing
-
-:integration:firebase-auth
-:integration:firebase-firestore
-:integration:firebase-analytics
-:integration:firebase-crashlytics
-
-:feature:vehicle
-:feature:fuel
-:feature:session
-
-:shared
-:wiring:firebase
-:androidApp
-iosApp/
-firestore/
-```
+The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The specification does not duplicate it; this section states only the behavioural dependency rules that matter at product level.
 
 ### 8.3 Dependency Rules
 
@@ -295,12 +268,13 @@ firestore/
 4. Features never depend on other features.
 5. `:core:sync` depends on `:core:model`, `:core:common`, `:core:database` and `:core:auth`, never on `:integration:*`.
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
-7. `:shared` never depends on `:integration:*`.
-8. Firebase and GitLive types never cross integration boundaries.
-9. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
-10. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
-11. Only `:wiring:firebase` constructs Firebase implementations.
-12. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+7. `:core:database` depends on `:core:model`, `:core:common` and Room; it never depends on `:integration:*`, features or `:core:sync`.
+8. `:shared` never depends on `:integration:*`.
+9. Firebase and GitLive types never cross integration boundaries.
+10. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
+11. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
+12. Only `:wiring:firebase` aggregates Firebase implementations into the app graph.
+13. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
 
 Module-level rules are enforced by a Gradle configuration check; package-level rules require source analysis. Both MUST be executable checks in CI, and each rule MUST have a failing fixture test proving the check fires.
 
@@ -439,7 +413,7 @@ Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be
 | Fuel entry | A refueling event recorded by the user. |
 | Full tank | Refueling event where the tank is filled completely. |
 | Segment | Interval between two consecutive full-tank fuel entries. |
-| Tombstone | Logical deletion marker propagated through remote backup. |
+| Tombstone | Logical deletion marker propagated through remote backup. It is a full remote document written with `set(merge = false)`, `deleted = true` and `deletedAt` set; see `docs/CONTRACTS.md §3` and `§16` for the exact shape. |
 | Outbox | Local queue of pending snapshots to push remotely. |
 | LWW | Last-write-wins conflict resolution. |
 | `LOCAL_OWNER` | Sentinel owner used before an anonymous Firebase UID exists. |
