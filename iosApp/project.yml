@@ -1,0 +1,41 @@
+name: carApp
+options:
+  bundleIdPrefix: com.ruizurraca.carapp
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    CODE_SIGNING_ALLOWED: NO
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: NO
+    FRAMEWORK_SEARCH_PATHS:
+      - $(inherited)
+      - $(SRCROOT)/../shared/build/bin/iosSimulatorArm64/debugFramework
+    LD_RUNPATH_SEARCH_PATHS:
+      - $(inherited)
+      - "@executable_path/Frameworks"
+targets:
+  carApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: .
+        excludes:
+          - "project.yml"
+          - "*.xcodeproj"
+    dependencies:
+      - framework: ../shared/build/bin/iosSimulatorArm64/debugFramework/Shared.framework
+        embed: true
+        codeSign: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
+        INFOPLIST_FILE: Info.plist
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp

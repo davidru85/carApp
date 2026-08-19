@@ -1,0 +1,60 @@
+# Single source of dependency versions.
+# Pinned by E0-01 for the build-essential subset; remaining versions are TBD and are
+# completed by E0-06 (per docs/BACKLOG.md and docs/versions-matrix.md).
+# Every TBD cell MUST be replaced by E0-06 with a concrete value cited from its ADR.
+
+[versions]
+# --- Kotlin toolchain group (Kotlin, KSP, SKIE, kotlinx-coroutines) ---
+kotlin = "2.0.21"
+ksp = "2.0.21-1.0.28"
+skie = "0.10.14" # SKIE applied only to :shared (D-2); pinned by E0-01, revalidated by E0-06
+coroutines = "1.9.0"
+
+# --- Android build group (AGP, Compose BOM) ---
+agp = "8.5.2"
+composeBom = "2024.10.01"
+
+# --- Android SDK ---
+minSdk = "26" # fixed by docs/SPECIFICATION.md §11; do not change without a story
+targetSdk = "35" # pinned by E0-01; revalidated by E0-06
+
+# --- TBD: owned by E0-06 ---
+# JDK toolchain (Gradle+Kotlin JVM): currently 21 via gradle.properties; E0-06 records it here.
+gradle = "8.9" # wrapper version, matches gradle-wrapper.properties
+# Room = TBD (E1-01, D-1)
+# androidx.sqlite:sqlite-bundled = TBD (E1-01)
+# Firebase BOM = TBD (E0-07 / E2-02)
+# GitLive firebase = 2.6.x (D-5, D-6)
+# kotlinx-serialization-json = TBD
+# kotlinx-datetime = TBD (E0-06 records the exact Instant package)
+# Koin = TBD (D-3)
+# Kermit = TBD (D-15)
+# Turbine = TBD (D-17)
+# Kover = TBD (D-18)
+# Konsist = TBD (D-16)
+# ktlint, detekt = TBD (E0-05)
+# Xcode = 26.6 (matches the macOS CI runner; pinned by E0-06)
+
+[libraries]
+# Kotlin / KMP
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+
+# Compose (Android only)
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-activity = { module = "androidx.activity:activity-compose", version = "1.9.3" }
+androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.15.0" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.8.7" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+skie = { id = "co.touchlab.skie", version.ref = "skie" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
