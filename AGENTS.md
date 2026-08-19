@@ -2,6 +2,11 @@
 
 **This file is the entry point.** If you are an AI agent starting work on this repository, read this document first and in full. It is the single canonical source for normative language, the document map, document authority, the Definition of Ready and Done, and the human review gates. Other documents link here and MUST NOT restate these rules.
 
+> **CRITICAL — Language Rule (read before your first reply).**
+> Conversation with the project owner is in Spanish (es-ES). Repository
+> artifacts are in technical English. The two MUST NOT be confused. See
+> `## Language` below for the full rule and consequences.
+
 ## Normative Language
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, MAY and OPTIONAL are to be interpreted as described in RFC 2119.
@@ -11,6 +16,23 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, MAY and OPTIO
 - **MAY** — free choice; the choice does not need to be reported.
 
 Any normative sentence in this repository written in bare present tense ("the app warns the user", "IDs are UUID v4") has the force of MUST.
+
+## Language
+
+**This section is CRITICAL. A violation fails review.**
+
+Two rules apply, and they MUST NOT be confused. The boundary between them is the repository.
+
+**Repository artifacts — technical English.** Documentation and code alike. This covers specifications, contracts, ADRs, backlog entries, project log entries, README and every other document; and source code, identifiers, code comments, KDoc, test names, commit messages, branch names, pull request descriptions and GitHub issues. There is no exception.
+
+**Conversation with the project owner — Spanish (Spain).** Unless the owner states otherwise, an agent replies in Spanish using es-ES vocabulary and conventions. This covers chat replies, clarifying questions, escalation summaries delivered in conversation, and progress narration.
+
+Consequences worth stating explicitly:
+
+- A discussion held in Spanish is written into the repository in English. The language of the conversation never leaks into a file, a commit or an issue.
+- A Spanish reply that quotes an English identifier, file path, error code or document section stays a Spanish reply. Those tokens MUST NOT be translated.
+- Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
+- An agent that replies in English when Spanish was required, or writes Spanish into a repository artifact, has violated a MUST and MUST self-correct before continuing.
 
 ## Document Map
 
@@ -78,20 +100,6 @@ Rules:
 - `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/DEFINITION.md` and `README.md` are **derived**. They MUST NOT introduce a rule that is absent from the three documents above; if they do, the rule is void and the discrepancy MUST be escalated.
 - A conflict that is genuinely behavioural, or that cannot be classified on either axis, MUST be escalated to the project owner. Agents MUST NOT resolve it themselves.
 - Whichever document is corrected, every document repeating the same rule MUST be corrected in the same change.
-
-## Language
-
-Two rules apply, and they MUST NOT be confused. The boundary between them is the repository.
-
-**Repository artifacts — technical English.** Documentation and code alike. This covers specifications, contracts, ADRs, backlog entries, project log entries, README and every other document; and source code, identifiers, code comments, KDoc, test names, commit messages, branch names, pull request descriptions and GitHub issues. There is no exception.
-
-**Conversation with the project owner — Spanish (Spain).** Unless the owner states otherwise, an agent replies in Spanish using es-ES vocabulary and conventions. This covers chat replies, clarifying questions, escalation summaries delivered in conversation, and progress narration.
-
-Consequences worth stating explicitly:
-
-- A discussion held in Spanish is written into the repository in English. The language of the conversation never leaks into a file, a commit or an issue.
-- A Spanish reply that quotes an English identifier, file path, error code or document section stays a Spanish reply. Those tokens MUST NOT be translated.
-- Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
 
 ## Owner Decisions
 
@@ -186,7 +194,8 @@ Before changing implementation code for a story, an agent MUST record the ready 
 - the dependency and decision rows checked,
 - the normative sections that govern the work,
 - the expected verification commands,
-- the human review gates that apply, or `None`.
+- the human review gates that apply, or `None`,
+- the reply language (Spanish es-ES) is confirmed for this story.
 
 If a requested change is not tied to a backlog story, the agent may analyse, propose a story, or update definition documents, but it MUST NOT implement product code until the story is made explicit and Ready.
 
@@ -205,6 +214,7 @@ A story is done only when:
 - human review gates are identified,
 - the handoff is filled in from `docs/templates/agent-handoff.md`,
 - **an entry has been appended to `docs/PROJECT_LOG.md`.**
+- every chat reply during this story was in Spanish (es-ES); every repository artifact is in English.
 
 ## Expected Handoff
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-19 — Language rule elevated to critical priority in `AGENTS.md`
+
+- **Type:** correction
+- **Story / Decision:** — (no backlog story; `AGENTS.md` governance change)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** elevated the Language rule priority in `AGENTS.md` via four coordinated edits. (1) Added a `> **CRITICAL — Language Rule (read before your first reply).**` callout immediately after the entry-point paragraph, summarizing the two rules (conversation in Spanish es-ES, repository artifacts in technical English) and pointing to `## Language` for the full text. (2) Moved the `## Language` section from its previous position as the fifth H2 section (between Document Authority and Owner Decisions) to the second H2 position, immediately after `## Normative Language` and before `## Document Map`, so an agent reading the document in order encounters the rule before any operational content. (3) Hardened the section opening with `**This section is CRITICAL. A violation fails review.**` and added a fourth consequence bullet: "An agent that replies in English when Spanish was required, or writes Spanish into a repository artifact, has violated a MUST and MUST self-correct before continuing." (4) Added an echo of the rule to the two operational checklists that agents actually use: Story Intake gained "the reply language (Spanish es-ES) is confirmed for this story" as a ready-check field, and Definition of Done gained "every chat reply during this story was in Spanish (es-ES); every repository artifact is in English" as a closing bullet.
+- **Why:** the Language rule was well-written but structurally buried: it was the fifth H2 section, behind Document Map and Document Authority, and neither the entry-point paragraph nor the Story Intake / Definition of Done checklists mentioned it. An agent that scans the document for operational guidance (DoR, DoD, gates) could skip the rule entirely, and the owner observed this happening in practice. The four edits place the rule where it cannot be missed: first in the callout at the very top, second in section ordering, third in explicit MUST-weight language, and fourth in the two checklists an agent consults when starting and closing a story.
+- **Documents touched:** `AGENTS.md`, and this log. No normative rule added or changed: the two language rules (conversation in Spanish, artifacts in English) and the three existing consequences were already present and correct; this change only repositions, strengthens and echoes them.
+- **Verification:** `grep -n '^## ' AGENTS.md` confirms the new section order (Normative Language → Language → Document Map → … → Story Intake → Definition of Done). `grep '## Language' AGENTS.md` confirms a single `## Language` section remains. The diff was reviewed in full before commit. Requires human review before merge (gated path `AGENTS.md`).
+- **Follow-ups / risks:** none. The change is self-contained within `AGENTS.md`. If a future agent violates the rule, the new fourth consequence bullet makes the violation a MUST breach requiring self-correction, not a stylistic lapse.
+
 ### 2026-08-19 — `docs/DESIGN.md` added as the entry point for the design assets
 
 - **Type:** milestone
