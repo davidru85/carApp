@@ -156,7 +156,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 
 ## Technical Rules
 
-- Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff.
+- Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Dependency versions live only in `gradle/libs.versions.toml`, explained by `docs/versions-matrix.md`.
 - SKIE is applied only to `:shared`.

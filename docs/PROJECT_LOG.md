@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-19 — TDD commit and push workflow made a MUST
+
+- **Type:** decision
+- **Story / Decision:** — (no backlog story; governance change, owner-directed)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added the `### TDD commit and push workflow` subsection to `docs/SPECIFICATION.md §11`, making the per-phase commit-and-push sequence (red → green → refactoring → PR) a MUST for every TDD story. Each phase is a separate commit and a separate push; phases MUST NOT be combined in a single commit; the PR MUST contain the full cycle in order; the refactoring phase is skipped if no refactoring is needed. `AGENTS.md` Technical Rules gained an explicit reference to the workflow as a MUST unless the owner exempts a story explicitly.
+- **Why:** the owner directed that, from this point forward, the TDD process must produce a commit and push per phase (red, green, refactoring) and a PR only after the cycle completes, so the version history reflects the TDD intent and each phase is independently reviewable.
+- **Documents touched:** `docs/SPECIFICATION.md §11`, `AGENTS.md`, and this log. No backlog story acceptance criterion changed; the rule applies to all product-code stories going forward.
+- **Verification:** `grep -n 'TDD commit and push workflow' docs/SPECIFICATION.md AGENTS.md` confirms the subsection and the cross-reference. Requires human review before merge (gated paths `AGENTS.md` and `docs/SPECIFICATION.md`; gated topic "MVP scope / quality rules").
+- **Follow-ups / risks:** applies from the next product-code story onward. `E0-01` was committed before this rule existed and is exempt; the handoff declares the TDD exemption for the KMP scaffold.
+
 ### 2026-08-19 — E0-01 KMP Project Bootstrap completed
 
 - **Type:** story

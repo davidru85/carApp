@@ -394,6 +394,17 @@ Exemptions from the TDD order rule are limited to the following, which still req
 
 Any exemption used in a story MUST be declared in the handoff under "Decisions Made", with the reason. An exemption is a SHOULD deviation, not a MUST waiver: the code still requires tests, only the order is relaxed.
 
+### TDD commit and push workflow
+
+The TDD cycle is enforced not only in code order but in version-control order. Unless the owner explicitly states otherwise for a given story, every TDD story MUST follow this exact sequence of commits and pushes:
+
+1. **RED phase:** write the failing test, commit and push. The commit message scope reflects the behavior being tested (e.g. `test(E1-04): reject negative odometer`).
+2. **GREEN phase:** write the minimum code that makes the test pass, commit and push (e.g. `feat(E1-04): enforce odometer lower bound`).
+3. **REFACTORING phase:** refactor while keeping the test green, commit and push (e.g. `refactor(E1-04): extract validation bound constant`). If no refactoring is needed, this phase is skipped and its commit is omitted.
+4. **PR creation:** create the pull request only after the refactoring phase (or the green phase, if refactoring was skipped).
+
+Each phase is a separate commit and a separate push. A phase MUST NOT be combined with another in a single commit. The PR MUST contain the full cycle in order: red, green, refactoring (when present). This workflow is a MUST and applies to every story that writes product code, unless the owner exempts a story explicitly.
+
 ## 12. Closed Technical Decisions
 
 `docs/DECISION_BOARD.md` is the sole registry of decision IDs. This table mirrors its decision IDs and statuses and MUST stay identical.
