@@ -28,8 +28,26 @@ quota, not on code.
 | 08 | `08-ios-home-and-detail.figma.js` | iOS `screen-home`, `screen-detail` | ✅ |
 | 09 | `09-ios-forms.figma.js` | iOS `screen-vehicle-form`, `screen-fuel-form` | ⏳ pending |
 | 10 | `10-ios-settings.figma.js` | iOS `screen-settings` | ⏳ pending |
+| 11 | `11-ios-forms-and-settings-merged.figma.js` | `09` + `10` in one call | ⏳ pending |
 
-To finish the redesign, run `09` then `10`. Nothing else is outstanding.
+To finish the redesign, run `11` — a generated merge of `09` and `10` that does the same work
+in **one** MCP call instead of two, which matters on a 20-call/month budget. Running `09` then
+`10` separately is equivalent. Do not run both the merged script and the originals; either path
+creates the same three frames, and running both would duplicate them.
+
+`11` is generated, not authored: it wraps each source script in an async IIFE (so their
+identically-named `const`s do not collide) and merges the return values. Edit `09` and `10`,
+then regenerate `11` — do not edit `11` directly.
+
+Nothing else is outstanding.
+
+### Current blocker (checked 2026-08-19)
+
+The account is `starter` tier with a **View** seat — a 20 tool-call/month cap, and it is
+currently exhausted: every read tool returns the MCP rate-limit paywall error. `use_figma` is
+not on Figma's rate-limit exemption list (only `add_code_connect_map`, `generate_figma_design`
+and `whoami` are), so the remaining scripts cannot run until the monthly quota resets or the
+plan is upgraded to Pro with a Full or Dev seat.
 
 ## Target file
 
