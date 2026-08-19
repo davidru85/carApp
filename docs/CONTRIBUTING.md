@@ -18,6 +18,7 @@ This repository is optimized for owner-led development with AI agents.
 - Do not let the UI observe Firestore directly.
 - Do not invent identifiers, project names, regions or versions: they live in `docs/identifiers.md`, `docs/versions-matrix.md` and `gradle/libs.versions.toml`.
 - `:core:database` is a shared-write module. Only one story at a time may modify it, and the handoff must declare it.
+- Follow the design assets indexed by `docs/DESIGN.md` when implementing UI. They are non-normative: where a design asset and `docs/SPECIFICATION.md` or `docs/CONTRACTS.md` disagree, escalate instead of implementing the design.
 
 ## Branches and Commits
 
