@@ -370,8 +370,29 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
 | Localization | Spanish and English from day one; no hardcoded user-facing strings. |
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, backup and recovery tests, Firestore emulator tests. |
+| Development | Test-driven development (TDD) is compulsory for product code, per the rule below. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
 | Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
+
+### TDD rule
+
+Test-driven development (TDD) is compulsory for product code. For every new behavior unit, the agent writes a failing test that expresses the behavior, then writes the minimum code that makes it pass, then refactors. A behavior unit is a single observable rule of the product (a validation branch, a use case outcome, a state transition, a formula), not a line of code and not a whole feature.
+
+The test MUST fail for the right reason before the code is written: it must compile and execute, and fail because the behavior it expresses does not exist yet, not because of a setup or import error. The code written afterwards is the minimum that makes the test pass; no speculative generality.
+
+The anti-paraguas clause: the test MUST be specific to the behavior being introduced. A single test that asserts several unrelated behaviors at once ("create vehicle, edit it, delete it, and verify the list is empty") is a paraguas test and does not satisfy TDD; each behavior gets its own failing test first. A test may cover a behavior that spans several functions, but it must not bundle distinct behaviors to avoid writing separate tests.
+
+Coverage thresholds (Kover) are orthogonal to TDD. TDD governs the order and the intention: the test exists before the code, and expresses a behavior. Kover governs the result: at the end of the module, the fraction of code covered by tests meets the threshold in `docs/versions-matrix.md`. A story that satisfies TDD per behavior unit but leaves a branch uncovered still fails CI on coverage, and the missing test MUST be added (that test is a coverage test, not a TDD test, and is not subject to the order rule).
+
+Exemptions from the TDD order rule are limited to the following, which still require tests (just not written-first):
+
+- Native UI code (SwiftUI, Compose host screens). Verified by UI tests, screenshot tests and the accessibility audit of `E4-02`.
+- Room schemas and migrations. Verified by migration tests that assert row preservation, per `docs/TECHNICAL_PLAN.md §6`.
+- Firestore security rules. Verified by the emulator tests of `docs/CONTRACTS.md §16`.
+- Koin wiring and provider integration code (Firebase, GitLive). Verified by graph-construction tests and integration tests.
+- Architecture-rule fixtures. They already require a failing fixture test by `D-16`, which is its own form of test-first.
+
+Any exemption used in a story MUST be declared in the handoff under "Decisions Made", with the reason. An exemption is a SHOULD deviation, not a MUST waiver: the code still requires tests, only the order is relaxed.
 
 ## 12. Closed Technical Decisions
 

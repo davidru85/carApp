@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-19 — TDD made compulsory for product code
+
+- **Type:** decision
+- **Story / Decision:** — (no backlog story; governance change, owner-directed)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** made test-driven development (TDD) compulsory for product code across the MVP. Two coordinated edits: (1) `AGENTS.md` Technical Rules gained a bullet stating TDD is compulsory, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`, and that exemptions are limited to the list in that section and MUST be declared in the handoff. (2) `docs/SPECIFICATION.md §11` gained a `Development` row in the non-functional requirements table stating "Test-driven development (TDD) is compulsory for product code, per the rule below", followed by a full `### TDD rule` subsection defining: the behavior unit as the unit of TDD (not the line of code, not the feature); the red-then-green-then-refactor cycle with the "fails for the right reason" requirement; the anti-paraguas clause (a test MUST be specific to the behavior being introduced, not a paraguas test bundling unrelated behaviors); the orthogonality of Kover coverage thresholds (govern the result, not the order); and the closed list of exemptions (native UI, Room schemas/migrations, Firestore rules, Koin wiring/provider integration, architecture-rule fixtures) that still require tests but not written-first, and that MUST be declared in the handoff under "Decisions Made" as a SHOULD deviation.
+- **Why:** the owner observed that TDD was not compulsory in the existing rules. The Definition of Done required "relevant tests pass" and CI failed on failing tests, but no rule forced the test-first order; an agent could implement first and add tests after, satisfying the letter of the DoD without the TDD cycle. The owner directed that TDD be made compulsory. The chosen design (behavior-unit TDD with anti-paraguas clause, Kover as orthogonal coverage oracle, closed exemption list with handoff declaration) follows the repo's existing pattern of a brief rule in `AGENTS.md` with the detailed development in the normative `SPECIFICATION.md`, and aligns with the existing SHOULD-deviation-in-handoff mechanism.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md §11`, and this log. No backlog story acceptance criterion changed; the rule applies to all product-code stories going forward.
+- **Verification:** `grep -n 'TDD\|test-driven' AGENTS.md docs/SPECIFICATION.md` confirms the rule is present in both documents. The `### TDD rule` subsection renders as a valid Markdown heading under `## 11. Non-Functional Requirements`. Requires human review before merge (gated paths `AGENTS.md` and `docs/SPECIFICATION.md`; gated topic "MVP scope / quality rules").
+- **Follow-ups / risks:** the first story that must apply the rule is `E0-01` (KMP Project Bootstrap). `E0-01` is largely scaffold/boilerplate; the agent should declare in its handoff which parts were TDD-exempt (likely most of the Gradle/Xcode scaffolding falls under the "native UI / wiring" spirit, though it is not literally in the closed exemption list — if the agent finds scaffolding that is neither product code nor on the exemption list, it MUST escalate rather than silently skip TDD). A future refinement may be needed if the exemption list proves too narrow for pure-scaffolding stories like `E0-01`/`E0-02`.
+
 ### 2026-08-19 — Language rule elevated to critical priority in `AGENTS.md`
 
 - **Type:** correction
