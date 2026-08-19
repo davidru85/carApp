@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-19 — TDD commit and push workflow made a MUST
+
+- **Type:** decision
+- **Story / Decision:** — (no backlog story; governance change, owner-directed)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** added the `### TDD commit and push workflow` subsection to `docs/SPECIFICATION.md §11`, making the per-phase commit-and-push sequence (red → green → refactoring → PR) a MUST for every TDD story. Each phase is a separate commit and a separate push; phases MUST NOT be combined in a single commit; the PR MUST contain the full cycle in order; the refactoring phase is skipped if no refactoring is needed. `AGENTS.md` Technical Rules gained an explicit reference to the workflow as a MUST unless the owner exempts a story explicitly.
+- **Why:** the owner directed that, from this point forward, the TDD process must produce a commit and push per phase (red, green, refactoring) and a PR only after the cycle completes, so the version history reflects the TDD intent and each phase is independently reviewable.
+- **Documents touched:** `docs/SPECIFICATION.md §11`, `AGENTS.md`, and this log. No backlog story acceptance criterion changed; the rule applies to all product-code stories going forward.
+- **Verification:** `grep -n 'TDD commit and push workflow' docs/SPECIFICATION.md AGENTS.md` confirms the subsection and the cross-reference. Requires human review before merge (gated paths `AGENTS.md` and `docs/SPECIFICATION.md`; gated topic "MVP scope / quality rules").
+- **Follow-ups / risks:** applies from the next product-code story onward. `E0-01` was committed before this rule existed and is exempt; the handoff declares the TDD exemption for the KMP scaffold.
+
+### 2026-08-19 — E0-01 KMP Project Bootstrap completed
+
+- **Type:** story
+- **Story / Decision:** `E0-01` (`docs/BACKLOG.md:43`)
+- **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
+- **What changed:** created the KMP project skeleton with Android and iOS targets, `:shared` framework named `Shared` (canonical SPM module name), Android host app (`:androidApp`) using Compose, and iOS host app (`iosApp/`) using SwiftUI. The `Greeting` class in `commonMain` is consumed by both hosts — Android shows `Greeting().greet("Android")`, iOS shows `Greeting().greet(platform: "iOS")` via `import Shared`. `gradle/libs.versions.toml` is the single source of dependency versions with minimal build-essential pins (Kotlin 2.0.21, KSP, SKIE 0.10.14, AGP 8.5.2, Compose BOM, coroutines, Gradle 8.9, targetSdk 35); remaining versions are `TBD` for `E0-06`. Gradle wrapper, Kotlin DSL build scripts only, root `plugins` block declaring versions once. iOS Xcode project generated via `xcodegen` with `Shared.framework` (static) embedded and linked. `AndroidManifest.xml` has `android:allowBackup="false"` and no backup/settings-sync surface; no iOS entitlements file.
+- **Why:** `E0-01` is the first implementation story and blocks all others. The skeleton proves both platforms consume `commonMain`, identifiers match `docs/identifiers.md` exactly, and no platform backup/settings-sync API surface exists.
+- **Documents touched:** `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/`, `shared/build.gradle.kts`, `shared/src/commonMain/kotlin/com/ruizurraca/carapp/Greeting.kt`, `shared/src/commonTest/kotlin/com/ruizurraca/carapp/GreetingTest.kt`, `androidApp/build.gradle.kts`, `androidApp/src/main/AndroidManifest.xml`, `androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt`, `iosApp/project.yml`, `iosApp/Info.plist`, `iosApp/carAppApp.swift`, `iosApp/ContentView.swift`, `iosApp/carApp.xcodeproj/`, `docs/E0-01-READY-CHECK.md` (preserved per owner request, to be deleted at story close), `docs/handoff-E0-01.md`, and this log. No normative document changed.
+- **Verification:** `./gradlew :shared:allTests` → BUILD SUCCESSFUL (TDD: red phase confirmed `Unresolved reference 'Greeting'` before `Greeting.kt` existed, green after). `./gradlew :androidApp:assembleDebug` → BUILD SUCCESSFUL. `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -destination 'platform=iOS Simulator,name=iPhone 17' -configuration Debug build` → BUILD SUCCEEDED; app installs and launches on simulator (PID 56281); binary contains `Shared.Greeting` symbol (`nm` output: `_$sSo14SharedGreetingCABycfC`). All 7 ACs verified. No human review gate (E0-01 is not gated; the Phase 0 gate is E0-07).
+- **Follow-ups / risks:** version revalidation by E0-06 (Kotlin 2.0.21, AGP 8.5.2 below current stable 8.7.x, Gradle 8.9, SKIE 0.10.14 warns AGP > 8.5 untested). `xcodegen` is a brew dependency; `project.yml` is the source of truth and the `.xcodeproj` is committed. iOS framework path is hardcoded to `iosSimulatorArm64/debugFramework`; E0-07 MUST switch to XCFramework. `docs/E0-01-READY-CHECK.md` must be deleted when E0-01 closes. TDD exemption declared for KMP scaffold (native UI / wiring, no behavior unit); `Greeting` was written test-first.
+
 ### 2026-08-19 — Merged Figma runner added for the two unrun iOS scripts
 
 - **Type:** milestone
