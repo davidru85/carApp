@@ -44,11 +44,18 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/adr/](docs/adr/) | One ADR per decision, with context, options, consequences, constraints introduced and verification. |
 | [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project status, development Firebase project ID and Firestore location. Agents MUST NOT invent any of these. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | Pull request template, a superset of the handoff fields. |
 | [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) | Issue templates for agent stories, bug reports and decision records. |
 
 `docs/AUDIT_GUARDRAILS.md`, if present, is a **temporary** working document from a specification audit. It is not normative and will be deleted once its findings are absorbed. Do not treat it as a source of rules.
+
+The `design/` folder is **design tooling, not documentation**. It holds the Figma build scripts
+and the Stitch design descriptions for the UI. It has no authority over behaviour or contracts,
+and an agent MUST NOT derive a rule from it. `docs/DESIGN.md` is its entry point and states the
+same limit. Where a design asset and a normative document disagree, the normative document wins
+and the discrepancy MUST be escalated.
 
 ## Document Authority
 

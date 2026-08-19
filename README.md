@@ -27,6 +27,7 @@ The MVP is intentionally limited to **fuel expenses**: users can create vehicles
 | [docs/adr/README.md](docs/adr/README.md) | ADR index, one per decision ID. |
 | [docs/identifiers.md](docs/identifiers.md) | Application identifiers, Firebase projects and Firestore location. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions, compatibility relation, performance measurement baselines. |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design entry point: the two platform design systems in general terms, and an index of every design asset. Non-normative. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | Handoff template every completed story fills in. |
 
 Document authority is **not** a single linear ranking. Behaviour is decided by `docs/SPECIFICATION.md`; representation is decided by `docs/CONTRACTS.md`, which wins on any type, name, format or numeric detail. The full rule is in [AGENTS.md](AGENTS.md).
@@ -120,6 +121,21 @@ firestore/
 ```
 
 Each feature is one Gradle module with internal `domain`, `data` and `presentation` packages. Module boundaries are enforced by a Gradle configuration check; package boundaries by source analysis. Both run in CI, and every rule has a failing fixture proving the check fires.
+
+## Design
+
+The UI follows a **different design system on each platform**: strict Material 3 Expressive on
+Android and strict Liquid Glass on iOS. The platforms share the information architecture, the six
+screens, the data and the copy, and almost none of their visual language.
+
+[docs/DESIGN.md](docs/DESIGN.md) is the entry point. It describes the design in general terms and
+indexes every asset: the two platform design systems and the twelve screen descriptions in
+[design/stitch/](design/stitch/), plus the pixel-exact Figma build scripts in
+[design/figma/](design/figma/).
+
+Design assets are **non-normative**. They describe how the product looks, never what it does.
+Where a design asset and `docs/SPECIFICATION.md` or `docs/CONTRACTS.md` disagree, the normative
+document wins and the discrepancy is escalated.
 
 ## Implementation Phases
 

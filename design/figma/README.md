@@ -3,8 +3,10 @@
 Figma Plugin API scripts that build the carApp UI redesign — strict **Material 3 Expressive**
 for Android and strict **Liquid Glass** for iOS.
 
-**Non-normative.** This folder is design tooling. It is not part of the documentation set
-governed by `AGENTS.md` and carries no authority over behaviour or contracts.
+**Non-normative.** This folder is design tooling. It is indexed by
+[`docs/DESIGN.md`](../../docs/DESIGN.md), the entry point for the design, but it is not part
+of the normative documentation set governed by `AGENTS.md` and carries no authority over
+behaviour or contracts.
 
 ## Status
 
