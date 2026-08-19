@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-19 — Merged Figma runner added for the two unrun iOS scripts
+
+- **Type:** milestone
+- **Story / Decision:** — (no backlog story; non-normative design tooling)
+- **Author:** Claude Opus 5 (Claude Code session), on behalf of David Ruiz
+- **What changed:** added `design/figma/11-ios-forms-and-settings-merged.figma.js`, a generated merge of `09-ios-forms.figma.js` and `10-ios-settings.figma.js` that creates the same three iOS frames — `screen-vehicle-form`, `screen-fuel-form` and `screen-settings` — in **one** `use_figma` call instead of two. The merge wraps each source script in an async IIFE, so their identically-named top-level declarations (`page`, `F`, `ST`, `glass`, `icon`, `T`) do not collide, and combines the two return values. `design/figma/README.md` gained the script as row `11` of the status table, an explicit warning that running the merged script *and* the originals would duplicate the three frames, a note that `11` is generated and must be regenerated rather than edited, and a `Current blocker` section recording the state as checked on 2026-08-19. Committed as `2f89c39`; this log entry is the commit that follows it.
+- **Why:** the redesign is two frames short of complete and blocked purely on Figma quota. The account is Starter tier with a View seat, which caps MCP usage at 20 tool calls per month; the quota is currently exhausted and every read tool returns the rate-limit paywall error. `use_figma` is not on Figma's rate-limit exemption list — only `add_code_connect_map`, `generate_figma_design` and `whoami` are — so the remaining work cannot run until the monthly quota resets or the plan is upgraded to Pro with a Full or Dev seat. On a 20-call budget, spending one call instead of two to finish the redesign is worth a generated file.
+- **Documents touched:** `design/figma/11-ios-forms-and-settings-merged.figma.js` (new), `design/figma/README.md`, and this log. No normative document touched and no rule changed; `design/` is design tooling and carries no authority (`AGENTS.md`, `docs/DESIGN.md`).
+- **Verification:** the script was reviewed in full before being committed, as it was found uncommitted in the working tree rather than authored in this session. All three scripts (`09`, `10`, `11`) pass `node --check` when wrapped in an async IIFE, matching how `use_figma` wraps them. The merge was proved faithful by diff: lines 8–234 of the merged file are byte-identical to `09-ios-forms.figma.js` and lines 238–417 to `10-ios-settings.figma.js`, the only difference being the four-line header comment of each source, which the merged file replaces with its own. The script has **not** been executed — that is the blocker itself. No product code exists, so no tests, lint, coverage, architecture or contract checks apply.
+- **Follow-ups / risks:** three iOS frames remain absent from the live Figma file and the redesign stays incomplete until quota resets or the plan is upgraded. Run either `11` or the pair `09` + `10`, never both: each path creates the same three frames and running both would duplicate them. `11` is generated output — edits belong in `09` and `10`, followed by a regeneration; editing `11` directly would silently diverge it from its sources. The `design/stitch/` equivalents of these three screens are complete and unaffected, so an implementer is not blocked by the Figma quota.
+
 ### 2026-08-19 — TDD made compulsory for product code
 
 - **Type:** decision
