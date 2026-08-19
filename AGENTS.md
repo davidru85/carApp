@@ -2,6 +2,11 @@
 
 **This file is the entry point.** If you are an AI agent starting work on this repository, read this document first and in full. It is the single canonical source for normative language, the document map, document authority, the Definition of Ready and Done, and the human review gates. Other documents link here and MUST NOT restate these rules.
 
+> **CRITICAL — Language Rule (read before your first reply).**
+> Conversation with the project owner is in Spanish (es-ES). Repository
+> artifacts are in technical English. The two MUST NOT be confused. See
+> `## Language` below for the full rule and consequences.
+
 ## Normative Language
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, MAY and OPTIONAL are to be interpreted as described in RFC 2119.
@@ -11,6 +16,23 @@ The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, MAY and OPTIO
 - **MAY** — free choice; the choice does not need to be reported.
 
 Any normative sentence in this repository written in bare present tense ("the app warns the user", "IDs are UUID v4") has the force of MUST.
+
+## Language
+
+**This section is CRITICAL. A violation fails review.**
+
+Two rules apply, and they MUST NOT be confused. The boundary between them is the repository.
+
+**Repository artifacts — technical English.** Documentation and code alike. This covers specifications, contracts, ADRs, backlog entries, project log entries, README and every other document; and source code, identifiers, code comments, KDoc, test names, commit messages, branch names, pull request descriptions and GitHub issues. There is no exception.
+
+**Conversation with the project owner — Spanish (Spain).** Unless the owner states otherwise, an agent replies in Spanish using es-ES vocabulary and conventions. This covers chat replies, clarifying questions, escalation summaries delivered in conversation, and progress narration.
+
+Consequences worth stating explicitly:
+
+- A discussion held in Spanish is written into the repository in English. The language of the conversation never leaks into a file, a commit or an issue.
+- A Spanish reply that quotes an English identifier, file path, error code or document section stays a Spanish reply. Those tokens MUST NOT be translated.
+- Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
+- An agent that replies in English when Spanish was required, or writes Spanish into a repository artifact, has violated a MUST and MUST self-correct before continuing.
 
 ## Document Map
 
@@ -44,11 +66,22 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/adr/](docs/adr/) | One ADR per decision, with context, options, consequences, constraints introduced and verification. |
 | [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project status, development Firebase project ID and Firestore location. Agents MUST NOT invent any of these. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
+| [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md) | Closed record of the documentation audit of the definition package. **Non-normative and historical**: all 20 findings are applied. It is kept only so that the `AUDIT-NN` IDs cited by `docs/PROJECT_LOG.md` resolve. Do not treat it as a source of rules or as a list of open work. |
+| [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | Pull request template, a superset of the handoff fields. |
 | [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) | Issue templates for agent stories, bug reports and decision records. |
 
-`docs/AUDIT_GUARDRAILS.md`, if present, is a **temporary** working document from a specification audit. It is not normative and will be deleted once its findings are absorbed. Do not treat it as a source of rules.
+An audit or working document, if present, is **temporary and non-normative**, and is deleted once
+its findings are absorbed into the normative documents. `docs/AUDIT_GUARDRAILS.md` was one and no
+longer exists; `docs/DOCUMENTATION_AUDIT.md` is its successor and is now fully absorbed. Never
+treat such a document as a source of rules.
+
+The `design/` folder is **design tooling, not documentation**. It holds the Figma build scripts
+and the Stitch design descriptions for the UI. It has no authority over behaviour or contracts,
+and an agent MUST NOT derive a rule from it. `docs/DESIGN.md` is its entry point and states the
+same limit. Where a design asset and a normative document disagree, the normative document wins
+and the discrepancy MUST be escalated.
 
 ## Document Authority
 
@@ -67,20 +100,6 @@ Rules:
 - `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/DEFINITION.md` and `README.md` are **derived**. They MUST NOT introduce a rule that is absent from the three documents above; if they do, the rule is void and the discrepancy MUST be escalated.
 - A conflict that is genuinely behavioural, or that cannot be classified on either axis, MUST be escalated to the project owner. Agents MUST NOT resolve it themselves.
 - Whichever document is corrected, every document repeating the same rule MUST be corrected in the same change.
-
-## Language
-
-Two rules apply, and they MUST NOT be confused. The boundary between them is the repository.
-
-**Repository artifacts — technical English.** Documentation and code alike. This covers specifications, contracts, ADRs, backlog entries, project log entries, README and every other document; and source code, identifiers, code comments, KDoc, test names, commit messages, branch names, pull request descriptions and GitHub issues. There is no exception.
-
-**Conversation with the project owner — Spanish (Spain).** Unless the owner states otherwise, an agent replies in Spanish using es-ES vocabulary and conventions. This covers chat replies, clarifying questions, escalation summaries delivered in conversation, and progress narration.
-
-Consequences worth stating explicitly:
-
-- A discussion held in Spanish is written into the repository in English. The language of the conversation never leaks into a file, a commit or an issue.
-- A Spanish reply that quotes an English identifier, file path, error code or document section stays a Spanish reply. Those tokens MUST NOT be translated.
-- Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
 
 ## Owner Decisions
 
@@ -137,6 +156,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 
 ## Technical Rules
 
+- Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff.
 - Gradle scripts use Kotlin DSL only.
 - Dependency versions live only in `gradle/libs.versions.toml`, explained by `docs/versions-matrix.md`.
 - SKIE is applied only to `:shared`.
@@ -175,7 +195,8 @@ Before changing implementation code for a story, an agent MUST record the ready 
 - the dependency and decision rows checked,
 - the normative sections that govern the work,
 - the expected verification commands,
-- the human review gates that apply, or `None`.
+- the human review gates that apply, or `None`,
+- the reply language (Spanish es-ES) is confirmed for this story.
 
 If a requested change is not tied to a backlog story, the agent may analyse, propose a story, or update definition documents, but it MUST NOT implement product code until the story is made explicit and Ready.
 
@@ -194,6 +215,7 @@ A story is done only when:
 - human review gates are identified,
 - the handoff is filled in from `docs/templates/agent-handoff.md`,
 - **an entry has been appended to `docs/PROJECT_LOG.md`.**
+- every chat reply during this story was in Spanish (es-ES); every repository artifact is in English.
 
 ## Expected Handoff
 

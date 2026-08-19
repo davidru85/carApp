@@ -296,6 +296,8 @@ Acceptance criteria:
 
 Implement the vehicle list, create/edit form and detail shell with a shared presentation state holder.
 
+Design reference (non-normative): `docs/DESIGN.md §4`, Android screens 02 home, 03 vehicle form and 04 vehicle detail.
+
 Acceptance criteria:
 
 - The state holder lives in `commonMain`, takes a `CoroutineScope`, exposes `close()`, and emits on `dispatchers.main`.
@@ -307,6 +309,8 @@ Acceptance criteria:
 ### E1-08 - Android UI: Fuel Entries - L
 
 Implement the fuel entry list, create/edit form, segment consumption display and average consumption display.
+
+Design reference (non-normative): `docs/DESIGN.md §4`, Android screens 04 vehicle detail and 05 refuelling form.
 
 Acceptance criteria:
 
@@ -320,6 +324,8 @@ Acceptance criteria:
 ### E1-09 - iOS UI: Vehicles and Fuel Entries - L
 
 Implement SwiftUI screens consuming the shared state holders through `AppGraph`.
+
+Design reference (non-normative): `docs/DESIGN.md §4`, iOS screens 02 home, 03 vehicle form, 04 vehicle detail and 05 refuelling form.
 
 Acceptance criteria:
 
@@ -576,6 +582,8 @@ Acceptance criteria:
 ### E4-01 - Settings UI - S
 
 Implement the settings screen over the Phase 1 persistence.
+
+Design reference (non-normative): `docs/DESIGN.md §4`, screen 06 settings on both platforms.
 
 Acceptance criteria:
 

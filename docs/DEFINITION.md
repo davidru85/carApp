@@ -39,6 +39,7 @@ The canonical map with links lives in `AGENTS.md`. In short:
 | `docs/TECHNICAL_PLAN.md` | Derived. Architecture, sync design, risks, verification. |
 | `docs/BACKLOG.md` | Derived. Agent-sized stories. |
 | `docs/PROJECT_LOG.md` | Append-only history of what actually happened. |
+| `docs/DESIGN.md` | Entry point for the design assets. Non-normative; creates no rules. |
 | `docs/DEFINITION.md` | This document. Orientation only. |
 
 ## 4. Product Principles

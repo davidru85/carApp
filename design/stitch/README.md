@@ -3,8 +3,10 @@
 Design-system and screen-generation assets for [Google Stitch](https://stitch.withgoogle.com),
 adapted from the Figma build scripts in [`../figma/`](../figma/).
 
-**Non-normative.** This folder is design tooling. It is not part of the documentation set
-governed by `AGENTS.md` and carries no authority over behaviour or contracts.
+**Non-normative.** This folder is design tooling. It is indexed by
+[`docs/DESIGN.md`](../../docs/DESIGN.md), the entry point for the design, but it is not part
+of the normative documentation set governed by `AGENTS.md` and carries no authority over
+behaviour or contracts.
 
 ## Why this is not a copy of `../figma/`
 
