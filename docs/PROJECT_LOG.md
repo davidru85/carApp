@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-19 — UI redesign to strict platform design systems, with Figma and Stitch assets committed
+
+- **Type:** milestone
+- **Story / Decision:** — (no backlog story; design work, non-normative)
+- **Author:** Claude Opus 5 (Claude Code session), on behalf of David Ruiz
+- **What changed:** the six conceptual screens were redesigned to strict **Material 3 Expressive** (Android) and strict **Liquid Glass** (iOS), and the results committed as `design/` — a new non-normative folder. `design/figma/` holds eleven Figma Plugin API scripts; nine were executed against the live Figma file, producing two token collections (46 M3 variables, 35 Liquid Glass variables) and nine of twelve screens. `design/stitch/` holds the same designs translated into Google Stitch's `DESIGN.md` format plus twelve screen prompts. The original Figma concept boards were left untouched.
+- **Why:** the Figma file had no design system at all — zero variables, zero components, every value hardcoded and duplicated across both platform boards, with copy diverged between them for identical functionality. A token foundation was a precondition for applying either design system "strictly". `design/` sits outside `docs/` deliberately, so it acquires no authority over behaviour or contracts.
+- **Documents touched:** `design/figma/**` (new), `design/stitch/**` (new), and this log. No normative document touched.
+- **Verification:** all eleven Figma scripts syntax-check clean under `node --check` when wrapped in an async IIFE, matching how `use_figma` wraps them. Nine were executed successfully and verified by screenshot. The `design/stitch/` files follow the six-section `DESIGN.md` structure published in `google-labs-code/stitch-skills`. No product code exists, so no tests, lint, coverage, architecture or contract checks apply.
+- **Follow-ups / risks:** three iOS screens (`09-ios-forms`, `10-ios-settings`) remain unrun — Figma's Starter plan allows 20 MCP tool calls per month and the quota was exhausted; the scripts are complete and blocked only on quota or a plan upgrade. Free-plan variable collections are capped at one mode, so Light/Dark cannot be expressed as variable modes and no dark theme exists. The `design/stitch/` assets have not been validated against a live Stitch project. The brief's "map integration" and "real-time status updates" were not designed: they appear in no concept screen and adding them would have been the structural change the brief forbade — they need their own story if real.
+
 ### 2026-08-18 — Documentation audit AUDIT-16 applied: `AuthToken` gains `issuedAt` for freshness check
 
 - **Type:** correction
