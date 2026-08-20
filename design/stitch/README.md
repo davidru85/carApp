@@ -75,6 +75,11 @@ content stays identical across regenerations and across platforms.
 
 ## Mapping from the Figma scripts
 
+The Figma script is the source and the Stitch file is derived from it, never the other way round.
+When a screen changes, the chain is `docs/` → `design/figma/` → `design/stitch/`: the normative
+documents decide what the screen does, the script builds it, and the Stitch prompt is rewritten
+from the script. A Stitch file that disagrees with its script is the defect.
+
 | Figma script | Stitch equivalent |
 |---|---|
 | `00-pages-and-m3-tokens.figma.js` | `android-m3-expressive/DESIGN.md` |
