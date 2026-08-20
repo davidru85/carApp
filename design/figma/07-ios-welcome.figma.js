@@ -84,6 +84,10 @@ function T(chars, o) {
   return t;
 }
 
+// Drop the previous light frame so a re-run refreshes rather than duplicates. The dark twin
+// (`screen-welcome · dark`) is left alone; script 13 rebuilds it.
+for (const n of page.children.filter(c => c.name === 'screen-welcome')) n.remove();
+
 const S = figma.createFrame();
 S.name = 'screen-welcome'; S.resize(402, 874); S.x = 0; S.y = 0;
 S.fills = []; S.clipsContent = true; page.appendChild(S);
@@ -132,7 +136,7 @@ mark.appendChild(icon(ICON.car, 60, 'accent/brand', 1.7));
 const words = figma.createAutoLayout('VERTICAL', { name: 'wordmark', itemSpacing: 6 });
 hero.appendChild(words); words.fills = []; words.counterAxisAlignItems = 'CENTER';
 words.appendChild(T('carApp', { size: 34, style: ST.b, lh: 41, ls: 0.4, align: 'CENTER' }));
-words.appendChild(T('Local-First Fuel & Expense Tracker', { size: 15, lh: 20, color: 'label/secondary', align: 'CENTER' }));
+words.appendChild(T('Registro local de repostajes', { size: 15, lh: 20, color: 'label/secondary', align: 'CENTER' }));
 
 const card = figma.createAutoLayout('VERTICAL', { name: 'auth-container · glass regular', itemSpacing: 10 });
 S.appendChild(card);
@@ -157,18 +161,7 @@ function capsule(label, o) {
   return btn;
 }
 capsule('Continuar con Apple', { name: 'btn-apple', fill: 'label/primary', text: 'accent/on-brand', iconNode: solidIcon(ICON.apple, 19, 'accent/on-brand') });
-capsule('Iniciar sesión con Google', { name: 'btn-google · glass regular', glass: 'regular', text: 'label/primary', iconNode: rawIcon(GOOGLE_G, 19) });
-
-const divRow = figma.createAutoLayout('HORIZONTAL', { name: 'divider-row', itemSpacing: 12 });
-card.appendChild(divRow); divRow.fills = []; divRow.counterAxisAlignItems = 'CENTER';
-divRow.paddingTop = 2; divRow.paddingBottom = 2; divRow.layoutSizingHorizontal = 'FILL';
-const l1 = figma.createRectangle(); l1.resize(10, 1); l1.fills = [paint('separator/non-opaque')];
-divRow.appendChild(l1); l1.layoutSizingHorizontal = 'FILL';
-divRow.appendChild(T('o', { size: 13, color: 'label/tertiary' }));
-const l2 = figma.createRectangle(); l2.resize(10, 1); l2.fills = [paint('separator/non-opaque')];
-divRow.appendChild(l2); l2.layoutSizingHorizontal = 'FILL';
-
-capsule('Iniciar sesión', { name: 'btn-primary', fill: 'accent/brand', text: 'accent/on-brand' });
+capsule('Continuar con Google', { name: 'btn-google · glass regular', glass: 'regular', text: 'label/primary', iconNode: rawIcon(GOOGLE_G, 19) });
 capsule('Continuar sin cuenta', { name: 'btn-guest · glass clear', glass: 'clear', text: 'accent/brand' });
 
 const busy = figma.createAutoLayout('HORIZONTAL', { name: 'loading-row', itemSpacing: 7 });

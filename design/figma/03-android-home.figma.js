@@ -70,10 +70,13 @@ function statusBar(parent) {
 }
 
 // ---- FIX-UP for script 02: soften welcome ambient shapes ----------------
-const welcome = await figma.getNodeByIdAsync('16:2');
+// Script 02 now sets these values itself, so this is a no-op on a welcome frame it rebuilt. It
+// stays for replays against the original run. Resolved by name, not by the old '16:2' id, which
+// dies the moment 02 is re-run; absent frame or shapes leave `blurred` empty rather than throwing.
+const welcome = page.children.find(c => c.name === 'screen-welcome') || await figma.getNodeByIdAsync('16:2');
 const blurred = [];
 for (const nm of ['ambient-primary', 'ambient-tertiary']) {
-  const n = welcome.findOne(x => x.name === nm);
+  const n = welcome ? welcome.findOne(x => x.name === nm) : null;
   if (n) { n.effects = [{ type: 'LAYER_BLUR', radius: 60, visible: true }]; n.opacity = nm === 'ambient-primary' ? 0.55 : 0.6; blurred.push(n.id); }
 }
 

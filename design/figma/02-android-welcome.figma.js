@@ -6,8 +6,12 @@
 // PRESSED state showing M3 Expressive's shape morph (full-round -> corner-lg) plus a 12% state
 // layer. All fills are bound to M3 Expressive colour variables.
 //
-// FOLLOW-UP: script 03 applies a 60px LAYER_BLUR to the two ambient shapes created here; the
-// hard-edged circles read as unrefined at full opacity.
+// The ambient shapes carry their own 60px LAYER_BLUR: hard-edged circles read as unrefined at
+// full opacity. Script 03 still re-applies the same values as a fix-up for the original run;
+// that fix-up is now redundant and is a no-op on a frame this script built.
+//
+// Idempotent: an existing light `screen-welcome` on the page is removed before rebuilding, so
+// a re-run refreshes rather than stacking a second frame at x=0.
 
 const page = await figma.getNodeByIdAsync('14:2');
 await figma.setCurrentPageAsync(page);
@@ -58,6 +62,10 @@ function T(chars, o) {
 }
 
 // ---- screen shell -------------------------------------------------------
+// Drop the previous light frame so a re-run refreshes rather than duplicates. The dark twin
+// (`screen-welcome · dark`) is left alone; script 13 rebuilds it.
+for (const n of page.children.filter(c => c.name === 'screen-welcome')) n.remove();
+
 const S = figma.createFrame();
 S.name = 'screen-welcome';
 S.resize(412, 917);
@@ -69,12 +77,14 @@ page.appendChild(S);
 // expressive ambient shapes — bold shape + colour as depth cue
 const blobA = figma.createEllipse();
 blobA.resize(320, 320); blobA.x = -110; blobA.y = -80;
-blobA.fills = [paint('color/primary-container')]; blobA.opacity = 0.45;
+blobA.fills = [paint('color/primary-container')]; blobA.opacity = 0.55;
+blobA.effects = [{ type: 'LAYER_BLUR', radius: 60, visible: true }];
 blobA.name = 'ambient-primary'; S.appendChild(blobA);
 
 const blobB = figma.createEllipse();
 blobB.resize(240, 240); blobB.x = 290; blobB.y = 150;
-blobB.fills = [paint('color/tertiary-container')]; blobB.opacity = 0.5;
+blobB.fills = [paint('color/tertiary-container')]; blobB.opacity = 0.6;
+blobB.effects = [{ type: 'LAYER_BLUR', radius: 60, visible: true }];
 blobB.name = 'ambient-tertiary'; S.appendChild(blobB);
 
 // ---- status bar ---------------------------------------------------------
@@ -145,7 +155,6 @@ function mkButton(name, label, opts) {
 }
 
 mkButton('btn-google-outlined', 'Continuar con Google', { stroke: 'color/outline', text: 'color/on-surface', iconNode: rawIcon(GOOGLE_G, 20) });
-mkButton('btn-signin-filled', 'Iniciar sesión', { fill: 'color/primary', text: 'color/on-primary' });
 
 // Tonal button rendered in PRESSED state: M3 Expressive shape-morph (full -> corner-lg) + 12% state layer
 const guest = mkButton('btn-guest-tonal · pressed', 'Continuar sin cuenta', { fill: 'color/secondary-container', radius: 16, text: 'color/on-secondary-container' });
