@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-20 — Welcome screen sign-in options fixed to the closed provider set
+
+- **Type:** decision
+- **Story / Decision:** — (no backlog story; owner-directed correction of `F-1`, affects `E2-03`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `docs/SPECIFICATION.md §7 F-1` now states that the welcome screen offers the platform's sign-in providers and "Continue without account" in a single step, that there MUST NOT be an intermediate provider-selection screen or a provider-less "Sign in" control, that the screen presents exactly two actions on Android and three on iOS, and that the MVP has no sign-in method beyond anonymous, Google and Apple. `docs/BACKLOG.md` `E2-03` gained two matching acceptance criteria. `README.md` §MVP Scope and `docs/DESIGN.md` §7 were updated to repeat the same rule. The design assets were then corrected to match: `design/figma/02-android-welcome.figma.js` and `07-ios-welcome.figma.js` dropped the generic sign-in button, `15-prototype-motion.figma.js` was re-wired to the provider buttons, and `design/stitch/` was regenerated from them.
+- **Why:** both welcome screens shipped a provider-less "Iniciar sesión" button (`btn-signin-filled` on Android, `btn-primary` on iOS) that no product document backs. `AuthProvider` is a closed enum of `ANONYMOUS`, `GOOGLE`, `APPLE` (`docs/CONTRACTS.md §20.3`) and the only permanent sign-in intent is `startPermanentSignIn(provider)` (`§20.10`), so a provider-less button has no intent to invoke. `F-1` step 1 previously read "Welcome screen with 'Sign in' and 'Continue without account'", which also admitted a two-step welcome → provider-picker flow; the owner chose the one-step flow, because it needs no extra screen, matches `E2-03` as a single story, and serves principle P3 "No entry barrier". Email and password, email link, phone or one-time code and other SSO providers were never in the repository and are now stated as excluded rather than merely absent.
+- **Documents touched:** `docs/SPECIFICATION.md §7 F-1`, `docs/BACKLOG.md` `E2-03`, `docs/DESIGN.md` §6 and §7, `README.md`, `design/figma/**`, `design/stitch/**`, and this log. `docs/CONTRACTS.md` needed no change: the contracts were already correct and the design contradicted them.
+- **Verification:** `grep -rn "Iniciar sesión" design/figma/*.figma.js` returns nothing. Every welcome button maps to a concrete intent; the prototype triggers are the provider buttons rather than the removed ones. All 19 Figma scripts pass a syntax check. Requires human review before merge: `docs/SPECIFICATION.md` is a gated path and "authentication" is a gated topic (`AGENTS.md`).
+- **Follow-ups / risks:** the Figma file itself is one pass behind the scripts; re-run `02`, `07`, `13`, `16`, `15` in that order (`design/figma/README.md`). Anonymous account conversion (`F-4`) still has no designed entry point in settings; recorded in `docs/DESIGN.md` §6 and owned by `E2-04`.
+
 ### 2026-08-19 — TDD commit and push workflow made a MUST
 
 - **Type:** decision

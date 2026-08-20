@@ -379,13 +379,16 @@ Acceptance criteria:
 
 ### E2-03 - Onboarding Flow F-1 - M
 
-Implement the welcome screen and provider selection, with an offline-capable local start.
+Implement the welcome screen, with an offline-capable local start. Provider selection happens on
+the welcome screen itself; there is no separate provider-selection screen.
 
 Acceptance criteria:
 
 - "Continue without account" succeeds with no connectivity and creates a `LOCAL_OWNER` session.
 - With connectivity, "Continue without account" creates a Firebase anonymous user automatically and does not enter `LOCAL_OWNER`.
 - Routing never happens while `AuthState.Unknown`.
+- The welcome screen presents the platform providers directly: exactly two actions on Android (Google, continue without account) and exactly three on iOS (Apple, Google, continue without account).
+- No control on the welcome screen starts a sign-in without naming its provider. Every sign-in affordance maps to `startPermanentSignIn(provider)` with a concrete `AuthProvider`, or to `startAnonymousSignIn()`.
 - iOS offers Apple whenever Google is offered.
 - Retry after network failure does not leave the UI stuck.
 - Routing after authentication depends on whether vehicles exist.

@@ -192,10 +192,11 @@ Synchronized tombstones may be purged locally once they are confirmed synced, ol
 
 ### F-1 First Launch and Authentication
 
-1. Welcome screen with "Sign in" and "Continue without account".
+1. The welcome screen offers the platform's sign-in providers and "Continue without account" in a single step. There MUST NOT be an intermediate provider-selection screen, and there MUST NOT be a provider-less "Sign in" control: every sign-in affordance names the provider it uses.
 2. "Continue without account" first attempts automatic Firebase anonymous authentication. If it succeeds, data is owned by that anonymous UID immediately. If it cannot complete because the app is offline or Firebase Auth is unavailable, the app creates a temporary local session under `LOCAL_OWNER` and the user can immediately use every MVP feature. Anonymous UID acquisition is retried in the background when connectivity allows, and local data is adopted into it without loss.
-3. Sign in offers providers by platform: Android offers Google; iOS offers Google and Apple.
-4. Routing MUST NOT happen while the authentication state is still undetermined. Once determined: if the user has no vehicles, route to first vehicle creation; otherwise route to the vehicle list.
+3. The providers offered are fixed per platform: Android offers Google; iOS offers Google and Apple. iOS MUST offer Apple whenever it offers Google. The welcome screen therefore presents exactly two actions on Android and exactly three on iOS, counting "Continue without account".
+4. The MVP has no other sign-in method. Email and password, email link, phone or one-time code, and any third-party identity provider other than Google and Apple are not part of the MVP. The complete provider set is `AuthProvider` in `docs/CONTRACTS.md §20.3` and the complete credential set is `NativeAuthCredential` in `§20.8`; both are closed, and widening either is a gated change under `AGENTS.md`.
+5. Routing MUST NOT happen while the authentication state is still undetermined. Once determined: if the user has no vehicles, route to first vehicle creation; otherwise route to the vehicle list.
 
 ### F-2 First Vehicle Creation
 
