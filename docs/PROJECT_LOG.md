@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — F-1 design pass applied to the live Figma file; dark-row clones were inheriting prototype links
+
+- **Type:** correction
+- **Story / Decision:** — (closes the follow-up of the 2026-08-20 entry, affects `E2-03`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the Figma file was brought level with the scripts by running `02`, `07`, `13`, `16`, `15` in that order. Both welcome screens were rebuilt to the closed provider set, the dark row was regenerated, all 24 status bars reapplied, and the prototype re-wired to the provider buttons. Separately, `design/figma/13-dark-screen-row.figma.js` was fixed: it now strips prototype reactions from the screens it clones.
+- **Why:** `clone()` copies reactions along with everything else, so once `15` had run, regenerating the dark row gave every dark screen live links into the **light** flow — a click on a dark screen would jump the viewer back to the light prototype, contradicting the documented rule that the dark row is a colour reference and not a second prototype. The defect was latent on the first build only because `13` happened to run before `15` ever existed; the re-run reversed that order and made it real, stripping 10 reactions per page.
+- **Documents touched:** `design/figma/13-dark-screen-row.figma.js`, `design/figma/README.md`, and this log. No normative document changed.
+- **Verification:** each script's return value was checked rather than the rendering alone — `phantomSignInPresent: false` (Android), `phantomPrimaryPresent: false` and `dividerRowPresent: false` (iOS), `reactionsStripped: 10` per page, 12 status bars replaced per page, 12 prototype links wired on Android and 13 on iOS. Screenshots of both rebuilt welcome frames confirm the button stacks and the native status bars.
+- **Follow-ups / risks:** `03-android-home.figma.js` is still not re-runnable — it lacks the idempotence guard added to `02` and `07`, so running it would stack a duplicate `screen-home` at x=452. It is absent from the re-run order, so nothing depends on this today, but a replay on a fresh file would hit it.
+
 ### 2026-08-20 — Welcome screen sign-in options fixed to the closed provider set
 
 - **Type:** decision
