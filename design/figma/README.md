@@ -10,10 +10,9 @@ behaviour or contracts.
 
 ## Status
 
-Scripts `00`–`08` were executed successfully against the live file and their output is in
-Figma today. Scripts `09`–`10` are complete but **have never run**: Figma's Starter plan allows
-only **20 MCP tool calls per month** and the quota was exhausted mid-build. They failed on
-quota, not on code.
+**The redesign is complete.** Every script has been executed against the live file and both
+pages hold all six screens. Scripts `09` and `10` were never run individually — `11`, their
+merged equivalent, ran instead and created the same three frames in one call.
 
 | # | Script | Creates | Ran? |
 |---|---|---|---|
@@ -26,14 +25,15 @@ quota, not on code.
 | 06 | `06-android-settings.figma.js` | Android `screen-settings` | ✅ |
 | 07 | `07-ios-welcome.figma.js` | iOS `screen-welcome` | ✅ |
 | 08 | `08-ios-home-and-detail.figma.js` | iOS `screen-home`, `screen-detail` | ✅ |
-| 09 | `09-ios-forms.figma.js` | iOS `screen-vehicle-form`, `screen-fuel-form` | ⏳ pending |
-| 10 | `10-ios-settings.figma.js` | iOS `screen-settings` | ⏳ pending |
-| 11 | `11-ios-forms-and-settings-merged.figma.js` | `09` + `10` in one call | ⏳ pending |
+| 09 | `09-ios-forms.figma.js` | iOS `screen-vehicle-form`, `screen-fuel-form` | ➖ superseded by `11` |
+| 10 | `10-ios-settings.figma.js` | iOS `screen-settings` | ➖ superseded by `11` |
+| 11 | `11-ios-forms-and-settings-merged.figma.js` | `09` + `10` in one call | ✅ |
 
-To finish the redesign, run `11` — a generated merge of `09` and `10` that does the same work
-in **one** MCP call instead of two, which matters on a 20-call/month budget. Running `09` then
-`10` separately is equivalent. Do not run both the merged script and the originals; either path
-creates the same three frames, and running both would duplicate them.
+`11` is a generated merge of `09` and `10` that does the same work in **one** MCP call instead
+of two. That mattered acutely on the old 20-call/month budget, and it is the script that actually
+ran. Running `09` then `10` separately would have been equivalent. Do not run both the merged
+script and the originals; either path creates the same three frames. On this file `11` has
+already run, so running `09`/`10` now would duplicate the iOS forms and settings.
 
 `11` is generated, not authored: it wraps each source script in an async IIFE (so their
 identically-named `const`s do not collide) and merges the return values. Edit `09` and `10`,
@@ -41,13 +41,28 @@ then regenerate `11` — do not edit `11` directly.
 
 Nothing else is outstanding.
 
-### Current blocker (checked 2026-08-19)
+### Access history (resolved 2026-08-20)
 
-The account is `starter` tier with a **View** seat — a 20 tool-call/month cap, and it is
-currently exhausted: every read tool returns the MCP rate-limit paywall error. `use_figma` is
-not on Figma's rate-limit exemption list (only `add_code_connect_map`, `generate_figma_design`
-and `whoami` are), so the remaining scripts cannot run until the monthly quota resets or the
-plan is upgraded to Pro with a Full or Dev seat.
+Worth keeping, because the failure mode was mistaken for a quota problem twice.
+
+Seat type governs two independent things, and only one is about volume:
+
+- *Rate.* View/Collab seats get 20 tool calls/month on Starter, 6/month elsewhere. Dev and Full
+  seats get 200/day on Pro. See `file://figma/docs/rate-limits-access.md`.
+- *Write access.* **Only a Full seat may call the editing tools.** A Dev seat carries the full Pro
+  rate limit and reads the file fine, but `use_figma` refuses outright:
+  *"To use MCP tools that make edits, you'll need a Full seat."*
+
+The build stalled twice, for different reasons. First on Starter with a View seat, where the
+20-call monthly quota ran out mid-build — that is the failure earlier revisions of this file
+recorded. By 2026-08-20 the account had moved to Pro, reads worked again, and the remaining work
+was attempted; it was refused on the *second* reason, the Dev seat's lack of write access.
+Raising the seat to Full cleared it, and `11` ran on the first attempt with no code changes.
+
+`use_figma` is atomic, so neither refusal wrote anything and no cleanup was needed.
+
+If a future script is refused, run `whoami` first: it reports tier and seat, which separates a
+rate-limit problem from a write-permission problem immediately.
 
 ## Target file
 
@@ -80,8 +95,8 @@ created node ids.
 
 ### Prerequisites
 
-1. **A seat that can write.** Starter with a View seat cannot. A Pro plan with a Full or Dev
-   seat gives 200 calls/day.
+1. **A Full seat on a paid plan.** A Dev seat is not enough — it can read but not write. See
+   [Access history](#access-history-resolved-2026-08-20).
 2. **The variable collections must exist** before any screen script runs. Screens resolve every
    colour through them and will throw if missing. Run `00` and `01` first on a fresh file.
 3. **Inter must be available.** See the font warning below.
@@ -118,7 +133,10 @@ Android, spells it `SemiBold` (no space).
 
 **3. Free/Starter plans cap variable collections at 1 mode.** `collection.addMode('Dark')`
 fails with `Limited to 1 modes only`, so Light/Dark cannot be expressed as variable modes. Both
-token sets are single-mode; a dark theme would need a parallel collection or a plan upgrade.
+token sets were built single-mode under that cap and remain so. The account is now on Pro, which
+should lift the limit, but this is **untested** — nothing has tried to add a mode since. A dark
+theme is therefore still unbuilt; it would either add modes (now probably possible) or need a
+parallel collection.
 
 ## Design system notes
 
