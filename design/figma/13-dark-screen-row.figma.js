@@ -70,6 +70,13 @@ for (const src of light) {
   dup.x = src.x;
   dup.y = DARK_ROW_Y;
   dup.setExplicitVariableModeForCollection(col, darkMode.modeId);
+  // clone() copies prototype reactions. Once script 15 has run, the light screens carry them,
+  // so an unstripped clone would give the dark row live links into the LIGHT flow — clicking a
+  // dark button would jump the viewer back to the light prototype. The dark row is a colour
+  // reference, not a second prototype (see the SCOPE note in 15), so strip them.
+  for (const n of [dup].concat(dup.findAll(x => 'reactions' in x))) {
+    if (n.reactions && n.reactions.length) await n.setReactionsAsync([]);
+  }
   created.push({ name: dup.name, id: dup.id, x: dup.x });
 }
 

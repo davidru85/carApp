@@ -56,6 +56,14 @@ Scripts `13` and `15` are marked ✅ ×2 because each targets one page per run a
 twice, once per platform. Both are idempotent: `13` rebuilds stale dark twins rather than piling
 up duplicates, and `setReactionsAsync` replaces rather than appends.
 
+**`13` strips reactions from its clones.** `clone()` copies prototype reactions along with
+everything else, so once `15` has run, re-cloning a light screen hands the dark twin live links
+into the **light** flow — clicking a dark button would jump the viewer back to the light
+prototype. This did not bite on the first build only because `13` happened to run before `15`
+ever did; the moment the two scripts ran in the other order it became real. On the F-1 re-run it
+stripped 10 reactions per page. The dark row is a colour reference, not a second prototype, so
+the clones must come out inert.
+
 **`15` must run last.** It wires the prototype by layer name, and two later scripts move the
 ground under it:
 
@@ -447,6 +455,12 @@ identical functionality:
 5. `15-prototype-motion.figma.js` — once per page; re-wires the prototype.
 
 `14`, `17` and `18` are untouched by this pass: none of them targets a welcome frame.
+
+Executed in that order on 2026-08-21. Results: `02` → `91:2`, `07` → `92:2`; `13` rebuilt six
+twins per page and stripped 10 inherited reactions on each; `16` replaced 12 status bars per
+page; `15` wired 12 links on Android and 13 on iOS. Verified from the scripts' own return
+values that `btn-signin-filled`, `btn-primary` and `divider-row` are all absent from the rebuilt
+welcome frames.
 
 `02` and `07` were **not re-runnable** before this pass — each called `createFrame()`
 unconditionally, so a second run stacked a duplicate `screen-welcome` at x=0 on top of the first.
