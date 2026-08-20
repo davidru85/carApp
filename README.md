@@ -47,6 +47,8 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 
 The authoritative scope lists are in [SPECIFICATION.md §3](docs/SPECIFICATION.md). In summary: fuel expenses only, offline-first including first launch, anonymous-capable authentication with Google and Apple conversion, vehicle and fuel entry CRUD, full-to-full consumption, single-device active use, Firestore backup for recovery on a new device, minimal settings, Spanish and English.
 
+Sign-in is anonymous, Google or Apple, and nothing else. The welcome screen offers the platform's providers directly — Google and continue-without-account on Android, Apple, Google and continue-without-account on iOS — with no intermediate provider picker and no provider-less "Sign in" control. The flow is normative in [SPECIFICATION.md §7 F-1](docs/SPECIFICATION.md); the provider set is closed in [CONTRACTS.md §20.3](docs/CONTRACTS.md).
+
 Out of scope: non-fuel expenses, advanced charts, export, receipt and odometer photos with OCR, local or on-device AI text recognition, reminders, shared vehicles, widgets and wearables, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write validation beyond account deletion, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
 
 Any task touching out-of-scope functionality must be rejected or escalated before implementation.

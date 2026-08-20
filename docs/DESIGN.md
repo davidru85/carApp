@@ -141,6 +141,12 @@ backlog story, never the design file.
   from the design system rather than inventing a new visual language.
 - **Map integration and real-time status updates are not designed.** They appear in no screen and
   are out of MVP scope (`docs/SPECIFICATION.md §3.2`).
+- **Anonymous account conversion has no designed entry point.** `docs/SPECIFICATION.md §7 F-4`
+  starts conversion from settings, and `docs/CONTRACTS.md §20.10` exposes
+  `startAccountConversion(provider)` and `confirmAccountConversion(confirmation)` for it, but the
+  settings screens show only sign-out and account deletion under "Cuenta". The conversion row and
+  the credential-collision confirmation are undesigned. `E2-04` owns the flow and will need design
+  before it starts.
 
 ## 7. Relationship to the normative documents
 
@@ -154,6 +160,7 @@ normative document wins.
 | A warning, badge or error message | `docs/SPECIFICATION.md §6` business rules, `docs/CONTRACTS.md` error taxonomy |
 | A sync or backup status indicator | `docs/SPECIFICATION.md §9`, `docs/CONTRACTS.md` sync state machine |
 | Which rows exist in settings | `docs/SPECIFICATION.md §3.1` |
+| Which sign-in options the welcome screen offers | `docs/SPECIFICATION.md §7 F-1`, `docs/CONTRACTS.md §20.3` `AuthProvider` |
 | Any interface string | Localized resources; `UiState` carries no user-facing text |
 
 A design asset that contradicts one of these is a defect in the design asset. Fix the design or

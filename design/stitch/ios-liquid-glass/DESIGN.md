@@ -91,8 +91,9 @@ These three are always **heavily blurred, overlapping soft circles**, never visi
 
 ### Glass Capsule Buttons (welcome screen)
 - **Shape:** Full capsule, comfortable height around 3.125rem.
-- **Variants:** Solid black for the Apple sign-in; Regular Glass for the Google option; solid Vivid Deep Teal for the primary sign-in; Clear Glass with teal text for the lowest-priority guest option.
-- These four sit stacked inside a single large Regular Glass container with generously rounded corners.
+- **Variants:** Solid black for the Apple sign-in; Regular Glass for the Google option; Clear Glass with teal text for the lowest-priority guest option.
+- These three sit stacked inside a single large Regular Glass container with generously rounded corners, with no divider between them.
+- **There is no fourth, provider-less sign-in capsule.** The product supports exactly anonymous, Google and Apple; see the Auth constraint in `screens/01-welcome.md`.
 
 ### Content Cards & Inset Groups
 - **Corner Style:** Softly rounded, roughly 1.375rem radius.

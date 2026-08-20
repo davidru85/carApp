@@ -11,14 +11,12 @@ Start with an ambient backdrop: a Cool Cloud Mist (#F2F2F7) base covered by five
 
 At the top, a status bar with "9:41" on the left and signal, wifi and battery icons on the right.
 
-Centred in the upper third, a perfectly circular translucent frosted-glass container about 128 across, with a bright specular highlight along its top-left edge and a soft shadow beneath. Inside it, a thin-stroke outlined car icon in Vivid Deep Teal (#0A7C66). Below, the wordmark "carApp" in bold 34px True Black Ink (#000000), and beneath it "Local-First Fuel & Expense Tracker" in 15px Muted Graphite. Both centred.
+Centred in the upper third, a perfectly circular translucent frosted-glass container about 128 across, with a bright specular highlight along its top-left edge and a soft shadow beneath. Inside it, a thin-stroke outlined car icon in Vivid Deep Teal (#0A7C66). Below, the wordmark "carApp" in bold 34px True Black Ink (#000000), and beneath it the tagline "Registro local de repostajes" in 15px Muted Graphite. Both centred.
 
-Anchored near the bottom with a 1rem margin, a large translucent frosted-glass container with generously rounded corners and a specular top-left edge, holding a vertical stack:
-1. "Continuar con Apple" — full capsule, solid black, with a white Apple logo before the white label.
-2. "Iniciar sesión con Google" — full capsule, translucent frosted glass with a specular edge, dark label, multicolour Google G logo before it.
-3. A divider row: a hairline rule, the lowercase word "o" in Faint Graphite, another hairline rule.
-4. "Iniciar sesión" — full capsule, solid Vivid Deep Teal (#0A7C66) with white label.
-5. "Continuar sin cuenta" — full capsule in barely-there clear glass, with a Vivid Deep Teal label.
+Anchored near the bottom with a 1rem margin, a large translucent frosted-glass container with generously rounded corners and a specular top-left edge, holding a vertical stack of three capsules with no dividers between them:
+1. "Continuar con Apple" — full capsule, solid black, with a white Apple logo before the white label. Apple comes first: it is the platform-native provider.
+2. "Continuar con Google" — full capsule, translucent frosted glass with a specular edge, dark label, multicolour Google G logo before it.
+3. "Continuar sin cuenta" — full capsule in barely-there clear glass, with a Vivid Deep Teal label.
 
 Beneath the stack, a small centred row with a thin circular spinner and "Preparando almacenamiento local…" in 13px Faint Graphite.
 
@@ -31,10 +29,37 @@ All copy is Spanish.
 | Element | Value |
 |---|---|
 | Wordmark | carApp |
-| Tagline | Local-First Fuel & Expense Tracker |
-| Buttons | Continuar con Apple · Iniciar sesión con Google · Iniciar sesión · Continuar sin cuenta |
-| Divider | o |
+| Tagline | Registro local de repostajes |
+| Buttons | Continuar con Apple · Continuar con Google · Continuar sin cuenta |
 | Loading caption | Preparando almacenamiento local… |
+
+## Auth constraint
+
+Not part of the prompt. Derived from `design/figma/07-ios-welcome.figma.js`, which in turn
+implements `docs/SPECIFICATION.md §7 F-1`. It is here so a regeneration does not reintroduce a
+control the product cannot honour.
+
+`§7 F-1` step 1: the welcome screen offers the platform's sign-in providers and "Continue without
+account" in a single step. There is no intermediate provider-selection screen, and no
+provider-less "Iniciar sesión" control — every sign-in affordance names the provider it uses.
+
+`§7 F-1` step 3: iOS offers Google and Apple, and MUST offer Apple whenever it offers Google. The
+screen therefore has **exactly three** actions.
+
+| Button | Figma node | Intent (`docs/CONTRACTS.md §20.10`) |
+|---|---|---|
+| Continuar con Apple | `btn-apple` | `startPermanentSignIn(AuthProvider.APPLE)` |
+| Continuar con Google | `btn-google · glass regular` | `startPermanentSignIn(AuthProvider.GOOGLE)` |
+| Continuar sin cuenta | `btn-guest · glass clear` | `startAnonymousSignIn()` |
+
+`§7 F-1` step 4: the MVP has no other sign-in method — no email and password, no email link, no
+phone or one-time code, no third-party SSO beyond Google and Apple. `AuthProvider` and
+`NativeAuthCredential` are closed contracts; widening either is a gated change under `AGENTS.md`.
+
+Apple leads the stack because it is the platform-native provider. The specification fixes the set
+and the count, not the order; the ordering is the design call.
+
+Account linking (anonymous → permanent, `§7 F-4`) starts from settings, never from this screen.
 
 ## Refinement prompts
 
