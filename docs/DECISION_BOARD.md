@@ -2,6 +2,15 @@
 
 > **Sole registry of decision IDs (`D-n`)** and authoritative for which libraries, services and technical options are allowed. Accepted decisions MUST be reflected in an ADR and mirrored in `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`; `contract-check` asserts that mirrored decision IDs and statuses stay aligned. See `AGENTS.md` for authority and normative language.
 
+## Scope of this registry
+
+The registry is not limited to decisions taken during the definition phase. **Any decision taken
+while implementing a story — a build-model choice, an identifier convention, a policy such as how
+`targetSdk` is pinned — MUST be added here with a new decision ID and MUST get its own ADR**, in the
+same pull request that makes the decision. A decision recorded only in a handoff, a commit message
+or `docs/PROJECT_LOG.md` is not recorded: those are history, not authority, and the next agent has
+no obligation to follow them.
+
 ## Decision Status
 
 One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral has `Status: Deferred`, not `Accepted`.
@@ -43,6 +52,8 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` | Sentry, none | Accepted | Added in Phase 4. Crashlytics types never leave `:integration:firebase-crashlytics` or `:wiring:firebase`. |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md` | — | Accepted | Agents MUST NOT invent an applicationId, bundle id, namespace, project name or region. The production Firebase project ID is deferred by `D-14`. |
 | D-23 | Account deletion execution | Firebase Admin server operation | Client hard-delete exception, tombstone-only purge, manual support deletion | Accepted | Client Firestore rules keep `allow delete: if false`. Account deletion hard deletes run only in an authenticated server/Admin environment that verifies the caller UID, deletes `fuelEntries`, then `vehicles`, then the Firebase Auth user, and returns success before the app clears local data. |
+| D-24 | Module Android namespaces | Derived from the Gradle module path | One concrete value per module, per-module free choice | Accepted | Namespace = shared package root + module path, `:`→`.`, `-` removed. Not the Kotlin package root. `:androidApp` keeps `com.ruizurraca.carapp`. |
+| D-25 | `targetSdk` policy | Pinned independently of `compileSdk`; `compileSdk 37`, `targetSdk 36` | Keep both at the same level | Accepted | `compileSdk` is forced by the Compose BOM; `targetSdk` is a runtime opt-in and a behavioural change. `E4-04` owns raising it before release. |
 
 ## Library Review Matrix
 

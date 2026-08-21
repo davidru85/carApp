@@ -1,44 +1,80 @@
-# Single source of dependency versions.
-# Pinned by E0-01 for the build-essential subset; remaining versions are TBD and are
-# completed by E0-06 (per docs/BACKLOG.md and docs/versions-matrix.md).
-# Every TBD cell MUST be replaced by E0-06 with a concrete value cited from its ADR.
+# Single source of dependency versions (E0-06).
+#
+# Every version used anywhere in the build is declared here and nowhere else, per the E0-06
+# acceptance criterion "version choices are reflected in gradle/libs.versions.toml and nowhere
+# else". docs/versions-matrix.md explains why each pin exists, which pins move together and
+# which ADR backs it; changing any pin is a human review gate (AGENTS.md).
 
 [versions]
-# --- Kotlin toolchain group (Kotlin, KSP, SKIE, kotlinx-coroutines) ---
-kotlin = "2.0.21"
-ksp = "2.0.21-1.0.28"
-skie = "0.10.14" # SKIE applied only to :shared (D-2); pinned by E0-01, revalidated by E0-06
-coroutines = "1.9.0"
+# --- JDK toolchain (docs/versions-matrix.md, Android build group) ---
+jdk = "21" # Gradle JVM and Kotlin JVM toolchain; LTS
 
-# --- Android build group (AGP, Compose BOM) ---
-agp = "8.5.2"
-composeBom = "2024.10.01"
-
-# --- Android SDK ---
+# --- Android build group (Gradle, AGP, Compose BOM, SDK levels) ---
+gradle = "9.7.1" # wrapper version; MUST match gradle/wrapper/gradle-wrapper.properties
+agp = "9.3.1" # AGP 9.x is required by Compose BOM 2026.08.00 and pairs with Gradle 9.x
+composeBom = "2026.08.00"
 minSdk = "26" # fixed by docs/SPECIFICATION.md §11; do not change without a story
-targetSdk = "35" # pinned by E0-01; revalidated by E0-06
+targetSdk = "36" # runtime opt-in, decided separately from compileSdk (E0-06)
+compileSdk = "37"
 
-# --- TBD: owned by E0-06 ---
-# JDK toolchain (Gradle+Kotlin JVM): currently 21 via gradle.properties; E0-06 records it here.
-gradle = "8.9" # wrapper version, matches gradle-wrapper.properties
-# Room = TBD (E1-01, D-1)
-# androidx.sqlite:sqlite-bundled = TBD (E1-01)
-# Firebase BOM = TBD (E0-07 / E2-02)
-# GitLive firebase = 2.6.x (D-5, D-6)
-# kotlinx-serialization-json = TBD
-# kotlinx-datetime = TBD (E0-06 records the exact Instant package)
-# Koin = TBD (D-3)
-# Kermit = TBD (D-15)
-# Turbine = TBD (D-17)
-# Kover = TBD (D-18)
-# Konsist = TBD (D-16)
-# ktlint, detekt = TBD (E0-05)
-# Xcode = 26.6 (matches the macOS CI runner; pinned by E0-06)
+# --- Kotlin toolchain group (Kotlin, KSP, SKIE, kotlinx-*) ---
+# These move together: KSP and SKIE are published against Kotlin versions and the kotlinx
+# libraries follow the Kotlin release train.
+kotlin = "2.4.10"
+ksp = "2.3.11" # KSP versions its own line since 2.3.0; 2.3.10+ supports Kotlin 2.4.x
+skie = "0.10.14" # supports Kotlin 2.4.10; applied only to :shared (D-2)
+coroutines = "1.11.0"
+serialization = "1.11.0"
+datetime = "0.8.0" # Instant is kotlin.time.Instant; see docs/versions-matrix.md
+
+# --- Room KMP group (D-1) ---
+room = "3.0.1" # androidx.room3 artifacts: room3-runtime, room3-compiler
+sqlite = "2.7.0" # androidx.sqlite:sqlite-bundled, same bundled SQLite on both platforms
+
+# --- Firebase group (D-0, D-5, D-6, D-10, D-21) ---
+firebaseBom = "34.18.0"
+gitlive = "2.6.0" # GitLive 2.6.x, never the 3.0 alpha (D-5, D-6)
+
+# --- Application libraries ---
+koin = "4.2.2" # D-3
+kermit = "2.1.0" # D-15
+
+# --- Verification and quality tooling ---
+turbine = "1.2.1" # D-17
+kover = "0.9.9" # D-18
+konsist = "0.17.3" # D-16
+detekt = "1.23.8" # E0-05
+ktlint = "14.2.0" # org.jlleitschuh.gradle.ktlint plugin; E0-05
+ktlintCli = "1.8.0" # ktlint engine used by the plugin; E0-05
+
+# --- Apple toolchain (recorded here, consumed by CI and the Xcode project) ---
+xcode = "26.6"
 
 [libraries]
 # Kotlin / KMP
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+
+# Room KMP (D-1), introduced by E1-01
+room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+
+# Firebase (D-0, D-5, D-6, D-10, D-21), introduced by E0-07 / E2-02
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
+gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
+
+# DI (D-3) and logging (D-15)
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+
+# Verification tooling
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 
 # Compose (Android only)
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -52,9 +88,13 @@ androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtim
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+room = { id = "androidx.room3", version.ref = "room" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
