@@ -1,0 +1,83 @@
+# detekt configuration for carApp (E0-05).
+#
+# Baseline suppression files are FORBIDDEN by docs/BACKLOG.md E0-05: a baseline hides existing
+# violations instead of fixing them, and the repository has no legacy code to grandfather.
+# Where a rule does not fit this project it is turned off here, in the open, with a reason.
+
+build:
+  maxIssues: 0
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+comments:
+  active: true
+  UndocumentedPublicClass:
+    active: false # KDoc is required by review, not by a rule that cannot tell trivial from meaningful.
+  UndocumentedPublicFunction:
+    active: false
+
+complexity:
+  active: true
+  LongParameterList:
+    active: true
+    # AppGraphDependencies has 15 members by contract (docs/CONTRACTS.md 11.6), and its parameter
+    # order is canonical, so the constructor cannot be split.
+    functionThreshold: 16
+    constructorThreshold: 16
+  TooManyFunctions:
+    active: true
+    thresholdInClasses: 20
+    thresholdInFiles: 30
+    ignorePrivate: true
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: true
+  SwallowedException:
+    active: true
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    # Test names are full English sentences on purpose: they are the specification a reviewer reads.
+    excludes: ['**/test/**', '**/*Test/**', '**/commonTest/**']
+    # Composable functions are PascalCase by Compose convention.
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][_A-Z0-9]*'
+
+performance:
+  active: true
+
+potential-bugs:
+  active: true
+  UnsafeCallOnNullableType:
+    active: true
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    excludes: ['**/test/**', '**/*Test/**', '**/commonTest/**']
+  MaxLineLength:
+    active: true
+    maxLineLength: 120
+  ReturnCount:
+    active: true
+    max: 4
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: 'An unfinished marker must be a backlog story, not a comment.'
+        value: 'TODO:'
+      - reason: 'An unfinished marker must be a backlog story, not a comment.'
+        value: 'FIXME:'
+  UnusedPrivateMember:
+    active: true

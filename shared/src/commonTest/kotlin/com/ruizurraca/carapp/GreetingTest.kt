@@ -18,7 +18,7 @@ class GreetingTest {
         val message = greeting.greet()
         assertTrue(
             message.contains("carApp", ignoreCase = true),
-            "Greeting must include the product token 'carApp'"
+            "Greeting must include the product token 'carApp'",
         )
     }
 

@@ -18,6 +18,8 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
         pluginManager.apply("org.jetbrains.kotlin.multiplatform")
         pluginManager.apply("com.android.kotlin.multiplatform.library")
+        pluginManager.apply("carapp.quality")
+        pluginManager.apply("carapp.coverage")
 
         extensions.configure<KotlinMultiplatformExtension> {
             jvmToolchain(libs.intVersion("jdk"))

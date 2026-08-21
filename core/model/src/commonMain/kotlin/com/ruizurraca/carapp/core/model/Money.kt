@@ -9,16 +9,25 @@ import kotlin.jvm.JvmInline
  * aggregation across currencies is a `ValidationError.InvalidUnit`. That rule is enforced by the
  * use cases, not by this type, which stays construction-safe like the rest of `§20.0`.
  */
-data class Money(val minorUnits: Long, val currency: CurrencyCode)
+data class Money(
+    val minorUnits: Long,
+    val currency: CurrencyCode,
+)
 
 /** Litres × 1000. */
 @JvmInline
-value class FuelVolume(val scaled: Long)
+value class FuelVolume(
+    val scaled: Long,
+)
 
 /** Currency units × 1000. */
 @JvmInline
-value class PricePerLiter(val scaled: Long)
+value class PricePerLiter(
+    val scaled: Long,
+)
 
 /** L/100 km × 100. A computed read model; never persisted. */
 @JvmInline
-value class ConsumptionL100Km(val scaled: Long)
+value class ConsumptionL100Km(
+    val scaled: Long,
+)

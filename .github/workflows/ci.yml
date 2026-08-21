@@ -1,0 +1,175 @@
+# CI for carApp.
+#
+# The job names below are the check names fixed by docs/CONTRACTS.md §18 and MUST NOT be renamed:
+# branch protection for main requires them by name. Two of them have nothing to verify yet and say
+# so out loud rather than passing silently — see the notes on each.
+#
+# CI duration under 20 minutes is a monitored objective, not a pass/fail criterion (E0-05).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g
+
+jobs:
+  ktlint:
+    name: ktlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew ktlintCheck --stacktrace
+      - name: No baseline suppression files
+        run: |
+          # E0-05: baseline files are forbidden. They hide existing violations instead of fixing
+          # them, and this repository has no legacy code to grandfather.
+          if find . -name 'detekt-baseline.xml' -o -name 'baseline.xml' -o -name '*.editorconfig.baseline' | grep -q .; then
+            echo "::error::A lint baseline file is committed. docs/BACKLOG.md E0-05 forbids them."
+            exit 1
+          fi
+
+  detekt:
+    name: detekt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew detekt --stacktrace
+
+  architecture-check:
+    name: architecture-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      # The fixtures run with the check: a rule that never fires would otherwise pass CI happily.
+      - run: ./gradlew architectureCheck :build-logic:convention:test --stacktrace
+
+  contract-check:
+    name: contract-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew contractCheck --stacktrace
+
+  android-assemble:
+    name: android-assemble
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+  shared-tests:
+    name: shared-tests
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      # Host and Kotlin/Native runs both matter: a common test that only ever executes on the JVM
+      # would not catch a Kotlin/Native divergence.
+      - run: ./gradlew testAndroidHostTest iosSimulatorArm64Test --stacktrace
+      - name: Coverage thresholds
+        run: ./gradlew koverVerify --stacktrace
+
+  ios-simulator-build:
+    name: ios-simulator-build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check the pinned Xcode major version
+        run: |
+          # docs/versions-matrix.md pins Xcode 26.6 and says it is pinned on the CI runner too.
+          # A different major version is a real toolchain drift and fails; a different patch is
+          # reported, because runner images move faster than a pin can be reviewed.
+          PINNED=$(grep -E '^xcode = ' gradle/libs.versions.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          ACTUAL=$(xcodebuild -version | head -1 | awk '{print $2}')
+          echo "pinned=$PINNED actual=$ACTUAL"
+          if [ "${PINNED%%.*}" != "${ACTUAL%%.*}" ]; then
+            echo "::error::Xcode major version drift: pinned $PINNED, runner has $ACTUAL. Update docs/versions-matrix.md and gradle/libs.versions.toml in a reviewed change."
+            exit 1
+          fi
+          if [ "$PINNED" != "$ACTUAL" ]; then
+            echo "::warning::Xcode patch drift: pinned $PINNED, runner has $ACTUAL."
+          fi
+      - run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --stacktrace
+      - name: Build the iOS app
+        working-directory: iosApp
+        run: |
+          xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator \
+            -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build
+
+  objc-header-golden-check:
+    name: objc-header-golden-check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare the generated Objective-C header with the golden file
+        run: |
+          # The golden file is produced by E0-07, which is the story that first exports a
+          # Swift-facing surface. Until then there is nothing to compare. The job exists now so
+          # that branch protection can require the check name fixed by docs/CONTRACTS.md §18
+          # without the name appearing and disappearing.
+          GOLDEN=shared/build/generated/objc-header/Shared.h.golden
+          if [ ! -f "$GOLDEN" ]; then
+            echo "::warning::$GOLDEN does not exist yet; it is produced by E0-07. Nothing to compare."
+            exit 0
+          fi
+          echo "::error::A golden header exists but this job does not compare it yet. Implement the comparison in E0-07."
+          exit 1
+
+  provider-decoupling:
+    name: provider-decoupling
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provider decoupling proof
+        run: |
+          # E3-06 owns this check. It proves that swapping the Firebase integration for another
+          # provider touches no product code. There is no integration module yet, so there is
+          # nothing to decouple; the job exists so the required check name is stable.
+          if [ -d integration ]; then
+            echo "::error::Integration modules exist but the provider-decoupling proof is not implemented. It is owned by E3-06."
+            exit 1
+          fi
+          echo "::warning::No integration module exists yet; the provider-decoupling proof is owned by E3-06."

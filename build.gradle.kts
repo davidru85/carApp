@@ -10,6 +10,9 @@ plugins {
     // only (E0-04). Its rules are generated from the dependency table of docs/TECHNICAL_PLAN.md §4.
     id("carapp.architecture")
 
+    // contract-check asserts the repository invariants of docs/CONTRACTS.md §18 (E0-05).
+    id("carapp.contract")
+
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.kotlin.multiplatform.library) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
@@ -17,4 +20,7 @@ plugins {
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
+    alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.kover) apply false
 }

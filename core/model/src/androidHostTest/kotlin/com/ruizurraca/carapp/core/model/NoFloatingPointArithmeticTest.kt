@@ -25,13 +25,16 @@ class NoFloatingPointArithmeticTest {
 
         assertTrue(sources.isNotEmpty(), "Found no Kotlin sources under $sourceRoot")
 
-        val offenders = sources.mapNotNull { file ->
-            val hits = file.readLines()
-                .withIndex()
-                .filter { (_, line) -> FORBIDDEN.containsMatchIn(stripComment(line)) }
-                .map { (index, line) -> "  ${file.name}:${index + 1}: ${line.trim()}" }
-            if (hits.isEmpty()) null else hits.joinToString("\n")
-        }
+        val offenders =
+            sources.mapNotNull { file ->
+                val hits =
+                    file
+                        .readLines()
+                        .withIndex()
+                        .filter { (_, line) -> FORBIDDEN.containsMatchIn(stripComment(line)) }
+                        .map { (index, line) -> "  ${file.name}:${index + 1}: ${line.trim()}" }
+                if (hits.isEmpty()) null else hits.joinToString("\n")
+            }
 
         if (offenders.isNotEmpty()) {
             fail(

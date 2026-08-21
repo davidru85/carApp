@@ -10,6 +10,9 @@ dependencies {
     compileOnly(libs.plugin.skie.gradle)
     compileOnly(libs.plugin.ksp.gradle)
     compileOnly(libs.plugin.room.gradle)
+    compileOnly(libs.plugin.ktlint.gradle)
+    compileOnly(libs.plugin.detekt.gradle)
+    compileOnly(libs.plugin.kover.gradle)
 }
 
 dependencies {
@@ -41,6 +44,18 @@ gradlePlugin {
         register("architecture") {
             id = "carapp.architecture"
             implementationClass = "com.ruizurraca.carapp.buildlogic.architecture.ArchitectureCheckPlugin"
+        }
+        register("quality") {
+            id = "carapp.quality"
+            implementationClass = "com.ruizurraca.carapp.buildlogic.QualityConventionPlugin"
+        }
+        register("coverage") {
+            id = "carapp.coverage"
+            implementationClass = "com.ruizurraca.carapp.buildlogic.CoverageConventionPlugin"
+        }
+        register("contract") {
+            id = "carapp.contract"
+            implementationClass = "com.ruizurraca.carapp.buildlogic.contract.ContractCheckPlugin"
         }
         register("room") {
             id = "carapp.room"

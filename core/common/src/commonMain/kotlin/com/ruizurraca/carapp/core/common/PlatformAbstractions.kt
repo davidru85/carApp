@@ -2,12 +2,12 @@ package com.ruizurraca.carapp.core.common
 
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.OwnerId
-import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.time.Instant
 
-/**
+/*
  * The platform abstractions of `docs/CONTRACTS.md §20.3`.
  *
  * These exist so that domain, data and presentation code never touches a platform API directly.

@@ -11,52 +11,53 @@ import kotlin.test.assertEquals
  * compiled would silently break those references, so each one is pinned here.
  */
 class AppErrorCodesTest {
-    private val allErrors: List<AppError> = listOf(
-        ValidationError.RequiredField("name"),
-        ValidationError.InvalidLength("name", 1, 40),
-        ValidationError.OutOfRange("odometerKm", 0, 9_999_999),
-        ValidationError.DuplicateName("Golf"),
-        ValidationError.FutureDate,
-        ValidationError.InvalidMoneyInput,
-        ValidationError.NoOp,
-        ValidationError.InvalidUnit("currency"),
-        ValidationError.EntityDeleted,
-        ValidationError.EntityNotFound,
-        ValidationWarning.OdometerInconsistent(100L, 90L),
-        ValidationWarning.PendingSyncBeforeSignOut(3),
-        AuthError.Cancelled,
-        AuthError.NetworkUnavailable,
-        AuthError.CredentialAlreadyInUse,
-        AuthError.ProviderUnavailable,
-        AuthError.TokenExpired,
-        AuthError.PermissionDenied,
-        AuthError.RequiresRecentLogin,
-        AuthError.UidWouldChange,
-        AuthError.AccountDeletionRemoteFailed,
-        AuthError.Unknown,
-        PersistenceError.DatabaseUnavailable,
-        PersistenceError.TransactionFailed,
-        PersistenceError.MigrationFailed,
-        PersistenceError.SerializationFailed,
-        PersistenceError.ConstraintViolation,
-        SyncError.RetryableNetwork,
-        SyncError.AuthExpired,
-        SyncError.PermissionDenied,
-        SyncError.ValidationRejected,
-        SyncError.PayloadPoisoned,
-        SyncError.ConflictUnresolved,
-        SyncError.RemoteUnavailable,
-        RemoteError.Unavailable,
-        RemoteError.DeadlineExceeded,
-        RemoteError.PermissionDenied,
-        RemoteError.Unauthenticated,
-        RemoteError.InvalidArgument,
-        RemoteError.NotFound,
-        RemoteError.Unknown,
-        SecurityError.RulesRejected,
-        SecurityError.OwnerMismatch,
-        UnexpectedError(origin = ":integration:firebase-firestore", throwableClassName = "IllegalStateException"),
-    )
+    private val allErrors: List<AppError> =
+        listOf(
+            ValidationError.RequiredField("name"),
+            ValidationError.InvalidLength("name", 1, 40),
+            ValidationError.OutOfRange("odometerKm", 0, 9_999_999),
+            ValidationError.DuplicateName("Golf"),
+            ValidationError.FutureDate,
+            ValidationError.InvalidMoneyInput,
+            ValidationError.NoOp,
+            ValidationError.InvalidUnit("currency"),
+            ValidationError.EntityDeleted,
+            ValidationError.EntityNotFound,
+            ValidationWarning.OdometerInconsistent(100L, 90L),
+            ValidationWarning.PendingSyncBeforeSignOut(3),
+            AuthError.Cancelled,
+            AuthError.NetworkUnavailable,
+            AuthError.CredentialAlreadyInUse,
+            AuthError.ProviderUnavailable,
+            AuthError.TokenExpired,
+            AuthError.PermissionDenied,
+            AuthError.RequiresRecentLogin,
+            AuthError.UidWouldChange,
+            AuthError.AccountDeletionRemoteFailed,
+            AuthError.Unknown,
+            PersistenceError.DatabaseUnavailable,
+            PersistenceError.TransactionFailed,
+            PersistenceError.MigrationFailed,
+            PersistenceError.SerializationFailed,
+            PersistenceError.ConstraintViolation,
+            SyncError.RetryableNetwork,
+            SyncError.AuthExpired,
+            SyncError.PermissionDenied,
+            SyncError.ValidationRejected,
+            SyncError.PayloadPoisoned,
+            SyncError.ConflictUnresolved,
+            SyncError.RemoteUnavailable,
+            RemoteError.Unavailable,
+            RemoteError.DeadlineExceeded,
+            RemoteError.PermissionDenied,
+            RemoteError.Unauthenticated,
+            RemoteError.InvalidArgument,
+            RemoteError.NotFound,
+            RemoteError.Unknown,
+            SecurityError.RulesRejected,
+            SecurityError.OwnerMismatch,
+            UnexpectedError(origin = ":integration:firebase-firestore", throwableClassName = "IllegalStateException"),
+        )
 
     @Test
     fun everyLeafCarriesItsDocumentedCode() {
@@ -114,7 +115,11 @@ class AppErrorCodesTest {
     @Test
     fun codesAreUniqueAcrossTheWholeTaxonomy() {
         val codes = allErrors.map { it.code }
-        assertEquals(codes.size, codes.toSet().size, "Duplicate AppError codes: ${codes.groupBy { it }.filterValues { it.size > 1 }.keys}")
+        assertEquals(
+            codes.size,
+            codes.toSet().size,
+            "Duplicate AppError codes: ${codes.groupBy { it }.filterValues { it.size > 1 }.keys}",
+        )
     }
 
     @Test

@@ -29,8 +29,9 @@ class ConsumptionArithmeticTest {
 
         assertEquals(774L, average, "Exact value is 7.73845 L/100 km")
 
-        val arithmeticMeanOfSegments = (
-            segmentConsumptionScaledOf(45_123L, 600L) + segmentConsumptionScaledOf(40_000L, 500L)
+        val arithmeticMeanOfSegments =
+            (
+                segmentConsumptionScaledOf(45_123L, 600L) + segmentConsumptionScaledOf(40_000L, 500L)
             ) / 2L
         assertEquals(776L, arithmeticMeanOfSegments)
         assertEquals(

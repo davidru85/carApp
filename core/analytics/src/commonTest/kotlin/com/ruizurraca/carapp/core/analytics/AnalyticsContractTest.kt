@@ -11,39 +11,41 @@ class AnalyticsContractTest {
      * compiling, which is how `docs/CONTRACTS.md §20.9` "the hierarchy is closed and the leaves
      * are fixed" is enforced rather than reviewed.
      */
-    private fun AnalyticsEvent.discriminator(): String = when (this) {
-        AnalyticsEvent.OnboardingStarted -> "OnboardingStarted"
-        AnalyticsEvent.OnboardingCompleted -> "OnboardingCompleted"
-        AnalyticsEvent.AnonymousSignInSelected -> "AnonymousSignInSelected"
-        is AnalyticsEvent.PermanentSignInSelected -> "PermanentSignInSelected"
-        AnalyticsEvent.VehicleCreated -> "VehicleCreated"
-        is AnalyticsEvent.FuelEntryCreated -> "FuelEntryCreated"
-        is AnalyticsEvent.SyncStatusChanged -> "SyncStatusChanged"
-        AnalyticsEvent.AccountConversionStarted -> "AccountConversionStarted"
-        AnalyticsEvent.AccountConversionCompleted -> "AccountConversionCompleted"
-        is AnalyticsEvent.AccountConversionFailed -> "AccountConversionFailed"
-        AnalyticsEvent.AccountDeletionStarted -> "AccountDeletionStarted"
-        AnalyticsEvent.AccountDeletionCompleted -> "AccountDeletionCompleted"
-        is AnalyticsEvent.AccountDeletionFailed -> "AccountDeletionFailed"
-    }
+    private fun AnalyticsEvent.discriminator(): String =
+        when (this) {
+            AnalyticsEvent.OnboardingStarted -> "OnboardingStarted"
+            AnalyticsEvent.OnboardingCompleted -> "OnboardingCompleted"
+            AnalyticsEvent.AnonymousSignInSelected -> "AnonymousSignInSelected"
+            is AnalyticsEvent.PermanentSignInSelected -> "PermanentSignInSelected"
+            AnalyticsEvent.VehicleCreated -> "VehicleCreated"
+            is AnalyticsEvent.FuelEntryCreated -> "FuelEntryCreated"
+            is AnalyticsEvent.SyncStatusChanged -> "SyncStatusChanged"
+            AnalyticsEvent.AccountConversionStarted -> "AccountConversionStarted"
+            AnalyticsEvent.AccountConversionCompleted -> "AccountConversionCompleted"
+            is AnalyticsEvent.AccountConversionFailed -> "AccountConversionFailed"
+            AnalyticsEvent.AccountDeletionStarted -> "AccountDeletionStarted"
+            AnalyticsEvent.AccountDeletionCompleted -> "AccountDeletionCompleted"
+            is AnalyticsEvent.AccountDeletionFailed -> "AccountDeletionFailed"
+        }
 
     @Test
     fun theHierarchyIsExactlyTheThirteenDocumentedLeaves() {
-        val allLeaves = listOf(
-            AnalyticsEvent.OnboardingStarted,
-            AnalyticsEvent.OnboardingCompleted,
-            AnalyticsEvent.AnonymousSignInSelected,
-            AnalyticsEvent.PermanentSignInSelected(AuthProvider.GOOGLE),
-            AnalyticsEvent.VehicleCreated,
-            AnalyticsEvent.FuelEntryCreated(isFullTank = true, hadNotes = false),
-            AnalyticsEvent.SyncStatusChanged(SyncStatusCategory.IDLE),
-            AnalyticsEvent.AccountConversionStarted,
-            AnalyticsEvent.AccountConversionCompleted,
-            AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
-            AnalyticsEvent.AccountDeletionStarted,
-            AnalyticsEvent.AccountDeletionCompleted,
-            AnalyticsEvent.AccountDeletionFailed(DeletionFailureReason.NETWORK),
-        )
+        val allLeaves =
+            listOf(
+                AnalyticsEvent.OnboardingStarted,
+                AnalyticsEvent.OnboardingCompleted,
+                AnalyticsEvent.AnonymousSignInSelected,
+                AnalyticsEvent.PermanentSignInSelected(AuthProvider.GOOGLE),
+                AnalyticsEvent.VehicleCreated,
+                AnalyticsEvent.FuelEntryCreated(isFullTank = true, hadNotes = false),
+                AnalyticsEvent.SyncStatusChanged(SyncStatusCategory.IDLE),
+                AnalyticsEvent.AccountConversionStarted,
+                AnalyticsEvent.AccountConversionCompleted,
+                AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
+                AnalyticsEvent.AccountDeletionStarted,
+                AnalyticsEvent.AccountDeletionCompleted,
+                AnalyticsEvent.AccountDeletionFailed(DeletionFailureReason.NETWORK),
+            )
 
         assertEquals(13, allLeaves.size)
         assertEquals(allLeaves.size, allLeaves.map { it.discriminator() }.toSet().size)
@@ -51,18 +53,19 @@ class AnalyticsContractTest {
 
     @Test
     fun theAuthErrorToConversionMappingIsExhaustiveAndNormative() {
-        val expected = mapOf(
-            AuthError.Cancelled to ConversionFailureReason.CANCELLED,
-            AuthError.CredentialAlreadyInUse to ConversionFailureReason.CREDENTIAL_IN_USE,
-            AuthError.NetworkUnavailable to ConversionFailureReason.NETWORK,
-            AuthError.UidWouldChange to ConversionFailureReason.UID_WOULD_CHANGE,
-            AuthError.AccountDeletionRemoteFailed to ConversionFailureReason.UNKNOWN,
-            AuthError.PermissionDenied to ConversionFailureReason.UNKNOWN,
-            AuthError.ProviderUnavailable to ConversionFailureReason.UNKNOWN,
-            AuthError.RequiresRecentLogin to ConversionFailureReason.UNKNOWN,
-            AuthError.TokenExpired to ConversionFailureReason.UNKNOWN,
-            AuthError.Unknown to ConversionFailureReason.UNKNOWN,
-        )
+        val expected =
+            mapOf(
+                AuthError.Cancelled to ConversionFailureReason.CANCELLED,
+                AuthError.CredentialAlreadyInUse to ConversionFailureReason.CREDENTIAL_IN_USE,
+                AuthError.NetworkUnavailable to ConversionFailureReason.NETWORK,
+                AuthError.UidWouldChange to ConversionFailureReason.UID_WOULD_CHANGE,
+                AuthError.AccountDeletionRemoteFailed to ConversionFailureReason.UNKNOWN,
+                AuthError.PermissionDenied to ConversionFailureReason.UNKNOWN,
+                AuthError.ProviderUnavailable to ConversionFailureReason.UNKNOWN,
+                AuthError.RequiresRecentLogin to ConversionFailureReason.UNKNOWN,
+                AuthError.TokenExpired to ConversionFailureReason.UNKNOWN,
+                AuthError.Unknown to ConversionFailureReason.UNKNOWN,
+            )
 
         assertEquals(10, expected.size, "AuthError has ten leaves; all must be mapped")
         expected.forEach { (error, reason) -> assertEquals(reason, error.toConversionFailureReason()) }
@@ -70,18 +73,19 @@ class AnalyticsContractTest {
 
     @Test
     fun theAuthErrorToDeletionMappingIsExhaustiveAndNormative() {
-        val expected = mapOf(
-            AuthError.RequiresRecentLogin to DeletionFailureReason.REQUIRES_RECENT_LOGIN,
-            AuthError.AccountDeletionRemoteFailed to DeletionFailureReason.REMOTE_FAILED,
-            AuthError.NetworkUnavailable to DeletionFailureReason.NETWORK,
-            AuthError.Cancelled to DeletionFailureReason.UNKNOWN,
-            AuthError.CredentialAlreadyInUse to DeletionFailureReason.UNKNOWN,
-            AuthError.PermissionDenied to DeletionFailureReason.UNKNOWN,
-            AuthError.ProviderUnavailable to DeletionFailureReason.UNKNOWN,
-            AuthError.TokenExpired to DeletionFailureReason.UNKNOWN,
-            AuthError.UidWouldChange to DeletionFailureReason.UNKNOWN,
-            AuthError.Unknown to DeletionFailureReason.UNKNOWN,
-        )
+        val expected =
+            mapOf(
+                AuthError.RequiresRecentLogin to DeletionFailureReason.REQUIRES_RECENT_LOGIN,
+                AuthError.AccountDeletionRemoteFailed to DeletionFailureReason.REMOTE_FAILED,
+                AuthError.NetworkUnavailable to DeletionFailureReason.NETWORK,
+                AuthError.Cancelled to DeletionFailureReason.UNKNOWN,
+                AuthError.CredentialAlreadyInUse to DeletionFailureReason.UNKNOWN,
+                AuthError.PermissionDenied to DeletionFailureReason.UNKNOWN,
+                AuthError.ProviderUnavailable to DeletionFailureReason.UNKNOWN,
+                AuthError.TokenExpired to DeletionFailureReason.UNKNOWN,
+                AuthError.UidWouldChange to DeletionFailureReason.UNKNOWN,
+                AuthError.Unknown to DeletionFailureReason.UNKNOWN,
+            )
 
         assertEquals(10, expected.size, "AuthError has ten leaves; all must be mapped")
         expected.forEach { (error, reason) -> assertEquals(reason, error.toDeletionFailureReason()) }

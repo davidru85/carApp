@@ -21,7 +21,10 @@ import com.ruizurraca.carapp.core.common.AppError
  * `:integration:*`.
  */
 interface CrashReporter {
-    fun recordNonFatal(error: AppError, fields: Map<String, String>)
+    fun recordNonFatal(
+        error: AppError,
+        fields: Map<String, String>,
+    )
 
     fun setEnabled(enabled: Boolean)
 }
@@ -31,7 +34,10 @@ interface CrashReporter {
  * `:core:testing` (`§20.3.1`). It records nothing and buffers nothing.
  */
 object NoOpCrashReporter : CrashReporter {
-    override fun recordNonFatal(error: AppError, fields: Map<String, String>) = Unit
+    override fun recordNonFatal(
+        error: AppError,
+        fields: Map<String, String>,
+    ) = Unit
 
     override fun setEnabled(enabled: Boolean) = Unit
 }

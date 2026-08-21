@@ -18,6 +18,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
         // Since AGP 9 Kotlin support is built into AGP, so org.jetbrains.kotlin.android is neither
         // applied nor allowed here.
         pluginManager.apply("com.android.application")
+        pluginManager.apply("carapp.quality")
 
         extensions.configure<KotlinAndroidProjectExtension> {
             jvmToolchain(libs.intVersion("jdk"))

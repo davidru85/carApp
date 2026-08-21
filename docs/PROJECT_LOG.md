@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — `E0-05` Quality Tooling and CI completed; branch protection remains an owner action
+
+- **Type:** story
+- **Story / Decision:** `E0-05` (`docs/BACKLOG.md`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `.editorconfig` (`ktlint_official`) and `detekt.yml` were committed at the root, with **no baseline file anywhere** and a CI step that fails if one appears. `carapp.quality` (ktlint + detekt) and `carapp.coverage` (Kover, with the `D-18` thresholds) are applied by the module convention plugins, so a new module cannot opt out. `contractCheck` implements the assertions of `docs/CONTRACTS.md §18`: 10 pass and 3 report `PENDING` with the story that unblocks them. `.github/workflows/ci.yml` defines the nine check names fixed by `§18`, unchanged.
+- **Why:** everything before this story was advisory. Until a check fails a build, a rule is a sentence in a document. The `PENDING` status exists for the same reason: three assertions cannot run until `E0-07`, `E3-01` and `DEC-2` deliver their inputs, and silently skipping them would report coverage that does not exist.
+- **Documents touched:** `docs/handoff-E0-05.md` (new), `docs/BACKLOG.md`, and this log. Code and config: `.editorconfig`, `detekt.yml`, `.github/workflows/ci.yml`, `build-logic/**`, `build.gradle.kts`, `gradle/libs.versions.toml`, lint fixes across `core/**` and `shared/**`, and a new `ArithmeticGuardsTest`.
+- **Verification:** `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test` — `BUILD SUCCESSFUL in 23s`. This is the first story in which every quality box in the handoff can honestly be ticked. Two real defects were found while writing the checks: `koverVerify` caught `:core:model` at 82.6% against its 90% bound, which the new guard tests closed, and `contractCheck` assertion 5 found six interfaces named in the contract that appeared in no backlog story, which `docs/BACKLOG.md` now names.
+- **Follow-ups / risks:** **CI has never actually run**; the first merge is its first real execution. **Branch protection for `main` is not configured** — it needs repository admin rights and the checks must run once before GitHub offers them by name, so it is an owner action (`DEC-6`), and until it is set a PR can merge red. `MagicNumber` is suppressed in the two arithmetic files with the reason in the file: those literals are the canonical formula of `§2`, and naming them would hide the one thing a reviewer must check. Assertion 1 accepts a declaration anywhere in `docs/CONTRACTS.md` rather than only in `§20`, because implemented literally it fails today — `Logger` is declared in `§17`, `AnalyticsTracker` in `§16.1`, `RemoteSyncSource` in `§10`, `AppGraphDependencies` in `§11.6`, the repositories in `§12` and the use cases in `§13`, while `§20` claims to hold every type; recorded as `DEC-4`. detekt 1.23.8 predates Kotlin 2.4.10, so its analysis is syntactic and type-resolution rules are off.
+
 ### 2026-08-21 — `E0-04` Architecture Guards completed, minus the feature-layer package rules
 
 - **Type:** story

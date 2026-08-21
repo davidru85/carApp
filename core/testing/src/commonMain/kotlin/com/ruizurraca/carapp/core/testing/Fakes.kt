@@ -14,14 +14,14 @@ import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
-import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.time.Instant
 
-/**
+/*
  * Deterministic fakes for the platform abstractions of `docs/CONTRACTS.md §20.3`.
  *
  * `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module
@@ -31,7 +31,9 @@ import kotlinx.coroutines.flow.StateFlow
  */
 
 /** A clock that never moves unless [advanceBy] or [set] is called. */
-class FakeAppClock(initial: Instant = DEFAULT_NOW) : AppClock {
+class FakeAppClock(
+    initial: Instant = DEFAULT_NOW,
+) : AppClock {
     private var current: Instant = initial
 
     override fun now(): Instant = current
@@ -56,7 +58,13 @@ class FakeUuidGenerator : UuidGenerator {
 
     override fun newId(): String {
         counter += 1
-        return "00000000-0000-4000-8000-" + counter.toString().padStart(12, '0')
+        return UUID_PREFIX + counter.toString().padStart(NODE_DIGITS, '0')
+    }
+
+    private companion object {
+        /** The variant and version nibbles of a canonical UUID v4, so the fake ids are well-formed. */
+        const val UUID_PREFIX = "00000000-0000-4000-8000-"
+        const val NODE_DIGITS = 12
     }
 }
 
@@ -108,7 +116,9 @@ class FakeLocaleProvider(
 }
 
 /** Connectivity that a test drives explicitly; online by default. */
-class FakeConnectivityObserver(initiallyOnline: Boolean = true) : ConnectivityObserver {
+class FakeConnectivityObserver(
+    initiallyOnline: Boolean = true,
+) : ConnectivityObserver {
     private val state = MutableStateFlow(initiallyOnline)
 
     override val isOnline: StateFlow<Boolean> = state
@@ -119,7 +129,9 @@ class FakeConnectivityObserver(initiallyOnline: Boolean = true) : ConnectivityOb
 }
 
 /** Owner context starting at the `LOCAL_OWNER` sentinel of `§11.4`. */
-class FakeOwnerContext(initial: OwnerId = LOCAL_OWNER) : OwnerContext {
+class FakeOwnerContext(
+    initial: OwnerId = LOCAL_OWNER,
+) : OwnerContext {
     private val state = MutableStateFlow(initial)
 
     override val current: OwnerId get() = state.value

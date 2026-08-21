@@ -25,7 +25,9 @@ object NoOpAnalyticsTracker : AnalyticsTracker {
  * an implementation is most likely to get wrong, and the reason this fake exists rather than a
  * plain recording list.
  */
-class RecordingAnalyticsTracker(initiallyEnabled: Boolean = false) : AnalyticsTracker {
+class RecordingAnalyticsTracker(
+    initiallyEnabled: Boolean = false,
+) : AnalyticsTracker {
     private var enabled = initiallyEnabled
     private val recordedEvents = mutableListOf<AnalyticsEvent>()
     private val recordedProperties = mutableListOf<AnalyticsUserProperties>()

@@ -1,6 +1,12 @@
+// MagicNumber is suppressed for this file on purpose. The literals below are not magic: they are
+// the canonical formula of docs/CONTRACTS.md §2, which that section says MUST be implemented
+// literally. Replacing 500_000 or 1_000_000 with a named constant would hide the one thing a
+// reviewer has to check, which is that the expression matches the document character for character.
+@file:Suppress("MagicNumber")
+
 package com.ruizurraca.carapp.core.model
 
-/**
+/*
  * The three canonical monetary formulas of `docs/CONTRACTS.md §2`, implemented literally as exact
  * integer arithmetic. A floating-point or naive integer-division implementation is a contract
  * violation, and `Float` and `Double` are forbidden here in every layer.

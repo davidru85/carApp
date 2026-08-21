@@ -1,6 +1,6 @@
 package com.ruizurraca.carapp.core.common
 
-/**
+/*
  * The named constants of `docs/CONTRACTS.md §20.0.1`.
  *
  * Writing any of these literals inline instead of referencing the constant is a contract
@@ -37,32 +37,34 @@ const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L
  * `EUR` rather than accepting a different factor. Extending this table is a backlog story, not an
  * agent decision.
  */
-val SUPPORTED_CURRENCY_CODES: Set<String> = setOf(
-    "ARS",
-    "AUD",
-    "BRL",
-    "CAD",
-    "CHF",
-    "COP",
-    "CZK",
-    "DKK",
-    "EUR",
-    "GBP",
-    "HUF",
-    "MAD",
-    "MXN",
-    "NOK",
-    "NZD",
-    "PEN",
-    "PLN",
-    "RON",
-    "SEK",
-    "USD",
-    "UYU",
-)
+val SUPPORTED_CURRENCY_CODES: Set<String> =
+    setOf(
+        "ARS",
+        "AUD",
+        "BRL",
+        "CAD",
+        "CHF",
+        "COP",
+        "CZK",
+        "DKK",
+        "EUR",
+        "GBP",
+        "HUF",
+        "MAD",
+        "MXN",
+        "NOK",
+        "NZD",
+        "PEN",
+        "PLN",
+        "RON",
+        "SEK",
+        "USD",
+        "UYU",
+    )
 
 /** Failures that MUST NOT consume the poison budget (`§9.7`). */
-val CONNECTIVITY_ERROR_CODES: Set<String> = setOf(
-    "REMOTE.UNAVAILABLE",
-    "REMOTE.DEADLINE_EXCEEDED",
-)
+val CONNECTIVITY_ERROR_CODES: Set<String> =
+    setOf(
+        "REMOTE.UNAVAILABLE",
+        "REMOTE.DEADLINE_EXCEEDED",
+    )

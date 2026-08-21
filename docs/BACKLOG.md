@@ -79,7 +79,7 @@ Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, impleme
 
 Acceptance criteria:
 
-- `Outcome`, the full `AppError` hierarchy with stable codes, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
+- `Outcome`, the full `AppError` hierarchy with stable codes — including `ValidationError`, `ValidationWarning`, `AuthError`, `PersistenceError`, `SyncError`, `RemoteError` and `SecurityError` — plus `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger`, `SyncTriggerAdapter` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
 - `:core:crash` exposes `CrashReporter` and a no-op implementation matching `docs/CONTRACTS.md §20.3.1`, with no Firebase, GitLive, Android or iOS type.
 - `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
 - None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
@@ -125,6 +125,8 @@ Acceptance criteria:
 - The check runs on every PR.
 
 ### E0-05 - Quality Tooling and CI - M
+
+Status: completed on 2026-08-21, PR #18, except branch protection (`DEC-6`, owner action). See `docs/handoff-E0-05.md`.
 
 Configure ktlint, detekt, Kover, the contract check and CI.
 
@@ -238,6 +240,8 @@ Acceptance criteria:
 
 ### E1-03 - Vehicle Data, Local Only - M
 
+Implements `VehicleRepository` (`docs/CONTRACTS.md §12`).
+
 Implement the local data source, mappers and repository implementation for vehicles.
 
 Acceptance criteria:
@@ -290,6 +294,8 @@ Acceptance criteria:
 Human review required.
 
 ### E1-06 - Fuel Entry Data, Local Only - M
+
+Implements `FuelEntryRepository` (`docs/CONTRACTS.md §12`).
 
 Implement the local data source, mappers, projections and repository implementation for fuel entries.
 
@@ -667,7 +673,7 @@ E0-00 owner decisions (completed)
 | E0-02 Convention plugins (completed) | 0 | M | — |
 | E0-03 Base core modules (completed, 2 criteria open) | 0 | M | — |
 | E0-04 Architecture guards (completed, feature rules open) | 0 | M | — |
-| E0-05 Quality tooling and CI | 0 | M | — |
+| E0-05 Quality tooling and CI (completed, branch protection open) | 0 | M | — |
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
 | E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |
 | E0-07 Walking skeleton | 0.5 | L | Yes |
