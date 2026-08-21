@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — `E0-08` `:core:analytics` Abstraction completed
+
+- **Type:** story
+- **Story / Decision:** `E0-08` (`docs/BACKLOG.md`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `:core:analytics` was created with `AnalyticsTracker`, the 13-leaf closed `AnalyticsEvent` hierarchy, `SyncStatusCategory`, `ConversionFailureReason`, `DeletionFailureReason`, `AnalyticsUserProperties` and `CountBucket`, all matching `docs/CONTRACTS.md §20.9`, plus the two normative `AuthError` mappings as exhaustive extension functions and `CountBucket.ofCount` writing the exact bucket bounds in one place. `NoOpAnalyticsTracker` and `RecordingAnalyticsTracker` were added to `:core:testing`. The module depends only on `:core:common` and contains no Firebase, GitLive or Android type.
+- **Why:** `AnalyticsTracker` is a mandatory member of `AppGraphDependencies` (`§11.6`), so the graph cannot be constructed or tested without it, which is why the abstraction is Phase 0 while the Firebase implementation is `E3-09`. The closed hierarchy is what makes the forbidden-payload rule of `§16.1` enforceable by the type system instead of by review: no leaf can carry a free-text `String`, so an exact odometer value or a note has nowhere to go.
+- **Documents touched:** `docs/handoff-E0-08.md` (new), `docs/BACKLOG.md`, and this log. Code: `core/analytics/**` (new), `core/testing/**`, `settings.gradle.kts`. No normative document changed and no decision was taken.
+- **Verification:** `:core:analytics` and `:core:testing` pass on both the Android host and `iosSimulatorArm64`. Closedness is enforced by an exhaustive `when` with no `else`, so adding, renaming or removing a leaf stops the test compiling. The opt-in tests assert the case an implementation is most likely to get wrong: enabling collection after events were dropped while disabled MUST NOT replay them.
+- **Follow-ups / risks:** the criterion "a no-op `AnalyticsTracker` … is the default in `testAppGraphDependencies(...)`" cannot be closed while `DEC-2` is open, because that factory does not exist. The `SyncStatus -> SyncStatusCategory` mapping of `§20.9` is not implemented here: `SyncStatus` belongs to `:core:sync`, a Phase 3 module Phase 0 forbids creating, so the mapping and its connectivity-code edge case are owned by `E3-03`/`E3-09`, as is the `setUserProperties` call-cadence fixture.
+
 ### 2026-08-21 — `E0-03` Base Core Modules completed, with two contract questions open
 
 - **Type:** story

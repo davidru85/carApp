@@ -35,5 +35,6 @@ include(":shared")
 // :core:sync are introduced by their own later stories and MUST NOT appear here yet.
 include(":core:model")
 include(":core:common")
+include(":core:analytics")
 include(":core:crash")
 include(":core:testing")

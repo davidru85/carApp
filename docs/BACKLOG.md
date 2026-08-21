@@ -161,6 +161,8 @@ Blocks: E0-07.
 
 ### E0-08 - `:core:analytics` Abstraction - S
 
+Status: completed on 2026-08-21, PR #16. See `docs/handoff-E0-08.md`.
+
 Create `:core:analytics` with the `AnalyticsTracker` interface and the closed `AnalyticsEvent` hierarchy of `docs/CONTRACTS.md §16.1` and `§20.9`. Abstraction only: no Firebase dependency, no provider SDK.
 
 Acceptance criteria:
@@ -665,7 +667,7 @@ E0-00 owner decisions (completed)
 | E0-04 Architecture guards | 0 | M | — |
 | E0-05 Quality tooling and CI | 0 | M | — |
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
-| E0-08 `:core:analytics` abstraction | 0 | S | — |
+| E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |
 | E0-07 Walking skeleton | 0.5 | L | Yes |
 | E1-01 `:core:database` | 1 | M | — |
 | E1-02 Vehicle domain | 1 | S | — |
