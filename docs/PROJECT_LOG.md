@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — Repository made public, branch protection activated, first CI run measured
+
+- **Type:** decision
+- **Story / Decision:** `D-34`, superseding `D-33`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the repository is now public, and the `D-31` branch protection was applied in the same change, as `D-33` required: the nine `docs/CONTRACTS.md §18` check names, a required pull request, no force pushes, no branch deletion, administrator enforcement off. `D-33` is `Superseded`. `docs/SECURITY.md` and `docs/identifiers.md` were updated, and `E0-07` gained an acceptance criterion requiring the Firebase API keys to be restricted **before** `google-services.json` or `GoogleService-Info.plist` is committed. The `objc-header-golden-check` job moved from `macos-latest` to `ubuntu-latest`, with `E0-07` required to move it back.
+- **Why:** two problems shared one solution. Branch protection is unavailable to a private repository on the GitHub Free plan — both `/branches/main/protection` and `/rulesets` returned `403` — so `§18` was unsatisfiable and a red pull request could be merged. Separately the account exhausted its Actions minutes. The first CI run of this repository cost about **115 billed minutes**, of which 100 came from three macOS jobs, because GitHub bills macOS at ten times wall-clock with a one-minute minimum; at that rate a 2,000-minute allowance is roughly 17 runs a month. Public repositories get free standard runners and can use branch protection. The repository was checked before publishing: no `google-services.json`, no `GoogleService-Info.plist`, no keystore, no private key and no API key is committed, and `E0-07` is the story that introduces them — so this was the cheapest moment to publish.
+- **Documents touched:** `docs/adr/0035-repository-public-and-branch-protection-active.md` (new), `docs/adr/0034-...` (now `Superseded`), `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/identifiers.md`, `docs/SECURITY.md`, `docs/BACKLOG.md` (`E0-07`), `.github/workflows/ci.yml`, and this log.
+- **Verification:** `gh repo view` reports `visibility=PUBLIC`. `gh api repos/davidru85/carApp/branches/main/protection` lists the nine contexts with `enforce_admins: false`, `allow_force_pushes: false` and `allow_deletions: false`. The first CI run, on PR #21, finished with **all nine checks green**, including both macOS jobs, so the workflow works on GitHub runners as written. `contract-check` passes with the new decision set.
+- **Follow-ups / risks:** the API-key restriction in `docs/SECURITY.md` is now a **precondition, not advice**: in a public repository anyone can read the keys the moment those files are committed, and only the package-name, bundle-id and signing-certificate restrictions keep them unusable elsewhere. `E0-07` MUST restrict them first and say so in its handoff, and MUST move `objc-header-golden-check` back to `macos-latest`. Administrator enforcement stays off, so the owner can still bypass a red build; that is deliberate on a single-maintainer repository. `shared-tests` and `ios-simulator-build` still run on macOS, which no longer costs money but still costs wall-clock; merging the two is proposed and not yet decided.
+
 ### 2026-08-21 — Firestore database created in `europe-west1`; `D-33` defers branch protection
 
 - **Type:** milestone

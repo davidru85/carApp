@@ -141,7 +141,13 @@ jobs:
 
   objc-header-golden-check:
     name: objc-header-golden-check
-    runs-on: macos-latest
+    # Ubuntu on purpose, and temporarily. Today this job only checks whether a file exists, which
+    # takes seconds — but GitHub bills macOS at ten times wall-clock with a one-minute minimum, so
+    # on macOS it cost 10 billed minutes to do nothing.
+    #
+    # E0-07 MUST move it back to macos-latest: comparing the golden header means generating it,
+    # and generating it needs the Kotlin/Native Apple toolchain.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Compare the generated Objective-C header with the golden file
@@ -155,7 +161,7 @@ jobs:
             echo "::warning::$GOLDEN does not exist yet; it is produced by E0-07. Nothing to compare."
             exit 0
           fi
-          echo "::error::A golden header exists but this job does not compare it yet. Implement the comparison in E0-07."
+          echo "::error::A golden header exists but this job still runs on ubuntu and cannot generate one to compare against. E0-07 must move this job back to macos-latest and implement the comparison."
           exit 1
 
   provider-decoupling:

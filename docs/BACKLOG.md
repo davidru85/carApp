@@ -214,10 +214,11 @@ Acceptance criteria:
 - `iosSimulatorArm64` runs in CI.
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
+- The API keys of the development Firebase project are restricted in the Google Cloud console by package name, bundle identifier and signing certificate **before** `google-services.json` or `GoogleService-Info.plist` is committed. The repository is public (`D-34`), so those keys are readable by anyone the moment the files land (`docs/SECURITY.md`).
 - The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
 - The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as `shared/build/generated/objc-header/Shared.h.golden`.
 - The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
-- The `objc-header-golden-check` CI step compares the generated header with the committed golden file.
+- The `objc-header-golden-check` CI step compares the generated header with the committed golden file, and the job is moved back to `macos-latest`: `E0-05` put it on `ubuntu-latest` because it had nothing to compare, and generating the header needs the Apple toolchain.
 - `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
 - `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter` and a no-op `AnalyticsTracker`, with the same parameter count and order as `AppGraphDependencies` (`D-27`).
 
