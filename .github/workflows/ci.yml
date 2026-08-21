@@ -91,8 +91,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :androidApp:assembleDebug --stacktrace
 
+  # shared-tests and ios-simulator-build are deliberately separate (D-35, ADR-0036). They answer
+  # different questions — "does the shared logic behave the same on the JVM and on Kotlin/Native?"
+  # versus "does the framework link and does the iOS app build against it?" — and a single job
+  # cannot report both independently. They also run in parallel, so separating them costs no
+  # wall-clock. Merging them requires superseding D-35.
   shared-tests:
     name: shared-tests
+    # macOS is required here only by iosSimulatorArm64Test. Moving that test out also requires
+    # superseding D-35.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

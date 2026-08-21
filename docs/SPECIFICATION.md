@@ -447,6 +447,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-32 | Development Firebase project ID | Development Firebase project ID is `davidruiz-carapp-dev`; application identifiers are unchanged. | Accepted |
 | D-33 | Repository visibility and branch protection | The repository stays private; branch protection is applied when it becomes public or moves to a paid plan. | Superseded |
 | D-34 | Repository visibility and branch protection | The repository is public and the `D-31` branch protection is active. | Accepted |
+| D-35 | CI job topology | `shared-tests` and `ios-simulator-build` remain separate CI jobs. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

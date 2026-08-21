@@ -63,6 +63,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-32 | Development Firebase project ID | `davidruiz-carapp-dev` | `carapp-dev` (unavailable) | Accepted | `carapp-dev` is held by another Google Cloud customer: `409 ALREADY_EXISTS` on create and `403 PERMISSION_DENIED` on addFirebase. Application identifiers are unchanged. |
 | D-33 | Repository visibility and branch protection | Stay private; apply the `D-31` protection in the same change that makes the repository public or moves it to a plan that allows it | Upgrade to GitHub Pro now; make the repository public now | Superseded | Branch protection is gated for a private repository on the Free plan. Until the trigger fires, CI reports but does not gate, and a merge on red is possible. |
 | D-34 | Repository visibility and branch protection | Repository is public; the `D-31` branch protection is active | Upgrade to GitHub Pro; stay private and reduce CI | Accepted | Supersedes `D-33`. Public repositories get free standard runners and can use branch protection; the macOS jobs cost ten times wall-clock and the account had exhausted its minutes. |
+| D-35 | CI job topology | `shared-tests` and `ios-simulator-build` stay separate jobs | Merge them into one macOS job | Accepted | They are complementary diagnostics — shared-logic behaviour versus framework linking — and a single job cannot report both independently. They also run in parallel, so separating them costs no wall-clock. |
 
 ## Library Review Matrix
 
