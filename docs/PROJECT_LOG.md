@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — `E0-03` Base Core Modules completed, with two contract questions open
+
+- **Type:** story
+- **Story / Decision:** `E0-03` (`docs/BACKLOG.md`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `:core:model`, `:core:common`, `:core:crash` and `:core:testing` were created, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20` — the identifier, money and scaled-value types of `§20.0`, the named constants of `§20.0.1`, `Outcome` and its five extensions, the complete `AppError` taxonomy with all 44 stable codes, `Confirmation`, the platform abstractions of `§20.3`, `Logger` of `§17`, `CrashReporter` and its no-op, and deterministic fakes for every Phase 0 abstraction. The five canonical formulas of `§2` are implemented as exact integer arithmetic in `:core:model` and covered by every golden value in the document, with the average test additionally asserting that the distance-weighted result differs from the arithmetic mean of the rounded segments. Each module's build file is four lines or fewer, which is the first real evidence for the `E0-02` "no more than five lines" criterion.
+- **Why:** these are the types every later story depends on, and `§20` exists precisely so two agents cannot produce two incompatible implementations. Writing them against the document leaf by leaf, with the codes pinned in a test, is what makes a later rename fail the build instead of silently breaking the Firestore rules and the log allowlist that refer to those codes as literals.
+- **Documents touched:** `docs/handoff-E0-03.md` (new), `docs/BACKLOG.md`, and this log. Code: `core/model/**`, `core/common/**`, `core/crash/**`, `core/testing/**` (new), `settings.gradle.kts`, `build-logic/**`, `shared/build.gradle.kts`. No normative document changed and no decision was taken.
+- **Verification:** every module passes on both the Android host and `iosSimulatorArm64`. The `Float`/`Double` ban is enforced by a source-scanning JVM host test, which was proven to fail on an injected `val temporaryOffender: Double` before being returned to green — a runtime assertion cannot detect a floating-point implementation, because it returns the right answer for most inputs and drifts only where nobody looks.
+- **Follow-ups / risks:** **two acceptance criteria could not be met and are put to the owner.** `DEC-1`: `docs/CONTRACTS.md §2` golden row 3 expects `totalCostMinor = 1` for `litersScaled = 1`, `pricePerLiterScaled = 1`, EUR, but the formula in the same section — which that section says MUST be implemented literally — gives `0`, and the formula is the one that is right, since 0.001 L at 0.001 €/L is 0.0001 minor units and HALF_UP of 0.0001 is 0. The other three rows agree with the formula exactly. `DEC-2`: `testAppGraphDependencies(...)` cannot exist in Phase 0, because four of the 15 `AppGraphDependencies` members have types owned by `:core:database`, `:core:auth` and `:core:sync`, which the Phase 0 preamble forbids creating and which `E0-04` is required to enforce. Coverage stays unmeasured until `E0-05` applies Kover, so the Kover criterion of this story is not closed either. The fakes use `Dispatchers.Unconfined`, which will not survive `:core:sync` needing virtual time; `E3-03` should revisit `TestDispatcherProvider`.
+
 ### 2026-08-21 — `E0-02` Gradle Convention Plugins completed
 
 - **Type:** story

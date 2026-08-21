@@ -35,6 +35,11 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
             iosArm64()
             iosSimulatorArm64()
 
+            sourceSets.getByName("commonMain").dependencies {
+                // Every shared module is allowed coroutines (docs/TECHNICAL_PLAN.md §4), and all
+                // of them need it, so it is configured once here instead of per module.
+                implementation(libs.findLibrary("kotlinx-coroutines-core").get())
+            }
             sourceSets.getByName("commonTest").dependencies {
                 implementation(libs.findLibrary("kotlin-test").get())
             }

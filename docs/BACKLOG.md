@@ -73,6 +73,8 @@ Acceptance criteria:
 
 ### E0-03 - Base Core Modules - M
 
+Status: completed on 2026-08-21, PR #15, except the `testAppGraphDependencies(...)` and Kover criteria. See `docs/handoff-E0-03.md`.
+
 Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20`.
 
 Acceptance criteria:
@@ -659,7 +661,7 @@ E0-00 owner decisions (completed)
 | E0-00 Owner decision closure (completed) | 0 | S | Yes |
 | E0-01 KMP bootstrap (completed) | 0 | M | — |
 | E0-02 Convention plugins (completed) | 0 | M | — |
-| E0-03 Base core modules | 0 | M | — |
+| E0-03 Base core modules (completed, 2 criteria open) | 0 | M | — |
 | E0-04 Architecture guards | 0 | M | — |
 | E0-05 Quality tooling and CI | 0 | M | — |
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
