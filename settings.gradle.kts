@@ -1,4 +1,8 @@
 pluginManagement {
+    // Convention plugins live in an included build so that E0-02 can configure every module from
+    // one place without publishing anything.
+    includeBuild("build-logic")
+
     repositories {
         google {
             content {

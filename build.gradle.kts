@@ -1,7 +1,10 @@
-// Root build file. Plugin versions are declared in gradle/libs.versions.toml and applied
-// in each module. The Kotlin Gradle plugin MUST NOT be loaded multiple times with
-// explicit versions (Gradle warns and it can break KMP builds). The root declares the
-// plugins without applying them, so subprojects apply them without a version.
+// Root build file. It applies nothing: every module is configured by a convention plugin from the
+// included build-logic build (E0-02), and versions live only in gradle/libs.versions.toml (E0-06).
+//
+// The plugins are declared here with `apply false` for one reason: it puts them on the build's
+// plugin classpath so the convention plugins, which compile against them with `compileOnly`, can
+// be instantiated. Declaring them once here also keeps the Kotlin plugin from being loaded twice
+// with explicit versions, which breaks KMP builds.
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.kotlin.multiplatform.library) apply false
@@ -9,4 +12,5 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.room) apply false
 }

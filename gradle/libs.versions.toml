@@ -72,6 +72,13 @@ gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "g
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 
+# Gradle plugin artifacts, used only by the build-logic convention plugins (E0-02)
+plugin-android-gradle = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+plugin-kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+plugin-skie-gradle = { module = "co.touchlab.skie:gradle-plugin", version.ref = "skie" }
+plugin-ksp-gradle = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
+plugin-room-gradle = { module = "androidx.room3:room3-gradle-plugin", version.ref = "room" }
+
 # Verification tooling
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }

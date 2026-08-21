@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — `E0-02` Gradle Convention Plugins completed
+
+- **Type:** story
+- **Story / Decision:** `E0-02` (`docs/BACKLOG.md`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `build-logic` was added as an included build with five class-based convention plugins — `carapp.kmp.library`, `carapp.android.application`, `carapp.compose`, `carapp.skie` and `carapp.room` — all reading `gradle/libs.versions.toml`, so no version literal exists in build logic. `carapp.kmp.library` derives each module's Android namespace from its Gradle path per `D-24`; `carapp.skie` refuses to apply itself to any module other than `:shared`, turning the `D-2` rule into a build failure instead of a review item; `carapp.room` fixes the schema directory so schema export cannot be quietly disabled. `:shared` and `:androidApp` were migrated onto them and the root build file stopped configuring modules.
+- **Why:** every remaining Phase 0 and Phase 1 story creates modules — `docs/TECHNICAL_PLAN.md §3` plans 17 — and without convention plugins each one would repeat the KMP targets, the Android namespace, the SDK levels, the toolchain and the test wiring, which is exactly where drift starts. Class-based plugins were chosen over precompiled script plugins because they can read the version catalog directly and can refuse to apply themselves, which is what makes the SKIE rule enforceable.
+- **Documents touched:** `docs/handoff-E0-02.md` (new), and this log. Build files: `build-logic/**` (new), `settings.gradle.kts`, `build.gradle.kts`, `shared/build.gradle.kts`, `androidApp/build.gradle.kts`, `gradle/libs.versions.toml`. No normative document changed and no decision was taken.
+- **Verification:** `:androidApp:assembleDebug`, `:shared:testAndroidHostTest` and `:shared:iosSimulatorArm64Test` pass, and the iOS simulator app returns `** BUILD SUCCEEDED **` from `xcodebuild` on Xcode 26.6.
+- **Follow-ups / risks:** the "no more than five lines per module" criterion has no instance inside this story, because the repository's only two modules are the iOS framework host and the Android app; `E0-03` provides the first four ordinary modules, each with a three-line build file, so the two stories should be reviewed together. `carapp.room` is written but applied to nothing until `E1-01`. `E0-04` should add an architecture rule asserting that no module other than `:shared` applies SKIE, so the rule survives someone bypassing the convention plugin. The convention plugins themselves have no tests.
+
 ### 2026-08-21 — `E0-06` ADRs, Version Matrix and Decision Board Validation completed
 
 - **Type:** story
