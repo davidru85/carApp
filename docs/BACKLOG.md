@@ -642,6 +642,8 @@ Prepare release assets and store requirements.
 
 Acceptance criteria:
 
+- Branch protection for `main` is active with the nine `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
+
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
 - A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.

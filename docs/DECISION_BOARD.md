@@ -61,6 +61,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-30 | Walking skeleton position | `E0-07` is the second story of Phase 1, after `E1-01` | Allow `E0-07` to create `:core:database`; drop Room from `E0-07` | Accepted | `E0-07` needs Room, which lives in `:core:database`, a module Phase 0 forbids and `E0-04` enforces. |
 | D-31 | Branch protection | `main` requires all nine CI checks of `§18` | Require only the seven checks that verify something today | Accepted | Administrator enforcement is off so the owner can land pull requests that predate the workflow. |
 | D-32 | Development Firebase project ID | `davidruiz-carapp-dev` | `carapp-dev` (unavailable) | Accepted | `carapp-dev` is held by another Google Cloud customer: `409 ALREADY_EXISTS` on create and `403 PERMISSION_DENIED` on addFirebase. Application identifiers are unchanged. |
+| D-33 | Repository visibility and branch protection | Stay private; apply the `D-31` protection in the same change that makes the repository public or moves it to a plan that allows it | Upgrade to GitHub Pro now; make the repository public now | Accepted | Branch protection is gated for a private repository on the Free plan. Until the trigger fires, CI reports but does not gate, and a merge on red is possible. |
 
 ## Library Review Matrix
 

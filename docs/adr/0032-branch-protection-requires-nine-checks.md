@@ -53,8 +53,10 @@ POST /repos/davidru85/carApp/rulesets                 -> 403
 
 Until the plan changes or the repository becomes public, every check built by `E0-04` and `E0-05`
 runs on each pull request and reports, but nothing prevents a red pull request from being merged.
-The owner chooses between upgrading to GitHub Pro, making the repository public, and accepting an
-advisory-only CI in the meantime. Whichever is chosen is recorded as a further decision.
+The owner chose to stay private and defer, which is recorded as `D-33`
+([ADR-0034](0034-repository-stays-private-branch-protection-deferred.md)). That ADR carries the
+trigger: this configuration is applied in the same change that makes the repository public or
+moves it to a plan where protection is available.
 
 ## Verification
 

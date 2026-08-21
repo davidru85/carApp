@@ -39,5 +39,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-30 | [ADR-0031](0031-walking-skeleton-starts-phase-1.md) | `E0-07` moves to the start of Phase 1. | Accepted |
 | D-31 | [ADR-0032](0032-branch-protection-requires-nine-checks.md) | Branch protection requires all nine CI checks. | Accepted |
 | D-32 | [ADR-0033](0033-development-firebase-project-id.md) | Development Firebase project ID is `davidruiz-carapp-dev`. | Accepted |
+| D-33 | [ADR-0034](0034-repository-stays-private-branch-protection-deferred.md) | Repository stays private; branch protection deferred with an explicit trigger. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

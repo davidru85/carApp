@@ -77,6 +77,7 @@ Configuration files are committed per `docs/SECURITY.md`, and the corresponding 
 |------|-------|
 | Git remote | `git@github.com:davidru85/carApp.git` |
 | Default branch | `main` |
+| Visibility | Private (`D-33`). Branch protection is unavailable on this plan; making the repository public REQUIRES applying the `D-31` protection in the same change. |
 | Branch naming | `story/<STORY-ID>-<short-slug>` |
 
 ## Change policy

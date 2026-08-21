@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — Firestore database created in `europe-west1`; `D-33` defers branch protection
+
+- **Type:** milestone
+- **Story / Decision:** `D-13`, `D-32`, `D-33`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the Cloud Firestore API was enabled on `davidruiz-carapp-dev` with `gcloud services enable firestore.googleapis.com`, and the `(default)` database was created in **`europe-west1`** in **Native mode**. `gcloud firestore databases describe` confirms `europe-west1` and `FIRESTORE_NATIVE`. Separately, the owner decided the repository stays private for now, recorded as `D-33` ([ADR-0034](adr/0034-repository-stays-private-branch-protection-deferred.md)).
+- **Why:** the Firebase CLI cannot enable a Google Cloud service API, so this step waited on `gcloud` being installed. The database was created now rather than inside `E0-07` because its location is **immutable** under `D-13`: creating it deliberately, verified, is safer than creating it as a side effect of the walking skeleton, where a wrong default would be permanent.
+- **Documents touched:** `docs/adr/0034-repository-stays-private-branch-protection-deferred.md` (new), `docs/adr/0032-...` (points at `D-33`), `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/identifiers.md`, `docs/BACKLOG.md` (`E4-04`), and this log.
+- **Verification:** `gcloud firestore databases describe --project davidruiz-carapp-dev` returns `projects/davidruiz-carapp-dev/databases/(default) europe-west1 FIRESTORE_NATIVE`. `contract-check` reports 34 decisions identical across all five sources.
+- **Follow-ups / risks:** **`D-33` is the one open obligation and it has a trigger, not a reminder.** Branch protection MUST be applied in the same change that makes the repository public or moves it to a plan where protection is available; `E4-04` now fails if the repository is public without it, and `docs/identifiers.md` records the constraint beside the repository visibility. Until then CI reports but does not gate, so a red pull request can be merged and only discipline prevents it. The Firestore database currently has closed default rules; `E3-01` owns the real rules, and the emulator remains the only CI target — CI MUST NOT hold credentials for this project (`docs/identifiers.md`).
+
 ### 2026-08-21 — Phase 0 decision closure: `D-26` to `D-32` accepted, and Phase 0 closes
 
 - **Type:** decision

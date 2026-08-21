@@ -445,6 +445,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-30 | Walking skeleton position | `E0-07` moves to the start of Phase 1, immediately after `E1-01`. | Accepted |
 | D-31 | Branch protection | Branch protection for `main` requires all nine CI check names of `§18`. | Accepted |
 | D-32 | Development Firebase project ID | Development Firebase project ID is `davidruiz-carapp-dev`; application identifiers are unchanged. | Accepted |
+| D-33 | Repository visibility and branch protection | The repository stays private; branch protection is applied when it becomes public or moves to a paid plan. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
