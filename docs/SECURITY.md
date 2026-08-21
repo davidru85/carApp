@@ -36,6 +36,8 @@ Allowed in the repository:
 
 - `google-services.json` and `GoogleService-Info.plist`. These are client configuration, not secrets, **provided** the corresponding API keys are restricted in the Google Cloud console by package name, bundle id and signing certificate.
 
+  Since `D-34` the repository is **public**, so that proviso is a precondition rather than good practice: anyone can read those keys the moment the files are committed. `E0-07` MUST restrict the keys in the Google Cloud console before committing either file, and the handoff MUST state that it did.
+
 Never committed:
 
 - Keystores and `*.jks`, `*.keystore`.

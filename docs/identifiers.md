@@ -77,7 +77,7 @@ Configuration files are committed per `docs/SECURITY.md`, and the corresponding 
 |------|-------|
 | Git remote | `git@github.com:davidru85/carApp.git` |
 | Default branch | `main` |
-| Visibility | Private (`D-33`). Branch protection is unavailable on this plan; making the repository public REQUIRES applying the `D-31` protection in the same change. |
+| Visibility | **Public** (`D-34`). Branch protection for `main` is active with the nine `docs/CONTRACTS.md §18` checks. Because the repository is public, the API keys in `google-services.json` and `GoogleService-Info.plist` are readable by anyone and MUST be restricted before those files are committed (`docs/SECURITY.md`). |
 | Branch naming | `story/<STORY-ID>-<short-slug>` |
 
 ## Change policy

@@ -2,9 +2,11 @@
 
 ## Status
 
-Accepted
+Superseded
 
-Accepted by the owner on 2026-08-21.
+Accepted by the owner on 2026-08-21 and superseded the same day by `D-34`
+([ADR-0035](0035-repository-public-and-branch-protection-active.md)), when the repository was made
+public and the deferred branch protection was applied. The trigger this ADR defined is what fired.
 
 ## Context
 
