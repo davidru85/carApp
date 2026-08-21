@@ -103,7 +103,8 @@ Golden values that MUST be covered by tests in `:core:model`:
 |----------------|-----------------------|----------|------------------|
 | `45_123` (45.123 L) | `1_789` (1.789 €/L) | EUR | `8_073` (80.73 €) — exact value is 8072.5047, HALF_UP |
 | `40_000` (40 L) | `1_500` (1.500 €/L) | EUR | `6_000` (60.00 €) |
-| `1` (0.001 L) | `1` (0.001 €/L) | EUR | `1` (0.01 €) — rounds up from 0.0001 |
+| `1_000` (1 L) | `5` (0.005 €/L) | EUR | `1` (0.01 €) — exact value is 0.5, HALF_UP rounds up |
+| `1` (0.001 L) | `1` (0.001 €/L) | EUR | `0` — exact value is 0.0001 minor units, HALF_UP rounds down |
 | `500_000` (500 L) | `999_999` (999.999 €/L) | EUR | `49_999_950` (499,999.50 €) — intermediate product `49_999_950_000_000` MUST NOT overflow |
 
 MVP currency constraint: `MinorUnits.factorFor` returns `100` only for the codes in `SUPPORTED_CURRENCY_CODES` (§20.0.1), and returns `null` for every other code. A locale suggesting a code outside that set falls back to `EUR`, and an explicit user selection outside that set returns `ValidationError.InvalidUnit`. Extending the table is a backlog story, not an agent decision.
@@ -1237,7 +1238,7 @@ Optional checks:
 
 `contract-check` is a script that asserts:
 
-1. Every project-owned type named in a code block in this document is declared in §20.
+1. Every project-owned type named in a code block in this document is declared somewhere in this document. `§20` is where a type is declared unless the section that owns it declares it inline.
 2. The decision ID set and status are identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 3. Every ADR linked from `docs/adr/README.md` has a `Status` heading whose value matches the status recorded for its decision ID.
 4. Every `Proposed` or `Pending` decision in `docs/DECISION_BOARD.md` appears in the "Decisions Awaiting Owner Confirmation" section with a `Needed by` story or phase. If no such decisions exist, the section states that none are awaiting owner confirmation and contains no empty table.
@@ -1268,7 +1269,9 @@ The canonical human review gate list lives in `AGENTS.md` and MUST NOT be restat
 
 ## 20. Canonical Type Definitions
 
-Every type referenced by a signature in this document is declared here. Implementations MUST match these shapes.
+Every type this document does not declare inline is declared here. Implementations MUST match these shapes.
+
+A few types are declared by the section that owns them rather than here — `Logger` in `§17`, `AnalyticsTracker` in `§16.1`, `RemoteSyncSource` in `§10`, `AuthClient` and `AppGraphDependencies` in `§11`, the repositories in `§12` and the use cases in `§13`. That is deliberate: those declarations are inseparable from the prose that constrains them. `contract-check` assertion 1 accepts either location.
 
 ### 20.0 Identifiers, money and scaled values — `:core:model`
 
@@ -1812,11 +1815,8 @@ sealed interface AnalyticsEvent {
 
 enum class SyncStatusCategory { IDLE, SYNCING, PENDING, FAILED }
 
-The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
 enum class ConversionFailureReason { CANCELLED, CREDENTIAL_IN_USE, NETWORK, UID_WOULD_CHANGE, UNKNOWN }
 enum class DeletionFailureReason { REQUIRES_RECENT_LOGIN, REMOTE_FAILED, NETWORK, UNKNOWN }
-
-The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`. The `AuthError -> DeletionFailureReason` mapping is normative: `RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`. Unit tests MUST assert exhaustiveness of both mappings.
 
 data class AnalyticsUserProperties(
     val vehicleCountBucket: CountBucket,
@@ -1825,6 +1825,10 @@ data class AnalyticsUserProperties(
 
 enum class CountBucket { ZERO, ONE, TWO_TO_FIVE, SIX_TO_TWENTY, MORE_THAN_TWENTY }
 ```
+
+The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
+
+The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`. The `AuthError -> DeletionFailureReason` mapping is normative: `RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`. Unit tests MUST assert exhaustiveness of both mappings.
 
 No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content.
 

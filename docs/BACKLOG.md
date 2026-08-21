@@ -60,6 +60,8 @@ Blocks: all other stories.
 
 ### E0-02 - Gradle Convention Plugins - M
 
+Status: completed on 2026-08-21, PR #14. See `docs/handoff-E0-02.md`.
+
 Create convention plugins for KMP libraries, features, Android application, Compose, Room and SKIE.
 
 Acceptance criteria:
@@ -71,21 +73,24 @@ Acceptance criteria:
 
 ### E0-03 - Base Core Modules - M
 
+Status: completed on 2026-08-21, PR #15, except the `testAppGraphDependencies(...)` and Kover criteria. See `docs/handoff-E0-03.md`.
+
 Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20`.
 
 Acceptance criteria:
 
-- `Outcome`, the full `AppError` hierarchy with stable codes, `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
+- `Outcome`, the full `AppError` hierarchy with stable codes — including `ValidationError`, `ValidationWarning`, `AuthError`, `PersistenceError`, `SyncError`, `RemoteError` and `SecurityError` — plus `Confirmation`, `AppClock`, `UuidGenerator`, `DispatcherProvider`, `Logger`, `LocaleProvider`, `ConnectivityObserver`, `OwnerContext`, `SyncTrigger`, `SyncTriggerAdapter` and `MinorUnits` exist and match `docs/CONTRACTS.md §20` exactly.
 - `:core:crash` exposes `CrashReporter` and a no-op implementation matching `docs/CONTRACTS.md §20.3.1`, with no Firebase, GitLive, Android or iOS type.
 - `EntityId`, `OwnerId`, `CurrencyCode`, `Money`, `FuelVolume`, `PricePerLiter`, `ConsumptionL100Km` and `LOCAL_OWNER` match `docs/CONTRACTS.md §20.0` exactly, including the canonical property names `value` and `scaled`, and every scaled value is a `Long`.
 - None of those types validates on construction: a test proves that wrapping a malformed UUID and an unsupported currency code succeeds, because the pull path of `docs/CONTRACTS.md §5` may not fail on a domain constraint.
 - The named constants of `docs/CONTRACTS.md §20.0.1` exist in `:core:common`, including `SUPPORTED_CURRENCY_CODES`, and no story writes their literals inline.
 - The three canonical monetary formulas and the two consumption formulas are implemented as exact integer arithmetic and pass every golden value in `docs/CONTRACTS.md §2`.
 - A test proves no monetary or consumption path uses `Float` or `Double`.
-- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter`.
 - Kover thresholds pass for `:core:model` and `:core:common`.
 
 ### E0-04 - Architecture Guards - M
+
+Status: completed on 2026-08-21, PR #17, except the feature-layer package rules (`DEC-3`). See `docs/handoff-E0-04.md`.
 
 Implement module-level and package-level dependency checks per `docs/TECHNICAL_PLAN.md §4`.
 
@@ -114,11 +119,14 @@ Acceptance criteria:
 - Reads of `outbox.lastError` outside logging, debug UI and mapper projections fail; sync logic may read only `lastErrorCode`.
 - Image-loading dependencies in `gradle/libs.versions.toml` fail unless a story reference and the Coil decision path of `docs/CONTRACTS.md §15.5` are present.
 - Writes to `currentOdometerKm` or `odometerInconsistent` outside `:core:database` fail the build.
+- The three feature-layer rows of `docs/TECHNICAL_PLAN.md §4` — feature `domain`, `data` and `presentation` — are implemented with Konsist in `E1-07`, not here (`D-28`).
 - **Every rule has a failing fixture proving the check actually fires.**
 - The check configuration is generated from the `docs/TECHNICAL_PLAN.md §4` table.
 - The check runs on every PR.
 
 ### E0-05 - Quality Tooling and CI - M
+
+Status: completed on 2026-08-21, PR #18, except branch protection (`DEC-6`, owner action). See `docs/handoff-E0-05.md`.
 
 Configure ktlint, detekt, Kover, the contract check and CI.
 
@@ -157,6 +165,8 @@ Blocks: E0-07.
 
 ### E0-08 - `:core:analytics` Abstraction - S
 
+Status: completed on 2026-08-21, PR #16. See `docs/handoff-E0-08.md`.
+
 Create `:core:analytics` with the `AnalyticsTracker` interface and the closed `AnalyticsEvent` hierarchy of `docs/CONTRACTS.md §16.1` and `§20.9`. Abstraction only: no Firebase dependency, no provider SDK.
 
 Acceptance criteria:
@@ -168,28 +178,6 @@ Acceptance criteria:
 - No Firebase, GitLive or Android type appears in this module.
 
 Why Phase 0: `AnalyticsTracker` is a mandatory member of `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`), so the graph cannot be constructed or tested without it. The split mirrors `:core:auth` and `:integration:firebase-auth`.
-
-### E0-07 - Walking Skeleton - L
-
-Build a single screen crossing native UI, shared state holder, Room, Firestore and real anonymous auth.
-
-Acceptance criteria:
-
-- A value written on one platform can be backed up remotely and restored on a clean second device.
-- `iosSimulatorArm64` runs in CI.
-- iOS consumes the shared framework through direct SPM integration, not CocoaPods.
-- Firestore offline persistence is disabled.
-- The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
-- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as `shared/build/generated/objc-header/Shared.h.golden`.
-- The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
-- The `objc-header-golden-check` CI step compares the generated header with the committed golden file.
-- `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
-
-Decision gate:
-
-- If Room KMP/KSP blocks iOS progress, switch to SQLDelight the same day. The switch MUST land with a superseding ADR, a `docs/DECISION_BOARD.md` status change on `D-1` and an update to `E1-01`, in the same PR.
-
-Human review required.
 
 ## Phase 1 - Local Persistence
 
@@ -214,6 +202,31 @@ Acceptance criteria:
 - `exportSchema = true`, schema JSON committed, `fallbackToDestructiveMigration` absent, and a v1 migration test exists.
 - Observable queries return `Flow`; one-shot queries are `suspend`.
 
+### E0-07 - Walking Skeleton - L
+
+Build a single screen crossing native UI, shared state holder, Room, Firestore and real anonymous auth.
+
+Moved here from Phase 0 by `D-30`: it needs Room, which lives in `:core:database`, and the Phase 0 module set forbids that module. It is the Phase 1 gate — no other Phase 1 story starts until it passes.
+
+Acceptance criteria:
+
+- A value written on one platform can be backed up remotely and restored on a clean second device.
+- `iosSimulatorArm64` runs in CI.
+- iOS consumes the shared framework through direct SPM integration, not CocoaPods.
+- Firestore offline persistence is disabled.
+- The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
+- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as `shared/build/generated/objc-header/Shared.h.golden`.
+- The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
+- The `objc-header-golden-check` CI step compares the generated header with the committed golden file.
+- `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
+- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter` and a no-op `AnalyticsTracker`, with the same parameter count and order as `AppGraphDependencies` (`D-27`).
+
+Decision gate:
+
+- If Room KMP/KSP blocks iOS progress, switch to SQLDelight the same day. The switch MUST land with a superseding ADR, a `docs/DECISION_BOARD.md` status change on `D-1` and an update to `E1-01`, in the same PR.
+
+Human review required.
+
 ### E1-02 - Vehicle Domain - S
 
 Implement the `:feature:vehicle` domain package: entity, repository interface and use cases.
@@ -229,6 +242,8 @@ Acceptance criteria:
 - Use cases have unit tests for success and for every error they declare.
 
 ### E1-03 - Vehicle Data, Local Only - M
+
+Implements `VehicleRepository` (`docs/CONTRACTS.md §12`).
 
 Implement the local data source, mappers and repository implementation for vehicles.
 
@@ -282,6 +297,8 @@ Acceptance criteria:
 Human review required.
 
 ### E1-06 - Fuel Entry Data, Local Only - M
+
+Implements `FuelEntryRepository` (`docs/CONTRACTS.md §12`).
 
 Implement the local data source, mappers, projections and repository implementation for fuel entries.
 
@@ -625,6 +642,8 @@ Prepare release assets and store requirements.
 
 Acceptance criteria:
 
+- Branch protection for `main` is active with the nine `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
+
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
 - A separate production Firebase project exists, its project identifier has been decided by the owner, and no public release build points to the development Firebase project.
@@ -639,16 +658,21 @@ Acceptance criteria:
 ```text
 E0-00 owner decisions (completed)
   -> E0-01 KMP bootstrap
-      -> E0-02, E0-03, E0-04, E0-05, E0-06
-          -> E0-08 :core:analytics
-          -> E0-07 walking skeleton gate
-              -> Phase 1 local persistence
+      -> E0-06 toolchain pinning
+          -> E0-02 convention plugins
+              -> E0-03 base core modules -> E0-08 :core:analytics
+                  -> E0-04 architecture guards -> E0-05 quality tooling and CI
+                      -> Phase 0 closes
+  -> Phase 1 local persistence
+      -> E1-01 :core:database
+          -> E0-07 walking skeleton gate (moved here by D-30)
+              -> the rest of Phase 1
               -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
               -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
               -> Phase 4
 ```
 
-`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires `AnalyticsTracker`.
+`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires `AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs Room from `:core:database` (`E1-01`).
 
 ## Story Index
 
@@ -656,14 +680,15 @@ E0-00 owner decisions (completed)
 |-------|-------|------|------------|
 | E0-00 Owner decision closure (completed) | 0 | S | Yes |
 | E0-01 KMP bootstrap (completed) | 0 | M | — |
-| E0-02 Convention plugins | 0 | M | — |
-| E0-03 Base core modules | 0 | M | — |
-| E0-04 Architecture guards | 0 | M | — |
-| E0-05 Quality tooling and CI | 0 | M | — |
+| E0-02 Convention plugins (completed) | 0 | M | — |
+| E0-03 Base core modules (completed, 2 criteria open) | 0 | M | — |
+| E0-04 Architecture guards (completed, feature rules open) | 0 | M | — |
+| E0-05 Quality tooling and CI (completed, branch protection open) | 0 | M | — |
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
-| E0-08 `:core:analytics` abstraction | 0 | S | — |
-| E0-07 Walking skeleton | 0.5 | L | Yes |
+| E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |
+
 | E1-01 `:core:database` | 1 | M | — |
+| E0-07 Walking skeleton | 1 | L | Yes |
 | E1-02 Vehicle domain | 1 | S | — |
 | E1-03 Vehicle data | 1 | M | — |
 | E1-04 Fuel entry domain | 1 | M | — |
