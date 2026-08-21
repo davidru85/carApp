@@ -19,8 +19,8 @@
 
 **Decision record validation (criteria 1-3).** Verified rather than rewritten: the four sources already agreed and needed no change.
 
-- 24 ADRs exist, one per decision `D-0` to `D-23`, with no gap and no orphan.
-- Every ADR `## Status` equals its `docs/DECISION_BOARD.md` status: 22 `Accepted`, and `D-11` and `D-12` `Deferred`.
+- 24 ADRs existed, one per decision `D-0` to `D-23`, with no gap and no orphan. Two more were added by this story (see **Decisions Made**), so the set is now `D-0` to `D-25` over 26 ADRs.
+- Every ADR `## Status` equals its `docs/DECISION_BOARD.md` status: 24 `Accepted`, and `D-11` and `D-12` `Deferred`.
 - `docs/adr/README.md` maps every decision ID to its file, including the three cases where the ADR number and the decision number do not line up (`D-17`→ADR-0019, `D-18`→ADR-0022, `D-19`→ADR-0018, `D-22`→ADR-0021).
 - The decision ID set and the status values are identical in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 
@@ -34,13 +34,13 @@
 
 | Criterion | Evidence |
 |-----------|----------|
-| One ADR per `Accepted`/`Deferred` decision, status equal to the board | Extraction over `docs/adr/0*.md` comparing the `## Status` body with the board row: 24/24 match. |
-| `docs/adr/README.md` maps every decision ID | 24 rows, `D-0` to `D-23`, no gap. |
-| ID set and statuses identical across the four documents | Compared `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`. |
+| One ADR per `Accepted`/`Deferred` decision, status equal to the board | Script over `docs/adr/0*.md` comparing each `## Status` body with its board row: 26/26 match. |
+| `docs/adr/README.md` maps every decision ID | 26 rows, `D-0` to `D-25`, no gap. |
+| ID set and statuses identical across the four documents | Parity script over `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`, plus the ADR files themselves: 26 decisions in all five sources, `PARITY OK`. |
 | Matrix pins every listed tool with the compatibility relation and the exact `Instant` package | `docs/versions-matrix.md`, "Pinned versions" plus "The exact `Instant` package". |
 | Every `TBD` replaced with a citation | `grep -c TBD docs/versions-matrix.md` returns 1, the sentence stating that no `TBD` cells remain. |
 | A unit test imports the pinned datetime package at build time | `PinnedInstantPackageTest` passes on `iosSimulatorArm64Test` and `testAndroidHostTest`. |
-| Reference devices and measurement method fixed | "Performance measurement baselines". |
+| Reference devices and measurement method fixed | "Performance measurement baselines"; the reference OS now matches the pinned `targetSdk`. |
 | Versions in `gradle/libs.versions.toml` and nowhere else | Build scripts read `libs.versions.*`; the previous literals for `compileSdk`, `minSdk`, `targetSdk` and the JDK are gone, as is the inert `java.toolchain.version` property. |
 
 ## Out of Scope / Not Done
@@ -52,6 +52,10 @@
 
 ## Files Changed
 
+- `docs/identifiers.md` — new "Module Android namespaces" section and a matching row in the Application table (`D-24`).
+- `docs/adr/0025-module-android-namespaces.md`, `docs/adr/0026-targetsdk-separate-from-compilesdk.md` (new), and `D-24`/`D-25` rows in `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+- `AGENTS.md` — implementation-time decisions MUST become ADRs; added to the Technical Rules and the Definition of Done.
+- `README.md` — project status refreshed; `docs/BACKLOG.md` — `E0-01` and `E0-06` marked completed.
 - `gradle/libs.versions.toml` — every `TBD` replaced; plugin aliases for Room, Kover, detekt, ktlint and serialization added; `kotlin-android` removed; `android-library` replaced by `android-kotlin-multiplatform-library`.
 - `gradle/wrapper/gradle-wrapper.properties` — Gradle 8.9 → 9.7.1.
 - `build.gradle.kts`, `androidApp/build.gradle.kts`, `shared/build.gradle.kts` — AGP 9 migration and catalog-driven SDK/JDK values.
@@ -64,7 +68,8 @@
 - **No `SHOULD` deviated from.** No decision status changed and no ADR was superseded.
 - **The toolchain moved as one set rather than being pinned where `E0-01` left it.** `D-1` requires Room 3 KMP; the `androidx.room3` artifacts are 3.0.x, and the current Compose BOM requires `compileSdk 37` and AGP 9.1.0 or higher. Pinning AGP at 8.5.2 would have meant pinning a deliberately stale Compose for the whole MVP, and `E0-01` itself recorded AGP 8.5.2 as a workaround to revalidate here.
 - **AGP 9 forced three build changes that are not stylistic.** Kotlin support is built into AGP 9, so `org.jetbrains.kotlin.android` is rejected outright; `com.android.library` is incompatible with the KMP plugin, so `:shared` uses `com.android.kotlin.multiplatform.library`; that plugin creates no host test runner, so `withHostTestBuilder` was added to keep the common tests running on the JVM as well as on Kotlin/Native.
-- **`:shared` was given its own Android build namespace,** `com.ruizurraca.carapp.shared`, because AGP 9 rejects two modules sharing one. `docs/identifiers.md` fixes the `:androidApp` namespace and the Kotlin package root of shared code; it does not cover per-module Android build namespaces, and the Kotlin package root of shared code is unchanged. Flagged for review in case the owner would rather record it in `docs/identifiers.md`.
+- **`D-24` — module Android namespaces became a derivable rule, owner-decided** ([ADR-0025](adr/0025-module-android-namespaces.md)). AGP 9 rejects two modules sharing a namespace, and `docs/TECHNICAL_PLAN.md §3` plans 17 modules beyond `:shared`, so this was not a one-off. `docs/identifiers.md` gained a "Module Android namespaces" section: the namespace is the shared package root plus the Gradle module path, with `:` becoming `.` and `-` removed. It is explicitly not the Kotlin package root, and `:androidApp` stays the exception. This closes the rule gap that would otherwise have hit `E0-02` and `E0-03`, where an agent needing a namespace had no source to take one from and the "MUST NOT invent identifiers" rule was unenforceable.
+- **`D-25` — `targetSdk` was separated from `compileSdk`, owner-decided** ([ADR-0026](adr/0026-targetsdk-separate-from-compilesdk.md)). `compileSdk 37` is forced by the Compose BOM and only decides which APIs compile. `targetSdk` is the Android runtime contract the app opts into, which is a behavioural decision rather than a version pin, so it is pinned at 36 — one below, matching the Android reference device. `E4-04` owns the move to a newer level before release. The first pinning pass had set both to 37 by symmetry; the owner rejected that.
 - **`kotlin.time.Instant` was chosen over the kotlinx-datetime 0.6.x compatibility artifact.** kotlinx-datetime 0.8.0 consumes the standard library type; the compat artifacts exist only to keep the old package alive and would pin the domain to a deprecated location.
 - **Crashlytics has no separate version pin** because the Firebase BOM owns it. The matrix says so instead of inventing a number.
 
@@ -95,7 +100,8 @@ Results: `GreetingTest` 3 tests and `PinnedInstantPackageTest` 1 test, 0 failure
 
 ## Decision Board Impact
 
-- [x] No decision changes. All 24 decisions keep their status; the story validated them rather than altering them.
+- [ ] No decision changes
+- [x] Added `D-24` (module Android namespaces, [ADR-0025](adr/0025-module-android-namespaces.md)) and `D-25` (`targetSdk` policy, [ADR-0026](adr/0026-targetsdk-separate-from-compilesdk.md)). The 24 pre-existing decisions keep their status; the story validated them rather than altering them.
 
 ## Shared-Write Modules Touched
 
@@ -110,10 +116,11 @@ Results: `GreetingTest` 3 tests and `PinnedInstantPackageTest` 1 test, 0 failure
 - **The pins are proven only as far as the current code reaches.** Room 3, Firebase, GitLive, Koin, Kermit, Turbine, Konsist, Kover, detekt and ktlint are declared but unused; the first story to apply each one is the first real test of its pin. Turbine against coroutines 1.11.0 is called out explicitly by `D-17`.
 - **The AGP 9 build model changes what `E0-02` inherits.** Convention plugins must be written against `com.android.kotlin.multiplatform.library` and AGP built-in Kotlin, not the AGP 8 model that `E0-01` used.
 - **No CI enforces any of this.** Until `E0-05`, a version bump that breaks the build is caught only by whoever runs Gradle locally.
-- **`targetSdk 37` was pinned as a build value, not as a behavioural review.** Opting into a new Android runtime behaviour normally deserves its own pass over the app's behaviour; there is almost no app yet, so there was nothing to review, and `E4-04` should revisit it before release.
+- **`:shared` still carries its namespace as a literal.** The rule in `docs/identifiers.md` says the value is derived and that no module build script should hold it, but nothing computes it yet. `E0-02` MUST derive it from the Gradle project path and remove the literal; until then the rule is documented but not enforced.
+- **`targetSdk 36` leaves a bump owed before release,** owned by `E4-04`, which must review the API 37 runtime behaviour changes against the flows and the design assets at that point.
 - **The x86_64 simulator gap from `E0-01` is still open** and will matter when `E0-07` puts `iosSimulatorArm64` in CI.
 
 ## Human Review Gate
 
-- [x] Gated path — `docs/versions-matrix.md`, `docs/adr/**` reviewed but unchanged.
+- [x] Gated path — `docs/versions-matrix.md`, `docs/identifiers.md`, `docs/adr/**`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `AGENTS.md`.
 - [x] Gated topic — technical stack and pinned versions.

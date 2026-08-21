@@ -22,9 +22,39 @@
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
+| Android build namespace, per module | Derived — see "Module Android namespaces" below | AGP 9 requires every module with an Android target to declare a unique namespace. The value is derived from the module path, so it is never invented. |
 | iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM as `import Shared`; this is the canonical SPM module name. |
 | Android `minSdk` / `targetSdk` | `26` / pinned in `docs/versions-matrix.md` | `minSdk` is fixed by `docs/SPECIFICATION.md §11`. |
 | iOS deployment target | `16.0` | Fixed by `docs/SPECIFICATION.md §11`. |
+
+### Module Android namespaces
+
+Since AGP 9, every module with an Android target MUST declare an Android build namespace, and two
+modules MUST NOT share one. The value is **derived, not chosen**:
+
+> Android build namespace = the shared module package root, followed by the Gradle module path with
+> `:` replaced by `.` and any `-` removed.
+
+| Module | Android build namespace |
+|--------|-------------------------|
+| `:shared` | `com.ruizurraca.carapp.shared` |
+| `:core:model` | `com.ruizurraca.carapp.core.model` |
+| `:feature:fuel` | `com.ruizurraca.carapp.feature.fuel` |
+| `:integration:firebase-auth` | `com.ruizurraca.carapp.integration.firebaseauth` |
+
+Two consequences, both deliberate:
+
+- **This is not the Kotlin package root.** Shared code keeps `com.ruizurraca.carapp` as its package
+  root with sub-packages following the module path, exactly as the table above states. The Android
+  namespace is a build identifier used for the generated `R` class and the merged manifest; a module
+  whose Android namespace is `com.ruizurraca.carapp.shared` still declares Kotlin code in
+  `com.ruizurraca.carapp`.
+- **`:androidApp` is the exception** and keeps `com.ruizurraca.carapp`, the value fixed in the table
+  above, because it is the application namespace.
+
+Because the value is derived, an agent MUST NOT write a namespace literal in a module build script.
+The convention plugins of `E0-02` compute it from the Gradle project path, which is what makes the
+"agents MUST NOT invent identifiers" rule enforceable for the remaining modules.
 
 Debug builds use the `.debug` application ID suffix on Android so debug and release can coexist on one device. iOS uses a separate bundle identifier suffix `.debug` with its own Firebase app registration.
 

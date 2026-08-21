@@ -436,6 +436,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, Phase 4. | Accepted |
 | D-22 | Application identifiers | Fixed in `docs/identifiers.md`; the production Firebase project ID is deferred by `D-14`. | Accepted |
 | D-23 | Account deletion execution | Firebase Admin server operation; client Firestore hard deletes remain forbidden. | Accepted |
+| D-24 | Module Android namespaces | Derived from the Gradle module path; not the Kotlin package root. | Accepted |
+| D-25 | `targetSdk` policy | Pinned independently of `compileSdk`: `compileSdk 37`, `targetSdk 36`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

@@ -38,6 +38,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-21 | Crash reporting | Firebase Crashlytics behind `CrashReporter` in Phase 4 | Accepted | Not needed before release hardening. |
 | D-22 | Application identifiers | `docs/identifiers.md` | Accepted | Store identifiers are effectively irreversible; the production Firebase project ID is deferred by `D-14`. |
 | D-23 | Account deletion execution | Firebase Admin server operation | Accepted | Store deletion compliance requires physical remote purge, while mobile clients must keep `allow delete: if false`. |
+| D-24 | Module Android namespaces | Derived from the Gradle module path | Accepted | AGP 9 requires a unique namespace per module and 17 modules remain to be created; a derivable rule removes 17 identifier decisions and lets a convention plugin compute the value. |
+| D-25 | `targetSdk` policy | Independent of `compileSdk` | Accepted | `compileSdk` is forced by the Compose BOM and only decides which APIs compile; `targetSdk` is the runtime contract the app opts into and is a behavioural decision. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

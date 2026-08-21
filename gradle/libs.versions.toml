@@ -14,7 +14,7 @@ gradle = "9.7.1" # wrapper version; MUST match gradle/wrapper/gradle-wrapper.pro
 agp = "9.3.1" # AGP 9.x is required by Compose BOM 2026.08.00 and pairs with Gradle 9.x
 composeBom = "2026.08.00"
 minSdk = "26" # fixed by docs/SPECIFICATION.md §11; do not change without a story
-targetSdk = "37"
+targetSdk = "36" # runtime opt-in, decided separately from compileSdk (E0-06)
 compileSdk = "37"
 
 # --- Kotlin toolchain group (Kotlin, KSP, SKIE, kotlinx-*) ---

@@ -227,6 +227,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Firestore rule changes require emulator tests.
 - Public repository or use case contract changes require updating `docs/CONTRACTS.md` in the same change.
 - Library or stack decision changes require updating `docs/DECISION_BOARD.md` and the related ADR.
+- **Every decision taken while implementing a story is a decision.** A build-model choice, an identifier convention, a policy such as how `targetSdk` is pinned, or any option the owner is asked to choose between MUST get a new decision ID in `docs/DECISION_BOARD.md`, its own ADR in `docs/adr/`, and matching rows in `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`, in the same pull request. Recording it only in a handoff, a commit message or `docs/PROJECT_LOG.md` does NOT count: those are history, and the next agent is not bound by them.
 
 ## Definition of Ready
 
@@ -266,6 +267,7 @@ A story is done only when:
 - relevant builds pass,
 - architecture checks and the contract check pass,
 - documentation is updated if behaviour, decisions or models changed,
+- every decision taken during the story has a decision ID, an ADR, and identical rows in the four mirroring documents,
 - residual risks are documented,
 - human review gates are identified,
 - the handoff is filled in from `docs/templates/agent-handoff.md`,

@@ -42,6 +42,8 @@ Human review required.
 
 ### E0-01 - KMP Project Bootstrap - M
 
+Status: completed on 2026-08-19, PR #9. See `docs/handoff-E0-01.md`.
+
 Create the KMP project with Android and iOS targets, Android host app, SwiftUI iOS host app, and `:shared` framework.
 
 Acceptance criteria:
@@ -135,6 +137,8 @@ Acceptance criteria:
 CI duration under 20 minutes is an objective, monitored and reported, not a pass/fail criterion.
 
 ### E0-06 - ADRs, Version Matrix and Decision Board Validation - S
+
+Status: completed on 2026-08-21, PR #13. See `docs/handoff-E0-06.md`.
 
 Validate all decision records and pin the toolchain.
 
@@ -651,12 +655,12 @@ E0-00 owner decisions (completed)
 | Story | Phase | Size | Human gate |
 |-------|-------|------|------------|
 | E0-00 Owner decision closure (completed) | 0 | S | Yes |
-| E0-01 KMP bootstrap | 0 | M | — |
+| E0-01 KMP bootstrap (completed) | 0 | M | — |
 | E0-02 Convention plugins | 0 | M | — |
 | E0-03 Base core modules | 0 | M | — |
 | E0-04 Architecture guards | 0 | M | — |
 | E0-05 Quality tooling and CI | 0 | M | — |
-| E0-06 ADRs and version matrix | 0 | S | — |
+| E0-06 ADRs and version matrix (completed) | 0 | S | — |
 | E0-08 `:core:analytics` abstraction | 0 | S | — |
 | E0-07 Walking skeleton | 0.5 | L | Yes |
 | E1-01 `:core:database` | 1 | M | — |

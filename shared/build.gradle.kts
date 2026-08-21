@@ -9,9 +9,10 @@ kotlin {
     jvmToolchain(libs.versions.jdk.get().toInt())
 
     androidLibrary {
-        // Android build namespace only. AGP 9 requires it to differ from the :androidApp
-        // namespace fixed in docs/identifiers.md; the Kotlin package root of shared code stays
-        // com.ruizurraca.carapp as that document specifies.
+        // Derived from the module path per docs/identifiers.md, "Module Android namespaces".
+        // It is a build identifier, not the Kotlin package root: shared code stays in
+        // com.ruizurraca.carapp. E0-02 computes this from the Gradle project path so that no
+        // module build script carries the literal.
         namespace = "com.ruizurraca.carapp.shared"
         compileSdk = libs.versions.compileSdk.get().toInt()
         minSdk = libs.versions.minSdk.get().toInt()

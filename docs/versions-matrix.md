@@ -38,7 +38,7 @@ normative section that fixes it.
 | SKIE | `co.touchlab.skie` | 0.10.14 | [ADR-0003](adr/0003-ios-interop-skie.md) (`D-2`) | Applied only to `:shared`. Supports Kotlin 2.4.10, which is what allows the Kotlin pin above. |
 | Xcode | — | 26.6 | `E0-06` | Pinned on the macOS CI runner too. |
 | Android `compileSdk` | — | 37 | `E0-06` | Floor imposed by the pinned Compose BOM. |
-| Android `targetSdk` | — | 37 | `E0-06` | `minSdk` is fixed at 26 by `docs/SPECIFICATION.md §11`. |
+| Android `targetSdk` | — | 36 | `E0-06` | Deliberately one below `compileSdk`. `compileSdk` is forced by the Compose BOM and only decides which APIs compile; `targetSdk` is the Android runtime contract the app opts into, which is a behavioural decision and not a version pin. It matches the Android reference device below, and `E4-04` owns the move to a newer level before release. `minSdk` is fixed at 26 by `docs/SPECIFICATION.md §11`. |
 | Firebase | Firebase BOM | 34.18.0 | [ADR-0001](adr/0001-backend-cloud-firestore.md) (`D-0`) | Governs the native Firebase artifact versions, including Crashlytics. |
 | GitLive | `dev.gitlive:firebase-*` | 2.6.0 | [ADR-0006](adr/0006-firestore-remote-sync-source.md), [ADR-0007](adr/0007-firebase-auth-gitlive.md) (`D-5`, `D-6`) | Latest 2.6.x. The 3.0 line is alpha and is out of scope for the MVP. |
 | Coroutines | `kotlinx-coroutines` | 1.11.0 | `E0-06` | Also determines the Native `Dispatchers.IO` source used by `DispatcherProvider`. |
@@ -97,8 +97,7 @@ Reference devices:
 | Android | Pixel 6a | Android 16 (API 36) |
 | iOS | iPhone 12 | iOS 26 |
 
-The reference OS is the baseline the thresholds were defined against; it is deliberately one step
-below the pinned `targetSdk` so that the measurement device is a realistic user device rather than
-the newest platform.
+The reference OS is the baseline the thresholds were defined against, and it matches the pinned
+`targetSdk`, so the app is measured on the runtime contract it actually opts into.
 
 If a reference device is unavailable, the measurement is still run and the actual device is recorded in the handoff and in `docs/PROJECT_LOG.md`; it does not silently pass.
