@@ -2,7 +2,7 @@
 
 > Pinned toolchain versions and the compatibility relation between them, plus the reference devices and measurement methods for every performance target.
 >
-> **Versions are declared only in `gradle/libs.versions.toml`.** This file explains *why* each pin exists and which pins move together. Filling in the version column is `E0-06`; until then every cell marked `TBD` blocks the stories that depend on it.
+> **Versions are declared only in `gradle/libs.versions.toml`.** This file explains *why* each pin exists, which pins move together and which record backs it. The version column was filled in by `E0-06` on 2026-08-21; there are no `TBD` cells left.
 >
 > Changing any pinned version during the MVP is a human review gate (`AGENTS.md`).
 
@@ -13,38 +13,60 @@ These groups move together. Bumping one member REQUIRES revalidating the whole g
 | Group | Members | Why they are coupled |
 |-------|---------|----------------------|
 | **Kotlin toolchain** | Kotlin, KSP, SKIE, `kotlinx-coroutines`, `kotlinx-serialization`, `kotlinx-datetime` | KSP and SKIE are published against exact Kotlin versions. The `kotlinx` libraries follow the Kotlin release train. |
-| **Room KMP** | `androidx.room`, `androidx.sqlite:sqlite-bundled`, KSP | Room KMP code generation runs through KSP and the bundled SQLite must match the Room version. |
+| **Room KMP** | `androidx.room3`, `androidx.sqlite:sqlite-bundled`, KSP | Room KMP code generation runs through KSP and the bundled SQLite must match the Room version. |
 | **Apple toolchain** | Xcode, iOS deployment target, SKIE, macOS CI runner image | SKIE and the Kotlin/Native linker depend on the Xcode version available on the runner. |
 | **Firebase** | Firebase BOM, GitLive Firebase SDK, Google Services plugin | GitLive 2.6.x wraps a specific Firebase SDK range; GitLive 3.0 alpha is out of scope. |
-| **Android build** | AGP, Gradle, JDK toolchain, Compose BOM | AGP requires specific Gradle and JDK versions. |
+| **Android build** | AGP, Gradle, JDK toolchain, Compose BOM, `compileSdk`, `targetSdk` | AGP requires specific Gradle and JDK versions, and a Compose BOM declares a minimum AGP and `compileSdk`. Compose BOM `2026.08.00` requires `compileSdk 37` and AGP 9.1.0 or higher, which is what moved the whole group. |
+| **AGP 9 build model** | AGP, `com.android.kotlin.multiplatform.library`, Kotlin Gradle plugin | Since AGP 9.0 Kotlin support is built into AGP: `org.jetbrains.kotlin.android` is rejected, and `com.android.library` is incompatible with the KMP plugin, so `:shared` must use `com.android.kotlin.multiplatform.library` and its `androidLibrary` DSL. |
 
 ## Pinned versions
 
-| Area | Artifact | Version | Notes |
-|------|----------|---------|-------|
-| JDK toolchain | — | TBD | Same value for Gradle and for the Kotlin JVM toolchain. |
-| Gradle | — | TBD | |
-| Android Gradle Plugin | `com.android.tools.build:gradle` | TBD | |
-| Kotlin | `org.jetbrains.kotlin` | TBD | Drives the whole Kotlin toolchain group. |
-| KSP | `com.google.devtools.ksp` | TBD | Must match the Kotlin version exactly. |
-| Compose | Compose BOM | TBD | Android only. |
-| Room | `androidx.room` | TBD | Room 3.x KMP (`D-1`). |
-| SQLite | `androidx.sqlite:sqlite-bundled` | TBD | Same bundled SQLite on both platforms. |
-| SKIE | `co.touchlab.skie` | TBD | Applied only to `:shared` (`D-2`). |
-| Xcode | — | TBD | Pinned on the macOS CI runner too. |
-| Android `targetSdk` | — | TBD | `minSdk` is fixed at 26. |
-| Firebase | Firebase BOM | TBD | |
-| GitLive | `dev.gitlive:firebase-*` | 2.6.x | Not 3.0 alpha (`D-5`, `D-6`). |
-| Coroutines | `kotlinx-coroutines` | TBD | Also determines the Native `Dispatchers.IO` source used by `DispatcherProvider`. |
-| Serialization | `kotlinx-serialization-json` | TBD | Outbox payloads and remote DTOs. |
-| Date/time | `kotlinx-datetime` | TBD | **Record the exact fully-qualified `Instant` package here**, because recent versions relocate it. `docs/CONTRACTS.md §2` refers to this cell. |
-| DI | `io.insert-koin` Koin KMP | TBD | `D-3`. |
-| Logging | Kermit | TBD | `D-15`, behind `Logger`. |
-| Crash reporting | Firebase Crashlytics | TBD | `D-21`, behind `CrashReporter`, Phase 4. |
-| Flow testing | Turbine | TBD | `D-17`; drop to hand-written helpers if incompatible. |
-| Coverage | Kover | TBD | `D-18`. |
-| Architecture checks | Konsist | TBD | `D-16`, package-level rules. |
-| Lint | ktlint, detekt | TBD | Config files committed; no baseline suppression files. |
+Every value below is declared in `gradle/libs.versions.toml` and nowhere else. "Backed by" is the
+record that justifies the choice: an ADR where a decision exists, otherwise the story or the
+normative section that fixes it.
+
+| Area | Artifact | Version | Backed by | Notes |
+|------|----------|---------|-----------|-------|
+| JDK toolchain | — | 21 | `E0-06` | LTS. Same value for Gradle and for the Kotlin JVM toolchain, applied through `kotlin { jvmToolchain(...) }` in each module. |
+| Gradle | — | 9.7.1 | `E0-06` | Required by AGP 9.x. |
+| Android Gradle Plugin | `com.android.tools.build:gradle` | 9.3.1 | `E0-06` | Last stable 9.x at pinning time. AGP 9 carries built-in Kotlin support; see the AGP 9 build model group above. |
+| Kotlin | `org.jetbrains.kotlin` | 2.4.10 | `E0-06` | Drives the whole Kotlin toolchain group. |
+| KSP | `com.google.devtools.ksp` | 2.3.11 | `E0-06` | KSP versions its own line since 2.3.0 and is no longer `<kotlin>-<ksp>`. 2.3.10 and later support Kotlin 2.4.x. |
+| Compose | Compose BOM | 2026.08.00 | `E0-06` | Android only. Requires `compileSdk 37` and AGP 9.1.0 or higher. |
+| Room | `androidx.room3` | 3.0.1 | [ADR-0002](adr/0002-local-database-room-kmp.md) (`D-1`) | Room 3.x KMP. The artifacts are `room3-runtime` and `room3-compiler` under the `androidx.room3` group, not `androidx.room`. |
+| SQLite | `androidx.sqlite:sqlite-bundled` | 2.7.0 | [ADR-0002](adr/0002-local-database-room-kmp.md) (`D-1`) | Same bundled SQLite on both platforms. |
+| SKIE | `co.touchlab.skie` | 0.10.14 | [ADR-0003](adr/0003-ios-interop-skie.md) (`D-2`) | Applied only to `:shared`. Supports Kotlin 2.4.10, which is what allows the Kotlin pin above. |
+| Xcode | — | 26.6 | `E0-06` | Pinned on the macOS CI runner too. |
+| Android `compileSdk` | — | 37 | `E0-06` | Floor imposed by the pinned Compose BOM. |
+| Android `targetSdk` | — | 37 | `E0-06` | `minSdk` is fixed at 26 by `docs/SPECIFICATION.md §11`. |
+| Firebase | Firebase BOM | 34.18.0 | [ADR-0001](adr/0001-backend-cloud-firestore.md) (`D-0`) | Governs the native Firebase artifact versions, including Crashlytics. |
+| GitLive | `dev.gitlive:firebase-*` | 2.6.0 | [ADR-0006](adr/0006-firestore-remote-sync-source.md), [ADR-0007](adr/0007-firebase-auth-gitlive.md) (`D-5`, `D-6`) | Latest 2.6.x. The 3.0 line is alpha and is out of scope for the MVP. |
+| Coroutines | `kotlinx-coroutines` | 1.11.0 | `E0-06` | Also determines the Native `Dispatchers.IO` source used by `DispatcherProvider`. |
+| Serialization | `kotlinx-serialization-json` | 1.11.0 | `E0-06` | Outbox payloads and remote DTOs. |
+| Date/time | `kotlinx-datetime` | 0.8.0 | `E0-06` | **The canonical `Instant` type is `kotlin.time.Instant`.** See the note below. |
+| DI | `io.insert-koin` Koin KMP | 4.2.2 | [ADR-0004](adr/0004-koin-dependency-injection.md) (`D-3`) | Wiring only. |
+| Logging | Kermit | 2.1.0 | [ADR-0016](adr/0016-logging-kermit.md) (`D-15`) | Behind `Logger`. |
+| Crash reporting | Firebase Crashlytics | managed by the Firebase BOM | [ADR-0023](adr/0023-firebase-crashlytics.md) (`D-21`) | Behind `CrashReporter`, Phase 4. The BOM owns the version, so there is no separate pin. |
+| Flow testing | Turbine | 1.2.1 | [ADR-0019](adr/0019-flow-testing-turbine.md) (`D-17`) | Compatibility with the pinned coroutines version is confirmed by `E0-05`, which is the first story that uses it. |
+| Coverage | Kover | 0.9.9 | [ADR-0022](adr/0022-coverage-kover.md) (`D-18`) | |
+| Architecture checks | Konsist | 0.17.3 | [ADR-0017](adr/0017-architecture-checks-konsist.md) (`D-16`) | Package-level rules. |
+| Lint | ktlint Gradle plugin | 14.2.0 | `E0-05` | `org.jlleitschuh.gradle.ktlint`. Config files committed; no baseline suppression files. |
+| Lint | ktlint engine | 1.8.0 | `E0-05` | The engine the plugin runs; pinned so the plugin cannot drift it. |
+| Lint | detekt | 1.23.8 | `E0-05` | |
+
+### The exact `Instant` package
+
+`docs/CONTRACTS.md §2` refers to this cell, because kotlinx-datetime relocated the type.
+
+The canonical timestamp type is **`kotlin.time.Instant`**, from the Kotlin standard library.
+kotlinx-datetime 0.8.0 no longer declares its own `Instant`: it consumes the standard library type
+and supplies the calendar operations around it, such as `toLocalDateTime(TimeZone)`.
+`kotlinx.datetime.Instant` MUST NOT be used, and the 0.6.x compatibility artifacts that restore it
+MUST NOT be added.
+
+`shared/src/commonTest/kotlin/com/ruizurraca/carapp/PinnedInstantPackageTest.kt` enforces this: it
+resolves a kotlinx-datetime extension declared on `kotlin.time.Instant`, so a relocation of the
+type fails the build instead of silently changing the canonical timestamp of the domain model.
 
 ## Coverage thresholds
 
@@ -72,7 +94,11 @@ Reference devices:
 
 | Platform | Device | OS |
 |----------|--------|-----|
-| Android | Pixel 6a | TBD, pinned in `E0-06` |
-| iOS | iPhone 12 | TBD, pinned in `E0-06` |
+| Android | Pixel 6a | Android 16 (API 36) |
+| iOS | iPhone 12 | iOS 26 |
+
+The reference OS is the baseline the thresholds were defined against; it is deliberately one step
+below the pinned `targetSdk` so that the measurement device is a realistic user device rather than
+the newest platform.
 
 If a reference device is unavailable, the measurement is still run and the actual device is recorded in the handoff and in `docs/PROJECT_LOG.md`; it does not silently pass.
