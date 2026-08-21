@@ -4,11 +4,22 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** Phase 0 in progress. The definition phase is complete and audited, owner decision closure (`E0-00`) is closed, the KMP skeleton (`E0-01`) builds on both platforms, and the toolchain is pinned (`E0-06`). Next up is `E0-02` in `docs/BACKLOG.md`. There is no CI yet; `E0-05` creates it.
+> **Project status:** **Phase 0 complete.** The project builds on Android and iOS, the toolchain is pinned, and the architecture and contract rules are enforced by CI on every pull request. `main` is protected by nine required checks. The next story is `E1-01` (`:core:database`), which opens Phase 1; the walking skeleton `E0-07` follows it. There is no product feature yet — Phase 0 delivered the foundations, not behaviour.
 
 ## Start here
 
-**If you are an AI agent, open [AGENTS.md](AGENTS.md) first.** It is the entry point: it defines document authority, normative language, the human review gates, and a map of every document in the repository.
+**If you are an AI agent, open [AGENTS.md](AGENTS.md) first.** It is the entry point: it defines document authority, normative language, the human review gates, a map of every document in the repository, and a `Repository State` section describing what is already built and how to verify it.
+
+## Build and verify
+
+```bash
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+```
+
+That is exactly what CI runs. `AGENTS.md` §`Repository State` explains what each check proves, how
+to create a module, and which rules are not enforced yet. Requirements: JDK 21 and, for the iOS
+targets, Xcode as pinned in [docs/versions-matrix.md](docs/versions-matrix.md).
 
 ## Documentation
 
@@ -143,9 +154,8 @@ document wins and the discrepancy is escalated.
 
 | Phase | Goal | Main gate |
 |-------|------|-----------|
-| 0 - Foundations | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 0.5 - Walking skeleton | One real screen crosses native UI, shared presentation, Room, Firestore and anonymous auth | Data can be backed up remotely and restored on a clean second device |
-| 1 - Local persistence | Vehicles and fuel entries are useful offline | Consumption calculation fully tested and reviewed |
+| 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
+| 1 - Local persistence | `:core:database`, then the walking skeleton, then vehicles and fuel entries useful offline | The walking skeleton (`E0-07`) is the phase gate: data backed up remotely and restored on a clean second device. Then consumption calculation fully tested and reviewed |
 | 2 - Authentication | Anonymous, local owner adoption, Google, Apple, conversion, sign-out, account deletion | Adoption and conversion preserve data |
 | 3 - Backend and backup | Firestore rules, integration, backup engine, wiring, backup status | Recovery and provider decoupling are executable checks |
 | 4 - MVP hardening | Settings, accessibility, i18n, performance, release preparation | Store-readiness checklist complete |

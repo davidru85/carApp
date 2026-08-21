@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — Documentation brought level with the built system for handover
+
+- **Type:** milestone
+- **Story / Decision:** — (no backlog story; handover readiness, owner-directed)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `AGENTS.md` gained a `## Repository State` section as its second section, after Rule 0: which modules exist and which deliberately do not, the three-line template for creating a module, the exact command CI runs, a table of what each check proves, what is enforced on `main`, what is not yet enforced with the story that owns each gap, and a pointer to the per-story handoffs. The Document Map now lists `docs/handoff-*.md`. `README.md` gained a `Build and verify` section and an accurate status line. `docs/CONTRIBUTING.md` gained a "Before Opening a Pull Request" section and now states that `main` is protected, names the nine required checks, and says plainly that administrator bypass is an escape hatch and not a workflow. Stale claims were corrected: `README.md` said "There is no CI yet; `E0-05` creates it", `docs/DEFINITION.md` said "The repository is greenfield: there is no product code yet", and both still listed a "Phase 0.5" for the walking skeleton that `D-30` had already folded into Phase 1.
+- **Why:** the project is handing over to another agent. An incoming agent reads `AGENTS.md` and `README.md` first, and neither mentioned — once — how to build the project, how to run a check, or that any of this existed. `AGENTS.md` was written when the repository had no code and had never been updated to describe the system that grew under it, so its instructions were complete about process and silent about the thing being built.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/CONTRIBUTING.md`, and this log.
+- **Verification:** full suite green — `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test`. A grep sweep for "no product code", "there is no CI", "not configured yet", "Phase 0.5" and "Implementation starts with" now returns only the project log, where those statements are history and MUST NOT be edited.
+- **Follow-ups / risks:** `## Repository State` is a snapshot and will drift like any snapshot. Two things limit the damage: the story that changes the module set or the check set is the story that updates it, and the section defers to `contractCheck` for the live list of what cannot be verified yet rather than repeating it. `docs/E0-01-READY-CHECK.md` is kept rather than deleted: `E0-01` predates the current handoff format and `docs/PROJECT_LOG.md` references the file, so removing it would leave a dangling reference in an append-only record. It is now listed in the Document Map so nobody mistakes it for a stray file.
+
 ### 2026-08-21 — Repository made public, branch protection activated, first CI run measured
 
 - **Type:** decision
