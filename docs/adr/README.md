@@ -32,5 +32,13 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-23 | [ADR-0024](0024-account-deletion-server-admin.md) | Use a Firebase Admin server operation for account deletion hard deletes. | Accepted |
 | D-24 | [ADR-0025](0025-module-android-namespaces.md) | Derive module Android namespaces from the Gradle module path. | Accepted |
 | D-25 | [ADR-0026](0026-targetsdk-separate-from-compilesdk.md) | Pin `targetSdk` separately from `compileSdk`. | Accepted |
+| D-26 | [ADR-0027](0027-monetary-golden-row-correction.md) | Correct the contradictory monetary golden row of `§2`. | Accepted |
+| D-27 | [ADR-0028](0028-test-app-graph-dependencies-in-e0-07.md) | Build `testAppGraphDependencies` in `E0-07`. | Accepted |
+| D-28 | [ADR-0029](0029-feature-package-rules-in-e1-07.md) | Implement the feature-layer package rules in `E1-07`. | Accepted |
+| D-29 | [ADR-0030](0030-contract-declarations-may-live-inline.md) | Contract types may be declared inline, not only in `§20`. | Accepted |
+| D-30 | [ADR-0031](0031-walking-skeleton-starts-phase-1.md) | `E0-07` moves to the start of Phase 1. | Accepted |
+| D-31 | [ADR-0032](0032-branch-protection-requires-nine-checks.md) | Branch protection requires all nine CI checks. | Accepted |
+| D-32 | [ADR-0033](0033-development-firebase-project-id.md) | Development Firebase project ID is `davidruiz-carapp-dev`. | Accepted |
+| D-33 | [ADR-0034](0034-repository-stays-private-branch-protection-deferred.md) | Repository stays private; branch protection deferred with an explicit trigger. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

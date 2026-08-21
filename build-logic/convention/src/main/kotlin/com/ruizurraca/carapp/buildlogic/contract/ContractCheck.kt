@@ -33,7 +33,6 @@ class ContractCheck(private val repoRoot: File) {
         assertion13TestAppGraphParity(),
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
-        reportDeclarationsOutsideSection20(),
         reportProseInCodeFences(),
     )
 
@@ -56,21 +55,6 @@ class ContractCheck(private val repoRoot: File) {
                 "contract kotlin fences contain only code",
                 AssertionResult.Status.PENDING,
                 "${offenders.size} prose line(s) inside kotlin fences (DEC-4): ${offenders.joinToString(" | ")}",
-            )
-        }
-    }
-
-    /** Informational: see [declaredOutsideSection20]. */
-    private fun reportDeclarationsOutsideSection20(): AssertionResult {
-        val outside = declaredOutsideSection20(read("docs/CONTRACTS.md")).toSortedSet()
-        return if (outside.isEmpty()) {
-            AssertionResult(101, "all contract declarations live in §20", AssertionResult.Status.PASS)
-        } else {
-            AssertionResult(
-                101,
-                "all contract declarations live in §20",
-                AssertionResult.Status.PENDING,
-                "declared outside §20 (DEC-4): ${outside.joinToString(", ")}",
             )
         }
     }
@@ -101,30 +85,15 @@ class ContractCheck(private val repoRoot: File) {
         }
 
         return if (undeclared.isEmpty()) {
-            AssertionResult(1, "every project-owned type in a code block is declared in the contract", AssertionResult.Status.PASS)
+            AssertionResult(1, "every project-owned type in a code block is declared in the contract (§18.1)", AssertionResult.Status.PASS)
         } else {
             AssertionResult(
                 1,
-                "every project-owned type in a code block is declared in the contract",
+                "every project-owned type in a code block is declared in the contract (§18.1)",
                 AssertionResult.Status.FAIL,
                 "undeclared: ${undeclared.joinToString(", ")}",
             )
         }
-    }
-
-    /**
-     * `§18` assertion 1 says declarations live in §20. Several do not: `Logger` is declared in
-     * §17, `AnalyticsTracker` in §16.1, `RemoteSyncSource` in §10, `AppGraphDependencies` in
-     * §11.6, the repositories in §12 and the use cases in §13, even though §20 opens with "Every
-     * type referenced by a signature in this document is declared here".
-     *
-     * Reported rather than failed: the types *are* declared, so nothing is ambiguous for an
-     * implementer, and moving six sections' worth of declarations is a contract change the owner
-     * decides. Recorded as `DEC-4`.
-     */
-    private fun declaredOutsideSection20(contracts: String): Set<String> {
-        val section20 = contracts.substring(contracts.indexOf("## 20. Canonical Type Definitions"))
-        return declaredTypes(contracts) - declaredTypes(section20)
     }
 
     private fun declaredTypes(text: String): Set<String> =

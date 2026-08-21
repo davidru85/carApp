@@ -40,6 +40,14 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-23 | Account deletion execution | Firebase Admin server operation | Accepted | Store deletion compliance requires physical remote purge, while mobile clients must keep `allow delete: if false`. |
 | D-24 | Module Android namespaces | Derived from the Gradle module path | Accepted | AGP 9 requires a unique namespace per module and 17 modules remain to be created; a derivable rule removes 17 identifier decisions and lets a convention plugin compute the value. |
 | D-25 | `targetSdk` policy | Independent of `compileSdk` | Accepted | `compileSdk` is forced by the Compose BOM and only decides which APIs compile; `targetSdk` is the runtime contract the app opts into and is a behavioural decision. |
+| D-26 | Monetary golden values | Correct the contradictory golden row and add a real HALF_UP round-up row | Accepted | The formula is authoritative and the row was arithmetically wrong; a bare correction would have removed the round-up coverage. |
+| D-27 | `testAppGraphDependencies` ownership | Built by `E0-07`, not `E0-03` | Accepted | Keeps the Phase 0 module set absolute and writes the factory once against the complete member list. |
+| D-28 | Feature-layer package rules | Implemented with Konsist in `E1-07` | Accepted | Konsist arrives when it has something to check; a dedicated module would not be in the canonical inventory. |
+| D-29 | Contract type declarations | A type may be declared in `§20` or inline in the section that owns it | Accepted | Nothing was ambiguous for an implementer, and moving nine declarations would separate each from the rules that constrain it. |
+| D-30 | Walking skeleton position | `E0-07` is the second story of Phase 1, after `E1-01` | Accepted | Avoids an exception in the Phase 0 module set, and gives `E0-07` a real Room implementation to exercise. |
+| D-31 | Branch protection | `main` requires all nine CI checks of `§18` | Accepted | A later edit to add the two placeholder checks is easy to forget, and they are the two nobody watches. |
+| D-32 | Development Firebase project ID | `davidruiz-carapp-dev` | Accepted | Google Cloud project IDs are globally unique and `carapp-dev` was taken; the owner chose the replacement. |
+| D-33 | Repository visibility and branch protection | Stay private; apply the `D-31` protection in the same change that makes the repository public or moves it to a plan that allows it | Accepted | No cost and no premature publication, at the price of an advisory-only CI; the decision carries an explicit trigger rather than a follow-up note. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
