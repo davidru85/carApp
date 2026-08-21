@@ -62,8 +62,8 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 
 | Item | Value | Notes |
 |------|-------|-------|
-| Development project ID | `carapp-dev` | Accepted in `D-22`. Used by debug builds and by manual testing during development. |
-| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. |
+| Development project ID | `davidruiz-carapp-dev` | Fixed by `D-32`. `carapp-dev`, originally chosen by `D-22`, is held by another Google Cloud customer and is unavailable; Google Cloud project IDs are globally unique. Used by debug builds and by manual testing during development. |
+| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. Its availability MUST be checked before it is recorded as decided (`D-32`). |
 | CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |

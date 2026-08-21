@@ -18,28 +18,15 @@ class MonetaryArithmeticTest {
         assertEquals(6_000L, totalCostMinorOf(40_000L, 1_500L, eurFactor))
     }
 
-    /**
-     * **Known contract defect, awaiting an owner decision.**
-     *
-     * `docs/CONTRACTS.md §2` golden row 3 expects `1` for these inputs and annotates it
-     * "`1` (0.01 €) — rounds up from 0.0001". The formula in the same section, which the section
-     * also says MUST be implemented literally, yields `0`:
-     *
-     * ```text
-     * (1 * 1 * 100 + 500_000) / 1_000_000 = 500_100 / 1_000_000 = 0
-     * ```
-     *
-     * The formula is right and the expectation is wrong. 0.001 L at 0.001 €/L is 0.000001 €,
-     * which is 0.0001 minor units; HALF_UP of 0.0001 is 0, not 1. The row's parenthetical
-     * "(0.01 €)" is one cent, ten thousand times the real value.
-     *
-     * This test asserts the literal formula, because "implement the formula literally" is an
-     * unambiguous MUST while the golden row contradicts both the formula and HALF_UP. It is
-     * recorded for the owner as decision `DEC-1` in `docs/handoff-E0-03.md`; if the owner chooses
-     * a minimum-one-minor-unit rule instead, this test and the formula change together.
-     */
     @Test
-    fun smallestNonZeroInputsRoundToZeroUnderTheLiteralFormula() {
+    fun totalCostRoundsHalfUpAtTheExactHalfwayPoint() {
+        // 1 L at 0.005 EUR/L is exactly 0.5 minor units; HALF_UP takes it to 1.
+        assertEquals(1L, totalCostMinorOf(1_000L, 5L, eurFactor))
+    }
+
+    @Test
+    fun totalCostRoundsDownBelowHalfAMinorUnit() {
+        // 0.001 L at 0.001 EUR/L is 0.0001 minor units, which HALF_UP takes to 0.
         assertEquals(0L, totalCostMinorOf(1L, 1L, eurFactor))
     }
 

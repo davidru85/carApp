@@ -438,6 +438,13 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-23 | Account deletion execution | Firebase Admin server operation; client Firestore hard deletes remain forbidden. | Accepted |
 | D-24 | Module Android namespaces | Derived from the Gradle module path; not the Kotlin package root. | Accepted |
 | D-25 | `targetSdk` policy | Pinned independently of `compileSdk`: `compileSdk 37`, `targetSdk 36`. | Accepted |
+| D-26 | Monetary golden values | Correct the contradictory golden row of `§2`; both rounding directions stay covered. | Accepted |
+| D-27 | `testAppGraphDependencies` ownership | `testAppGraphDependencies(...)` is built by `E0-07`, the story that declares `AppGraphDependencies`. | Accepted |
+| D-28 | Feature-layer package rules | The three feature-layer rows of `§4` are implemented with Konsist in `E1-07`. | Accepted |
+| D-29 | Contract type declarations | A contract type may be declared in `§20` or inline in its owning section; `§18` assertion 1 accepts either. | Accepted |
+| D-30 | Walking skeleton position | `E0-07` moves to the start of Phase 1, immediately after `E1-01`. | Accepted |
+| D-31 | Branch protection | Branch protection for `main` requires all nine CI check names of `§18`. | Accepted |
+| D-32 | Development Firebase project ID | Development Firebase project ID is `davidruiz-carapp-dev`; application identifiers are unchanged. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
