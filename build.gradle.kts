@@ -6,6 +6,10 @@
 // be instantiated. Declaring them once here also keeps the Kotlin plugin from being loaded twice
 // with explicit versions, which breaks KMP builds.
 plugins {
+    // The architecture check inspects the whole module graph, so it is applied to the root project
+    // only (E0-04). Its rules are generated from the dependency table of docs/TECHNICAL_PLAN.md §4.
+    id("carapp.architecture")
+
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.kotlin.multiplatform.library) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false

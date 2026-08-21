@@ -91,6 +91,8 @@ Acceptance criteria:
 
 ### E0-04 - Architecture Guards - M
 
+Status: completed on 2026-08-21, PR #17, except the feature-layer package rules (`DEC-3`). See `docs/handoff-E0-04.md`.
+
 Implement module-level and package-level dependency checks per `docs/TECHNICAL_PLAN.md §4`.
 
 Acceptance criteria:
@@ -664,7 +666,7 @@ E0-00 owner decisions (completed)
 | E0-01 KMP bootstrap (completed) | 0 | M | — |
 | E0-02 Convention plugins (completed) | 0 | M | — |
 | E0-03 Base core modules (completed, 2 criteria open) | 0 | M | — |
-| E0-04 Architecture guards | 0 | M | — |
+| E0-04 Architecture guards (completed, feature rules open) | 0 | M | — |
 | E0-05 Quality tooling and CI | 0 | M | — |
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
 | E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |

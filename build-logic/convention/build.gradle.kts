@@ -12,6 +12,10 @@ dependencies {
     compileOnly(libs.plugin.room.gradle)
 }
 
+dependencies {
+    testImplementation(kotlin("test"))
+}
+
 kotlin {
     jvmToolchain(libs.versions.jdk.get().toInt())
 }
@@ -33,6 +37,10 @@ gradlePlugin {
         register("skie") {
             id = "carapp.skie"
             implementationClass = "com.ruizurraca.carapp.buildlogic.SkieConventionPlugin"
+        }
+        register("architecture") {
+            id = "carapp.architecture"
+            implementationClass = "com.ruizurraca.carapp.buildlogic.architecture.ArchitectureCheckPlugin"
         }
         register("room") {
             id = "carapp.room"

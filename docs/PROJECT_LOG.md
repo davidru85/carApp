@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-21 — `E0-04` Architecture Guards completed, minus the feature-layer package rules
+
+- **Type:** story
+- **Story / Decision:** `E0-04` (`docs/BACKLOG.md`)
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `carapp.architecture` registers an `architectureCheck` task on the root project whose rules are **generated from the dependency table of `docs/TECHNICAL_PLAN.md §4`** — the task parses that table, so editing it changes the check, and a table the parser cannot understand fails instead of being skipped. Module-graph rules cover forbidden edges, undeclared edges and forbidden library capabilities resolved to real coordinates; source rules cover the Phase 0 module set, SKIE outside `:shared`, feature-to-feature edges, `expect`/`actual` in `:core:crash`, `AppDatabase`/`DatabaseFactory` leaks, `Float`/`Double`, free-text `Logger` fields, logging from `:core:database`, `outbox.lastError` reads, read-model writes, `ConsumptionInvalidReason`/`SegmentResult` placement, `createAppGraph` in `:integration:*`, and unreferenced image-loading dependencies. 23 fixtures, one per rule, assert both that the offending shape is rejected and that the legal shape beside it is accepted.
+- **Why:** the rules are written as pure functions over plain data rather than as checks that inspect real Gradle modules, because most of them protect `:core:sync`, `:core:auth`, `:core:database`, `:integration:*` and `:feature:*` — modules the Phase 0 preamble forbids creating and that `E0-04` is itself required to reject. A fixture that had to create the offending module could never exist for those rules. Fabricated modules prove each rule fires today and keep proving it when the real modules arrive.
+- **Documents touched:** `docs/handoff-E0-04.md` (new), `docs/BACKLOG.md`, and this log. Code: `build-logic/convention/src/main/kotlin/.../architecture/**` and its tests (new), `build.gradle.kts`, `build-logic/convention/build.gradle.kts`. No normative document changed and no decision was taken.
+- **Verification:** `architectureCheck` reports `14 rules from docs/TECHNICAL_PLAN.md §4, 8 modules` and passes on the real graph; `:build-logic:convention:test` runs 23 fixtures with 0 failures. The fixtures found and fixed two defects that would have made the check vacuous: the glob matcher used `Regex.escape`, which wraps the pattern in `\Q…\E` so `*` was never substituted and `:core:*` matched nothing, and the capability parser matched tokens exactly, so `:core:testing`'s "platform APIs in `commonMain` public API (…)" parsed to no rule at all. Both would have passed everything silently.
+- **Follow-ups / risks:** **the three feature-layer rows of `§4` are not enforced** — feature `domain`, `data` and `presentation` are package-level rules inside one Gradle module, which `D-16` assigns to Konsist, and no `:feature:*` module exists to host them; recorded as `DEC-3` for the owner. Konsist is pinned by `E0-06` and still unused. The `:wiring:firebase` "product logic" rule needs a Kotlin declaration parser and the module itself, so it belongs with `E3-08`. The source scan is line-based and deliberately conservative: it catches the realistic mistake, not a determined workaround. The check is not wired into `check` or CI until `E0-05`.
+
 ### 2026-08-21 — `E0-08` `:core:analytics` Abstraction completed
 
 - **Type:** story
