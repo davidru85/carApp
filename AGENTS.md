@@ -17,7 +17,7 @@
 > that do NOT authorise English, and the recovery protocol. It is the first
 > section of this document for a reason.
 
-**This file is the entry point.** If you are an AI agent starting work on this repository, read this document first and in full. It is the single canonical source for Rule 0, normative keywords, the document map, document authority, the Definition of Ready and Done, and the human review gates. Other documents link here and MUST NOT restate these rules.
+**This file is the entry point.** If you are an AI agent starting work on this repository, read this document first and in full. It is the single canonical source for Rule 0, normative keywords, the repository state, the document map, document authority, the Definition of Ready and Done, and the human review gates. Other documents link here and MUST NOT restate these rules.
 
 ## Rule 0 - Language
 
@@ -77,6 +77,97 @@ An agent that notices it has replied in the wrong language MUST:
 - Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
 - An agent that replies in English when Spanish was required, or writes Spanish into a repository artifact, has violated a MUST and MUST self-correct before continuing.
 
+## Repository State
+
+**This section describes what exists right now.** It is the fastest way for an incoming agent to
+tell what is already built from what is still a plan, and it is updated by the story that changes it.
+
+### Phase 0 is complete
+
+`E0-01` to `E0-06` and `E0-08` are merged. `E0-07`, the walking skeleton, is **not** a Phase 0 story:
+`D-30` moved it to the start of Phase 1, after `E1-01`, because it needs Room. The next story is
+`E1-01`.
+
+### Modules that exist
+
+```text
+build-logic/       convention plugins, an included build
+:core:model        identifiers, money, scaled values, the canonical arithmetic of CONTRACTS §2
+:core:common       Outcome, the AppError taxonomy, platform abstractions, named constants
+:core:analytics    AnalyticsTracker and the closed AnalyticsEvent hierarchy
+:core:crash        CrashReporter and its no-op
+:core:testing      deterministic fakes for every Phase 0 abstraction
+:shared            the iOS framework, still carrying only the E0-01 placeholder
+:androidApp        the Android host app
+```
+
+`:core:database`, `:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase`
+do **not** exist yet. Phase 0 forbids the first three, and `architectureCheck` fails the build if
+one of them appears.
+
+### Creating a module
+
+Apply a convention plugin; do not repeat its configuration. A new shared module is:
+
+```kotlin
+plugins {
+    id("carapp.kmp.library")
+}
+
+dependencies {
+    "commonMainApi"(projects.core.common)
+}
+```
+
+`carapp.kmp.library` sets the Android and iOS targets, the JDK toolchain, the host test runner,
+`kotlin-test`, coroutines, ktlint, detekt and Kover. The Android namespace is **derived** from the
+Gradle path (`D-24`), so a module MUST NOT declare one. The other plugins are
+`carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside `:shared`)
+and `carapp.room`.
+
+### Build and verify
+
+Everything CI runs, in one command:
+
+```bash
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test           koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+```
+
+Individually:
+
+| Command | What it proves |
+|---------|----------------|
+| `./gradlew architectureCheck` | The module graph obeys `docs/TECHNICAL_PLAN.md §4`. The rules are **parsed from that table**, so editing it changes the check. |
+| `./gradlew :build-logic:convention:test` | Every architecture rule still fires. A rule with no fixture is a rule that passes everything. |
+| `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
+| `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
+| `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test` | Common tests on both the JVM and Kotlin/Native. Both matter: a test that only runs on the JVM cannot catch a Kotlin/Native divergence. |
+
+The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
+invocation, including the `ARCHS=arm64` argument the project currently needs.
+
+### What is enforced, and what is not
+
+`main` is protected: nine required checks, a pull request, no force pushes, no branch deletion
+(`D-31`, `D-34`). Administrator enforcement is off, so the owner can bypass; nobody else can.
+
+Not yet enforced, each with the story that owns it:
+
+- feature-layer package rules and Konsist — `E1-07` (`D-28`)
+- the Objective-C golden header check, and moving that job back to macOS — `E0-07`
+- `provider-decoupling` — `E3-06`
+- `testAppGraphDependencies` parity — `E0-07` (`D-27`)
+
+`contractCheck` prints the live list; trust its output over this one.
+
+### Story records
+
+Each completed story leaves `docs/handoff-<STORY>.md`, filled in from
+`docs/templates/agent-handoff.md`. They carry the acceptance evidence, what was deliberately not
+done, and the follow-ups. **Read the handoff of any story you are extending**, and read the most
+recent entries of `docs/PROJECT_LOG.md` before starting anything.
+
 ## Normative Keywords
 
 The key words MUST, MUST NOT, REQUIRED, SHALL, SHOULD, SHOULD NOT, MAY and OPTIONAL are to be interpreted as described in RFC 2119.
@@ -124,6 +215,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md) | Closed record of the documentation audit of the definition package. **Non-normative and historical**: all 20 findings are applied. It is kept only so that the `AUDIT-NN` IDs cited by `docs/PROJECT_LOG.md` resolve. Do not treat it as a source of rules or as a list of open work. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
+| [docs/handoff-*.md](docs/) | One per completed story: acceptance evidence, what was not done, follow-ups. `docs/E0-01-READY-CHECK.md` is the same record for `E0-01`, which predates the current handoff format. |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | Pull request template, a superset of the handoff fields. |
 | [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) | Issue templates for agent stories, bug reports and decision records. |
 

@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses and one active device per account. Users can create vehicles, log refueling events, review history, calculate real consumption, keep their data available offline, and back it up for recovery on a new device.
 
-The repository is greenfield: there is no product code yet. Owner decision closure (`E0-00`) is complete, so implementation starts at `E0-01` in `docs/BACKLOG.md`.
+Phase 0 is complete: the project builds on both platforms, the toolchain is pinned, and the architecture and contract rules are enforced by CI. There is no product feature yet — Phase 0 delivered foundations, not behaviour. The next story is `E1-01` in `docs/BACKLOG.md`. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
 
 ## 2. MVP Objective
 
@@ -88,7 +88,7 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 | Phase | Goal | Gate |
 |-------|------|------|
 | 0 | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every architecture rule has a failing fixture proving it fires |
-| 0.5 | Walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth | Data can be backed up remotely and restored on a clean second device; the Swift-facing surface constraints hold |
+| 1 (opening) | `:core:database`, then the walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth. `D-30` moved the skeleton out of Phase 0 because it needs Room | Data can be backed up remotely and restored on a clean second device; the Swift-facing surface constraints hold |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
 | 3 | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |

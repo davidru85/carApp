@@ -27,7 +27,29 @@ This repository is optimized for owner-led development with AI agents.
 - Commit messages, code comments, ADRs and all repository artifacts are written in technical English. Conversation with the project owner may happen in Spanish.
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.
 
+## Before Opening a Pull Request
+
+Run what CI runs. A pull request that fails a required check cannot merge, and finding out locally
+costs seconds instead of a round trip:
+
+```bash
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+```
+
+`AGENTS.md` §`Repository State` explains what each check proves.
+
 ## Pull Requests
+
+`main` is protected. A change reaches it only through a pull request, and the nine checks of
+`docs/CONTRACTS.md §18` MUST report green: `android-assemble`, `shared-tests`,
+`ios-simulator-build`, `ktlint`, `detekt`, `architecture-check`, `provider-decoupling`,
+`contract-check`, `objc-header-golden-check`. Force pushes and branch deletion are refused.
+
+Administrator enforcement is off, so the repository owner can bypass a red build. That is an escape
+hatch for a single-maintainer repository, not a workflow: **do not ask for it, and do not rely on
+it.** Renaming a CI job REQUIRES updating branch protection in the same change, or the renamed
+check stops being required and silently stops gating.
 
 Use `.github/pull_request_template.md`, which mirrors `docs/templates/agent-handoff.md`. Every PR includes:
 
