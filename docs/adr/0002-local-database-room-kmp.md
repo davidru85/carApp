@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded
+
+Superseded by `D-36` / [ADR-0037](0037-local-database-sqldelight-androidx-sqlite.md) on 2026-08-22.
 
 ## Context
 

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-22 — D-36 SQLDelight with AndroidX bundled SQLite accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-01` / `D-36`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `D-1` was superseded. The local database now uses SQLDelight 2.3.2 with the SQLite 3.24 dialect, `sqldelight-androidx-driver` 0.2.1 and AndroidX bundled SQLite 2.7.0 on Android and iOS.
+- **Why:** Room 3 KMP could not represent the mandatory table-level `CHECK` constraints as one generated schema, while SQLDelight's official Android driver would execute against SQLite 3.18 on API 26 and could not run the exact SQLite 3.24 outbox UPSERT. The accepted adapter preserves the committed SQL, `minSdk 26` and one bundled SQLite implementation across platforms.
+- **Documents touched:** `docs/adr/0037-local-database-sqldelight-androidx-sqlite.md`, `docs/adr/0002-local-database-room-kmp.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/versions-matrix.md`, `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, and this log.
+- **Verification:** temporary compatibility build generated and compiled the exact SQL for Android and `iosSimulatorArm64`; `contractCheck` reports 37 decisions with identical IDs and statuses across all five sources.
+- **Follow-ups / risks:** `E1-01` owns execution tests on Android and Kotlin/Native, the Android host-test SQLite artifact substitution, and the full repository verification. The third-party adapter remains confined to `:core:database`.
+
 ### 2026-08-21 — Documentation brought level with the built system for handover
 
 - **Type:** milestone

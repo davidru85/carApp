@@ -85,7 +85,7 @@ tell what is already built from what is still a plan, and it is updated by the s
 ### Phase 0 is complete
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E0-07`, the walking skeleton, is **not** a Phase 0 story:
-`D-30` moved it to the start of Phase 1, after `E1-01`, because it needs Room. The next story is
+`D-30` moved it to the start of Phase 1, after `E1-01`, because it needs the local database. The next story is
 `E1-01`.
 
 ### Modules that exist
@@ -123,7 +123,7 @@ dependencies {
 `kotlin-test`, coroutines, ktlint, detekt and Kover. The Android namespace is **derived** from the
 Gradle path (`D-24`), so a module MUST NOT declare one. The other plugins are
 `carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside `:shared`)
-and `carapp.room`.
+and `carapp.sqldelight`.
 
 ### Build and verify
 
@@ -270,7 +270,7 @@ Escalate any request that touches out-of-scope functionality.
 The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the architecture check configuration. In summary:
 
 - Feature `domain` packages are Kotlin pure and depend only on `:core:model` and `:core:common`.
-- Feature `domain` packages do not depend on Android, iOS, Firebase, GitLive, Koin, Room, Ktor, their own `data` or their own `presentation`.
+- Feature `domain` packages do not depend on Android, iOS, Firebase, GitLive, Koin, SQLDelight, SQLite, Ktor, their own `data` or their own `presentation`.
 - Feature `data` packages do not depend on `:integration:*` **or on `:core:auth`**. The current owner reaches them through `OwnerContext` in `:core:common`.
 - Feature `presentation` packages do not depend on feature `data`.
 - Features do not depend on other features.
@@ -313,7 +313,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Do not call Koin from domain, use cases, repositories or state holder business logic.
 - Do not add Ktor unless a new ADR introduces an HTTP API implementation.
 - Do not add image loading until a story requires it; Coil is then the only approved library.
-- `exportSchema = true`; `fallbackToDestructiveMigration` is FORBIDDEN in every build type.
+- SQLDelight `.sq` files are the committed schema source, `verifyMigrations` remains enabled, and destructive schema recreation is FORBIDDEN.
 - Data model changes require migrations and migration tests.
 - Remote backup or recovery changes require backup and recovery tests.
 - Firestore rule changes require emulator tests.

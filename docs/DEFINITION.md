@@ -88,7 +88,7 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 | Phase | Goal | Gate |
 |-------|------|------|
 | 0 | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every architecture rule has a failing fixture proving it fires |
-| 1 (opening) | `:core:database`, then the walking skeleton across native UI, shared state holder, Room, Firestore and real anonymous auth. `D-30` moved the skeleton out of Phase 0 because it needs Room | Data can be backed up remotely and restored on a clean second device; the Swift-facing surface constraints hold |
+| 1 (opening) | `:core:database`, then the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth. `D-30` moved the skeleton out of Phase 0 because it needs the local database | Data can be backed up remotely and restored on a clean second device; the Swift-facing surface constraints hold |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
 | 3 | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
@@ -98,7 +98,7 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| iOS/KMP/SKIE/Room toolchain friction | High | Early walking skeleton, macOS CI, pinned versions, SQLDelight fallback with a superseding ADR. |
+| iOS/KMP/SKIE/database toolchain friction | High | SQLDelight compatibility proof in `E1-01`, early walking skeleton, macOS CI and pinned versions. |
 | Swift export rejects the shared API shape | Medium | Explicit surface constraints plus a committed Objective-C header golden file. |
 | Silent data loss in backup or recovery | Critical | Common engine, required tests, deterministic simulation, debug screen. |
 | Data loss at the `LOCAL_OWNER` boundary | Critical | Outbox suppressed before a real UID exists, plus an idempotent adoption story. |

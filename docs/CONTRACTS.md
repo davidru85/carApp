@@ -62,7 +62,7 @@ Value classes are Kotlin-internal. They MUST NOT appear on the Swift-facing surf
 
 | Concept | Kotlin representation | Persistence | Rules |
 |---------|-----------------------|-------------|-------|
-| Domain instant | `Instant` (exact package pinned in `docs/versions-matrix.md`) | epoch milliseconds in Room columns and JSON payloads; Firestore timestamp remotely | UTC only. No local timezone persistence. |
+| Domain instant | `Instant` (exact package pinned in `docs/versions-matrix.md`) | epoch milliseconds in SQLite columns and JSON payloads; Firestore timestamp remotely | UTC only. No local timezone persistence. |
 | Local `updatedAt` | `Instant` | INTEGER epoch milliseconds | Provisional local timestamp. **Never** authoritative for remote conflict arbitration. |
 | `serverUpdatedAt` | `Instant?` | INTEGER epoch milliseconds | Authoritative timestamp received from Firestore. Null means never synced. |
 
@@ -144,18 +144,18 @@ The last row is the regression test for the distance-weighted rule: the arithmet
 
 ### Field naming rule
 
-A field holding a physical quantity MUST carry its unit or scale suffix (`Km`, `Scaled`, `Minor`). An unsuffixed numeric field name is a contract violation. These names are canonical at **every** layer: domain, Room column, Firestore field and JSON payload key.
+A field holding a physical quantity MUST carry its unit or scale suffix (`Km`, `Scaled`, `Minor`). An unsuffixed numeric field name is a contract violation. These names are canonical at **every** layer: domain, SQLite column, Firestore field and JSON payload key.
 
 ### Domain model vs local row vs remote document
 
 Domain models expose business concepts. Local rows add sync metadata. Remote documents contain only synchronized data plus remote metadata.
 
-| Field | Domain | Local Room row | Firestore document | Notes |
+| Field | Domain | Local SQLite row | Firestore document | Notes |
 |-------|--------|----------------|--------------------|-------|
 | `id` | Yes | Yes | Document ID and field | Client-generated UUID v4. |
 | `ownerId` | Yes | Yes | Yes | MUST equal the authenticated UID remotely. Stamped by the repository, never supplied by a command. |
 | `createdAt` | Yes | Yes | Yes | Client-created UTC timestamp. |
-| `updatedAt` | Yes | Yes | Yes | Local provisional in Room; server timestamp remotely. |
+| `updatedAt` | Yes | Yes | Yes | Local provisional in SQLite; server timestamp remotely. |
 | `serverUpdatedAt` | No | Yes | No | Local sync metadata only. Stored as `INTEGER NULL`; `serverUpdatedAt IS NULL` is the legal "never synced" state. |
 | `deletedAt` | Yes | Yes | Yes | Null when active. |
 | `deleted` | No | Yes (stored) | Yes | Stored as `INTEGER NOT NULL CHECK(deleted IN (0, 1))`, with the invariant `deleted == (deletedAt != null)` enforced by a `CHECK` constraint. Written only by the tombstone helper in `:core:database`. |
@@ -381,7 +381,7 @@ Every module boundary that touches a platform API (`:core:database`, `:integrati
 
 1. rethrows `CancellationException` unchanged,
 2. maps `kotlinx.serialization.SerializationException` to `PersistenceError.SerializationFailed`,
-3. maps Room migration failures to `PersistenceError.MigrationFailed`,
+3. maps SQLDelight migration failures to `PersistenceError.MigrationFailed`,
 4. maps `java.util.concurrent.TimeoutException` to `RemoteError.DeadlineExceeded`,
 5. maps known SDK failures to typed errors,
 6. maps the remainder to `UnexpectedError(origin, throwableClassName)`, **without** including message text that may contain user data (§17).
@@ -612,7 +612,7 @@ The precedence function for `Failed` MUST count only rows whose `lastErrorCode` 
 
 ## 10. RemoteSyncSource Contract
 
-`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. It represents a backup and recovery replica only: Room remains the source of truth for product behaviour and UI reads, the MVP supports one active device per account, and the remote database exists solely so a user can retrieve backed-up data on a new device. Future simultaneous multi-device use requires a separate story or ADR that moves the source of truth from Room to the remote database. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
+`RemoteSyncSource` is implemented only by integration modules. The MVP implementation is Firebase-backed. It represents a backup and recovery replica only: the SQLDelight local database remains the source of truth for product behaviour and UI reads, the MVP supports one active device per account, and the remote database exists solely so a user can retrieve backed-up data on a new device. Future simultaneous multi-device use requires a separate story or ADR that moves the source of truth from the local database to the remote database. Future API-backed implementations may use Ktor, but Ktor is not an MVP dependency until such an implementation is explicitly approved by ADR.
 
 Required interface shape:
 
@@ -742,7 +742,7 @@ fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 
 Rules:
 
-- `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on Room. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
+- `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on SQLDelight or SQLite. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
@@ -831,7 +831,7 @@ Every use case:
 - Lives in a feature `domain` package or an appropriate `:core:*` module.
 - Accepts immutable command or query models, declared in §20. Write command models are not UI form draft models.
 - Returns `Outcome<T, AppError>` for expected failures.
-- Does not depend on platform APIs, and does not access Room, Firebase, GitLive, Koin, Ktor, Android or iOS APIs directly.
+- Does not depend on platform APIs, and does not access SQLDelight, SQLite, Firebase, GitLive, Koin, Ktor, Android or iOS APIs directly.
 - MAY use `kotlinx.coroutines.Flow`, `StateFlow` and `suspend` signatures. MUST NOT call `kotlinx.coroutines.GlobalScope`, `kotlinx.coroutines.runBlocking` or any `Dispatchers.*` static; execution context comes from the caller or injected abstractions.
 
 Consumption calculation:
@@ -876,7 +876,7 @@ Injection is the **only** mechanism for anything present in `AppGraphDependencie
 
 Allowed `expect`/`actual`:
 
-- Internal factories for the Room driver and database file location.
+- Internal platform factories for the SQLDelight AndroidX driver and database file location.
 - Native Google and Apple credential acquisition.
 
 Forbidden `expect`/`actual`:
@@ -907,7 +907,7 @@ The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin
 - `UiState` data classes and UI row data classes declared in §20.10.
 - `UiMessage`, `UiMessageKind`, `SyncStatus` and the typed enums referenced by those state classes.
 
-Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, Room types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
+Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, SQLDelight or SQLite types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
 
 `AppGraphDependencies`, `createAppGraph(AppGraphDependencies)`, the Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are Kotlin-facing contracts and MUST NOT be exported to Swift.
 
@@ -1257,7 +1257,7 @@ Optional checks:
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
 18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
 
-For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide Kotlin declarations from Objective-C export, and **Room-generated types owned by `:core:database`** (`AppDatabase`, Room `Dao` supertypes, and `@Entity`-generated row classes). Room-generated types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
+For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide declarations from Objective-C export, and **SQLDelight-generated types owned by `:core:database`** (`AppDatabase`, generated query interfaces and generated row classes). SQLDelight-generated types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
 For the Objective-C header assertion, `contract-check` MUST fail if the header exports any forbidden type from §15.3 or omits any Swift-facing type explicitly listed in §20.10.
 
@@ -1499,14 +1499,14 @@ The no-op implementation lives in `:core:crash` and is the default fake used by 
 ### 20.3.2 Database types — `:core:database`
 
 ```kotlin
-// AppDatabase is the Room-generated database type owned by :core:database.
-// It is a Room-generated type, not a project-declared type; contract-check assertion 1
-// allows Room-generated types only in :core:database and DatabaseFactory signatures.
+// AppDatabase is the SQLDelight-generated database type owned by :core:database.
+// It is generated from the committed .sq schema; contract-check assertion 1 allows
+// SQLDelight-generated types only in :core:database and DatabaseFactory signatures.
 
 interface DatabaseFactory { fun create(): AppDatabase }
 ```
 
-`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type `AppDatabase` is a Room-generated type owned by `:core:database`, and `:core:common` is forbidden from depending on Room (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from `:core:database`. `:core:testing` is allowed to depend on `:core:database` (`docs/TECHNICAL_PLAN.md §4`) so it can provide a fake. Any appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation.
+`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type `AppDatabase` is a SQLDelight-generated type owned by `:core:database`, and `:core:common` is forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from `:core:database`. `:core:testing` is allowed to depend on `:core:database` (`docs/TECHNICAL_PLAN.md §4`) so it can provide a fake. Any appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation.
 
 ### 20.4 Domain models — `:core:model`
 

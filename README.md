@@ -93,7 +93,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | iOS UI | SwiftUI |
 | Shared presentation | KMP state holders exposing `StateFlow<UiState>` plus intent functions |
 | Build | Gradle Kotlin DSL, version catalog, convention plugins in `build-logic` |
-| Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
+| Local database | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 |
 | Remote backend | Cloud Firestore as a backup and recovery replica, never as UI source of truth |
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
@@ -169,7 +169,7 @@ Defined canonically in [AGENTS.md](AGENTS.md). No other document defines gates.
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md). The short version:
 
 - Do not implement out-of-scope functionality.
-- Do not introduce Firebase, GitLive, Koin, Ktor, Room, Android or iOS APIs into feature `domain` packages.
+- Do not introduce Firebase, GitLive, Koin, Ktor, SQLDelight, SQLite, Android or iOS APIs into feature `domain` packages.
 - Do not introduce dependencies between features, and do not make `:shared` depend on `:integration:*`.
 - Do not use `Float` or `Double` for money.
 - Do not observe Firestore directly from the UI.

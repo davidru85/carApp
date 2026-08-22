@@ -62,7 +62,7 @@ Blocks: all other stories.
 
 Status: completed on 2026-08-21, PR #14. See `docs/handoff-E0-02.md`.
 
-Create convention plugins for KMP libraries, features, Android application, Compose, Room and SKIE.
+Create convention plugins for KMP libraries, features, Android application, Compose, local persistence and SKIE.
 
 Acceptance criteria:
 
@@ -96,7 +96,7 @@ Implement module-level and package-level dependency checks per `docs/TECHNICAL_P
 
 Acceptance criteria:
 
-- Feature `domain` dependency on Room, Firebase, Koin, Android, Ktor, own `data` or own `presentation` fails the build with a rule-specific message.
+- Feature `domain` dependency on SQLDelight, SQLite, Firebase, Koin, Android, Ktor, own `data` or own `presentation` fails the build with a rule-specific message.
 - Feature `data` dependency on `:core:auth` or `:integration:*` fails the build.
 - Feature-to-feature dependency fails the build.
 - A `:core:model` dependency on `:core:common` fails the build; the reverse is allowed (`docs/TECHNICAL_PLAN.md §4`).
@@ -104,12 +104,12 @@ Acceptance criteria:
 - `:core:sync` or `:shared` dependency on `:integration:*` fails the build.
 - Feature `presentation` dependency on feature `data` fails the build.
 - `:core:crash` dependency on Firebase, GitLive, Koin, Ktor, platform APIs, integrations or features fails the build.
-- `:core:auth` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build with a rule-specific message.
-- `:core:analytics` dependency on platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*` or features fails the build.
+- `:core:auth` dependency on platform APIs, Firebase, GitLive, SQLDelight, SQLite, Koin, Ktor, `:integration:*` or features fails the build with a rule-specific message.
+- `:core:analytics` dependency on platform APIs, Firebase, GitLive, SQLDelight, SQLite, Koin, Ktor, `:integration:*` or features fails the build.
 - `:core:testing` dependency on `:integration:*`, `:wiring:*` or `:feature:*` fails the build; a platform API reference in the `:core:testing` `commonMain` public surface fails the build, while the same platform API inside a permitted `expect`/`actual` test double (per `docs/CONTRACTS.md §15.1`) is allowed.
 - `:core:sync` dependency on `:core:auth`, `:integration:*` or features fails the build; the sync engine does not reference `AuthClient` or `TokenProvider` (token handling lives in `RemoteSyncSource`, per `docs/CONTRACTS.md §10`).
 - A reference to `AppDatabase` or `DatabaseFactory` from `:core:common` fails the build; both types are owned by `:core:database` (`docs/CONTRACTS.md §20.3.2`) and may appear only in `:core:database`, `:core:testing` fakes and the `AppGraphDependencies` field of `:shared`.
-- `contract-check` assertion 1 does not flag `AppDatabase`, Room `Dao` supertypes or `@Entity`-generated row classes as undeclared when they appear in a `:core:database` signature or in `DatabaseFactory`; the same types appearing in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API fail the check.
+- `contract-check` assertion 1 does not flag SQLDelight-generated `AppDatabase`, query or row types as undeclared when they appear in a `:core:database` signature or in `DatabaseFactory`; the same types appearing in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API fail the check.
 - An `expect`/`actual` declaration inside `:core:crash` fails the build.
 - An `:integration:*` reference to `createAppGraph` fails the build; a Koin `Module` declaration inside `:integration:*` is allowed.
 - The Phase 0 module set above is enforced: `:core:auth`, `:core:database` and `:core:sync` are not created by Phase 0 stories.
@@ -155,7 +155,7 @@ Acceptance criteria:
 - One ADR exists per `Accepted` or `Deferred` decision, with the ADR `Status` equal to the board status.
 - `docs/adr/README.md` maps every decision ID to its ADR file.
 - The decision ID set and status values are identical across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
-- `docs/versions-matrix.md` pins JDK, Gradle, AGP, Kotlin, KSP, Compose, Room, `androidx.sqlite`, SKIE, Xcode, Firebase BOM, GitLive, coroutines, serialization, datetime, Koin, Kermit, Turbine and Kover, with the compatibility relation and the exact `Instant` package.
+- `docs/versions-matrix.md` pins JDK, Gradle, AGP, Kotlin, KSP, Compose, SQLDelight, the SQLDelight AndroidX driver, `androidx.sqlite`, SKIE, Xcode, Firebase BOM, GitLive, coroutines, serialization, datetime, Koin, Kermit, Turbine and Kover, with the compatibility relation and the exact `Instant` package.
 - Every `TBD` cell is replaced by a concrete pinned value with a citation from the corresponding ADR.
 - A unit test imports the pinned datetime type package at build time.
 - `docs/versions-matrix.md` fixes the reference devices and the measurement method for every performance target.
@@ -185,7 +185,7 @@ Goal: the app stores and displays vehicles and fuel entries locally. It is usefu
 
 ### E1-01 - `:core:database` - M
 
-Implement Room 3.0 KMP with bundled SQLite, schema v1, DAOs, transactions and migration strategy.
+Implement SQLDelight 2.3.2 with AndroidX bundled SQLite, schema v1, typed queries, transactions and migration strategy (`D-36`).
 
 Acceptance criteria:
 
@@ -199,14 +199,14 @@ Acceptance criteria:
 - Outbox matches the committed DDL, including `lastErrorCode` and `idx_outbox_due`, and preserves the original `seq` when coalescing.
 - `currentOdometerKm` and `odometerInconsistent` are recomputed inside `:core:database` for every fuel-entry write, and tests cover the exact recompute set of `docs/CONTRACTS.md §3.1`, including create, update that moves an entry in chronological order, update that changes only odometer comparison, single delete and vehicle cascade delete.
 - Recompute tests include no recompute on `notes` / `currency` edits, coincident pre/post successors on update, single tombstone pre-delete successor, and the 3-row vehicle cascade case.
-- `exportSchema = true`, schema JSON committed, `fallbackToDestructiveMigration` absent, and a v1 migration test exists.
+- Committed `.sq` files are the schema source, `verifyMigrations = true`, destructive schema recreation is absent, and schema-v1 create/reopen tests exist; every future version requires a committed `.sqm` migration and a populated previous-version migration test.
 - Observable queries return `Flow`; one-shot queries are `suspend`.
 
 ### E0-07 - Walking Skeleton - L
 
-Build a single screen crossing native UI, shared state holder, Room, Firestore and real anonymous auth.
+Build a single screen crossing native UI, shared state holder, SQLDelight, Firestore and real anonymous auth.
 
-Moved here from Phase 0 by `D-30`: it needs Room, which lives in `:core:database`, and the Phase 0 module set forbids that module. It is the Phase 1 gate — no other Phase 1 story starts until it passes.
+Moved here from Phase 0 by `D-30`: it needs the local database, which lives in `:core:database`, and the Phase 0 module set forbade that module. It is the Phase 1 gate — no other Phase 1 story starts until it passes.
 
 Acceptance criteria:
 
@@ -222,9 +222,7 @@ Acceptance criteria:
 - `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
 - `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter` and a no-op `AnalyticsTracker`, with the same parameter count and order as `AppGraphDependencies` (`D-27`).
 
-Decision gate:
-
-- If Room KMP/KSP blocks iOS progress, switch to SQLDelight the same day. The switch MUST land with a superseding ADR, a `docs/DECISION_BOARD.md` status change on `D-1` and an update to `E1-01`, in the same PR.
+Database gate resolved by `D-36`: `E0-07` MUST exercise the accepted SQLDelight AndroidX bundled driver on the real Android and iOS application paths.
 
 Human review required.
 
@@ -673,7 +671,7 @@ E0-00 owner decisions (completed)
               -> Phase 4
 ```
 
-`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires `AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs Room from `:core:database` (`E1-01`).
+`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires `AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs the local database from `:core:database` (`E1-01`).
 
 ## Story Index
 

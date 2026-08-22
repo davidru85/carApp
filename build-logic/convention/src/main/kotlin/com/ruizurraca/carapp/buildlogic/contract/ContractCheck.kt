@@ -64,7 +64,7 @@ class ContractCheck(private val repoRoot: File) {
      * Every project-owned type named in a code block of `docs/CONTRACTS.md` is declared in §20.
      *
      * The allowlist is the one written in `§18`: primitives, standard containers, coroutine types,
-     * the pinned datetime type, Room-generated types owned by `:core:database`, and annotations
+     * the pinned datetime type, SQLDelight-generated types owned by `:core:database`, and annotations
      * used only to hide declarations from Objective-C export.
      */
     private fun assertion1DeclaredTypes(): AssertionResult {

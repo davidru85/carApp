@@ -13,7 +13,7 @@ These groups move together. Bumping one member REQUIRES revalidating the whole g
 | Group | Members | Why they are coupled |
 |-------|---------|----------------------|
 | **Kotlin toolchain** | Kotlin, KSP, SKIE, `kotlinx-coroutines`, `kotlinx-serialization`, `kotlinx-datetime` | KSP and SKIE are published against exact Kotlin versions. The `kotlinx` libraries follow the Kotlin release train. |
-| **Room KMP** | `androidx.room3`, `androidx.sqlite:sqlite-bundled`, KSP | Room KMP code generation runs through KSP and the bundled SQLite must match the Room version. |
+| **SQLDelight database** | SQLDelight, `sqldelight-androidx-driver`, `androidx.sqlite:sqlite-bundled` | The SQL dialect, generated async API, adapter and bundled SQLite must compile and execute together on Android and Kotlin/Native. |
 | **Apple toolchain** | Xcode, iOS deployment target, SKIE, macOS CI runner image | SKIE and the Kotlin/Native linker depend on the Xcode version available on the runner. |
 | **Firebase** | Firebase BOM, GitLive Firebase SDK, Google Services plugin | GitLive 2.6.x wraps a specific Firebase SDK range; GitLive 3.0 alpha is out of scope. |
 | **Android build** | AGP, Gradle, JDK toolchain, Compose BOM, `compileSdk`, `targetSdk` | AGP requires specific Gradle and JDK versions, and a Compose BOM declares a minimum AGP and `compileSdk`. Compose BOM `2026.08.00` requires `compileSdk 37` and AGP 9.1.0 or higher, which is what moved the whole group. |
@@ -33,8 +33,9 @@ normative section that fixes it.
 | Kotlin | `org.jetbrains.kotlin` | 2.4.10 | `E0-06` | Drives the whole Kotlin toolchain group. |
 | KSP | `com.google.devtools.ksp` | 2.3.11 | `E0-06` | KSP versions its own line since 2.3.0 and is no longer `<kotlin>-<ksp>`. 2.3.10 and later support Kotlin 2.4.x. |
 | Compose | Compose BOM | 2026.08.00 | `E0-06` | Android only. Requires `compileSdk 37` and AGP 9.1.0 or higher. |
-| Room | `androidx.room3` | 3.0.1 | [ADR-0002](adr/0002-local-database-room-kmp.md) (`D-1`) | Room 3.x KMP. The artifacts are `room3-runtime` and `room3-compiler` under the `androidx.room3` group, not `androidx.room`. |
-| SQLite | `androidx.sqlite:sqlite-bundled` | 2.7.0 | [ADR-0002](adr/0002-local-database-room-kmp.md) (`D-1`) | Same bundled SQLite on both platforms. |
+| SQLDelight | `app.cash.sqldelight` | 2.3.2 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Uses the SQLite 3.24 dialect, asynchronous generation and migration verification. |
+| SQLDelight AndroidX driver | `com.eygraber:sqldelight-androidx-driver` | 0.2.1 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Suspended adapter over AndroidX KMP SQLite; confined to `:core:database`. |
+| SQLite | `androidx.sqlite:sqlite-bundled` | 2.7.0 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Same bundled SQLite on both platforms and on Android API 26. |
 | SKIE | `co.touchlab.skie` | 0.10.14 | [ADR-0003](adr/0003-ios-interop-skie.md) (`D-2`) | Applied only to `:shared`. Supports Kotlin 2.4.10, which is what allows the Kotlin pin above. |
 | Xcode | — | 26.6 | `E0-06` | Pinned on the macOS CI runner too. |
 | Android `compileSdk` | — | 37 | `E0-06` | Floor imposed by the pinned Compose BOM. |
