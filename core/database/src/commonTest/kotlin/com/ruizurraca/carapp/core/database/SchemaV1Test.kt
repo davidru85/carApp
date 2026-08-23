@@ -140,7 +140,7 @@ internal suspend fun SqlDriver.insertVehicle(
     }.await()
 }
 
-private suspend fun SqlDriver.insertFuelEntry(
+internal suspend fun SqlDriver.insertFuelEntry(
     deleted: Long,
     deletedAt: Long?,
 ) {
