@@ -280,6 +280,28 @@ class ArchitectureCheckerTest {
     }
 
     @Test
+    fun generatedEntityMutationsAreCalledOnlyByCoreDatabase() {
+        listOf(
+            "insertVehicleRow",
+            "insertFuelEntryRow",
+            "updateFuelEntryRow",
+            "tombstoneFuelEntryRow",
+        ).forEach { mutation ->
+            assertRejected(
+                module(":feature:vehicle", source = "databaseQueries.$mutation()"),
+                "database-mutation-facade",
+            )
+        }
+
+        assertAccepted(
+            module(":feature:vehicle", source = "databaseMutations.tombstoneFuelEntry(command)"),
+        )
+        assertAccepted(
+            module(":core:database", source = "databaseQueries.insertVehicleRow()"),
+        )
+    }
+
+    @Test
     fun consumptionTypesMayNotMoveOutOfCoreModel() {
         assertRejected(
             module(":core:common", source = "enum class ConsumptionInvalidReason { NonPositiveDistance }"),
