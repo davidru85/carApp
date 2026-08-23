@@ -7,4 +7,5 @@ dependencies {
     "commonMainApi"(projects.core.model)
     "commonMainImplementation"(projects.core.common)
     "commonTestImplementation"(libs.kotlinx.coroutines.test)
+    "commonTestImplementation"(libs.turbine)
 }
