@@ -26,6 +26,72 @@ VALUES (
   :localRevision, :localMutationSeq, :schemaVersion
 );
 
+insertFuelEntryRow:
+INSERT INTO fuel_entry(
+  id, ownerId, vehicleId, date, odometerKm, litersScaled, pricePerLiterScaled,
+  totalCostMinor, currency, isFullTank, hasMissedEntries, odometerInconsistent,
+  notes, createdAt, updatedAt, serverUpdatedAt, deleted, deletedAt, syncState,
+  localRevision, localMutationSeq, schemaVersion
+)
+VALUES (
+  :id, :ownerId, :vehicleId, :date, :odometerKm, :litersScaled, :pricePerLiterScaled,
+  :totalCostMinor, :currency, :isFullTank, :hasMissedEntries, :odometerInconsistent,
+  :notes, :createdAt, :updatedAt, :serverUpdatedAt, :deleted, :deletedAt, :syncState,
+  :localRevision, :localMutationSeq, :schemaVersion
+);
+
+selectNextActiveFuelEntry:
+SELECT *
+FROM fuel_entry
+WHERE vehicleId = :vehicleId
+  AND deleted = 0
+  AND (
+    date > :date
+    OR (date = :date AND createdAt > :createdAt)
+    OR (date = :date AND createdAt = :createdAt AND id > :id)
+  )
+ORDER BY date ASC, createdAt ASC, id ASC
+LIMIT 1;
+
+recomputeFuelEntryOdometerInconsistent:
+UPDATE fuel_entry
+SET odometerInconsistent = COALESCE(
+  odometerKm <= (
+    SELECT previous.odometerKm
+    FROM fuel_entry AS previous
+    WHERE previous.vehicleId = fuel_entry.vehicleId
+      AND previous.deleted = 0
+      AND (
+        previous.date < fuel_entry.date
+        OR (previous.date = fuel_entry.date AND previous.createdAt < fuel_entry.createdAt)
+        OR (
+          previous.date = fuel_entry.date
+          AND previous.createdAt = fuel_entry.createdAt
+          AND previous.id < fuel_entry.id
+        )
+      )
+    ORDER BY previous.date DESC, previous.createdAt DESC, previous.id DESC
+    LIMIT 1
+  ),
+  0
+)
+WHERE id = :id AND deleted = 0;
+
+recomputeVehicleCurrentOdometer:
+UPDATE vehicle
+SET currentOdometerKm = MAX(
+  initialOdometerKm,
+  COALESCE(
+    (
+      SELECT MAX(fuel_entry.odometerKm)
+      FROM fuel_entry
+      WHERE fuel_entry.vehicleId = vehicle.id AND fuel_entry.deleted = 0
+    ),
+    initialOdometerKm
+  )
+)
+WHERE id = :vehicleId;
+
 nextLocalMutationSequence {
   UPDATE local_sequence
   SET next = next + 1
