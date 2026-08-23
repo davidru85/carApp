@@ -40,11 +40,14 @@ class SchemaV1Test {
         }
 
     @Test
-    fun vehicleDeletedConstraintRejectsValuesOutsideBooleanDomain() =
+    fun entityDeletedConstraintsRejectValuesOutsideBooleanDomain() =
         runTest {
             val driver = createDatabase().driver
 
-            assertFails { driver.insertVehicle(deleted = 2, deletedAt = null) }
+            listOf(-1L, 2L).forEach { invalidDeleted ->
+                assertFails { driver.insertVehicle(deleted = invalidDeleted, deletedAt = null) }
+                assertFails { driver.insertFuelEntry(deleted = invalidDeleted, deletedAt = null) }
+            }
         }
 
     @Test
@@ -53,6 +56,8 @@ class SchemaV1Test {
             val driver = createDatabase().driver
 
             assertFails { driver.insertVehicle(deleted = 0, deletedAt = 10) }
+            assertFails { driver.insertVehicle(deleted = 1, deletedAt = null) }
+            assertFails { driver.insertFuelEntry(deleted = 0, deletedAt = 10) }
             assertFails { driver.insertFuelEntry(deleted = 1, deletedAt = null) }
         }
 
@@ -61,8 +66,10 @@ class SchemaV1Test {
         runTest {
             val driver = createDatabase().driver
             driver.insertVehicle(deleted = 0, deletedAt = null)
+            driver.insertFuelEntry(deleted = 0, deletedAt = null)
 
             assertNull(driver.nullableLong("SELECT serverUpdatedAt FROM vehicle WHERE id = 'vehicle-1'"))
+            assertNull(driver.nullableLong("SELECT serverUpdatedAt FROM fuel_entry WHERE id = 'entry-1'"))
         }
 
     @Test
