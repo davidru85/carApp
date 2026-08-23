@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.core.database
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 
@@ -173,6 +174,38 @@ class DatabaseMutations(
 
             successor?.let { queries.recomputeFuelEntryOdometerInconsistent(it.id) }
             queries.recomputeVehicleCurrentOdometer(before.vehicleId)
+        }
+    }
+
+    suspend fun tombstoneFuelEntriesForVehicle(
+        vehicleId: String,
+        deletedAt: Long,
+        updatedAt: Long,
+        syncState: String,
+    ) {
+        database.transaction {
+            val entries = queries.selectActiveFuelEntriesByVehicle(vehicleId).awaitAsList()
+            val tombstonedIds = entries.mapTo(mutableSetOf()) { it.id }
+            val recomputeIds =
+                entries
+                    .mapNotNull { it.activeSuccessor()?.id }
+                    .filterNotTo(mutableSetOf()) { it in tombstonedIds }
+
+            for (entry in entries) {
+                queries.tombstoneFuelEntryRow(
+                    updatedAt = updatedAt,
+                    deletedAt = deletedAt,
+                    syncState = syncState,
+                    localRevision = entry.localRevision + 1,
+                    localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne(),
+                    id = entry.id,
+                )
+            }
+
+            for (recomputeId in recomputeIds) {
+                queries.recomputeFuelEntryOdometerInconsistent(recomputeId)
+            }
+            queries.recomputeVehicleCurrentOdometer(vehicleId)
         }
     }
 
