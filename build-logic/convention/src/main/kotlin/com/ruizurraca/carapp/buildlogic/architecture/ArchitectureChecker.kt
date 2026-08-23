@@ -11,14 +11,8 @@ package com.ruizurraca.carapp.buildlogic.architecture
  */
 object ArchitectureChecker {
 
-    /** Modules Phase 0 MUST NOT create (`docs/BACKLOG.md`, Phase 0 preamble). */
-    val PHASE_0_FORBIDDEN_MODULES = setOf(":core:auth", ":core:database", ":core:sync")
-
-    /** The module set Phase 0 is allowed to ship, plus the two hosts. */
-    val PHASE_0_MODULES = setOf(
-        ":core:model", ":core:common", ":core:analytics", ":core:crash", ":core:testing",
-        ":shared", ":androidApp",
-    )
+    /** Planned modules whose owning stories have not started yet. */
+    val NOT_YET_INTRODUCED_MODULES = setOf(":core:auth", ":core:sync")
 
     private val PLATFORM_IMPORT_PREFIXES = listOf(
         "android.", "androidx.", "platform.Foundation", "platform.UIKit", "platform.darwin",
@@ -28,7 +22,13 @@ object ArchitectureChecker {
     private val CAPABILITY_COORDINATES = mapOf(
         Capability.FIREBASE to listOf("com.google.firebase"),
         Capability.GITLIVE to listOf("dev.gitlive"),
-        Capability.ROOM to listOf("androidx.room3", "androidx.room", "androidx.sqlite"),
+        Capability.DATABASE to listOf(
+            "app.cash.sqldelight",
+            "com.eygraber:sqldelight-androidx-driver",
+            "androidx.sqlite",
+            "androidx.room3",
+            "androidx.room",
+        ),
         Capability.KOIN to listOf("io.insert-koin"),
         Capability.KTOR to listOf("io.ktor"),
         Capability.SERIALIZATION to listOf("org.jetbrains.kotlinx:kotlinx-serialization"),
@@ -45,7 +45,7 @@ object ArchitectureChecker {
         val violations = mutableListOf<Violation>()
         val rule = ruleFor(module.path, rules)
 
-        violations += checkPhase0ModuleSet(module)
+        violations += checkModuleIsIntroducedByItsOwningStory(module)
         violations += checkSkieIsOnlyInShared(module)
         violations += checkNoFeatureToFeatureDependency(module)
         violations += checkCrashHasNoExpectActual(module)
@@ -147,15 +147,14 @@ object ArchitectureChecker {
         return violations
     }
 
-    /** `docs/BACKLOG.md` Phase 0 preamble and `E0-04`: the Phase 0 module set is enforced. */
-    private fun checkPhase0ModuleSet(module: ModuleUnderCheck): List<Violation> =
-        if (module.path in PHASE_0_FORBIDDEN_MODULES) {
+    /** A planned module becomes legal only when its owning backlog story starts. */
+    private fun checkModuleIsIntroducedByItsOwningStory(module: ModuleUnderCheck): List<Violation> =
+        if (module.path in NOT_YET_INTRODUCED_MODULES) {
             listOf(
                 Violation(
                     module.path,
-                    "phase-0-module-set",
-                    "${module.path} MUST NOT be created by a Phase 0 story. It is introduced by " +
-                        "its own later story (docs/BACKLOG.md, Phase 0 preamble).",
+                    "module-before-owning-story",
+                    "${module.path} MUST NOT be created before its owning story (docs/BACKLOG.md).",
                 ),
             )
         } else {

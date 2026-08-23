@@ -1,0 +1,100 @@
+CREATE TABLE vehicle (
+  id TEXT NOT NULL PRIMARY KEY,
+  ownerId TEXT NOT NULL,
+  name TEXT NOT NULL,
+  nameFold TEXT NOT NULL,
+  initialOdometerKm INTEGER NOT NULL,
+  currentOdometerKm INTEGER NOT NULL,
+  brand TEXT,
+  model TEXT,
+  fuelType TEXT NOT NULL CHECK (fuelType IN ('GASOLINE', 'DIESEL', 'LPG', 'CNG', 'OTHER')),
+  createdAt INTEGER NOT NULL,
+  updatedAt INTEGER NOT NULL,
+  serverUpdatedAt INTEGER,
+  deleted INTEGER NOT NULL CHECK (deleted IN (0, 1)),
+  deletedAt INTEGER,
+  syncState TEXT NOT NULL CHECK (
+    syncState IN ('PENDING', 'SYNCING', 'SYNCED', 'FAILED_RETRYABLE', 'FAILED_POISONED')
+  ),
+  localRevision INTEGER NOT NULL,
+  localMutationSeq INTEGER NOT NULL,
+  schemaVersion INTEGER NOT NULL,
+  CHECK ((deleted = 0 AND deletedAt IS NULL) OR (deleted = 1 AND deletedAt IS NOT NULL))
+);
+
+CREATE TABLE fuel_entry (
+  id TEXT NOT NULL PRIMARY KEY,
+  ownerId TEXT NOT NULL,
+  vehicleId TEXT NOT NULL,
+  date INTEGER NOT NULL,
+  odometerKm INTEGER NOT NULL,
+  litersScaled INTEGER NOT NULL,
+  pricePerLiterScaled INTEGER NOT NULL,
+  totalCostMinor INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  isFullTank INTEGER NOT NULL CHECK (isFullTank IN (0, 1)),
+  hasMissedEntries INTEGER NOT NULL CHECK (hasMissedEntries IN (0, 1)),
+  odometerInconsistent INTEGER NOT NULL CHECK (odometerInconsistent IN (0, 1)),
+  notes TEXT,
+  createdAt INTEGER NOT NULL,
+  updatedAt INTEGER NOT NULL,
+  serverUpdatedAt INTEGER,
+  deleted INTEGER NOT NULL CHECK (deleted IN (0, 1)),
+  deletedAt INTEGER,
+  syncState TEXT NOT NULL CHECK (
+    syncState IN ('PENDING', 'SYNCING', 'SYNCED', 'FAILED_RETRYABLE', 'FAILED_POISONED')
+  ),
+  localRevision INTEGER NOT NULL,
+  localMutationSeq INTEGER NOT NULL,
+  schemaVersion INTEGER NOT NULL,
+  CHECK ((deleted = 0 AND deletedAt IS NULL) OR (deleted = 1 AND deletedAt IS NOT NULL))
+);
+
+CREATE TABLE user_settings (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  currency TEXT NOT NULL,
+  distanceUnit TEXT NOT NULL CHECK (distanceUnit = 'KM'),
+  volumeUnit TEXT NOT NULL CHECK (volumeUnit = 'LITER'),
+  analyticsEnabled INTEGER NOT NULL CHECK (analyticsEnabled IN (0, 1))
+);
+
+CREATE TABLE local_sequence (
+  id INTEGER PRIMARY KEY CHECK (id = 0),
+  next INTEGER NOT NULL DEFAULT 1
+);
+
+INSERT INTO local_sequence(id, next) VALUES (0, 1);
+
+CREATE TABLE outbox (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE', 'FUEL_ENTRY')),
+  entityId TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  localRevision INTEGER NOT NULL,
+  attemptCount INTEGER NOT NULL DEFAULT 0,
+  nextAttemptAt INTEGER NOT NULL DEFAULT 0,
+  lastError TEXT,
+  lastErrorCode TEXT,
+  cycleId TEXT,
+  UNIQUE(entityType, entityId)
+);
+
+CREATE INDEX idx_outbox_due ON outbox(nextAttemptAt, seq);
+
+CREATE TABLE sync_cursor (
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE', 'FUEL_ENTRY')),
+  lastServerUpdatedAt INTEGER NOT NULL,
+  lastDocumentId TEXT NOT NULL,
+  PRIMARY KEY (entityType)
+);
+
+CREATE TABLE quarantine (
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE', 'FUEL_ENTRY')),
+  entityId TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('UnsupportedSchemaVersion', 'MalformedPayload')),
+  schemaVersion INTEGER NOT NULL,
+  serverUpdatedAt INTEGER NOT NULL,
+  rawJson TEXT NOT NULL,
+  createdAt INTEGER NOT NULL,
+  UNIQUE(entityType, entityId)
+);

@@ -155,12 +155,12 @@ class ArchitectureCheckerTest {
     // --- Capability rules --------------------------------------------------------------------
 
     @Test
-    fun provider2FreeModulesMayNotDependOnFirebaseRoomKoinOrKtor() {
+    fun providerFreeModulesMayNotDependOnFirebaseDatabaseKoinOrKtor() {
         mapOf(
             ":core:auth" to "com.google.firebase:firebase-auth",
             ":core:analytics" to "io.insert-koin:koin-core",
             ":core:crash" to "dev.gitlive:firebase-crashlytics",
-            ":core:common" to "androidx.room3:room3-runtime",
+            ":core:common" to "app.cash.sqldelight:runtime",
             ":core:model" to "io.ktor:ktor-client-core",
         ).forEach { (path, coordinate) ->
             assertRejected(
@@ -190,11 +190,12 @@ class ArchitectureCheckerTest {
     // --- Source-level rules ------------------------------------------------------------------
 
     @Test
-    fun phase0MayNotCreateAuthDatabaseOrSyncModules() {
-        ArchitectureChecker.PHASE_0_FORBIDDEN_MODULES.forEach {
-            assertRejected(module(it), "phase-0-module-set")
+    fun storiesMayNotCreateAuthOrSyncModulesEarly() {
+        ArchitectureChecker.NOT_YET_INTRODUCED_MODULES.forEach {
+            assertRejected(module(it), "module-before-owning-story")
         }
         assertAccepted(module(":core:model"))
+        assertAccepted(module(":core:database"))
     }
 
     @Test

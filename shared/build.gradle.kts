@@ -4,7 +4,7 @@ plugins {
 }
 
 kotlin {
-    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
         target.binaries.framework {
             // The canonical SPM module name consumed from Swift as `import Shared`
             // (docs/identifiers.md).

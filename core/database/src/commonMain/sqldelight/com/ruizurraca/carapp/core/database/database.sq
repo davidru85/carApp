@@ -1,0 +1,15 @@
+selectAllVehicles:
+SELECT *
+FROM vehicle
+WHERE deleted = 0
+ORDER BY nameFold ASC, id ASC;
+
+selectVehicleById:
+SELECT *
+FROM vehicle
+WHERE id = :id;
+
+selectFuelEntryById:
+SELECT *
+FROM fuel_entry
+WHERE id = :id;
