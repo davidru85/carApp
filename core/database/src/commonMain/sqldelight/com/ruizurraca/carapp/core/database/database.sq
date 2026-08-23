@@ -13,3 +13,13 @@ selectFuelEntryById:
 SELECT *
 FROM fuel_entry
 WHERE id = :id;
+
+nextLocalMutationSequence {
+  UPDATE local_sequence
+  SET next = next + 1
+  WHERE id = 0;
+
+  SELECT next
+  FROM local_sequence
+  WHERE id = 0;
+}
