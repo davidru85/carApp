@@ -21,23 +21,21 @@ class OutboxCoalescingTest {
             val database = createDatabase()
             val queries = database.database.databaseQueries
 
-            queries
-                .coalesceOutbox(
-                    entityType = "VEHICLE",
-                    entityId = "vehicle-1",
-                    payload = "payload-v1",
-                    localRevision = 1,
-                ).await()
+            queries.coalesceOutbox(
+                entityType = "VEHICLE",
+                entityId = "vehicle-1",
+                payload = "payload-v1",
+                localRevision = 1,
+            )
             val originalSequence = database.driver.outboxLong("seq")
             database.driver.markOutboxAttemptFailed()
 
-            queries
-                .coalesceOutbox(
-                    entityType = "VEHICLE",
-                    entityId = "vehicle-1",
-                    payload = "payload-v2",
-                    localRevision = 2,
-                ).await()
+            queries.coalesceOutbox(
+                entityType = "VEHICLE",
+                entityId = "vehicle-1",
+                payload = "payload-v2",
+                localRevision = 2,
+            )
 
             assertEquals(originalSequence, database.driver.outboxLong("seq"))
             assertEquals("payload-v2", database.driver.outboxString("payload"))

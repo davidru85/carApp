@@ -23,3 +23,14 @@ nextLocalMutationSequence {
   FROM local_sequence
   WHERE id = 0;
 }
+
+coalesceOutbox:
+INSERT INTO outbox (entityType, entityId, payload, localRevision)
+VALUES (:entityType, :entityId, :payload, :localRevision)
+ON CONFLICT(entityType, entityId) DO UPDATE SET
+  payload = excluded.payload,
+  localRevision = excluded.localRevision,
+  attemptCount = 0,
+  nextAttemptAt = 0,
+  lastError = NULL,
+  lastErrorCode = NULL;
