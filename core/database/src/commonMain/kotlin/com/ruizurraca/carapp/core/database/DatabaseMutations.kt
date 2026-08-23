@@ -150,6 +150,32 @@ class DatabaseMutations(
         }
     }
 
+    suspend fun tombstoneFuelEntry(
+        id: String,
+        deletedAt: Long,
+        updatedAt: Long,
+        syncState: String,
+        localRevision: Long,
+        localMutationSeq: Long,
+    ) {
+        database.transaction {
+            val before = queries.selectFuelEntryById(id).awaitAsOne()
+            val successor = before.activeSuccessor()
+
+            queries.tombstoneFuelEntryRow(
+                updatedAt = updatedAt,
+                deletedAt = deletedAt,
+                syncState = syncState,
+                localRevision = localRevision,
+                localMutationSeq = localMutationSeq,
+                id = id,
+            )
+
+            successor?.let { queries.recomputeFuelEntryOdometerInconsistent(it.id) }
+            queries.recomputeVehicleCurrentOdometer(before.vehicleId)
+        }
+    }
+
     private suspend fun Fuel_entry.activeSuccessor(): Fuel_entry? =
         if (deleted == 0L) {
             queries.selectNextActiveFuelEntry(vehicleId, date, createdAt, id).awaitAsOneOrNull()

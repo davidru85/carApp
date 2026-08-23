@@ -66,6 +66,16 @@ SET id = :id,
   schemaVersion = :schemaVersion
 WHERE id = :existingId;
 
+tombstoneFuelEntryRow:
+UPDATE fuel_entry
+SET updatedAt = :updatedAt,
+  deleted = 1,
+  deletedAt = :deletedAt,
+  syncState = :syncState,
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq
+WHERE id = :id;
+
 selectNextActiveFuelEntry:
 SELECT *
 FROM fuel_entry
