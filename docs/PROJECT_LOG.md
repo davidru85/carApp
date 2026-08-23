@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-23 — D-37 ARM64-only iOS targets accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-01` / `D-37`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Kotlin Multiplatform support is limited to `iosArm64` and `iosSimulatorArm64`; the unlinked `iosX64` target is removed from the shared conventions and framework.
+- **Why:** the complete bundled-SQLite stack accepted by `D-36` publishes no Intel-simulator variants, while the application and CI already build only ARM64 iOS paths. A target-specific driver would defeat the accepted single-engine guarantee.
+- **Documents touched:** `docs/adr/0038-supported-ios-targets-are-arm64.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/versions-matrix.md`, `AGENTS.md`, `docs/handoff-E1-01.md`, and this log.
+- **Verification:** `contractCheck` must report 38 decisions with identical IDs and statuses; `E1-01` owns the target removal and full Android, Kotlin/Native and iOS application verification.
+- **Follow-ups / risks:** Intel Macs and x86_64 simulators are unsupported. Reintroducing `iosX64` requires a complete compatible dependency set, application linking, CI verification and a decision superseding `D-37`.
+
 ### 2026-08-22 — D-36 SQLDelight with AndroidX bundled SQLite accepted
 
 - **Type:** decision

@@ -365,7 +365,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 
 | Area | Requirement |
 |------|-------------|
-| Platforms | Android `minSdk 26`, iOS 16+. |
+| Platforms | Android `minSdk 26`, iOS 16+; Kotlin/Native targets `iosArm64` and `iosSimulatorArm64`. `iosX64` is not supported (`D-37`). |
 | Performance | Cold start to first content under 2 s, median of 10 runs on the reference devices in a release build. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
 | Offline | 100% of MVP functionality usable without network, including first launch. |
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
@@ -449,6 +449,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-34 | Repository visibility and branch protection | The repository is public and the `D-31` branch protection is active. | Accepted |
 | D-35 | CI job topology | `shared-tests` and `ios-simulator-build` remain separate CI jobs. | Accepted |
 | D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1. | Accepted |
+| D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

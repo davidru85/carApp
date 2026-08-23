@@ -14,6 +14,7 @@
 - [x] Dependencies checked — Phase 0 is complete; `E0-01` through `E0-06` and `E0-08` are merged;
   `E0-07` depends on this story and therefore has not started.
 - [x] Decisions checked — `D-36` was accepted by the owner on 2026-08-22 and supersedes `D-1`;
+  `D-37` was accepted on 2026-08-23 and limits Kotlin/Native iOS targets to ARM64;
   no `Proposed` or `Pending` decision remains.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§3.1`, `§6`, `§8`, `§9`, `§11`;
   `docs/CONTRACTS.md §2`–`§5`, `§7`–`§9`, `§15.1`, `§18`, `§20.3.2`;
@@ -47,6 +48,9 @@
 ## Decisions Made
 
 - `D-36` supersedes `D-1`; see [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md).
+- `D-37` removes the already-unlinked `iosX64` simulator target because the complete accepted
+  bundled-SQLite dependency set publishes only ARM64 iOS variants; see
+  [ADR-0038](adr/0038-supported-ios-targets-are-arm64.md).
 - The TDD order exemption for SQLDelight schemas and migrations will be used as permitted by
   `docs/SPECIFICATION.md §11`; product behaviours around sequence allocation, coalescing and
   read-model recomputation remain subject to RED/GREEN/refactoring commits.

@@ -51,6 +51,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-34 | Repository visibility and branch protection | Repository is public; the `D-31` branch protection is active | Accepted | Resolves two blockers at once: `§18` branch protection was impossible on a private Free-plan repository, and metered Actions minutes made the macOS jobs unaffordable. |
 | D-35 | CI job topology | `shared-tests` and `ios-simulator-build` stay separate jobs | Accepted | Merging them would worsen wall-clock, hide the native tests behind a check named for the iOS build, and stop the tests running whenever `xcodebuild` fails. |
 | D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1 | Accepted | Preserves exact SQLite constraints and UPSERT semantics on Android and iOS while retaining `minSdk 26`. |
+| D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64` | Accepted | The shipped device target and the Apple Silicon simulator retain the bundled SQLite stack; the already-unlinked Intel simulator target would force a divergent driver. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

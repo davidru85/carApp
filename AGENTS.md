@@ -119,7 +119,7 @@ dependencies {
 }
 ```
 
-`carapp.kmp.library` sets the Android and iOS targets, the JDK toolchain, the host test runner,
+`carapp.kmp.library` sets Android plus the `iosArm64` and `iosSimulatorArm64` targets (`D-37`), the JDK toolchain, the host test runner,
 `kotlin-test`, coroutines, ktlint, detekt and Kover. The Android namespace is **derived** from the
 Gradle path (`D-24`), so a module MUST NOT declare one. The other plugins are
 `carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside `:shared`)

@@ -43,5 +43,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-34 | [ADR-0035](0035-repository-public-and-branch-protection-active.md) | Repository is public; the `D-31` branch protection is active. | Accepted |
 | D-35 | [ADR-0036](0036-ci-keeps-shared-tests-and-ios-build-separate.md) | `shared-tests` and `ios-simulator-build` stay separate CI jobs. | Accepted |
 | D-36 | [ADR-0037](0037-local-database-sqldelight-androidx-sqlite.md) | Use SQLDelight with the AndroidX bundled SQLite driver. | Accepted |
+| D-37 | [ADR-0038](0038-supported-ios-targets-are-arm64.md) | Support ARM64 iOS device and simulator targets only. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
