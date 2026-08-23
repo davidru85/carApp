@@ -52,6 +52,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-35 | CI job topology | `shared-tests` and `ios-simulator-build` stay separate jobs | Accepted | Merging them would worsen wall-clock, hide the native tests behind a check named for the iOS build, and stop the tests running whenever `xcodebuild` fails. |
 | D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1 | Accepted | Preserves exact SQLite constraints and UPSERT semantics on Android and iOS while retaining `minSdk 26`. |
 | D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64` | Accepted | The shipped device target and the Apple Silicon simulator retain the bundled SQLite stack; the already-unlinked Intel simulator target would force a divergent driver. |
+| D-38 | Database-owned mutation strategy | Kotlin/SQLDelight `DatabaseMutations` transaction facade | Accepted | Captures pre-write state for the exact recompute set, keeps writes atomic and emits reliable SQLDelight invalidations; direct generated entity mutations outside `:core:database` are rejected. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -125,6 +126,12 @@ The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` clo
 "Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 
 The architecture check MUST fail the build with a rule-specific message, and the check configuration is generated from this table so the two cannot drift.
+
+`D-38` makes `DatabaseMutations` the only synchronized-entity write boundary consumed by
+`:feature:*`, `:core:sync` and wiring. Generated SQLDelight entity-mutation functions remain an
+implementation detail of `:core:database`; an executable source rule rejects direct calls from
+every other module. Read queries and outbox/sync-engine control operations are not entity
+mutations and remain available to their owning stories.
 
 ## 4.1 Contractual Guardrails
 

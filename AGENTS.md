@@ -279,6 +279,8 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Only `:wiring:firebase` constructs Firebase implementations, and it contains no product logic.
 - Firebase and GitLive types never leave `:integration:*`.
 - `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+- Synchronized entity writes from outside `:core:database` use `DatabaseMutations`; direct calls to
+  generated SQLDelight entity-mutation functions are forbidden (`D-38`).
 - `expect`/`actual` declarations are `internal` and never appear in a public API; anything present in `AppGraphDependencies` is injected, not `expect`/`actual`.
 - The `:shared` public API contains no value classes, type parameters or default arguments.
 

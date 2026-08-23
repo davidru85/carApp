@@ -15,6 +15,7 @@
   `E0-07` depends on this story and therefore has not started.
 - [x] Decisions checked — `D-36` was accepted by the owner on 2026-08-22 and supersedes `D-1`;
   `D-37` was accepted on 2026-08-23 and limits Kotlin/Native iOS targets to ARM64;
+  `D-38` was accepted on 2026-08-24 and selects the transaction facade for entity mutations;
   no `Proposed` or `Pending` decision remains.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§3.1`, `§6`, `§8`, `§9`, `§11`;
   `docs/CONTRACTS.md §2`–`§5`, `§7`–`§9`, `§15.1`, `§18`, `§20.3.2`;
@@ -51,6 +52,9 @@
 - `D-37` removes the already-unlinked `iosX64` simulator target because the complete accepted
   bundled-SQLite dependency set publishes only ARM64 iOS variants; see
   [ADR-0038](adr/0038-supported-ios-targets-are-arm64.md).
+- `D-38` routes synchronized entity writes through `DatabaseMutations` and rejects direct
+  generated entity-mutation calls outside `:core:database`; see
+  [ADR-0039](adr/0039-database-mutations-use-transaction-facade.md).
 - The TDD order exemption for SQLDelight schemas and migrations will be used as permitted by
   `docs/SPECIFICATION.md §11`; product behaviours around sequence allocation, coalescing and
   read-model recomputation remain subject to RED/GREEN/refactoring commits.
@@ -66,7 +70,8 @@
 
 ## Decision Board Impact
 
-- Updated `docs/DECISION_BOARD.md`: `D-1` is `Superseded`; `D-36` is `Accepted` with ADR-0037.
+- Updated `docs/DECISION_BOARD.md`: `D-1` is `Superseded`; `D-36`, `D-37` and `D-38` are
+  `Accepted` with ADR-0037, ADR-0038 and ADR-0039 respectively.
 
 ## Shared-Write Modules Touched
 

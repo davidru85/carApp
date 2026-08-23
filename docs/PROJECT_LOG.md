@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-08-24 — D-38 database transaction facade accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-01` / `D-38`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** synchronized entity writes are routed through a Kotlin/SQLDelight `DatabaseMutations` facade in `:core:database`; direct generated entity-mutation calls outside that module are forbidden.
+- **Why:** the facade can capture pre-write state, apply the exact de-duplicated recompute set and notify SQLDelight observers inside one transaction. SQLite triggers obscure pre/post successor behavior and do not reliably expose indirect table changes to observed queries.
+- **Documents touched:** `docs/adr/0039-database-mutations-use-transaction-facade.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `AGENTS.md`, `docs/handoff-E1-01.md`, and this log.
+- **Verification:** `contractCheck` must report 39 decisions with matching statuses; `E1-01` owns RED/GREEN recomputation tests and the direct-mutation architecture fixture.
+- **Follow-ups / risks:** every new synchronized entity mutation must extend both `DatabaseMutations` and the architecture rule; pull and local-owner adoption entry points must preserve supplied mutation sequences.
+
 ### 2026-08-23 — D-37 ARM64-only iOS targets accepted
 
 - **Type:** decision
