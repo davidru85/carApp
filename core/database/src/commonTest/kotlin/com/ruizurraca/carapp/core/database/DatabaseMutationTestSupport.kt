@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.core.database
 
 import app.cash.sqldelight.async.coroutines.await
+import app.cash.sqldelight.async.coroutines.awaitAsOne
 
 internal suspend fun TestDatabase.insertVehicleForMutationTest(
     id: String = "vehicle-1",
@@ -97,3 +98,36 @@ internal suspend fun TestDatabase.fuelEntryInconsistent(id: String): Long? =
 
 internal suspend fun TestDatabase.vehicleCurrentOdometer(id: String = "vehicle-1"): Long? =
     driver.nullableLong("SELECT currentOdometerKm FROM vehicle WHERE id = '$id'")
+
+internal suspend fun TestDatabase.updateFuelEntryForMutationTest(
+    existingId: String,
+    date: Long? = null,
+    odometerKm: Long? = null,
+    currency: String? = null,
+    notes: String? = null,
+) {
+    val existing = database.databaseQueries.selectFuelEntryById(existingId).awaitAsOne()
+    DatabaseMutations(database).updateFuelEntry(
+        existingId = existingId,
+        id = existing.id,
+        ownerId = existing.ownerId,
+        vehicleId = existing.vehicleId,
+        date = date ?: existing.date,
+        odometerKm = odometerKm ?: existing.odometerKm,
+        litersScaled = existing.litersScaled,
+        pricePerLiterScaled = existing.pricePerLiterScaled,
+        totalCostMinor = existing.totalCostMinor,
+        currency = currency ?: existing.currency,
+        isFullTank = existing.isFullTank,
+        hasMissedEntries = existing.hasMissedEntries,
+        notes = notes ?: existing.notes,
+        createdAt = existing.createdAt,
+        updatedAt = existing.updatedAt + 1,
+        serverUpdatedAt = existing.serverUpdatedAt,
+        deletedAt = existing.deletedAt,
+        syncState = existing.syncState,
+        localRevision = existing.localRevision + 1,
+        localMutationSeq = existing.localMutationSeq + 1,
+        schemaVersion = existing.schemaVersion,
+    )
+}
