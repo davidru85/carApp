@@ -38,6 +38,14 @@ object ArchitectureChecker {
 
     private val IMAGE_LOADING_COORDINATES = listOf("io.coil-kt", "com.github.bumptech.glide", "com.squareup.picasso")
 
+    private val SYNCHRONIZED_ENTITY_MUTATION_FUNCTIONS =
+        setOf(
+            "insertVehicleRow",
+            "insertFuelEntryRow",
+            "updateFuelEntryRow",
+            "tombstoneFuelEntryRow",
+        )
+
     fun check(modules: List<ModuleUnderCheck>, rules: List<ModuleRule>): List<Violation> =
         modules.flatMap { module -> check(module, rules) }
 
@@ -55,6 +63,7 @@ object ArchitectureChecker {
         violations += checkDatabaseLogging(module)
         violations += checkOutboxLastErrorReads(module)
         violations += checkReadModelWrites(module)
+        violations += checkDatabaseMutationFacade(module)
         violations += checkConsumptionTypesStayInCoreModel(module)
         violations += checkIntegrationsDoNotBuildTheGraph(module)
 
@@ -305,6 +314,25 @@ object ArchitectureChecker {
                     "read-model-write-outside-database",
                     "${it.file}:${it.number} assigns a database-owned read-model field. " +
                         "docs/CONTRACTS.md §3.1 makes :core:database its only writer.",
+                )
+            }
+    }
+
+    /** `D-38`: generated synchronized-entity mutations are implementation details of `:core:database`. */
+    private fun checkDatabaseMutationFacade(module: ModuleUnderCheck): List<Violation> {
+        if (module.path == ":core:database") return emptyList()
+        val generatedMutation =
+            SYNCHRONIZED_ENTITY_MUTATION_FUNCTIONS
+                .joinToString(prefix = "\\b(", separator = "|", postfix = ")\\s*\\(") { Regex.escape(it) }
+                .toRegex()
+        return module.sourceLines
+            .filter { generatedMutation.containsMatchIn(it.text) }
+            .map {
+                Violation(
+                    module.path,
+                    "database-mutation-facade",
+                    "${it.file}:${it.number} calls a generated synchronized-entity mutation. " +
+                        "D-38 requires callers outside :core:database to use DatabaseMutations.",
                 )
             }
     }
