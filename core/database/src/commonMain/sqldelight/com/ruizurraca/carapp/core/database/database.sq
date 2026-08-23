@@ -40,6 +40,32 @@ VALUES (
   :localRevision, :localMutationSeq, :schemaVersion
 );
 
+updateFuelEntryRow:
+UPDATE fuel_entry
+SET id = :id,
+  ownerId = :ownerId,
+  vehicleId = :vehicleId,
+  date = :date,
+  odometerKm = :odometerKm,
+  litersScaled = :litersScaled,
+  pricePerLiterScaled = :pricePerLiterScaled,
+  totalCostMinor = :totalCostMinor,
+  currency = :currency,
+  isFullTank = :isFullTank,
+  hasMissedEntries = :hasMissedEntries,
+  odometerInconsistent = :odometerInconsistent,
+  notes = :notes,
+  createdAt = :createdAt,
+  updatedAt = :updatedAt,
+  serverUpdatedAt = :serverUpdatedAt,
+  deleted = :deleted,
+  deletedAt = :deletedAt,
+  syncState = :syncState,
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq,
+  schemaVersion = :schemaVersion
+WHERE id = :existingId;
+
 selectNextActiveFuelEntry:
 SELECT *
 FROM fuel_entry
