@@ -189,3 +189,16 @@ internal suspend fun SqlDriver.nullableLong(sql: String): Long? =
         },
         parameters = 0,
     ).await()
+
+internal suspend fun SqlDriver.nullableString(sql: String): String? =
+    executeQuery(
+        identifier = null,
+        sql = sql,
+        mapper = { cursor ->
+            app.cash.sqldelight.db.QueryResult.AsyncValue {
+                cursor.next().await()
+                cursor.getString(0)
+            }
+        },
+        parameters = 0,
+    ).await()
