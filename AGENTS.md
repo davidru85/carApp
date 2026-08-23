@@ -82,11 +82,11 @@ An agent that notices it has replied in the wrong language MUST:
 **This section describes what exists right now.** It is the fastest way for an incoming agent to
 tell what is already built from what is still a plan, and it is updated by the story that changes it.
 
-### Phase 0 is complete
+### Phase 0 is complete and Phase 1 is open
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E0-07`, the walking skeleton, is **not** a Phase 0 story:
-`D-30` moved it to the start of Phase 1, after `E1-01`, because it needs the local database. The next story is
-`E1-01`.
+`D-30` moved it to the start of Phase 1 because it needs the local database. `E1-01` has now
+delivered that database, so the next story is `E0-07`.
 
 ### Modules that exist
 
@@ -97,13 +97,13 @@ build-logic/       convention plugins, an included build
 :core:analytics    AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
+:core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
 :shared            the iOS framework, still carrying only the E0-01 placeholder
 :androidApp        the Android host app
 ```
 
-`:core:database`, `:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase`
-do **not** exist yet. Phase 0 forbids the first three, and `architectureCheck` fails the build if
-one of them appears.
+`:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase` do **not** exist
+yet. `architectureCheck` rejects `:core:auth` and `:core:sync` until their owning stories start.
 
 ### Creating a module
 

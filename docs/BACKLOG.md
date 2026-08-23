@@ -185,6 +185,8 @@ Goal: the app stores and displays vehicles and fuel entries locally. It is usefu
 
 ### E1-01 - `:core:database` - M
 
+Status: completed on 2026-08-24. See `docs/handoff-E1-01.md`.
+
 Implement SQLDelight 2.3.2 with AndroidX bundled SQLite, schema v1, typed queries, transactions and migration strategy (`D-36`).
 
 Acceptance criteria:
@@ -686,7 +688,7 @@ E0-00 owner decisions (completed)
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
 | E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |
 
-| E1-01 `:core:database` | 1 | M | — |
+| E1-01 `:core:database` (completed) | 1 | M | — |
 | E0-07 Walking skeleton | 1 | L | Yes |
 | E1-02 Vehicle domain | 1 | S | — |
 | E1-03 Vehicle data | 1 | M | — |

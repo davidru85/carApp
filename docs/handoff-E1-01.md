@@ -19,8 +19,9 @@
   no `Proposed` or `Pending` decision remains.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§3.1`, `§6`, `§8`, `§9`, `§11`;
   `docs/CONTRACTS.md §2`–`§5`, `§7`–`§9`, `§15.1`, `§18`, `§20.3.2`;
-  `docs/DECISION_BOARD.md` (`D-1`, `D-36`); `docs/TECHNICAL_PLAN.md §3`, `§4`, `§6`, `§12`;
-  `docs/versions-matrix.md`; [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md).
+  `docs/DECISION_BOARD.md` (`D-1`, `D-36`, `D-37`, `D-38`);
+  `docs/TECHNICAL_PLAN.md §3`, `§4`, `§6`, `§12`; `docs/versions-matrix.md`; ADR-0037 through
+  ADR-0039.
 - [x] Expected verification identified — focused `:core:database` Android host and
   `iosSimulatorArm64` tests; SQLDelight migration verification; architecture fixtures; and the
   complete repository command from `AGENTS.md`.
@@ -32,11 +33,43 @@
 
 ## Scope Completed
 
-- In progress.
+- Added `:core:database` with SQLDelight 2.3.2, the SQLite 3.24 dialect, asynchronous generated
+  operations and AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1.
+- Committed schema v1 and typed operations for all seven local tables, the shared mutation
+  sequence, outbox coalescing, observable reads and suspending one-shot reads.
+- Added `DatabaseMutations` as the atomic write boundary for fuel-entry create, update, single
+  tombstone and vehicle-cascade tombstone recomputation.
+- Executed the same database behavior and file-backed persistence tests on Android host and
+  `iosSimulatorArm64`.
+- Removed the unsupported `iosX64` target and added the D-38 architecture rule that rejects direct
+  generated entity mutations outside `:core:database`.
 
 ## Acceptance Evidence
 
-- Pending implementation and verification.
+- `AndroidFileBackedSchemaTest` and `IosFileBackedSchemaTest` create a file-backed database, close
+  it, reopen it and recover the inserted row using the bundled driver.
+- `SchemaV1Test` proves the seven-table inventory; both synchronized entities reject `deleted`
+  outside `0`/`1`, reject both invalid `deleted`/`deletedAt` combinations and round-trip nullable
+  `serverUpdatedAt`; it also proves the absence of the fuel-entry foreign key and vehicle-name
+  unique index and checks `idx_outbox_due` column order.
+- `LocalSequenceTest` proves monotonic allocation shared across entity types and proves writes with
+  supplied sequences do not consume the counter.
+- `OutboxCoalescingTest` proves snapshot replacement resets retry state while preserving the
+  original outbox `seq`.
+- RED/GREEN commits prove each product behavior independently: sequence `00be415`/`03738ee`,
+  outbox `3f16481`/`6787a19`, reads `30b32e0`/`ceb690a`, create recomputation
+  `2ff424f`/`ab0b74c`, update recomputation `1ffde49`/`7c97585`, single tombstone
+  `117f214`/`c8d2517`, cascade tombstones `3e838ad`/`34e1a6f`, and the mutation boundary
+  `a1c1783`/`d927904`.
+- Recompute tests use deliberately stale non-target rows and cover create, chronological move,
+  odometer-only update, coincident successors, notes/currency no-op, the pre-delete successor and
+  the three-row cascade exclusion set.
+- `SqlDelightConventionPlugin` keeps `.sq` files as the schema source, enables
+  `verifyMigrations`, disables system-SQLite linking and contains no destructive recreation path.
+- `DatabaseReadQueriesTest` uses Turbine to prove `Flow` invalidation and verifies a suspending
+  one-shot lookup.
+- `ArchitectureCheckerTest.generatedEntityMutationsAreCalledOnlyByCoreDatabase` covers every
+  generated synchronized-entity mutation function and its permitted facade path.
 
 ## Out of Scope / Not Done
 
@@ -44,7 +77,14 @@
 
 ## Files Changed
 
-- Pending final handoff.
+- `core/database/**` — schema, typed queries, transaction facade and multiplatform tests.
+- `build-logic/convention/**` — SQLDelight convention plugin, dependency capability updates and
+  the D-38 source guard.
+- `gradle/libs.versions.toml`, root/settings/shared Gradle files — accepted dependency set, module
+  registration and ARM64 iOS targets.
+- `docs/adr/0037-*`, `0038-*`, `0039-*` and the four decision mirrors — D-36 through D-38.
+- `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/BACKLOG.md`, this handoff and
+  `docs/PROJECT_LOG.md` — live repository state and completion evidence.
 
 ## Decisions Made
 
@@ -55,13 +95,28 @@
 - `D-38` routes synchronized entity writes through `DatabaseMutations` and rejects direct
   generated entity-mutation calls outside `:core:database`; see
   [ADR-0039](adr/0039-database-mutations-use-transaction-facade.md).
-- The TDD order exemption for SQLDelight schemas and migrations will be used as permitted by
+- The TDD order exemption for SQLDelight schemas and migrations was used as permitted by
   `docs/SPECIFICATION.md §11`; product behaviours around sequence allocation, coalescing and
-  read-model recomputation remain subject to RED/GREEN/refactoring commits.
+  read-model recomputation used RED/GREEN commits.
+- No refactoring phase was needed after any GREEN increment; the explicit optional refactoring
+  commit was therefore skipped as permitted by `docs/SPECIFICATION.md §11`.
+- Rule 0 held throughout: owner conversation was Spanish (Spain), and repository artifacts,
+  branches, commits and pull-request content are technical English.
 
 ## Verification Run
 
-- Pending.
+- `./gradlew :core:database:testAndroidHostTest :core:database:iosSimulatorArm64Test
+  :core:database:ktlintCheck :core:database:detekt` — successful after every GREEN recomputation
+  increment.
+- `./gradlew :build-logic:convention:test architectureCheck` — successful; 14 dependency-table
+  rules across 9 modules, including the D-38 failing fixture.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test` — `BUILD
+  SUCCESSFUL` in 23 seconds, 273 actionable tasks; 39 decisions match, with the three expected
+  future-story contract assertions reported as `PENDING`.
+- `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` — `BUILD SUCCESSFUL`.
+- `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator -configuration Debug
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` from `iosApp/` — `BUILD SUCCEEDED`.
 
 ## Contract Impact
 
@@ -79,12 +134,22 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended at story completion.
+- [x] Entry appended at story completion.
 
 ## Risks or Follow-ups
 
-- Pending final handoff.
+- `E0-07` must exercise the accepted database stack through the real Android and iOS application
+  composition paths; E1-01 proves the driver and persistence directly but does not build the app
+  graph owned by that story.
+- Every new synchronized-entity mutation must extend `DatabaseMutations` and the closed
+  architecture fixture in the same story.
+- Schema v1 has no predecessor and therefore no `.sqm` file. Every future version must add a
+  committed migration and a populated previous-version migration test.
+- `iosX64` is unsupported under D-37. Reintroduction requires a complete compatible database
+  dependency set and a superseding owner decision.
 
 ## Human Review Gate
 
-- Applies: gated paths and gated topics listed in the Ready Check.
+- Applies: `core/database/**`, `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`,
+  `docs/DECISION_BOARD.md`, `docs/adr/**` and `docs/versions-matrix.md`; technical stack, pinned
+  versions and module boundaries. The owner must review and merge this pull request.

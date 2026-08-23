@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-08-24 — E1-01 core database completed
+
+- **Type:** story
+- **Story / Decision:** `E1-01` / `D-36`, `D-37`, `D-38`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added `:core:database` with SQLDelight schema v1, typed asynchronous queries,
+  AndroidX bundled SQLite persistence on Android and iOS, a transaction facade for database-owned
+  read-model invariants, and an executable direct-mutation boundary.
+- **Why:** E1-01 opens Phase 1 and supplies the local source of truth required by the E0-07 walking
+  skeleton while preserving the exact SQLite constraints and recomputation contracts.
+- **Documents touched:** `docs/handoff-E1-01.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `docs/DEFINITION.md`, the D-36 through D-38 decision records and this log.
+- **Verification:** full Gradle CI command passed with Android host and `iosSimulatorArm64` tests;
+  file-backed close/reopen tests passed on both platforms; the ARM64 shared framework and iOS app
+  built successfully with Xcode.
+- **Follow-ups / risks:** E0-07 is next and must exercise this database through both real app
+  composition paths. New entity mutations must extend the facade and its architecture fixture;
+  future schema versions require committed `.sqm` migrations and populated migration tests.
+
 ### 2026-08-24 — D-38 database transaction facade accepted
 
 - **Type:** decision

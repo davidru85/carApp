@@ -1,7 +1,7 @@
 package com.ruizurraca.carapp.buildlogic.architecture
 
 /**
- * Every architecture rule of `docs/BACKLOG.md` `E0-04`, as pure functions over [ModuleUnderCheck].
+ * Executable module and source architecture rules, as pure functions over [ModuleUnderCheck].
  *
  * The rules are pure on purpose. A rule that can only be exercised by creating the offending
  * Gradle module could never have a failing fixture for `:core:sync`, `:core:auth`,

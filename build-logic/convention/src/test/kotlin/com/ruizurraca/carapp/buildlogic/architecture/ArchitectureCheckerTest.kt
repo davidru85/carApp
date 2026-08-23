@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * A failing fixture for every rule of `docs/BACKLOG.md` `E0-04`.
+ * A failing fixture for every executable module and source architecture rule.
  *
  * The fixtures are fabricated modules rather than real ones. That is the whole point: most of the
  * rules protect `:core:sync`, `:core:auth`, `:core:database`, `:integration:*` and `:feature:*`,

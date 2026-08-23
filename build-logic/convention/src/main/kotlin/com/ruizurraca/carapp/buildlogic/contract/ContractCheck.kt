@@ -306,8 +306,8 @@ class ContractCheck(private val repoRoot: File) {
                 13,
                 "testAppGraphDependencies matches AppGraphDependencies",
                 AssertionResult.Status.PENDING,
-                "the factory does not exist: four of the 15 AppGraphDependencies members are owned by " +
-                    ":core:database, :core:auth and :core:sync, which Phase 0 forbids creating (DEC-2)",
+                "the factory is created by E0-07 after the remaining :core:auth and :core:sync " +
+                    "contracts become available (D-27)",
             )
         }
 
