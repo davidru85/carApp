@@ -190,12 +190,15 @@ class ArchitectureCheckerTest {
     // --- Source-level rules ------------------------------------------------------------------
 
     @Test
-    fun storiesMayNotCreateAuthOrSyncModulesEarly() {
+    fun storiesMayNotCreateUnownedProviderModulesEarly() {
         ArchitectureChecker.NOT_YET_INTRODUCED_MODULES.forEach {
             assertRejected(module(it), "module-before-owning-story")
         }
         assertAccepted(module(":core:model"))
         assertAccepted(module(":core:database"))
+        assertAccepted(module(":core:auth"))
+        assertAccepted(module(":core:sync"))
+        assertAccepted(module(":feature:vehicle"))
     }
 
     @Test

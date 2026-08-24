@@ -99,12 +99,17 @@ build-logic/       convention plugins, an included build
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
 :core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
+:core:auth         staged auth contracts for the E0-07 application graph
+:core:sync         staged sync contracts for the E0-07 application graph
+:feature:vehicle   final module shell; only the E0-07 Vehicle slice is implemented here
+:feature:fuel      final module shell staged for the Swift-facing surface
+:feature:session   final module shell staged for the Swift-facing surface
 :shared            the iOS framework, still carrying only the E0-01 placeholder
 :androidApp        the Android host app
 ```
 
-`:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase` do **not** exist
-yet. `architectureCheck` rejects `:core:auth` and `:core:sync` until their owning stories start.
+`:integration:*` and `:wiring:firebase` do **not** exist yet. D-55 stages the final core and feature
+module topology in E0-07; later stories complete the non-slice behavior in place.
 
 ### Creating a module
 

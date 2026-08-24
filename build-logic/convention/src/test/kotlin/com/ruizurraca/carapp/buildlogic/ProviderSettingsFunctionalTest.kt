@@ -68,6 +68,11 @@ private class SettingsFixture(private val root: File) {
             ":core:crash",
             ":core:testing",
             ":core:database",
+            ":core:auth",
+            ":core:sync",
+            ":feature:vehicle",
+            ":feature:fuel",
+            ":feature:session",
         ).forEach(::createProject)
     }
 

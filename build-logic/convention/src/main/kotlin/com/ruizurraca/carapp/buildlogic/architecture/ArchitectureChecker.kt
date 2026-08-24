@@ -11,8 +11,9 @@ package com.ruizurraca.carapp.buildlogic.architecture
  */
 object ArchitectureChecker {
 
-    /** Planned modules whose owning stories have not started yet. */
-    val NOT_YET_INTRODUCED_MODULES = setOf(":core:auth", ":core:sync")
+    /** Planned provider modules whose owning stories have not started yet. */
+    val NOT_YET_INTRODUCED_MODULES =
+        setOf(":integration:firebase-analytics", ":integration:firebase-crashlytics")
 
     private val PLATFORM_IMPORT_PREFIXES = listOf(
         "android.", "androidx.", "platform.Foundation", "platform.UIKit", "platform.darwin",
