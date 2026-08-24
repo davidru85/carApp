@@ -30,6 +30,7 @@ rootProject.name = "carApp"
 
 include(":androidApp")
 include(":shared")
+include(":shared:testing")
 
 // Core modules. E0-07 stages the final auth and sync contracts under D-55; their complete product
 // behavior remains owned by the later auth and sync stories.

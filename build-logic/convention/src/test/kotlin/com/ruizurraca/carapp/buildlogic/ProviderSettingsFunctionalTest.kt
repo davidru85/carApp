@@ -62,6 +62,7 @@ private class SettingsFixture(private val root: File) {
         listOf(
             ":androidApp",
             ":shared",
+            ":shared:testing",
             ":core:model",
             ":core:common",
             ":core:analytics",

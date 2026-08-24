@@ -140,10 +140,12 @@ class ArchitectureCheckerTest {
             ":core:crash",
             ":core:testing",
         ).forEach { path ->
-            assertRejected(
-                module(path, projectDependencies = setOf(":shared")),
-                "undeclared-module-dependency",
-            )
+            listOf(":shared", ":shared:testing").forEach { dependency ->
+                assertRejected(
+                    module(path, projectDependencies = setOf(dependency)),
+                    "core-to-shared-dependency",
+                )
+            }
         }
     }
 

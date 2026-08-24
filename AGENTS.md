@@ -105,6 +105,7 @@ build-logic/       convention plugins, an included build
 :feature:fuel      final module shell staged for the Swift-facing surface
 :feature:session   final module shell staged for the Swift-facing surface
 :shared            the iOS framework, still carrying only the E0-01 placeholder
+:shared:testing    KMP app-graph test factory, consumed from commonTest only
 :androidApp        the Android host app
 ```
 
@@ -284,6 +285,9 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Features do not depend on other features.
 - `:core:sync` does not depend on integrations or features.
 - `:shared` does not depend on integrations.
+- `:shared:testing` depends only on `:shared` and `:core:testing`; consumers depend on it only from
+  `commonTest`.
+- No module under `:core` depends on `:shared` or `:shared:testing`.
 - Only `:wiring:firebase` constructs Firebase implementations, and it contains no product logic.
 - Firebase and GitLive types never leave `:integration:*`.
 - `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.

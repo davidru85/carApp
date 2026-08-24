@@ -56,6 +56,7 @@ object ArchitectureChecker {
 
         violations += checkModuleIsIntroducedByItsOwningStory(module)
         violations += checkSkieIsOnlyInShared(module)
+        violations += checkCoreDoesNotDependOnShared(module)
         violations += checkNoFeatureToFeatureDependency(module)
         violations += checkCrashHasNoExpectActual(module)
         violations += checkDatabaseTypesStayInTheirModule(module)
@@ -184,6 +185,20 @@ object ArchitectureChecker {
         } else {
             emptyList()
         }
+
+    /** `D-56`: core test utilities remain generic and no core module reaches the app graph. */
+    private fun checkCoreDoesNotDependOnShared(module: ModuleUnderCheck): List<Violation> {
+        if (!module.path.startsWith(":core:")) return emptyList()
+        return declaredEdges(module)
+            .filter { it == ":shared" || it.startsWith(":shared:") }
+            .map {
+                Violation(
+                    module.path,
+                    "core-to-shared-dependency",
+                    "depends on $it. D-56 forbids every :core:* -> :shared edge.",
+                )
+            }
+    }
 
     private fun checkNoFeatureToFeatureDependency(module: ModuleUnderCheck): List<Violation> {
         if (!module.path.startsWith(":feature:")) return emptyList()

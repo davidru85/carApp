@@ -40,6 +40,7 @@ gradle/libs.versions.toml
 :feature:session
 
 :shared
+:shared:testing
 :wiring:firebase
 :androidApp
 iosApp/

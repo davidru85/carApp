@@ -91,8 +91,7 @@ gradle/libs.versions.toml       single source of dependency versions
 :core:sync                      Outbox, cursor, backup/recovery engine, SyncController, RemoteSyncSource
 :core:analytics                 AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash                     CrashReporter abstraction and no-op implementation
-:core:testing                   fakes, builders, in-memory remote, deterministic simulator,
-                                testAppGraphDependencies factory
+:core:testing                   generic fakes, builders, in-memory remote, deterministic simulator
 
 :integration:firebase-auth      Firebase Auth implementation
 :integration:firebase-firestore Firestore RemoteSyncSource implementation
@@ -104,6 +103,7 @@ gradle/libs.versions.toml       single source of dependency versions
 :feature:session                onboarding, auth, settings packages
 
 :shared                         iOS framework and shared graph factory
+:shared:testing                 KMP testAppGraphDependencies factory, consumed from commonTest only
 :wiring:firebase                composition root that names Firebase integrations
 :androidApp                     Android host app
 iosApp/                         SwiftUI host app
@@ -130,7 +130,8 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:core:testing` | every `:core:*` module plus test libraries (Turbine, `kotlin.test`) | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API (platform APIs are permitted only in `expect`/`actual` test doubles, per `docs/CONTRACTS.md §15.1`) |
 | `:core:crash` | `:core:common` | platform APIs, Firebase, GitLive, Koin, Ktor, integrations, features |
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
-| `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
+| `:shared` | `:core:*`, `:feature:*`, `:shared:testing` in test-support and SPM metadata configurations only | `:integration:*` |
+| `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
 | `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
@@ -139,7 +140,7 @@ Feature `data` cannot depend on `:core:auth`, so the current owner reaches repos
 
 "Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash` and one for `:core:testing` (a platform API used in the `commonMain` public surface, not in a permitted `expect`/`actual` test double).
 
-The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must be able to construct fakes for `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`); it remains forbidden from reaching integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure.
+The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must provide generic fakes for every `AppGraphDependencies` abstraction; it remains forbidden from reaching `:shared`, integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure. `:shared:testing` performs the application-specific composition and exposes it to consumer `commonTest` source sets (`D-56`).
 
 "Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 
