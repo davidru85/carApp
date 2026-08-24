@@ -1,0 +1,16 @@
+{
+  "name": "carapp-firestore-rules-tests",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.22.3"
+  },
+  "scripts": {
+    "test:firestore-rules": "firebase emulators:exec --only firestore --project davidruiz-carapp-dev \"node --test firestore/tests/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.1",
+    "firebase": "12.18.0",
+    "firebase-tools": "15.28.1"
+  }
+}
