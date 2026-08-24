@@ -7,7 +7,7 @@ service cloud.firestore {
     }
 
     function knownCollection(collection) {
-      return collection == "vehicles";
+      return collection in ["vehicles", "fuelEntries"];
     }
 
     function nullableString(value, min, max) {
@@ -62,9 +62,61 @@ service cloud.firestore {
         && request.resource.data.schemaVersion == 1;
     }
 
+    function validFuelEntry(entryId) {
+      return request.resource.data.keys().hasOnly([
+          "id", "ownerId", "vehicleId", "date", "odometerKm", "litersScaled",
+          "pricePerLiterScaled", "totalCostMinor", "currency", "isFullTank",
+          "hasMissedEntries", "odometerInconsistent", "notes", "createdAt",
+          "updatedAt", "deleted", "deletedAt", "schemaVersion"
+        ])
+        && request.resource.data.keys().hasAll([
+          "id", "ownerId", "vehicleId", "date", "odometerKm", "litersScaled",
+          "pricePerLiterScaled", "totalCostMinor", "currency", "isFullTank",
+          "hasMissedEntries", "odometerInconsistent", "notes", "createdAt",
+          "updatedAt", "deleted", "deletedAt", "schemaVersion"
+        ])
+        && request.resource.data.id == entryId
+        && isUuid(request.resource.data.id)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.vehicleId is string
+        && isUuid(request.resource.data.vehicleId)
+        && request.resource.data.date is timestamp
+        && request.resource.data.date >= timestamp.date(1970, 1, 1)
+        && request.resource.data.date <= request.time + duration.value(1, "h")
+        && request.resource.data.odometerKm is int
+        && request.resource.data.odometerKm >= 0
+        && request.resource.data.odometerKm <= 2000000
+        && request.resource.data.litersScaled is int
+        && request.resource.data.litersScaled >= 1
+        && request.resource.data.litersScaled <= 500000
+        && request.resource.data.pricePerLiterScaled is int
+        && request.resource.data.pricePerLiterScaled >= 1
+        && request.resource.data.pricePerLiterScaled <= 999999
+        && request.resource.data.totalCostMinor is int
+        && request.resource.data.totalCostMinor >= 1
+        && request.resource.data.totalCostMinor <= 99999999
+        && request.resource.data.currency in [
+          "ARS", "AUD", "BRL", "CAD", "CHF", "COP", "CZK", "DKK", "EUR",
+          "GBP", "HUF", "MAD", "MXN", "NOK", "NZD", "PEN", "PLN", "RON",
+          "SEK", "USD", "UYU"
+        ]
+        && request.resource.data.isFullTank is bool
+        && request.resource.data.hasMissedEntries is bool
+        && request.resource.data.odometerInconsistent is bool
+        && nullableString(request.resource.data.notes, 1, 280)
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.deleted is bool
+        && deletedShapeIsValid()
+        && request.resource.data.schemaVersion is int
+        && request.resource.data.schemaVersion == 1;
+    }
+
     match /users/{uid}/{collection}/{docId} {
       function validPayload() {
-        return collection == "vehicles" ? validVehicle(docId) : false;
+        return collection == "vehicles" ? validVehicle(docId) :
+          collection == "fuelEntries" ? validFuelEntry(docId) :
+          false;
       }
 
       allow read: if isOwner(uid) && knownCollection(collection);
