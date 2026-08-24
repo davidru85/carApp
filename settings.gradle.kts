@@ -39,3 +39,18 @@ include(":core:analytics")
 include(":core:crash")
 include(":core:testing")
 include(":core:database")
+
+// Provider modules are a closed, explicit registry (D-44). A planned path does not become a
+// Gradle project until its owning story creates the directory; filesystem-wide discovery is
+// deliberately forbidden because it would admit unreviewed modules silently.
+val firebaseProviderProjects = listOf(
+    ":integration:firebase-auth",
+    ":integration:firebase-firestore",
+    ":integration:firebase-analytics",
+    ":integration:firebase-crashlytics",
+    ":wiring:firebase",
+)
+
+firebaseProviderProjects
+    .filter { path -> file(path.removePrefix(":").replace(':', '/')).isDirectory }
+    .forEach(::include)
