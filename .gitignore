@@ -30,6 +30,8 @@ DerivedData/
 *.mobileprovision
 GoogleService-Info.plist
 google-services.json
+!androidApp/src/debug/google-services.json
+!iosApp/Config/Debug/GoogleService-Info-Debug.plist
 .env
 .env.*
 !.env.example
