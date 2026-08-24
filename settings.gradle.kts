@@ -50,7 +50,12 @@ val firebaseProviderProjects = listOf(
     ":integration:firebase-crashlytics",
     ":wiring:firebase",
 )
+val excludeFirebaseProviders = providers
+    .gradleProperty("carapp.excludeFirebaseProviders")
+    .map(String::toBooleanStrict)
+    .getOrElse(false)
 
 firebaseProviderProjects
     .filter { path -> file(path.removePrefix(":").replace(':', '/')).isDirectory }
+    .filterNot { excludeFirebaseProviders }
     .forEach(::include)
