@@ -17,6 +17,11 @@ dependencies {
 
 dependencies {
     testImplementation(kotlin("test"))
+    testImplementation(gradleTestKit())
+}
+
+tasks.test {
+    systemProperty("carapp.repoRoot", rootProject.projectDir.parentFile.absolutePath)
 }
 
 kotlin {

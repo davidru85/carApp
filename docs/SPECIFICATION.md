@@ -451,6 +451,13 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1. | Accepted |
 | D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64`. | Accepted |
 | D-38 | Database-owned mutation strategy | Use a Kotlin/SQLDelight `DatabaseMutations` transaction facade; forbid direct generated entity-mutation calls outside `:core:database`. | Accepted |
+| D-39 | Walking-skeleton data slice | E0-07 uses a minimal valid vehicle; the edited proof value is its name. | Accepted |
+| D-40 | Firestore-rule sequencing | Complete E3-01 before E0-07; temporary cloud-only rules are forbidden. | Accepted |
+| D-41 | Development Android Firebase certificate | Restrict the debug Firebase key to the debug application ID and the owner's current local debug signing certificate. | Accepted |
+| D-42 | Provider-proof sequencing | Complete E3-06 before E3-01, then complete E0-07. | Accepted |
+| D-43 | Provider-exclusion control | Select provider-free Gradle settings with `carapp.excludeFirebaseProviders=true`. | Accepted |
+| D-44 | Provider-module registry | Keep an explicit canonical provider registry and include only existing directories when exclusion is off. | Accepted |
+| D-45 | Provider-decoupling platforms | Run Android host and `iosSimulatorArm64` provider-free tests in one macOS CI job. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

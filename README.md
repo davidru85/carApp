@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 1 open.** `E1-01` has delivered the SQLDelight local database on Android and iOS. The next story is the `E0-07` walking-skeleton gate. There is no user-visible feature yet; the project builds on both platforms and `main` is protected by nine required CI checks.
+> **Project status:** **Phase 1 open.** `E1-01` has delivered the SQLDelight local database on Android and iOS, and `E3-06` has made provider decoupling executable. The next story is `E3-01`, which delivers the Firestore rules required before the `E0-07` walking-skeleton gate. There is no user-visible feature yet; the project builds on both platforms and `main` is protected by nine required CI checks.
 
 ## Start here
 

@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses and one active device per account. Users can create vehicles, log refueling events, review history, calculate real consumption, keep their data available offline, and back it up for recovery on a new device.
 
-Phase 0 is complete and Phase 1 is open: `E1-01` has delivered the SQLDelight local database on both platforms. There is no user-visible feature yet. The next story is the `E0-07` walking-skeleton gate in `docs/BACKLOG.md`. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
+Phase 0 is complete and Phase 1 is open: `E1-01` has delivered the SQLDelight local database on both platforms, and `E3-06` has made provider decoupling executable. There is no user-visible feature yet. The next story is `E3-01`, followed by the `E0-07` walking-skeleton gate under the accepted prerequisite order. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
 
 ## 2. MVP Objective
 

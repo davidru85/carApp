@@ -173,16 +173,17 @@ jobs:
 
   provider-decoupling:
     name: provider-decoupling
-    runs-on: ubuntu-latest
+    # D-45: dependency leaks can be target-specific, so the provider-free graph is tested on both
+    # Android host (JVM) and iosSimulatorArm64 (Kotlin/Native) under one protected check name.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Provider decoupling proof
-        run: |
-          # E3-06 owns this check. It proves that swapping the Firebase integration for another
-          # provider touches no product code. There is no integration module yet, so there is
-          # nothing to decouple; the job exists so the required check name is stable.
-          if [ -d integration ]; then
-            echo "::error::Integration modules exist but the provider-decoupling proof is not implemented. It is owned by E3-06."
-            exit 1
-          fi
-          echo "::warning::No integration module exists yet; the provider-decoupling proof is owned by E3-06."
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile and test without Firebase providers
+        run: >-
+          ./gradlew -Pcarapp.excludeFirebaseProviders=true
+          testAndroidHostTest iosSimulatorArm64Test --stacktrace

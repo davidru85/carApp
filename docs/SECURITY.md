@@ -38,6 +38,11 @@ Allowed in the repository:
 
   Since `D-34` the repository is **public**, so that proviso is a precondition rather than good practice: anyone can read those keys the moment the files are committed. `E0-07` MUST restrict the keys in the Google Cloud console before committing either file, and the handoff MUST state that it did.
 
+  Under `D-41`, the Android development key is restricted to the debug application ID and the
+  owner's current local debug signing certificate. The iOS development key is restricted to the
+  debug bundle identifier. Moving Android development to another machine requires an explicit
+  additional fingerprint; restrictions MUST NOT be widened automatically.
+
 Never committed:
 
 - Keystores and `*.jks`, `*.keystore`.
