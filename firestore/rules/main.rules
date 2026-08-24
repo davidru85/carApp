@@ -6,9 +6,78 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    match /users/{uid}/vehicles/{vehicleId} {
-      allow read: if isOwner(uid);
-      allow create: if isOwner(uid) && request.resource.data.ownerId == uid;
+    function knownCollection(collection) {
+      return collection == "vehicles";
+    }
+
+    function nullableString(value, min, max) {
+      return value == null
+        || (value is string && value.size() >= min && value.size() <= max);
+    }
+
+    function isUuid(value) {
+      return value is string
+        && value.matches(
+          "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        );
+    }
+
+    function deletedShapeIsValid() {
+      return (!request.resource.data.deleted
+          && request.resource.data.deletedAt == null)
+        || (request.resource.data.deleted
+          && request.resource.data.deletedAt is timestamp);
+    }
+
+    function validVehicle(vehicleId) {
+      return request.resource.data.keys().hasOnly([
+          "id", "ownerId", "name", "initialOdometerKm", "brand", "model",
+          "fuelType", "createdAt", "updatedAt", "deleted", "deletedAt",
+          "schemaVersion"
+        ])
+        && request.resource.data.keys().hasAll([
+          "id", "ownerId", "name", "initialOdometerKm", "brand", "model",
+          "fuelType", "createdAt", "updatedAt", "deleted", "deletedAt",
+          "schemaVersion"
+        ])
+        && request.resource.data.id == vehicleId
+        && isUuid(request.resource.data.id)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.initialOdometerKm is int
+        && request.resource.data.initialOdometerKm >= 0
+        && request.resource.data.initialOdometerKm <= 2000000
+        && nullableString(request.resource.data.brand, 1, 40)
+        && nullableString(request.resource.data.model, 1, 40)
+        && request.resource.data.fuelType in [
+          "GASOLINE", "DIESEL", "LPG", "CNG", "OTHER"
+        ]
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.deleted is bool
+        && deletedShapeIsValid()
+        && request.resource.data.schemaVersion is int
+        && request.resource.data.schemaVersion == 1;
+    }
+
+    match /users/{uid}/{collection}/{docId} {
+      function validPayload() {
+        return collection == "vehicles" ? validVehicle(docId) : false;
+      }
+
+      allow read: if isOwner(uid) && knownCollection(collection);
+
+      allow create, update: if isOwner(uid)
+        && request.resource.data.ownerId == uid
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.schemaVersion is int
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.id == docId
+        && validPayload();
+
+      allow delete: if false;
     }
 
     match /{document=**} {
