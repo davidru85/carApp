@@ -35,11 +35,40 @@
 
 ## Scope Completed
 
-- Pending implementation.
+- Added the exact D-46 Node, Firebase CLI, Firebase JavaScript SDK and rules-unit-testing stack
+  with a reproducible lockfile and repository-wide dependency install-script blocking under D-51.
+- Added operation-specific Firestore rules for the two known owner-scoped collections, including
+  exact closed schemas, immutable identity fields, server timestamps, numeric ranges, nullable
+  fields, enum domains, tombstone shapes and exact MVP schema-version enforcement.
+- Added 154 emulator tests covering authorization, schema rejection and acceptance, deletes,
+  tombstones, orphan fuel entries and the complete delta-pull query with stable pagination.
+- Added the empty composite-index configuration and proved that the required delta query executes
+  without an additional index while retaining tombstones.
+- Added the rules suite to the existing protected `contract-check` CI job and updated every
+  affected contract, decision, security, version and story record.
 
 ## Acceptance Evidence
 
-- Pending implementation.
+- `firestore/rules/main.rules` authorizes only authenticated owners at their own path, rejects
+  unknown collections, validates create and update separately and rejects every client hard
+  delete. Emulator tests prove cross-owner and unauthenticated rejection plus anonymous-account
+  access to the matching owner path.
+- Vehicle and fuel-entry tests independently remove every required key, add extra and local-only
+  keys, vary primitive types, cross every numeric and enum boundary, exercise nullable fields and
+  reject malformed tombstones. A `null` vehicle brand is accepted while an absent brand is not.
+- Schema versions 0 and 2 are rejected and version 1 is accepted for both remote document types;
+  literal client timestamps are rejected in favor of `request.time`.
+- Fuel entries may reference a vehicle that is not present remotely, preserving the orphan-entry
+  recovery contract.
+- The real SDK query orders by `updatedAt` and document ID, applies D-50's timestamp-only first
+  boundary and the full later-page cursor, paginates without duplicates or gaps, returns
+  tombstones and requires no composite index.
+- `package.json`, `package-lock.json`, `.npmrc`, `firebase.json` and the named CI step pin and run
+  the accepted official emulator stack without Firebase credentials or dependency install scripts.
+- D-48 is preserved: this story adds no application Firestore provider or persistence setting;
+  E0-07 owns that executable client evidence.
+- RED/GREEN history is preserved in the anonymous access, vehicle schema, fuel-entry schema and
+  delta-query commit pairs listed in this branch.
 
 ## Out of Scope / Not Done
 
@@ -49,7 +78,16 @@
 
 ## Files Changed
 
-- Pending implementation.
+- Rules and emulator configuration: `firebase.json`, `firestore/firestore.indexes.json`,
+  `firestore/rules/main.rules`, `firestore/tests/firestore.rules.test.mjs`.
+- Reproducible test tooling: `package.json`, `package-lock.json`, `.npmrc`, `.gitignore`.
+- Protected verification: `.github/workflows/ci.yml`.
+- Normative and derived documentation: `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`,
+  `docs/DECISION_BOARD.md`, `docs/SECURITY.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/versions-matrix.md`.
+- Decision and story records: `docs/adr/README.md`, ADR-0047 through ADR-0053,
+  `docs/adr/0043-provider-decoupling-precedes-first-integration.md`, this handoff and
+  `docs/PROJECT_LOG.md`.
 
 ## Decisions Made
 
@@ -57,10 +95,23 @@
   official Firebase SDK rejected the former empty document-ID cursor. D-51 and D-52 were accepted
   after a clean npm install exposed version-dependent install-script behavior and moderate
   development-tool advisories. All are recorded in this pull request.
+- TDD exemptions are limited to repository scaffolding, configuration, documentation, CI wiring
+  and the empty index file. Every Firestore rule behavior was introduced through a focused failing
+  emulator test followed by its passing implementation. No `SHOULD` rule was intentionally
+  deviated from.
 
 ## Verification Run
 
-- Pending implementation.
+- [x] `npm ci` — passed; installed 725 locked packages with dependency install scripts disabled.
+  The five moderate, development-tool-only audit findings are the accepted D-52 residual.
+- [x] `npm run test:firestore-rules` — passed all 154 emulator tests.
+- [x] `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest
+  iosSimulatorArm64Test` — passed all 273 actionable tasks. `contractCheck` matched 53 decisions to
+  53 ADRs and reported only the two expected E0-07 pending checks.
+- [x] `npm audit --json` — diagnostic completed; confirmed five moderate findings and no high or
+  critical finding, with the retained transitive Firebase CLI tree governed by D-52.
+- [x] `git diff --check` — passed.
 
 ## Contract Impact
 
@@ -78,7 +129,7 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Story and D-46 through D-52 entries appended.
 
 ## Risks or Follow-ups
 
