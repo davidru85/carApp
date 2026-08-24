@@ -120,6 +120,7 @@ async function withTestEnvironment(run) {
   });
 
   try {
+    await testEnvironment.clearFirestore();
     await run(testEnvironment);
   } finally {
     await testEnvironment.cleanup();
@@ -594,7 +595,7 @@ test("the delta-pull query paginates deterministically and returns tombstones", 
           where("updatedAt", ">=", firstTimestamp),
           orderBy("updatedAt", "asc"),
           orderBy(documentId(), "asc"),
-          startAt(firstTimestamp, ""),
+          startAt(firstTimestamp),
           limit(2),
         ),
       ),
