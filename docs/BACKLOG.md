@@ -228,6 +228,13 @@ Acceptance criteria:
 
 Database gate resolved by `D-36`: `E0-07` MUST exercise the accepted SQLDelight AndroidX bundled driver on the real Android and iOS application paths.
 
+Staged ownership is fixed by `D-55`: E0-07 creates the final modules and public contract shapes
+needed by the complete Swift golden header, but implements product behavior only for its minimal
+Vehicle slice. Non-slice exported state holders are deterministic, unwired contract shells. Later
+feature, auth, sync and graph stories complete those same modules and public types in place. E0-07
+MAY use removable internal adapters, but MUST NOT introduce a temporary module, remote collection
+or public walking-skeleton-only API.
+
 Human review required.
 
 ### E1-02 - Vehicle Domain - S

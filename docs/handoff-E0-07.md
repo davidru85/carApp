@@ -58,6 +58,8 @@
 - D-53 selects separate Android and iOS debug app registrations and restricted platform keys.
 - D-54 isolates both development configuration files to debug builds and makes release builds fail
   closed until reviewed production configuration exists.
+- D-55 stages the final module and public-contract topology in E0-07, limits real product behavior
+  to the Vehicle walking-skeleton slice and reserves all remaining behavior for its owning stories.
 
 ## Verification Run
 
@@ -69,7 +71,7 @@
 
 ## Decision Board Impact
 
-- Added D-53, D-54, ADR-0054 and ADR-0055 before implementation.
+- Added D-53 through D-55 and ADR-0054 through ADR-0056 before implementation.
 
 ## Shared-Write Modules Touched
 

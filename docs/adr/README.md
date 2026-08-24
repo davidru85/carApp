@@ -61,5 +61,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-52 | [ADR-0053](0053-retain-firebase-cli-with-moderate-audit-residual.md) | Retain the pinned Firebase CLI with its documented moderate audit residual. | Accepted |
 | D-53 | [ADR-0054](0054-use-separate-firebase-debug-app-keys.md) | Use separately provisioned and restricted Android and iOS debug app keys. | Accepted |
 | D-54 | [ADR-0055](0055-keep-firebase-configuration-debug-only.md) | Keep development Firebase configuration isolated to debug builds. | Accepted |
+| D-55 | [ADR-0056](0056-stage-final-contracts-in-walking-skeleton.md) | Stage final public contracts while implementing only the walking-skeleton Vehicle slice. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
