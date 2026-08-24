@@ -465,6 +465,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-50 | Firestore first-page cursor | Use `startAt(overlapSince)` first, then the full timestamp/document-ID cursor on later pages. | Accepted |
 | D-51 | npm install-script policy | Disable dependency install scripts repository-wide. | Accepted |
 | D-52 | Firebase CLI audit residual | Retain Firebase CLI 15.28.1 and accept the documented moderate dev-tool-only residual. | Accepted |
+| D-53 | Development Firebase app provisioning | Register separate Android and iOS debug apps with Firebase-provisioned platform keys, then restrict each key before committing its configuration. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
