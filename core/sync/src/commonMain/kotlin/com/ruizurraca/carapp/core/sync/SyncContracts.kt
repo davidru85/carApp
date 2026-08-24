@@ -13,8 +13,8 @@ import kotlin.time.Instant
 enum class EntityType(
     val collection: String,
 ) {
-    VEHICLE(""),
-    FUEL_ENTRY(""),
+    VEHICLE("vehicles"),
+    FUEL_ENTRY("fuelEntries"),
 }
 
 data class EntitySnapshot(
