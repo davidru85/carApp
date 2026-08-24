@@ -33,7 +33,6 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
             // common tests would only ever execute on the Kotlin/Native targets.
             androidLibrary.withHostTestBuilder {}
 
-            iosX64()
             iosArm64()
             iosSimulatorArm64()
 

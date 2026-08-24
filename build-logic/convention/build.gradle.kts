@@ -9,7 +9,7 @@ dependencies {
     compileOnly(libs.plugin.kotlin.gradle)
     compileOnly(libs.plugin.skie.gradle)
     compileOnly(libs.plugin.ksp.gradle)
-    compileOnly(libs.plugin.room.gradle)
+    compileOnly(libs.plugin.sqldelight.gradle)
     compileOnly(libs.plugin.ktlint.gradle)
     compileOnly(libs.plugin.detekt.gradle)
     compileOnly(libs.plugin.kover.gradle)
@@ -57,9 +57,9 @@ gradlePlugin {
             id = "carapp.contract"
             implementationClass = "com.ruizurraca.carapp.buildlogic.contract.ContractCheckPlugin"
         }
-        register("room") {
-            id = "carapp.room"
-            implementationClass = "com.ruizurraca.carapp.buildlogic.RoomConventionPlugin"
+        register("sqldelight") {
+            id = "carapp.sqldelight"
+            implementationClass = "com.ruizurraca.carapp.buildlogic.SqlDelightConventionPlugin"
         }
     }
 }

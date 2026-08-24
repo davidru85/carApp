@@ -1,0 +1,156 @@
+selectAllVehicles:
+SELECT *
+FROM vehicle
+WHERE deleted = 0
+ORDER BY nameFold ASC, id ASC;
+
+selectVehicleById:
+SELECT *
+FROM vehicle
+WHERE id = :id;
+
+selectFuelEntryById:
+SELECT *
+FROM fuel_entry
+WHERE id = :id;
+
+selectActiveFuelEntriesByVehicle:
+SELECT *
+FROM fuel_entry
+WHERE vehicleId = :vehicleId AND deleted = 0
+ORDER BY date ASC, createdAt ASC, id ASC;
+
+insertVehicleRow:
+INSERT INTO vehicle(
+  id, ownerId, name, nameFold, initialOdometerKm, currentOdometerKm, brand, model, fuelType,
+  createdAt, updatedAt, serverUpdatedAt, deleted, deletedAt, syncState, localRevision,
+  localMutationSeq, schemaVersion
+)
+VALUES (
+  :id, :ownerId, :name, :nameFold, :initialOdometerKm, :currentOdometerKm, :brand, :model,
+  :fuelType, :createdAt, :updatedAt, :serverUpdatedAt, :deleted, :deletedAt, :syncState,
+  :localRevision, :localMutationSeq, :schemaVersion
+);
+
+insertFuelEntryRow:
+INSERT INTO fuel_entry(
+  id, ownerId, vehicleId, date, odometerKm, litersScaled, pricePerLiterScaled,
+  totalCostMinor, currency, isFullTank, hasMissedEntries, odometerInconsistent,
+  notes, createdAt, updatedAt, serverUpdatedAt, deleted, deletedAt, syncState,
+  localRevision, localMutationSeq, schemaVersion
+)
+VALUES (
+  :id, :ownerId, :vehicleId, :date, :odometerKm, :litersScaled, :pricePerLiterScaled,
+  :totalCostMinor, :currency, :isFullTank, :hasMissedEntries, :odometerInconsistent,
+  :notes, :createdAt, :updatedAt, :serverUpdatedAt, :deleted, :deletedAt, :syncState,
+  :localRevision, :localMutationSeq, :schemaVersion
+);
+
+updateFuelEntryRow:
+UPDATE fuel_entry
+SET id = :id,
+  ownerId = :ownerId,
+  vehicleId = :vehicleId,
+  date = :date,
+  odometerKm = :odometerKm,
+  litersScaled = :litersScaled,
+  pricePerLiterScaled = :pricePerLiterScaled,
+  totalCostMinor = :totalCostMinor,
+  currency = :currency,
+  isFullTank = :isFullTank,
+  hasMissedEntries = :hasMissedEntries,
+  odometerInconsistent = :odometerInconsistent,
+  notes = :notes,
+  createdAt = :createdAt,
+  updatedAt = :updatedAt,
+  serverUpdatedAt = :serverUpdatedAt,
+  deleted = :deleted,
+  deletedAt = :deletedAt,
+  syncState = :syncState,
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq,
+  schemaVersion = :schemaVersion
+WHERE id = :existingId;
+
+tombstoneFuelEntryRow:
+UPDATE fuel_entry
+SET updatedAt = :updatedAt,
+  deleted = 1,
+  deletedAt = :deletedAt,
+  syncState = :syncState,
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq
+WHERE id = :id;
+
+selectNextActiveFuelEntry:
+SELECT *
+FROM fuel_entry
+WHERE vehicleId = :vehicleId
+  AND deleted = 0
+  AND (
+    date > :date
+    OR (date = :date AND createdAt > :createdAt)
+    OR (date = :date AND createdAt = :createdAt AND id > :id)
+  )
+ORDER BY date ASC, createdAt ASC, id ASC
+LIMIT 1;
+
+recomputeFuelEntryOdometerInconsistent:
+UPDATE fuel_entry
+SET odometerInconsistent = COALESCE(
+  odometerKm <= (
+    SELECT previous.odometerKm
+    FROM fuel_entry AS previous
+    WHERE previous.vehicleId = fuel_entry.vehicleId
+      AND previous.deleted = 0
+      AND (
+        previous.date < fuel_entry.date
+        OR (previous.date = fuel_entry.date AND previous.createdAt < fuel_entry.createdAt)
+        OR (
+          previous.date = fuel_entry.date
+          AND previous.createdAt = fuel_entry.createdAt
+          AND previous.id < fuel_entry.id
+        )
+      )
+    ORDER BY previous.date DESC, previous.createdAt DESC, previous.id DESC
+    LIMIT 1
+  ),
+  0
+)
+WHERE id = :id AND deleted = 0;
+
+recomputeVehicleCurrentOdometer:
+UPDATE vehicle
+SET currentOdometerKm = MAX(
+  initialOdometerKm,
+  COALESCE(
+    (
+      SELECT MAX(fuel_entry.odometerKm)
+      FROM fuel_entry
+      WHERE fuel_entry.vehicleId = vehicle.id AND fuel_entry.deleted = 0
+    ),
+    initialOdometerKm
+  )
+)
+WHERE id = :vehicleId;
+
+nextLocalMutationSequence {
+  UPDATE local_sequence
+  SET next = next + 1
+  WHERE id = 0;
+
+  SELECT next
+  FROM local_sequence
+  WHERE id = 0;
+}
+
+coalesceOutbox:
+INSERT INTO outbox (entityType, entityId, payload, localRevision)
+VALUES (:entityType, :entityId, :payload, :localRevision)
+ON CONFLICT(entityType, entityId) DO UPDATE SET
+  payload = excluded.payload,
+  localRevision = excluded.localRevision,
+  attemptCount = 0,
+  nextAttemptAt = 0,
+  lastError = NULL,
+  lastErrorCode = NULL;

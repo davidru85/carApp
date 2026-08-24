@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 0 complete.** The project builds on Android and iOS, the toolchain is pinned, and the architecture and contract rules are enforced by CI on every pull request. `main` is protected by nine required checks. The next story is `E1-01` (`:core:database`), which opens Phase 1; the walking skeleton `E0-07` follows it. There is no product feature yet — Phase 0 delivered the foundations, not behaviour.
+> **Project status:** **Phase 1 open.** `E1-01` has delivered the SQLDelight local database on Android and iOS. The next story is the `E0-07` walking-skeleton gate. There is no user-visible feature yet; the project builds on both platforms and `main` is protected by nine required CI checks.
 
 ## Start here
 
@@ -93,7 +93,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | iOS UI | SwiftUI |
 | Shared presentation | KMP state holders exposing `StateFlow<UiState>` plus intent functions |
 | Build | Gradle Kotlin DSL, version catalog, convention plugins in `build-logic` |
-| Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
+| Local database | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 |
 | Remote backend | Cloud Firestore as a backup and recovery replica, never as UI source of truth |
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
@@ -169,7 +169,7 @@ Defined canonically in [AGENTS.md](AGENTS.md). No other document defines gates.
 See [CONTRIBUTING.md](docs/CONTRIBUTING.md). The short version:
 
 - Do not implement out-of-scope functionality.
-- Do not introduce Firebase, GitLive, Koin, Ktor, Room, Android or iOS APIs into feature `domain` packages.
+- Do not introduce Firebase, GitLive, Koin, Ktor, SQLDelight, SQLite, Android or iOS APIs into feature `domain` packages.
 - Do not introduce dependencies between features, and do not make `:shared` depend on `:integration:*`.
 - Do not use `Float` or `Double` for money.
 - Do not observe Firestore directly from the UI.

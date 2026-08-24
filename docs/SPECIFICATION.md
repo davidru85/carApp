@@ -72,7 +72,7 @@ Future scope may add receipt and odometer image capture with local AI text recog
 
 Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23` account deletion server operation. The `D-23` account deletion server operation is the only MVP server-side privileged write. No other server-mediated write is in MVP scope. The intended future security goal is to validate incoming user data before it is inserted or updated remotely, and to verify the user's authenticated identity and authorization before any remote database read. That work requires a new story or ADR covering whether clients stop reading or writing Firestore directly, Firebase App Check or equivalent app integrity checks, authenticated callable or HTTPS function boundaries, server-side schema validation, owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling, emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add Cloud Functions security features beyond `D-23`, App Check enforcement, server-mediated product reads or additional privileged server-side product writes in the MVP.
 
-Future scope may add simultaneous use on multiple devices for the same account. That work requires a new story or ADR covering the migration from Room-as-source-of-truth to remote-database-as-source-of-truth, live or near-live synchronization semantics, conflict resolution, offline edit policy, local cache behaviour, remote validation, recovery from divergent devices, UX for stale data and required data migrations. Agents MUST NOT introduce active multi-device synchronization or make the remote database the product source of truth in the MVP.
+Future scope may add simultaneous use on multiple devices for the same account. That work requires a new story or ADR covering the migration from local-database-as-source-of-truth to remote-database-as-source-of-truth, live or near-live synchronization semantics, conflict resolution, offline edit policy, local cache behaviour, remote validation, recovery from divergent devices, UX for stale data and required data migrations. Agents MUST NOT introduce active multi-device synchronization or make the remote database the product source of truth in the MVP.
 
 ## 4. Actors
 
@@ -243,7 +243,7 @@ Account deletion is required for store compliance. It re-authenticates if needed
 | Android UI | Jetpack Compose |
 | iOS UI | SwiftUI |
 | Build | Gradle Kotlin DSL, version catalog, convention plugins |
-| Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` |
+| Local database | SQLDelight 2.3.2 with `androidx.sqlite:sqlite-bundled` 2.7.0 through `sqldelight-androidx-driver` 0.2.1 |
 | Remote backend | Cloud Firestore |
 | Auth | Firebase Authentication through GitLive 2.6.x |
 | Metrics | Firebase Analytics behind `AnalyticsTracker` |
@@ -269,7 +269,7 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 4. Features never depend on other features.
 5. `:core:sync` depends on `:core:model`, `:core:common` and `:core:database`, never on `:core:auth` and never on `:integration:*`. Token handling lives entirely in `RemoteSyncSource` (the integration layer), so the sync engine does not reference `AuthClient` or `TokenProvider`.
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
-7. `:core:database` depends on `:core:model`, `:core:common` and Room; it never depends on `:integration:*`, features or `:core:sync`.
+7. `:core:database` depends on `:core:model`, `:core:common`, SQLDelight and AndroidX SQLite; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
 9. Firebase and GitLive types never cross integration boundaries.
 10. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
@@ -365,7 +365,7 @@ Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == 
 
 | Area | Requirement |
 |------|-------------|
-| Platforms | Android `minSdk 26`, iOS 16+. |
+| Platforms | Android `minSdk 26`, iOS 16+; Kotlin/Native targets `iosArm64` and `iosSimulatorArm64`. `iosX64` is not supported (`D-37`). |
 | Performance | Cold start to first content under 2 s, median of 10 runs on the reference devices in a release build. A 1,000-entry list scrolls with no frame over 32 ms. Consumption for 1,000 entries under 100 ms, median of 20 runs. Reference devices and measurement method are fixed in `docs/versions-matrix.md`. |
 | Offline | 100% of MVP functionality usable without network, including first launch. |
 | Accessibility | System font size up to 200%, content labels, WCAG AA contrast, TalkBack and VoiceOver for F-1 through F-3. |
@@ -388,7 +388,7 @@ Coverage thresholds (Kover) are orthogonal to TDD. TDD governs the order and the
 Exemptions from the TDD order rule are limited to the following, which still require tests (just not written-first):
 
 - Native UI code (SwiftUI, Compose host screens). Verified by UI tests, screenshot tests and the accessibility audit of `E4-02`.
-- Room schemas and migrations. Verified by migration tests that assert row preservation, per `docs/TECHNICAL_PLAN.md §6`.
+- SQLDelight schemas and migrations. Verified by schema and migration tests that assert constraints and row preservation, per `docs/TECHNICAL_PLAN.md §6`.
 - Firestore security rules. Verified by the emulator tests of `docs/CONTRACTS.md §16`.
 - Koin wiring and provider integration code (Firebase, GitLive). Verified by graph-construction tests and integration tests.
 - Architecture-rule fixtures. They already require a failing fixture test by `D-16`, which is its own form of test-first.
@@ -413,7 +413,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | ID | Decision | Choice | Status |
 |----|----------|--------|--------|
 | D-0 | Backend | Cloud Firestore. | Accepted |
-| D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Accepted |
+| D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Superseded |
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Accepted |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI; electric/hybrid values are deferred. | Accepted |
@@ -448,6 +448,9 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-33 | Repository visibility and branch protection | The repository stays private; branch protection is applied when it becomes public or moves to a paid plan. | Superseded |
 | D-34 | Repository visibility and branch protection | The repository is public and the `D-31` branch protection is active. | Accepted |
 | D-35 | CI job topology | `shared-tests` and `ios-simulator-build` remain separate CI jobs. | Accepted |
+| D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1. | Accepted |
+| D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64`. | Accepted |
+| D-38 | Database-owned mutation strategy | Use a Kotlin/SQLDelight `DatabaseMutations` transaction facade; forbid direct generated entity-mutation calls outside `:core:database`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

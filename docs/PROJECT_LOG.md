@@ -38,6 +38,58 @@
 
 ## Entries
 
+### 2026-08-24 — E1-01 core database completed
+
+- **Type:** story
+- **Story / Decision:** `E1-01` / `D-36`, `D-37`, `D-38`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added `:core:database` with SQLDelight schema v1, typed asynchronous queries,
+  AndroidX bundled SQLite persistence on Android and iOS, a transaction facade for database-owned
+  read-model invariants, and an executable direct-mutation boundary.
+- **Why:** E1-01 opens Phase 1 and supplies the local source of truth required by the E0-07 walking
+  skeleton while preserving the exact SQLite constraints and recomputation contracts.
+- **Documents touched:** `docs/handoff-E1-01.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `docs/DEFINITION.md`, the D-36 through D-38 decision records and this log.
+- **Verification:** full Gradle CI command passed with Android host and `iosSimulatorArm64` tests;
+  file-backed close/reopen tests passed on both platforms; the ARM64 shared framework and iOS app
+  built successfully with Xcode.
+- **Follow-ups / risks:** E0-07 is next and must exercise this database through both real app
+  composition paths. New entity mutations must extend the facade and its architecture fixture;
+  future schema versions require committed `.sqm` migrations and populated migration tests.
+
+### 2026-08-24 — D-38 database transaction facade accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-01` / `D-38`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** synchronized entity writes are routed through a Kotlin/SQLDelight `DatabaseMutations` facade in `:core:database`; direct generated entity-mutation calls outside that module are forbidden.
+- **Why:** the facade can capture pre-write state, apply the exact de-duplicated recompute set and notify SQLDelight observers inside one transaction. SQLite triggers obscure pre/post successor behavior and do not reliably expose indirect table changes to observed queries.
+- **Documents touched:** `docs/adr/0039-database-mutations-use-transaction-facade.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `AGENTS.md`, `docs/handoff-E1-01.md`, and this log.
+- **Verification:** `contractCheck` must report 39 decisions with matching statuses; `E1-01` owns RED/GREEN recomputation tests and the direct-mutation architecture fixture.
+- **Follow-ups / risks:** every new synchronized entity mutation must extend both `DatabaseMutations` and the architecture rule; pull and local-owner adoption entry points must preserve supplied mutation sequences.
+
+### 2026-08-23 — D-37 ARM64-only iOS targets accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-01` / `D-37`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Kotlin Multiplatform support is limited to `iosArm64` and `iosSimulatorArm64`; the unlinked `iosX64` target is removed from the shared conventions and framework.
+- **Why:** the complete bundled-SQLite stack accepted by `D-36` publishes no Intel-simulator variants, while the application and CI already build only ARM64 iOS paths. A target-specific driver would defeat the accepted single-engine guarantee.
+- **Documents touched:** `docs/adr/0038-supported-ios-targets-are-arm64.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/versions-matrix.md`, `AGENTS.md`, `docs/handoff-E1-01.md`, and this log.
+- **Verification:** `contractCheck` must report 38 decisions with identical IDs and statuses; `E1-01` owns the target removal and full Android, Kotlin/Native and iOS application verification.
+- **Follow-ups / risks:** Intel Macs and x86_64 simulators are unsupported. Reintroducing `iosX64` requires a complete compatible dependency set, application linking, CI verification and a decision superseding `D-37`.
+
+### 2026-08-22 — D-36 SQLDelight with AndroidX bundled SQLite accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-01` / `D-36`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `D-1` was superseded. The local database now uses SQLDelight 2.3.2 with the SQLite 3.24 dialect, `sqldelight-androidx-driver` 0.2.1 and AndroidX bundled SQLite 2.7.0 on Android and iOS.
+- **Why:** Room 3 KMP could not represent the mandatory table-level `CHECK` constraints as one generated schema, while SQLDelight's official Android driver would execute against SQLite 3.18 on API 26 and could not run the exact SQLite 3.24 outbox UPSERT. The accepted adapter preserves the committed SQL, `minSdk 26` and one bundled SQLite implementation across platforms.
+- **Documents touched:** `docs/adr/0037-local-database-sqldelight-androidx-sqlite.md`, `docs/adr/0002-local-database-room-kmp.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, `docs/versions-matrix.md`, `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, and this log.
+- **Verification:** temporary compatibility build generated and compiled the exact SQL for Android and `iosSimulatorArm64`; `contractCheck` reports 37 decisions with identical IDs and statuses across all five sources.
+- **Follow-ups / risks:** `E1-01` owns execution tests on Android and Kotlin/Native, the Android host-test SQLite artifact substitution, and the full repository verification. The third-party adapter remains confined to `:core:database`.
+
 ### 2026-08-21 — Documentation brought level with the built system for handover
 
 - **Type:** milestone

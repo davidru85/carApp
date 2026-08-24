@@ -15,7 +15,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | ID | Decision | Choice | Status | Rationale |
 |----|----------|--------|--------|-----------|
 | D-0 | Backend | Cloud Firestore | Accepted | Fits the data model, avoids fixed Cloud SQL cost, provides client-ID idempotent writes and server timestamps. |
-| D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Accepted | Same SQLite version across Android and iOS, supports modern UPSERT syntax with `minSdk 26`. |
+| D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Superseded | Replaced by `D-36` because the mandatory SQLite `CHECK` constraints could not be represented as one Room-generated schema. |
 | D-2 | Swift interop | SKIE only in `:shared` | Accepted | Better Swift ergonomics for Flow and sealed-like models than raw KMP export. |
 | D-3 | DI | Koin KMP | Accepted | Owner-selected DI. Runtime wiring is acceptable if Koin is constrained to composition and wiring. |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, without electric/hybrid values in MVP | Accepted | Schema evolution is easier before users exist; selector is not part of MVP UI; electric/hybrid needs a future energy model. |
@@ -27,7 +27,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-10 | Metrics | Firebase Analytics behind `AnalyticsTracker` | Accepted | Aligns with the Firebase stack while keeping analytics replaceable. |
 | D-11 | HTTP/API client | Ktor deferred | Deferred | Reserved for a future API-based remote implementation. |
 | D-12 | Image loading | Coil if ever needed | Deferred | Prevents agents from choosing competing loaders. |
-| D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and recovery replica only; Room is the source of truth. The location is immutable after database creation. |
+| D-13 | Firestore location | `europe-west1` | Accepted | Firestore is a backup and recovery replica only; the local database is the source of truth. The location is immutable after database creation. |
 | D-14 | Firebase project topology | one development project plus emulator now; separate production project before release | Accepted | Keeps development setup small while retaining emulator-only CI. Production project creation and its ID are deferred until release preparation. |
 | D-15 | Logging implementation | Kermit behind `Logger` | Accepted | `Logger` is needed from Phase 0; the abstraction stays mandatory either way. |
 | D-16 | Architecture checks | Konsist for package rules, custom Gradle check for module rules | Accepted | Gradle cannot express intra-module package rules. |
@@ -44,12 +44,15 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-27 | `testAppGraphDependencies` ownership | Built by `E0-07`, not `E0-03` | Accepted | Keeps the Phase 0 module set absolute and writes the factory once against the complete member list. |
 | D-28 | Feature-layer package rules | Implemented with Konsist in `E1-07` | Accepted | Konsist arrives when it has something to check; a dedicated module would not be in the canonical inventory. |
 | D-29 | Contract type declarations | A type may be declared in `§20` or inline in the section that owns it | Accepted | Nothing was ambiguous for an implementer, and moving nine declarations would separate each from the rules that constrain it. |
-| D-30 | Walking skeleton position | `E0-07` is the second story of Phase 1, after `E1-01` | Accepted | Avoids an exception in the Phase 0 module set, and gives `E0-07` a real Room implementation to exercise. |
+| D-30 | Walking skeleton position | `E0-07` is the second story of Phase 1, after `E1-01` | Accepted | Avoids an exception in the Phase 0 module set, and gives `E0-07` a real local-database implementation to exercise. |
 | D-31 | Branch protection | `main` requires all nine CI checks of `§18` | Accepted | A later edit to add the two placeholder checks is easy to forget, and they are the two nobody watches. |
 | D-32 | Development Firebase project ID | `davidruiz-carapp-dev` | Accepted | Google Cloud project IDs are globally unique and `carapp-dev` was taken; the owner chose the replacement. |
 | D-33 | Repository visibility and branch protection | Stay private; apply the `D-31` protection in the same change that makes the repository public or moves it to a plan that allows it | Superseded | No cost and no premature publication, at the price of an advisory-only CI; the decision carries an explicit trigger rather than a follow-up note. |
 | D-34 | Repository visibility and branch protection | Repository is public; the `D-31` branch protection is active | Accepted | Resolves two blockers at once: `§18` branch protection was impossible on a private Free-plan repository, and metered Actions minutes made the macOS jobs unaffordable. |
 | D-35 | CI job topology | `shared-tests` and `ios-simulator-build` stay separate jobs | Accepted | Merging them would worsen wall-clock, hide the native tests behind a check named for the iOS build, and stop the tests running whenever `xcodebuild` fails. |
+| D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1 | Accepted | Preserves exact SQLite constraints and UPSERT semantics on Android and iOS while retaining `minSdk 26`. |
+| D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64` | Accepted | The shipped device target and the Apple Silicon simulator retain the bundled SQLite stack; the already-unlinked Intel simulator target would force a divergent driver. |
+| D-38 | Database-owned mutation strategy | Kotlin/SQLDelight `DatabaseMutations` transaction facade | Accepted | Captures pre-write state for the exact recompute set, keeps writes atomic and emits reliable SQLDelight invalidations; direct generated entity mutations outside `:core:database` are rejected. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -65,7 +68,7 @@ gradle/libs.versions.toml       single source of dependency versions
 :core:common                    AppClock, UuidGenerator, DispatcherProvider, Outcome, AppError,
                                 OwnerContext, Logger, LocaleProvider, ConnectivityObserver, backoff,
                                 named constants (docs/CONTRACTS.md §20.0.1). Depends on :core:model.
-:core:database                  Room entities, DAOs, migrations, platform builders, read-model invariants
+:core:database                  SQLDelight schema, queries, migrations, platform builders, read-model invariants
 :core:auth                      AuthClient, TokenProvider, AuthState
 :core:sync                      Outbox, cursor, backup/recovery engine, SyncController, RemoteSyncSource
 :core:analytics                 AnalyticsTracker and the closed AnalyticsEvent hierarchy
@@ -91,21 +94,21 @@ firestore/                      rules and indexes
 
 Each feature is one Gradle module. Layer separation is enforced by package-level source analysis, not by three Gradle modules per feature.
 
-`:core:database` is a **shared-write module**: it owns the Room schema, entities, DAOs and migrations for every feature, and it owns the read-model invariants of `docs/CONTRACTS.md §3.1`. A story that adds an entity MUST also bump the database version, add a `Migration` and add a migration test in the same PR. Only one story at a time may modify it; the handoff MUST declare it. If two implementation stories need this module concurrently, the optional `database-lock` check of `docs/CONTRACTS.md §18` uses `core/database/.story-lock` to make ownership explicit.
+`:core:database` is a **shared-write module**: it owns the SQLDelight schema, typed queries and migrations for every feature, and it owns the read-model invariants of `docs/CONTRACTS.md §3.1`. A story that changes the schema MUST bump the database version, add a committed `.sqm` migration and add a populated previous-version migration test in the same PR. Only one story at a time may modify it; the handoff MUST declare it. If two implementation stories need this module concurrently, the optional `database-lock` check of `docs/CONTRACTS.md §18` uses `core/database/.story-lock` to make ownership explicit.
 
 ## 4. Dependency Rules
 
 | Area | Allowed | Forbidden |
 |------|---------|-----------|
-| `:core:model` | Kotlin stdlib, coroutines, `kotlinx-datetime`, `kotlinx.serialization` | platform APIs, Firebase, Room, Koin, Ktor, **`:core:common`** |
-| `:core:common` | `:core:model`, plus the same libraries as `:core:model` | platform APIs, Firebase, Room, Koin, Ktor |
-| feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Koin, Room, Ktor, own `data`, own `presentation` |
+| `:core:model` | Kotlin stdlib, coroutines, `kotlinx-datetime`, `kotlinx.serialization` | platform APIs, Firebase, SQLDelight, SQLite, Koin, Ktor, **`:core:common`** |
+| `:core:common` | `:core:model`, plus the same libraries as `:core:model` | platform APIs, Firebase, SQLDelight, SQLite, Koin, Ktor |
+| feature `domain` | `:core:model`, `:core:common` | Android, iOS, Firebase, GitLive, Koin, SQLDelight, SQLite, Ktor, own `data`, own `presentation` |
 | feature `data` | own `domain`, `:core:model`, `:core:common`, `:core:database`, `:core:sync` | `:integration:*`, `:core:auth`, other features |
 | feature `presentation` | own `domain`, `:core:model`, `:core:common` | own `data`, other features |
 | `:core:sync` | `:core:model`, `:core:common`, `:core:database` | `:integration:*`, `:core:auth`, features |
-| `:core:database` | `:core:model`, `:core:common`, Room | `:integration:*`, features, `:core:sync` |
-| `:core:auth` | `:core:model`, `:core:common`, coroutines, `kotlinx.serialization`, `kotlinx-datetime` | platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*`, features |
-| `:core:analytics` | `:core:model`, `:core:common` | platform APIs, Firebase, GitLive, Room, Koin, Ktor, `:integration:*`, features |
+| `:core:database` | `:core:model`, `:core:common`, SQLDelight, SQLite | `:integration:*`, features, `:core:sync` |
+| `:core:auth` | `:core:model`, `:core:common`, coroutines, `kotlinx.serialization`, `kotlinx-datetime` | platform APIs, Firebase, GitLive, SQLDelight, SQLite, Koin, Ktor, `:integration:*`, features |
+| `:core:analytics` | `:core:model`, `:core:common` | platform APIs, Firebase, GitLive, SQLDelight, SQLite, Koin, Ktor, `:integration:*`, features |
 | `:core:testing` | every `:core:*` module plus test libraries (Turbine, `kotlin.test`) | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API (platform APIs are permitted only in `expect`/`actual` test doubles, per `docs/CONTRACTS.md §15.1`) |
 | `:core:crash` | `:core:common` | platform APIs, Firebase, GitLive, Koin, Ktor, integrations, features |
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
@@ -118,11 +121,17 @@ Feature `data` cannot depend on `:core:auth`, so the current owner reaches repos
 
 "Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash` and one for `:core:testing` (a platform API used in the `commonMain` public surface, not in a permitted `expect`/`actual` test double).
 
-The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids Room because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must be able to construct fakes for `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`); it remains forbidden from reaching integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure.
+The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must be able to construct fakes for `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`); it remains forbidden from reaching integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure.
 
 "Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 
 The architecture check MUST fail the build with a rule-specific message, and the check configuration is generated from this table so the two cannot drift.
+
+`D-38` makes `DatabaseMutations` the only synchronized-entity write boundary consumed by
+`:feature:*`, `:core:sync` and wiring. Generated SQLDelight entity-mutation functions remain an
+implementation detail of `:core:database`; an executable source rule rejects direct calls from
+every other module. Read queries and outbox/sync-engine control operations are not entity
+mutations and remain available to their owning stories.
 
 ## 4.1 Contractual Guardrails
 
@@ -243,7 +252,7 @@ CREATE TABLE sync_cursor (
 
 Future columns MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
-Room configuration: `exportSchema = true`, schema JSON committed under `core/database/schemas/`. `fallbackToDestructiveMigration` is FORBIDDEN in every build type. Every version bump ships an explicit `Migration` plus a test that migrates a populated previous-version database and asserts row preservation.
+SQLDelight configuration: committed `.sq` files are the canonical schema and query source, asynchronous generation and `verifyMigrations` are enabled, and system-SQLite linking is disabled for the bundled Native driver. Destructive schema recreation is FORBIDDEN. Every version bump ships a committed `.sqm` migration plus a test that migrates a populated previous-version database and asserts row preservation. Schema v1 is covered by create, constraint and close/reopen persistence tests on Android and iOS.
 
 ## 7. Firestore Design
 
@@ -346,11 +355,11 @@ KMP bootstrap, Gradle convention plugins, core modules, quality tools, CI, archi
 
 Entry condition: every `Proposed` decision in `docs/DECISION_BOARD.md` that a Phase 0 story depends on has been confirmed by the owner.
 
-### Phase 0.5 - Walking Skeleton
+### Phase 1 Opening Gate - Walking Skeleton
 
-One end-to-end vertical slice: native UI, shared state holder, Room, Firestore, anonymous auth, Android-to-iOS sync, plus validation of the Swift-facing surface constraints.
+One end-to-end vertical slice: native UI, shared state holder, SQLDelight, Firestore, anonymous auth, Android-to-iOS sync, plus validation of the Swift-facing surface constraints.
 
-Decision rule: if Room KMP and KSP block iOS progress during this phase, switch to SQLDelight immediately. The switch is pre-authorised only inside this story, and MUST produce a superseding ADR, a `docs/DECISION_BOARD.md` status change and an update to `E1-01` in the same PR.
+`D-36` resolved the database fallback before this gate: the walking skeleton exercises the accepted SQLDelight AndroidX bundled driver on both application paths.
 
 ### Phase 1 - Local Persistence
 
@@ -375,7 +384,7 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 | iOS toolchain friction | High / High | Walking skeleton in the first week, macOS CI from the first PR, SPM integration, pinned Kotlin/SKIE/Xcode versions. |
 | Swift-facing API shape rejected by the Obj-C export | High / Medium | `docs/CONTRACTS.md §15.3` constraints validated in `E0-07`, plus a committed header golden file. |
 | Backup and recovery bugs | High / Critical | Common engine, in-memory remote, deterministic simulation, required tests, debug screen for outbox, cursors and backup state. |
-| Room KMP iOS friction | Medium / Medium | Validate before features. Keep the database behind repositories. Switch to SQLDelight if blocked. |
+| SQLDelight AndroidX adapter maintenance or Native-link friction | Medium / Medium | Pin all three database components, keep the adapter confined to `:core:database`, compile and execute tests on Android and Kotlin/Native, and retain the official-driver alternatives in ADR-0037. |
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
 | Scope creep | Medium / Medium | Explicit out-of-scope list and review gate. |

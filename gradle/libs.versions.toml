@@ -27,8 +27,9 @@ coroutines = "1.11.0"
 serialization = "1.11.0"
 datetime = "0.8.0" # Instant is kotlin.time.Instant; see docs/versions-matrix.md
 
-# --- Room KMP group (D-1) ---
-room = "3.0.1" # androidx.room3 artifacts: room3-runtime, room3-compiler
+# --- SQLDelight database group (D-36) ---
+sqldelight = "2.3.2"
+sqldelightAndroidxDriver = "0.2.1"
 sqlite = "2.7.0" # androidx.sqlite:sqlite-bundled, same bundled SQLite on both platforms
 
 # --- Firebase group (D-0, D-5, D-6, D-10, D-21) ---
@@ -58,9 +59,11 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
 
-# Room KMP (D-1), introduced by E1-01
-room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
-room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
+# SQLDelight with AndroidX bundled SQLite (D-36), introduced by E1-01
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-async-extensions = { module = "app.cash.sqldelight:async-extensions", version.ref = "sqldelight" }
+sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-androidx-driver = { module = "com.eygraber:sqldelight-androidx-driver", version.ref = "sqldelightAndroidxDriver" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 
 # Firebase (D-0, D-5, D-6, D-10, D-21), introduced by E0-07 / E2-02
@@ -77,7 +80,7 @@ plugin-android-gradle = { module = "com.android.tools.build:gradle", version.ref
 plugin-kotlin-gradle = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 plugin-skie-gradle = { module = "co.touchlab.skie:gradle-plugin", version.ref = "skie" }
 plugin-ksp-gradle = { module = "com.google.devtools.ksp:symbol-processing-gradle-plugin", version.ref = "ksp" }
-plugin-room-gradle = { module = "androidx.room3:room3-gradle-plugin", version.ref = "room" }
+plugin-sqldelight-gradle = { module = "app.cash.sqldelight:gradle-plugin", version.ref = "sqldelight" }
 plugin-ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
 plugin-detekt-gradle = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt" }
 plugin-kover-gradle = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", version.ref = "kover" }
@@ -104,7 +107,7 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 skie = { id = "co.touchlab.skie", version.ref = "skie" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-room = { id = "androidx.room3", version.ref = "room" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }

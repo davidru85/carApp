@@ -82,11 +82,11 @@ An agent that notices it has replied in the wrong language MUST:
 **This section describes what exists right now.** It is the fastest way for an incoming agent to
 tell what is already built from what is still a plan, and it is updated by the story that changes it.
 
-### Phase 0 is complete
+### Phase 0 is complete and Phase 1 is open
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E0-07`, the walking skeleton, is **not** a Phase 0 story:
-`D-30` moved it to the start of Phase 1, after `E1-01`, because it needs Room. The next story is
-`E1-01`.
+`D-30` moved it to the start of Phase 1 because it needs the local database. `E1-01` has now
+delivered that database, so the next story is `E0-07`.
 
 ### Modules that exist
 
@@ -97,13 +97,13 @@ build-logic/       convention plugins, an included build
 :core:analytics    AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
+:core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
 :shared            the iOS framework, still carrying only the E0-01 placeholder
 :androidApp        the Android host app
 ```
 
-`:core:database`, `:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase`
-do **not** exist yet. Phase 0 forbids the first three, and `architectureCheck` fails the build if
-one of them appears.
+`:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase` do **not** exist
+yet. `architectureCheck` rejects `:core:auth` and `:core:sync` until their owning stories start.
 
 ### Creating a module
 
@@ -119,11 +119,11 @@ dependencies {
 }
 ```
 
-`carapp.kmp.library` sets the Android and iOS targets, the JDK toolchain, the host test runner,
+`carapp.kmp.library` sets Android plus the `iosArm64` and `iosSimulatorArm64` targets (`D-37`), the JDK toolchain, the host test runner,
 `kotlin-test`, coroutines, ktlint, detekt and Kover. The Android namespace is **derived** from the
 Gradle path (`D-24`), so a module MUST NOT declare one. The other plugins are
 `carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside `:shared`)
-and `carapp.room`.
+and `carapp.sqldelight`.
 
 ### Build and verify
 
@@ -270,7 +270,7 @@ Escalate any request that touches out-of-scope functionality.
 The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the architecture check configuration. In summary:
 
 - Feature `domain` packages are Kotlin pure and depend only on `:core:model` and `:core:common`.
-- Feature `domain` packages do not depend on Android, iOS, Firebase, GitLive, Koin, Room, Ktor, their own `data` or their own `presentation`.
+- Feature `domain` packages do not depend on Android, iOS, Firebase, GitLive, Koin, SQLDelight, SQLite, Ktor, their own `data` or their own `presentation`.
 - Feature `data` packages do not depend on `:integration:*` **or on `:core:auth`**. The current owner reaches them through `OwnerContext` in `:core:common`.
 - Feature `presentation` packages do not depend on feature `data`.
 - Features do not depend on other features.
@@ -279,6 +279,8 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Only `:wiring:firebase` constructs Firebase implementations, and it contains no product logic.
 - Firebase and GitLive types never leave `:integration:*`.
 - `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+- Synchronized entity writes from outside `:core:database` use `DatabaseMutations`; direct calls to
+  generated SQLDelight entity-mutation functions are forbidden (`D-38`).
 - `expect`/`actual` declarations are `internal` and never appear in a public API; anything present in `AppGraphDependencies` is injected, not `expect`/`actual`.
 - The `:shared` public API contains no value classes, type parameters or default arguments.
 
@@ -313,7 +315,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Do not call Koin from domain, use cases, repositories or state holder business logic.
 - Do not add Ktor unless a new ADR introduces an HTTP API implementation.
 - Do not add image loading until a story requires it; Coil is then the only approved library.
-- `exportSchema = true`; `fallbackToDestructiveMigration` is FORBIDDEN in every build type.
+- SQLDelight `.sq` files are the committed schema source, `verifyMigrations` remains enabled, and destructive schema recreation is FORBIDDEN.
 - Data model changes require migrations and migration tests.
 - Remote backup or recovery changes require backup and recovery tests.
 - Firestore rule changes require emulator tests.

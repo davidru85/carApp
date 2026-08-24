@@ -19,7 +19,7 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.skie) apply false
     alias(libs.plugins.ksp) apply false
-    alias(libs.plugins.room) apply false
+    alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.kover) apply false

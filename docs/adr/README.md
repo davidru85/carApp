@@ -7,7 +7,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | Decision ID | ADR | Decision | Status |
 |-------------|-----|----------|--------|
 | D-0 | [ADR-0001](0001-backend-cloud-firestore.md) | Use Cloud Firestore as remote backend. | Accepted |
-| D-1 | [ADR-0002](0002-local-database-room-kmp.md) | Use Room 3.0 KMP for the local database. | Accepted |
+| D-1 | [ADR-0002](0002-local-database-room-kmp.md) | Use Room 3.0 KMP for the local database. | Superseded |
 | D-2 | [ADR-0003](0003-ios-interop-skie.md) | Use SKIE for Kotlin-to-Swift interop. | Accepted |
 | D-3 | [ADR-0004](0004-koin-dependency-injection.md) | Use Koin KMP for dependency injection. | Accepted |
 | D-4 | [ADR-0005](0005-vehicle-fuel-type-from-day-one.md) | Store MVP fuel type from day one; defer electric/hybrid values. | Accepted |
@@ -42,5 +42,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-33 | [ADR-0034](0034-repository-stays-private-branch-protection-deferred.md) | Repository stays private; branch protection deferred with an explicit trigger. | Superseded |
 | D-34 | [ADR-0035](0035-repository-public-and-branch-protection-active.md) | Repository is public; the `D-31` branch protection is active. | Accepted |
 | D-35 | [ADR-0036](0036-ci-keeps-shared-tests-and-ios-build-separate.md) | `shared-tests` and `ios-simulator-build` stay separate CI jobs. | Accepted |
+| D-36 | [ADR-0037](0037-local-database-sqldelight-androidx-sqlite.md) | Use SQLDelight with the AndroidX bundled SQLite driver. | Accepted |
+| D-37 | [ADR-0038](0038-supported-ios-targets-are-arm64.md) | Support ARM64 iOS device and simulator targets only. | Accepted |
+| D-38 | [ADR-0039](0039-database-mutations-use-transaction-facade.md) | Route synchronized entity writes through a Kotlin/SQLDelight transaction facade. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
