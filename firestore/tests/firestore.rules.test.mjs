@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
@@ -8,11 +9,20 @@ import {
 } from "@firebase/rules-unit-testing";
 import {
   Timestamp,
+  collection,
   deleteDoc,
   doc,
+  documentId,
   getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
+  startAfter,
+  startAt,
+  where,
 } from "firebase/firestore";
 
 const PROJECT_ID = "davidruiz-carapp-dev";
@@ -542,5 +552,76 @@ test("valid fuel-entry boundary values, currencies, tombstones, and updates are 
         }),
       );
     });
+  });
+});
+
+test("the delta-pull query paginates deterministically and returns tombstones", async () => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const firstTimestamp = Timestamp.fromMillis(1_700_000_000_000);
+    const secondTimestamp = Timestamp.fromMillis(1_700_000_001_000);
+    const firstId = uuid(900);
+    const tombstoneId = uuid(901);
+    const finalId = uuid(902);
+
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await Promise.all([
+        setDoc(vehicleReference(context, firstId), {
+          ...vehicle(OWNER_ID, firstId),
+          updatedAt: firstTimestamp,
+        }),
+        setDoc(vehicleReference(context, tombstoneId), {
+          ...vehicle(OWNER_ID, tombstoneId),
+          updatedAt: secondTimestamp,
+          deleted: true,
+          deletedAt: secondTimestamp,
+        }),
+        setDoc(vehicleReference(context, finalId), {
+          ...vehicle(OWNER_ID, finalId),
+          updatedAt: secondTimestamp,
+        }),
+      ]);
+    });
+
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const vehicles = collection(
+      ownerContext.firestore(),
+      `users/${OWNER_ID}/vehicles`,
+    );
+    const firstPage = await assertSucceeds(
+      getDocs(
+        query(
+          vehicles,
+          where("updatedAt", ">=", firstTimestamp),
+          orderBy("updatedAt", "asc"),
+          orderBy(documentId(), "asc"),
+          startAt(firstTimestamp, ""),
+          limit(2),
+        ),
+      ),
+    );
+
+    assert.deepEqual(
+      firstPage.docs.map((snapshot) => snapshot.id),
+      [firstId, tombstoneId],
+    );
+    assert.equal(firstPage.docs[1].data().deleted, true);
+
+    const secondPage = await assertSucceeds(
+      getDocs(
+        query(
+          vehicles,
+          where("updatedAt", ">=", firstTimestamp),
+          orderBy("updatedAt", "asc"),
+          orderBy(documentId(), "asc"),
+          startAfter(secondTimestamp, tombstoneId),
+          limit(2),
+        ),
+      ),
+    );
+
+    assert.deepEqual(
+      secondPage.docs.map((snapshot) => snapshot.id),
+      [finalId],
+    );
   });
 });
