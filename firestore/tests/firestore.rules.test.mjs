@@ -19,6 +19,8 @@ const PROJECT_ID = "davidruiz-carapp-dev";
 const OWNER_ID = "anonymous-owner";
 const OTHER_OWNER_ID = "other-owner";
 const VEHICLE_ID = "123e4567-e89b-42d3-a456-426614174000";
+const ENTRY_ID = "123e4567-e89b-42d3-a456-426614174001";
+const ORPHAN_VEHICLE_ID = "123e4567-e89b-42d3-a456-426614174002";
 const LOCAL_ONLY_KEYS = [
   "syncState",
   "localRevision",
@@ -26,6 +28,29 @@ const LOCAL_ONLY_KEYS = [
   "serverUpdatedAt",
   "nameFold",
   "currentOdometerKm",
+];
+const SUPPORTED_CURRENCY_CODES = [
+  "ARS",
+  "AUD",
+  "BRL",
+  "CAD",
+  "CHF",
+  "COP",
+  "CZK",
+  "DKK",
+  "EUR",
+  "GBP",
+  "HUF",
+  "MAD",
+  "MXN",
+  "NOK",
+  "NZD",
+  "PEN",
+  "PLN",
+  "RON",
+  "SEK",
+  "USD",
+  "UYU",
 ];
 
 function uuid(sequence) {
@@ -41,6 +66,33 @@ function vehicle(ownerId = OWNER_ID, id = VEHICLE_ID) {
     brand: null,
     model: null,
     fuelType: "GASOLINE",
+    createdAt: Timestamp.fromMillis(1_700_000_000_000),
+    updatedAt: serverTimestamp(),
+    deleted: false,
+    deletedAt: null,
+    schemaVersion: 1,
+  };
+}
+
+function fuelEntry(
+  ownerId = OWNER_ID,
+  id = ENTRY_ID,
+  vehicleId = ORPHAN_VEHICLE_ID,
+) {
+  return {
+    id,
+    ownerId,
+    vehicleId,
+    date: Timestamp.fromMillis(1_700_000_000_000),
+    odometerKm: 100,
+    litersScaled: 50_000,
+    pricePerLiterScaled: 180_000,
+    totalCostMinor: 9_000,
+    currency: "EUR",
+    isFullTank: true,
+    hasMissedEntries: false,
+    odometerInconsistent: false,
+    notes: null,
     createdAt: Timestamp.fromMillis(1_700_000_000_000),
     updatedAt: serverTimestamp(),
     deleted: false,
@@ -72,6 +124,10 @@ function anonymousOwnerContext(testEnvironment, ownerId = OWNER_ID) {
 
 function vehicleReference(context, id = VEHICLE_ID, ownerId = OWNER_ID) {
   return doc(context.firestore(), `users/${ownerId}/vehicles/${id}`);
+}
+
+function fuelEntryReference(context, id = ENTRY_ID, ownerId = OWNER_ID) {
+  return doc(context.firestore(), `users/${ownerId}/fuelEntries/${id}`);
 }
 
 function withoutKey(payload, key) {
@@ -303,6 +359,186 @@ test("valid vehicle boundary values, enum values, tombstones, and updates are ac
         setDoc(vehicleReference(ownerContext, id), {
           ...vehicle(OWNER_ID, id),
           name: "Updated Roadster",
+        }),
+      );
+    });
+  });
+});
+
+test("an orphan fuel entry can be created and read under the owner's UID", async () => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const entryReference = fuelEntryReference(ownerContext);
+
+    await assertSucceeds(setDoc(entryReference, fuelEntry()));
+    await assertSucceeds(getDoc(entryReference));
+  });
+});
+
+test("fuel-entry writes require every closed-schema key", async (t) => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const requiredKeys = Object.keys(fuelEntry());
+
+    for (const [index, key] of requiredKeys.entries()) {
+      await t.test(`missing ${key}`, async () => {
+        const id = uuid(500 + index);
+        await assertFails(
+          setDoc(
+            fuelEntryReference(ownerContext, id),
+            withoutKey(fuelEntry(OWNER_ID, id), key),
+          ),
+        );
+      });
+    }
+  });
+});
+
+test("fuel-entry writes reject extra and local-only keys", async (t) => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const forbiddenKeys = ["unexpected", ...LOCAL_ONLY_KEYS];
+
+    for (const [index, key] of forbiddenKeys.entries()) {
+      await t.test(key, async () => {
+        const id = uuid(600 + index);
+        await assertFails(
+          setDoc(fuelEntryReference(ownerContext, id), {
+            ...fuelEntry(OWNER_ID, id),
+            [key]: "forbidden",
+          }),
+        );
+      });
+    }
+  });
+});
+
+test("fuel-entry writes enforce field types, ranges, enums, timestamps, and identity", async (t) => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const invalidCases = [
+      ["id type", { id: 42 }],
+      ["document ID match", { id: uuid(999) }],
+      ["UUID v4", { id: "not-a-uuid" }],
+      ["owner match", { ownerId: OTHER_OWNER_ID }],
+      ["vehicle ID type", { vehicleId: 42 }],
+      ["vehicle UUID v4", { vehicleId: "not-a-uuid" }],
+      ["date type", { date: "not-a-timestamp" }],
+      ["date minimum", { date: Timestamp.fromMillis(-1) }],
+      [
+        "date maximum",
+        { date: Timestamp.fromMillis(Date.now() + 2 * 60 * 60 * 1000) },
+      ],
+      ["odometer type", { odometerKm: 1.5 }],
+      ["odometer minimum", { odometerKm: -1 }],
+      ["odometer maximum", { odometerKm: 2_000_001 }],
+      ["liters type", { litersScaled: 1.5 }],
+      ["liters minimum", { litersScaled: 0 }],
+      ["liters maximum", { litersScaled: 500_001 }],
+      ["price type", { pricePerLiterScaled: 1.5 }],
+      ["price minimum", { pricePerLiterScaled: 0 }],
+      ["price maximum", { pricePerLiterScaled: 1_000_000 }],
+      ["total type", { totalCostMinor: 1.5 }],
+      ["total minimum", { totalCostMinor: 0 }],
+      ["total maximum", { totalCostMinor: 100_000_000 }],
+      ["currency type", { currency: 42 }],
+      ["currency enum", { currency: "JPY" }],
+      ["full-tank type", { isFullTank: 1 }],
+      ["missed-entries type", { hasMissedEntries: 0 }],
+      ["odometer-inconsistent type", { odometerInconsistent: 0 }],
+      ["notes type", { notes: 42 }],
+      ["notes minimum", { notes: "" }],
+      ["notes maximum", { notes: "x".repeat(281) }],
+      ["created timestamp type", { createdAt: "not-a-timestamp" }],
+      [
+        "server timestamp",
+        { updatedAt: Timestamp.fromMillis(1_700_000_000_001) },
+      ],
+      ["deleted type", { deleted: 0 }],
+      [
+        "active deleted shape",
+        { deleted: false, deletedAt: Timestamp.fromMillis(1_700_000_000_000) },
+      ],
+      ["tombstone deleted shape", { deleted: true, deletedAt: null }],
+      ["tombstone timestamp type", { deleted: true, deletedAt: "now" }],
+      ["schema version type", { schemaVersion: 1.5 }],
+      ["lower schema version", { schemaVersion: 0 }],
+      ["higher schema version", { schemaVersion: 2 }],
+    ];
+
+    for (const [index, [name, changes]] of invalidCases.entries()) {
+      await t.test(name, async () => {
+        const id = name === "UUID v4" ? "not-a-uuid" : uuid(700 + index);
+        await assertFails(
+          setDoc(fuelEntryReference(ownerContext, id), {
+            ...fuelEntry(OWNER_ID, id),
+            ...changes,
+          }),
+        );
+      });
+    }
+  });
+});
+
+test("valid fuel-entry boundary values, currencies, tombstones, and updates are accepted", async (t) => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+
+    for (const [index, currency] of SUPPORTED_CURRENCY_CODES.entries()) {
+      await t.test(currency, async () => {
+        const id = uuid(800 + index);
+        await assertSucceeds(
+          setDoc(fuelEntryReference(ownerContext, id), {
+            ...fuelEntry(OWNER_ID, id),
+            date: Timestamp.fromMillis(0),
+            odometerKm: 2_000_000,
+            litersScaled: 500_000,
+            pricePerLiterScaled: 999_999,
+            totalCostMinor: 99_999_999,
+            currency,
+            isFullTank: false,
+            hasMissedEntries: true,
+            odometerInconsistent: true,
+            notes: "x".repeat(280),
+          }),
+        );
+      });
+    }
+
+    await t.test("date within the allowed future window", async () => {
+      const id = uuid(830);
+      await assertSucceeds(
+        setDoc(fuelEntryReference(ownerContext, id), {
+          ...fuelEntry(OWNER_ID, id),
+          date: Timestamp.fromMillis(Date.now() + 30 * 60 * 1000),
+        }),
+      );
+    });
+
+    await t.test("tombstone", async () => {
+      const id = uuid(831);
+      await assertSucceeds(
+        setDoc(fuelEntryReference(ownerContext, id), {
+          ...fuelEntry(OWNER_ID, id),
+          deleted: true,
+          deletedAt: Timestamp.fromMillis(1_700_000_000_000),
+        }),
+      );
+    });
+
+    await t.test("full-document update", async () => {
+      const id = uuid(832);
+      await testEnvironment.withSecurityRulesDisabled(async (context) => {
+        await setDoc(fuelEntryReference(context, id), {
+          ...fuelEntry(OWNER_ID, id),
+          updatedAt: Timestamp.fromMillis(1_700_000_000_000),
+        });
+      });
+
+      await assertSucceeds(
+        setDoc(fuelEntryReference(ownerContext, id), {
+          ...fuelEntry(OWNER_ID, id),
+          notes: "Updated notes",
         }),
       );
     });
