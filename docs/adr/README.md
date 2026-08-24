@@ -60,5 +60,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-51 | [ADR-0052](0052-disable-npm-dependency-install-scripts.md) | Disable npm dependency install scripts repository-wide. | Accepted |
 | D-52 | [ADR-0053](0053-retain-firebase-cli-with-moderate-audit-residual.md) | Retain the pinned Firebase CLI with its documented moderate audit residual. | Accepted |
 | D-53 | [ADR-0054](0054-use-separate-firebase-debug-app-keys.md) | Use separately provisioned and restricted Android and iOS debug app keys. | Accepted |
+| D-54 | [ADR-0055](0055-keep-firebase-configuration-debug-only.md) | Keep development Firebase configuration isolated to debug builds. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -43,6 +43,12 @@ Allowed in the repository:
   debug bundle identifier. Moving Android development to another machine requires an explicit
   additional fingerprint; restrictions MUST NOT be widened automatically.
 
+  Under `D-54`, the restricted development configurations are build-specific:
+  `androidApp/src/debug/google-services.json` and
+  `iosApp/Config/Debug/GoogleService-Info-Debug.plist`. They MUST NOT be included in release
+  artifacts. Release builds fail closed until E4-04 supplies separately reviewed production
+  configuration.
+
 Never committed:
 
 - Keystores and `*.jks`, `*.keystore`.
