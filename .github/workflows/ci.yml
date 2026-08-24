@@ -72,12 +72,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: 'package.json'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew contractCheck --stacktrace
+      - name: Install Firestore rules test dependencies
+        run: npm ci
+      - name: Firestore security rules emulator tests
+        run: npm run test:firestore-rules
 
   android-assemble:
     name: android-assemble

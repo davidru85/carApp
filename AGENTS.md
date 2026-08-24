@@ -314,6 +314,9 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
   Firestore emulator dependencies live only in exact `package.json` entries plus
   `package-lock.json` (`D-46`). Every pin is explained by `docs/versions-matrix.md` and MUST NOT be
   repeated as a literal in CI.
+- npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
+  verification MUST NOT override that policy. A required install script needs a superseding owner
+  decision after its exact package, version and command are reviewed.
 - SKIE is applied only to `:shared`.
 - Firestore offline persistence is disabled.
 - Use GitLive 2.6.x, not 3.0 alpha.

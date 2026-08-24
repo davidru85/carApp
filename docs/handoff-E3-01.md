@@ -17,8 +17,9 @@
   `Accepted`; on 2026-08-24 the owner also accepted the exact official emulator stack, existing
   protected-job placement, client-configuration ownership and exact MVP schema version as D-46
   through D-49, then accepted the timestamp-only first-page cursor as D-50 after the pinned SDK
-  rejected the former empty document-ID anchor. No `Proposed` or `Pending` decision blocks the
-  story.
+  rejected the former empty document-ID anchor, then accepted the repository-wide install-script
+  block and the moderate Firebase CLI audit residual as D-51 and D-52. No `Proposed` or `Pending`
+  decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §9`, `§10` and `§11`;
   `docs/CONTRACTS.md §9.5`, `§16`, `§18` and `§20.0.1`; `docs/TECHNICAL_PLAN.md §7` and `§12`;
   `docs/BACKLOG.md E3-01`; `docs/SECURITY.md`; `docs/CONTRIBUTING.md`; and `AGENTS.md`.
@@ -53,8 +54,9 @@
 ## Decisions Made
 
 - D-46 through D-49 were accepted by the owner before implementation. D-50 was accepted after the
-  official Firebase SDK rejected the former empty document-ID cursor. All are recorded in this
-  pull request.
+  official Firebase SDK rejected the former empty document-ID cursor. D-51 and D-52 were accepted
+  after a clean npm install exposed version-dependent install-script behavior and moderate
+  development-tool advisories. All are recorded in this pull request.
 
 ## Verification Run
 
@@ -68,7 +70,7 @@
 
 ## Decision Board Impact
 
-- Added accepted decisions D-46 through D-50 and ADR-0047 through ADR-0051.
+- Added accepted decisions D-46 through D-52 and ADR-0047 through ADR-0053.
 
 ## Shared-Write Modules Touched
 
@@ -82,6 +84,8 @@
 
 - E0-07 follows this story and must configure the first real Firestore client with an in-memory
   cache on Android and iOS.
+- Firebase CLI 15.28.1 retains the moderate development-tool-only audit residual accepted by D-52;
+  re-evaluate it on the next CLI update or any high/critical advisory.
 
 ## Human Review Gate
 

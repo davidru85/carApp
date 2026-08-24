@@ -463,6 +463,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-48 | Firestore client-cache configuration ownership | E0-07 owns executable disabled-persistence configuration; E3-01 owns rules, indexes and emulator tests. | Accepted |
 | D-49 | MVP Firestore schema-version rule | Firestore client rules accept exactly `schemaVersion == 1` during the MVP. | Accepted |
 | D-50 | Firestore first-page cursor | Use `startAt(overlapSince)` first, then the full timestamp/document-ID cursor on later pages. | Accepted |
+| D-51 | npm install-script policy | Disable dependency install scripts repository-wide. | Accepted |
+| D-52 | Firebase CLI audit residual | Retain Firebase CLI 15.28.1 and accept the documented moderate dev-tool-only residual. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

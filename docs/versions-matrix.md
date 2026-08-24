@@ -4,7 +4,8 @@
 >
 > **Gradle and Kotlin versions are declared only in `gradle/libs.versions.toml`.** The Node-only
 > Firestore emulator dependencies introduced by `D-46` are declared exactly in `package.json` and
-> locked transitively by `package-lock.json`. This file explains *why* every pin exists, which pins
+> locked transitively by `package-lock.json`. Dependency lifecycle scripts are disabled by the
+> repository `.npmrc` under D-51. This file explains *why* every pin exists, which pins
 > move together and which record backs it. There are no `TBD` cells.
 >
 > Changing any pinned version during the MVP is a human review gate (`AGENTS.md`).
@@ -33,7 +34,7 @@ choice: an ADR where a decision exists, otherwise the story or normative section
 |------|----------|---------|-----------|-------|
 | JDK toolchain | — | 21 | `E0-06` | LTS. Same value for Gradle and for the Kotlin JVM toolchain, applied through `kotlin { jvmToolchain(...) }` in each module. |
 | Node runtime | — | 22.22.3 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Exact runtime for Firestore emulator rules tests locally and in CI. |
-| Firebase CLI | `firebase-tools` | 15.28.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Starts and stops the Firestore emulator through the project-local npm binary. |
+| Firebase CLI | `firebase-tools` | 15.28.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Starts and stops the Firestore emulator through the project-local npm binary. Its accepted moderate dev-tool-only audit residual is recorded by [ADR-0053](adr/0053-retain-firebase-cli-with-moderate-audit-residual.md) (`D-52`). |
 | Firebase rules tests | `@firebase/rules-unit-testing` | 5.0.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Official emulator-only auth-mocking harness; tested with Node 22 and Firebase JS 12. |
 | Firebase rules client | `firebase` | 12.18.0 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Client operations used only by the emulator rule suite; satisfies the rules-unit-testing peer range. |
 | Gradle | — | 9.7.1 | `E0-06` | Required by AGP 9.x. |

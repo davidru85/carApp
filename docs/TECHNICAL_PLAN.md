@@ -65,6 +65,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-48 | Firestore client-cache configuration ownership | E0-07 owns the first executable client configuration | Accepted | Keeps E3-01 focused on rules and avoids premature provider/native linking. |
 | D-49 | MVP Firestore schema-version rule | Exact remote `schemaVersion == 1` | Accepted | Preserves the closed MVP schema and defers rollout sequencing to the story that introduces a new schema. |
 | D-50 | Firestore first-page cursor | Timestamp-only `startAt(overlapSince)` | Accepted | Works with the pinned Firebase SDK and includes every document at the overlap boundary; later pages retain the full timestamp/document-ID cursor. |
+| D-51 | npm install-script policy | Repository-wide `ignore-scripts=true` | Accepted | Makes clean installs deterministic and prevents unnecessary transitive lifecycle execution. |
+| D-52 | Firebase CLI audit residual | Retain 15.28.1 with a documented moderate dev-only residual | Accepted | The affected paths do not execute in the emulator harness or ship in the app; forced alternatives violate the selected stack or upstream compatibility. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
