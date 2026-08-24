@@ -22,6 +22,24 @@ class ProviderSettingsFunctionalTest {
         assertFalse(output.contains("Project ':integration:firebase-crashlytics'"))
     }
 
+    @Test
+    fun providerExclusionOmitsEveryExistingProviderModule() = withSettingsFixture { fixture ->
+        val providerProjects = listOf(
+            ":integration:firebase-auth",
+            ":integration:firebase-firestore",
+            ":integration:firebase-analytics",
+            ":integration:firebase-crashlytics",
+            ":wiring:firebase",
+        )
+        providerProjects.forEach(fixture::createProject)
+
+        val output = fixture.runProjects("-Pcarapp.excludeFirebaseProviders=true")
+
+        providerProjects.forEach { path ->
+            assertFalse(output.contains("Project '$path'"), "$path must be absent in provider-free mode")
+        }
+    }
+
     private fun withSettingsFixture(block: (SettingsFixture) -> Unit) {
         val directory = Files.createTempDirectory("carapp-provider-settings").toFile()
         try {
@@ -57,10 +75,10 @@ private class SettingsFixture(private val root: File) {
         File(root, path.removePrefix(":").replace(':', File.separatorChar)).mkdirs()
     }
 
-    fun runProjects(): String =
+    fun runProjects(vararg options: String): String =
         GradleRunner.create()
             .withProjectDir(root)
-            .withArguments("projects", "--console=plain")
+            .withArguments(options.toList() + listOf("projects", "--console=plain"))
             .build()
             .output
 }
