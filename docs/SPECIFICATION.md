@@ -335,7 +335,7 @@ Payload format, coalescing semantics and purge conditions are in `docs/CONTRACTS
 
 1. Pull `VEHICLE` before `FUEL_ENTRY`.
 2. Start the cycle from `overlapSince = max(0, cursor.lastServerUpdatedAt - 30 seconds)`, applying the overlap once per cycle, not per page.
-3. Query ordered by `updatedAt` and document ID. The first page uses `startAt(overlapSince, "")`; later pages use `startAfter(lastServerUpdatedAt, lastDocumentId)`, limit 200.
+3. Query ordered by `updatedAt` and document ID. The first page uses `startAt(overlapSince)`; later pages use `startAfter(lastServerUpdatedAt, lastDocumentId)`, limit 200.
 4. Include tombstones.
 5. Apply each page in one local transaction.
 6. If an outbox row exists for a remote entity, do not overwrite local data.
@@ -458,6 +458,13 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-43 | Provider-exclusion control | Select provider-free Gradle settings with `carapp.excludeFirebaseProviders=true`. | Accepted |
 | D-44 | Provider-module registry | Keep an explicit canonical provider registry and include only existing directories when exclusion is off. | Accepted |
 | D-45 | Provider-decoupling platforms | Run Android host and `iosSimulatorArm64` provider-free tests in one macOS CI job. | Accepted |
+| D-46 | Firestore rules test stack | Use the exact pinned Node/Firebase emulator stack with the built-in Node test runner. | Accepted |
+| D-47 | Firestore rules CI placement | Run emulator rules tests inside the protected `contract-check` job. | Accepted |
+| D-48 | Firestore client-cache configuration ownership | E0-07 owns executable disabled-persistence configuration; E3-01 owns rules, indexes and emulator tests. | Accepted |
+| D-49 | MVP Firestore schema-version rule | Firestore client rules accept exactly `schemaVersion == 1` during the MVP. | Accepted |
+| D-50 | Firestore first-page cursor | Use `startAt(overlapSince)` first, then the full timestamp/document-ID cursor on later pages. | Accepted |
+| D-51 | npm install-script policy | Disable dependency install scripts repository-wide. | Accepted |
+| D-52 | Firebase CLI audit residual | Retain Firebase CLI 15.28.1 and accept the documented moderate dev-tool-only residual. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

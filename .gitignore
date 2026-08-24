@@ -42,6 +42,7 @@ ui-debug.log
 
 # Tool output
 *.log
+node_modules/
 
 # VS Code MCP config (contains per-developer API keys)
 .vscode/mcp.json

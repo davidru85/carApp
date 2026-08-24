@@ -310,7 +310,13 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
-- Dependency versions live only in `gradle/libs.versions.toml`, explained by `docs/versions-matrix.md`.
+- Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only
+  Firestore emulator dependencies live only in exact `package.json` entries plus
+  `package-lock.json` (`D-46`). Every pin is explained by `docs/versions-matrix.md` and MUST NOT be
+  repeated as a literal in CI.
+- npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
+  verification MUST NOT override that policy. A required install script needs a superseding owner
+  decision after its exact package, version and command are reviewed.
 - SKIE is applied only to `:shared`.
 - Firestore offline persistence is disabled.
 - Use GitLive 2.6.x, not 3.0 alpha.

@@ -61,6 +61,12 @@ Requirements:
 
 ## Accepted Residual Risks
 
+- **Moderate Firebase CLI transitive advisories in the E3-01 test harness** (`D-52`). At acceptance,
+  `npm audit` reports five moderate dependency entries representing two advisories below the pinned
+  Firebase CLI 15.28.1: OpenTelemetry W3C baggage allocation and old UUID buffer APIs. The CLI runs
+  only the local Firestore emulator against repository-owned fixtures; those paths are unused and
+  none of the npm packages ships in the Android or iOS app. Re-evaluate on any high or critical
+  advisory, affected-path expansion or reviewed Firebase CLI update.
 - **No Firebase App Check in the MVP** (`docs/SPECIFICATION.md §3.2`). Anyone holding a valid UID can write to their own subtree with a non-official client. This is mitigated, not removed, by per-field range validation in the Firestore rules and by client-side quarantine of unsupported or malformed documents. Revisit before any public launch beyond the MVP.
 - **No post-MVP Cloud Functions-mediated database access in the MVP** (`docs/SPECIFICATION.md §3.3`). The only MVP server/Admin operation is `D-23` account deletion. Server-side validation before remote writes, authenticated identity and authorization checks before remote reads, app integrity checks, rate limiting, abuse monitoring and broader privileged server-side product operations require a future story or ADR before implementation.
 - **No receipt, odometer image or OCR processing in the MVP** (`docs/SPECIFICATION.md §3.3`). Future local AI text recognition must keep receipt images, odometer images, recognized raw text and extracted fields local unless a later explicit owner decision changes the privacy model.

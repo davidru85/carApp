@@ -51,3 +51,9 @@ The selected option is to complete `E3-06` before `E3-01`, which remains before 
 - `docs/SPECIFICATION.md §8.5`
 - `docs/TECHNICAL_PLAN.md §5`
 - `docs/BACKLOG.md` (`E3-06`, `E3-01`, `E0-07`)
+
+## Subsequent Clarification
+
+`D-48` assigns the first Firestore client configuration to E0-07 rather than E3-01. The accepted
+ordering remains unchanged: E3-06 is still merged before the first provider module, and E3-01 still
+precedes E0-07 under D-40.

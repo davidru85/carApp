@@ -479,7 +479,11 @@ Acceptance criteria:
 - `firestore/rules/main.rules` contains the `validPayload()` helpers required by `docs/CONTRACTS.md §16`.
 - Every emulator test listed in `docs/CONTRACTS.md §16` passes.
 - `firestore/firestore.indexes.json` exists and the pull query runs without an index error.
-- Firestore offline persistence is disabled in client configuration.
+- Rules tests use the exact official Node/Firebase stack of `D-46` and run as a named step inside
+  the protected `contract-check` job (`D-47`).
+- Rules accept exactly `schemaVersion == 1` and reject lower or higher values (`D-49`).
+- No Firestore client or provider module is created. E0-07 owns the executable disabled-persistence
+  configuration on the first real Android and iOS client paths (`D-48`).
 
 Human review required.
 
@@ -508,8 +512,8 @@ Implement the Firestore remote sync integration.
 Acceptance criteria:
 
 - Writes use `serverTimestamp()` and the client document ID.
-- Delta pull applies the overlap once per cycle, uses `startAt(overlapSince, "")` for the first page and `startAfter(lastServerUpdatedAt, lastDocumentId)` for later pages.
-- A resumed-cycle emulator test proves `startAt(overlapSince, "")` works after the first non-empty pull.
+- Delta pull applies the overlap once per cycle, uses `startAt(overlapSince)` for the first page and `startAfter(lastServerUpdatedAt, lastDocumentId)` for later pages (`D-50`).
+- A resumed-cycle emulator test proves `startAt(overlapSince)` works after the first non-empty pull.
 - Firestore `Timestamp` values are converted to epoch milliseconds at the integration boundary before conflict comparison.
 - Firestore errors map to `RemoteError` exactly as in `docs/CONTRACTS.md §6`.
 - An `Unauthenticated` response forces a token refresh and retries once inside this module.

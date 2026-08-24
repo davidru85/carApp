@@ -534,9 +534,9 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - Page limit: 200 documents.
 - Query ordering is `updatedAt ASC, documentId ASC`.
 - The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
-- The first page of every cycle MUST use `startAt(overlapSince, "")`, including cycles that resume after the first pull. `""` is the concrete lowest document-id anchor; it is legal because Firestore range comparison treats it as the smallest lexicographic document-id string. `null` MUST NOT be used as a cursor component passed to `startAt`/`startAfter`; the `RemoteCursor.INITIAL` sentinel is exempt because it is translated to `(overlapSince, "")` before reaching Firestore (`§20.7`).
+- The first page of every cycle MUST use `startAt(overlapSince)`, including cycles that resume after the first pull. Firebase document-ID cursors reject an empty string, so the first boundary deliberately carries only the timestamp and therefore includes every document at that timestamp. Later pages MUST use both concrete cursor components with `startAfter(lastServerUpdatedAt, lastDocumentId)`. `null` MUST NOT be used as a cursor component passed to `startAt`/`startAfter`; the `RemoteCursor.INITIAL` sentinel is exempt because it is materialised as the timestamp-only first-page boundary before reaching Firestore (`§20.7`, D-50).
 - Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
-- A query that filters only on `updatedAt >= since` without a concrete cursor anchor is a contract violation: it re-reads the same page forever whenever a timestamp cluster exceeds the page size.
+- A first-page query that omits `startAt(overlapSince)`, or a later-page query that omits either concrete cursor component, is a contract violation. The complete later-page cursor prevents re-reading the same page forever whenever a timestamp cluster exceeds the page size.
 - Tombstones are included.
 - Each page is applied in one local transaction; apply is idempotent.
 - If an outbox row exists for a remote entity, local data is not overwritten.
@@ -556,7 +556,7 @@ Quarantine reasons are:
 
 Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
-For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. Firestore rules validate only a lower bound on `schemaVersion`, so rules deploys never gate app releases.
+For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
 ### 9.6 Conflict resolution
 
@@ -1147,7 +1147,7 @@ Remote queries:
 where(updatedAt >= overlapSince)
 orderBy(updatedAt ASC)
 orderBy(documentId ASC)
-first page of cycle: startAt(overlapSince, "")
+first page of cycle: startAt(overlapSince)
 later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
 limit(200)
 ```
@@ -1763,7 +1763,7 @@ A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`.
 
 `SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
 
-`RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises the first page cursor as `(overlapSince, "")` per `§9.4`. The `null` prohibition in `§9.4` applies to cursors passed to `startAt`/`startAfter`; the `INITIAL` sentinel is exempt because it is translated to the concrete anchor `(overlapSince, "")` before reaching Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
+`RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises it as the timestamp-only `startAt(overlapSince)` first-page boundary per `§9.4`. The `null` prohibition in `§9.4` applies to cursor components passed to `startAt`/`startAfter`; `INITIAL` is exempt because no nullable document-ID component reaches Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
 
 ### 20.8 Auth types — `:core:auth`
 

@@ -38,6 +38,124 @@
 
 ## Entries
 
+### 2026-08-24 — E3-01 Firestore security rules completed
+
+- **Type:** story
+- **Story / Decision:** `E3-01` / `D-46` through `D-52`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added exact closed-schema Firestore rules, an empty composite-index
+  configuration, 154 emulator tests and protected CI execution with a reproducible official test
+  stack.
+- **Why:** the first application Firestore client must use fully reviewed owner isolation and
+  schema validation rather than temporary remote rules.
+- **Documents touched:** `docs/handoff-E3-01.md`, the Firestore contract and story records, the
+  D-46 through D-52 decision records and this log.
+- **Verification:** 154 emulator tests and the complete local Gradle CI command passed; the delta
+  query paginated with tombstones and without a composite index.
+- **Follow-ups / risks:** E0-07 must add executable disabled-persistence client configuration;
+  Firebase CLI retains the D-52 moderate development-tool-only audit residual.
+
+### 2026-08-24 — D-52 Firebase CLI audit residual accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-52`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** retained Firebase CLI 15.28.1 with its five moderate transitive audit findings.
+- **Why:** the forced remediation would replace the accepted CLI with a breaking major version;
+  the affected dependency tree is development-only and install scripts are disabled.
+- **Documents touched:** `docs/adr/0053-retain-firebase-cli-with-moderate-audit-residual.md`,
+  `docs/SECURITY.md` and the four decision mirrors.
+- **Verification:** `npm audit --json` reports no high or critical finding; clean install, emulator
+  tests and the full local CI command pass.
+- **Follow-ups / risks:** re-evaluate on the next CLI update or any high/critical advisory.
+
+### 2026-08-24 — D-51 dependency install scripts disabled
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-51`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** repository npm installs now set `ignore-scripts=true`.
+- **Why:** the rules toolchain needs no dependency lifecycle script, so disabling them reduces
+  supply-chain execution without weakening the tests.
+- **Documents touched:** `docs/adr/0052-disable-npm-dependency-install-scripts.md`, `.npmrc` and the
+  four decision mirrors.
+- **Verification:** a clean `npm ci` and all 154 emulator tests pass with scripts disabled.
+- **Follow-ups / risks:** a future package requiring a lifecycle script needs an explicit decision.
+
+### 2026-08-24 — D-50 first delta page uses timestamp-only boundary
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-50`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the first delta page starts at `overlapSince`; later pages start after the full
+  `(updatedAt, documentId)` cursor.
+- **Why:** the pinned Firebase SDK rejects an empty document-ID cursor while the timestamp-only
+  first boundary preserves the required overlap semantics.
+- **Documents touched:** `docs/adr/0051-firestore-first-page-cursor-is-timestamp-only.md`,
+  `docs/CONTRACTS.md` and the four decision mirrors.
+- **Verification:** emulator tests prove first and later page boundaries, stable tie-breaking,
+  tombstone inclusion and complete pagination.
+- **Follow-ups / risks:** E3-02 must implement this exact query contract.
+
+### 2026-08-24 — D-49 exact MVP Firestore schema version accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-49`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firestore rules accept exactly `schemaVersion == 1` for both document types.
+- **Why:** accepting arbitrary positive versions would admit payload semantics this client cannot
+  interpret safely.
+- **Documents touched:** `docs/adr/0050-mvp-firestore-schema-version-is-exact.md`,
+  `docs/CONTRACTS.md` and the four decision mirrors.
+- **Verification:** emulator tests accept version 1 and reject versions 0 and 2.
+- **Follow-ups / risks:** any remote schema evolution requires a superseding decision and rules.
+
+### 2026-08-24 — D-48 walking skeleton owns client cache configuration
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-48`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** E3-01 owns server rules and emulator proof; E0-07 owns the first real Firestore
+  client and executable disabled-persistence proof on Android and iOS.
+- **Why:** this keeps one implementation owner for provider configuration without adding a
+  temporary client module to the rules story.
+- **Documents touched:**
+  `docs/adr/0049-walking-skeleton-owns-firestore-client-cache-config.md` and the four decision
+  mirrors.
+- **Verification:** E3-01 contains no application provider module; backlog acceptance assigns the
+  client proof to E0-07.
+- **Follow-ups / risks:** E0-07 cannot complete without the two-platform persistence evidence.
+
+### 2026-08-24 — D-47 rules tests added to protected contract check
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-47`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the Firestore emulator suite runs inside the existing required
+  `contract-check` job.
+- **Why:** it makes rule regressions merge-blocking without changing the nine-check branch
+  protection contract.
+- **Documents touched:** `docs/adr/0048-firestore-rules-run-in-contract-check.md`, CI configuration
+  and the four decision mirrors.
+- **Verification:** the named CI step installs the lockfile and runs the emulator suite.
+- **Follow-ups / risks:** moving or renaming the protected job requires a superseding decision and
+  branch-protection update.
+
+### 2026-08-24 — D-46 official Firestore emulator test stack accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-46`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** pinned Node 22.22.3, Firebase CLI 15.28.1, Firebase JavaScript SDK 12.18.0,
+  `@firebase/rules-unit-testing` 5.0.1 and `node:test`.
+- **Why:** the official stack provides deterministic rule evaluation and real query behavior with
+  the smallest additional test surface.
+- **Documents touched:** `docs/adr/0047-firestore-rules-use-official-node-test-stack.md`,
+  `docs/versions-matrix.md` and the four decision mirrors.
+- **Verification:** exact versions are locked; clean install, 154 emulator tests and protected CI
+  wiring pass.
+- **Follow-ups / risks:** version changes require the normal decision and compatibility review.
+
 ### 2026-08-24 — E3-06 provider decoupling proof completed
 
 - **Type:** story
