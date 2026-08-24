@@ -62,5 +62,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-53 | [ADR-0054](0054-use-separate-firebase-debug-app-keys.md) | Use separately provisioned and restricted Android and iOS debug app keys. | Accepted |
 | D-54 | [ADR-0055](0055-keep-firebase-configuration-debug-only.md) | Keep development Firebase configuration isolated to debug builds. | Accepted |
 | D-55 | [ADR-0056](0056-stage-final-contracts-in-walking-skeleton.md) | Stage final public contracts while implementing only the walking-skeleton Vehicle slice. | Accepted |
+| D-56 | [ADR-0057](0057-place-test-app-graph-factory-in-shared-testing.md) | Place the test app graph factory in `:shared:testing`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

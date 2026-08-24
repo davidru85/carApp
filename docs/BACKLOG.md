@@ -224,7 +224,10 @@ Acceptance criteria:
 - The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
 - The `objc-header-golden-check` CI step compares the generated header with the committed golden file, and the job is moved back to `macos-latest`: `E0-05` put it on `ubuntu-latest` because it had nothing to compare, and generating the header needs the Apple toolchain.
 - `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
-- `:core:testing` exposes `testAppGraphDependencies(...)` with every parameter defaulted to a fake, including a no-op `CrashReporter` and a no-op `AnalyticsTracker`, with the same parameter count and order as `AppGraphDependencies` (`D-27`).
+- `:shared:testing` exposes `testAppGraphDependencies(...)` from `commonMain` with every parameter
+  defaulted to a fake, including a no-op `CrashReporter` and a no-op `AnalyticsTracker`, with the
+  same parameter count and order as `AppGraphDependencies` (`D-27`, `D-56`). Consumers depend on
+  `:shared:testing` only from `commonTest`.
 
 Database gate resolved by `D-36`: `E0-07` MUST exercise the accepted SQLDelight AndroidX bundled driver on the real Android and iOS application paths.
 
@@ -557,7 +560,8 @@ Implement `createAppGraph`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(i
 Acceptance criteria:
 
 - `AppGraphDependencies`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, exported state holders and exported `UiState` classes match `docs/CONTRACTS.md §11.6` and `§20.10`.
-- `testAppGraphDependencies(...)` mirrors the exact `AppGraphDependencies` parameter order and defaults every parameter.
+- `:shared:testing` exposes `testAppGraphDependencies(...)` from `commonMain`, mirroring the exact
+  `AppGraphDependencies` parameter order and defaulting every parameter (`D-56`).
 - Only `:wiring:firebase` constructs Firebase implementations.
 - Every top-level declaration in `:wiring:firebase` is a Koin module, an abstraction factory or a platform initialiser.
 - Tests build the graph from `testAppGraphDependencies(...)` without starting Koin.

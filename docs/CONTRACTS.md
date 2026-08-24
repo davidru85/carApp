@@ -746,7 +746,11 @@ Rules:
 - Koin may construct `AppGraphDependencies` in wiring and platform modules.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
-- Tests provide fakes without starting Koin, through the `:core:testing` factory `testAppGraphDependencies(...)` in which every parameter is defaulted. Adding a member REQUIRES updating that factory in the same change, preserving the same parameter order.
+- Tests provide fakes without starting Koin through the `:shared:testing` factory
+  `testAppGraphDependencies(...)`, whose implementation reuses the generic fakes from
+  `:core:testing`. Every parameter is defaulted. Adding a member REQUIRES updating that factory in
+  the same change, preserving the same parameter order. Consumer modules MUST depend on
+  `:shared:testing` only from `commonTest` (`D-56`).
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
 - `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider bindings. `:wiring:firebase` is the module that aggregates those bindings into the `AppGraph`; integration modules MUST NOT reference `createAppGraph`.
@@ -1492,7 +1496,9 @@ interface CrashReporter {
 }
 ```
 
-The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
+The no-op implementation lives in `:core:crash` and is the default fake selected by the
+`:shared:testing` graph factory. Firebase Crashlytics types stay inside
+`:integration:firebase-crashlytics` and `:wiring:firebase`.
 
 `recordNonFatal` trigger policy: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
 
@@ -1506,7 +1512,14 @@ The no-op implementation lives in `:core:crash` and is the default fake used by 
 interface DatabaseFactory { fun create(): AppDatabase }
 ```
 
-`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type `AppDatabase` is a SQLDelight-generated type owned by `:core:database`, and `:core:common` is forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from `:core:database`. `:core:testing` is allowed to depend on `:core:database` (`docs/TECHNICAL_PLAN.md §4`) so it can provide a fake. Any appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation.
+`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type
+`AppDatabase` is a SQLDelight-generated type owned by `:core:database`, and `:core:common` is
+forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries
+`databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from
+`:core:database`. `:core:testing` is allowed to depend on `:core:database` so it can provide a
+generic fake; `:shared:testing` composes that fake into `AppGraphDependencies` (`D-56`). Any
+appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain`
+or the `:shared` public API remains a violation.
 
 ### 20.4 Domain models — `:core:model`
 

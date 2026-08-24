@@ -86,7 +86,7 @@ class ArchitectureCheckerTest {
         listOf(
             ":core:model", ":core:common", ":core:sync", ":core:database", ":core:auth",
             ":core:analytics", ":core:testing", ":core:crash", ":integration:*", ":shared",
-            ":wiring:firebase",
+            ":shared:testing", ":wiring:firebase",
         ).forEach { area ->
             assertTrue(area in areas, "docs/TECHNICAL_PLAN.md §4 has no row for $area; parsed: $areas")
         }
@@ -126,6 +126,25 @@ class ArchitectureCheckerTest {
             "forbidden-module-dependency",
         )
         assertAccepted(module(":shared", projectDependencies = setOf(":core:model", ":feature:fuel")))
+    }
+
+    @Test
+    fun coreModulesMayNotDependOnShared() {
+        listOf(
+            ":core:model",
+            ":core:common",
+            ":core:database",
+            ":core:auth",
+            ":core:sync",
+            ":core:analytics",
+            ":core:crash",
+            ":core:testing",
+        ).forEach { path ->
+            assertRejected(
+                module(path, projectDependencies = setOf(":shared")),
+                "undeclared-module-dependency",
+            )
+        }
     }
 
     @Test

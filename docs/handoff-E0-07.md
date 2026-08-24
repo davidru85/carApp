@@ -15,8 +15,9 @@
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — D-0 through D-53 that govern this story are `Accepted`; D-53 records the
-  owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys. No
+- [x] Decisions checked — D-0 through D-56 that govern this story are `Accepted`; D-53 records the
+  owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
+  D-56 records the owner's 2026-08-25 correction of the test-factory module boundary. No
   `Proposed` or `Pending` decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§7 F-1` and `F-2`, `§8`, `§9`,
   `§10`, `§11`; `docs/CONTRACTS.md §1.1`, `§3`, `§11`, `§14`, `§15`, `§16`, `§18`, `§20.3`,
@@ -60,6 +61,8 @@
   closed until reviewed production configuration exists.
 - D-55 stages the final module and public-contract topology in E0-07, limits real product behavior
   to the Vehicle walking-skeleton slice and reserves all remaining behavior for its owning stories.
+- D-56 places `testAppGraphDependencies(...)` in `:shared:testing`, keeps `AppGraphDependencies`
+  in `:shared` and preserves `:core:testing` as generic test support.
 
 ## Verification Run
 
@@ -71,7 +74,7 @@
 
 ## Decision Board Impact
 
-- Added D-53 through D-55 and ADR-0054 through ADR-0056 before implementation.
+- Added D-53 through D-56 and ADR-0054 through ADR-0057 before implementation.
 
 ## Shared-Write Modules Touched
 

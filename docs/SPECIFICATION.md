@@ -468,6 +468,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-53 | Development Firebase app provisioning | Register separate Android and iOS debug apps with Firebase-provisioned platform keys, then restrict each key before committing its configuration. | Accepted |
 | D-54 | Development Firebase configuration isolation | Keep Android and iOS Firebase configuration debug-only; release builds fail closed until production configuration exists. | Accepted |
 | D-55 | Walking-skeleton staged ownership | E0-07 creates the final module/public-contract structure and implements only the real Vehicle slice; later stories complete behavior in place. | Accepted |
+| D-56 | Test app graph factory module | `testAppGraphDependencies(...)` lives in `:shared:testing`; `AppGraphDependencies` remains in `:shared` and `:core:testing` remains generic. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
