@@ -100,6 +100,10 @@
   read-model recomputation used RED/GREEN commits.
 - No refactoring phase was needed after any GREEN increment; the explicit optional refactoring
   commit was therefore skipped as permitted by `docs/SPECIFICATION.md §11`.
+- The pull request touches 45 files, exceeding the 40-file split guideline in
+  `docs/CONTRIBUTING.md`. It remains one atomic story because D-36 through D-38, their ADRs and
+  all four decision mirrors MUST land with the build and implementation they govern; splitting
+  them would violate higher-priority decision and one-story boundaries.
 - Rule 0 held throughout: owner conversation was Spanish (Spain), and repository artifacts,
   branches, commits and pull-request content are technical English.
 
