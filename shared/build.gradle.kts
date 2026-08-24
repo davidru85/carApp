@@ -29,5 +29,10 @@ kotlin {
                 api(projects.feature.session)
             }
         }
+        commonTest {
+            dependencies {
+                implementation(project(":shared:testing"))
+            }
+        }
     }
 }
