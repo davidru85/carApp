@@ -78,6 +78,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-47 | Firestore rules CI placement | Run emulator tests as a named step of the protected `contract-check` job | Add a tenth protected job; run under provider decoupling | Accepted | The rules are executable contract evidence and remain mandatory without changing the nine protected check names. |
 | D-48 | Firestore client-cache configuration ownership | E0-07 owns the executable disabled-persistence configuration; E3-01 owns only rules, indexes and emulator tests | Create `:integration:firebase-firestore` in E3-01 | Accepted | E0-07 already configures the first real client; E3-01 must not introduce a premature provider module or native Firebase linking. |
 | D-49 | MVP Firestore schema-version rule | Accept exactly `schemaVersion == 1` during the MVP | Accept every version `>= 1`; accept a predeclared version range | Accepted | Matches the closed remote schema, `CLIENT_MAX_SCHEMA_VERSION` and E3-01 acceptance criteria; a future schema rollout requires an explicit sequencing decision. |
+| D-50 | Firestore first-page cursor | Use `startAt(overlapSince)` for the first page and the full timestamp/document-ID cursor for later pages | Rely only on the range filter; use a minimum UUID sentinel | Accepted | Firebase JS 12.18.0 rejects an empty document-ID cursor; a timestamp-only first boundary includes every document at the overlap timestamp without excluding malformed IDs that must be quarantined. |
 
 ## Library Review Matrix
 

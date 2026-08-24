@@ -512,8 +512,8 @@ Implement the Firestore remote sync integration.
 Acceptance criteria:
 
 - Writes use `serverTimestamp()` and the client document ID.
-- Delta pull applies the overlap once per cycle, uses `startAt(overlapSince, "")` for the first page and `startAfter(lastServerUpdatedAt, lastDocumentId)` for later pages.
-- A resumed-cycle emulator test proves `startAt(overlapSince, "")` works after the first non-empty pull.
+- Delta pull applies the overlap once per cycle, uses `startAt(overlapSince)` for the first page and `startAfter(lastServerUpdatedAt, lastDocumentId)` for later pages (`D-50`).
+- A resumed-cycle emulator test proves `startAt(overlapSince)` works after the first non-empty pull.
 - Firestore `Timestamp` values are converted to epoch milliseconds at the integration boundary before conflict comparison.
 - Firestore errors map to `RemoteError` exactly as in `docs/CONTRACTS.md §6`.
 - An `Unauthenticated` response forces a token refresh and retries once inside this module.

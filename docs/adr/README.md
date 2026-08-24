@@ -56,5 +56,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-47 | [ADR-0048](0048-firestore-rules-run-in-contract-check.md) | Run Firestore emulator tests inside `contract-check`. | Accepted |
 | D-48 | [ADR-0049](0049-walking-skeleton-owns-firestore-client-cache-config.md) | Let E0-07 own executable Firestore client-cache configuration. | Accepted |
 | D-49 | [ADR-0050](0050-mvp-firestore-schema-version-is-exact.md) | Accept exactly remote schema version 1 during the MVP. | Accepted |
+| D-50 | [ADR-0051](0051-firestore-first-page-cursor-is-timestamp-only.md) | Use a timestamp-only boundary for the first delta-pull page. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

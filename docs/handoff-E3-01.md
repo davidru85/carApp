@@ -16,7 +16,9 @@
 - [x] Decisions checked — D-0, D-5, D-9, D-13, D-14, D-23, D-31, D-34, D-40 and D-42 are
   `Accepted`; on 2026-08-24 the owner also accepted the exact official emulator stack, existing
   protected-job placement, client-configuration ownership and exact MVP schema version as D-46
-  through D-49. No `Proposed` or `Pending` decision blocks the story.
+  through D-49, then accepted the timestamp-only first-page cursor as D-50 after the pinned SDK
+  rejected the former empty document-ID anchor. No `Proposed` or `Pending` decision blocks the
+  story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §9`, `§10` and `§11`;
   `docs/CONTRACTS.md §9.5`, `§16`, `§18` and `§20.0.1`; `docs/TECHNICAL_PLAN.md §7` and `§12`;
   `docs/BACKLOG.md E3-01`; `docs/SECURITY.md`; `docs/CONTRIBUTING.md`; and `AGENTS.md`.
@@ -50,7 +52,8 @@
 
 ## Decisions Made
 
-- D-46 through D-49 were accepted by the owner before implementation and are recorded in this
+- D-46 through D-49 were accepted by the owner before implementation. D-50 was accepted after the
+  official Firebase SDK rejected the former empty document-ID cursor. All are recorded in this
   pull request.
 
 ## Verification Run
@@ -59,12 +62,13 @@
 
 ## Contract Impact
 
-- Corrected the conflicting schema-version sentence in `docs/CONTRACTS.md §9.5` under D-49;
-  Firestore rules implement the existing §16 contract.
+- Corrected the conflicting schema-version sentence in `docs/CONTRACTS.md §9.5` under D-49 and
+  replaced the SDK-invalid empty document-ID anchor with the D-50 timestamp-only first-page
+  boundary; Firestore rules implement the resulting §16 contract.
 
 ## Decision Board Impact
 
-- Added accepted decisions D-46 through D-49 and ADR-0047 through ADR-0050.
+- Added accepted decisions D-46 through D-50 and ADR-0047 through ADR-0051.
 
 ## Shared-Write Modules Touched
 

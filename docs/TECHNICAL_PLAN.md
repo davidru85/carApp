@@ -64,6 +64,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-47 | Firestore rules CI placement | Named emulator step inside `contract-check` | Accepted | Keeps rule evidence mandatory under the existing protected topology. |
 | D-48 | Firestore client-cache configuration ownership | E0-07 owns the first executable client configuration | Accepted | Keeps E3-01 focused on rules and avoids premature provider/native linking. |
 | D-49 | MVP Firestore schema-version rule | Exact remote `schemaVersion == 1` | Accepted | Preserves the closed MVP schema and defers rollout sequencing to the story that introduces a new schema. |
+| D-50 | Firestore first-page cursor | Timestamp-only `startAt(overlapSince)` | Accepted | Works with the pinned Firebase SDK and includes every document at the overlap boundary; later pages retain the full timestamp/document-ID cursor. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -318,7 +319,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
   2. overlapSince = max(0, cursor.lastServerUpdatedAt - 30s)   // overlap applied once per cycle
   3. Query where updatedAt >= overlapSince
        orderBy updatedAt ASC, documentId ASC
-       first page: startAt(overlapSince, "")
+       first page: startAt(overlapSince)
        later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
        limit 200
   4. Apply the page in one local transaction.
@@ -336,7 +337,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
 - Push is idempotent by client-generated document ID.
 - Server `updatedAt` creates authoritative ordering; the local `updatedAt` never arbitrates.
 - `(updatedAt, documentId)` provides a deterministic total order over the pull stream.
-- Pull overlap prevents silent cursor loss; `startAt(overlapSince, "")` gives the first overlapped page a legal concrete anchor; `startAfter` on the previous page cursor prevents re-reading the same page forever.
+- Pull overlap prevents silent cursor loss; `startAt(overlapSince)` includes every document at the first-page boundary; `startAfter` on the previous page's timestamp/document-ID cursor prevents re-reading the same page forever.
 - Tombstones are regular LWW documents.
 
 ## 9. Backup and Recovery Tests
