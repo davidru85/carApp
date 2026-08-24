@@ -66,9 +66,9 @@
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
-- Coverage tests for the staged `:core:sync` value models were added after their implementation,
-  using the explicit coverage-test exemption in `docs/SPECIFICATION.md §11`; no production
-  behavior changed and the 80% threshold was neither lowered nor excluded.
+- Coverage tests for the staged `:core:model` and `:core:sync` value models were added after their
+  implementation, using the explicit coverage-test exemption in `docs/SPECIFICATION.md §11`; no
+  production behavior changed and neither coverage threshold was lowered or excluded.
 
 ## Verification Run
 
