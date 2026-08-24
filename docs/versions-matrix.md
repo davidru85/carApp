@@ -2,7 +2,10 @@
 
 > Pinned toolchain versions and the compatibility relation between them, plus the reference devices and measurement methods for every performance target.
 >
-> **Versions are declared only in `gradle/libs.versions.toml`.** This file explains *why* each pin exists, which pins move together and which record backs it. The version column was filled in by `E0-06` on 2026-08-21; there are no `TBD` cells left.
+> **Gradle and Kotlin versions are declared only in `gradle/libs.versions.toml`.** The Node-only
+> Firestore emulator dependencies introduced by `D-46` are declared exactly in `package.json` and
+> locked transitively by `package-lock.json`. This file explains *why* every pin exists, which pins
+> move together and which record backs it. There are no `TBD` cells.
 >
 > Changing any pinned version during the MVP is a human review gate (`AGENTS.md`).
 
@@ -16,18 +19,23 @@ These groups move together. Bumping one member REQUIRES revalidating the whole g
 | **SQLDelight database** | SQLDelight, `sqldelight-androidx-driver`, `androidx.sqlite:sqlite-bundled` | The SQL dialect, generated async API, adapter and bundled SQLite must compile and execute together on Android and Kotlin/Native. |
 | **Apple toolchain** | Xcode, iOS deployment target, SKIE, macOS CI runner image | SKIE and the Kotlin/Native linker depend on the Xcode version available on the runner. |
 | **Firebase** | Firebase BOM, GitLive Firebase SDK, Google Services plugin | GitLive 2.6.x wraps a specific Firebase SDK range; GitLive 3.0 alpha is out of scope. |
+| **Firestore rules emulator** | Node, Firebase CLI, Firebase JS SDK, `@firebase/rules-unit-testing` | The official rules test library peers with Firebase JS and discovers the emulator started by the CLI; Node must satisfy both packages. |
 | **Android build** | AGP, Gradle, JDK toolchain, Compose BOM, `compileSdk`, `targetSdk` | AGP requires specific Gradle and JDK versions, and a Compose BOM declares a minimum AGP and `compileSdk`. Compose BOM `2026.08.00` requires `compileSdk 37` and AGP 9.1.0 or higher, which is what moved the whole group. |
 | **AGP 9 build model** | AGP, `com.android.kotlin.multiplatform.library`, Kotlin Gradle plugin | Since AGP 9.0 Kotlin support is built into AGP: `org.jetbrains.kotlin.android` is rejected, and `com.android.library` is incompatible with the KMP plugin, so `:shared` must use `com.android.kotlin.multiplatform.library` and its `androidLibrary` DSL. |
 
 ## Pinned versions
 
-Every value below is declared in `gradle/libs.versions.toml` and nowhere else. "Backed by" is the
-record that justifies the choice: an ADR where a decision exists, otherwise the story or the
-normative section that fixes it.
+Every Gradle/Kotlin value below is declared in `gradle/libs.versions.toml`; the four Node-only rows
+are declared in the npm manifests identified above. "Backed by" is the record that justifies the
+choice: an ADR where a decision exists, otherwise the story or normative section that fixes it.
 
 | Area | Artifact | Version | Backed by | Notes |
 |------|----------|---------|-----------|-------|
 | JDK toolchain | — | 21 | `E0-06` | LTS. Same value for Gradle and for the Kotlin JVM toolchain, applied through `kotlin { jvmToolchain(...) }` in each module. |
+| Node runtime | — | 22.22.3 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Exact runtime for Firestore emulator rules tests locally and in CI. |
+| Firebase CLI | `firebase-tools` | 15.28.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Starts and stops the Firestore emulator through the project-local npm binary. |
+| Firebase rules tests | `@firebase/rules-unit-testing` | 5.0.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Official emulator-only auth-mocking harness; tested with Node 22 and Firebase JS 12. |
+| Firebase rules client | `firebase` | 12.18.0 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Client operations used only by the emulator rule suite; satisfies the rules-unit-testing peer range. |
 | Gradle | — | 9.7.1 | `E0-06` | Required by AGP 9.x. |
 | Android Gradle Plugin | `com.android.tools.build:gradle` | 9.3.1 | `E0-06` | Last stable 9.x at pinning time. AGP 9 carries built-in Kotlin support; see the AGP 9 build model group above. |
 | Kotlin | `org.jetbrains.kotlin` | 2.4.10 | `E0-06` | Drives the whole Kotlin toolchain group. |

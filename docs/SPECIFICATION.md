@@ -458,6 +458,10 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-43 | Provider-exclusion control | Select provider-free Gradle settings with `carapp.excludeFirebaseProviders=true`. | Accepted |
 | D-44 | Provider-module registry | Keep an explicit canonical provider registry and include only existing directories when exclusion is off. | Accepted |
 | D-45 | Provider-decoupling platforms | Run Android host and `iosSimulatorArm64` provider-free tests in one macOS CI job. | Accepted |
+| D-46 | Firestore rules test stack | Use the exact pinned Node/Firebase emulator stack with the built-in Node test runner. | Accepted |
+| D-47 | Firestore rules CI placement | Run emulator rules tests inside the protected `contract-check` job. | Accepted |
+| D-48 | Firestore client-cache configuration ownership | E0-07 owns executable disabled-persistence configuration; E3-01 owns rules, indexes and emulator tests. | Accepted |
+| D-49 | MVP Firestore schema-version rule | Firestore client rules accept exactly `schemaVersion == 1` during the MVP. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

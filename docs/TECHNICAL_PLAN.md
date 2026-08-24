@@ -60,6 +60,10 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-43 | Provider-exclusion control | Canonical settings selected by `carapp.excludeFirebaseProviders=true` | Accepted | Keeps the local and CI proof on one Gradle graph definition. |
 | D-44 | Provider-module registry | Explicit canonical paths, conditionally included when directories exist | Accepted | Supports a non-vacuous fixture before provider modules exist and rejects silent filesystem discovery. |
 | D-45 | Provider-decoupling platforms | Android host plus `iosSimulatorArm64` on macOS | Accepted | Proves provider-free compilation and tests on JVM and Kotlin/Native without renaming the protected check. |
+| D-46 | Firestore rules test stack | Exact Node 22 and official Firebase emulator packages with `node:test` | Accepted | Provides supported auth mocking and a production-safe emulator harness without another test framework. |
+| D-47 | Firestore rules CI placement | Named emulator step inside `contract-check` | Accepted | Keeps rule evidence mandatory under the existing protected topology. |
+| D-48 | Firestore client-cache configuration ownership | E0-07 owns the first executable client configuration | Accepted | Keeps E3-01 focused on rules and avoids premature provider/native linking. |
+| D-49 | MVP Firestore schema-version rule | Exact remote `schemaVersion == 1` | Accepted | Preserves the closed MVP schema and defers rollout sequencing to the story that introduces a new schema. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

@@ -556,7 +556,7 @@ Quarantine reasons are:
 
 Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
-For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. Firestore rules validate only a lower bound on `schemaVersion`, so rules deploys never gate app releases.
+For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
 ### 9.6 Conflict resolution
 

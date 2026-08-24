@@ -52,5 +52,9 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-43 | [ADR-0044](0044-provider-exclusion-uses-gradle-property.md) | Select provider-free settings through a Gradle property. | Accepted |
 | D-44 | [ADR-0045](0045-provider-modules-use-explicit-conditional-registry.md) | Use an explicit conditional provider-module registry. | Accepted |
 | D-45 | [ADR-0046](0046-provider-proof-runs-jvm-and-kotlin-native.md) | Run the provider proof on JVM and Kotlin/Native. | Accepted |
+| D-46 | [ADR-0047](0047-firestore-rules-use-official-node-test-stack.md) | Use the exact official Node/Firebase emulator test stack. | Accepted |
+| D-47 | [ADR-0048](0048-firestore-rules-run-in-contract-check.md) | Run Firestore emulator tests inside `contract-check`. | Accepted |
+| D-48 | [ADR-0049](0049-walking-skeleton-owns-firestore-client-cache-config.md) | Let E0-07 own executable Firestore client-cache configuration. | Accepted |
+| D-49 | [ADR-0050](0050-mvp-firestore-schema-version-is-exact.md) | Accept exactly remote schema version 1 during the MVP. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

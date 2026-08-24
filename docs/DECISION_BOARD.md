@@ -74,6 +74,10 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-43 | Provider-exclusion control | Use `carapp.excludeFirebaseProviders=true` in the canonical Gradle settings | Separate settings file; generated CI-only settings | Accepted | Local and CI verification use the same module graph definition; a second provider-free settings file is forbidden. |
 | D-44 | Provider-module registry | Explicit canonical provider paths, included only when their directories exist and exclusion is off | Filesystem discovery; per-story ad-hoc conditions | Accepted | The proof is testable before provider modules exist, planned paths do not create empty projects and unknown modules are not silently admitted. |
 | D-45 | Provider-decoupling platforms | Run Android host and `iosSimulatorArm64` provider-free tests in one macOS job | Android host only on Ubuntu; separate platform jobs | Accepted | Both JVM and Kotlin/Native dependency surfaces are checked while the required branch-protection name stays `provider-decoupling`. |
+| D-46 | Firestore rules test stack | Node 22.22.3, Firebase CLI 15.28.1, Firebase JS 12.18.0, `@firebase/rules-unit-testing` 5.0.1 and built-in `node:test`, pinned by npm manifests | Direct REST harness; Kotlin/GitLive integration tests; third-party JS test runner | Accepted | Use the official auth-mocking emulator library without adding Jest, Mocha or Vitest. Gradle versions remain in the version catalog; Node-only versions live in `package.json` and `package-lock.json`. |
+| D-47 | Firestore rules CI placement | Run emulator tests as a named step of the protected `contract-check` job | Add a tenth protected job; run under provider decoupling | Accepted | The rules are executable contract evidence and remain mandatory without changing the nine protected check names. |
+| D-48 | Firestore client-cache configuration ownership | E0-07 owns the executable disabled-persistence configuration; E3-01 owns only rules, indexes and emulator tests | Create `:integration:firebase-firestore` in E3-01 | Accepted | E0-07 already configures the first real client; E3-01 must not introduce a premature provider module or native Firebase linking. |
+| D-49 | MVP Firestore schema-version rule | Accept exactly `schemaVersion == 1` during the MVP | Accept every version `>= 1`; accept a predeclared version range | Accepted | Matches the closed remote schema, `CLIENT_MAX_SCHEMA_VERSION` and E3-01 acceptance criteria; a future schema rollout requires an explicit sequencing decision. |
 
 ## Library Review Matrix
 
@@ -87,6 +91,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Flow testing | Turbine | manual collection | Accepted (D-17) | Validate against the pinned coroutines version. |
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
 | Test doubles | Hand-written fakes | MockK, Mockative | Accepted | Fakes are preferred for domain and sync. |
+| Firestore rules tests | Node 22.22.3, Firebase CLI 15.28.1, Firebase JS 12.18.0, `@firebase/rules-unit-testing` 5.0.1, `node:test` | Direct REST harness, Kotlin/GitLive integration tests, Jest/Mocha/Vitest | Accepted (D-46) | Official emulator auth mocking; exact Node-only dependency versions live in npm manifests. |
 | Coverage | Kover | JaCoCo, none | Accepted (D-18) | Thresholds enforced in CI. |
 | Android background work | WorkManager | foreground-only sync | Accepted for Phase 3 | Trigger only: it calls `SyncController.requestSync(reason)` and carries no scheduling policy. |
 | iOS background work | BGTaskScheduler | foreground-only sync | Accepted for Phase 3 | Same constraint; a single task identifier. |
