@@ -38,6 +38,127 @@
 
 ## Entries
 
+### 2026-08-24 — E3-06 provider decoupling proof completed
+
+- **Type:** story
+- **Story / Decision:** `E3-06` / `D-39` through `D-45`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** replaced the provider-decoupling placeholder with an explicit conditional
+  provider registry, a canonical Gradle-property exclusion mode, functional settings tests and a
+  macOS CI proof covering Android host and `iosSimulatorArm64`.
+- **Why:** the first Firebase integration must land only after the protected branch can prove that
+  provider modules are removable without breaking the local and shared graph.
+- **Documents touched:** `docs/handoff-E3-06.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `docs/DEFINITION.md`, the D-39 through D-45 decision records and this log.
+- **Verification:** RED/GREEN Gradle TestKit tests passed; the provider-free Android host and
+  `iosSimulatorArm64` tests passed; the complete local CI command passed.
+- **Follow-ups / risks:** `E3-01` is next, followed by `E0-07`. Each new provider path must update
+  the explicit registry and continue to pass both provider modes.
+
+### 2026-08-24 — D-45 provider proof target coverage accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-06` / `D-45`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the single required `provider-decoupling` job now runs Android host and
+  `iosSimulatorArm64` tests on macOS.
+- **Why:** provider leakage can be target-specific, so Android/JVM coverage alone would not prove
+  the supported Kotlin/Native graph remains provider-free.
+- **Documents touched:** `docs/adr/0046-provider-proof-runs-jvm-and-kotlin-native.md` and the four
+  decision mirrors.
+- **Verification:** `contractCheck` matches D-45 to ADR-0046; the provider-free multiplatform
+  command passes locally.
+- **Follow-ups / risks:** splitting or renaming the job requires a superseding decision and a
+  matching branch-protection update.
+
+### 2026-08-24 — D-44 explicit provider registry accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-06` / `D-44`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase provider modules use a closed path registry and are included only when
+  their directories exist.
+- **Why:** this is testable before provider modules exist, avoids empty Gradle projects and does not
+  silently admit unknown provider directories.
+- **Documents touched:** `docs/adr/0045-provider-modules-use-explicit-conditional-registry.md` and
+  the four decision mirrors.
+- **Verification:** functional settings tests prove exact inclusion, exclusion and missing-path
+  behavior.
+- **Follow-ups / risks:** every new provider module must receive an explicit reviewed registry row.
+
+### 2026-08-24 — D-43 provider exclusion input accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-06` / `D-43`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** canonical settings consume `carapp.excludeFirebaseProviders=true` to omit the
+  Firebase provider registry.
+- **Why:** one reproducible build model avoids a duplicate or CI-generated settings graph.
+- **Documents touched:** `docs/adr/0044-provider-exclusion-uses-gradle-property.md` and the four
+  decision mirrors.
+- **Verification:** functional settings tests evaluate the normal and excluded modes; CI invokes
+  the accepted property.
+- **Follow-ups / risks:** a separate provider-free settings file remains forbidden.
+
+### 2026-08-24 — D-42 provider decoupling prerequisite accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-06` / `D-42`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the prerequisite order is `E3-06 -> E3-01 -> E0-07`.
+- **Why:** provider decoupling must be executable before the first Firebase integration appears,
+  while keeping one owning story per pull request.
+- **Documents touched:** `docs/adr/0043-provider-decoupling-precedes-first-integration.md` and the
+  four decision mirrors.
+- **Verification:** the backlog dependency chain and repository status expose the accepted order.
+- **Follow-ups / risks:** no provider integration may land before E3-06 is merged.
+
+### 2026-08-24 — D-41 development Firebase key restriction accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-41`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the development Android Firebase API key will be restricted to the debug app ID
+  and the owner's current local debug signing certificate; the iOS key will use the debug bundle
+  identifier restriction.
+- **Why:** this secures client configuration in the public repository without creating another
+  private signing key.
+- **Documents touched:**
+  `docs/adr/0042-development-firebase-key-uses-local-debug-certificate.md` and the four decision
+  mirrors, plus `docs/SECURITY.md` and `docs/identifiers.md`.
+- **Verification:** `contractCheck` matches D-41 to ADR-0042; E0-07 owns verification of the cloud
+  restriction before client configuration is committed.
+- **Follow-ups / risks:** a new development machine requires an explicit additional certificate
+  fingerprint; no fingerprint or key value may enter repository documentation.
+
+### 2026-08-24 — D-40 Firestore rules prerequisite accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-01` / `D-40`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `E3-01` must complete before the `E0-07` walking skeleton.
+- **Why:** the first real mobile Firestore write must use the complete reviewed schema rules rather
+  than temporary or cloud-only rules.
+- **Documents touched:** `docs/adr/0041-firestore-rules-precede-walking-skeleton.md` and the four
+  decision mirrors.
+- **Verification:** the backlog places E3-01 before E0-07; E3-01 owns the emulator evidence.
+- **Follow-ups / risks:** E0-07 cannot start until E3-01 is merged.
+
+### 2026-08-24 — D-39 walking-skeleton entity slice accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-39`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** E0-07 will use a minimal contract-valid `Vehicle` slice whose edited proof value
+  is the vehicle name.
+- **Why:** it proves the final local and remote schema without introducing a temporary collection or
+  absorbing the complete vehicle feature stories.
+- **Documents touched:** `docs/adr/0040-walking-skeleton-uses-minimal-vehicle.md` and the four
+  decision mirrors.
+- **Verification:** `contractCheck` matches D-39 to ADR-0040; E0-07 owns the two-device vehicle
+  round-trip evidence.
+- **Follow-ups / risks:** E1-02 and E1-03 will replace or extend the deliberately narrow adapter.
+
 ### 2026-08-24 — E1-01 core database completed
 
 - **Type:** story

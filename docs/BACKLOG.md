@@ -601,6 +601,8 @@ Acceptance criteria:
 
 Make P4 executable.
 
+Status: completed on 2026-08-24. See `docs/handoff-E3-06.md`.
+
 Acceptance criteria:
 
 - Excluding `:integration:*` and `:wiring:firebase` leaves `:core:*` and `:feature:*` compiling and testing with fakes.
@@ -727,7 +729,7 @@ from `:core:database` (`E1-01`). `D-42` and `D-40` add the security prerequisite
 | E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |
-| E3-06 Provider decoupling proof | 3 | S | — |
+| E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

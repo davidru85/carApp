@@ -33,11 +33,26 @@
 
 ## Scope Completed
 
-- Pending implementation.
+- Added the closed Firebase provider path registry to canonical Gradle settings and made inclusion
+  conditional on both directory existence and `carapp.excludeFirebaseProviders`.
+- Added Gradle TestKit coverage for normal provider inclusion, missing paths and complete provider
+  exclusion.
+- Replaced the placeholder CI step with a macOS provider-free proof covering Android host and
+  `iosSimulatorArm64` while preserving the required `provider-decoupling` check name.
+- Recorded the prerequisite, walking-skeleton, Firebase key, build-model and target-coverage
+  decisions raised before implementation.
 
 ## Acceptance Evidence
 
-- Pending implementation.
+- `ProviderSettingsFunctionalTest.providerRegistryIncludesExactlyExistingModules` proves the
+  registry includes exactly the existing registered provider paths and creates no projects for
+  missing directories.
+- `ProviderSettingsFunctionalTest.providerExclusionOmitsEveryExistingProviderModule` proves
+  `carapp.excludeFirebaseProviders=true` removes every existing registered provider.
+- The provider-free `testAndroidHostTest iosSimulatorArm64Test` invocation compiles and tests the
+  included `:core:*` and `:shared` graph without providers; no `:feature:*` module exists yet.
+- `.github/workflows/ci.yml` runs that same provider-free invocation on `macos-latest` under the
+  unchanged required job name `provider-decoupling`.
 
 ## Out of Scope / Not Done
 
@@ -45,23 +60,52 @@
 
 ## Files Changed
 
-- Pending implementation.
+- Build model and tests: `settings.gradle.kts`, `build-logic/convention/build.gradle.kts`, and
+  `ProviderSettingsFunctionalTest.kt`.
+- CI: `.github/workflows/ci.yml`.
+- Decision and security records: `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/SECURITY.md`, `docs/identifiers.md`, `docs/adr/README.md`, and
+  ADR-0040 through ADR-0046.
+- Story and status records: `docs/BACKLOG.md`, `docs/PROJECT_LOG.md`, `AGENTS.md`, `README.md`,
+  `docs/DEFINITION.md`, and this handoff.
 
 ## Decisions Made
 
-- Pending decision records `D-39` through `D-45`.
+- `D-39`: E0-07 uses a minimal contract-valid `Vehicle` slice and edits the vehicle name.
+- `D-40`: E3-01 Firestore rules precede E0-07.
+- `D-41`: the development Firebase key uses the owner's current local debug certificate
+  restriction.
+- `D-42`: the prerequisite order is E3-06, E3-01, then E0-07.
+- `D-43`: provider exclusion uses `carapp.excludeFirebaseProviders=true` in canonical settings.
+- `D-44`: provider modules use a closed explicit registry and missing directories are not included.
+- `D-45`: one macOS `provider-decoupling` job tests Android host and `iosSimulatorArm64`.
+- No `SHOULD` rule was deviated from. Rule 0 held for the whole story.
 
 ## Verification Run
 
-- Pending implementation.
+- RED: the registry functional test failed on its inclusion assertion before the registry existed.
+- GREEN: the registry functional test passed after the explicit conditional registry was added.
+- RED: the exclusion functional test failed on its exclusion assertion before the property was
+  consumed.
+- GREEN: both `ProviderSettingsFunctionalTest` tests passed after property support was added.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test
+  --stacktrace` — passed.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test` — passed; `contractCheck` reported 46 decisions and 46 matching
+  ADRs, with only the three expected later-story assertions pending.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest
+  iosSimulatorArm64Test` — passed.
 
 ## Contract Impact
 
-- Pending implementation.
+- No contract changes. The implementation makes the existing `docs/CONTRACTS.md §18`
+  `provider-decoupling` requirement executable.
 
 ## Decision Board Impact
 
-- Pending decision records `D-39` through `D-45`.
+- Added accepted decisions `D-39` through `D-45`, ADR-0040 through ADR-0046, and identical mirror
+  rows in `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
 
 ## Shared-Write Modules Touched
 
@@ -69,11 +113,15 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] One story entry and one entry for each accepted decision were appended.
 
 ## Risks or Follow-ups
 
 - `E3-01` follows this story, then `E0-07`, per the owner-approved prerequisite order.
+- No provider directory exists yet, so TestKit fixtures prove the conditional provider behavior
+  now; the first provider module will exercise the same registry against production project files.
+- Each future provider module must be added explicitly to the closed registry. Automatic provider
+  directory discovery remains forbidden.
 
 ## Human Review Gate
 

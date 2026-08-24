@@ -84,9 +84,10 @@ tell what is already built from what is still a plan, and it is updated by the s
 
 ### Phase 0 is complete and Phase 1 is open
 
-`E0-01` to `E0-06` and `E0-08` are merged. `E0-07`, the walking skeleton, is **not** a Phase 0 story:
-`D-30` moved it to the start of Phase 1 because it needs the local database. `E1-01` has now
-delivered that database, so the next story is `E0-07`.
+`E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
+has made provider decoupling executable before any Firebase integration module exists. The owner
+accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`, so the next story is
+`E3-01`. `E0-07`, the walking skeleton, remains a Phase 1 story under `D-30`.
 
 ### Modules that exist
 
@@ -156,8 +157,10 @@ Not yet enforced, each with the story that owns it:
 
 - feature-layer package rules and Konsist — `E1-07` (`D-28`)
 - the Objective-C golden header check, and moving that job back to macOS — `E0-07`
-- `provider-decoupling` — `E3-06`
 - `testAppGraphDependencies` parity — `E0-07` (`D-27`)
+
+`provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
+provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).
 
 `contractCheck` prints the live list; trust its output over this one.
 

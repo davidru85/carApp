@@ -31,8 +31,8 @@ rootProject.name = "carApp"
 include(":androidApp")
 include(":shared")
 
-// Phase 0 core modules (docs/BACKLOG.md E0-03, E0-08). :core:auth, :core:database and
-// :core:sync are introduced by their own later stories and MUST NOT appear here yet.
+// Core modules delivered through E1-01. :core:auth and :core:sync are introduced only by their
+// owning later stories and MUST NOT appear here yet.
 include(":core:model")
 include(":core:common")
 include(":core:analytics")
