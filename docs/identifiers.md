@@ -71,6 +71,12 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
 
+For the development Android app, `D-41` uses the owner's current local debug signing certificate
+with `com.ruizurraca.carapp.debug`. A new development machine requires an explicitly registered
+debug fingerprint before it can call Firebase. The keystore and certificate fingerprint are not
+repository artifacts. The iOS development key is restricted to the debug bundle identifier
+`com.ruizurraca.carapp.debug`.
+
 ## Repository
 
 | Item | Value |

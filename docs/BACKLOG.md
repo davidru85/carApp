@@ -213,6 +213,8 @@ Moved here from Phase 0 by `D-30`: it needs the local database, which lives in `
 Acceptance criteria:
 
 - A value written on one platform can be backed up remotely and restored on a clean second device.
+- The proof value is the name of a complete contract-valid `Vehicle` document (`D-39`); no
+  walking-skeleton-only collection is introduced, and the slice does not claim E1-02 or E1-03.
 - `iosSimulatorArm64` runs in CI.
 - iOS consumes the shared framework through direct SPM integration, not CocoaPods.
 - Firestore offline persistence is disabled.
@@ -466,6 +468,8 @@ Acceptance criteria:
 
 Create the Firestore rules, indexes and emulator tests.
 
+Prerequisite order: follows `E3-06` and precedes `E0-07` (`D-40`, `D-42`).
+
 Acceptance criteria:
 
 - Rules match `docs/CONTRACTS.md §16`, split by operation, with `allow delete: if false`.
@@ -600,6 +604,10 @@ Make P4 executable.
 Acceptance criteria:
 
 - Excluding `:integration:*` and `:wiring:firebase` leaves `:core:*` and `:feature:*` compiling and testing with fakes.
+- `settings.gradle.kts` uses `carapp.excludeFirebaseProviders=true` and the explicit conditional
+  provider registry of `D-43` / `D-44`; missing provider directories create no empty projects.
+- The proof also compiles and tests `:shared`, and runs Android host plus `iosSimulatorArm64` on
+  macOS (`D-45`).
 - The check runs in CI under the name `provider-decoupling`.
 
 ## Phase 4 - MVP Hardening
@@ -666,14 +674,19 @@ E0-00 owner decisions (completed)
                       -> Phase 0 closes
   -> Phase 1 local persistence
       -> E1-01 :core:database
-          -> E0-07 walking skeleton gate (moved here by D-30)
-              -> the rest of Phase 1
-              -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
-              -> Phase 3 can start E3-01 early, but sync wiring depends on Phases 1 and 2
-              -> Phase 4
+          -> E3-06 provider decoupling proof (pulled forward by D-42)
+              -> E3-01 Firestore rules (pulled forward by D-40)
+                  -> E0-07 walking skeleton gate (moved here by D-30)
+                      -> the rest of Phase 1
+                      -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
+                      -> Phase 3 sync wiring depends on Phases 1 and 2
+                      -> Phase 4
 ```
 
-`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires `AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs the local database from `:core:database` (`E1-01`).
+`E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires
+`AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs the local database
+from `:core:database` (`E1-01`). `D-42` and `D-40` add the security prerequisite chain
+`E3-06 -> E3-01 -> E0-07` without moving E0-07 out of Phase 1.
 
 ## Story Index
 

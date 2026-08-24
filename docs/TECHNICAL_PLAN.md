@@ -53,6 +53,13 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-36 | Local database implementation | SQLDelight 2.3.2 with AndroidX bundled SQLite 2.7.0 through `sqldelight-androidx-driver` 0.2.1 | Accepted | Preserves exact SQLite constraints and UPSERT semantics on Android and iOS while retaining `minSdk 26`. |
 | D-37 | Kotlin/Native iOS targets | Support `iosArm64` and `iosSimulatorArm64`; remove `iosX64` | Accepted | The shipped device target and the Apple Silicon simulator retain the bundled SQLite stack; the already-unlinked Intel simulator target would force a divergent driver. |
 | D-38 | Database-owned mutation strategy | Kotlin/SQLDelight `DatabaseMutations` transaction facade | Accepted | Captures pre-write state for the exact recompute set, keeps writes atomic and emits reliable SQLDelight invalidations; direct generated entity mutations outside `:core:database` are rejected. |
+| D-39 | Walking-skeleton data slice | Minimal valid `Vehicle` slice; edit the vehicle name | Accepted | Uses the final closed schema without pulling the complete vehicle domain and data stories into E0-07. |
+| D-40 | Firestore-rule sequencing | E3-01 before E0-07 | Accepted | Real client traffic starts only after the complete reviewed Firestore rule set and emulator suite exist. |
+| D-41 | Development Android Firebase certificate | Current local debug certificate plus debug application ID | Accepted | Restricts the public client key without creating another development keystore secret. |
+| D-42 | Provider-proof sequencing | E3-06 before E3-01 before E0-07 | Accepted | Makes the required decoupling check executable before the first provider module appears. |
+| D-43 | Provider-exclusion control | Canonical settings selected by `carapp.excludeFirebaseProviders=true` | Accepted | Keeps the local and CI proof on one Gradle graph definition. |
+| D-44 | Provider-module registry | Explicit canonical paths, conditionally included when directories exist | Accepted | Supports a non-vacuous fixture before provider modules exist and rejects silent filesystem discovery. |
+| D-45 | Provider-decoupling platforms | Android host plus `iosSimulatorArm64` on macOS | Accepted | Proves provider-free compilation and tests on JVM and Kotlin/Native without renaming the protected check. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -160,9 +167,15 @@ fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
 `AppGraphDependencies` and the Kotlin-facing `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`; they are hidden from the Swift-facing Objective-C header. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes `SwiftAppGraph` plus the concrete state holders defined in `docs/CONTRACTS.md §20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
 
 ```text
-Exclude :integration:* and :wiring:firebase from settings.
-Compile and test all :core:* and :feature:* modules using :core:testing fakes.
+Set carapp.excludeFirebaseProviders=true in the canonical Gradle settings.
+Exclude every registered :integration:* module and :wiring:firebase whose directory exists.
+Compile and test :core:*, :feature:* and :shared on Android host and iosSimulatorArm64 using
+:core:testing fakes.
 ```
+
+The provider registry is explicit and closed (`D-44`); provider directories are never discovered
+by scanning the filesystem. Registered modules whose directories do not exist create no Gradle
+project. The required `provider-decoupling` CI job runs this proof on macOS (`D-45`).
 
 ## 6. Local Data Model
 

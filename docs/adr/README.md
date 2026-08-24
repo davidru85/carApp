@@ -45,5 +45,12 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-36 | [ADR-0037](0037-local-database-sqldelight-androidx-sqlite.md) | Use SQLDelight with the AndroidX bundled SQLite driver. | Accepted |
 | D-37 | [ADR-0038](0038-supported-ios-targets-are-arm64.md) | Support ARM64 iOS device and simulator targets only. | Accepted |
 | D-38 | [ADR-0039](0039-database-mutations-use-transaction-facade.md) | Route synchronized entity writes through a Kotlin/SQLDelight transaction facade. | Accepted |
+| D-39 | [ADR-0040](0040-walking-skeleton-uses-minimal-vehicle.md) | Use a minimal valid vehicle for the walking-skeleton round trip. | Accepted |
+| D-40 | [ADR-0041](0041-firestore-rules-precede-walking-skeleton.md) | Complete Firestore rules before the walking skeleton. | Accepted |
+| D-41 | [ADR-0042](0042-development-firebase-key-uses-local-debug-certificate.md) | Restrict the development Firebase key to the owner's local debug certificate. | Accepted |
+| D-42 | [ADR-0043](0043-provider-decoupling-precedes-first-integration.md) | Complete provider decoupling before the first integration module. | Accepted |
+| D-43 | [ADR-0044](0044-provider-exclusion-uses-gradle-property.md) | Select provider-free settings through a Gradle property. | Accepted |
+| D-44 | [ADR-0045](0045-provider-modules-use-explicit-conditional-registry.md) | Use an explicit conditional provider-module registry. | Accepted |
+| D-45 | [ADR-0046](0046-provider-proof-runs-jvm-and-kotlin-native.md) | Run the provider proof on JVM and Kotlin/Native. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
