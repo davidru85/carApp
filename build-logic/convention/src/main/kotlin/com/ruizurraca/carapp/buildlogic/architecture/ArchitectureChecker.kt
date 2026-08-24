@@ -57,6 +57,7 @@ object ArchitectureChecker {
         violations += checkModuleIsIntroducedByItsOwningStory(module)
         violations += checkSkieIsOnlyInShared(module)
         violations += checkCoreDoesNotDependOnShared(module)
+        violations += checkSharedTestingIsTestOnly(module)
         violations += checkNoFeatureToFeatureDependency(module)
         violations += checkCrashHasNoExpectActual(module)
         violations += checkDatabaseTypesStayInTheirModule(module)
@@ -200,6 +201,25 @@ object ArchitectureChecker {
             }
     }
 
+    /** `D-56`: app test support is never a production dependency of a consumer module. */
+    private fun checkSharedTestingIsTestOnly(module: ModuleUnderCheck): List<Violation> {
+        if (module.path == ":shared:testing") return emptyList()
+        return module.projectDependencyConfigurations[":shared:testing"].orEmpty()
+            .filterNot(::isAllowedSharedTestingConfiguration)
+            .map {
+                Violation(
+                    module.path,
+                    "shared-testing-outside-common-test",
+                    "declares :shared:testing in $it. D-56 permits only commonTest; the SKIE " +
+                        "metadata configuration is an automatically generated non-binary edge.",
+                )
+            }
+    }
+
+    private fun isAllowedSharedTestingConfiguration(configuration: String): Boolean =
+        configuration == "commonTestImplementation" ||
+            configuration.startsWith("swiftPMDependenciesForLockFilesMetadataClasspath")
+
     private fun checkNoFeatureToFeatureDependency(module: ModuleUnderCheck): List<Violation> {
         if (!module.path.startsWith(":feature:")) return emptyList()
         return module.projectDependencies
@@ -233,7 +253,7 @@ object ArchitectureChecker {
      * `AppGraphDependencies` field of `:shared`.
      */
     private fun checkDatabaseTypesStayInTheirModule(module: ModuleUnderCheck): List<Violation> {
-        val allowed = setOf(":core:database", ":core:testing", ":shared")
+        val allowed = setOf(":core:database", ":core:testing", ":shared", ":shared:testing")
         if (module.path in allowed) return emptyList()
         return module.sourceLines
             .filter { Regex("""\b(AppDatabase|DatabaseFactory)\b""").containsMatchIn(it.text) }
@@ -242,7 +262,8 @@ object ArchitectureChecker {
                     module.path,
                     "database-type-outside-core-database",
                     "${it.file}:${it.number} references a :core:database type. docs/CONTRACTS.md §20.3.2 " +
-                        "allows it only in :core:database, :core:testing fakes and the :shared AppGraphDependencies field.",
+                        "allows it only in :core:database, :core:testing fakes, :shared:testing " +
+                            "composition and the :shared AppGraphDependencies field.",
                 )
             }
     }

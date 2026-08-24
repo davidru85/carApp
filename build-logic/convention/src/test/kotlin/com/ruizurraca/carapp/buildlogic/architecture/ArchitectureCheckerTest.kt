@@ -35,6 +35,7 @@ class ArchitectureCheckerTest {
     private fun module(
         path: String,
         projectDependencies: Set<String> = emptySet(),
+        projectDependencyConfigurations: Map<String, Set<String>> = emptyMap(),
         externalDependencies: Set<String> = emptySet(),
         imports: Set<String> = emptySet(),
         source: String = "",
@@ -42,6 +43,7 @@ class ArchitectureCheckerTest {
     ) = ModuleUnderCheck(
         path = path,
         projectDependencies = projectDependencies,
+        projectDependencyConfigurations = projectDependencyConfigurations,
         externalDependencies = externalDependencies,
         imports = imports,
         sourceLines = source.lines().withIndex()
@@ -150,6 +152,32 @@ class ArchitectureCheckerTest {
     }
 
     @Test
+    fun sharedTestingMayBeConsumedOnlyFromCommonTest() {
+        assertRejected(
+            module(
+                path = ":shared",
+                projectDependencies = setOf(":shared:testing"),
+                projectDependencyConfigurations = mapOf(":shared:testing" to setOf("commonMainImplementation")),
+            ),
+            "shared-testing-outside-common-test",
+        )
+        listOf(
+            "commonTestImplementation",
+            "swiftPMDependenciesForLockFilesMetadataClasspath",
+            "swiftPMDependenciesForLockFilesMetadataClasspathDependencies",
+        ).forEach { configuration ->
+            assertRuleDoesNotFire(
+                module(
+                    path = ":shared",
+                    projectDependencies = setOf(":shared:testing"),
+                    projectDependencyConfigurations = mapOf(":shared:testing" to setOf(configuration)),
+                ),
+                "shared-testing-outside-common-test",
+            )
+        }
+    }
+
+    @Test
     fun featureDataMayNotDependOnCoreAuthOrAnIntegration() {
         assertRejected(
             module(":core:database", projectDependencies = setOf(":integration:firebase-firestore")),
@@ -249,6 +277,7 @@ class ArchitectureCheckerTest {
             )
         }
         assertAccepted(module(":core:testing", source = "class FakeDatabaseFactory : DatabaseFactory"))
+        assertAccepted(module(":shared:testing", source = "fun fake(): DatabaseFactory = error(\"x\")"))
     }
 
     @Test

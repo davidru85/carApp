@@ -13,8 +13,22 @@ import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.SyncTriggerAdapter
 import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeAppClock
+import com.ruizurraca.carapp.core.testing.FakeAuthClient
+import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
+import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
+import com.ruizurraca.carapp.core.testing.FakeOwnerContext
+import com.ruizurraca.carapp.core.testing.FakeRemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeTokenProvider
+import com.ruizurraca.carapp.core.testing.FakeUuidGenerator
+import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
+import com.ruizurraca.carapp.core.testing.NoOpAnalyticsTracker
+import com.ruizurraca.carapp.core.testing.RecordingLogger
+import com.ruizurraca.carapp.core.testing.RecordingSyncTriggerAdapter
+import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 
 /**
  * Builds the complete provider-free dependency contract for application tests.
@@ -26,21 +40,21 @@ import com.ruizurraca.carapp.core.sync.RemoteSyncSource
  */
 @Suppress("LongParameterList")
 fun testAppGraphDependencies(
-    databaseFactory: DatabaseFactory = missingDefault("databaseFactory"),
-    authClient: AuthClient = missingDefault("authClient"),
-    tokenProvider: TokenProvider = missingDefault("tokenProvider"),
-    ownerContext: OwnerContext = missingDefault("ownerContext"),
-    remoteSyncSource: RemoteSyncSource = missingDefault("remoteSyncSource"),
-    analyticsTracker: AnalyticsTracker = missingDefault("analyticsTracker"),
-    crashReporter: CrashReporter = missingDefault("crashReporter"),
-    clock: AppClock = missingDefault("clock"),
-    dispatchers: DispatcherProvider = missingDefault("dispatchers"),
-    uuidGenerator: UuidGenerator = missingDefault("uuidGenerator"),
-    logger: Logger = missingDefault("logger"),
+    databaseFactory: DatabaseFactory = InMemoryDatabaseFactory(),
+    authClient: AuthClient = FakeAuthClient(),
+    tokenProvider: TokenProvider = FakeTokenProvider(),
+    ownerContext: OwnerContext = FakeOwnerContext(),
+    remoteSyncSource: RemoteSyncSource = FakeRemoteSyncSource(),
+    analyticsTracker: AnalyticsTracker = NoOpAnalyticsTracker,
+    crashReporter: CrashReporter = NoOpCrashReporter,
+    clock: AppClock = FakeAppClock(),
+    dispatchers: DispatcherProvider = TestDispatcherProvider(),
+    uuidGenerator: UuidGenerator = FakeUuidGenerator(),
+    logger: Logger = RecordingLogger(),
     isDebugBuild: Boolean = true,
-    localeProvider: LocaleProvider = missingDefault("localeProvider"),
-    connectivityObserver: ConnectivityObserver = missingDefault("connectivityObserver"),
-    syncTriggerAdapter: SyncTriggerAdapter = missingDefault("syncTriggerAdapter"),
+    localeProvider: LocaleProvider = FakeLocaleProvider(),
+    connectivityObserver: ConnectivityObserver = FakeConnectivityObserver(),
+    syncTriggerAdapter: SyncTriggerAdapter = RecordingSyncTriggerAdapter(),
 ): AppGraphDependencies =
     AppGraphDependencies(
         databaseFactory = databaseFactory,
@@ -59,5 +73,3 @@ fun testAppGraphDependencies(
         connectivityObserver = connectivityObserver,
         syncTriggerAdapter = syncTriggerAdapter,
     )
-
-private fun <T> missingDefault(name: String): T = error("Default fake is not implemented: $name")

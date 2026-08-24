@@ -63,6 +63,9 @@
   to the Vehicle walking-skeleton slice and reserves all remaining behavior for its owning stories.
 - D-56 places `testAppGraphDependencies(...)` in `:shared:testing`, keeps `AppGraphDependencies`
   in `:shared` and preserves `:core:testing` as generic test support.
+- TDD order exemption used for architecture-rule fixtures, exactly as permitted by
+  `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
+  architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
 
 ## Verification Run
 

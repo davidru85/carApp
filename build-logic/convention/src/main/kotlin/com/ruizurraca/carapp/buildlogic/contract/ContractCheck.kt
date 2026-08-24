@@ -296,20 +296,102 @@ class ContractCheck(private val repoRoot: File) {
     }
 
     // 13 -------------------------------------------------------------------------------------
-    private fun assertion13TestAppGraphParity(): AssertionResult =
-        if (repoRoot.resolve("core/testing/src/commonMain").walkTopDown()
-                .any { it.isFile && it.readText().contains("fun testAppGraphDependencies") }
-        ) {
-            AssertionResult(13, "testAppGraphDependencies matches AppGraphDependencies", AssertionResult.Status.PASS)
+    private fun assertion13TestAppGraphParity(): AssertionResult {
+        val graphSource = repoRoot.resolve("shared/src/commonMain").walkTopDown()
+            .firstOrNull { it.isFile && it.readText().contains("data class AppGraphDependencies") }
+        val factorySource = repoRoot.resolve("shared/testing/src/commonMain").walkTopDown()
+            .firstOrNull { it.isFile && it.readText().contains("fun testAppGraphDependencies") }
+
+        if (graphSource == null || factorySource == null) {
+            return AssertionResult(
+                13,
+                "testAppGraphDependencies matches AppGraphDependencies",
+                AssertionResult.Status.PENDING,
+                "AppGraphDependencies and its :shared:testing factory are completed by E0-07 (D-27, D-56)",
+            )
+        }
+
+        val graphParameters = declarationParameters(graphSource.readText(), "data class AppGraphDependencies")
+        val factoryParameters = declarationParameters(factorySource.readText(), "fun testAppGraphDependencies")
+        val graphNames = graphParameters.map(::parameterName)
+        val factoryNames = factoryParameters.map(::parameterName)
+        val missingDefaults = factoryParameters.filterNot { hasTopLevelDefault(it) }.map(::parameterName)
+
+        return if (graphNames == factoryNames && missingDefaults.isEmpty()) {
+            AssertionResult(
+                13,
+                "testAppGraphDependencies matches AppGraphDependencies",
+                AssertionResult.Status.PASS,
+                "${factoryNames.size} parameters in canonical order; every parameter defaulted",
+            )
         } else {
             AssertionResult(
                 13,
                 "testAppGraphDependencies matches AppGraphDependencies",
-                AssertionResult.Status.PENDING,
-                "the factory is created by E0-07 after the remaining :core:auth and :core:sync " +
-                    "contracts become available (D-27)",
+                AssertionResult.Status.FAIL,
+                "graph=$graphNames, factory=$factoryNames, missing defaults=$missingDefaults",
             )
         }
+    }
+
+    private fun declarationParameters(source: String, marker: String): List<String> {
+        val declaration = source.indexOf(marker)
+        check(declaration >= 0) { "Could not find $marker" }
+        val opening = source.indexOf('(', declaration + marker.length)
+        check(opening >= 0) { "Could not find parameter list for $marker" }
+
+        var depth = 0
+        var closing = -1
+        for (index in opening until source.length) {
+            when (source[index]) {
+                '(' -> depth += 1
+                ')' -> {
+                    depth -= 1
+                    if (depth == 0) {
+                        closing = index
+                        break
+                    }
+                }
+            }
+        }
+        check(closing > opening) { "Unbalanced parameter list for $marker" }
+        return splitTopLevel(source.substring(opening + 1, closing))
+    }
+
+    private fun splitTopLevel(parameters: String): List<String> {
+        val result = mutableListOf<String>()
+        var start = 0
+        var depth = 0
+        parameters.forEachIndexed { index, character ->
+            when (character) {
+                '(', '[', '{', '<' -> depth += 1
+                ')', ']', '}', '>' -> depth -= 1
+                ',' -> if (depth == 0) {
+                    result += parameters.substring(start, index).trim()
+                    start = index + 1
+                }
+            }
+        }
+        parameters.substring(start).trim().takeIf(String::isNotEmpty)?.let(result::add)
+        return result
+    }
+
+    private fun parameterName(parameter: String): String =
+        checkNotNull(Regex("""(?:val\s+)?([A-Za-z][A-Za-z0-9]*)\s*:""").find(parameter)) {
+            "Could not parse parameter: $parameter"
+        }.groupValues[1]
+
+    private fun hasTopLevelDefault(parameter: String): Boolean {
+        var depth = 0
+        parameter.forEach { character ->
+            when (character) {
+                '(', '[', '{', '<' -> depth += 1
+                ')', ']', '}', '>' -> depth -= 1
+                '=' -> if (depth == 0) return true
+            }
+        }
+        return false
+    }
 
     // 15 -------------------------------------------------------------------------------------
     private fun assertion15NoTbdInVersionMatrix(): AssertionResult {

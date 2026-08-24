@@ -30,8 +30,8 @@ interface CrashReporter {
 }
 
 /**
- * The default implementation for tests and local builds, and the default fake used by
- * `:core:testing` (`§20.3.1`). It records nothing and buffers nothing.
+ * The default implementation for tests and local builds, selected by the `:shared:testing`
+ * factory (`§20.3.1`, `D-56`). It records nothing and buffers nothing.
  */
 object NoOpCrashReporter : CrashReporter {
     override fun recordNonFatal(
