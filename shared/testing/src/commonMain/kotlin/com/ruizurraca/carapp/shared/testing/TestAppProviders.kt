@@ -4,9 +4,7 @@ import com.ruizurraca.carapp.AppGraphDependencies
 import com.ruizurraca.carapp.AppProviders
 
 /** Builds explicit provider-free graph inputs from the canonical test dependency container. */
-fun testAppProviders(
-    dependencies: AppGraphDependencies = testAppGraphDependencies(),
-): AppProviders =
+fun testAppProviders(dependencies: AppGraphDependencies = testAppGraphDependencies()): AppProviders =
     object : AppProviders {
         override val databaseFactory = dependencies.databaseFactory
         override val authClient = dependencies.authClient

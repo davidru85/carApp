@@ -245,12 +245,35 @@ class ContractCheck(private val repoRoot: File) {
     }
 
     // 7 --------------------------------------------------------------------------------------
-    private fun assertion7ObjcHeaderGolden(): AssertionResult =
-        if (exists("shared/build/generated/objc-header/Shared.h.golden")) {
-            AssertionResult(7, "the committed Objective-C golden header is unchanged", AssertionResult.Status.PASS)
-        } else {
-            AssertionResult(7, "the committed Objective-C golden header is unchanged", AssertionResult.Status.PENDING, "the golden header is produced by E0-07")
+    private fun assertion7ObjcHeaderGolden(): AssertionResult {
+        val path = "shared/build/generated/objc-header/Shared.h.golden"
+        if (!exists(path)) {
+            return AssertionResult(
+                7,
+                "the committed Objective-C golden header is unchanged",
+                AssertionResult.Status.PENDING,
+                "the golden header is produced by E0-07",
+            )
         }
+
+        val validation = validateObjcHeader(read(path))
+        return if (validation.isValid) {
+            AssertionResult(
+                7,
+                "the committed Objective-C golden header is unchanged",
+                AssertionResult.Status.PASS,
+                "Swift allowlist complete; forbidden Kotlin construction types absent",
+            )
+        } else {
+            AssertionResult(
+                7,
+                "the committed Objective-C golden header is unchanged",
+                AssertionResult.Status.FAIL,
+                "missing=${validation.missing}; forbidden=${validation.forbidden}; " +
+                    "createSwiftAppGraph declarations=${validation.swiftFactoryDeclarationCount}",
+            )
+        }
+    }
 
     // 8 --------------------------------------------------------------------------------------
     private fun assertion8ModuleInventoryMirrored(): AssertionResult {
