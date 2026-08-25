@@ -51,7 +51,7 @@ internal class VehicleSliceRuntime(
             createdAt = now,
             updatedAt = now,
             schemaVersion = schemaVersion,
-            outboxPayload = snapshot,
+            outboxPayload = snapshot.takeUnless { owner == LOCAL_OWNER },
         )
         if (owner != LOCAL_OWNER && dependencies.connectivityObserver.isOnline.value) {
             val result =
