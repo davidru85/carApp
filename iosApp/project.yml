@@ -11,12 +11,7 @@ settings:
     CODE_SIGNING_ALLOWED: NO
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: NO
-    FRAMEWORK_SEARCH_PATHS:
-      - $(inherited)
-      - $(SRCROOT)/../composition/ios/build/bin/iosSimulatorArm64/debugFramework
-    LD_RUNPATH_SEARCH_PATHS:
-      - $(inherited)
-      - "@executable_path/Frameworks"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
 packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
@@ -26,14 +21,13 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: .
-        excludes:
-          - "project.yml"
-          - "*.xcodeproj"
+      - path: ContentView.swift
+      - path: WalkingSkeletonModel.swift
+      - path: carAppApp.swift
+      - path: en.lproj
+      - path: es.lproj
+      - path: Config/Debug/GoogleService-Info-Debug.plist
     dependencies:
-      - framework: ../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework
-        embed: true
-        codeSign: false
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase

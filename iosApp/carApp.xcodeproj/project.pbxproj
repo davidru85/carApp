@@ -7,43 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0C1EB05F79895A10EECE54D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C99F176FF58DC55F24480629 /* ContentView.swift */; };
-		38065E17AF7716397F04DB8F /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4458349049495E69A457F032 /* WalkingSkeletonModel.swift */; };
+		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
-		61E65B896D4706CE90C4C527 /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 20B81884D405CE5CFB7054DB /* Shared.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		97975CFB4D9CB67E28EB086C /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E166135431E98EF2E7231D4C /* carAppApp.swift */; };
-		CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 76D6203141B99DECA8D14A86 /* Localizable.strings */; };
-		E3358FBFA6DEE9602C7C3178 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */; };
-		E5D8DFF4CEFBC7ED2DCBD62B /* generate-project.sh in Resources */ = {isa = PBXBuildFile; fileRef = B135C9D05B043F7C0AAC70AE /* generate-project.sh */; };
+		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
+		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
+		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
-		ED38CE0378861B5E48095112 /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 20B81884D405CE5CFB7054DB /* Shared.framework */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		72D722CA3FFC9F566092D92A /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				61E65B896D4706CE90C4C527 /* Shared.framework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		0046B86E946AAC2C64B7BBD1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
-		20B81884D405CE5CFB7054DB /* Shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Shared.framework; path = ../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework; sourceTree = "<group>"; };
-		25A592DAD009883E29DBAB11 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		4458349049495E69A457F032 /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
-		9BF7D473CE0D10A2A16535D3 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
-		B135C9D05B043F7C0AAC70AE /* generate-project.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "generate-project.sh"; sourceTree = "<group>"; };
-		C99F176FF58DC55F24480629 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		E166135431E98EF2E7231D4C /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
+		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
+		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
+		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
+		8EB8A37AF599C28041EB55CA /* es.lproj */ = {isa = PBXFileReference; path = es.lproj; sourceTree = "<group>"; };
+		90CED6835AA58C9424996B48 /* en.lproj */ = {isa = PBXFileReference; path = en.lproj; sourceTree = "<group>"; };
+		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -52,7 +31,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED38CE0378861B5E48095112 /* Shared.framework in Frameworks */,
 				4C060553EC46B345A3A651A4 /* FirebaseAuth in Frameworks */,
 				40250C151B05AB2AC7EBCD8E /* FirebaseCore in Frameworks */,
 				EB7147A26272A7B2C29F97D4 /* FirebaseFirestore in Frameworks */,
@@ -62,19 +40,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		22A277641E77C9E7433CBE1E /* iosApp */ = {
+		2850FA255307524833517781 /* Debug */ = {
 			isa = PBXGroup;
 			children = (
-				E166135431E98EF2E7231D4C /* carAppApp.swift */,
-				C99F176FF58DC55F24480629 /* ContentView.swift */,
-				B135C9D05B043F7C0AAC70AE /* generate-project.sh */,
-				25A592DAD009883E29DBAB11 /* Info.plist */,
-				4458349049495E69A457F032 /* WalkingSkeletonModel.swift */,
-				B2E085FC069B7794CF608B18 /* Config */,
-				76D6203141B99DECA8D14A86 /* Localizable.strings */,
+				319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */,
 			);
-			name = iosApp;
-			path = .;
+			name = Debug;
+			path = Config/Debug;
 			sourceTree = "<group>";
 		};
 		39881192AFE2CF4DD842531A /* Products */ = {
@@ -85,36 +57,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		B2E085FC069B7794CF608B18 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				D662E349C92D738275074605 /* Debug */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
-		CCED53CEB55E73F654639F9F /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				20B81884D405CE5CFB7054DB /* Shared.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		D662E349C92D738275074605 /* Debug */ = {
-			isa = PBXGroup;
-			children = (
-				0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */,
-			);
-			path = Debug;
-			sourceTree = "<group>";
-		};
 		E3D19A4D38694A47DC344CE6 = {
 			isa = PBXGroup;
 			children = (
-				B2E085FC069B7794CF608B18 /* Config */,
-				22A277641E77C9E7433CBE1E /* iosApp */,
-				CCED53CEB55E73F654639F9F /* Frameworks */,
+				2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */,
+				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
+				90CED6835AA58C9424996B48 /* en.lproj */,
+				8EB8A37AF599C28041EB55CA /* es.lproj */,
+				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
+				2850FA255307524833517781 /* Debug */,
 				39881192AFE2CF4DD842531A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -130,7 +81,6 @@
 				BD446437D5E90F9764FF8B6E /* Sources */,
 				B3B0B1D2B074820A8E592E92 /* Resources */,
 				2EC8FC2657F951912E87F026 /* Frameworks */,
-				72D722CA3FFC9F566092D92A /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -163,7 +113,6 @@
 			knownRegions = (
 				Base,
 				en,
-				es,
 			);
 			mainGroup = E3D19A4D38694A47DC344CE6;
 			minimizedProjectReferenceProxies = 1;
@@ -185,9 +134,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E3358FBFA6DEE9602C7C3178 /* GoogleService-Info-Debug.plist in Resources */,
-				CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */,
-				E5D8DFF4CEFBC7ED2DCBD62B /* generate-project.sh in Resources */,
+				8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -220,25 +167,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0C1EB05F79895A10EECE54D3 /* ContentView.swift in Sources */,
-				38065E17AF7716397F04DB8F /* WalkingSkeletonModel.swift in Sources */,
-				97975CFB4D9CB67E28EB086C /* carAppApp.swift in Sources */,
+				8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */,
+				3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */,
+				624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXVariantGroup section */
-		76D6203141B99DECA8D14A86 /* Localizable.strings */ = {
-			isa = PBXVariantGroup;
-			children = (
-				0046B86E946AAC2C64B7BBD1 /* en */,
-				9BF7D473CE0D10A2A16535D3 /* es */,
-			);
-			name = Localizable.strings;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		174E1FDA848B95D7D2059842 /* Release */ = {
@@ -281,10 +216,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(SRCROOT)/../composition/ios/build/bin/iosSimulatorArm64/debugFramework",
-				);
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -294,10 +226,6 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -348,10 +276,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(SRCROOT)/../composition/ios/build/bin/iosSimulatorArm64/debugFramework",
-				);
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -367,10 +292,6 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -387,10 +308,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"../composition/ios/build/bin/iosSimulatorArm64/debugFramework\"",
-				);
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -407,10 +324,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"\"../composition/ios/build/bin/iosSimulatorArm64/debugFramework\"",
-				);
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
