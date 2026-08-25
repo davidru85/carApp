@@ -8,8 +8,8 @@ import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
-import kotlinx.serialization.json.Json
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -82,7 +82,10 @@ class FirebaseRemoteSyncSourceTest {
             assertEquals(1, item.schemaVersion)
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
             assertEquals(false, item.deleted)
-            assertEquals(Json.parseToJsonElement(vehicleJson(entityId.value)), Json.parseToJsonElement(item.json))
+            assertEquals(
+                Json.parseToJsonElement(vehicleJson(entityId.value, serverUpdatedAt.toEpochMilliseconds())),
+                Json.parseToJsonElement(item.json),
+            )
             assertEquals(RemoteCursor(serverUpdatedAt, entityId), page.nextCursor)
             assertEquals(false, page.hasMore)
             assertEquals(
@@ -144,7 +147,10 @@ private fun vehicleDocument(
             ),
     )
 
-private fun vehicleJson(id: String): String =
+private fun vehicleJson(
+    id: String,
+    updatedAt: Long = 1_700_000_000_000L,
+): String =
     """
     {
       "id":"$id",
@@ -155,7 +161,7 @@ private fun vehicleJson(id: String): String =
       "model":null,
       "fuelType":"GASOLINE",
       "createdAt":1700000000000,
-      "updatedAt":1700000000000,
+      "updatedAt":$updatedAt,
       "deleted":false,
       "deletedAt":null,
       "schemaVersion":1
