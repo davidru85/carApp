@@ -42,6 +42,7 @@ gradle/libs.versions.toml
 :shared
 :shared:testing
 :wiring:firebase
+:composition:ios
 :androidApp
 iosApp/
 firestore/
@@ -711,7 +712,8 @@ If the local database has pending outbox rows at the time of account deletion, t
 
 ### 11.6 App Graph Contract
 
-`:shared` exposes the application graph through a dependency container:
+`:shared` exposes provider-free graph construction through an explicit port and retains the
+complete dependency container used internally by graph construction:
 
 ```kotlin
 data class AppGraphDependencies(
@@ -732,19 +734,41 @@ data class AppGraphDependencies(
     val syncTriggerAdapter: SyncTriggerAdapter,
 )
 
-fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
+interface AppProviders {
+    val databaseFactory: DatabaseFactory
+    val authClient: AuthClient
+    val tokenProvider: TokenProvider
+    val ownerContext: OwnerContext
+    val remoteSyncSource: RemoteSyncSource
+    val analyticsTracker: AnalyticsTracker
+    val crashReporter: CrashReporter
+    val clock: AppClock
+    val dispatchers: DispatcherProvider
+    val uuidGenerator: UuidGenerator
+    val logger: Logger
+    val localeProvider: LocaleProvider
+    val connectivityObserver: ConnectivityObserver
+    val syncTriggerAdapter: SyncTriggerAdapter
+}
+
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 ```
 
 `CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
 
 `:core:crash` exposes the `CrashReporter` interface and a default no-op implementation in `commonMain`. It MUST NOT contain `expect`/`actual` declarations. Platform crash-reporting implementations live in `:integration:*` and are aggregated by `:wiring:firebase`.
 
-`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)` and the Kotlin-facing `AppGraph` are construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden from the generated Objective-C header through Kotlin/Native interop controls such as `@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade declared in §20.10.
+`AppProviders`, `AppGraphDependencies` and `buildAppGraph(isDebugBuild, providers)` are
+construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that
+performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden
+from the generated Objective-C header through Kotlin/Native interop controls such as
+`@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade
+declared in §20.10.
 
 Rules:
 
 - `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on SQLDelight or SQLite. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
-- Koin may construct `AppGraphDependencies` in wiring and platform modules.
+- Koin may construct `AppProviders` implementations only in wiring and platform composition.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
 - Tests provide fakes without starting Koin through the `:shared:testing` factory
@@ -752,9 +776,18 @@ Rules:
   `:core:testing`. Every parameter is defaulted. Adding a member REQUIRES updating that factory in
   the same change, preserving the same parameter order. Consumer modules MUST depend on
   `:shared:testing` only from `commonTest` (`D-56`).
+- `AppProviders` has exactly the same members and order as `AppGraphDependencies` after removing
+  `isDebugBuild`. `buildAppGraph` supplies that flag and maps every other member without replacing
+  or decorating it (`D-59`).
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
-- `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider bindings. `:wiring:firebase` is the module that aggregates those bindings into the `AppGraph`; integration modules MUST NOT reference `createAppGraph`.
+- `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider
+  bindings. `:wiring:firebase` is the only module that constructs Firebase implementations;
+  integration modules MUST NOT reference `buildAppGraph`.
+- `:composition:ios` produces the single framework named `Shared`, declares
+  `api(project(":shared"))`, exports `:shared`, depends on `:wiring:firebase` with
+  `implementation`, and owns the only `createSwiftAppGraph(isDebugBuild)` declaration. It contains
+  no product logic and delegates directly to `buildAppGraph` (`D-58`).
 
 ## 12. Repository Contracts
 
@@ -904,7 +937,9 @@ Koin KMP is the accepted dependency injection library for the MVP.
 
 ### 15.3 Swift-facing surface
 
-The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin declarations". The allowlist is:
+The public Swift-facing ABI of the `Shared` framework is an allowlist, not "all public Kotlin
+declarations". `:composition:ios` produces the framework and exports the declarations owned by
+`:shared`. The allowlist is:
 
 - `SwiftAppGraph`.
 - `createSwiftAppGraph(isDebugBuild: Boolean)`.
@@ -914,7 +949,9 @@ The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin
 
 Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, SQLDelight or SQLite types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
 
-`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)`, the Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are Kotlin-facing contracts and MUST NOT be exported to Swift.
+`AppProviders`, `AppGraphDependencies`, `buildAppGraph(isDebugBuild, providers)`, the
+Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are
+Kotlin-facing contracts and MUST NOT be exported to Swift.
 
 `SegmentResult` and `ConsumptionReport` are domain types and MUST NOT appear on the Swift-facing ABI. Only their projected summary fields in `FuelEntryListUiState` and `FuelEntryListItemUi.consumptionScaled` / `invalidReason` cross the boundary.
 
@@ -926,7 +963,10 @@ Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift b
 
 Nullable primitives and `StateFlow<T>` / `List<T>` exports MUST use the SKIE and Kotlin/Native annotations required by the pinned SKIE version to produce stable Swift types. The generated header golden is the executable source of truth for those annotations.
 
-A golden file of the generated Objective-C header is committed at `shared/build/generated/objc-header/Shared.h.golden` and diffed on every PR by the `objc-header-golden-check` CI step; a change to it is a review signal.
+A golden file of the generated Objective-C header remains committed at
+`shared/build/generated/objc-header/Shared.h.golden`. The `objc-header-golden-check` CI step
+generates its source from `composition/ios/build`, diffs the two files on every PR and treats a
+change as a review signal.
 
 ### 15.4 HTTP/API Client Contract
 
@@ -1848,7 +1888,7 @@ No leaf carries a free-text `String`. Adding one is a contract violation. The le
 
 `CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
 
-### 20.10 Shared surface — `:shared`
+### 20.10 Shared surface — `:shared`, exported by `:composition:ios`
 
 ```kotlin
 // Kotlin-facing construction API. Hidden from Objective-C/Swift export.
@@ -1862,7 +1902,7 @@ interface AppGraph {
     fun close()
 }
 
-// Swift-facing construction API. This is exported.
+// Swift-facing construction API. Declared once in :composition:ios and exported.
 fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph
 
 // Swift-facing facade. This is exported.
@@ -2089,4 +2129,9 @@ From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, 
 
 `VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`).
 
-The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.
+The Kotlin-facing `AppGraph`, `AppProviders`, `AppGraphDependencies` and
+`buildAppGraph(isDebugBuild, providers)` MUST be absent from the Objective-C header.
+`createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState`
+classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`,
+`ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind`
+MUST be present.

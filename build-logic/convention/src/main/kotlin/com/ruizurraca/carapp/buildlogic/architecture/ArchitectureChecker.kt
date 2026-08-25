@@ -55,7 +55,7 @@ object ArchitectureChecker {
         val rule = ruleFor(module.path, rules)
 
         violations += checkModuleIsIntroducedByItsOwningStory(module)
-        violations += checkSkieIsOnlyInShared(module)
+        violations += checkSkieIsOnlyInIosComposition(module)
         violations += checkCoreDoesNotDependOnShared(module)
         violations += checkSharedTestingIsTestOnly(module)
         violations += checkNoFeatureToFeatureDependency(module)
@@ -105,7 +105,15 @@ object ArchitectureChecker {
      * are an artifact of the Gradle model, not an architectural edge.
      */
     private fun declaredEdges(module: ModuleUnderCheck): Set<String> =
-        module.projectDependencies.filterNot { it == module.path }.toSet()
+        module.projectDependencies
+            .filterNot { it == module.path }
+            .filter { dependency ->
+                val configurations = module.projectDependencyConfigurations[dependency].orEmpty()
+                configurations.isEmpty() || configurations.any { !isSkieMetadataConfiguration(it) }
+            }.toSet()
+
+    private fun isSkieMetadataConfiguration(configuration: String): Boolean =
+        configuration.startsWith("swiftPMDependenciesForLockFilesMetadataClasspath")
 
     private fun checkForbiddenModules(module: ModuleUnderCheck, rule: ModuleRule) =
         declaredEdges(module).filter { matchesAny(it, rule.forbiddenModules) }.map {
@@ -173,14 +181,14 @@ object ArchitectureChecker {
             emptyList()
         }
 
-    /** `D-2`: SKIE is applied only to `:shared`. */
-    private fun checkSkieIsOnlyInShared(module: ModuleUnderCheck): List<Violation> =
-        if ("co.touchlab.skie" in module.appliedPluginIds && module.path != ":shared") {
+    /** `D-58`: SKIE is applied only to the module that owns the exported iOS framework. */
+    private fun checkSkieIsOnlyInIosComposition(module: ModuleUnderCheck): List<Violation> =
+        if ("co.touchlab.skie" in module.appliedPluginIds && module.path != ":composition:ios") {
             listOf(
                 Violation(
                     module.path,
-                    "skie-outside-shared",
-                    "applies SKIE. D-2 restricts SKIE to :shared.",
+                    "skie-outside-ios-composition",
+                    "applies SKIE. D-58 restricts SKIE to :composition:ios.",
                 ),
             )
         } else {
@@ -218,7 +226,7 @@ object ArchitectureChecker {
 
     private fun isAllowedSharedTestingConfiguration(configuration: String): Boolean =
         configuration == "commonTestImplementation" ||
-            configuration.startsWith("swiftPMDependenciesForLockFilesMetadataClasspath")
+            isSkieMetadataConfiguration(configuration)
 
     private fun checkNoFeatureToFeatureDependency(module: ModuleUnderCheck): List<Violation> {
         if (!module.path.startsWith(":feature:")) return emptyList()
@@ -396,18 +404,19 @@ object ArchitectureChecker {
 
     /**
      * `docs/CONTRACTS.md §11.6`: `:integration:*` modules MAY declare Koin `Module` bindings but
-     * MUST NOT reference `createAppGraph`; only `:wiring:firebase` aggregates them into the graph.
+     * MUST NOT reference `buildAppGraph`; only platform composition may build the graph.
      */
     private fun checkIntegrationsDoNotBuildTheGraph(module: ModuleUnderCheck): List<Violation> {
         if (!module.path.startsWith(":integration:")) return emptyList()
         return module.sourceLines
-            .filter { it.text.contains("createAppGraph") }
+            .filter { it.text.contains("buildAppGraph") }
             .map {
                 Violation(
                     module.path,
                     "integration-builds-app-graph",
-                    "${it.file}:${it.number} references createAppGraph. Only :wiring:firebase may aggregate " +
-                        "bindings into the graph (docs/CONTRACTS.md §11.6).",
+                    "${it.file}:${it.number} references buildAppGraph. Integrations expose provider " +
+                        "implementations; only platform composition builds the graph " +
+                        "(docs/CONTRACTS.md §11.6).",
                 )
             }
     }

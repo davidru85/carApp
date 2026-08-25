@@ -105,9 +105,10 @@ gradle/libs.versions.toml       single source of dependency versions
 :feature:fuel                   domain/data/presentation packages
 :feature:session                onboarding, auth, settings packages
 
-:shared                         iOS framework and shared graph factory
+:shared                         provider-free shared graph, Swift facade, state holders and models
 :shared:testing                 KMP testAppGraphDependencies factory, consumed from commonTest only
 :wiring:firebase                composition root that names Firebase integrations
+:composition:ios                sole Shared framework producer and iOS composition root
 :androidApp                     Android host app
 iosApp/                         SwiftUI host app
 firestore/                      rules and indexes
@@ -136,6 +137,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:shared` | `:core:*`, `:feature:*`, `:shared:testing` in test-support and SPM metadata configurations only | `:integration:*` |
 | `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
 | `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
+| `:composition:ios` | `:shared`, `:wiring:firebase` | product logic, direct `:integration:*`, a second framework runtime |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
@@ -173,19 +175,26 @@ Any change to those contracts is a human review gate and MUST update `docs/CONTR
 
 ## 5. Provider Decoupling
 
-`:shared` exposes a Kotlin-facing graph factory that receives a platform dependency container:
+`:shared` exposes a provider-free graph factory through an explicit port:
 
 ```kotlin
-fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 ```
 
-`AppGraphDependencies` and the Kotlin-facing `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`; they are hidden from the Swift-facing Objective-C header. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes `SwiftAppGraph` plus the concrete state holders defined in `docs/CONTRACTS.md §20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
+`AppProviders`, `AppGraphDependencies` and `buildAppGraph` are defined in
+`docs/CONTRACTS.md §11.6`; they are hidden from the Swift-facing Objective-C header. The sole
+exported `createSwiftAppGraph(isDebugBuild)` declaration lives in `:composition:ios`, constructs
+providers through `:wiring:firebase` and delegates to `buildAppGraph`. `:composition:ios` produces
+the only framework, keeps `baseName = "Shared"` and exports the state holders and models owned by
+`:shared`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling
+check is:
 
 ```text
 Set carapp.excludeFirebaseProviders=true in the canonical Gradle settings.
-Exclude every registered :integration:* module and :wiring:firebase whose directory exists.
+Exclude every registered :integration:* module, :wiring:firebase and :composition:ios whose
+directory exists.
 Compile and test :core:*, :feature:* and :shared on Android host and iosSimulatorArm64 using
-:core:testing fakes.
+:shared:testing and :core:testing fakes through buildAppGraph.
 ```
 
 The provider registry is explicit and closed (`D-44`); provider directories are never discovered
@@ -422,7 +431,7 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 Automated on every PR:
 
 - Gradle build for Android and shared KMP modules.
-- iOS simulator target and `:shared` framework build on macOS.
+- iOS simulator target and the `Shared` framework from `:composition:ios` build on macOS.
 - ktlint, detekt.
 - Unit tests with Kover thresholds.
 - Architecture rule checks, each with a failing fixture test.

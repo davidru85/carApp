@@ -45,7 +45,7 @@ choice: an ADR where a decision exists, otherwise the story or normative section
 | SQLDelight | `app.cash.sqldelight` | 2.3.2 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Uses the SQLite 3.24 dialect, asynchronous generation and migration verification. |
 | SQLDelight AndroidX driver | `com.eygraber:sqldelight-androidx-driver` | 0.2.1 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Suspended adapter over AndroidX KMP SQLite; confined to `:core:database`. |
 | SQLite | `androidx.sqlite:sqlite-bundled` | 2.7.0 | [ADR-0037](adr/0037-local-database-sqldelight-androidx-sqlite.md) (`D-36`) | Same bundled SQLite on both platforms and on Android API 26. |
-| SKIE | `co.touchlab.skie` | 0.10.14 | [ADR-0003](adr/0003-ios-interop-skie.md) (`D-2`) | Applied only to `:shared`. Supports Kotlin 2.4.10, which is what allows the Kotlin pin above. |
+| SKIE | `co.touchlab.skie` | 0.10.14 | [ADR-0059](adr/0059-ios-composition-owns-shared-framework.md) (`D-58`) | Applied only to `:composition:ios`, which processes exported `:shared` declarations. Supports Kotlin 2.4.10, which is what allows the Kotlin pin above. |
 | Xcode | — | 26.6 | `E0-06` | Pinned on the macOS CI runner too. |
 | Kotlin/Native iOS targets | — | `iosArm64`, `iosSimulatorArm64` | [ADR-0038](adr/0038-supported-ios-targets-are-arm64.md) (`D-37`) | `iosX64` is excluded because the accepted bundled-SQLite stack has no Intel-simulator artifacts and the application and CI already build ARM64 only. |
 | Android `compileSdk` | — | 37 | `E0-06` | Floor imposed by the pinned Compose BOM. |

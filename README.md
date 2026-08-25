@@ -98,7 +98,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
-| iOS interop | SKIE, applied only in `:shared` |
+| iOS interop | SKIE, applied only in `:composition:ios` |
 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Logging | Kermit behind `Logger` |
 
@@ -129,6 +129,7 @@ gradle/libs.versions.toml
 :shared
 :shared:testing
 :wiring:firebase
+:composition:ios
 :androidApp
 iosApp/
 firestore/

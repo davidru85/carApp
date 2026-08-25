@@ -22,7 +22,7 @@ compileSdk = "37"
 # libraries follow the Kotlin release train.
 kotlin = "2.4.10"
 ksp = "2.3.11" # KSP versions its own line since 2.3.0; 2.3.10+ supports Kotlin 2.4.x
-skie = "0.10.14" # supports Kotlin 2.4.10; applied only to :shared (D-2)
+skie = "0.10.14" # supports Kotlin 2.4.10; applied only to :composition:ios (D-58)
 coroutines = "1.11.0"
 serialization = "1.11.0"
 datetime = "0.8.0" # Instant is kotlin.time.Instant; see docs/versions-matrix.md

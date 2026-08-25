@@ -104,13 +104,15 @@ build-logic/       convention plugins, an included build
 :feature:vehicle   final module shell; only the E0-07 Vehicle slice is implemented here
 :feature:fuel      final module shell staged for the Swift-facing surface
 :feature:session   final module shell staged for the Swift-facing surface
-:shared            the iOS framework, still carrying only the E0-01 placeholder
+:shared            provider-free graph contracts, Swift facade and exported shared declarations
 :shared:testing    KMP app-graph test factory, consumed from commonTest only
+:wiring:firebase   staged Firebase provider composition contract
+:composition:ios   sole Shared framework producer and iOS composition root
 :androidApp        the Android host app
 ```
 
-`:integration:*` and `:wiring:firebase` do **not** exist yet. D-55 stages the final core and feature
-module topology in E0-07; later stories complete the non-slice behavior in place.
+`:integration:*` do **not** exist yet. D-55 stages their final paths during E0-07; later stories
+complete the non-slice behavior in place.
 
 ### Creating a module
 
@@ -129,7 +131,8 @@ dependencies {
 `carapp.kmp.library` sets Android plus the `iosArm64` and `iosSimulatorArm64` targets (`D-37`), the JDK toolchain, the host test runner,
 `kotlin-test`, coroutines, ktlint, detekt and Kover. The Android namespace is **derived** from the
 Gradle path (`D-24`), so a module MUST NOT declare one. The other plugins are
-`carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside `:shared`)
+`carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside
+`:composition:ios`)
 and `carapp.sqldelight`.
 
 ### Build and verify
@@ -285,6 +288,8 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Features do not depend on other features.
 - `:core:sync` does not depend on integrations or features.
 - `:shared` does not depend on integrations.
+- `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single `Shared`
+  framework and contains no product logic.
 - `:shared:testing` depends only on `:shared` and `:core:testing`; consumers depend on it only from
   `commonTest`.
 - No module under `:core` depends on `:shared` or `:shared:testing`.
@@ -326,7 +331,7 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
   verification MUST NOT override that policy. A required install script needs a superseding owner
   decision after its exact package, version and command are reviewed.
-- SKIE is applied only to `:shared`.
+- SKIE is applied only to `:composition:ios`.
 - Firestore offline persistence is disabled.
 - Use GitLive 2.6.x, not 3.0 alpha.
 - Use Koin KMP for wiring and constructor injection for implementation classes.

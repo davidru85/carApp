@@ -67,7 +67,7 @@ Create convention plugins for KMP libraries, features, Android application, Comp
 Acceptance criteria:
 
 - Creating a new module requires no more than five lines in its `build.gradle.kts`.
-- SKIE is applied only to `:shared`.
+- SKIE is applied only to `:composition:ios`, the framework producer selected by D-58.
 - Test and Kotlin toolchain configuration is centralized.
 - Plugins make future feature splitting possible without redesign.
 
@@ -216,18 +216,31 @@ Acceptance criteria:
 - The proof value is the name of a complete contract-valid `Vehicle` document (`D-39`); no
   walking-skeleton-only collection is introduced, and the slice does not claim E1-02 or E1-03.
 - `iosSimulatorArm64` runs in CI.
-- iOS consumes the shared framework through direct SPM integration, not CocoaPods.
+- iOS consumes the single `Shared` framework produced by `:composition:ios` through direct
+  integration, not CocoaPods. `:shared` exports no framework binary.
 - Firestore offline persistence is disabled.
 - The API keys of the development Firebase project are restricted in the Google Cloud console by package name, bundle identifier and signing certificate **before** `google-services.json` or `GoogleService-Info.plist` is committed. The repository is public (`D-34`), so those keys are readable by anyone the moment the files land (`docs/SECURITY.md`).
 - The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
-- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class, project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`, repository, use case, command model or `AppGraphDependencies` appears in the exported API, and the generated Objective-C header is committed as `shared/build/generated/objc-header/Shared.h.golden`.
-- The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing `createAppGraph(AppGraphDependencies)`, `AppGraph` and `SyncController`.
+- The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class,
+  project-owned type parameter, default argument, `CoroutineScope`, `Outcome`, `AppError`,
+  repository, use case, command model, `AppProviders` or `AppGraphDependencies` appears in the
+  exported API. The header is generated from `:composition:ios` and its golden remains committed
+  as `shared/build/generated/objc-header/Shared.h.golden`.
+- The Objective-C header contains the exported allowlist of `docs/CONTRACTS.md §20.10`, including
+  the single `createSwiftAppGraph(isDebugBuild)` declaration owned by `:composition:ios`,
+  `SwiftAppGraph`, concrete state holders and `UiState` classes, and omits the Kotlin-facing
+  `buildAppGraph(isDebugBuild, providers)`, `AppProviders`, `AppGraphDependencies`, `AppGraph` and
+  `SyncController`.
 - The `objc-header-golden-check` CI step compares the generated header with the committed golden file, and the job is moved back to `macos-latest`: `E0-05` put it on `ubuntu-latest` because it had nothing to compare, and generating the header needs the Apple toolchain.
 - `shared/README.md` documents every Swift-facing scale suffix from `docs/CONTRACTS.md §20.10` for iOS consumers.
 - `:shared:testing` exposes `testAppGraphDependencies(...)` from `commonMain` with every parameter
   defaulted to a fake, including a no-op `CrashReporter` and a no-op `AnalyticsTracker`, with the
   same parameter count and order as `AppGraphDependencies` (`D-27`, `D-56`). Consumers depend on
   `:shared:testing` only from `commonTest`.
+- `:shared` exposes `buildAppGraph(isDebugBuild, providers)` and tests it provider-free through an
+  explicit `AppProviders` fake. `:composition:ios` declares `api(project(":shared"))`, exports
+  `:shared`, depends on `:wiring:firebase`, owns SKIE and produces the only framework with
+  `baseName = "Shared"` (`D-58`, `D-59`).
 
 Database gate resolved by `D-36`: `E0-07` MUST exercise the accepted SQLDelight AndroidX bundled driver on the real Android and iOS application paths.
 
@@ -555,16 +568,21 @@ Human review required.
 
 ### E3-08 - App Graph and Firebase Wiring - M
 
-Implement `createAppGraph`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, the Swift-facing `SwiftAppGraph` and `:wiring:firebase`.
+Complete the Kotlin-facing `AppGraph`, the Swift-facing `SwiftAppGraph` and
+`:wiring:firebase` in place. E0-07 already owns the provider-free `buildAppGraph`, the sole
+`createSwiftAppGraph(isDebugBuild)` declaration in `:composition:ios` and the framework topology
+under D-58/D-59.
 
 Acceptance criteria:
 
-- `AppGraphDependencies`, the Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, exported state holders and exported `UiState` classes match `docs/CONTRACTS.md §11.6` and `§20.10`.
+- `AppProviders`, `AppGraphDependencies`, `buildAppGraph(isDebugBuild, providers)`, the
+  Kotlin-facing `AppGraph`, `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, exported state
+  holders and exported `UiState` classes match `docs/CONTRACTS.md §11.6` and `§20.10`.
 - `:shared:testing` exposes `testAppGraphDependencies(...)` from `commonMain`, mirroring the exact
   `AppGraphDependencies` parameter order and defaulting every parameter (`D-56`).
 - Only `:wiring:firebase` constructs Firebase implementations.
 - Every top-level declaration in `:wiring:firebase` is a Koin module, an abstraction factory or a platform initialiser.
-- Tests build the graph from `testAppGraphDependencies(...)` without starting Koin.
+- Tests build the graph through `buildAppGraph` and `testAppProviders(...)` without starting Koin.
 - The Swift facade exposes a sync state holder, not `SyncController`, and it owns/cancels the scopes for state holders it creates.
 - `SwiftAppGraph` state-holder factories are cached/idempotent for identical arguments, and throw after `SwiftAppGraph.close()`.
 
@@ -623,7 +641,7 @@ Acceptance criteria:
 - Excluding `:integration:*` and `:wiring:firebase` leaves `:core:*` and `:feature:*` compiling and testing with fakes.
 - `settings.gradle.kts` uses `carapp.excludeFirebaseProviders=true` and the explicit conditional
   provider registry of `D-43` / `D-44`; missing provider directories create no empty projects.
-- The proof also compiles and tests `:shared`, and runs Android host plus `iosSimulatorArm64` on
+- The proof also compiles and tests `:shared`, excludes `:composition:ios`, and runs Android host plus `iosSimulatorArm64` on
   macOS (`D-45`).
 - The check runs in CI under the name `provider-decoupling`.
 

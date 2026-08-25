@@ -45,7 +45,7 @@ Include any `SHOULD` you deviated from, and why.
 - [ ] Coverage thresholds hold
 - [ ] Architecture checks pass
 - [ ] Contract check passes
-- [ ] Relevant builds pass (Android, iOS simulator, `:shared` framework)
+- [ ] Relevant builds pass (Android, iOS simulator, `Shared` framework from `:composition:ios`)
 - [ ] Documentation updated if behaviour, decisions or models changed
 
 Commands or checks run:

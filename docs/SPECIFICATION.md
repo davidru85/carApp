@@ -250,7 +250,7 @@ Account deletion is required for store compliance. It re-authenticates if needed
 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
 | Async | Coroutines and Flow |
 | DI | Koin KMP for wiring, constructor injection for implementation classes |
-| iOS interop | SKIE only in `:shared` |
+| iOS interop | SKIE only in `:composition:ios`, which exports `:shared` through the single `Shared` framework |
 | Serialization | `kotlinx.serialization` |
 | Dates | `kotlinx-datetime` |
 | Logging | Kermit behind `Logger` |
@@ -271,11 +271,13 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
 7. `:core:database` depends on `:core:model`, `:core:common`, SQLDelight and AndroidX SQLite; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
-9. Firebase and GitLive types never cross integration boundaries.
-10. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
-11. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
-12. Only `:wiring:firebase` aggregates Firebase implementations into the app graph.
-13. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+9. `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single exported
+   framework and contains no product logic.
+10. Firebase and GitLive types never cross integration boundaries.
+11. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
+12. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
+13. Only `:wiring:firebase` aggregates Firebase implementations into the app graph.
+14. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
 
 Module-level rules are enforced by a Gradle configuration check; package-level rules require source analysis. Both MUST be executable checks in CI, and each rule MUST have a failing fixture test proving the check fires.
 
@@ -287,15 +289,24 @@ Presentation logic is shared in `commonMain` through state holders exposing `Sta
 
 ### 8.5 Cloud Provider Decoupling
 
-`:shared` exposes a Kotlin-facing graph factory that accepts abstractions:
+`:shared` exposes a provider-free Kotlin graph factory that accepts the explicit `AppProviders`
+port:
 
 ```kotlin
-fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 ```
 
-That factory and `AppGraphDependencies` are not part of the Swift-facing ABI. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which exposes concrete state holders and no provider dependency container.
+That factory, `AppProviders` and `AppGraphDependencies` are not part of the Swift-facing ABI.
+`:composition:ios` owns the sole `createSwiftAppGraph(isDebugBuild)` declaration, constructs
+providers through `:wiring:firebase` and delegates to `buildAppGraph`. Swift still imports the
+single framework as `Shared` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which
+exposes concrete state holders and no provider dependency container.
 
-The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in `docs/CONTRACTS.md`.
+The provider decoupling criterion is executable: excluding `:integration:*`,
+`:wiring:firebase` and `:composition:ios` from settings MUST leave `:core:*`, `:feature:*` and
+`:shared` compiling and testing `buildAppGraph` with local fakes. `AppProviders`,
+`AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in
+`docs/CONTRACTS.md`.
 
 ## 9. Remote Backup and Recovery
 

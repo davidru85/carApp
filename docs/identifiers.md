@@ -23,7 +23,7 @@
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | Android build namespace, per module | Derived — see "Module Android namespaces" below | AGP 9 requires every module with an Android target to declare a unique namespace. The value is derived from the module path, so it is never invented. |
-| iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM as `import Shared`; this is the canonical SPM module name. |
+| iOS framework name | `Shared` | Produced by `:composition:ios`, exporting `:shared`, and consumed as `import Shared`; this is the canonical module name. |
 | Android `minSdk` / `targetSdk` | `26` / pinned in `docs/versions-matrix.md` | `minSdk` is fixed by `docs/SPECIFICATION.md §11`. |
 | iOS deployment target | `16.0` | Fixed by `docs/SPECIFICATION.md §11`. |
 
@@ -38,6 +38,7 @@ modules MUST NOT share one. The value is **derived, not chosen**:
 | Module | Android build namespace |
 |--------|-------------------------|
 | `:shared` | `com.ruizurraca.carapp.shared` |
+| `:composition:ios` | `com.ruizurraca.carapp.composition.ios` |
 | `:core:model` | `com.ruizurraca.carapp.core.model` |
 | `:feature:fuel` | `com.ruizurraca.carapp.feature.fuel` |
 | `:integration:firebase-auth` | `com.ruizurraca.carapp.integration.firebaseauth` |
