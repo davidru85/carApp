@@ -45,5 +45,15 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                 implementation(libs.findLibrary("kotlin-test").get())
             }
         }
+
+        // Any KMP module can consume :core:database test support. JVM host tests therefore need
+        // the JVM artifact even when that consumer does not apply the SQLDelight plugin itself.
+        val sqliteVersion = libs.version("sqlite")
+        configurations.matching { it.name == "androidHostTestRuntimeClasspath" }.configureEach {
+            resolutionStrategy.dependencySubstitution {
+                substitute(module("androidx.sqlite:sqlite-bundled:$sqliteVersion"))
+                    .using(module("androidx.sqlite:sqlite-bundled-jvm:$sqliteVersion"))
+            }
+        }
     }
 }
