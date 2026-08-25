@@ -68,14 +68,11 @@ class IosCompositionContractTest {
         assertTrue(androidBuild.contains("implementation(project(\":wiring:firebase\"))"))
         assertTrue(androidBuild.contains("carapp.excludeFirebaseProviders"))
         assertTrue(
-            xcodeProject.contains(
-                "../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework",
-            ),
-        )
-        assertTrue(
             xcodeProject.contains(":composition:ios:embedAndSignAppleFrameworkForXcode"),
         )
-        assertFalse(xcodeProject.contains("../shared/build/bin/iosSimulatorArm64/debugFramework"))
+        assertTrue(xcodeProject.contains("ENABLE_USER_SCRIPT_SANDBOXING: NO"))
+        assertFalse(xcodeProject.contains("build/bin/iosSimulatorArm64/debugFramework"))
+        assertFalse(xcodeProject.contains("framework: ../composition"))
         assertTrue(ci.contains(":composition:ios:linkDebugFrameworkIosSimulatorArm64"))
         assertTrue(
             ci.contains(
