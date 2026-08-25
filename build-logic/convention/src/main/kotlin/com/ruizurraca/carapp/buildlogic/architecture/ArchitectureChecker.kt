@@ -265,13 +265,18 @@ object ArchitectureChecker {
         if (module.path in allowed) return emptyList()
         return module.sourceLines
             .filter { Regex("""\b(AppDatabase|DatabaseFactory)\b""").containsMatchIn(it.text) }
+            .filterNot {
+                module.path == ":wiring:firebase" && Regex("""\bDatabaseFactory\b""").containsMatchIn(it.text) &&
+                    !Regex("""\bAppDatabase\b""").containsMatchIn(it.text)
+            }
             .map {
                 Violation(
                     module.path,
                     "database-type-outside-core-database",
                     "${it.file}:${it.number} references a :core:database type. docs/CONTRACTS.md §20.3.2 " +
                         "allows it only in :core:database, :core:testing fakes, :shared:testing " +
-                            "composition and the :shared AppGraphDependencies field.",
+                            "composition, the :shared graph contracts and the :wiring:firebase " +
+                            "AppProviders implementation (DatabaseFactory only).",
                 )
             }
     }

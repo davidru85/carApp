@@ -1558,9 +1558,11 @@ interface DatabaseFactory { fun create(): AppDatabase }
 forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries
 `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from
 `:core:database`. `:core:testing` is allowed to depend on `:core:database` so it can provide a
-generic fake; `:shared:testing` composes that fake into `AppGraphDependencies` (`D-56`). Any
-appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain`
-or the `:shared` public API remains a violation.
+generic fake; `:shared:testing` composes that fake into `AppGraphDependencies` (`D-56`). D-59 also
+allows `:wiring:firebase` to reference the `DatabaseFactory` abstraction while implementing
+`AppProviders`, but it MUST NOT expose or reference `AppDatabase`. Any appearance of `AppDatabase`
+or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the Swift-facing public
+API remains a violation.
 
 ### 20.4 Domain models — `:core:model`
 

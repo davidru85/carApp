@@ -322,6 +322,10 @@ class ArchitectureCheckerTest {
                 source = "class FirebaseAppProviders(override val databaseFactory: DatabaseFactory)",
             ),
         )
+        assertRejected(
+            module(":wiring:firebase", source = "fun database(): AppDatabase = error(\"x\")"),
+            "database-type-outside-core-database",
+        )
     }
 
     @Test
