@@ -1,0 +1,15 @@
+"walking_skeleton_title" = "Prueba de copia del vehículo";
+"session_status" = "Sesión: %@";
+"session_unknown" = "Iniciando";
+"session_local" = "Solo local";
+"session_anonymous" = "Copia anónima activa";
+"session_permanent" = "Cuenta permanente";
+"session_signed_out" = "Sin conexión";
+"session_deleting" = "Eliminando";
+"continue_without_account" = "Continuar sin cuenta";
+"vehicle_section" = "Vehículo";
+"vehicle_name" = "Nombre del vehículo";
+"save_vehicle" = "Guardar vehículo";
+"restore_backup" = "Recuperar copia";
+"saved_vehicles" = "Vehículos guardados";
+"empty_vehicles" = "Todavía no hay vehículos guardados.";

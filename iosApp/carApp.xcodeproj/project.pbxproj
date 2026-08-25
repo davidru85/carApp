@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		0C1EB05F79895A10EECE54D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C99F176FF58DC55F24480629 /* ContentView.swift */; };
+		38065E17AF7716397F04DB8F /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4458349049495E69A457F032 /* WalkingSkeletonModel.swift */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
 		61E65B896D4706CE90C4C527 /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 20B81884D405CE5CFB7054DB /* Shared.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		97975CFB4D9CB67E28EB086C /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E166135431E98EF2E7231D4C /* carAppApp.swift */; };
+		CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 76D6203141B99DECA8D14A86 /* Localizable.strings */; };
 		E3358FBFA6DEE9602C7C3178 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */; };
 		E5D8DFF4CEFBC7ED2DCBD62B /* generate-project.sh in Resources */ = {isa = PBXBuildFile; fileRef = B135C9D05B043F7C0AAC70AE /* generate-project.sh */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
@@ -33,9 +35,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0046B86E946AAC2C64B7BBD1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
 		20B81884D405CE5CFB7054DB /* Shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Shared.framework; path = ../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework; sourceTree = "<group>"; };
 		25A592DAD009883E29DBAB11 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4458349049495E69A457F032 /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
+		9BF7D473CE0D10A2A16535D3 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		B135C9D05B043F7C0AAC70AE /* generate-project.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "generate-project.sh"; sourceTree = "<group>"; };
 		C99F176FF58DC55F24480629 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E166135431E98EF2E7231D4C /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
@@ -64,7 +69,9 @@
 				C99F176FF58DC55F24480629 /* ContentView.swift */,
 				B135C9D05B043F7C0AAC70AE /* generate-project.sh */,
 				25A592DAD009883E29DBAB11 /* Info.plist */,
+				4458349049495E69A457F032 /* WalkingSkeletonModel.swift */,
 				B2E085FC069B7794CF608B18 /* Config */,
+				76D6203141B99DECA8D14A86 /* Localizable.strings */,
 			);
 			name = iosApp;
 			path = .;
@@ -156,6 +163,7 @@
 			knownRegions = (
 				Base,
 				en,
+				es,
 			);
 			mainGroup = E3D19A4D38694A47DC344CE6;
 			minimizedProjectReferenceProxies = 1;
@@ -178,6 +186,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E3358FBFA6DEE9602C7C3178 /* GoogleService-Info-Debug.plist in Resources */,
+				CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */,
 				E5D8DFF4CEFBC7ED2DCBD62B /* generate-project.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -212,11 +221,24 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C1EB05F79895A10EECE54D3 /* ContentView.swift in Sources */,
+				38065E17AF7716397F04DB8F /* WalkingSkeletonModel.swift in Sources */,
 				97975CFB4D9CB67E28EB086C /* carAppApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		76D6203141B99DECA8D14A86 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				0046B86E946AAC2C64B7BBD1 /* en */,
+				9BF7D473CE0D10A2A16535D3 /* es */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		174E1FDA848B95D7D2059842 /* Release */ = {

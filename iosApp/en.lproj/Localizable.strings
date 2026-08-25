@@ -1,0 +1,15 @@
+"walking_skeleton_title" = "Vehicle backup proof";
+"session_status" = "Session: %@";
+"session_unknown" = "Starting";
+"session_local" = "Local only";
+"session_anonymous" = "Anonymous backup active";
+"session_permanent" = "Permanent account";
+"session_signed_out" = "Not connected";
+"session_deleting" = "Deleting";
+"continue_without_account" = "Continue without an account";
+"vehicle_section" = "Vehicle";
+"vehicle_name" = "Vehicle name";
+"save_vehicle" = "Save vehicle";
+"restore_backup" = "Restore backup";
+"saved_vehicles" = "Saved vehicles";
+"empty_vehicles" = "No vehicles saved yet.";
