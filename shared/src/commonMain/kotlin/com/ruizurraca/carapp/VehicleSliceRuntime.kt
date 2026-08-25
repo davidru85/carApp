@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
+import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
 import com.ruizurraca.carapp.core.model.EntityId
@@ -53,16 +54,24 @@ internal class VehicleSliceRuntime(
             outboxPayload = snapshot,
         )
         if (owner != LOCAL_OWNER && dependencies.connectivityObserver.isOnline.value) {
-            dependencies.remoteSyncSource.pushSnapshot(
-                ownerId = owner,
-                snapshot =
-                    EntitySnapshot(
-                        entityType = EntityType.VEHICLE,
-                        entityId = EntityId(id),
-                        schemaVersion = schemaVersion.toInt(),
-                        json = snapshot,
-                    ),
-            )
+            val result =
+                dependencies.remoteSyncSource.pushSnapshot(
+                    ownerId = owner,
+                    snapshot =
+                        EntitySnapshot(
+                            entityType = EntityType.VEHICLE,
+                            entityId = EntityId(id),
+                            schemaVersion = schemaVersion.toInt(),
+                            json = snapshot,
+                        ),
+                )
+            if (result is Outcome.Ok) {
+                mutations.confirmVehiclePush(
+                    entityId = id,
+                    pushedLocalRevision = 1,
+                    serverUpdatedAt = result.value.serverUpdatedAt.toEpochMilliseconds(),
+                )
+            }
         }
     }
 }

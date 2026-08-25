@@ -57,6 +57,24 @@ class DatabaseMutations(
         }
     }
 
+    suspend fun confirmVehiclePush(
+        entityId: String,
+        pushedLocalRevision: Long,
+        serverUpdatedAt: Long,
+    ) {
+        database.transaction {
+            queries.confirmVehiclePush(
+                serverUpdatedAt = serverUpdatedAt,
+                pushedLocalRevision = pushedLocalRevision,
+                entityId = entityId,
+            )
+            queries.deleteConfirmedVehicleOutbox(
+                entityId = entityId,
+                pushedLocalRevision = pushedLocalRevision,
+            )
+        }
+    }
+
     @Suppress("LongParameterList")
     suspend fun insertFuelEntry(
         id: String,

@@ -159,3 +159,18 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   nextAttemptAt = 0,
   lastError = NULL,
   lastErrorCode = NULL;
+
+confirmVehiclePush:
+UPDATE vehicle
+SET serverUpdatedAt = :serverUpdatedAt,
+  syncState = CASE
+    WHEN localRevision = :pushedLocalRevision THEN 'SYNCED'
+    ELSE syncState
+  END
+WHERE id = :entityId;
+
+deleteConfirmedVehicleOutbox:
+DELETE FROM outbox
+WHERE entityType = 'VEHICLE'
+  AND entityId = :entityId
+  AND localRevision = :pushedLocalRevision;
