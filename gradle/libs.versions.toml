@@ -34,6 +34,7 @@ sqlite = "2.7.0" # androidx.sqlite:sqlite-bundled, same bundled SQLite on both p
 
 # --- Firebase group (D-0, D-5, D-6, D-10, D-21) ---
 firebaseBom = "34.18.0"
+googleServices = "4.5.0" # D-57; processes Android's debug-only Firebase configuration
 gitlive = "2.6.0" # GitLive 2.6.x, never the 3.0 alpha (D-5, D-6)
 
 # --- Application libraries ---
@@ -111,3 +112,4 @@ sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

@@ -1,6 +1,7 @@
 plugins {
     id("carapp.android.application")
     id("carapp.compose")
+    id("com.google.gms.google-services")
 }
 
 android {

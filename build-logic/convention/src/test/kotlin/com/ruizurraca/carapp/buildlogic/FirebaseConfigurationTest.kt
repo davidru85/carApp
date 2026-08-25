@@ -32,10 +32,7 @@ class FirebaseConfigurationTest {
         assertTrue(rootBuild.contains("alias(libs.plugins.google.services) apply false"))
         assertTrue(androidBuild.contains("id(\"com.google.gms.google-services\")"))
         assertEquals(
-            listOf(
-                repositoryRoot.resolve("androidApp/build.gradle.kts").canonicalFile,
-                repositoryRoot.resolve("build.gradle.kts").canonicalFile,
-            ),
+            listOf(repositoryRoot.resolve("androidApp/build.gradle.kts").canonicalFile),
             buildScripts
                 .filter { it.readText().contains("com.google.gms.google-services") }
                 .map(File::getCanonicalFile)
