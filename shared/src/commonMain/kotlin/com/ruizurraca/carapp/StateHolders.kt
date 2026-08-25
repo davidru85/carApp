@@ -28,7 +28,7 @@ class VehicleListStateHolder internal constructor() {
 class VehicleFormStateHolder internal constructor(
     vehicleId: String?,
 ) {
-    val state: StateFlow<VehicleFormUiState> =
+    private val mutableState =
         MutableStateFlow(
             VehicleFormUiState(
                 vehicleId = vehicleId,
@@ -42,8 +42,11 @@ class VehicleFormStateHolder internal constructor(
                 message = null,
             ),
         )
+    val state: StateFlow<VehicleFormUiState> = mutableState
 
-    fun setName(value: String) = value.let { Unit }
+    fun setName(value: String) {
+        mutableState.value = mutableState.value.copy(name = value)
+    }
 
     fun setInitialOdometerKm(value: Long) = value.let { Unit }
 
