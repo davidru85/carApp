@@ -10,8 +10,12 @@ import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
+import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -91,7 +95,71 @@ internal class VehicleSliceRuntime(
                 )
             }
         }
+
+    suspend fun refresh() {
+        val owner = dependencies.ownerContext.current
+        if (owner == LOCAL_OWNER || !dependencies.connectivityObserver.isOnline.value) return
+
+        val result =
+            dependencies.remoteSyncSource.pullChanges(
+                ownerId = owner,
+                entityType = EntityType.VEHICLE,
+                cursor = RemoteCursor.INITIAL,
+                limit = REMOTE_PAGE_LIMIT,
+            )
+        if (result !is Outcome.Ok) return
+
+        result.value.items.forEach { snapshot -> applyRemoteVehicle(owner.value, snapshot) }
+    }
+
+    private suspend fun applyRemoteVehicle(
+        ownerId: String,
+        snapshot: RemoteSnapshot,
+    ) {
+        check(snapshot.entityType == EntityType.VEHICLE)
+        val payload = Json.decodeFromString<RemoteVehiclePayload>(snapshot.json)
+        check(payload.id == snapshot.entityId.value)
+        check(payload.ownerId == ownerId)
+        check(payload.schemaVersion == snapshot.schemaVersion)
+        check(payload.deleted == snapshot.deleted)
+        check(payload.deleted == (payload.deletedAt != null))
+        mutations.applyRemoteVehicle(
+            id = payload.id,
+            ownerId = payload.ownerId,
+            name = payload.name,
+            nameFold = payload.name.lowercase(),
+            initialOdometerKm = payload.initialOdometerKm,
+            brand = payload.brand,
+            model = payload.model,
+            fuelType = payload.fuelType,
+            createdAt = payload.createdAt,
+            updatedAt = payload.updatedAt,
+            serverUpdatedAt = snapshot.serverUpdatedAt.toEpochMilliseconds(),
+            deletedAt = payload.deletedAt,
+            schemaVersion = payload.schemaVersion.toLong(),
+        )
+    }
+
+    private companion object {
+        const val REMOTE_PAGE_LIMIT = 50
+    }
 }
+
+@Serializable
+private data class RemoteVehiclePayload(
+    val id: String,
+    val ownerId: String,
+    val name: String,
+    val initialOdometerKm: Long,
+    val brand: String?,
+    val model: String?,
+    val fuelType: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val deleted: Boolean,
+    val deletedAt: Long?,
+    val schemaVersion: Int,
+)
 
 private fun canonicalWalkingSkeletonName(value: String): String = value.trim().split(Regex("\\s+")).joinToString(" ")
 

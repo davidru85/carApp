@@ -76,33 +76,7 @@ class VehicleListStateHolderTest {
         runTest {
             val defaultDependencies = testAppGraphDependencies()
             val database = defaultDependencies.databaseFactory.create()
-            val remote =
-                PullOnlyRemoteSyncSource(
-                    RemoteSnapshot(
-                        entityType = EntityType.VEHICLE,
-                        entityId = EntityId("00000000-0000-4000-8000-000000000001"),
-                        schemaVersion = 1,
-                        serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L),
-                        deleted = false,
-                        json =
-                            """
-                            {
-                              "id":"00000000-0000-4000-8000-000000000001",
-                              "ownerId":"anonymous-user",
-                              "name":"Recovered Roadster",
-                              "initialOdometerKm":0,
-                              "brand":null,
-                              "model":null,
-                              "fuelType":"GASOLINE",
-                              "createdAt":1767225600000,
-                              "updatedAt":1767225600000,
-                              "deleted":false,
-                              "deletedAt":null,
-                              "schemaVersion":1
-                            }
-                            """.trimIndent(),
-                    ),
-                )
+            val remote = PullOnlyRemoteSyncSource(remoteVehicleSnapshot())
             val graph =
                 buildAppGraph(
                     isDebugBuild = true,
@@ -120,6 +94,7 @@ class VehicleListStateHolderTest {
                 val list = graph.vehicleListStateHolder()
 
                 list.refresh()
+                list.state.first { state -> !state.isLoading }
 
                 val recovered =
                     database.databaseQueries
@@ -131,9 +106,10 @@ class VehicleListStateHolderTest {
                 assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
                 assertEquals(0L, recovered.localRevision)
                 assertEquals(0L, recovered.localMutationSeq)
+                val publishedState = list.state.first { state -> state.vehicles.isNotEmpty() }
                 assertEquals(
                     "Recovered Roadster",
-                    list.state.first { state -> state.vehicles.isNotEmpty() }.vehicles.single().name,
+                    publishedState.vehicles.single().name,
                 )
                 assertEquals(
                     PullCall(
@@ -163,6 +139,32 @@ class VehicleListStateHolderTest {
             override fun observe(): Flow<OwnerId> = state
         }
 }
+
+private fun remoteVehicleSnapshot(): RemoteSnapshot =
+    RemoteSnapshot(
+        entityType = EntityType.VEHICLE,
+        entityId = EntityId("00000000-0000-4000-8000-000000000001"),
+        schemaVersion = 1,
+        serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L),
+        deleted = false,
+        json =
+            """
+            {
+              "id":"00000000-0000-4000-8000-000000000001",
+              "ownerId":"anonymous-user",
+              "name":"Recovered Roadster",
+              "initialOdometerKm":0,
+              "brand":null,
+              "model":null,
+              "fuelType":"GASOLINE",
+              "createdAt":1767225600000,
+              "updatedAt":1767225600000,
+              "deleted":false,
+              "deletedAt":null,
+              "schemaVersion":1
+            }
+            """.trimIndent(),
+    )
 
 private data class PullCall(
     val ownerId: OwnerId,

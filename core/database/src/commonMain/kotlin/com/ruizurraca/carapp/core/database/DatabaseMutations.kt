@@ -78,6 +78,42 @@ class DatabaseMutations(
     }
 
     @Suppress("LongParameterList")
+    suspend fun applyRemoteVehicle(
+        id: String,
+        ownerId: String,
+        name: String,
+        nameFold: String,
+        initialOdometerKm: Long,
+        brand: String?,
+        model: String?,
+        fuelType: String,
+        createdAt: Long,
+        updatedAt: Long,
+        serverUpdatedAt: Long,
+        deletedAt: Long?,
+        schemaVersion: Long,
+    ) {
+        database.transaction {
+            queries.upsertRemoteVehicleRow(
+                id = id,
+                ownerId = ownerId,
+                name = name,
+                nameFold = nameFold,
+                initialOdometerKm = initialOdometerKm,
+                brand = brand,
+                model = model,
+                fuelType = fuelType,
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                serverUpdatedAt = serverUpdatedAt,
+                deleted = if (deletedAt == null) 0 else 1,
+                deletedAt = deletedAt,
+                schemaVersion = schemaVersion,
+            )
+        }
+    }
+
+    @Suppress("LongParameterList")
     suspend fun insertFuelEntry(
         id: String,
         ownerId: String,

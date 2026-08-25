@@ -37,6 +37,38 @@ VALUES (
   :localRevision, :localMutationSeq, :schemaVersion
 );
 
+upsertRemoteVehicleRow:
+INSERT INTO vehicle(
+  id, ownerId, name, nameFold, initialOdometerKm, currentOdometerKm, brand, model, fuelType,
+  createdAt, updatedAt, serverUpdatedAt, deleted, deletedAt, syncState, localRevision,
+  localMutationSeq, schemaVersion
+)
+VALUES (
+  :id, :ownerId, :name, :nameFold, :initialOdometerKm, :initialOdometerKm, :brand, :model,
+  :fuelType, :createdAt, :updatedAt, :serverUpdatedAt, :deleted, :deletedAt, 'SYNCED', 0, 0,
+  :schemaVersion
+)
+ON CONFLICT(id) DO UPDATE SET
+  ownerId = excluded.ownerId,
+  name = excluded.name,
+  nameFold = excluded.nameFold,
+  initialOdometerKm = excluded.initialOdometerKm,
+  brand = excluded.brand,
+  model = excluded.model,
+  fuelType = excluded.fuelType,
+  createdAt = excluded.createdAt,
+  updatedAt = excluded.updatedAt,
+  serverUpdatedAt = excluded.serverUpdatedAt,
+  deleted = excluded.deleted,
+  deletedAt = excluded.deletedAt,
+  syncState = 'SYNCED',
+  schemaVersion = excluded.schemaVersion
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM outbox
+  WHERE entityType = 'VEHICLE' AND entityId = excluded.id
+);
+
 insertFuelEntryRow:
 INSERT INTO fuel_entry(
   id, ownerId, vehicleId, date, odometerKm, litersScaled, pricePerLiterScaled,

@@ -27,6 +27,7 @@ class SwiftAppGraph {
             ?: VehicleListStateHolder(
                 scope = graphScope,
                 vehicles = vehicleSliceRuntime?.observeVehicles(),
+                refreshVehicles = vehicleSliceRuntime?.let { runtime -> runtime::refresh },
             ).also { cachedVehicleListStateHolder = it }
 
     fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder =

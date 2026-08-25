@@ -14,9 +14,11 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class VehicleListStateHolder internal constructor(
-    scope: CoroutineScope? = null,
+    private val scope: CoroutineScope? = null,
     vehicles: Flow<List<VehicleListItemUi>>? = null,
+    private val refreshVehicles: (suspend () -> Unit)? = null,
 ) {
+    private var closed = false
     private val mutableState =
         MutableStateFlow(VehicleListUiState(false, emptyList(), null, SyncStatus.Idle, null))
     private val observationJob: Job? =
@@ -31,7 +33,16 @@ class VehicleListStateHolder internal constructor(
         }
     val state: StateFlow<VehicleListUiState> = mutableState
 
-    fun refresh() = Unit
+    fun refresh() {
+        if (closed) return
+        val operationScope = scope ?: return
+        val operation = refreshVehicles ?: return
+        mutableState.value = mutableState.value.copy(isLoading = true)
+        operationScope.launch {
+            operation()
+            mutableState.value = mutableState.value.copy(isLoading = false)
+        }
+    }
 
     fun selectVehicle(vehicleId: String?) = vehicleId.let { Unit }
 
@@ -42,6 +53,8 @@ class VehicleListStateHolder internal constructor(
     fun clearMessage() = Unit
 
     fun close() {
+        if (closed) return
+        closed = true
         observationJob?.cancel()
     }
 }
