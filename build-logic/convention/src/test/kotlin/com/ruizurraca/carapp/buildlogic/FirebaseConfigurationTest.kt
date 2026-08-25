@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.buildlogic
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class FirebaseConfigurationTest {
@@ -38,5 +39,25 @@ class FirebaseConfigurationTest {
                 .map(File::getCanonicalFile)
                 .sortedBy(File::getPath),
         )
+    }
+
+    @Test
+    fun firebaseAppleSdkPinIsConsumedByTheDirectIosIntegration() {
+        val catalog = repositoryRoot.resolve("gradle/libs.versions.toml").readText()
+        val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val projectGenerator = repositoryRoot.resolve("iosApp/generate-project.sh").readText()
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+
+        assertTrue(catalog.contains("firebaseApple = \"11.8.0\""))
+        assertTrue(projectSpec.contains("exactVersion: ${'$'}{FIREBASE_APPLE_VERSION}"))
+        assertFalse(projectSpec.contains("11.8.0"))
+        assertTrue(projectGenerator.contains("^firebaseApple = "))
+        assertTrue(projectGenerator.contains("FIREBASE_APPLE_VERSION"))
+        assertTrue(projectGenerator.contains("xcodegen generate"))
+        assertTrue(xcodeProject.contains("firebase-ios-sdk"))
+        assertTrue(xcodeProject.contains("version = 11.8.0"))
+        assertTrue(xcodeProject.contains("FirebaseAuth"))
+        assertTrue(xcodeProject.contains("FirebaseCore"))
+        assertTrue(xcodeProject.contains("FirebaseFirestore"))
     }
 }

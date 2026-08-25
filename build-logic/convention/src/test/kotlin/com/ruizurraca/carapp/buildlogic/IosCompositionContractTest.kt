@@ -50,10 +50,13 @@ class IosCompositionContractTest {
         assertEquals(1, declarations.size)
         assertTrue(
             declarations.single().path.endsWith(
-                "composition/ios/src/commonMain/kotlin/com/ruizurraca/carapp/CreateSwiftAppGraph.kt",
+                "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/CreateSwiftAppGraph.kt",
             ),
         )
-        assertTrue(declarations.single().readText().contains("buildAppGraph(isDebugBuild, providers)"))
+        val factory = declarations.single().readText()
+        assertTrue(factory.contains("firebaseAppProviders(databaseFilePath = iosDatabaseFilePath())"))
+        assertTrue(factory.contains("buildAppGraph(isDebugBuild, providers)"))
+        assertTrue(factory.contains("NSApplicationSupportDirectory"))
     }
 
     @Test
