@@ -145,6 +145,30 @@ class ArchitectureCheckerTest {
     }
 
     @Test
+    fun skieMetadataDoesNotCreateReverseArchitecturalEdges() {
+        val syntheticConfiguration = "swiftPMDependenciesForLockFilesMetadataClasspath"
+        val syntheticEdges = setOf(":composition:ios", ":wiring:firebase")
+
+        assertAccepted(
+            module(
+                path = ":shared",
+                projectDependencies = syntheticEdges,
+                projectDependencyConfigurations =
+                    syntheticEdges.associateWith { setOf(syntheticConfiguration) },
+            ),
+        )
+        assertRejected(
+            module(
+                path = ":shared",
+                projectDependencies = setOf(":wiring:firebase"),
+                projectDependencyConfigurations =
+                    mapOf(":wiring:firebase" to setOf("commonMainImplementation")),
+            ),
+            "undeclared-module-dependency",
+        )
+    }
+
+    @Test
     fun coreModulesMayNotDependOnShared() {
         listOf(
             ":core:model",
