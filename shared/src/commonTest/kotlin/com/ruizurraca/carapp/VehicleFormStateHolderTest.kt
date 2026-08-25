@@ -1,9 +1,17 @@
 package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
+import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntitySnapshot
+import com.ruizurraca.carapp.core.sync.EntityType
+import com.ruizurraca.carapp.core.sync.RemoteAck
+import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemotePage
+import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +22,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.time.Instant
 
 class VehicleFormStateHolderTest {
     @Test
@@ -125,6 +134,49 @@ class VehicleFormStateHolderTest {
             }
         }
 
+    @Test
+    fun savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits() =
+        runTest {
+            val defaultDependencies = testAppGraphDependencies()
+            val database = defaultDependencies.databaseFactory.create()
+            val remote =
+                RecordingRemoteSyncSource { ownerId, snapshot ->
+                    val localVehicle =
+                        database.databaseQueries
+                            .selectVehicleById(snapshot.entityId.value)
+                            .awaitAsOneOrNull()
+                    assertNotNull(localVehicle, "The local transaction must commit before remote push")
+                    assertEquals(ownerId.value, localVehicle.ownerId)
+                }
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(database),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                remoteSyncSource = remote,
+                            ),
+                        ),
+                )
+
+            try {
+                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                holder.setName("Roadster")
+
+                holder.save()
+
+                val call = remote.pushCalls.single()
+                assertEquals("anonymous-user", call.first.value)
+                assertEquals(EntityType.VEHICLE, call.second.entityType)
+                assertEquals("00000000-0000-4000-8000-000000000001", call.second.entityId.value)
+                assertEquals(1, call.second.schemaVersion)
+            } finally {
+                graph.close()
+            }
+        }
+
     private fun fixedDatabaseFactory(database: com.ruizurraca.carapp.core.database.AppDatabase): DatabaseFactory =
         object : DatabaseFactory {
             override fun create() = database
@@ -138,4 +190,34 @@ class VehicleFormStateHolderTest {
 
             override fun observe(): Flow<OwnerId> = state
         }
+}
+
+private class RecordingRemoteSyncSource(
+    private val onPush: suspend (OwnerId, EntitySnapshot) -> Unit,
+) : RemoteSyncSource {
+    private val recordedPushCalls = mutableListOf<Pair<OwnerId, EntitySnapshot>>()
+    val pushCalls: List<Pair<OwnerId, EntitySnapshot>> get() = recordedPushCalls.toList()
+
+    override suspend fun pushSnapshot(
+        ownerId: OwnerId,
+        snapshot: EntitySnapshot,
+    ): Outcome<RemoteAck, RemoteError> {
+        onPush(ownerId, snapshot)
+        recordedPushCalls += ownerId to snapshot
+        return Outcome.Ok(
+            RemoteAck(
+                entityType = snapshot.entityType,
+                entityId = snapshot.entityId,
+                serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L),
+            ),
+        )
+    }
+
+    override suspend fun pullChanges(
+        ownerId: OwnerId,
+        entityType: EntityType,
+        cursor: RemoteCursor,
+        limit: Int,
+    ): Outcome<RemotePage, RemoteError> =
+        Outcome.Ok(RemotePage(emptyList(), cursor, hasMore = false))
 }
