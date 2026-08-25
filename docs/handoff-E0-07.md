@@ -16,13 +16,14 @@
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — the active decisions through D-64 that govern this story are `Accepted`;
+- [x] Decisions checked — the active decisions through D-65 that govern this story are `Accepted`;
   D-2 is superseded by D-58; D-53 records the
   owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
   D-56 records the owner's 2026-08-25 correction of the test-factory module boundary; D-58 moves
   the iOS framework composition root out of `:shared`; D-59 fixes the explicit `AppProviders`
   port selected by the owner; and D-60 through D-64 define device-bound anonymous identity,
-  destructive collision precedence, retention notices, owned cleanup and their story split. No
+  destructive collision precedence, retention notices, owned cleanup and their story split;
+  D-65 pins the native Firebase Apple SDK to the exact GitLive cinterop version. No
   `Proposed` or `Pending` decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§7 F-1` and `F-2`, `§8`, `§9`,
   `§10`, `§11`; `docs/CONTRACTS.md §1.1`, `§3`, `§11`, `§14`, `§15`, `§16`, `§18`, `§20.3`,
@@ -87,6 +88,8 @@
   1st gen Auth deletion-trigger exception (`TD-01`).
 - D-64 keeps E0-07 narrow and assigns permanent auth, conversion, notices, cleanup and cross-device
   recovery evidence to their owning stories.
+- D-65 pins Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and requires them to move
+  together, preventing a native cinterop/runtime version mismatch.
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
@@ -104,7 +107,8 @@
 
 ## Decision Board Impact
 
-- Added D-53 through D-59 and ADR-0054 through ADR-0060 before implementation.
+- Added D-53 through D-65 and ADR-0054 through ADR-0066 before the implementation each decision
+  governs.
 
 ## Shared-Write Modules Touched
 

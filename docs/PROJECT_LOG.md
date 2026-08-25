@@ -38,6 +38,22 @@
 
 ## Entries
 
+### 2026-08-25 — D-65 Firebase Apple compatibility pin accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-65`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase Apple SDK 11.8.0 is pinned exactly for direct iOS integration with
+  GitLive 2.6.0.
+- **Why:** GitLive's Apple cinterop bindings were generated against 11.8.0, and mixing them with a
+  different native SDK can compile successfully but fail at runtime.
+- **Documents touched:** `docs/adr/0066-pin-firebase-apple-to-gitlive-bindings.md`, the four
+  decision mirrors, `docs/versions-matrix.md`, the E0-07 handoff and this log.
+- **Verification:** `contractCheck` verifies decision/ADR alignment; the E0-07 Apple build and
+  native-path tests will prove the pin in use.
+- **Follow-ups / risks:** Upgrade GitLive and Firebase Apple together once GitLive publishes
+  bindings for a supported newer Firebase Apple SDK; do not change either side independently.
+
 ### 2026-08-25 — D-64 anonymous lifecycle story split accepted
 
 - **Type:** decision

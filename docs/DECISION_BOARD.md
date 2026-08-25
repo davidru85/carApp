@@ -93,6 +93,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-62 | Anonymous sign-in benefit reminders | Fixed day-1, day-3, day-8 and day-18 timeline with highest-due reminder collapse | Recalculate from display time; show every missed reminder | Accepted | The schedule is anchored to Firebase account creation, is non-blocking and completes permanently after reminder 4 or permanent sign-in. |
 | D-63 | User-data cleanup implementation | Repository-owned idempotent service, direct collision-path invocation and one temporary 1st gen Auth deletion trigger | Firebase Delete User Data extension; rely only on the trigger | Accepted | Firebase Extensions management sunsets on 2027-03-31; `onAnonymousUserDeleted` is the only permitted 1st gen function and its migration is tracked as TD-01. |
 | D-64 | Anonymous lifecycle delivery | Split retention, conversion, reminders, backend cleanup and cross-device proof across their owning stories | Implement the complete lifecycle in E0-07 | Accepted | Keeps E0-07 reviewable and moves cross-device evidence to the first point where permanent auth and complete sync coexist. |
+| D-65 | Firebase Apple SDK compatibility pin | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 | Use Firebase Apple 12.18.0; use Firebase Apple 11.15.0 | Accepted | GitLive 2.6.0 Apple cinterop bindings are generated against 11.8.0; using a different native SDK can compile but fail at runtime. The two pins move together when GitLive publishes bindings for a supported newer Firebase Apple SDK. |
 
 ## Library Review Matrix
 
@@ -107,6 +108,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | Test assertions | `kotlin.test` | Kotest | Accepted | Keep tests simple for agent predictability. |
 | Test doubles | Hand-written fakes | MockK, Mockative | Accepted | Fakes are preferred for domain and sync. |
 | Firestore rules tests | Node 22.22.3, Firebase CLI 15.28.1, Firebase JS 12.18.0, `@firebase/rules-unit-testing` 5.0.1, `node:test` | Direct REST harness, Kotlin/GitLive integration tests, Jest/Mocha/Vitest | Accepted (D-46) | Official emulator auth mocking; exact Node-only dependency versions live in npm manifests. |
+| Firebase Apple SDK | 11.8.0, matched exactly to GitLive 2.6.0 Apple bindings | Firebase Apple 12.18.0; Firebase Apple 11.15.0 | Accepted (D-65) | Direct iOS integration must not mix the GitLive cinterop bindings with a different native Firebase Apple release. |
 | Coverage | Kover | JaCoCo, none | Accepted (D-18) | Thresholds enforced in CI. |
 | Android background work | WorkManager | foreground-only sync | Accepted for Phase 3 | Trigger only: it calls `SyncController.requestSync(reason)` and carries no scheduling policy. |
 | iOS background work | BGTaskScheduler | foreground-only sync | Accepted for Phase 3 | Same constraint; a single task identifier. |

@@ -518,6 +518,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-62 | Anonymous sign-in benefit reminders | Show fixed, collapsible reminders on elapsed days 1, 3, 8 and 18. | Accepted |
 | D-63 | User-data cleanup implementation | Own an idempotent cleanup service, invoke it directly for collision cleanup and allow one temporary 1st gen Auth deletion trigger. | Accepted |
 | D-64 | Anonymous lifecycle delivery | Keep E0-07 narrow and implement conversion, reminders, cleanup and cross-device recovery in their owning stories. | Accepted |
+| D-65 | Firebase Apple SDK compatibility pin | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and upgrade them together. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

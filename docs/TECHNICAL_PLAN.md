@@ -79,6 +79,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-62 | Anonymous sign-in benefit reminders | Fixed days 1, 3, 8 and 18 with highest-due collapse | Accepted | Informs before cleanup without replaying a backlog of prompts. |
 | D-63 | User-data cleanup implementation | Owned idempotent service plus one temporary 1st gen Auth deletion trigger | Accepted | Avoids the externally dated Firebase Extensions management sunset; the Admin collision path calls the service directly. |
 | D-64 | Anonymous lifecycle delivery | Split work across E0-07, E2-02, E2-04, E2-07, E3-10, E3-11 and E3-12 | Accepted | Keeps story PRs reviewable and runs recovery evidence only after permanent auth and sync exist. |
+| D-65 | Firebase Apple SDK compatibility pin | Firebase Apple 11.8.0 exactly with GitLive 2.6.0 | Accepted | Keeps the native Apple SDK aligned with the exact version used to generate GitLive's cinterop bindings; both pins move together. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
