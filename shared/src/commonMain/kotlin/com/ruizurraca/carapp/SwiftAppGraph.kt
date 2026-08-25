@@ -1,13 +1,21 @@
 package com.ruizurraca.carapp
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+
 /** Swift-facing application graph facade. State-holder accessors are added by E0-07 in place. */
 class SwiftAppGraph {
     private var backingDependencies: AppGraphDependencies? = null
+    private var graphScope: CoroutineScope? = null
+    private var vehicleSliceRuntime: VehicleSliceRuntime? = null
 
     constructor()
 
     internal constructor(dependencies: AppGraphDependencies) {
         backingDependencies = dependencies
+        graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.main)
+        vehicleSliceRuntime = VehicleSliceRuntime(dependencies, dependencies.databaseFactory.create())
     }
 
     internal val dependencies: AppGraphDependencies
@@ -15,7 +23,12 @@ class SwiftAppGraph {
 
     fun vehicleListStateHolder(): VehicleListStateHolder = VehicleListStateHolder()
 
-    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder = VehicleFormStateHolder(vehicleId)
+    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder =
+        VehicleFormStateHolder(
+            vehicleId = vehicleId,
+            scope = graphScope,
+            saveVehicle = vehicleSliceRuntime?.let { runtime -> runtime::save },
+        )
 
     fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder = FuelEntryListStateHolder(vehicleId)
 
@@ -28,5 +41,10 @@ class SwiftAppGraph {
 
     fun syncStateHolder(): SyncStateHolder = SyncStateHolder()
 
-    fun close() = Unit
+    fun close() {
+        graphScope?.cancel()
+        graphScope = null
+        vehicleSliceRuntime = null
+        backingDependencies = null
+    }
 }

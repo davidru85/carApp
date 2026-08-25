@@ -108,7 +108,8 @@
 
 ## Shared-Write Modules Touched
 
-- None at intake. Any later `:core:database` change requires declaring exclusive ownership here.
+- `:core:database` — E0-07 owns the synchronized Vehicle mutation boundary while this story is in
+  flight. No other story may modify it concurrently.
 
 ## Project Log Entry
 

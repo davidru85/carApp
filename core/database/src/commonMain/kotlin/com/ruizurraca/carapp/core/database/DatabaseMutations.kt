@@ -12,6 +12,45 @@ class DatabaseMutations(
         get() = database.databaseQueries
 
     @Suppress("LongParameterList")
+    suspend fun insertVehicle(
+        id: String,
+        ownerId: String,
+        name: String,
+        nameFold: String,
+        initialOdometerKm: Long,
+        brand: String?,
+        model: String?,
+        fuelType: String,
+        createdAt: Long,
+        updatedAt: Long,
+        schemaVersion: Long,
+    ) {
+        database.transaction {
+            val localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne()
+            queries.insertVehicleRow(
+                id = id,
+                ownerId = ownerId,
+                name = name,
+                nameFold = nameFold,
+                initialOdometerKm = initialOdometerKm,
+                currentOdometerKm = initialOdometerKm,
+                brand = brand,
+                model = model,
+                fuelType = fuelType,
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                serverUpdatedAt = null,
+                deleted = 0,
+                deletedAt = null,
+                syncState = "PENDING",
+                localRevision = 1,
+                localMutationSeq = localMutationSeq,
+                schemaVersion = schemaVersion,
+            )
+        }
+    }
+
+    @Suppress("LongParameterList")
     suspend fun insertFuelEntry(
         id: String,
         ownerId: String,

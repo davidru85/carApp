@@ -5,8 +5,10 @@ import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.sync.SyncStatus
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class VehicleListStateHolder internal constructor() {
     val state: StateFlow<VehicleListUiState> =
@@ -27,6 +29,8 @@ class VehicleListStateHolder internal constructor() {
 
 class VehicleFormStateHolder internal constructor(
     vehicleId: String?,
+    private val scope: CoroutineScope? = null,
+    private val saveVehicle: (suspend (VehicleFormUiState) -> Unit)? = null,
 ) {
     private val mutableState =
         MutableStateFlow(
@@ -56,7 +60,15 @@ class VehicleFormStateHolder internal constructor(
 
     fun setFuelType(value: FuelType) = value.let { Unit }
 
-    fun save() = Unit
+    fun save() {
+        val operation = saveVehicle ?: return
+        val operationScope = scope ?: return
+        mutableState.value = mutableState.value.copy(isSaving = true)
+        operationScope.launch {
+            operation(mutableState.value)
+            mutableState.value = mutableState.value.copy(isSaving = false)
+        }
+    }
 
     fun clearMessage() = Unit
 
