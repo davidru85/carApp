@@ -181,6 +181,52 @@ class VehicleFormStateHolderTest {
             }
         }
 
+    @Test
+    fun successfulRemoteAckMarksTheVehicleSyncedAndClearsItsOutboxRow() =
+        runTest {
+            val defaultDependencies = testAppGraphDependencies()
+            val database = defaultDependencies.databaseFactory.create()
+            val remote = RecordingRemoteSyncSource { _, _ -> }
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(database),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                remoteSyncSource = remote,
+                            ),
+                        ),
+                )
+
+            try {
+                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                holder.setName("Roadster")
+
+                holder.save()
+                holder.state.first { state -> !state.isSaving }
+
+                val vehicle =
+                    database.databaseQueries
+                        .selectVehicleById("00000000-0000-4000-8000-000000000001")
+                        .awaitAsOneOrNull()
+                assertNotNull(vehicle)
+                assertEquals("SYNCED", vehicle.syncState)
+                assertEquals(1_767_225_600_000L, vehicle.serverUpdatedAt)
+                assertEquals(
+                    null,
+                    database.databaseQueries
+                        .selectOutboxByEntity(
+                            entityType = "VEHICLE",
+                            entityId = vehicle.id,
+                        ).awaitAsOneOrNull(),
+                )
+            } finally {
+                graph.close()
+            }
+        }
+
     private fun fixedDatabaseFactory(database: com.ruizurraca.carapp.core.database.AppDatabase): DatabaseFactory =
         object : DatabaseFactory {
             override fun create() = database
