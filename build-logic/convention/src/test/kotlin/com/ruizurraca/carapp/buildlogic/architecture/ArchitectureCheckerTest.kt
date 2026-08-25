@@ -316,6 +316,12 @@ class ArchitectureCheckerTest {
         }
         assertAccepted(module(":core:testing", source = "class FakeDatabaseFactory : DatabaseFactory"))
         assertAccepted(module(":shared:testing", source = "fun fake(): DatabaseFactory = error(\"x\")"))
+        assertAccepted(
+            module(
+                ":wiring:firebase",
+                source = "class FirebaseAppProviders(override val databaseFactory: DatabaseFactory)",
+            ),
+        )
     }
 
     @Test
