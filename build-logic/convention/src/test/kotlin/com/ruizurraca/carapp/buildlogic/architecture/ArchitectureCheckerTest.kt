@@ -88,7 +88,7 @@ class ArchitectureCheckerTest {
         listOf(
             ":core:model", ":core:common", ":core:sync", ":core:database", ":core:auth",
             ":core:analytics", ":core:testing", ":core:crash", ":integration:*", ":shared",
-            ":shared:testing", ":wiring:firebase",
+            ":shared:testing", ":wiring:firebase", ":composition:ios",
         ).forEach { area ->
             assertTrue(area in areas, "docs/TECHNICAL_PLAN.md §4 has no row for $area; parsed: $areas")
         }
@@ -128,6 +128,20 @@ class ArchitectureCheckerTest {
             "forbidden-module-dependency",
         )
         assertAccepted(module(":shared", projectDependencies = setOf(":core:model", ":feature:fuel")))
+    }
+
+    @Test
+    fun iosCompositionMayDependOnlyOnSharedAndFirebaseWiring() {
+        assertRejected(
+            module(":composition:ios", projectDependencies = setOf(":core:model")),
+            "undeclared-module-dependency",
+        )
+        assertAccepted(
+            module(
+                ":composition:ios",
+                projectDependencies = setOf(":shared", ":wiring:firebase"),
+            ),
+        )
     }
 
     @Test
@@ -251,12 +265,12 @@ class ArchitectureCheckerTest {
     }
 
     @Test
-    fun skieMayNotBeAppliedOutsideShared() {
+    fun skieMayNotBeAppliedOutsideIosComposition() {
         assertRejected(
-            module(":core:model", plugins = setOf("co.touchlab.skie")),
-            "skie-outside-shared",
+            module(":shared", plugins = setOf("co.touchlab.skie")),
+            "skie-outside-ios-composition",
         )
-        assertAccepted(module(":shared", plugins = setOf("co.touchlab.skie")))
+        assertAccepted(module(":composition:ios", plugins = setOf("co.touchlab.skie")))
     }
 
     @Test
