@@ -55,4 +55,31 @@ class IosCompositionContractTest {
         )
         assertTrue(declarations.single().readText().contains("buildAppGraph(isDebugBuild, providers)"))
     }
+
+    @Test
+    fun platformHostsAndCiConsumeTheCompositionBoundary() {
+        val androidBuild = repositoryRoot.resolve("androidApp/build.gradle.kts").readText()
+        val xcodeProject = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val ci = repositoryRoot.resolve(".github/workflows/ci.yml").readText()
+
+        assertTrue(androidBuild.contains("implementation(project(\":wiring:firebase\"))"))
+        assertTrue(androidBuild.contains("carapp.excludeFirebaseProviders"))
+        assertTrue(
+            xcodeProject.contains(
+                "../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework",
+            ),
+        )
+        assertTrue(
+            xcodeProject.contains(":composition:ios:embedAndSignAppleFrameworkForXcode"),
+        )
+        assertFalse(xcodeProject.contains("../shared/build/bin/iosSimulatorArm64/debugFramework"))
+        assertTrue(ci.contains(":composition:ios:linkDebugFrameworkIosSimulatorArm64"))
+        assertTrue(
+            ci.contains(
+                "composition/ios/build/bin/iosSimulatorArm64/debugFramework/" +
+                    "Shared.framework/Headers/Shared.h",
+            ),
+        )
+        assertTrue(ci.contains("shared/build/generated/objc-header/Shared.h.golden"))
+    }
 }
