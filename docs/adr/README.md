@@ -8,7 +8,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 |-------------|-----|----------|--------|
 | D-0 | [ADR-0001](0001-backend-cloud-firestore.md) | Use Cloud Firestore as remote backend. | Accepted |
 | D-1 | [ADR-0002](0002-local-database-room-kmp.md) | Use Room 3.0 KMP for the local database. | Superseded |
-| D-2 | [ADR-0003](0003-ios-interop-skie.md) | Use SKIE for Kotlin-to-Swift interop. | Accepted |
+| D-2 | [ADR-0003](0003-ios-interop-skie.md) | Use SKIE for Kotlin-to-Swift interop. | Superseded |
 | D-3 | [ADR-0004](0004-koin-dependency-injection.md) | Use Koin KMP for dependency injection. | Accepted |
 | D-4 | [ADR-0005](0005-vehicle-fuel-type-from-day-one.md) | Store MVP fuel type from day one; defer electric/hybrid values. | Accepted |
 | D-5 | [ADR-0006](0006-firestore-remote-sync-source.md) | Use Firebase Firestore behind `RemoteSyncSource`. | Accepted |
@@ -64,5 +64,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-55 | [ADR-0056](0056-stage-final-contracts-in-walking-skeleton.md) | Stage final public contracts while implementing only the walking-skeleton Vehicle slice. | Accepted |
 | D-56 | [ADR-0057](0057-place-test-app-graph-factory-in-shared-testing.md) | Place the test app graph factory in `:shared:testing`. | Accepted |
 | D-57 | [ADR-0058](0058-pin-google-services-gradle-plugin.md) | Pin Google Services Gradle plugin 4.5.0. | Accepted |
+| D-58 | [ADR-0059](0059-ios-composition-owns-shared-framework.md) | Move the `Shared` framework and Swift factory to `:composition:ios`. | Accepted |
+| D-59 | [ADR-0060](0060-explicit-app-providers-port.md) | Use explicit typed properties in `AppProviders`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

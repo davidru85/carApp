@@ -15,9 +15,12 @@
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — D-0 through D-57 that govern this story are `Accepted`; D-53 records the
+- [x] Decisions checked — the active decisions through D-59 that govern this story are `Accepted`;
+  D-2 is superseded by D-58; D-53 records the
   owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
-  D-56 records the owner's 2026-08-25 correction of the test-factory module boundary. No
+  D-56 records the owner's 2026-08-25 correction of the test-factory module boundary; D-58 moves
+  the iOS framework composition root out of `:shared`; and D-59 fixes the explicit `AppProviders`
+  port selected by the owner. No
   `Proposed` or `Pending` decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§7 F-1` and `F-2`, `§8`, `§9`,
   `§10`, `§11`; `docs/CONTRACTS.md §1.1`, `§3`, `§11`, `§14`, `§15`, `§16`, `§18`, `§20.3`,
@@ -64,6 +67,10 @@
 - D-56 places `testAppGraphDependencies(...)` in `:shared:testing`, keeps `AppGraphDependencies`
   in `:shared` and preserves `:core:testing` as generic test support.
 - D-57 pins Google Services Gradle plugin 4.5.0 for Android's debug-only Firebase configuration.
+- D-58 makes `:composition:ios` the sole owner of the `Shared` framework and Swift factory while
+  `:shared` remains provider-free.
+- D-59 defines `AppProviders` as explicit typed properties for every graph dependency except
+  `isDebugBuild`, which remains owned by `buildAppGraph`.
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
@@ -81,7 +88,7 @@
 
 ## Decision Board Impact
 
-- Added D-53 through D-57 and ADR-0054 through ADR-0058 before implementation.
+- Added D-53 through D-59 and ADR-0054 through ADR-0060 before implementation.
 
 ## Shared-Write Modules Touched
 

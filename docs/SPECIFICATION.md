@@ -414,7 +414,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 |----|----------|--------|--------|
 | D-0 | Backend | Cloud Firestore. | Accepted |
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Superseded |
-| D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Accepted |
+| D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Superseded |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI; electric/hybrid values are deferred. | Accepted |
 | D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
@@ -470,6 +470,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-55 | Walking-skeleton staged ownership | E0-07 creates the final module/public-contract structure and implements only the real Vehicle slice; later stories complete behavior in place. | Accepted |
 | D-56 | Test app graph factory module | `testAppGraphDependencies(...)` lives in `:shared:testing`; `AppGraphDependencies` remains in `:shared` and `:core:testing` remains generic. | Accepted |
 | D-57 | Android Firebase configuration plugin | Pin Google Services Gradle plugin 4.5.0. | Accepted |
+| D-58 | iOS framework composition ownership | `:composition:ios` produces the single `Shared` framework, exports `:shared` and composes `:wiring:firebase`. | Accepted |
+| D-59 | `AppProviders` port shape | Explicit typed properties for every graph dependency except `isDebugBuild`; `buildAppGraph` applies the flag. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

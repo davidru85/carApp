@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-08-25 — D-59 explicit AppProviders port accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-59`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `AppProviders` is defined as explicit typed properties for every graph
+  dependency except `isDebugBuild`, which `buildAppGraph` applies directly.
+- **Why:** the owner selected the compile-time-visible provider boundary over an opaque dependency
+  factory or a Firebase-only port that would leave platform construction unresolved.
+- **Documents touched:** `docs/adr/0060-explicit-app-providers-port.md`, the four decision mirrors,
+  the E0-07 handoff and this log.
+- **Verification:** `contractCheck` reports 60 aligned decisions and ADRs.
+- **Follow-ups / risks:** E0-07 must prove provider parity on Android host and Kotlin/Native.
+
+### 2026-08-25 — D-58 iOS composition framework ownership accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-58`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** a thin `:composition:ios` module becomes the sole producer of the `Shared`
+  framework and Swift graph factory; `:shared` remains provider-free and no longer produces a
+  framework.
+- **Why:** the owner selected an umbrella composition root to avoid the unavoidable
+  `:shared`/`:wiring:firebase` Gradle cycle without global registration or duplicate
+  Kotlin/Native runtimes.
+- **Documents touched:** `docs/adr/0059-ios-composition-owns-shared-framework.md`, D-2's
+  supersession record, the four decision mirrors, the E0-07 handoff and this log.
+- **Verification:** `contractCheck` reports 60 aligned decisions and ADRs.
+- **Follow-ups / risks:** E0-07 must move SKIE, Xcode embedding and header generation to the new
+  composition module while retaining Swift's `import Shared`.
+
 ### 2026-08-24 — E3-01 Firestore security rules completed
 
 - **Type:** story

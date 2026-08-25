@@ -16,7 +16,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 |----|----------|--------|--------|-----------|
 | D-0 | Backend | Cloud Firestore | Accepted | Fits the data model, avoids fixed Cloud SQL cost, provides client-ID idempotent writes and server timestamps. |
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Superseded | Replaced by `D-36` because the mandatory SQLite `CHECK` constraints could not be represented as one Room-generated schema. |
-| D-2 | Swift interop | SKIE only in `:shared` | Accepted | Better Swift ergonomics for Flow and sealed-like models than raw KMP export. |
+| D-2 | Swift interop | SKIE only in `:shared` | Superseded | D-58 retains SKIE and moves its application to the module that owns the exported framework. |
 | D-3 | DI | Koin KMP | Accepted | Owner-selected DI. Runtime wiring is acceptable if Koin is constrained to composition and wiring. |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, without electric/hybrid values in MVP | Accepted | Schema evolution is easier before users exist; selector is not part of MVP UI; electric/hybrid needs a future energy model. |
 | D-5 | Firestore access | Firebase Firestore integration behind `RemoteSyncSource` | Accepted | Firebase is the initial database backend, fully decoupled so a future Ktor/API implementation can replace it. |
@@ -72,6 +72,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-55 | Walking-skeleton staged ownership | Final modules and public contracts now; real Vehicle slice only | Accepted | Keeps the complete Swift ABI gate early while later stories retain ownership of full feature, auth and sync behavior. |
 | D-56 | Test app graph factory module | Factory in `:shared:testing`; graph contract in `:shared`; generic fakes in `:core:testing` | Accepted | Preserves the application-to-core dependency direction and exposes reusable KMP test support from `commonMain`. |
 | D-57 | Android Firebase configuration plugin | Google Services Gradle plugin 4.5.0 | Accepted | Uses the current stable processor for the debug-only Firebase configuration and keeps its version centralized. |
+| D-58 | iOS framework composition ownership | `:composition:ios` owns the single `Shared` framework and composes `:shared` with `:wiring:firebase` | Accepted | Avoids a `:shared` to wiring cycle, preserves provider-free graph tests and keeps one Kotlin/Native runtime. |
+| D-59 | `AppProviders` port shape | Explicit typed properties except `isDebugBuild` | Accepted | Keeps construction compile-time checked and makes `buildAppGraph` the sole owner of the build-mode flag. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
