@@ -16,6 +16,7 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -56,6 +57,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
+                holder.state.first { state -> !state.isSaving }
 
                 val vehicle =
                     database.databaseQueries
@@ -101,6 +103,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
+                holder.state.first { state -> !state.isSaving }
 
                 val outbox =
                     database.databaseQueries
@@ -166,6 +169,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
+                holder.state.first { state -> !state.isSaving }
 
                 val call = remote.pushCalls.single()
                 assertEquals("anonymous-user", call.first.value)
@@ -218,6 +222,5 @@ private class RecordingRemoteSyncSource(
         entityType: EntityType,
         cursor: RemoteCursor,
         limit: Int,
-    ): Outcome<RemotePage, RemoteError> =
-        Outcome.Ok(RemotePage(emptyList(), cursor, hasMore = false))
+    ): Outcome<RemotePage, RemoteError> = Outcome.Ok(RemotePage(emptyList(), cursor, hasMore = false))
 }

@@ -3,6 +3,10 @@ package com.ruizurraca.carapp
 import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
+import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.LOCAL_OWNER
+import com.ruizurraca.carapp.core.sync.EntitySnapshot
+import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -24,10 +28,19 @@ internal class VehicleSliceRuntime(
         val now = dependencies.clock.now().toEpochMilliseconds()
         val id = dependencies.uuidGenerator.newId()
         val schemaVersion = CLIENT_MAX_SCHEMA_VERSION.toLong()
-        val ownerId = dependencies.ownerContext.current.value
+        val owner = dependencies.ownerContext.current
+        val snapshot =
+            buildVehicleSnapshot(
+                id = id,
+                ownerId = owner.value,
+                name = name,
+                form = form,
+                now = now,
+                schemaVersion = schemaVersion,
+            )
         mutations.insertVehicle(
             id = id,
-            ownerId = ownerId,
+            ownerId = owner.value,
             name = name,
             nameFold = name.lowercase(),
             initialOdometerKm = form.initialOdometerKm,
@@ -37,16 +50,20 @@ internal class VehicleSliceRuntime(
             createdAt = now,
             updatedAt = now,
             schemaVersion = schemaVersion,
-            outboxPayload =
-                buildVehicleSnapshot(
-                    id = id,
-                    ownerId = ownerId,
-                    name = name,
-                    form = form,
-                    now = now,
-                    schemaVersion = schemaVersion,
-                ),
+            outboxPayload = snapshot,
         )
+        if (owner != LOCAL_OWNER && dependencies.connectivityObserver.isOnline.value) {
+            dependencies.remoteSyncSource.pushSnapshot(
+                ownerId = owner,
+                snapshot =
+                    EntitySnapshot(
+                        entityType = EntityType.VEHICLE,
+                        entityId = EntityId(id),
+                        schemaVersion = schemaVersion.toInt(),
+                        json = snapshot,
+                    ),
+            )
+        }
     }
 }
 
