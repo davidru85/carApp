@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
@@ -222,6 +223,53 @@ class VehicleFormStateHolderTest {
                             entityId = vehicle.id,
                         ).awaitAsOneOrNull(),
                 )
+            } finally {
+                graph.close()
+            }
+        }
+
+    @Test
+    fun localOwnerSavePersistsPendingVehicleWithoutOutboxOrRemotePush() =
+        runTest {
+            val defaultDependencies = testAppGraphDependencies()
+            val database = defaultDependencies.databaseFactory.create()
+            val remote = RecordingRemoteSyncSource { _, _ -> }
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(database),
+                                ownerContext = fixedOwnerContext(LOCAL_OWNER),
+                                remoteSyncSource = remote,
+                            ),
+                        ),
+                )
+
+            try {
+                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                holder.setName("Offline Roadster")
+
+                holder.save()
+                holder.state.first { state -> !state.isSaving }
+
+                val vehicle =
+                    database.databaseQueries
+                        .selectVehicleById("00000000-0000-4000-8000-000000000001")
+                        .awaitAsOneOrNull()
+                assertNotNull(vehicle)
+                assertEquals(LOCAL_OWNER.value, vehicle.ownerId)
+                assertEquals("PENDING", vehicle.syncState)
+                assertEquals(
+                    null,
+                    database.databaseQueries
+                        .selectOutboxByEntity(
+                            entityType = "VEHICLE",
+                            entityId = vehicle.id,
+                        ).awaitAsOneOrNull(),
+                )
+                assertEquals(emptyList(), remote.pushCalls)
             } finally {
                 graph.close()
             }
