@@ -21,8 +21,18 @@ android {
     }
 }
 
+val providerFreeBuild =
+    providers
+        .gradleProperty("carapp.excludeFirebaseProviders")
+        .map(String::toBooleanStrict)
+        .getOrElse(false)
+
 dependencies {
-    implementation(project(":shared"))
+    if (providerFreeBuild) {
+        implementation(project(":shared"))
+    } else {
+        implementation(project(":wiring:firebase"))
+    }
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

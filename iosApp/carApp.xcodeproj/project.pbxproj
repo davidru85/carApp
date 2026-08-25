@@ -10,6 +10,7 @@
 		0C1EB05F79895A10EECE54D3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C99F176FF58DC55F24480629 /* ContentView.swift */; };
 		61E65B896D4706CE90C4C527 /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 20B81884D405CE5CFB7054DB /* Shared.framework */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		97975CFB4D9CB67E28EB086C /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E166135431E98EF2E7231D4C /* carAppApp.swift */; };
+		E3358FBFA6DEE9602C7C3178 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */; };
 		ED38CE0378861B5E48095112 /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 20B81884D405CE5CFB7054DB /* Shared.framework */; };
 /* End PBXBuildFile section */
 
@@ -28,7 +29,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		20B81884D405CE5CFB7054DB /* Shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Shared.framework; path = ../shared/build/bin/iosSimulatorArm64/debugFramework/Shared.framework; sourceTree = "<group>"; };
+		0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
+		20B81884D405CE5CFB7054DB /* Shared.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Shared.framework; path = ../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework; sourceTree = "<group>"; };
 		25A592DAD009883E29DBAB11 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		C99F176FF58DC55F24480629 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E166135431E98EF2E7231D4C /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
@@ -53,6 +55,7 @@
 				E166135431E98EF2E7231D4C /* carAppApp.swift */,
 				C99F176FF58DC55F24480629 /* ContentView.swift */,
 				25A592DAD009883E29DBAB11 /* Info.plist */,
+				B2E085FC069B7794CF608B18 /* Config */,
 			);
 			name = iosApp;
 			path = .;
@@ -66,6 +69,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		B2E085FC069B7794CF608B18 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				D662E349C92D738275074605 /* Debug */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		CCED53CEB55E73F654639F9F /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -74,9 +85,18 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		D662E349C92D738275074605 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				0DC42B37847F1A5A331C129F /* GoogleService-Info-Debug.plist */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
 		E3D19A4D38694A47DC344CE6 = {
 			isa = PBXGroup;
 			children = (
+				B2E085FC069B7794CF608B18 /* Config */,
 				22A277641E77C9E7433CBE1E /* iosApp */,
 				CCED53CEB55E73F654639F9F /* Frameworks */,
 				39881192AFE2CF4DD842531A /* Products */,
@@ -90,7 +110,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A341E26390F9E8DF3E134391 /* Build configuration list for PBXNativeTarget "carApp" */;
 			buildPhases = (
+				43E46D303569082042874712 /* Build Shared framework */,
 				BD446437D5E90F9764FF8B6E /* Sources */,
+				B3B0B1D2B074820A8E592E92 /* Resources */,
 				2EC8FC2657F951912E87F026 /* Frameworks */,
 				72D722CA3FFC9F566092D92A /* Embed Frameworks */,
 			);
@@ -134,6 +156,39 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B3B0B1D2B074820A8E592E92 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E3358FBFA6DEE9602C7C3178 /* GoogleService-Info-Debug.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		43E46D303569082042874712 /* Build Shared framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Shared framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cd \"$SRCROOT/..\"\n./gradlew :composition:ios:embedAndSignAppleFrameworkForXcode\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BD446437D5E90F9764FF8B6E /* Sources */ = {
@@ -190,7 +245,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/debugFramework",
+					"$(SRCROOT)/../composition/ios/build/bin/iosSimulatorArm64/debugFramework",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -257,7 +312,7 @@
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/debugFramework",
+					"$(SRCROOT)/../composition/ios/build/bin/iosSimulatorArm64/debugFramework",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -296,7 +351,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"../shared/build/bin/iosSimulatorArm64/debugFramework\"",
+					"\"../composition/ios/build/bin/iosSimulatorArm64/debugFramework\"",
 				);
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -316,7 +371,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"../shared/build/bin/iosSimulatorArm64/debugFramework\"",
+					"\"../composition/ios/build/bin/iosSimulatorArm64/debugFramework\"",
 				);
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
