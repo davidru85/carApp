@@ -4,10 +4,14 @@ import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
+import com.ruizurraca.carapp.core.database.observeVehicles
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -19,7 +23,7 @@ import kotlinx.serialization.json.put
  */
 internal class VehicleSliceRuntime(
     private val dependencies: AppGraphDependencies,
-    database: AppDatabase,
+    private val database: AppDatabase,
 ) {
     private val mutations = DatabaseMutations(database)
 
@@ -74,6 +78,19 @@ internal class VehicleSliceRuntime(
             }
         }
     }
+
+    fun observeVehicles(): Flow<List<VehicleListItemUi>> =
+        database.databaseQueries.observeVehicles().map { rows ->
+            rows.map { row ->
+                VehicleListItemUi(
+                    id = row.id,
+                    name = row.name,
+                    currentOdometerKm = row.currentOdometerKm,
+                    fuelType = FuelType.valueOf(row.fuelType),
+                    deleted = row.deleted != 0L,
+                )
+            }
+        }
 }
 
 private fun canonicalWalkingSkeletonName(value: String): String = value.trim().split(Regex("\\s+")).joinToString(" ")

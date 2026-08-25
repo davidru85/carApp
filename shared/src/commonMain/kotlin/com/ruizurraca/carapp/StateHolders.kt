@@ -6,13 +6,30 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.sync.SyncStatus
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-class VehicleListStateHolder internal constructor() {
-    val state: StateFlow<VehicleListUiState> =
+class VehicleListStateHolder internal constructor(
+    scope: CoroutineScope? = null,
+    vehicles: Flow<List<VehicleListItemUi>>? = null,
+) {
+    private val mutableState =
         MutableStateFlow(VehicleListUiState(false, emptyList(), null, SyncStatus.Idle, null))
+    private val observationJob: Job? =
+        if (scope != null && vehicles != null) {
+            scope.launch {
+                vehicles.collect { items ->
+                    mutableState.value = mutableState.value.copy(vehicles = items)
+                }
+            }
+        } else {
+            null
+        }
+    val state: StateFlow<VehicleListUiState> = mutableState
 
     fun refresh() = Unit
 
@@ -24,7 +41,9 @@ class VehicleListStateHolder internal constructor() {
 
     fun clearMessage() = Unit
 
-    fun close() = Unit
+    fun close() {
+        observationJob?.cancel()
+    }
 }
 
 class VehicleFormStateHolder internal constructor(

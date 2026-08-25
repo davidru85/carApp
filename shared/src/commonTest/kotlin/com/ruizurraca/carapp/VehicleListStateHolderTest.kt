@@ -39,6 +39,7 @@ class VehicleListStateHolderTest {
 
                 form.save()
                 form.state.first { state -> !state.isSaving }
+                val publishedState = list.state.first { state -> state.vehicles.isNotEmpty() }
 
                 assertEquals(
                     listOf(
@@ -50,7 +51,7 @@ class VehicleListStateHolderTest {
                             deleted = false,
                         ),
                     ),
-                    list.state.value.vehicles,
+                    publishedState.vehicles,
                 )
             } finally {
                 graph.close()

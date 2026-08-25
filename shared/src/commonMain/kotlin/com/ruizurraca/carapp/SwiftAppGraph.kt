@@ -9,6 +9,7 @@ class SwiftAppGraph {
     private var backingDependencies: AppGraphDependencies? = null
     private var graphScope: CoroutineScope? = null
     private var vehicleSliceRuntime: VehicleSliceRuntime? = null
+    private var cachedVehicleListStateHolder: VehicleListStateHolder? = null
 
     constructor()
 
@@ -21,7 +22,12 @@ class SwiftAppGraph {
     internal val dependencies: AppGraphDependencies
         get() = checkNotNull(backingDependencies) { "SwiftAppGraph was not built from AppProviders" }
 
-    fun vehicleListStateHolder(): VehicleListStateHolder = VehicleListStateHolder()
+    fun vehicleListStateHolder(): VehicleListStateHolder =
+        cachedVehicleListStateHolder
+            ?: VehicleListStateHolder(
+                scope = graphScope,
+                vehicles = vehicleSliceRuntime?.observeVehicles(),
+            ).also { cachedVehicleListStateHolder = it }
 
     fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder =
         VehicleFormStateHolder(
@@ -42,6 +48,8 @@ class SwiftAppGraph {
     fun syncStateHolder(): SyncStateHolder = SyncStateHolder()
 
     fun close() {
+        cachedVehicleListStateHolder?.close()
+        cachedVehicleListStateHolder = null
         graphScope?.cancel()
         graphScope = null
         vehicleSliceRuntime = null
