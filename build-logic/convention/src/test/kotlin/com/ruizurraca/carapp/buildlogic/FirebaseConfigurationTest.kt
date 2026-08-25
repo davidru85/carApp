@@ -47,6 +47,10 @@ class FirebaseConfigurationTest {
         val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
         val projectGenerator = repositoryRoot.resolve("iosApp/generate-project.sh").readText()
         val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+        val resolvedPackages =
+            repositoryRoot
+                .resolve("iosApp/carApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved")
+                .readText()
 
         assertTrue(catalog.contains("firebaseApple = \"11.8.0\""))
         assertTrue(projectSpec.contains("exactVersion: ${'$'}{FIREBASE_APPLE_VERSION}"))
@@ -59,5 +63,7 @@ class FirebaseConfigurationTest {
         assertTrue(xcodeProject.contains("FirebaseAuth"))
         assertTrue(xcodeProject.contains("FirebaseCore"))
         assertTrue(xcodeProject.contains("FirebaseFirestore"))
+        assertTrue(resolvedPackages.contains("\"identity\" : \"firebase-ios-sdk\""))
+        assertTrue(resolvedPackages.contains("\"version\" : \"11.8.0\""))
     }
 }

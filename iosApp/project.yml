@@ -17,6 +17,10 @@ settings:
     LD_RUNPATH_SEARCH_PATHS:
       - $(inherited)
       - "@executable_path/Frameworks"
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    exactVersion: ${FIREBASE_APPLE_VERSION}
 targets:
   carApp:
     type: application
@@ -30,6 +34,12 @@ targets:
       - framework: ../composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework
         embed: true
         codeSign: false
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseFirestore
     preBuildScripts:
       - name: Build Shared framework
         basedOnDependencyAnalysis: false
