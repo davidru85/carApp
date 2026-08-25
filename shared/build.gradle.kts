@@ -24,6 +24,7 @@ kotlin {
         commonTest {
             dependencies {
                 implementation(project(":shared:testing"))
+                implementation(project(":core:testing"))
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
