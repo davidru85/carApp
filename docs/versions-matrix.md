@@ -51,6 +51,7 @@ choice: an ADR where a decision exists, otherwise the story or normative section
 | Android `compileSdk` | — | 37 | `E0-06` | Floor imposed by the pinned Compose BOM. |
 | Android `targetSdk` | — | 36 | `E0-06` | Deliberately one below `compileSdk`. `compileSdk` is forced by the Compose BOM and only decides which APIs compile; `targetSdk` is the Android runtime contract the app opts into, which is a behavioural decision and not a version pin. It matches the Android reference device below, and `E4-04` owns the move to a newer level before release. `minSdk` is fixed at 26 by `docs/SPECIFICATION.md §11`. |
 | Firebase | Firebase BOM | 34.18.0 | [ADR-0001](adr/0001-backend-cloud-firestore.md) (`D-0`) | Governs the native Firebase artifact versions, including Crashlytics. |
+| Firebase Android configuration | `com.google.gms.google-services` | 4.5.0 | [ADR-0058](adr/0058-pin-google-services-gradle-plugin.md) (`D-57`) | Processes the build-type-specific `google-services.json`; applied only to `:androidApp`. |
 | GitLive | `dev.gitlive:firebase-*` | 2.6.0 | [ADR-0006](adr/0006-firestore-remote-sync-source.md), [ADR-0007](adr/0007-firebase-auth-gitlive.md) (`D-5`, `D-6`) | Latest 2.6.x. The 3.0 line is alpha and is out of scope for the MVP. |
 | Coroutines | `kotlinx-coroutines` | 1.11.0 | `E0-06` | Also determines the Native `Dispatchers.IO` source used by `DispatcherProvider`. |
 | Serialization | `kotlinx-serialization-json` | 1.11.0 | `E0-06` | Outbox payloads and remote DTOs. |

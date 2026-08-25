@@ -15,7 +15,7 @@
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — D-0 through D-56 that govern this story are `Accepted`; D-53 records the
+- [x] Decisions checked — D-0 through D-57 that govern this story are `Accepted`; D-53 records the
   owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
   D-56 records the owner's 2026-08-25 correction of the test-factory module boundary. No
   `Proposed` or `Pending` decision blocks the story.
@@ -63,6 +63,7 @@
   to the Vehicle walking-skeleton slice and reserves all remaining behavior for its owning stories.
 - D-56 places `testAppGraphDependencies(...)` in `:shared:testing`, keeps `AppGraphDependencies`
   in `:shared` and preserves `:core:testing` as generic test support.
+- D-57 pins Google Services Gradle plugin 4.5.0 for Android's debug-only Firebase configuration.
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
@@ -80,7 +81,7 @@
 
 ## Decision Board Impact
 
-- Added D-53 through D-56 and ADR-0054 through ADR-0057 before implementation.
+- Added D-53 through D-57 and ADR-0054 through ADR-0058 before implementation.
 
 ## Shared-Write Modules Touched
 
