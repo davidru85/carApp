@@ -408,7 +408,10 @@ class ArchitectureCheckerTest {
     @Test
     fun integrationsMayDeclareKoinModulesButMayNotBuildTheGraph() {
         assertRejected(
-            module(":integration:firebase-auth", source = "val graph = createAppGraph(dependencies)"),
+            module(
+                ":integration:firebase-auth",
+                source = "val graph = buildAppGraph(isDebugBuild, providers)",
+            ),
             "integration-builds-app-graph",
         )
         assertAccepted(module(":integration:firebase-auth", source = "val authModule = module { single<AuthClient> { FirebaseAuthClient() } }"))
