@@ -10,6 +10,7 @@ class SwiftAppGraph {
     private var graphScope: CoroutineScope? = null
     private var vehicleSliceRuntime: VehicleSliceRuntime? = null
     private var cachedVehicleListStateHolder: VehicleListStateHolder? = null
+    private var cachedSessionStateHolder: SessionStateHolder? = null
 
     constructor()
 
@@ -44,13 +45,22 @@ class SwiftAppGraph {
         entryId: String?,
     ): FuelEntryFormStateHolder = FuelEntryFormStateHolder(vehicleId, entryId)
 
-    fun sessionStateHolder(): SessionStateHolder = SessionStateHolder()
+    fun sessionStateHolder(): SessionStateHolder {
+        val scope = checkNotNull(graphScope) { "SwiftAppGraph is closed or was not built from AppProviders" }
+        return cachedSessionStateHolder
+            ?: SessionStateHolder(
+                scope = scope,
+                authClient = dependencies.authClient,
+            ).also { cachedSessionStateHolder = it }
+    }
 
     fun syncStateHolder(): SyncStateHolder = SyncStateHolder()
 
     fun close() {
         cachedVehicleListStateHolder?.close()
         cachedVehicleListStateHolder = null
+        cachedSessionStateHolder?.close()
+        cachedSessionStateHolder = null
         graphScope?.cancel()
         graphScope = null
         vehicleSliceRuntime = null
