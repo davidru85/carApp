@@ -7,10 +7,10 @@ import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import kotlinx.coroutines.test.runTest
-import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Instant
 
 class FirebaseRemoteSyncSourceTest {
     @Test
@@ -54,13 +54,10 @@ class FirebaseRemoteSyncSourceTest {
         }
 }
 
-private class RecordingFirestoreGateway : FirestoreGateway {
-    constructor(serverUpdatedAt: Instant = Instant.fromEpochMilliseconds(0)) {
-        this.serverUpdatedAt = serverUpdatedAt
-    }
-
+private class RecordingFirestoreGateway(
+    private val serverUpdatedAt: Instant = Instant.fromEpochMilliseconds(0),
+) : FirestoreGateway {
     var memoryOnlyConfigurationCount = 0
-    lateinit var serverUpdatedAt: Instant
     val writes = mutableListOf<FirestoreWrite>()
 
     override fun configureMemoryOnlyCache() {
