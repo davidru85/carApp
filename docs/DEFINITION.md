@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses and one active device per account. Users can create vehicles, log refueling events, review history, calculate real consumption, keep their data available offline, and back it up for recovery on a new device.
 
-Phase 0 is complete and Phase 1 is open: `E1-01` has delivered the SQLDelight local database on both platforms, and `E3-06` has made provider decoupling executable. There is no user-visible feature yet. The next story is `E3-01`, followed by the `E0-07` walking-skeleton gate under the accepted prerequisite order. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
+Phase 0 is complete and Phase 1 is open: `E1-01`, `E3-06` and `E3-01` have delivered the SQLDelight database, executable provider decoupling and the reviewed Firestore rules. There is no completed user-visible feature yet. `E0-07`, the walking-skeleton gate, is in progress. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
 
 ## 2. MVP Objective
 
@@ -55,7 +55,10 @@ The canonical map with links lives in `AGENTS.md`. In short:
 
 Scope is defined once, in `docs/SPECIFICATION.md §3`. Do not rely on any other list.
 
-In one sentence: fuel expenses only, offline-first, anonymous-capable, two platforms, Spanish and English, with nothing that requires charts, export, images, notifications, sharing or additional expense types.
+In one sentence: fuel expenses only, offline-first, anonymous-capable, two platforms, Spanish and
+English, with nothing that requires charts, export, images, operating-system notifications, sharing
+or additional expense types; the only reminder-like behavior is the foreground anonymous-account
+retention notice selected by `D-62`.
 
 Any out-of-scope request requires a specification change and human approval.
 
@@ -88,7 +91,7 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 | Phase | Goal | Gate |
 |-------|------|------|
 | 0 | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every architecture rule has a failing fixture proving it fires |
-| 1 (opening) | `:core:database`, then the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth. `D-30` moved the skeleton out of Phase 0 because it needs the local database | Data can be backed up remotely and restored on a clean second device; the Swift-facing surface constraints hold |
+| 1 (opening) | `:core:database`, then the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth. `D-30` moved the skeleton out of Phase 0 because it needs the local database | The local/remote Vehicle path works under the same retained anonymous session on both native hosts; the Swift-facing surface constraints hold. Permanent-account cross-device recovery moves to E3-12 |
 | 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
 | 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
 | 3 | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |

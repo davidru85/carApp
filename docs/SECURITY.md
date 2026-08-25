@@ -74,10 +74,22 @@ Requirements:
   none of the npm packages ships in the Android or iOS app. Re-evaluate on any high or critical
   advisory, affected-path expansion or reviewed Firebase CLI update.
 - **No Firebase App Check in the MVP** (`docs/SPECIFICATION.md §3.2`). Anyone holding a valid UID can write to their own subtree with a non-official client. This is mitigated, not removed, by per-field range validation in the Firestore rules and by client-side quarantine of unsupported or malformed documents. Revisit before any public launch beyond the MVP.
-- **No post-MVP Cloud Functions-mediated database access in the MVP** (`docs/SPECIFICATION.md §3.3`). The only MVP server/Admin operation is `D-23` account deletion. Server-side validation before remote writes, authenticated identity and authorization checks before remote reads, app integrity checks, rate limiting, abuse monitoring and broader privileged server-side product operations require a future story or ADR before implementation.
+- **No general Cloud Functions-mediated database access in the MVP** (`docs/SPECIFICATION.md
+  §3.3`). The only MVP server/Admin operations are the `D-23` user-requested account deletion and
+  the `D-63` anonymous identity/data-cleanup paths. Server-side validation before remote writes,
+  authenticated identity and authorization checks before remote reads, app integrity checks, rate
+  limiting, abuse monitoring and broader privileged server-side product operations require a
+  future story or ADR before implementation.
 - **No receipt, odometer image or OCR processing in the MVP** (`docs/SPECIFICATION.md §3.3`). Future local AI text recognition must keep receipt images, odometer images, recognized raw text and extracted fields local unless a later explicit owner decision changes the privacy model.
 - **Last-write-wins backup collision handling** can lose one whole-document update if the same account is actively edited on multiple devices. Active multi-device editing is not a supported MVP workflow. Documented in `docs/SPECIFICATION.md §9.5`.
-- **Anonymous data loss** if the user uninstalls before converting the account. Documented in `docs/SPECIFICATION.md §4`.
+- **Anonymous data loss** if the user uninstalls, clears the retained Firebase Auth session or
+  reaches native automatic cleanup eligibility before linking a permanent provider. Anonymous
+  identity is device-bound, and the risk is disclosed through `D-62` foreground notices. Documented
+  in `docs/SPECIFICATION.md §4` and `docs/CONTRACTS.md §11.2`.
+- **One temporary Cloud Functions 1st gen dependency.** `onAnonymousUserDeleted` is the only
+  permitted exception because Authentication user-deletion events have no 2nd gen equivalent.
+  The exact migration surface, quarterly owner review and prohibition on additional 1st gen
+  functions are tracked in `docs/TECHNICAL_PLAN.md §13` (`TD-01`).
 
 ## Privacy
 

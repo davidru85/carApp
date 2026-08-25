@@ -66,5 +66,10 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-57 | [ADR-0058](0058-pin-google-services-gradle-plugin.md) | Pin Google Services Gradle plugin 4.5.0. | Accepted |
 | D-58 | [ADR-0059](0059-ios-composition-owns-shared-framework.md) | Move the `Shared` framework and Swift factory to `:composition:ios`. | Accepted |
 | D-59 | [ADR-0060](0060-explicit-app-providers-port.md) | Use explicit typed properties in `AppProviders`. | Accepted |
+| D-60 | [ADR-0061](0061-anonymous-identity-is-device-bound.md) | Treat unlinked anonymous identities as device-bound and enable native 30-day cleanup. | Accepted |
+| D-61 | [ADR-0062](0062-current-anonymous-data-wins-linking-collision.md) | Preserve current anonymous-session data on a confirmed linking collision. | Accepted |
+| D-62 | [ADR-0063](0063-anonymous-sign-in-benefit-reminders.md) | Use fixed, collapsible sign-in benefit reminders. | Accepted |
+| D-63 | [ADR-0064](0064-own-user-data-cleanup-service.md) | Own idempotent user-data cleanup with one tracked 1st gen Auth trigger. | Accepted |
+| D-64 | [ADR-0065](0065-split-anonymous-lifecycle-delivery.md) | Split anonymous lifecycle implementation across owning stories. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

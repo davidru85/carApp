@@ -674,11 +674,65 @@ On first launch, when the user selects the "Continue without account" path, the 
 
 First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4).
 
+An unlinked Firebase anonymous identity is device-bound. It can be resumed only while the same
+device retains its Firebase Auth session; the app MUST NOT expose a cross-device recovery promise
+for it. Linking Google or Apple while preserving the UID converts it into a portable permanent
+identity.
+
+Authentication with Identity Platform native automatic cleanup MUST be enabled in every Firebase
+project. Firebase owns its fixed 30-day eligibility threshold. Unlinked anonymous accounts are
+eligible; accounts linked to any permanent provider are excluded. The provider's user-creation
+timestamp is the canonical origin for that elapsed time and for the reminder schedule below.
+
 ### 11.3 Anonymous conversion
 
-Anonymous conversion MUST preserve the UID through credential linking. If a provider flow would change the UID, the MVP aborts conversion and returns a typed error.
+Normal anonymous conversion MUST preserve the UID through credential linking. If linking succeeds,
+all existing data remains owned by that UID. A provider response that would change the UID without
+a credential collision aborts conversion and returns `AuthError.UidWouldChange`.
 
-Credential collision cancellation leaves the anonymous session and local data untouched. Choosing the existing account requires `Confirmation.AdoptExistingAccount`, clears local anonymous data, signs into the existing account, then performs an initial pull from `RemoteCursor.INITIAL`.
+`AuthError.CredentialAlreadyInUse` starts a separate collision flow. Cancellation leaves the
+anonymous session and all local and remote data untouched. Continuing requires
+`Confirmation.AdoptExistingAccount` after the UI states that the existing permanent-account data
+will be replaced by the current anonymous-session snapshot. The MVP never merges both data sets.
+
+After confirmation, the operation is ordered as follows:
+
+1. Persist a complete, durable local snapshot of the current anonymous owner's synchronized
+   `Vehicle` and `FuelEntry` rows, including tombstones, and capture a fresh Firebase ID token for
+   that anonymous UID.
+2. Sign into the permanent account that owns the colliding provider credential.
+3. Replace that permanent account's remote `vehicles` and `fuelEntries` data with the captured
+   snapshot. Replacement is idempotent and resumable; an interrupted attempt resumes from the
+   durable snapshot rather than pulling and overwriting it.
+4. Rebuild the permanent owner's local rows from the same snapshot, preserving a recoverable
+   operation marker until both the remote replacement and step 5 succeed.
+5. Call `deleteOrphanedAnonymousAccount` with the captured anonymous token. The backend verifies
+   the token, verifies that it represents the abandoned anonymous UID rather than the current
+   permanent UID, deletes that anonymous Firebase Auth account and directly invokes the D-63
+   user-data deletion service for the anonymous UID.
+
+Retry after any interruption MUST converge on the same permanent-account snapshot and the same
+deleted anonymous identity. It MUST NOT re-enter normal recovery pull while the replacement marker
+exists. Exact backend idempotency and deletion semantics are in §11.5.
+
+#### Anonymous sign-in benefit reminders
+
+The reminder schedule is the fixed list of elapsed-day thresholds `[1, 3, 8, 18]`, held in one
+configuration constant and anchored to the Firebase anonymous user-creation timestamp. Evaluation
+runs on app launch and foreground return. It is disabled for `LOCAL_OWNER`, signed-out and
+permanently authenticated sessions.
+
+The device persists the last-shown zero-based reminder index. When several unseen thresholds are
+due, exactly the highest due index is shown and that index is persisted, consuming every lower
+pending reminder. A reminder is dismissible and never blocks an existing feature. Index 3
+completes the schedule. Successful permanent-provider linking or sign-in clears the pending
+anonymous reminder state.
+
+The boundary cases are normative: no reminder at 12 hours; reminder 0 on day 1; no new reminder on
+day 2; reminder 1 on day 4; reminder 2 on day 9; only reminder 3 on day 20 even when no earlier
+reminder was shown; and no reminder on day 31 after reminder 3 has been consumed. The notice copy
+MUST explain the benefit of permanent sign-in and the device-bound, 30-day cleanup risk. These are
+foreground authentication-retention notices, not operating-system notifications.
 
 ### 11.4 Local owner adoption
 
@@ -709,6 +763,38 @@ The order `fuelEntries`, then `vehicles` is normative. Reversing it would leave 
 The server operation MUST be idempotent for already-deleted documents and MUST NOT delete any document outside `users/{uid}`. It MAY page internally, but partial progress is not reported as success. If step 2, 3 or 4 fails, the app flow aborts with a typed `AuthError`, preserves local data, and does not perform client-side hard deletes. Deleting the auth account before the data would leave unreachable orphan documents.
 
 If the local database has pending outbox rows at the time of account deletion, those rows are dropped together with all local data after the server operation succeeds. The server operation is the authoritative purge; the client's outbox state is discarded. Rows typed shortly before deletion may be lost, which is the expected trade-off of the destructive operation.
+
+The D-63 user-data deletion service is the single reusable implementation that removes application
+data for a UID. Its explicit registry MUST contain every location declared by the remote data
+schema. The registry is currently exactly:
+
+```text
+Firestore collection: users/{uid}/fuelEntries/{entryId}
+Firestore collection: users/{uid}/vehicles/{vehicleId}
+Cloud Storage prefixes: []
+```
+
+The deletion order remains `fuelEntries`, then `vehicles`. Cloud Storage is not used by the MVP,
+but the empty prefix list is an executable registry entry rather than an undocumented convention.
+A server-side contract test compares the registry with the declared remote data schema and fails
+when either gains a location that the other omits.
+
+Two anonymous-deletion entry points reuse this service:
+
+- `onAnonymousUserDeleted` is the sole permitted Cloud Functions 1st gen function. The application
+  relies on it only for Firebase's native automatic anonymous-account cleanup path, and it invokes
+  the service for an eligible deleted anonymous UID. Delivery caused by another anonymous deletion
+  is treated as harmless idempotent overlap, never as the primary guarantee for that path.
+- `deleteOrphanedAnonymousAccount` is a Cloud Functions 2nd gen callable used by the confirmed
+  account-linking collision flow. It verifies the captured anonymous ID token and caller context,
+  deletes the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion
+  service directly after that deletion. It MUST NOT rely on `onAnonymousUserDeleted` being
+  delivered.
+
+Both paths are idempotent. Trigger/callable overlap is expected and harmless. An integration test
+MUST suppress or disregard trigger delivery for the Admin SDK path and still prove that
+`users/{uid}` is removed. The temporary 1st gen exception and its migration surface are tracked as
+`TD-01` in `docs/TECHNICAL_PLAN.md §13`; no other 1st gen function is permitted.
 
 ### 11.6 App Graph Contract
 
@@ -996,7 +1082,9 @@ users/{uid}/vehicles/{vehicleId}
 users/{uid}/fuelEntries/{entryId}
 ```
 
-There is no remote settings document in the MVP (§3).
+This list is also the declared Firestore data-location schema used by the D-63 deletion-registry
+parity test in §11.5. There is no remote settings document and there are no Cloud Storage prefixes
+in the MVP (§3).
 
 The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
 
@@ -1493,7 +1581,7 @@ A confirmation is required by the use case, not by the UI. The UI MUST NOT proce
 | `OdometerInconsistent` | Odometer warning override in fuel-entry create/update. |
 | `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. |
 | `DeleteAccount` | Account deletion destructive confirmation. |
-| `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user chooses the existing account. |
+| `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user confirms that the current anonymous-session snapshot replaces the existing permanent-account data. |
 
 ### 20.3 Platform abstractions — `:core:common`
 

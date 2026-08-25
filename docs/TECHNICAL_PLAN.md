@@ -74,6 +74,11 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-57 | Android Firebase configuration plugin | Google Services Gradle plugin 4.5.0 | Accepted | Uses the current stable processor for the debug-only Firebase configuration and keeps its version centralized. |
 | D-58 | iOS framework composition ownership | `:composition:ios` owns the single `Shared` framework and composes `:shared` with `:wiring:firebase` | Accepted | Avoids a `:shared` to wiring cycle, preserves provider-free graph tests and keeps one Kotlin/Native runtime. |
 | D-59 | `AppProviders` port shape | Explicit typed properties except `isDebugBuild` | Accepted | Keeps construction compile-time checked and makes `buildAppGraph` the sole owner of the build-mode flag. |
+| D-60 | Anonymous identity retention and portability | Device-bound until linked; native 30-day Firebase cleanup | Accepted | Avoids an unsupported anonymous recovery promise and bounds abandoned-account retention. |
+| D-61 | Account-linking collision precedence | Current anonymous-session data wins after destructive confirmation | Accepted | Preserves the current device snapshot through an idempotent, resumable replacement flow. |
+| D-62 | Anonymous sign-in benefit reminders | Fixed days 1, 3, 8 and 18 with highest-due collapse | Accepted | Informs before cleanup without replaying a backlog of prompts. |
+| D-63 | User-data cleanup implementation | Owned idempotent service plus one temporary 1st gen Auth deletion trigger | Accepted | Avoids the externally dated Firebase Extensions management sunset; the Admin collision path calls the service directly. |
+| D-64 | Anonymous lifecycle delivery | Split work across E0-07, E2-02, E2-04, E2-07, E3-10, E3-11 and E3-12 | Accepted | Keeps story PRs reviewable and runs recovery evidence only after permanent auth and sync exist. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -394,7 +399,10 @@ Entry condition: every `Proposed` decision in `docs/DECISION_BOARD.md` that a Ph
 
 ### Phase 1 Opening Gate - Walking Skeleton
 
-One end-to-end vertical slice: native UI, shared state holder, SQLDelight, Firestore, anonymous auth, Android-to-iOS sync, plus validation of the Swift-facing surface constraints.
+One end-to-end vertical slice on both native application paths: native UI, shared state holder,
+SQLDelight, Firestore and real anonymous auth under the same retained Firebase Auth session, plus
+validation of the Swift-facing surface constraints. The gate does not transfer an anonymous
+credential between devices; permanent-account Android-to-iOS recovery is owned by E3-12 (`D-64`).
 
 `D-36` resolved the database fallback before this gate: the walking skeleton exercises the accepted SQLDelight AndroidX bundled driver on both application paths.
 
@@ -404,11 +412,15 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 ### Phase 2 - Authentication
 
-Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion, sign-out, account deletion.
+Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
+anonymous retention notices, sign-out and account deletion.
 
 ### Phase 3 - Backend Backup and Recovery
 
-Firestore rules and emulator tests, Firestore integration for the development project, backup and recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account deletion server operation, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, backup and
+recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account
+deletion and anonymous cleanup operations, permanent-account cross-device recovery proof, and
+provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 
@@ -424,6 +436,8 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 | SQLDelight AndroidX adapter maintenance or Native-link friction | Medium / Medium | Pin all three database components, keep the adapter confined to `:core:database`, compile and execute tests on Android and Kotlin/Native, and retain the official-driver alternatives in ADR-0037. |
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
+| Orphaned anonymous data | Medium / High | D-63 idempotent deletion service, explicit data-location registry, native cleanup trigger and a direct Admin collision path. |
+| Temporary 1st gen Auth trigger becomes inherited infrastructure | Medium / Medium | `TD-01` names the sole exception, exact migration surface, quarterly owner review and a contract allowlist. |
 | Scope creep | Medium / Medium | Explicit out-of-scope list and review gate. |
 
 ## 12. Verification Strategy
@@ -444,11 +458,69 @@ Manual at phase gates:
 
 - Offline first launch, create vehicle and fuel entries with no connectivity at any point, then connect and verify adoption and remote data.
 - Two-device edit conflict converges.
-- Anonymous conversion preserves data.
-- Credential collision is clear and non-destructive by default.
+- Normal anonymous linking preserves the UID and data.
+- Credential collision cancellation is non-destructive; confirmed replacement makes the current
+  anonymous snapshot win and resumes safely after interruption.
+- Permanent-account recovery succeeds across Android and iOS; no anonymous cross-device recovery
+  promise appears.
 - Device clock skew does not corrupt sync.
 - TalkBack and VoiceOver for critical flows.
 
-## 13. Out of Plan
+## 13. Tracked Technical Debt
 
-Maintenance expenses, advanced analytics, export, receipt images, odometer images, local or on-device AI text recognition, OCR, reminders, shared vehicles, widgets, wearables, web, App Check, Cloud Functions-mediated remote read/write validation beyond the `D-23` account deletion server operation, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+### TD-01 - Authentication deletion trigger pinned to Cloud Functions 1st gen
+
+`onAnonymousUserDeleted` is pinned to Cloud Functions 1st gen **solely** because
+`auth.user().onDelete` has no Cloud Functions 2nd gen equivalent, and for no other reason. The
+callable collision path and every other function use 2nd gen. No new 1st gen function may be added
+to this project; `onAnonymousUserDeleted` is the only permitted exception.
+
+Exact migration surface once E3-10 and E3-11 create it:
+
+| File or configuration | Affected declaration | Migration responsibility |
+|-----------------------|----------------------|--------------------------|
+| `functions/src/auth/onAnonymousUserDeleted.ts` | `onAnonymousUserDeleted` | Replace the `firebase-functions/v1` Auth deletion builder with the generally available 2nd gen Authentication deletion trigger. |
+| `functions/src/index.ts` | `onAnonymousUserDeleted` export | Retain the public deployed function name while switching its implementation export. |
+| `functions/test/contract/functionGenerationPolicy.test.ts` | sole-1st-gen allowlist | Remove the D-63 exception and require every exported function to use 2nd gen. |
+| `functions/test/integration/anonymousCleanup.test.ts` | automatic-cleanup trigger coverage | Run the same deletion, idempotency and overlap assertions against the 2nd gen trigger. |
+| `firebase.json` | Functions source/codebase deployment entry | Verify the existing deployment target deploys the migrated function; there is no permitted second codebase or hidden 1st gen deployment entry. |
+| `functions/package.json` | `firebase-functions` dependency and Functions test scripts | Raise the pinned SDK only if the first GA 2nd gen Auth trigger requires it, then update `docs/versions-matrix.md` under the normal library-review gate. |
+
+`functions/src/deletion/dataLocationRegistry.ts`,
+`functions/src/deletion/userDeletionService.ts` (`deleteUserData`) and
+`functions/src/callable/deleteOrphanedAnonymousAccount.ts`
+(`deleteOrphanedAnonymousAccount`) are intentionally generation-neutral or 2nd gen and MUST NOT be
+rewritten as part of this migration. That boundary keeps the migration surface narrow and known in
+advance.
+
+The owner watches both the [Firebase release notes](https://firebase.google.com/support/releases)
+and the [Cloud Functions Authentication trigger documentation](https://firebase.google.com/docs/functions/1st-gen/auth-events).
+The concrete availability signal is a Firebase announcement and SDK documentation for generally
+available Authentication user-deletion event triggers in Cloud Functions 2nd gen. Preview or
+private-preview availability does not trigger migration.
+
+Review owner: **David Ruiz**. The first recurring review is **2026-12-01** and repeats quarterly on
+March 1, June 1, September 1 and December 1 until migration completes or the owner formally
+re-accepts the constraint. Every completed review appends one dated row below; the next due date is
+never left implicit.
+
+| Review date | Owner | Outcome | Next review |
+|-------------|-------|---------|-------------|
+| 2026-08-25 (baseline) | David Ruiz | D-63 accepted; no generally available 2nd gen Authentication user-deletion trigger exists. TD-01 opened with one permitted 1st gen function. | 2026-12-01 |
+
+Once 2nd gen Authentication user-deletion triggers are generally available, migration is scheduled
+as its own backlog story. It MUST NOT be folded into an unrelated story. Closing TD-01 requires the
+new story to migrate the trigger, remove the allowlist exception, pass the automatic-cleanup and
+overlap tests, deploy under the retained function name, and append the final review outcome here.
+
+## 14. Out of Plan
+
+Maintenance expenses, advanced analytics, export, receipt images, odometer images, local or
+on-device AI text recognition, OCR, fuel and maintenance reminders, operating-system notifications,
+shared vehicles, widgets, wearables, web, App Check, Cloud Functions-mediated remote read/write
+validation beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
+account merging, simultaneous multi-device use, active multi-device synchronization,
+remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings
+synchronization, platform settings sync or backup through Google Play services / Android backup /
+iCloud, and electric or hybrid energy modelling. The foreground-only anonymous-account retention
+notices selected by `D-62` are in plan.

@@ -9,18 +9,20 @@
 - [x] Backlog story is explicit — E0-07 builds the single native-UI-to-SQLDelight-to-Firebase
   vehicle slice and validates the Swift-facing application graph.
 - [x] Acceptance criteria reviewed — real anonymous authentication; a complete contract-valid
-  vehicle backed up from one platform and restored on a clean second device; disabled Firestore
-  persistence; direct SPM; generated Objective-C golden header; app-graph fake parity; protected
-  multiplatform CI.
+  vehicle crossing native UI, SQLDelight and Firestore on both native paths while the same retained
+  Firebase Auth session remains available; no anonymous cross-device promise; disabled Firestore
+  persistence; direct framework integration; generated Objective-C golden header; app-graph fake
+  parity; protected multiplatform CI.
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — the active decisions through D-59 that govern this story are `Accepted`;
+- [x] Decisions checked — the active decisions through D-64 that govern this story are `Accepted`;
   D-2 is superseded by D-58; D-53 records the
   owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
   D-56 records the owner's 2026-08-25 correction of the test-factory module boundary; D-58 moves
-  the iOS framework composition root out of `:shared`; and D-59 fixes the explicit `AppProviders`
-  port selected by the owner. No
+  the iOS framework composition root out of `:shared`; D-59 fixes the explicit `AppProviders`
+  port selected by the owner; and D-60 through D-64 define device-bound anonymous identity,
+  destructive collision precedence, retention notices, owned cleanup and their story split. No
   `Proposed` or `Pending` decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§7 F-1` and `F-2`, `§8`, `§9`,
   `§10`, `§11`; `docs/CONTRACTS.md §1.1`, `§3`, `§11`, `§14`, `§15`, `§16`, `§18`, `§20.3`,
@@ -29,8 +31,10 @@
   E3-01 handoffs.
 - [x] Expected verification identified — focused RED/GREEN shared behavior tests; graph
   construction and provider integration tests; Android host and `iosSimulatorArm64` tests;
-  provider-free graph proof; generated-header diff; Android and iOS builds; real two-device
-  Android-to-iOS backup/restore evidence; and the complete local and protected CI commands.
+  provider-free graph proof; generated-header diff; Android and iOS builds; real local/remote
+  Vehicle evidence on both native application paths under retained anonymous sessions; and the
+  complete local and protected CI commands. Permanent-account two-device evidence belongs to
+  E3-12.
 - [x] Human review gates identified before work — E0-07 is a gated story; Firebase/auth/backend,
   module boundaries and Swift ABI are gated topics; `docs/SPECIFICATION.md`,
   `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/adr/**`, `docs/identifiers.md`,
@@ -51,7 +55,9 @@
 
 - The complete vehicle feature remains owned by E1-02 and E1-03.
 - The complete backup/recovery engine and `RemoteSyncSource` remain owned by E3-02 and E3-03.
-- Permanent Google/Apple sign-in, local-owner adoption and account deletion remain later stories.
+- Permanent Google/Apple sign-in, local-owner adoption, collision handling, anonymous retention
+  notices, backend identity cleanup, permanent-account cross-device recovery and account deletion
+  remain in E2-02, E2-04, E2-06, E2-07, E3-10, E3-11 and E3-12.
 
 ## Files Changed
 
@@ -71,6 +77,16 @@
   `:shared` remains provider-free.
 - D-59 defines `AppProviders` as explicit typed properties for every graph dependency except
   `isDebugBuild`, which remains owned by `buildAppGraph`.
+- D-60 defines unlinked anonymous identity as device-bound and selects Firebase native 30-day
+  cleanup through Authentication with Identity Platform.
+- D-61 makes the current anonymous-session snapshot win a credential collision after explicit
+  destructive confirmation, with resumable replacement and orphan cleanup.
+- D-62 selects foreground retention notices on elapsed days 1, 3, 8 and 18 with highest-due
+  collapse.
+- D-63 selects an owned idempotent deletion service, a direct Admin collision path and one tracked
+  1st gen Auth deletion-trigger exception (`TD-01`).
+- D-64 keeps E0-07 narrow and assigns permanent auth, conversion, notices, cleanup and cross-device
+  recovery evidence to their owning stories.
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
@@ -100,8 +116,9 @@
 
 ## Risks or Follow-ups
 
-- E0-07 is the Phase 1 opening gate and cannot merge without the human-reviewed real-device
-  backup/restore and Swift ABI evidence.
+- E0-07 is the Phase 1 opening gate and cannot merge without human-reviewed real native-host
+  local/remote Vehicle and Swift ABI evidence. E3-12 retains the separate permanent-account
+  Android-to-iOS recovery risk.
 
 ## Human Review Gate
 

@@ -86,8 +86,8 @@ tell what is already built from what is still a plan, and it is updated by the s
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
 has made provider decoupling executable before any Firebase integration module exists. The owner
-accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`, so the next story is
-`E3-01`. `E0-07`, the walking skeleton, remains a Phase 1 story under `D-30`.
+accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is merged and
+`E0-07`, the walking skeleton, is the active Phase 1 story under `D-30`.
 
 ### Modules that exist
 
@@ -273,7 +273,17 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 
 ## Scope Discipline
 
-Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt and odometer photos and OCR, local or on-device AI text recognition, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write validation beyond account deletion, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+Work only on the assigned backlog story. The authoritative out-of-scope list is
+`docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
+export, receipt and odometer photos and OCR, local or on-device AI text recognition, fuel and
+maintenance reminders, operating-system notifications, shared vehicles, widgets, wearables and
+web, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write
+validation beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
+account merging, simultaneous multi-device use, active multi-device synchronization,
+remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings
+synchronization, platform settings sync or backup through Google Play services / Android backup /
+iCloud, and electric or hybrid energy modelling. The foreground-only anonymous-account retention
+notices selected by `D-62` are in scope.
 
 Escalate any request that touches out-of-scope functionality.
 
@@ -308,11 +318,14 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 ## Product Rules
 
 - The UI observes only the local database.
-- The MVP supports one active device per account; the remote database is used only for backup and recovery on a new device.
+- The MVP supports one active device per account; the remote database is used only for backup and
+  permanent-account recovery on a new device. An unlinked anonymous identity is device-bound.
 - Every MVP write works without network access, and first launch works offline.
 - Nothing is enqueued for remote backup while the owner is `LOCAL_OWNER`.
 - IDs are client-generated UUID v4.
-- Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules. Account deletion hard deletes run only through the `D-23` Firebase Admin server operation.
+- Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules.
+  Account and orphan cleanup hard deletes run only through the `D-23` / `D-63` Firebase Admin
+  operations and their shared deletion service.
 - Firestore remote documents use the closed schemas of `docs/CONTRACTS.md §16`; unknown collections, extra keys and local-only metadata are rejected.
 - Monetary values never use `Float` or `Double`, and the exact integer formulas of `docs/CONTRACTS.md §2` are implemented literally.
 - Consumption uses the full-to-full method, and the average is distance-weighted.

@@ -212,7 +212,10 @@ Moved here from Phase 0 by `D-30`: it needs the local database, which lives in `
 
 Acceptance criteria:
 
-- A value written on one platform can be backed up remotely and restored on a clean second device.
+- On both native application paths, a value written through the shared state holder is persisted in
+  SQLDelight, backed up to Firestore under a real anonymous UID and fetched back after clearing the
+  local product rows while that same Firebase Auth session remains available. This criterion does
+  not transfer or recreate an anonymous credential on another device (`D-60`, `D-64`).
 - The proof value is the name of a complete contract-valid `Vehicle` document (`D-39`); no
   walking-skeleton-only collection is introduced, and the slice does not claim E1-02 or E1-03.
 - `iosSimulatorArm64` runs in CI.
@@ -417,8 +420,14 @@ Implement anonymous, Google, Apple, credential linking, re-authentication, sign-
 Acceptance criteria:
 
 - Anonymous login works on both platforms; Google works on both; Apple works on iOS.
+- The Firebase projects use Authentication with Identity Platform and native automatic anonymous
+  cleanup with the provider-owned 30-day eligibility threshold.
+- Anonymous account creation metadata is available to common auth behavior so the D-62 schedule is
+  anchored to Firebase's canonical user-creation timestamp rather than a device clock first-seen
+  value.
 - Cancelled system dialogs produce `AuthError.Cancelled`.
-- A provider flow that would change the UID produces `AuthError.UidWouldChange` and aborts.
+- A non-collision provider flow that would change the UID produces `AuthError.UidWouldChange` and
+  aborts. `CredentialAlreadyInUse` remains available to the E2-04 collision flow.
 - `AuthClient.deleteAccount()` calls the `D-23` server/Admin operation and never calls the mobile Firebase Auth account deletion API directly.
 - Account deletion verifies token freshness using `FRESH_LOGIN_THRESHOLD_MS` before calling the server operation, and triggers re-authentication if the token is stale.
 - Native UI obtains credentials; common code exchanges them.
@@ -467,9 +476,45 @@ Acceptance criteria:
 - Successful linking preserves vehicles and fuel entries and keeps the UID.
 - `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`).
 - `SessionStateHolder.confirmAccountConversion(confirmation)` handles the collision confirmation.
-- Collision offers an explicit destructive choice showing the data-loss count, gated by `Confirmation.AdoptExistingAccount`.
+- Collision offers an explicit destructive choice stating that existing permanent-account data
+  will be replaced by the current anonymous-session snapshot, gated by
+  `Confirmation.AdoptExistingAccount`.
 - Cancelling leaves the anonymous session and local data untouched.
+- Confirmation persists a complete local snapshot and captures a fresh anonymous ID token before
+  switching sessions, replaces the permanent account's remote data idempotently, and keeps a
+  durable operation marker until replacement and orphan cleanup both succeed.
+- Interruption tests cover every boundary after confirmation, including after the permanent-account
+  session switch; retry resumes the captured replacement instead of pulling over it.
+- After replacement, the flow calls the E3-11 2nd gen callable to delete the orphaned anonymous
+  identity. It does not depend on an Auth deletion trigger.
 - Automatic merge is not implemented.
+
+Depends on: E2-02, E3-11.
+
+Human review required.
+
+### E2-07 - Anonymous Sign-In Benefit Reminders - S
+
+Implement the foreground-only anonymous-account retention notices selected by `D-62`.
+
+Acceptance criteria:
+
+- One configuration constant contains exactly the elapsed-day thresholds `1, 3, 8, 18`, anchored
+  to the Firebase anonymous user-creation timestamp.
+- Evaluation runs on launch and foreground return only; no operating-system notification,
+  scheduler or background alarm is introduced.
+- Only the highest unseen due reminder is emitted, and persisting its index consumes every lower
+  pending reminder.
+- The last-shown index survives process and app restarts, clears after permanent sign-in or
+  successful linking, and index 3 completes the sequence.
+- Reminders are dismissible, never gate product functionality and explain permanent-sign-in
+  recovery plus the device-bound 30-day cleanup risk.
+- Deterministic tests cover 12 hours and elapsed days 1, 2, 4, 9, 20 and 31. The day-20 case emits
+  only reminder 4 and consumes reminders 1 through 3.
+
+Depends on: E2-02.
+
+Human review required.
 
 ### E2-05 - Sign-Out and Account Deletion F-5 - M
 
@@ -518,6 +563,12 @@ Acceptance criteria:
 
 - The operation accepts only an authenticated caller and verifies that the caller UID is the target UID.
 - The operation deletes documents under `users/{uid}` in the normative order: `fuelEntries`, then `vehicles`.
+- The deletion implementation is the reusable idempotent `deleteUserData` service selected by
+  `D-63`, not logic embedded only in the user-requested account-deletion handler.
+- An explicit registry lists every cleared Firestore collection and Cloud Storage prefix. It lists
+  `fuelEntries` and `vehicles`, and its current Storage-prefix list is explicitly empty.
+- A contract test compares the registry with the closed data-location schema and fails if either
+  declares a location absent from the other.
 - A server-side test proves the operation does not delete vehicles before fuel entries.
 - The operation deletes the Firebase Auth user only after remote document deletion succeeds.
 - The operation is idempotent for already-deleted documents and missing auth users, but never deletes outside `users/{uid}`.
@@ -525,6 +576,33 @@ Acceptance criteria:
 - Logs are redacted according to `docs/CONTRACTS.md §17` and `docs/SECURITY.md`.
 - Emulator or server-side tests prove the happy path, retry/idempotency behavior, caller UID rejection and failure-before-auth-deletion behavior.
 - Firestore emulator tests still prove that mobile client hard deletes are rejected by `allow delete: if false`.
+
+Human review required.
+
+### E3-11 - Anonymous Identity Cleanup Entry Points - M
+
+Add the owned cleanup callers selected by `D-63` for native anonymous cleanup and destructive
+account-linking collisions.
+
+Acceptance criteria:
+
+- `onAnonymousUserDeleted` is the only Cloud Functions 1st gen function in the project. The
+  application relies on it only for Firebase native automatic anonymous cleanup, and it delegates
+  eligible deleted anonymous UIDs to E3-10 `deleteUserData`; delivery from another deletion path is
+  harmless overlap.
+- `deleteOrphanedAnonymousAccount` is a 2nd gen callable. It verifies the captured anonymous ID
+  token and the permanent caller context, rejects deletion of the current permanent UID, deletes
+  the orphaned anonymous Auth account through the Admin SDK, then invokes `deleteUserData`
+  directly.
+- The callable never relies on `onAnonymousUserDeleted` firing. An integration test deletes through
+  the Admin SDK path with trigger delivery suppressed or disregarded and still proves
+  `users/{uid}` is removed.
+- Both paths are idempotent and concurrent or delayed overlap is harmless.
+- Logs contain no UID, token, raw payload or other forbidden value.
+- The functions, exports and deployment configuration match the exact `TD-01` migration surface;
+  a contract check rejects any additional 1st gen function.
+
+Depends on: E3-10.
 
 Human review required.
 
@@ -596,6 +674,26 @@ Acceptance criteria:
 - The five triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
 - Platform workers only call `SyncController.requestSync(reason)`.
 - No state holder change is required for sync correctness.
+
+### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
+
+Prove recovery at the first point where permanent authentication and complete sync coexist.
+
+Acceptance criteria:
+
+- A contract-valid Vehicle written and backed up on Android under a permanent provider identity is
+  restored from Firestore on iOS after starting from clean local product data and signing into the
+  same permanent identity.
+- The reverse iOS-to-Android direction is covered or the handoff records why the same shared path
+  makes it redundant and supplies equivalent provider-boundary evidence.
+- The proof never transfers an anonymous Firebase Auth session or describes anonymous identity as
+  cross-device recoverable.
+- Recovery remains pull-based, uses no real-time listener and does not introduce simultaneous
+  multi-device use.
+
+Depends on: E2-02, E3-04.
+
+Human review required.
 
 ### E3-05 - Backup Status UI - S
 
@@ -716,12 +814,22 @@ E0-00 owner decisions (completed)
                       -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
                       -> Phase 3 sync wiring depends on Phases 1 and 2
                       -> Phase 4
+
+E2-02 Firebase Auth integration -> E2-07 anonymous retention notices
+E3-10 deletion service -> E3-11 anonymous cleanup entry points -> E2-04 collision conversion
+E2-02 Firebase Auth integration + E3-04 repository sync wiring -> E3-12 cross-device recovery proof
 ```
 
 `E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires
 `AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs the local database
 from `:core:database` (`E1-01`). `D-42` and `D-40` add the security prerequisite chain
 `E3-06 -> E3-01 -> E0-07` without moving E0-07 out of Phase 1.
+
+`D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
+anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
+metadata; E2-07 owns notices; E3-10 owns the reusable deletion service; E3-11 owns cleanup entry
+points and unblocks E2-04 collision handling; E3-12 supplies the permanent-account cross-device
+proof after E3-04.
 
 ## Story Index
 
@@ -748,17 +856,20 @@ from `:core:database` (`E1-01`). `D-42` and `D-40` add the security prerequisite
 | E1-09 iOS UI | 1 | L | — |
 | E1-10 Settings persistence | 1 | S | — |
 | E2-01 `:core:auth` | 2 | S | — |
-| E2-02 Firebase Auth integration | 2 | L | — |
+| E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 | 2 | M | — |
 | E2-06 Local owner adoption | 2 | M | Yes |
-| E2-04 Account conversion F-4 | 2 | M | — |
+| E2-04 Account conversion F-4 | 2 | M | Yes |
+| E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
 | E3-01 Firestore rules | 3 | M | Yes |
 | E3-10 Account deletion server operation | 3 | M | Yes |
+| E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
 | E3-02 Firestore RemoteSyncSource | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring | 3 | M | — |
 | E3-04 Repository sync wiring | 3 | M | — |
+| E3-12 Permanent-account cross-device recovery proof | 3 | S | Yes |
 | E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |

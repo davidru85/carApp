@@ -38,6 +38,85 @@
 
 ## Entries
 
+### 2026-08-25 — D-64 anonymous lifecycle story split accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-64`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** E0-07 retains only real anonymous auth and the minimal Vehicle local/remote
+  path; E2-02, E2-04, E2-07, E3-10, E3-11 and E3-12 own the remaining lifecycle behavior.
+- **Why:** the owner selected reviewable concern-specific PRs and moved cross-device evidence to
+  the first point where permanent auth and complete sync coexist.
+- **Documents touched:** `docs/adr/0065-split-anonymous-lifecycle-delivery.md`, the four decision
+  mirrors, `docs/BACKLOG.md`, the E0-07 handoff and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs.
+- **Follow-ups / risks:** E3-12 remains a human-gated permanent-account Android/iOS recovery proof.
+
+### 2026-08-25 — D-63 owned user-data cleanup accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-10`, `E3-11` / `D-63`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** an idempotent deletion service and executable data-location registry serve
+  user-requested deletion, direct collision cleanup and native anonymous cleanup; only
+  `onAnonymousUserDeleted` may use Cloud Functions 1st gen.
+- **Why:** Firebase Extensions has an externally imposed 2027-03-31 management sunset, while a
+  narrow owned trigger debt is versioned and migratable on the project's schedule.
+- **Documents touched:** `docs/adr/0064-own-user-data-cleanup-service.md`, the four decision mirrors,
+  `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13` (`TD-01`), `docs/BACKLOG.md` and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; TD-01 names the exact
+  migration surface, owner, first review and quarterly cadence.
+- **Follow-ups / risks:** David Ruiz reviews TD-01 first on 2026-12-01 and quarterly thereafter.
+
+### 2026-08-25 — D-62 anonymous sign-in benefit timeline accepted
+
+- **Type:** decision
+- **Story / Decision:** `E2-07` / `D-62`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** foreground retention notices use elapsed days 1, 3, 8 and 18, anchor to the
+  Firebase creation timestamp and collapse missed notices to the highest due index.
+- **Why:** the owner selected a deterministic, non-blocking timeline that warns before native
+  cleanup without replaying an inactive user's prompt backlog.
+- **Documents touched:** `docs/adr/0063-anonymous-sign-in-benefit-reminders.md`, the four decision
+  mirrors, `docs/CONTRACTS.md §11.3`, `docs/BACKLOG.md` and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; E2-07 lists the seven
+  required time-boundary tests.
+- **Follow-ups / risks:** the physical persistence location is deliberately left to E2-07 intake;
+  choosing it is a separate implementation decision if the existing contract does not force it.
+
+### 2026-08-25 — D-61 current anonymous snapshot precedence accepted
+
+- **Type:** decision
+- **Story / Decision:** `E2-04` / `D-61`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** after explicit destructive confirmation, the current anonymous-session snapshot
+  replaces pre-existing permanent-account data through a resumable flow; cancellation changes
+  nothing.
+- **Why:** the owner chose the current device's active data over the older account and rejected both
+  automatic merge and silent data loss.
+- **Documents touched:** `docs/adr/0062-current-anonymous-data-wins-linking-collision.md`, the four
+  decision mirrors, `docs/SPECIFICATION.md §7 F-4`, `docs/CONTRACTS.md §11.3`, `docs/BACKLOG.md` and
+  this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; the story now requires
+  interruption-boundary and idempotent-resume tests.
+- **Follow-ups / risks:** E2-04 depends on E3-11 so orphan cleanup exists before collision delivery.
+
+### 2026-08-25 — D-60 anonymous identity portability corrected
+
+- **Type:** decision
+- **Story / Decision:** `E0-07`, `E2-02`, `E3-12` / `D-60`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** an unlinked anonymous Firebase identity is device-bound, native Identity
+  Platform cleanup uses the fixed 30-day eligibility threshold, and only a linked permanent
+  provider enables new-device recovery.
+- **Why:** Firebase exposes no supported portable anonymous credential, so the original anonymous
+  cross-device walking-skeleton promise was not implementable safely.
+- **Documents touched:** `docs/adr/0061-anonymous-identity-is-device-bound.md`, the four decision
+  mirrors, the scope, auth, backup, backlog and E0-07 handoff records, and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; repository-wide searches
+  leave no current E0-07 clean-second-device acceptance claim.
+- **Follow-ups / risks:** E2-02 enables native cleanup; E3-12 proves permanent-account recovery.
+
 ### 2026-08-25 — D-59 explicit AppProviders port accepted
 
 - **Type:** decision
