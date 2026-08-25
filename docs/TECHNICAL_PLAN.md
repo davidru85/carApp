@@ -142,7 +142,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
 | `:shared` | `:core:*`, `:feature:*`, `:shared:testing` in test-support and SPM metadata configurations only | `:integration:*` |
 | `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
-| `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
+| `:wiring:firebase` | `:integration:*`, `:shared` graph, Koin | product logic |
 | `:composition:ios` | `:shared`, `:wiring:firebase` | product logic, direct `:integration:*`, a second framework runtime |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.

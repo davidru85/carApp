@@ -378,6 +378,10 @@ class ArchitectureCheckerTest {
                 "read-model-write-outside-database",
             )
         }
+        assertRuleDoesNotFire(
+            module(":shared", source = "VehicleListItemUi(currentOdometerKm = row.currentOdometerKm)"),
+            "read-model-write-outside-database",
+        )
     }
 
     @Test

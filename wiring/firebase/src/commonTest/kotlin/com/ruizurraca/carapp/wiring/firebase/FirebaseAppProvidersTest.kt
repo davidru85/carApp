@@ -73,9 +73,11 @@ private class MutableAuthClient : AuthClient {
     override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         unavailable()
 
-    override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> = unavailable()
+    override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
+        unavailable()
 
-    override suspend fun reauthenticate(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> = unavailable()
+    override suspend fun reauthenticate(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
+        unavailable()
 
     override suspend fun signOut(): Outcome<Unit, AuthError> = unavailable()
 

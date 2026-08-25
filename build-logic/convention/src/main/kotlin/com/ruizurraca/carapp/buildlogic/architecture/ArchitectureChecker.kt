@@ -357,7 +357,7 @@ object ArchitectureChecker {
     private fun checkReadModelWrites(module: ModuleUnderCheck): List<Violation> {
         if (module.path == ":core:database") return emptyList()
         return module.sourceLines
-            .filter { Regex("""\b(currentOdometerKm|odometerInconsistent)\s*=""").containsMatchIn(it.text) }
+            .filter { Regex("""\.\s*(currentOdometerKm|odometerInconsistent)\s*=""").containsMatchIn(it.text) }
             .map {
                 Violation(
                     module.path,

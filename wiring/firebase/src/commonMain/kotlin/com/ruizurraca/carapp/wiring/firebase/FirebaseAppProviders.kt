@@ -25,6 +25,8 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.SyncTriggerAdapter
 import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
+import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.database.createPersistentDatabaseFactory
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -35,11 +37,14 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
+import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlin.random.Random
 import kotlin.time.Clock
 
@@ -49,15 +54,36 @@ import kotlin.time.Clock
  */
 fun firebaseAppProviders(): AppProviders {
     val authState = MutableStateFlow<AuthState>(AuthState.SignedOut)
-    val ownerState = MutableStateFlow(LOCAL_OWNER)
+    return firebaseAppProviders(
+        databaseFactory = createStagedDatabaseFactory(),
+        authClient = stagedAuthClient(authState),
+        remoteSyncSource = stagedRemoteSyncSource(),
+    )
+}
+
+/** Creates the production Firebase boundaries for a platform-owned persistent database path. */
+fun firebaseAppProviders(databaseFilePath: String): AppProviders {
+    val authClient = FirebaseAuthClient()
+    return firebaseAppProviders(
+        databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
+        authClient = authClient,
+        remoteSyncSource = FirebaseRemoteSyncSource(),
+    )
+}
+
+internal fun firebaseAppProviders(
+    databaseFactory: DatabaseFactory,
+    authClient: AuthClient,
+    remoteSyncSource: RemoteSyncSource,
+): AppProviders {
     val connectivityState = MutableStateFlow(true)
 
     return object : AppProviders {
-        override val databaseFactory = createStagedDatabaseFactory()
-        override val authClient = stagedAuthClient(authState)
+        override val databaseFactory = databaseFactory
+        override val authClient = authClient
         override val tokenProvider = stagedTokenProvider()
-        override val ownerContext = stagedOwnerContext(ownerState)
-        override val remoteSyncSource = stagedRemoteSyncSource()
+        override val ownerContext = authBackedOwnerContext(authClient.authState)
+        override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = stagedAnalyticsTracker()
         override val crashReporter = NoOpCrashReporter
         override val clock = AppClock { Clock.System.now() }
@@ -95,11 +121,20 @@ private fun stagedTokenProvider(): TokenProvider =
         override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = providerUnavailable()
     }
 
-private fun stagedOwnerContext(ownerState: StateFlow<OwnerId>): OwnerContext =
+private fun authBackedOwnerContext(authState: StateFlow<AuthState>): OwnerContext =
     object : OwnerContext {
-        override val current: OwnerId get() = ownerState.value
+        override val current: OwnerId get() = authState.value.toOwnerId()
 
-        override fun observe(): Flow<OwnerId> = ownerState
+        override fun observe(): Flow<OwnerId> = authState.map(AuthState::toOwnerId)
+    }
+
+private fun AuthState.toOwnerId(): OwnerId =
+    when (this) {
+        AuthState.Unknown,
+        AuthState.SignedOut,
+        -> LOCAL_OWNER
+
+        is AuthState.SignedIn -> OwnerId(session.uid)
     }
 
 private fun stagedRemoteSyncSource(): RemoteSyncSource =
