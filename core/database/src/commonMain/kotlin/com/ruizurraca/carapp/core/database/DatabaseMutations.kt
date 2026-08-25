@@ -24,6 +24,7 @@ class DatabaseMutations(
         createdAt: Long,
         updatedAt: Long,
         schemaVersion: Long,
+        outboxPayload: String,
     ) {
         database.transaction {
             val localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne()
@@ -46,6 +47,12 @@ class DatabaseMutations(
                 localRevision = 1,
                 localMutationSeq = localMutationSeq,
                 schemaVersion = schemaVersion,
+            )
+            queries.coalesceOutbox(
+                entityType = "VEHICLE",
+                entityId = id,
+                payload = outboxPayload,
+                localRevision = 1,
             )
         }
     }

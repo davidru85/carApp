@@ -3,6 +3,10 @@ package com.ruizurraca.carapp
 import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * E0-07's removable internal adapter for the minimal Vehicle slice (`D-55`). E1-02 and E1-03
@@ -18,9 +22,12 @@ internal class VehicleSliceRuntime(
         check(form.vehicleId == null) { "E0-07 only creates the minimal Vehicle slice" }
         val name = canonicalWalkingSkeletonName(form.name)
         val now = dependencies.clock.now().toEpochMilliseconds()
+        val id = dependencies.uuidGenerator.newId()
+        val schemaVersion = CLIENT_MAX_SCHEMA_VERSION.toLong()
+        val ownerId = dependencies.ownerContext.current.value
         mutations.insertVehicle(
-            id = dependencies.uuidGenerator.newId(),
-            ownerId = dependencies.ownerContext.current.value,
+            id = id,
+            ownerId = ownerId,
             name = name,
             nameFold = name.lowercase(),
             initialOdometerKm = form.initialOdometerKm,
@@ -29,9 +36,42 @@ internal class VehicleSliceRuntime(
             fuelType = form.fuelType.name,
             createdAt = now,
             updatedAt = now,
-            schemaVersion = CLIENT_MAX_SCHEMA_VERSION.toLong(),
+            schemaVersion = schemaVersion,
+            outboxPayload =
+                buildVehicleSnapshot(
+                    id = id,
+                    ownerId = ownerId,
+                    name = name,
+                    form = form,
+                    now = now,
+                    schemaVersion = schemaVersion,
+                ),
         )
     }
 }
 
 private fun canonicalWalkingSkeletonName(value: String): String = value.trim().split(Regex("\\s+")).joinToString(" ")
+
+@Suppress("LongParameterList")
+private fun buildVehicleSnapshot(
+    id: String,
+    ownerId: String,
+    name: String,
+    form: VehicleFormUiState,
+    now: Long,
+    schemaVersion: Long,
+): String =
+    buildJsonObject {
+        put("id", id)
+        put("ownerId", ownerId)
+        put("name", name)
+        put("initialOdometerKm", form.initialOdometerKm)
+        put("brand", form.brand?.let(::JsonPrimitive) ?: JsonNull)
+        put("model", form.model?.let(::JsonPrimitive) ?: JsonNull)
+        put("fuelType", form.fuelType.name)
+        put("createdAt", now)
+        put("updatedAt", now)
+        put("deleted", false)
+        put("deletedAt", JsonNull)
+        put("schemaVersion", schemaVersion)
+    }.toString()
