@@ -7,6 +7,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
                 api(projects.core.model)
                 api(projects.core.common)
                 api(projects.core.database)

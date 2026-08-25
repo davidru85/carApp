@@ -14,6 +14,11 @@ SELECT *
 FROM fuel_entry
 WHERE id = :id;
 
+selectOutboxByEntity:
+SELECT *
+FROM outbox
+WHERE entityType = :entityType AND entityId = :entityId;
+
 selectActiveFuelEntriesByVehicle:
 SELECT *
 FROM fuel_entry
