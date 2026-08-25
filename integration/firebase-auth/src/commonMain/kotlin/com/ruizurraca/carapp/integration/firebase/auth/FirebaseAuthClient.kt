@@ -8,6 +8,9 @@ import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.FirebaseApiNotAvailableException
+import dev.gitlive.firebase.FirebaseException
+import dev.gitlive.firebase.FirebaseNetworkException
 import dev.gitlive.firebase.auth.FirebaseUser
 import dev.gitlive.firebase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,14 +18,21 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Firebase-backed authentication boundary. Later auth stories complete the non-anonymous flows. */
 class FirebaseAuthClient internal constructor(
-    gateway: FirebaseAuthGateway,
+    private val gateway: FirebaseAuthGateway,
 ) : AuthClient {
     constructor() : this(GitLiveFirebaseAuthGateway())
 
     private val mutableAuthState = MutableStateFlow(gateway.currentUser.toAuthState())
     override val authState: StateFlow<AuthState> = mutableAuthState
 
-    override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = providerUnavailable()
+    override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> =
+        try {
+            val session = gateway.signInAnonymously().toSession()
+            mutableAuthState.value = AuthState.SignedIn(session)
+            Outcome.Ok(session)
+        } catch (failure: FirebaseAuthGatewayException) {
+            Outcome.Err(failure.toAuthError())
+        }
 
     override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         providerUnavailable()
@@ -40,6 +50,8 @@ class FirebaseAuthClient internal constructor(
 
 internal interface FirebaseAuthGateway {
     val currentUser: FirebaseAuthUser?
+
+    suspend fun signInAnonymously(): FirebaseAuthUser
 }
 
 internal data class FirebaseAuthUser(
@@ -51,6 +63,33 @@ internal data class FirebaseAuthUser(
 private class GitLiveFirebaseAuthGateway : FirebaseAuthGateway {
     override val currentUser: FirebaseAuthUser?
         get() = Firebase.auth.currentUser?.toIntegrationUser()
+
+    override suspend fun signInAnonymously(): FirebaseAuthUser =
+        try {
+            checkNotNull(Firebase.auth.signInAnonymously().user).toIntegrationUser()
+        } catch (failure: FirebaseNetworkException) {
+            throw FirebaseAuthGatewayException.Network(failure)
+        } catch (failure: FirebaseApiNotAvailableException) {
+            throw FirebaseAuthGatewayException.Provider(failure)
+        } catch (failure: FirebaseException) {
+            throw FirebaseAuthGatewayException.Unknown(failure)
+        }
+}
+
+internal sealed class FirebaseAuthGatewayException(
+    cause: Throwable,
+) : Exception(cause) {
+    class Network(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
+    class Provider(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
+    class Unknown(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
 }
 
 private fun FirebaseUser.toIntegrationUser(): FirebaseAuthUser =
@@ -74,6 +113,13 @@ private fun FirebaseAuthUser.toSession(): AuthSession =
                 if (APPLE_PROVIDER_ID in providerIds) add(AuthProvider.APPLE)
             },
     )
+
+private fun FirebaseAuthGatewayException.toAuthError(): AuthError =
+    when (this) {
+        is FirebaseAuthGatewayException.Network -> AuthError.NetworkUnavailable
+        is FirebaseAuthGatewayException.Provider -> AuthError.ProviderUnavailable
+        is FirebaseAuthGatewayException.Unknown -> AuthError.Unknown
+    }
 
 private fun <T> providerUnavailable(): Outcome<T, AuthError> = Outcome.Err(AuthError.ProviderUnavailable)
 
