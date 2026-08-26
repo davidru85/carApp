@@ -100,6 +100,8 @@ class FirebaseConfigurationTest {
         assertTrue(androidApplication.contains("installAppCheckProviderFactory(appCheckProviderFactory())"))
         assertFalse(androidApplication.contains("DebugAppCheckProviderFactory"))
         assertTrue(androidDebugProvider.contains("DebugAppCheckProviderFactory.getInstance()"))
+        assertTrue(androidDebugProvider.contains("PlayIntegrityAppCheckProviderFactory.getInstance()"))
+        assertTrue(androidDebugProvider.contains("isProbablyEmulator()"))
         assertFalse(androidReleaseProvider.contains("DebugAppCheckProviderFactory"))
         assertTrue(androidReleaseProvider.contains("PlayIntegrityAppCheckProviderFactory.getInstance()"))
 
