@@ -70,6 +70,10 @@ jobs:
   contract-check:
     name: contract-check
     runs-on: ubuntu-latest
+    environment: cloud-runtime-verification
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -94,6 +98,31 @@ jobs:
       - name: Cloud Functions tests
         working-directory: functions
         run: npm test
+      - name: Authenticate for deployed runtime verification
+        if: >-
+          github.event_name == 'push' ||
+          (github.event.pull_request.base.ref == 'main' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor_id == '472324')
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          create_credentials_file: true
+          service_account: github-runtime-verifier@davidruiz-carapp-dev.iam.gserviceaccount.com
+          workload_identity_provider: projects/330616809208/locations/global/workloadIdentityPools/github-runtime-verification/providers/github
+      - name: Install Google Cloud SDK for deployed runtime verification
+        if: >-
+          github.event_name == 'push' ||
+          (github.event.pull_request.base.ref == 'main' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor_id == '472324')
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+      - name: Verify the deployed Cloud Functions runtime
+        if: >-
+          github.event_name == 'push' ||
+          (github.event.pull_request.base.ref == 'main' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.actor_id == '472324')
+        run: ./scripts/verify-cloud-runtime.sh
 
   android-assemble:
     name: android-assemble
