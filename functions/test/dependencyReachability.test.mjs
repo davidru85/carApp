@@ -49,6 +49,7 @@ test("the deployed billing cutoff does not reach the vulnerable dependency path"
       exportedFunctions.stopBilling.__endpoint.serviceAccountEmail,
       "development-billing-cutoff@davidruiz-carapp-dev.iam.gserviceaccount.com",
     );
+    assert.equal(exportedFunctions.stopBilling.__endpoint.eventTrigger.retry, false);
   } finally {
     Module._load = originalLoad;
     if (previousProjectId === undefined) {
