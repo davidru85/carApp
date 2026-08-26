@@ -33,6 +33,7 @@ class ContractCheck(private val repoRoot: File) {
         assertion13TestAppGraphParity(),
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
+        *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
         reportProseInCodeFences(),
     )
 
