@@ -66,4 +66,51 @@ class FirebaseConfigurationTest {
         assertTrue(resolvedPackages.contains("\"identity\" : \"firebase-ios-sdk\""))
         assertTrue(resolvedPackages.contains("\"version\" : \"11.8.0\""))
     }
+
+    @Test
+    fun appCheckProvidersAreRestrictedToTheirIntendedNativeBuilds() {
+        val catalog = repositoryRoot.resolve("gradle/libs.versions.toml").readText()
+        val androidBuild = repositoryRoot.resolve("androidApp/build.gradle.kts").readText()
+        val androidManifest = repositoryRoot.resolve("androidApp/src/main/AndroidManifest.xml").readText()
+        val androidApplication =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/CarAppApplication.kt")
+                .readText()
+        val androidDebugProvider =
+            repositoryRoot
+                .resolve("androidApp/src/debug/java/com/ruizurraca/carapp/AppCheckProvider.kt")
+                .readText()
+        val androidReleaseProvider =
+            repositoryRoot
+                .resolve("androidApp/src/release/java/com/ruizurraca/carapp/AppCheckProvider.kt")
+                .readText()
+        val iosProject = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val iosApplication = repositoryRoot.resolve("iosApp/carAppApp.swift").readText()
+        val iosProvider = repositoryRoot.resolve("iosApp/AppCheckProviderFactory.swift").readText()
+        val iosEntitlements = repositoryRoot.resolve("iosApp/carApp.entitlements").readText()
+
+        assertTrue(catalog.contains("firebase-appcheck-playintegrity"))
+        assertTrue(catalog.contains("firebase-appcheck-debug"))
+        assertTrue(androidBuild.contains("implementation(platform(libs.firebase.bom))"))
+        assertTrue(androidBuild.contains("implementation(libs.firebase.appcheck.playintegrity)"))
+        assertTrue(androidBuild.contains("debugImplementation(libs.firebase.appcheck.debug)"))
+        assertFalse(androidBuild.contains("implementation(libs.firebase.appcheck.debug)"))
+        assertTrue(androidManifest.contains("android:name=\".CarAppApplication\""))
+        assertTrue(androidApplication.contains("FirebaseApp.initializeApp(this)"))
+        assertTrue(androidApplication.contains("installAppCheckProviderFactory(appCheckProviderFactory())"))
+        assertFalse(androidApplication.contains("DebugAppCheckProviderFactory"))
+        assertTrue(androidDebugProvider.contains("DebugAppCheckProviderFactory.getInstance()"))
+        assertFalse(androidReleaseProvider.contains("DebugAppCheckProviderFactory"))
+        assertTrue(androidReleaseProvider.contains("PlayIntegrityAppCheckProviderFactory.getInstance()"))
+
+        assertTrue(iosProject.contains("product: FirebaseAppCheck"))
+        assertTrue(iosProject.contains("CODE_SIGN_ENTITLEMENTS: carApp.entitlements"))
+        assertTrue(iosApplication.contains("import FirebaseAppCheck"))
+        assertTrue(iosApplication.indexOf("configureAppCheck()") < iosApplication.indexOf("FirebaseApp.configure()"))
+        assertTrue(iosProvider.contains("#if DEBUG && targetEnvironment(simulator)"))
+        assertTrue(iosProvider.contains("AppCheckDebugProviderFactory"))
+        assertTrue(iosProvider.contains("AppAttestProvider"))
+        assertTrue(iosEntitlements.contains("com.apple.developer.devicecheck.appattest-environment"))
+        assertTrue(iosEntitlements.contains("<string>production</string>"))
+    }
 }
