@@ -75,5 +75,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-66 | [ADR-0067](0067-contain-development-cloud-costs.md) | Contain development cloud costs with alerts and automatic billing shutdown. | Accepted |
 | D-67 | [ADR-0068](0068-enforce-firebase-app-check.md) | Enforce Firebase App Check for Authentication and Firestore. | Accepted |
 | D-68 | [ADR-0069](0069-retain-official-functions-stack-with-unreachable-moderate-advisory.md) | Retain the official Functions stack with an expiring unreachable moderate advisory. | Accepted |
+| D-69 | [ADR-0070](0070-isolate-required-billing-admin-privilege.md) | Isolate the required Billing Admin privilege and alert on its use. | Accepted |
+| D-70 | [ADR-0071](0071-disable-cutoff-retries-and-alert-on-errors.md) | Disable cutoff retries and surface every execution error. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

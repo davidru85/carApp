@@ -36,6 +36,7 @@ targets, Xcode as pinned in [docs/versions-matrix.md](docs/versions-matrix.md).
 | [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution rules and PR expectations. |
 | [SECURITY.md](docs/SECURITY.md) | Vulnerability reporting, security-sensitive areas, secret handling. |
 | [SECURITY_ADVISORY_REGISTER.md](docs/SECURITY_ADVISORY_REGISTER.md) | Dated, expiring accepted dependency advisories and their review evidence. |
+| [development-firebase-cost-controls.md](docs/runbooks/development-firebase-cost-controls.md) | Development billing controls, state-change audit trail, destructive test and recovery procedure. |
 | [docs/adr/README.md](docs/adr/README.md) | ADR index, one per decision ID. |
 | [docs/identifiers.md](docs/identifiers.md) | Application identifiers, Firebase projects and Firestore location. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions, compatibility relation, performance measurement baselines. |

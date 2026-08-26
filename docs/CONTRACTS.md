@@ -1184,6 +1184,13 @@ when reported actual cost is greater than or equal to the budget. Budget alerts 
 not a spending cap; reporting delay can produce overshoot. Production MUST NOT deploy or inherit
 `stopBilling`: its budget response is aggressive notification plus manual intervention.
 
+`stopBilling` MUST use the dedicated keyless identity governed by D-69, check that billing remains
+enabled before attempting an update and return without writing when it is already disabled. Its
+Pub/Sub failure policy MUST set retry to false (`D-70`). Cloud Monitoring MUST notify the owner on
+every function execution error and every Cloud Billing administrative change. Acceptance MUST
+measure consecutive real publications from the project budget; documentation of the general
+Cloud Billing cadence is not a substitute for the observed interval.
+
 `validPayload()` MUST be equivalent to this shape:
 
 ```javascript

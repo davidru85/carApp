@@ -17,7 +17,7 @@
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — the active decisions through D-68 that govern this story are `Accepted`;
+- [x] Decisions checked — the active decisions through D-70 that govern this story are `Accepted`;
   D-2 is superseded by D-58; D-53 records the
   owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
   D-56 records the owner's 2026-08-25 correction of the test-factory module boundary; D-58 moves
@@ -27,7 +27,9 @@
   D-65 pins the native Firebase Apple SDK to the exact GitLive cinterop version; D-66 fixes the
   development-only billing budget, cutoff, Node.js 22 runtime and OIDC verification; D-67 moves App
   Check into MVP scope for billed Authentication and Firestore; D-68 retains the official
-  Functions graph under an expiring, dynamically unreachable moderate advisory acceptance. No
+  Functions graph under an expiring, dynamically unreachable moderate advisory acceptance; D-69
+  isolates the required Billing Admin privilege with a monitoring control; D-70 disables cutoff
+  retries and makes every execution failure visible. No
   `Proposed` or `Pending` decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§7 F-1` and `F-2`, `§8`, `§9`,
   `§10`, `§11`; `docs/CONTRACTS.md §1.1`, `§3`, `§11`, `§14`, `§15`, `§16`, `§18`, `§20.3`,
@@ -103,6 +105,12 @@
 - D-68 retains the official Firebase Functions dependency graph after a full-trigger dynamic test
   proves the affected UUID variants unreachable; the production residual expires into the existing
   TD-01 quarterly review and does not weaken the high/critical CI gate.
+- D-69 accepts the standard Billing Admin role only on a dedicated keyless cutoff identity because
+  the personal billing account cannot host a custom role; an administrative-change alert is the
+  compensating visibility control.
+- D-70 disables automatic Pub/Sub retry because a persistent fault could bill for seven days;
+  every execution failure alerts the owner and the measured recurring budget publication bounds a
+  dropped event's second-attempt delay.
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
@@ -120,7 +128,7 @@
 
 ## Decision Board Impact
 
-- Added D-53 through D-68 and ADR-0054 through ADR-0069 before the implementation each decision
+- Added D-53 through D-70 and ADR-0054 through ADR-0071 before the implementation each decision
   governs.
 
 ## Shared-Write Modules Touched

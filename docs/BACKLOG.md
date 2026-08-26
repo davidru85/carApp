@@ -228,6 +228,9 @@ Acceptance criteria:
   observed Authentication/Firestore/data behavior and exact recovery steps are recorded, and the
   final budget is restored to EUR 10. Production is documented as alerts plus manual intervention
   and MUST NOT inherit the cutoff.
+- D-69/D-70 controls are active: the broad billing role is confined to a keyless dedicated
+  identity, billing administration and function errors alert the owner, retry is disabled, and the
+  actual recurring budget-publication interval is recorded.
 - The Functions package pins Node.js 22 in its manifest and `firebase.json`, with the runtime debt
   coupled to D-63 under TD-01. CI reads the normative value from `docs/versions-matrix.md`, fails on
   local pin disagreement and uses repository/ref-restricted OIDC plus a one-permission custom role

@@ -45,6 +45,11 @@ The development project `davidruiz-carapp-dev` uses the following controls:
 - `stopBilling`, a 2nd gen Pub/Sub function in `europe-west1`, which removes the development
   project's billing-account association when actual cost is greater than or equal to 100%;
 - an idempotent check that does nothing when billing is already disabled;
+- no automatic Pub/Sub retry; every execution error produces a Cloud Monitoring notification and
+  the observed recurring budget publication cadence is recorded as the next-attempt bound;
+- a dedicated keyless execution identity. The personal billing account requires the standard
+  `roles/billing.admin` role, while its project role is minimal and billing administrative changes
+  alert the owner;
 - Node.js 22, Firebase Functions 7.3.2, Firebase Admin 14.3.0 and
   `@google-cloud/billing` 6.0.0 in the single `functions/` package;
 - a real destructive acceptance exercise using a temporary trivial budget, followed by manual
@@ -88,6 +93,8 @@ commit SHA.
 - CI receives a short-lived, read-only identity and no service-account key.
 - The mandatory Firebase Admin peer carries the separately governed D-68 moderate production
   transitive residual; its acceptance is reachability-tested and expires into the TD-01 review.
+- The broad billing-account role and no-retry delivery policy are governed separately by D-69 and
+  D-70, including their compensating monitoring controls.
 
 ## Verification
 
@@ -108,4 +115,4 @@ commit SHA.
 - [Google GitHub Actions authentication](https://github.com/google-github-actions/auth)
 - `docs/runbooks/development-firebase-cost-controls.md`
 - `docs/TECHNICAL_PLAN.md §13` (`TD-01`)
-- `D-14`, `D-60`, `D-63`, `D-68`
+- `D-14`, `D-60`, `D-63`, `D-68`, `D-69`, `D-70`

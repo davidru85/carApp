@@ -69,7 +69,7 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
 | Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until the production project is created. |
-| Development billing | Billing account `01F6AF-2A3D04-00546B`; EUR 10 monthly budget | D-66 actual-cost alerts at 50%, 90% and 100%; the project-local 2nd gen function disables billing at 100%. Budget notifications are not a hard cap and can be delayed. |
+| Development billing | Billing account `01F6AF-2A3D04-00546B`; EUR 10 monthly budget | D-66 actual-cost alerts at 50%, 90% and 100%; the project-local 2nd gen function disables billing at 100%. D-69 isolates the required Billing Admin role and alerts on administrative changes. D-70 forbids automatic retry and alerts on execution errors. Budget notifications are not a hard cap and can be delayed. |
 | Production billing | No production project exists | E4-04 must configure a separate billing account association and aggressive alerts. Automatic billing shutdown is forbidden in production. |
 | Development App Check | Authentication and Firestore enforced | D-67: App Attest on iOS, Play Integrity on Android, debug providers only for local/CI-specific builds. |
 

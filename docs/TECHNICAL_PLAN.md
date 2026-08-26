@@ -83,6 +83,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-66 | Development cloud cost containment | EUR 10 alerts-only budget plus project-local 2nd gen cutoff at 100% actual cost | Accepted | Bounds accidental development spend with an intentionally destructive response; production uses alerts and manual action. |
 | D-67 | Firebase App Check enforcement | App Attest, Play Integrity and local/CI-only debug providers; enforce Auth and Firestore | Accepted | Billing turns anonymous-authentication abuse into a direct cost vector, so caller integrity enters MVP scope. |
 | D-68 | Cloud Functions moderate advisory residual | Retain the official SDK graph while the affected UUID variants remain dynamically unreachable | Accepted | The finding is a production transitive, so CI exposes moderate reports, blocks high/critical and the acceptance expires into TD-01 review. |
+| D-69 | Billing cutoff account privilege | Dedicated keyless Billing Admin identity plus billing-administration alert | Accepted | The personal billing account cannot host a custom role; visibility compensates for the necessary broad standard role. |
+| D-70 | Billing cutoff delivery policy | No Pub/Sub retry; execution-error alert plus measured recurring budget notification | Accepted | Prevents a persistent failure from producing seven days of the recurring billable work the cutoff exists to stop. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -444,6 +446,8 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 | Runaway development cloud cost | Low / High | D-66 EUR 10 alerts-only budget, actual-cost notifications, tested project-local cutoff and manual recovery runbook. Reporting delay means overshoot remains possible. |
 | Billed anonymous-client abuse | Medium / High | D-67 App Check enforcement for Authentication and Firestore, while retaining Auth and closed Firestore Rules. |
 | Moderate UUID advisory in the deployed Functions graph | Low / Medium | D-68 dynamic full-trigger reachability test, explicit advisory register, high/critical CI gate and expiring TD-01 review. |
+| Broad billing-account role on the cutoff identity | Low / High | D-69 dedicated keyless identity with no product-data role, minimal project role and an alert on billing administrative changes. |
+| Silent dropped cutoff event | Low / High | D-70 disables retries but alerts on every execution error and records the observed recurring budget publication cadence as the second-attempt bound. |
 | Temporary 1st gen Auth trigger becomes inherited infrastructure | Medium / Medium | `TD-01` names the sole exception, exact migration surface, quarterly owner review and a contract allowlist. |
 | Scope creep | Medium / Medium | Explicit out-of-scope list and review gate. |
 
