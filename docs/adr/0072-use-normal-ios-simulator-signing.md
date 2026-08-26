@@ -21,7 +21,7 @@ walking-skeleton acceptance test is intended to prove.
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| Let Xcode perform normal simulator signing without a committed team or identity | Exercises real Keychain-backed Auth persistence and requires no Apple Events or developer account for simulator acceptance. | The build no longer has the E0-01 blanket safeguard against all signing activity. |
+| Let Xcode perform normal simulator signing without a committed developer team or account-specific credential | Exercises real Keychain-backed Auth persistence and requires no Apple Events or developer account for simulator acceptance. | The build no longer has the E0-01 blanket safeguard against all signing activity. |
 | Override signing only in the acceptance command | Preserves the checked-in global prohibition. | Makes the test command different from normal development and can still hide configuration regressions. |
 | Keep the app unsigned and clear SQLDelight through a test hook without restarting | Avoids signing changes. | Tests application cleanup logic instead of Auth persistence and therefore cannot satisfy E0-07 acceptance. |
 
@@ -30,10 +30,12 @@ walking-skeleton acceptance test is intended to prove.
 Remove the project-wide `CODE_SIGNING_ALLOWED = NO`, blank `CODE_SIGN_IDENTITY` and
 `CODE_SIGNING_REQUIRED = NO` settings. Let Xcode use its normal simulator signing behavior.
 
-No development team, certificate identity or provisioning profile is committed. Physical-device
-and release signing remain outside this decision, and release Firebase configuration continues to
-fail closed under D-54. Simulator acceptance is driven only through command-line Xcode and
-Simulator tooling; Apple Events and Accessibility control are forbidden.
+No development team, account-specific certificate or provisioning profile is committed. XcodeGen
+may emit Xcode's generic `iPhone Developer` identity as part of normal automatic signing; it does
+not identify an account or team. Physical-device and release signing remain outside this decision,
+and release Firebase configuration continues to fail closed under D-54. Simulator acceptance is
+driven only through command-line Xcode and Simulator tooling; Apple Events and Accessibility
+control are forbidden.
 
 ## Consequences
 
@@ -50,7 +52,7 @@ Simulator tooling; Apple Events and Accessibility control are forbidden.
 
 ### Constraints Introduced
 
-- The simulator build MUST NOT commit a development team or signing identity.
+- The simulator build MUST NOT commit a development team or account-specific signing credential.
 - Acceptance MUST restart the signed app, preserve the Keychain, remove only the local database
   files, and prove recovery with the same anonymous identity.
 - Automation MUST NOT request Apple Events, Accessibility or general Mac-control permission.
@@ -58,7 +60,8 @@ Simulator tooling; Apple Events and Accessibility control are forbidden.
 ## Verification
 
 - A repository contract test rejects the former global signing prohibition.
-- The generated Xcode project contains no globally disabled signing setting or committed team.
+- The generated Xcode project contains no globally disabled signing setting, account-specific
+  credential or committed team.
 - Command-line simulator acceptance proves the anonymous identity survives termination and local
   database deletion before the remote Vehicle is restored.
 
@@ -68,4 +71,3 @@ Simulator tooling; Apple Events and Accessibility control are forbidden.
 - `docs/SPECIFICATION.md`
 - `docs/TECHNICAL_PLAN.md`
 - `docs/adr/0055-keep-firebase-configuration-debug-only.md`
-

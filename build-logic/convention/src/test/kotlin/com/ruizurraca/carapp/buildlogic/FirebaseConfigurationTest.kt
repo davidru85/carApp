@@ -130,7 +130,7 @@ class FirebaseConfigurationTest {
         assertFalse(projectSpec.contains("DEVELOPMENT_TEAM:"))
         assertFalse(xcodeProject.contains("CODE_SIGNING_ALLOWED = NO;"))
         assertFalse(xcodeProject.contains("CODE_SIGNING_REQUIRED = NO;"))
-        assertFalse(xcodeProject.contains("CODE_SIGN_IDENTITY ="))
+        assertTrue(xcodeProject.contains("CODE_SIGN_IDENTITY = \"iPhone Developer\";"))
         assertFalse(xcodeProject.contains("DEVELOPMENT_TEAM ="))
     }
 }
