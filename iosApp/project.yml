@@ -53,3 +53,4 @@ targets:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
+          EXCLUDED_SOURCE_FILE_NAMES: GoogleService-Info-Debug.plist

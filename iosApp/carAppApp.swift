@@ -9,7 +9,7 @@ struct carAppApp: App {
 
     init() {
         configureAppCheck()
-        FirebaseApp.configure()
+        configureFirebase()
         let graph = createSwiftAppGraph(isDebugBuild: isDebugBuild)
         _model = StateObject(wrappedValue: WalkingSkeletonModel(graph: graph))
     }
@@ -19,6 +19,20 @@ struct carAppApp: App {
             ContentView(model: model)
         }
     }
+}
+
+private func configureFirebase() {
+    #if DEBUG
+    guard
+        let configPath = Bundle.main.path(forResource: "GoogleService-Info-Debug", ofType: "plist"),
+        let options = FirebaseOptions(contentsOfFile: configPath)
+    else {
+        fatalError("The Debug Firebase configuration is missing from the application bundle.")
+    }
+    FirebaseApp.configure(options: options)
+    #else
+    FirebaseApp.configure()
+    #endif
 }
 
 private let isDebugBuild: Bool = {
