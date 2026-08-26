@@ -1,4 +1,12 @@
 {
+  "functions": {
+    "source": "functions",
+    "codebase": "default",
+    "runtime": "nodejs22",
+    "predeploy": [
+      "npm --prefix \"$RESOURCE_DIR\" test"
+    ]
+  },
   "firestore": {
     "rules": "firestore/rules/main.rules",
     "indexes": "firestore/firestore.indexes.json"
