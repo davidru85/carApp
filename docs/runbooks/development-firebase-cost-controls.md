@@ -18,6 +18,7 @@ considered complete.
 |-----------------------|-------|--------|-------------------|
 | 2026-08-26T12:45:57.806803Z | `davidru85@gmail.com` | Manual `gcloud billing projects link` (`AssignResourceToBillingAccount`) | Billing enabled to deploy the approved D-66 cutoff controls. |
 | 2026-08-26T12:47:41.293609Z | `davidru85@gmail.com` | Manual `gcloud billing projects unlink` (`DisableResourceBilling`) | Billing deliberately disabled after Firebase rejected the first deployment for `retry: true`; no function had deployed, so this was manual containment and not the cutoff firing. |
+| 2026-08-26T12:54:55.587060Z | `davidru85@gmail.com` | Manual `gcloud billing projects link` (`AssignResourceToBillingAccount`) | Billing deliberately restored only after D-70 selected `retry: false`, so the approved function could be deployed and tested. |
 
 ## Fixed Controls
 
@@ -28,8 +29,21 @@ considered complete.
   `docs/versions-matrix.md`, `retry: false`, concurrency 1 and maximum instances 1.
 - Function error notification: Cloud Monitoring email to `davidru85@gmail.com`.
 - Billing administration notification: Cloud Monitoring email to `davidru85@gmail.com`.
+- Function-error policy: `projects/davidruiz-carapp-dev/alertPolicies/16829276630868734195`.
+- Billing-administration policy:
+  `projects/davidruiz-carapp-dev/alertPolicies/16719603493370820812`.
 - Runtime identity: keyless `development-billing-cutoff`; its broad billing-account role and
   minimal project role are governed by D-69.
+
+The deployed function was `ACTIVE` at 2026-08-26T12:56:47.496721996Z with revision
+`stopbilling-00001-kem`, Node.js 22, `RETRY_POLICY_DO_NOT_RETRY` and the dedicated runtime
+identity. An intentional severity-ERROR acceptance event was ingested at
+2026-08-26T17:11:59.221985794Z and matched the function-error policy filter. Owner confirmation
+of email delivery remains part of the destructive acceptance evidence.
+
+The temporary acceptance budget is deliberately one nano-EUR, not EUR 0.01. This exact amount is
+used only to force the real cutoff. After recovery it MUST be changed to the final EUR 10 amount
+and verified through the Billing Budgets API.
 
 ## Budget Publication Cadence
 

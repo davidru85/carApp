@@ -1,0 +1,26 @@
+{
+  "displayName": "carApp development billing administrative changes",
+  "documentation": {
+    "content": "D-69: Cloud Billing recorded an administrative change. Confirm that the actor and action appear in docs/runbooks/development-firebase-cost-controls.md and investigate any unexpected use of the dedicated Billing Admin identity.",
+    "mimeType": "text/markdown"
+  },
+  "conditions": [
+    {
+      "displayName": "Cloud Billing Admin Activity audit log",
+      "conditionMatchedLog": {
+        "filter": "log_id(\"cloudaudit.googleapis.com/activity\") protoPayload.serviceName=\"cloudbilling.googleapis.com\""
+      }
+    }
+  ],
+  "combiner": "OR",
+  "alertStrategy": {
+    "notificationRateLimit": {
+      "period": "300s"
+    },
+    "autoClose": "1800s"
+  },
+  "notificationChannels": [
+    "projects/davidruiz-carapp-dev/notificationChannels/6819192145618140115"
+  ],
+  "enabled": true
+}

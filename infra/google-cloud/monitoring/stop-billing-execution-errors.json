@@ -1,0 +1,26 @@
+{
+  "displayName": "carApp development stopBilling execution errors",
+  "documentation": {
+    "content": "D-70: stopBilling emitted an error. Inspect the Cloud Run revision logs and restore the cutoff before relying on the next budget publication. Runbook: docs/runbooks/development-firebase-cost-controls.md.",
+    "mimeType": "text/markdown"
+  },
+  "conditions": [
+    {
+      "displayName": "stopBilling Cloud Run error log",
+      "conditionMatchedLog": {
+        "filter": "resource.type=\"cloud_run_revision\" resource.labels.service_name=\"stopbilling\" severity>=ERROR"
+      }
+    }
+  ],
+  "combiner": "OR",
+  "alertStrategy": {
+    "notificationRateLimit": {
+      "period": "300s"
+    },
+    "autoClose": "1800s"
+  },
+  "notificationChannels": [
+    "projects/davidruiz-carapp-dev/notificationChannels/6819192145618140115"
+  ],
+  "enabled": true
+}
