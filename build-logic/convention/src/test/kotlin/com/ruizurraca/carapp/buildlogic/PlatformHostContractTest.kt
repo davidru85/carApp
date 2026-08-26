@@ -57,6 +57,7 @@ class PlatformHostContractTest {
         assertFalse(view.contains("Greeting"))
         assertTrue(english.contains("\"walking_skeleton_title\""))
         assertTrue(spanish.contains("\"walking_skeleton_title\""))
-        assertTrue(xcodeProject.contains("Localizable.strings in Resources"))
+        assertTrue(xcodeProject.contains("en.lproj in Resources"))
+        assertTrue(xcodeProject.contains("es.lproj in Resources"))
     }
 }
