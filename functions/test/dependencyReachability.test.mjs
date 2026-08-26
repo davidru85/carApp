@@ -45,6 +45,10 @@ test("the deployed billing cutoff does not reach the vulnerable dependency path"
     const stopBilling = createStopBilling(() => new CloudBillingGateway(billingClient));
     await stopBilling(pubsubEvent({budgetAmount: 10, costAmount: 10}));
     assert.deepEqual(Object.keys(exportedFunctions), ["stopBilling"]);
+    assert.equal(
+      exportedFunctions.stopBilling.__endpoint.serviceAccountEmail,
+      "development-billing-cutoff@davidruiz-carapp-dev.iam.gserviceaccount.com",
+    );
   } finally {
     Module._load = originalLoad;
     if (previousProjectId === undefined) {
