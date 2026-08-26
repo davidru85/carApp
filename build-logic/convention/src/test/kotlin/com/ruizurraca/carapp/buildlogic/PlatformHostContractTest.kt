@@ -40,6 +40,7 @@ class PlatformHostContractTest {
         val view = repositoryRoot.resolve("iosApp/ContentView.swift").readText()
         val english = repositoryRoot.resolve("iosApp/en.lproj/Localizable.strings").readText()
         val spanish = repositoryRoot.resolve("iosApp/es.lproj/Localizable.strings").readText()
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
 
         assertTrue(app.contains("createSwiftAppGraph(isDebugBuild:"))
         assertTrue(model.contains("sessionStateHolder()"))
@@ -56,5 +57,6 @@ class PlatformHostContractTest {
         assertFalse(view.contains("Greeting"))
         assertTrue(english.contains("\"walking_skeleton_title\""))
         assertTrue(spanish.contains("\"walking_skeleton_title\""))
+        assertTrue(xcodeProject.contains("Localizable.strings in Resources"))
     }
 }
