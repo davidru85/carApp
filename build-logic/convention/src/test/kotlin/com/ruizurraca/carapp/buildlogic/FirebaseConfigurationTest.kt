@@ -118,4 +118,19 @@ class FirebaseConfigurationTest {
         assertTrue(iosEntitlements.contains("com.apple.developer.devicecheck.appattest-environment"))
         assertTrue(iosEntitlements.contains("<string>production</string>"))
     }
+
+    @Test
+    fun iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity() {
+        val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+
+        assertFalse(projectSpec.contains("CODE_SIGNING_ALLOWED: NO"))
+        assertFalse(projectSpec.contains("CODE_SIGNING_REQUIRED: NO"))
+        assertFalse(projectSpec.contains("CODE_SIGN_IDENTITY:"))
+        assertFalse(projectSpec.contains("DEVELOPMENT_TEAM:"))
+        assertFalse(xcodeProject.contains("CODE_SIGNING_ALLOWED = NO;"))
+        assertFalse(xcodeProject.contains("CODE_SIGNING_REQUIRED = NO;"))
+        assertFalse(xcodeProject.contains("CODE_SIGN_IDENTITY ="))
+        assertFalse(xcodeProject.contains("DEVELOPMENT_TEAM ="))
+    }
 }
