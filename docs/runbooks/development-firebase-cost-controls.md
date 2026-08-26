@@ -53,10 +53,22 @@ the acceptance measurement. Consecutive messages from this exact budget are reco
 
 | Publication timestamp (UTC) | Previous interval | Budget display name | Cost / budget |
 |-----------------------------|-------------------|---------------------|---------------|
-| Pending real notification | — | — | — |
+| 2026-08-26T17:36:01.190Z | — | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T18:00:27.489Z | 24m 26.299s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T18:25:34.617Z | 25m 07.128s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T18:50:55.915Z | 25m 21.298s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T19:15:25.580Z | 24m 29.665s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T19:39:32.108Z | 24m 06.528s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T20:24:29.433Z | 44m 57.325s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T21:26:45.131Z | 1h 02m 15.698s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T22:12:50.206Z | 46m 05.075s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T22:38:35.956Z | 25m 45.750s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
+| 2026-08-26T23:00:35.342Z | 21m 59.386s | Development Firebase cost containment | EUR 0 / temporary one-nano-EUR budget |
 
-The observed maximum interval is pending. If notifications arrive materially less often than
-multiple times per day, D-70 is reopened before the cutoff is accepted.
+The observed maximum interval in this ten-interval sample is **1h 02m 15.698s**. The real publisher
+therefore delivered multiple zero-cost updates per day and did not require reopening D-70. This
+measured maximum is the current worst-case second-attempt assumption after a dropped event; it is
+evidence, not a guaranteed service-level objective.
 
 ## Manual Relink Procedure
 
@@ -74,7 +86,19 @@ Only recovery owner David Ruiz performs this procedure after identifying and sto
 
 ## Destructive Acceptance Evidence
 
-Pending the real temporary-budget trigger. This section will record:
+The controlled D-72 test records expectations before publishing either threshold message. Actual
+results remain `Pending` until the destructive test has run; replacing an expectation with the
+observed outcome is forbidden because discrepancies are acceptance evidence.
+
+| Surface | Expected outcome while billing is disabled | Actual outcome |
+|---------|--------------------------------------------|----------------|
+| Firestore data | The acceptance document remains stored and unchanged. Firestore data-plane access stops while billing is detached, then the same document becomes readable after relink. | Pending controlled test. |
+| Firebase Authentication | Backend Authentication stops: new anonymous sign-in and token refresh fail. Any Keychain credential remains only as local persisted state and cannot make the backend operational. | Pending controlled test. |
+| Deployed `stopBilling` function | The first delivery completes and the deployed function resource and revision remain recorded. The immediately queued second delivery reaches the idempotent handler and returns `ALREADY_DISABLED`; later execution is unavailable until billing is restored. | Pending controlled test. |
+| Pub/Sub and budget publisher | Topic, subscription and budget configuration survive. The billing-account publisher remains configured, but project-local message delivery is expected to stop until relink because the development project deliberately stops serving. | Pending controlled test. |
+| Owner recovery | David Ruiz relinks the known billing account, waits for `billingEnabled: true`, verifies Auth, Firestore, Pub/Sub and the deployed function end to end, restores the EUR 10 budget and records total elapsed time. | Pending controlled test. |
+
+The completed evidence will also record:
 
 - the budget publication that caused the cutoff;
 - the function log and billing audit event;
