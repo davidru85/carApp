@@ -85,6 +85,15 @@ jobs:
         run: npm ci
       - name: Firestore security rules emulator tests
         run: npm run test:firestore-rules
+      - name: Install Cloud Functions dependencies
+        working-directory: functions
+        run: npm ci
+      - name: Cloud Functions production dependency audit
+        working-directory: functions
+        run: npm run audit
+      - name: Cloud Functions tests
+        working-directory: functions
+        run: npm test
 
   android-assemble:
     name: android-assemble
