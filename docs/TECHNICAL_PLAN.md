@@ -85,6 +85,9 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-68 | Cloud Functions moderate advisory residual | Retain the official SDK graph while the affected UUID variants remain dynamically unreachable | Accepted | The finding is a production transitive, so CI exposes moderate reports, blocks high/critical and the acceptance expires into TD-01 review. |
 | D-69 | Billing cutoff account privilege | Dedicated keyless Billing Admin identity plus billing-administration alert | Accepted | The personal billing account cannot host a custom role; visibility compensates for the necessary broad standard role. |
 | D-70 | Billing cutoff delivery policy | No Pub/Sub retry; execution-error alert plus measured recurring budget notification | Accepted | Prevents a persistent failure from producing seven days of the recurring billable work the cutoff exists to stop. |
+| D-71 | iOS simulator signing | Normal Xcode simulator signing with no committed team or identity | Accepted | Restores Keychain-backed Auth persistence while keeping simulator acceptance reproducible and release signing fail-closed. |
+| D-72 | Billing cutoff acceptance trigger | Two controlled threshold events on the real topic, expected-versus-actual evidence and timed recovery | Accepted | Verifies the deployed destructive path and the already-disabled no-op without manufacturing billable usage. |
+| D-73 | Cloud Functions artifact retention | One-day cleanup on the exact Functions Artifact Registry repository with observed deletion | Accepted | Keeps a short inspection window while bounding development storage cost and treating Git as the source of truth. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

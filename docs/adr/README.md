@@ -77,5 +77,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-68 | [ADR-0069](0069-retain-official-functions-stack-with-unreachable-moderate-advisory.md) | Retain the official Functions stack with an expiring unreachable moderate advisory. | Accepted |
 | D-69 | [ADR-0070](0070-isolate-required-billing-admin-privilege.md) | Isolate the required Billing Admin privilege and alert on its use. | Accepted |
 | D-70 | [ADR-0071](0071-disable-cutoff-retries-and-alert-on-errors.md) | Disable cutoff retries and surface every execution error. | Accepted |
+| D-71 | [ADR-0072](0072-use-normal-ios-simulator-signing.md) | Use normal Xcode simulator signing for Keychain-backed Auth acceptance. | Accepted |
+| D-72 | [ADR-0073](0073-exercise-cutoff-with-controlled-threshold-events.md) | Exercise the real cutoff with controlled threshold events. | Accepted |
+| D-73 | [ADR-0074](0074-retain-functions-artifacts-for-one-day.md) | Retain Cloud Functions deployment artifacts for one day. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
