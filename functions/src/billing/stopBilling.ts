@@ -19,6 +19,7 @@ export function createStopBilling(
             memory: "256MiB",
             region: "europe-west1",
             retry: true,
+            serviceAccount: "development-billing-cutoff@davidruiz-carapp-dev.iam.gserviceaccount.com",
             timeoutSeconds: 60,
             topic: BILLING_BUDGET_TOPIC,
         },
