@@ -2,9 +2,9 @@
 
 > Pinned toolchain versions and the compatibility relation between them, plus the reference devices and measurement methods for every performance target.
 >
-> **Gradle and Kotlin versions are declared only in `gradle/libs.versions.toml`.** The Node-only
-> Firestore emulator dependencies introduced by `D-46` are declared exactly in `package.json` and
-> locked transitively by `package-lock.json`. Dependency lifecycle scripts are disabled by the
+> **Gradle and Kotlin versions are declared only in `gradle/libs.versions.toml`.** Node-only
+> dependencies are declared exactly in the root or `functions/` npm manifest that owns them and
+> locked transitively by the adjacent lockfile. Dependency lifecycle scripts are disabled by the
 > repository `.npmrc` under D-51. This file explains *why* every pin exists, which pins
 > move together and which record backs it. There are no `TBD` cells.
 >
@@ -21,19 +21,30 @@ These groups move together. Bumping one member REQUIRES revalidating the whole g
 | **Apple toolchain** | Xcode, iOS deployment target, SKIE, macOS CI runner image | SKIE and the Kotlin/Native linker depend on the Xcode version available on the runner. |
 | **Firebase** | Firebase BOM, GitLive Firebase SDK, Firebase Apple SDK, Google Services plugin | GitLive 2.6.x wraps platform-specific native Firebase SDKs. Its Apple cinterop bindings require the exact Firebase Apple version they were generated against; GitLive and Firebase Apple move together. GitLive 3.0 alpha is out of scope. |
 | **Firestore rules emulator** | Node, Firebase CLI, Firebase JS SDK, `@firebase/rules-unit-testing` | The official rules test library peers with Firebase JS and discovers the emulator started by the CLI; Node must satisfy both packages. |
+| **Cloud Functions and D-63 debt** | Node.js 22, Firebase Functions, Firebase Admin, `@google-cloud/billing`, TypeScript, `@types/node` | Node.js 22 is the current runtime that supports the D-63 1st gen Auth exception and all 2nd gen functions in one package. The runtime and trigger move together under TD-01. |
+| **Cloud runtime CI identity** | `google-github-actions/auth`, `google-github-actions/setup-gcloud`, Workload Identity provider and the one-permission custom role | The SHA-pinned actions exchange GitHub OIDC for a short-lived identity that can read only the deployed function runtime. Updating an action requires revalidating the provider claims and runtime check. |
 | **Android build** | AGP, Gradle, JDK toolchain, Compose BOM, `compileSdk`, `targetSdk` | AGP requires specific Gradle and JDK versions, and a Compose BOM declares a minimum AGP and `compileSdk`. Compose BOM `2026.08.00` requires `compileSdk 37` and AGP 9.1.0 or higher, which is what moved the whole group. |
 | **AGP 9 build model** | AGP, `com.android.kotlin.multiplatform.library`, Kotlin Gradle plugin | Since AGP 9.0 Kotlin support is built into AGP: `org.jetbrains.kotlin.android` is rejected, and `com.android.library` is incompatible with the KMP plugin, so `:shared` must use `com.android.kotlin.multiplatform.library` and its `androidLibrary` DSL. |
 
 ## Pinned versions
 
-Every Gradle/Kotlin value below is declared in `gradle/libs.versions.toml`; the four Node-only rows
-are declared in the npm manifests identified above. "Backed by" is the record that justifies the
-choice: an ADR where a decision exists, otherwise the story or normative section that fixes it.
+Every Gradle/Kotlin value below is declared in `gradle/libs.versions.toml`; Node-only rows are
+declared in the npm manifests identified above. GitHub Action versions are represented by immutable
+commit SHAs in the workflow. "Backed by" is the record that justifies the choice: an ADR where a
+decision exists, otherwise the story or normative section that fixes it.
 
 | Area | Artifact | Version | Backed by | Notes |
 |------|----------|---------|-----------|-------|
 | JDK toolchain | — | 21 | `E0-06` | LTS. Same value for Gradle and for the Kotlin JVM toolchain, applied through `kotlin { jvmToolchain(...) }` in each module. |
 | Node runtime | — | 22.22.3 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Exact runtime for Firestore emulator rules tests locally and in CI. |
+| Cloud Functions runtime | — | 22 | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | Explicit `nodejs22` deployment runtime. It is coupled to the D-63 1st gen Auth exception and leaves only when TD-01 closes. Deprecation: 2027-04-30; hard decommission deadline: 2027-10-31. |
+| Firebase Functions SDK | `firebase-functions` | 7.3.2 | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | Owns the 2nd gen Pub/Sub trigger now and the sole D-63 1st gen Auth exception later. |
+| Firebase Admin SDK | `firebase-admin` | 14.3.0 | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | Exact server SDK for the accepted D-23/D-63 operations; present in the one Functions package. |
+| Cloud Billing client | `@google-cloud/billing` | 6.0.0 | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | Official stable client used only by the development billing cutoff. Requires Node.js 22 or newer. |
+| Functions TypeScript compiler | `typescript` | 7.0.2 | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | Compiles the single Functions codebase; exact dev dependency, not a global tool. |
+| Functions Node types | `@types/node` | 22.20.1 | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | Matches the managed Node.js 22 runtime major. |
+| Google GitHub Actions auth | `google-github-actions/auth` | 3.0.0 (`7c6bc770dae815cd3e89ee6cdf493a5fab2cc093`) | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | SHA-pinned OIDC exchange; the workflow MUST NOT use a floating tag. |
+| Google GitHub Actions setup-gcloud | `google-github-actions/setup-gcloud` | 3.0.1 (`aa5489c8933f4cc7a4f7d45035b3b1440c9c10db`) | [ADR-0067](adr/0067-contain-development-cloud-costs.md) (`D-66`) | SHA-pinned Cloud SDK setup for the read-only deployed-runtime query. |
 | Firebase CLI | `firebase-tools` | 15.28.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Starts and stops the Firestore emulator through the project-local npm binary. Its accepted moderate dev-tool-only audit residual is recorded by [ADR-0053](adr/0053-retain-firebase-cli-with-moderate-audit-residual.md) (`D-52`). |
 | Firebase rules tests | `@firebase/rules-unit-testing` | 5.0.1 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Official emulator-only auth-mocking harness; tested with Node 22 and Firebase JS 12. |
 | Firebase rules client | `firebase` | 12.18.0 | [ADR-0047](adr/0047-firestore-rules-use-official-node-test-stack.md) (`D-46`) | Client operations used only by the emulator rule suite; satisfies the rules-unit-testing peer range. |

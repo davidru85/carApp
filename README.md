@@ -62,13 +62,14 @@ Sign-in is anonymous, Google or Apple, and nothing else. The welcome screen offe
 
 Out of scope: non-fuel expenses, advanced charts, export, receipt and odometer photos with OCR,
 local or on-device AI text recognition, fuel and maintenance reminders, operating-system
-notifications, shared vehicles, widgets and wearables, official fuel-price integrations, App Check,
-Cloud Functions-mediated remote read/write validation beyond the `D-23` and `D-63` account identity
-and data-deletion operations, automatic account merging, simultaneous multi-device use, active
+notifications, shared vehicles, widgets and wearables, official fuel-price integrations,
+Cloud Functions-mediated product read/write validation beyond the `D-23` and `D-63` account
+identity and data-deletion operations, automatic account merging, simultaneous multi-device use, active
 multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore
 listeners, remote settings synchronization, platform settings sync or backup through Google Play
 services / Android backup / iCloud, and electric or hybrid energy modelling. The foreground-only
-anonymous-account retention notices selected by `D-62` are in scope.
+anonymous-account retention notices selected by `D-62`, D-66 development billing containment and
+D-67 App Check enforcement are in scope.
 
 Any task touching out-of-scope functionality must be rejected or escalated before implementation.
 

@@ -1164,7 +1164,25 @@ service cloud.firestore {
 
 Account deletion hard deletes run only through the `D-23` Firebase Admin server operation. The Admin SDK bypasses Firestore rules entirely; the `allow delete: if false` rule therefore still rejects any mobile client hard delete, which is the load-bearing guarantee. The Admin operation's authorization comes from server IAM plus Firebase authentication token verification, not from Firestore rules. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
 
-The rule file path is `firestore/rules/main.rules`. `knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. Without App Check, closed schema and range validation in rules are the only things preventing a compromised client from writing a document that breaks parsing on the user's other device.
+The rule file path is `firestore/rules/main.rules`. `knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. App Check reduces calls from unofficial clients but does not authorize a user or validate a document. Closed schema and range validation in rules therefore remain the controls preventing an authenticated or attested compromised client from writing a document that breaks parsing on the user's other device.
+
+App Check baseline protection MUST be `ENFORCED` for both Firebase Authentication and Cloud
+Firestore before any build leaves local development (`D-67`). Provider selection is build-bound:
+
+- Android release code uses Play Integrity and contains neither the debug provider dependency nor
+  a debug provider factory.
+- iOS physical non-Debug code uses App Attest and contains no debug-token material.
+- Android emulator and iOS Simulator Debug builds may use the debug provider only with a token
+  registered outside the repository.
+- Debug tokens MUST NOT be committed, emitted in CI or embedded in a distributed build.
+- Firebase Authentication and these Firestore Rules remain mandatory when App Check is enforced.
+
+The development cloud-cost contract (`D-66`) is infrastructure-only. Its EUR 10 monthly budget
+uses actual-cost email thresholds at 50%, 90% and 100% and publishes to the project-local billing
+topic. The `stopBilling` 2nd gen function removes the development project's billing association
+when reported actual cost is greater than or equal to the budget. Budget alerts are notifications,
+not a spending cap; reporting delay can produce overshoot. Production MUST NOT deploy or inherit
+`stopBilling`: its budget response is aggressive notification plus manual intervention.
 
 `validPayload()` MUST be equivalent to this shape:
 
@@ -1389,6 +1407,18 @@ Optional checks:
 16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
 18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
+19. The Cloud Functions runtime, Functions manifest and cloud-runtime CI assertion equal the
+    normative runtime row in `docs/versions-matrix.md`; a hardcoded second runtime fails.
+20. The Google authentication and Cloud SDK GitHub Actions use the immutable SHAs recorded in
+    `docs/versions-matrix.md`, not floating tags.
+
+The protected `contract-check` job also performs a read-only deployed-runtime assertion for
+internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
+provider condition restricted to the immutable repository/owner, the
+`cloud-runtime-verification` environment and those exact event/ref contexts. The service account's
+custom role contains exactly `cloudfunctions.functions.get`. The job reads the expected runtime
+from `docs/versions-matrix.md`, not from `functions/package.json`, then separately fails if the
+manifest disagrees with the matrix. Fork pull requests receive no cloud identity.
 
 For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide declarations from Objective-C export, and **SQLDelight-generated types owned by `:core:database`** (`AppDatabase`, generated query interfaces and generated row classes). SQLDelight-generated types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
@@ -1428,7 +1458,7 @@ data class Money(val minorUnits: Long, val currency: CurrencyCode)
 
 **Construction never validates.** These types have no `init` block, throw nothing, and reject nothing. Wrapping a malformed UUID or an unsupported currency code is legal at the type level. Validation lives in the use cases of §5, which return typed errors.
 
-This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
+This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. App Check proves caller integrity but does not validate payload semantics, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code, so such a document remains reachable from a compromised official client.
 
 **Every scaled value is a `Long`**, per §2. Mixing widths across these types is a contract violation.
 

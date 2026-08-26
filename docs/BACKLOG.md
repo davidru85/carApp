@@ -222,6 +222,20 @@ Acceptance criteria:
 - iOS consumes the single `Shared` framework produced by `:composition:ios` through direct
   integration, not CocoaPods. `:shared` exports no framework binary.
 - Firestore offline persistence is disabled.
+- Before billing is linked, the development project receives the D-66 EUR 10 monthly alerts-only
+  budget, actual-cost alerts at 50%, 90% and 100%, and the project-local `stopBilling` 2nd gen
+  Pub/Sub function. A temporary trivial budget fires the function for real; billing is relinked,
+  observed Authentication/Firestore/data behavior and exact recovery steps are recorded, and the
+  final budget is restored to EUR 10. Production is documented as alerts plus manual intervention
+  and MUST NOT inherit the cutoff.
+- The Functions package pins Node.js 22 in its manifest and `firebase.json`, with the runtime debt
+  coupled to D-63 under TD-01. CI reads the normative value from `docs/versions-matrix.md`, fails on
+  local pin disagreement and uses repository/ref-restricted OIDC plus a one-permission custom role
+  to fail when the deployed runtime differs.
+- App Check is enforced for Firebase Authentication and Cloud Firestore before native acceptance.
+  Android uses Play Integrity, iOS uses App Attest and debug providers are confined to local or
+  CI-specific builds. Real local acceptance uses registered debug tokens, and an unverified request
+  is rejected (`D-67`).
 - The API keys of the development Firebase project are restricted in the Google Cloud console by package name, bundle identifier and signing certificate **before** `google-services.json` or `GoogleService-Info.plist` is committed. The repository is public (`D-34`), so those keys are readable by anyone the moment the files land (`docs/SECURITY.md`).
 - The Firestore database exists in the location fixed by `D-13`, in the development Firebase project fixed by `D-22` and governed by `D-14`.
 - The Swift-facing surface constraints of `docs/CONTRACTS.md §15.3` are validated: no value class,

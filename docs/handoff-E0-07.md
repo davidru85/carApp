@@ -12,30 +12,34 @@
   vehicle crossing native UI, SQLDelight and Firestore on both native paths while the same retained
   Firebase Auth session remains available; no anonymous cross-device promise; disabled Firestore
   persistence; direct framework integration; generated Objective-C golden header; app-graph fake
-  parity; protected multiplatform CI.
+  parity; protected multiplatform CI; D-66 billing containment and destructive recovery evidence;
+  and D-67 App Check enforcement on both native paths.
 - [x] Dependencies checked — E0-01 through E0-06, E0-08, E1-01, E3-06 and E3-01 are merged; the
   development Firebase project and `europe-west1` Firestore database exist. E0-07 owns creation
   and restriction of the two missing debug app registrations before configuration files land.
-- [x] Decisions checked — the active decisions through D-65 that govern this story are `Accepted`;
+- [x] Decisions checked — the active decisions through D-67 that govern this story are `Accepted`;
   D-2 is superseded by D-58; D-53 records the
   owner's 2026-08-24 selection of separate Firebase-provisioned and restricted platform keys, and
   D-56 records the owner's 2026-08-25 correction of the test-factory module boundary; D-58 moves
   the iOS framework composition root out of `:shared`; D-59 fixes the explicit `AppProviders`
   port selected by the owner; and D-60 through D-64 define device-bound anonymous identity,
   destructive collision precedence, retention notices, owned cleanup and their story split;
-  D-65 pins the native Firebase Apple SDK to the exact GitLive cinterop version. No
+  D-65 pins the native Firebase Apple SDK to the exact GitLive cinterop version; D-66 fixes the
+  development-only billing budget, cutoff, Node.js 22 runtime and OIDC verification; D-67 moves App
+  Check into MVP scope for billed Authentication and Firestore. No
   `Proposed` or `Pending` decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §2`, `§7 F-1` and `F-2`, `§8`, `§9`,
   `§10`, `§11`; `docs/CONTRACTS.md §1.1`, `§3`, `§11`, `§14`, `§15`, `§16`, `§18`, `§20.3`,
-  `§20.3.2`, `§20.7`, `§20.8` and `§20.10`; `docs/TECHNICAL_PLAN.md §3`–`§5`, `§10`, `§12`;
+  `§20.3.2`, `§20.7`, `§20.8` and `§20.10`; `docs/TECHNICAL_PLAN.md §3`–`§5`, `§10`, `§12`, `§13`;
   `docs/SECURITY.md`; `docs/identifiers.md`; `docs/versions-matrix.md`; and the E1-01, E3-06 and
   E3-01 handoffs.
 - [x] Expected verification identified — focused RED/GREEN shared behavior tests; graph
   construction and provider integration tests; Android host and `iosSimulatorArm64` tests;
   provider-free graph proof; generated-header diff; Android and iOS builds; real local/remote
   Vehicle evidence on both native application paths under retained anonymous sessions; and the
-  complete local and protected CI commands. Permanent-account two-device evidence belongs to
-  E3-12.
+  complete local and protected CI commands; real billing cutoff and recovery; read-only deployed
+  runtime verification; App Check enforcement and rejection without a valid token. Permanent-account
+  two-device evidence belongs to E3-12.
 - [x] Human review gates identified before work — E0-07 is a gated story; Firebase/auth/backend,
   module boundaries and Swift ABI are gated topics; `docs/SPECIFICATION.md`,
   `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/adr/**`, `docs/identifiers.md`,
@@ -90,6 +94,11 @@
   recovery evidence to their owning stories.
 - D-65 pins Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and requires them to move
   together, preventing a native cinterop/runtime version mismatch.
+- D-66 selects an EUR 10 development budget, actual-cost alerts at 50/90/100%, a project-local
+  2nd gen cutoff at 100%, manual recovery, production alert-only policy, Node.js 22 coupled to
+  D-63 and repository/ref-restricted read-only OIDC verification.
+- D-67 moves App Check into MVP scope because billing converts anonymous-authentication abuse into
+  a direct cost vector, and selects App Attest, Play Integrity and local/CI-only debug providers.
 - TDD order exemption used for architecture-rule fixtures, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   architecture RED/GREEN cycle, and each forbidden edge has an executable failing fixture.
@@ -107,7 +116,7 @@
 
 ## Decision Board Impact
 
-- Added D-53 through D-65 and ADR-0054 through ADR-0066 before the implementation each decision
+- Added D-53 through D-67 and ADR-0054 through ADR-0068 before the implementation each decision
   governs.
 
 ## Shared-Write Modules Touched

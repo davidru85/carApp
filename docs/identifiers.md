@@ -64,11 +64,14 @@ Debug builds use the `.debug` application ID suffix on Android so debug and rele
 | Item | Value | Notes |
 |------|-------|-------|
 | Development project ID | `davidruiz-carapp-dev` | Fixed by `D-32`. `carapp-dev`, originally chosen by `D-22`, is held by another Google Cloud customer and is unavailable; Google Cloud project IDs are globally unique. Used by debug builds and by manual testing during development. |
-| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. Its availability MUST be checked before it is recorded as decided (`D-32`). |
-| CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
+| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. Its availability MUST be checked before it is recorded as decided (`D-32`). It will use aggressive budget alerts and manual intervention; the development automatic cutoff MUST NOT be copied. |
+| CI | Firestore emulator plus read-only runtime metadata | Product tests MUST NOT hold Firebase client/admin credentials or write to a real project. D-66 adds one GitHub OIDC identity restricted to `cloudfunctions.functions.get` for the deployed-runtime assertion. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
 | Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until the production project is created. |
+| Development billing | Billing account `01F6AF-2A3D04-00546B`; EUR 10 monthly budget | D-66 actual-cost alerts at 50%, 90% and 100%; the project-local 2nd gen function disables billing at 100%. Budget notifications are not a hard cap and can be delayed. |
+| Production billing | No production project exists | E4-04 must configure a separate billing account association and aggressive alerts. Automatic billing shutdown is forbidden in production. |
+| Development App Check | Authentication and Firestore enforced | D-67: App Attest on iOS, Play Integrity on Android, debug providers only for local/CI-specific builds. |
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
 

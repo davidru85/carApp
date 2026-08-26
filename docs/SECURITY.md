@@ -61,7 +61,10 @@ Requirements:
 
 - `.gitignore` MUST cover the entries above from the first commit.
 - Secret scanning MUST be enabled on the repository.
-- CI runs against the Firestore emulator and MUST NOT hold Firebase project credentials or write to a real Firebase project.
+- Product tests in CI run against the Firestore emulator and MUST NOT hold Firebase client or
+  administrator credentials or write to a real Firebase project. D-66 permits one short-lived
+  GitHub OIDC identity whose custom role contains only `cloudfunctions.functions.get`; it can read
+  the deployed runtime and cannot read application data or mutate the project.
 - If a secret is committed, treat it as compromised: rotate it first, then rewrite history.
 - Crash reports MUST NOT contain UID, tokens, notes, exact odometer values, exact costs, raw Firestore payloads or free-text user content.
 
@@ -73,12 +76,15 @@ Requirements:
   only the local Firestore emulator against repository-owned fixtures; those paths are unused and
   none of the npm packages ships in the Android or iOS app. Re-evaluate on any high or critical
   advisory, affected-path expansion or reviewed Firebase CLI update.
-- **No Firebase App Check in the MVP** (`docs/SPECIFICATION.md §3.2`). Anyone holding a valid UID can write to their own subtree with a non-official client. This is mitigated, not removed, by per-field range validation in the Firestore rules and by client-side quarantine of unsupported or malformed documents. Revisit before any public launch beyond the MVP.
+- **App Check is an abuse control, not authorization** (`D-67`). Authentication and Firestore
+  enforce App Check because billing converts frictionless anonymous-authentication abuse into a
+  direct cost vector. Firestore Rules remain load-bearing: App Check does not prove owner identity,
+  validate schema or authorize a document path.
 - **No general Cloud Functions-mediated database access in the MVP** (`docs/SPECIFICATION.md
   §3.3`). The only MVP server/Admin operations are the `D-23` user-requested account deletion and
   the `D-63` anonymous identity/data-cleanup paths. Server-side validation before remote writes,
-  authenticated identity and authorization checks before remote reads, app integrity checks, rate
-  limiting, abuse monitoring and broader privileged server-side product operations require a
+  authenticated identity and authorization checks before remote reads, rate limiting, abuse
+  monitoring and broader privileged server-side product operations require a
   future story or ADR before implementation.
 - **No receipt, odometer image or OCR processing in the MVP** (`docs/SPECIFICATION.md §3.3`). Future local AI text recognition must keep receipt images, odometer images, recognized raw text and extracted fields local unless a later explicit owner decision changes the privacy model.
 - **Last-write-wins backup collision handling** can lose one whole-document update if the same account is actively edited on multiple devices. Active multi-device editing is not a supported MVP workflow. Documented in `docs/SPECIFICATION.md §9.5`.
@@ -90,6 +96,11 @@ Requirements:
   permitted exception because Authentication user-deletion events have no 2nd gen equivalent.
   The exact migration surface, quarterly owner review and prohibition on additional 1st gen
   functions are tracked in `docs/TECHNICAL_PLAN.md §13` (`TD-01`).
+- **Cloud Billing controls are delayed best effort, not a hard cap.** The D-66 EUR 10 budget sends
+  notifications and the project-local function removes billing after reported actual cost reaches
+  100%. Cost reporting can arrive late, so charges can exceed the budget. The intended development
+  response is a complete project outage followed by owner-led manual recovery. Production MUST NOT
+  inherit this automatic cutoff.
 
 ## Privacy
 
@@ -97,3 +108,8 @@ Requirements:
 - Analytics events carry no odometer, volume, cost, notes, entity IDs or UID.
 - Release logs never contain the Firebase UID, notes, exact odometer values or costs.
 - In-app account deletion is available and uses the `D-23` Firebase Admin server operation to delete remote data before the auth account. Mobile clients never receive a Firestore hard-delete permission.
+- App Check debug tokens are secrets. They MUST NOT be committed, printed by CI or embedded in a
+  distributed build. Debug-provider dependencies and factories are forbidden in release variants.
+- The GitHub OIDC provider admits only the immutable `davidru85/carApp` repository identity, the
+  protected runtime-verification environment and approved main/PR contexts. Its service account
+  has a custom role containing exactly `cloudfunctions.functions.get` and no broader project role.

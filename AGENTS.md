@@ -277,13 +277,14 @@ Work only on the assigned backlog story. The authoritative out-of-scope list is
 `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
 export, receipt and odometer photos and OCR, local or on-device AI text recognition, fuel and
 maintenance reminders, operating-system notifications, shared vehicles, widgets, wearables and
-web, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write
-validation beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
+web, official fuel-price integrations, Cloud Functions-mediated product read/write validation
+beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
 account merging, simultaneous multi-device use, active multi-device synchronization,
 remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings
 synchronization, platform settings sync or backup through Google Play services / Android backup /
 iCloud, and electric or hybrid energy modelling. The foreground-only anonymous-account retention
-notices selected by `D-62` are in scope.
+notices selected by `D-62`, D-66 development billing containment and D-67 App Check enforcement
+are in scope. The D-66 billing cutoff is infrastructure control and never reads product data.
 
 Escalate any request that touches out-of-scope functionality.
 
@@ -338,14 +339,21 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only
-  Firestore emulator dependencies live only in exact `package.json` entries plus
-  `package-lock.json` (`D-46`). Every pin is explained by `docs/versions-matrix.md` and MUST NOT be
-  repeated as a literal in CI.
+  dependencies live in exact root or `functions/` `package.json` entries plus adjacent lockfiles.
+  Every pin is explained by `docs/versions-matrix.md` and MUST NOT be repeated as a literal in CI.
 - npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
   verification MUST NOT override that policy. A required install script needs a superseding owner
   decision after its exact package, version and command are reviewed.
 - SKIE is applied only to `:composition:ios`.
 - Firestore offline persistence is disabled.
+- App Check is enforced for Authentication and Firestore. Production providers are App Attest on
+  iOS and Play Integrity on Android; debug providers and tokens are restricted to local/CI-specific
+  builds and never ship.
+- The development project uses the D-66 EUR 10 alerts-only budget and project-local 2nd gen billing
+  cutoff. Budgets are notification-only, reporting is delayed, and production MUST NOT use the
+  automatic cutoff.
+- The single `functions/` package pins Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime
+  and trigger debt are one TD-01 item with a 2027-10-31 hard deadline.
 - Use GitLive 2.6.x, not 3.0 alpha.
 - Use Koin KMP for wiring and constructor injection for implementation classes.
 - Do not call Koin from domain, use cases, repositories or state holder business logic.

@@ -40,6 +40,10 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Discreet backup status indicator with manual retry.
 - Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
 - Spanish and English localization.
+- Firebase App Check enforcement for Authentication and Firestore, using App Attest on iOS, Play
+  Integrity on Android and debug providers only in local or CI-specific builds (`D-67`).
+- Development-project billing safeguards: an alerts-only EUR 10 monthly budget and a best-effort
+  automatic billing shutdown at 100% actual cost (`D-66`).
 
 This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `docs/BACKLOG.md` MUST NOT restate a different one.
 
@@ -54,8 +58,8 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Vehicle sharing.
 - Widgets, Wear OS, watchOS, and web.
 - Official fuel-price integrations.
-- Firebase App Check and Cloud Functions-mediated remote read/write validation beyond the
-  `D-23` and `D-63` account identity and data-deletion operations.
+- Cloud Functions-mediated product read/write validation beyond the `D-23` and `D-63` account
+  identity and data-deletion operations. The D-66 infrastructure-only billing cutoff is in scope.
 - Automatic account merging.
 - Simultaneous use on more than one device, active multi-device synchronization, and remote-database-as-source-of-truth operation.
 - Real-time Firestore listeners.
@@ -75,16 +79,18 @@ Future scope may add receipt and odometer image capture with local AI text recog
 
 Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23`
 and `D-63` account identity and data-deletion operations. Those operations are the only MVP
-server-side privileged writes. No other server-mediated write is in MVP scope. The intended future
+server-side privileged product writes. The D-66 billing cutoff is infrastructure control and never
+reads or writes product data. No other server-mediated product write is in MVP scope. App Check is
+already mandatory under D-67 because enabling billing converts abuse of frictionless anonymous
+authentication from console noise into a direct cost vector. App Check proves caller integrity but
+does not replace Firebase Authentication, authorization or Firestore Rules. The intended future
 security goal is to validate incoming user data before it is inserted or updated remotely, and to
 verify the user's authenticated identity and authorization before any remote database read. That
 work requires a new story or ADR covering whether clients stop reading or writing Firestore
-directly, Firebase App Check or equivalent app integrity checks, authenticated callable or HTTPS
-function boundaries, server-side schema validation, owner matching, read filtering, rate limiting,
-abuse monitoring, audit logging, secret handling, emulator tests, deployment ownership and
-interaction with Firestore rules. Agents MUST NOT add Cloud Functions security features beyond
-`D-23` and `D-63`, App Check enforcement, server-mediated product reads or additional privileged
-server-side product writes in the MVP.
+directly, authenticated callable or HTTPS function boundaries, server-side schema validation,
+owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling,
+emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add
+server-mediated product reads or additional privileged server-side product writes in the MVP.
 
 Future scope may add simultaneous use on multiple devices for the same account. That work requires a new story or ADR covering the migration from local-database-as-source-of-truth to remote-database-as-source-of-truth, live or near-live synchronization semantics, conflict resolution, offline edit policy, local cache behaviour, remote validation, recovery from divergent devices, UX for stale data and required data migrations. Agents MUST NOT introduce active multi-device synchronization or make the remote database the product source of truth in the MVP.
 
@@ -402,6 +408,17 @@ users/{uid}/fuelEntries/{entryId}
 
 Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == request.time`, the closed MVP remote `schemaVersion` contract, document ID consistency, exact allowed keys, presence, type, nullability and range of every field. Hard deletes are rejected. The complete rule shape and the required emulator tests are in `docs/CONTRACTS.md §16`.
 
+Firebase App Check baseline protection MUST be enforced for Authentication and Cloud Firestore
+before any build is distributed beyond local development. iOS uses App Attest, Android uses Play
+Integrity, and debug providers are restricted to local or CI-specific builds. App Check is an
+additional caller-integrity control; Authentication and Firestore Rules remain mandatory (`D-67`).
+
+The development Firebase project has an EUR 10 monthly alerts-only budget. Actual-cost thresholds
+at 50%, 90% and 100% notify the owner, and a 2nd gen Pub/Sub function removes the project's billing
+association at 100%. The budget is notification-only, cost reporting is delayed and neither control
+guarantees spend cannot exceed EUR 10. Automatic billing shutdown is forbidden in production,
+where aggressive alerts require manual intervention (`D-66`).
+
 ## 11. Non-Functional Requirements
 
 | Area | Requirement |
@@ -519,6 +536,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-63 | User-data cleanup implementation | Own an idempotent cleanup service, invoke it directly for collision cleanup and allow one temporary 1st gen Auth deletion trigger. | Accepted |
 | D-64 | Anonymous lifecycle delivery | Keep E0-07 narrow and implement conversion, reminders, cleanup and cross-device recovery in their owning stories. | Accepted |
 | D-65 | Firebase Apple SDK compatibility pin | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and upgrade them together. | Accepted |
+| D-66 | Development cloud cost containment | Use an EUR 10 alerts-only budget, actual-cost alerts and a development-only automatic billing cutoff with read-only OIDC runtime verification. | Accepted |
+| D-67 | Firebase App Check enforcement | Enforce Authentication and Firestore with App Attest, Play Integrity and build-restricted debug providers. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

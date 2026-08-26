@@ -80,6 +80,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-63 | User-data cleanup implementation | Owned idempotent service plus one temporary 1st gen Auth deletion trigger | Accepted | Avoids the externally dated Firebase Extensions management sunset; the Admin collision path calls the service directly. |
 | D-64 | Anonymous lifecycle delivery | Split work across E0-07, E2-02, E2-04, E2-07, E3-10, E3-11 and E3-12 | Accepted | Keeps story PRs reviewable and runs recovery evidence only after permanent auth and sync exist. |
 | D-65 | Firebase Apple SDK compatibility pin | Firebase Apple 11.8.0 exactly with GitLive 2.6.0 | Accepted | Keeps the native Apple SDK aligned with the exact version used to generate GitLive's cinterop bindings; both pins move together. |
+| D-66 | Development cloud cost containment | EUR 10 alerts-only budget plus project-local 2nd gen cutoff at 100% actual cost | Accepted | Bounds accidental development spend with an intentionally destructive response; production uses alerts and manual action. |
+| D-67 | Firebase App Check enforcement | App Attest, Play Integrity and local/CI-only debug providers; enforce Auth and Firestore | Accepted | Billing turns anonymous-authentication abuse into a direct cost vector, so caller integrity enters MVP scope. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -438,6 +440,8 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
 | Orphaned anonymous data | Medium / High | D-63 idempotent deletion service, explicit data-location registry, native cleanup trigger and a direct Admin collision path. |
+| Runaway development cloud cost | Low / High | D-66 EUR 10 alerts-only budget, actual-cost notifications, tested project-local cutoff and manual recovery runbook. Reporting delay means overshoot remains possible. |
+| Billed anonymous-client abuse | Medium / High | D-67 App Check enforcement for Authentication and Firestore, while retaining Auth and closed Firestore Rules. |
 | Temporary 1st gen Auth trigger becomes inherited infrastructure | Medium / Medium | `TD-01` names the sole exception, exact migration surface, quarterly owner review and a contract allowlist. |
 | Scope creep | Medium / Medium | Explicit out-of-scope list and review gate. |
 
@@ -476,6 +480,15 @@ Manual at phase gates:
 callable collision path and every other function use 2nd gen. No new 1st gen function may be added
 to this project; `onAnonymousUserDeleted` is the only permitted exception.
 
+The single `functions/` package is pinned to Node.js 22 only because it must host this temporary
+1st gen exception and the project's 2nd gen functions without a second runtime or deployment path.
+This is not separate technical debt: the runtime and Auth trigger move together in the same TD-01
+migration and recurring review. Node.js 22 deprecates on **2027-04-30** and is decommissioned on
+**2027-10-31**. Decommission is a hard deadline. If generally available 2nd gen Authentication
+deletion triggers do not exist in time, the owner MUST escalate rather than continue waiting:
+either isolate only the Auth function on a supported runtime and formally accept the split, or
+select a different cleanup mechanism through a superseding decision.
+
 Exact migration surface once E3-10 and E3-11 create it:
 
 | File or configuration | Affected declaration | Migration responsibility |
@@ -486,6 +499,7 @@ Exact migration surface once E3-10 and E3-11 create it:
 | `functions/test/integration/anonymousCleanup.test.ts` | automatic-cleanup trigger coverage | Run the same deletion, idempotency and overlap assertions against the 2nd gen trigger. |
 | `firebase.json` | Functions source/codebase deployment entry | Verify the existing deployment target deploys the migrated function; there is no permitted second codebase or hidden 1st gen deployment entry. |
 | `functions/package.json` | `firebase-functions` dependency and Functions test scripts | Raise the pinned SDK only if the first GA 2nd gen Auth trigger requires it, then update `docs/versions-matrix.md` under the normal library-review gate. |
+| `functions/package.json`, `firebase.json` | Node.js 22 runtime | Move the complete Functions package to a current supported runtime after the Auth trigger is 2nd gen; do not create a separate runtime migration story. |
 
 `functions/src/deletion/dataLocationRegistry.ts`,
 `functions/src/deletion/userDeletionService.ts` (`deleteUserData`) and
@@ -512,16 +526,20 @@ never left implicit.
 Once 2nd gen Authentication user-deletion triggers are generally available, migration is scheduled
 as its own backlog story. It MUST NOT be folded into an unrelated story. Closing TD-01 requires the
 new story to migrate the trigger, remove the allowlist exception, pass the automatic-cleanup and
-overlap tests, deploy under the retained function name, and append the final review outcome here.
+overlap tests, move the complete Functions package to a current supported runtime, deploy under the
+retained function name, and append the final review outcome here. The deliberately temporary
+Node.js 24 -> 22 -> current-runtime sequence is rejected; Node.js 22 is selected once and leaves
+only when TD-01 closes.
 
 ## 14. Out of Plan
 
 Maintenance expenses, advanced analytics, export, receipt images, odometer images, local or
 on-device AI text recognition, OCR, fuel and maintenance reminders, operating-system notifications,
-shared vehicles, widgets, wearables, web, App Check, Cloud Functions-mediated remote read/write
-validation beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
+shared vehicles, widgets, wearables, web, Cloud Functions-mediated product read/write validation
+beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
 account merging, simultaneous multi-device use, active multi-device synchronization,
 remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings
 synchronization, platform settings sync or backup through Google Play services / Android backup /
 iCloud, and electric or hybrid energy modelling. The foreground-only anonymous-account retention
-notices selected by `D-62` are in plan.
+notices selected by `D-62`, D-66 development billing containment and D-67 App Check enforcement
+are in plan.

@@ -72,5 +72,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-63 | [ADR-0064](0064-own-user-data-cleanup-service.md) | Own idempotent user-data cleanup with one tracked 1st gen Auth trigger. | Accepted |
 | D-64 | [ADR-0065](0065-split-anonymous-lifecycle-delivery.md) | Split anonymous lifecycle implementation across owning stories. | Accepted |
 | D-65 | [ADR-0066](0066-pin-firebase-apple-to-gitlive-bindings.md) | Pin Firebase Apple to the GitLive cinterop version. | Accepted |
+| D-66 | [ADR-0067](0067-contain-development-cloud-costs.md) | Contain development cloud costs with alerts and automatic billing shutdown. | Accepted |
+| D-67 | [ADR-0068](0068-enforce-firebase-app-check.md) | Enforce Firebase App Check for Authentication and Firestore. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
