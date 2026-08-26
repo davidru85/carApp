@@ -8,15 +8,18 @@
 
 /* Begin PBXBuildFile section */
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
-		40250C151B05AB2AC7EBCD8E /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
-		4C060553EC46B345A3A651A4 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
+		40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
+		4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */; };
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
-		EB7147A26272A7B2C29F97D4 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
+		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
+		C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */; };
+		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
 		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
@@ -31,9 +34,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4C060553EC46B345A3A651A4 /* FirebaseAuth in Frameworks */,
-				40250C151B05AB2AC7EBCD8E /* FirebaseCore in Frameworks */,
-				EB7147A26272A7B2C29F97D4 /* FirebaseFirestore in Frameworks */,
+				4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */,
+				40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */,
+				EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */,
+				9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -60,6 +64,7 @@
 		E3D19A4D38694A47DC344CE6 = {
 			isa = PBXGroup;
 			children = (
+				15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */,
 				2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */,
 				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
 				90CED6835AA58C9424996B48 /* en.lproj */,
@@ -88,6 +93,7 @@
 			);
 			name = carApp;
 			packageProductDependencies = (
+				F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */,
 				F238BDE0A677C628F5355C5C /* FirebaseAuth */,
 				CFC5898F3BD999E550ABDB6E /* FirebaseCore */,
 				63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */,
@@ -167,6 +173,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */,
 				8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */,
 				3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */,
 				624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */,
@@ -307,6 +314,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -323,6 +331,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -384,6 +393,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,4 +1,5 @@
 import FirebaseCore
+import FirebaseAppCheck
 import Shared
 import SwiftUI
 
@@ -7,6 +8,7 @@ struct carAppApp: App {
     @StateObject private var model: WalkingSkeletonModel
 
     init() {
+        configureAppCheck()
         FirebaseApp.configure()
         let graph = createSwiftAppGraph(isDebugBuild: isDebugBuild)
         _model = StateObject(wrappedValue: WalkingSkeletonModel(graph: graph))
