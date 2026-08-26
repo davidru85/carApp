@@ -86,6 +86,8 @@ commit SHA.
 - Node.js 22 and the 1st gen Auth exception move together under TD-01 rather than creating a second
   debt review.
 - CI receives a short-lived, read-only identity and no service-account key.
+- The mandatory Firebase Admin peer carries the separately governed D-68 moderate production
+  transitive residual; its acceptance is reachability-tested and expires into the TD-01 review.
 
 ## Verification
 
@@ -106,4 +108,4 @@ commit SHA.
 - [Google GitHub Actions authentication](https://github.com/google-github-actions/auth)
 - `docs/runbooks/development-firebase-cost-controls.md`
 - `docs/TECHNICAL_PLAN.md §13` (`TD-01`)
-- `D-14`, `D-60`, `D-63`
+- `D-14`, `D-60`, `D-63`, `D-68`

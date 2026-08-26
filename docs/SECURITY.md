@@ -70,6 +70,14 @@ Requirements:
 
 ## Accepted Residual Risks
 
+- **Production Cloud Functions transitive advisory GHSA-w5hq-g745-h8pq** (`D-68`). The official
+  Functions graph contains `uuid@9.0.1` through Firebase Admin's Cloud Storage dependency, and a
+  production-only audit reports seven moderate entries. `firebase-admin` cannot be removed because
+  Firebase Functions 7.3.2 declares it as a mandatory peer. The executable full-trigger test proves
+  that `stopBilling` reaches the Billing disable operation without loading Cloud Storage or `uuid`,
+  so the affected UUID v3/v5/v6 buffer path is unreachable. CI displays moderate findings and fails
+  on high or critical. The dated, expiring acceptance and current-state history live in
+  `docs/SECURITY_ADVISORY_REGISTER.md` and are reviewed through TD-01.
 - **Moderate Firebase CLI transitive advisories in the E3-01 test harness** (`D-52`). At acceptance,
   `npm audit` reports five moderate dependency entries representing two advisories below the pinned
   Firebase CLI 15.28.1: OpenTelemetry W3C baggage allocation and old UUID buffer APIs. The CLI runs

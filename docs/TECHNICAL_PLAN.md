@@ -82,6 +82,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-65 | Firebase Apple SDK compatibility pin | Firebase Apple 11.8.0 exactly with GitLive 2.6.0 | Accepted | Keeps the native Apple SDK aligned with the exact version used to generate GitLive's cinterop bindings; both pins move together. |
 | D-66 | Development cloud cost containment | EUR 10 alerts-only budget plus project-local 2nd gen cutoff at 100% actual cost | Accepted | Bounds accidental development spend with an intentionally destructive response; production uses alerts and manual action. |
 | D-67 | Firebase App Check enforcement | App Attest, Play Integrity and local/CI-only debug providers; enforce Auth and Firestore | Accepted | Billing turns anonymous-authentication abuse into a direct cost vector, so caller integrity enters MVP scope. |
+| D-68 | Cloud Functions moderate advisory residual | Retain the official SDK graph while the affected UUID variants remain dynamically unreachable | Accepted | The finding is a production transitive, so CI exposes moderate reports, blocks high/critical and the acceptance expires into TD-01 review. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -442,6 +443,7 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 | Orphaned anonymous data | Medium / High | D-63 idempotent deletion service, explicit data-location registry, native cleanup trigger and a direct Admin collision path. |
 | Runaway development cloud cost | Low / High | D-66 EUR 10 alerts-only budget, actual-cost notifications, tested project-local cutoff and manual recovery runbook. Reporting delay means overshoot remains possible. |
 | Billed anonymous-client abuse | Medium / High | D-67 App Check enforcement for Authentication and Firestore, while retaining Auth and closed Firestore Rules. |
+| Moderate UUID advisory in the deployed Functions graph | Low / Medium | D-68 dynamic full-trigger reachability test, explicit advisory register, high/critical CI gate and expiring TD-01 review. |
 | Temporary 1st gen Auth trigger becomes inherited infrastructure | Medium / Medium | `TD-01` names the sole exception, exact migration surface, quarterly owner review and a contract allowlist. |
 | Scope creep | Medium / Medium | Explicit out-of-scope list and review gate. |
 
@@ -518,6 +520,12 @@ Review owner: **David Ruiz**. The first recurring review is **2026-12-01** and r
 March 1, June 1, September 1 and December 1 until migration completes or the owner formally
 re-accepts the constraint. Every completed review appends one dated row below; the next due date is
 never left implicit.
+
+The same review also owns the expiring D-68 acceptance for GHSA-w5hq-g745-h8pq; it does not create
+a separate cycle. Each review MUST rerun the production dependency audit, the deployed-trigger
+reachability test and the current-state assessment in `docs/SECURITY_ADVISORY_REGISTER.md`. An
+immediate review is triggered by any high or critical finding, any expansion of this function into
+Storage, or the availability of a compatible official update.
 
 | Review date | Owner | Outcome | Next review |
 |-------------|-------|---------|-------------|

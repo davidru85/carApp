@@ -538,6 +538,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-65 | Firebase Apple SDK compatibility pin | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and upgrade them together. | Accepted |
 | D-66 | Development cloud cost containment | Use an EUR 10 alerts-only budget, actual-cost alerts and a development-only automatic billing cutoff with read-only OIDC runtime verification. | Accepted |
 | D-67 | Firebase App Check enforcement | Enforce Authentication and Firestore with App Attest, Play Integrity and build-restricted debug providers. | Accepted |
+| D-68 | Cloud Functions moderate advisory residual | Retain the official Functions SDK graph only while its moderate UUID advisory is dynamically unreachable and reviewed with TD-01. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

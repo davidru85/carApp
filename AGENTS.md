@@ -224,6 +224,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/adr/](docs/adr/) | One ADR per decision, with context, options, consequences, constraints introduced and verification. |
 | [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project status, development Firebase project ID and Firestore location. Agents MUST NOT invent any of these. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
+| [docs/SECURITY_ADVISORY_REGISTER.md](docs/SECURITY_ADVISORY_REGISTER.md) | Dated, expiring accepted dependency advisories, executable evidence and current-state review history. |
 | [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md) | Closed record of the documentation audit of the definition package. **Non-normative and historical**: all 20 findings are applied. It is kept only so that the `AUDIT-NN` IDs cited by `docs/PROJECT_LOG.md` resolve. Do not treat it as a source of rules or as a list of open work. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |

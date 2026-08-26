@@ -74,5 +74,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-65 | [ADR-0066](0066-pin-firebase-apple-to-gitlive-bindings.md) | Pin Firebase Apple to the GitLive cinterop version. | Accepted |
 | D-66 | [ADR-0067](0067-contain-development-cloud-costs.md) | Contain development cloud costs with alerts and automatic billing shutdown. | Accepted |
 | D-67 | [ADR-0068](0068-enforce-firebase-app-check.md) | Enforce Firebase App Check for Authentication and Firestore. | Accepted |
+| D-68 | [ADR-0069](0069-retain-official-functions-stack-with-unreachable-moderate-advisory.md) | Retain the official Functions stack with an expiring unreachable moderate advisory. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
