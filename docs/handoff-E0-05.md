@@ -1,5 +1,11 @@
 # Agent Handoff - E0-05
 
+> **Closure update (2026-08-27):** D-34 activated branch protection with all nine required checks.
+> E3-06 made provider decoupling executable, E3-01 closed the Firestore schema assertion, and
+> E0-07 made the Objective-C golden-header and `testAppGraphDependencies` checks executable.
+> `contractCheck` now reports no `PENDING` assertions. The original open items below describe the
+> state when PR #18 merged and are not current obligations.
+
 ## Story
 
 `E0-05 - Quality Tooling and CI - M` (`docs/BACKLOG.md`).

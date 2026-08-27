@@ -1,5 +1,10 @@
 # Agent Handoff - E0-04
 
+> **Closure update (2026-08-27):** E0-05 wired the architecture check into protected CI. D-28
+> resolved `DEC-3`: the feature `domain`/`data`/`presentation` package rules remain the sole
+> deferred architecture criterion and are owned by E1-07. All other rules described by this
+> handoff are executable and backed by failing fixtures.
+
 ## Story
 
 `E0-04 - Architecture Guards - M` (`docs/BACKLOG.md`).

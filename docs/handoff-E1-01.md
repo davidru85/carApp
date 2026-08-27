@@ -1,5 +1,9 @@
 # Agent Handoff - E1-01
 
+> **Closure update (2026-08-27):** E0-07 exercised the accepted SQLDelight/AndroidX bundled
+> SQLite stack through both real native composition paths and the local-to-Firestore Vehicle slice.
+> Future schema versions still require committed migrations and previous-version tests.
+
 ## Story
 
 `E1-01 - :core:database - M` (`docs/BACKLOG.md`).

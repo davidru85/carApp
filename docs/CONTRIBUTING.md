@@ -34,7 +34,11 @@ costs seconds instead of a round trip:
 
 ```bash
 ./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
-          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test \
+          -x :integration:firebase-auth:iosSimulatorArm64Test \
+          -x :integration:firebase-firestore:iosSimulatorArm64Test \
+          -x :wiring:firebase:iosSimulatorArm64Test \
+          -x :composition:ios:iosSimulatorArm64Test
 ```
 
 `AGENTS.md` §`Repository State` explains what each check proves.

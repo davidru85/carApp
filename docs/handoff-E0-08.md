@@ -1,5 +1,9 @@
 # Agent Handoff - E0-08
 
+> **Closure update (2026-08-27):** D-27/D-56 and E0-07 made the no-op tracker the default in
+> `testAppGraphDependencies(...)`. E3-09 still owns the Firebase Analytics implementation,
+> `SyncStatus` mapping and user-property cadence exactly as the original handoff states.
+
 ## Story
 
 `E0-08 - :core:analytics Abstraction - S` (`docs/BACKLOG.md`).

@@ -36,7 +36,10 @@ Allowed in the repository:
 
 - `google-services.json` and `GoogleService-Info.plist`. These are client configuration, not secrets, **provided** the corresponding API keys are restricted in the Google Cloud console by package name, bundle id and signing certificate.
 
-  Since `D-34` the repository is **public**, so that proviso is a precondition rather than good practice: anyone can read those keys the moment the files are committed. `E0-07` MUST restrict the keys in the Google Cloud console before committing either file, and the handoff MUST state that it did.
+  Since `D-34` the repository is **public**, so that proviso is a precondition rather than good
+  practice: anyone can read those keys the moment the files are committed. E0-07 restricted the
+  development keys in the Google Cloud console before committing either file; the completed
+  evidence is in `docs/handoff-E0-07.md`. Every future app registration MUST repeat that ordering.
 
   Under `D-41`, the Android development key is restricted to the debug application ID and the
   owner's current local debug signing certificate. The iOS development key is restricted to the

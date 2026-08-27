@@ -38,6 +38,30 @@
 
 ## Entries
 
+### 2026-08-27 — Post-E0-07 documentation handoff reconciled
+
+- **Type:** handoff
+- **Story / Decision:** `E0-07` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** reconciled the complete documentation set after PRs #27 and #28. Current-state
+  documents now identify completed stories, E1-02 as next, every remaining phase/story, the sole
+  unenforced architecture area and the live development infrastructure. Dated closure notes keep
+  historical handoffs accurate without presenting superseded follow-ups as open work.
+- **Why:** the implementation and D-73 evidence were complete, but several derived documents still
+  described branch protection, Kover, Firestore checks, Objective-C header verification,
+  `testAppGraphDependencies` parity and the E3-06/E3-01/E0-07 sequence as future obligations.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/CONTRIBUTING.md`,
+  `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md`, `docs/SECURITY.md`,
+  `docs/SECURITY_ADVISORY_REGISTER.md`, the App Check runbook, and the affected completed-story
+  handoffs.
+- **Verification:** `git diff --check`, `./gradlew contractCheck architectureCheck`, Functions
+  `npm test` (10/10) and `npm run audit` all passed. The production-only audit still reports the
+  seven accepted moderate GHSA-w5hq-g745-h8pq entries and no high or critical finding; the dynamic
+  full-trigger test still proves the affected path unreachable.
+- **Follow-ups / risks:** E1-02 is next. E1-07 still owns the feature package-level Konsist rules,
+  the only architecture rules not yet executable. D-68/TD-01 retains its 2026-12-01 quarterly
+  review; all other remaining work is enumerated by phase in `AGENTS.md` and `docs/BACKLOG.md`.
+
 ### 2026-08-27 — E0-07 walking skeleton completed
 
 - **Type:** story

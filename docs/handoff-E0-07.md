@@ -282,10 +282,10 @@
   production MUST NOT inherit the development cutoff.
 - E3-12 retains the permanent-account Android-to-iOS recovery proof. Anonymous credentials remain
   device-bound by design.
-- PR #27 received owner review and merged on 2026-08-27. The post-merge D-73 evidence is isolated
-  in a documentation-only follow-up pull request.
+- PR #27 received owner review and merged on 2026-08-27. Documentation-only PR #28 then recorded
+  the observed D-73 cleanup, received owner review and merged on the same date.
 
 ## Human Review Gate
 
-- Applied to implementation PR #27. The owner must also review the documentation-only D-73 closure
-  pull request because it updates gated `AGENTS.md`.
+- Applied to implementation PR #27 and documentation-only D-73 closure PR #28. The owner reviewed
+  and merged both pull requests.

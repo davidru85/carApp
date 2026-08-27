@@ -404,11 +404,15 @@ Add a deterministic simulation with a fixed seed that interleaves local edits, p
 
 ### Phase 0 - Foundations
 
+Status: complete.
+
 KMP bootstrap, Gradle convention plugins, core modules, quality tools, CI, architecture checks, contract check, ADRs, version matrix, identifiers.
 
 Entry condition: every `Proposed` decision in `docs/DECISION_BOARD.md` that a Phase 0 story depends on has been confirmed by the owner.
 
 ### Phase 1 Opening Gate - Walking Skeleton
+
+Status: complete through E1-01 and E0-07, including D-73 acceptance evidence.
 
 One end-to-end vertical slice on both native application paths: native UI, shared state holder,
 SQLDelight, Firestore and real anonymous auth under the same retained Firebase Auth session, plus
@@ -419,14 +423,20 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
+Status: active. E1-02 is next; E1-02 through E1-10 remain.
+
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 
 ### Phase 2 - Authentication
+
+Status: planned; all Phase 2 stories remain.
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
 anonymous retention notices, sign-out and account deletion.
 
 ### Phase 3 - Backend Backup and Recovery
+
+Status: partially complete. E3-06 and E3-01 are complete; every other Phase 3 story remains.
 
 Firestore rules and emulator tests, Firestore integration for the development project, backup and
 recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account
@@ -434,6 +444,8 @@ deletion and anonymous cleanup operations, permanent-account cross-device recove
 provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
+
+Status: planned; E4-01 through E4-04 remain.
 
 Settings UI, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
 

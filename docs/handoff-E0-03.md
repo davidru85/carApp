@@ -1,5 +1,10 @@
 # Agent Handoff - E0-03
 
+> **Closure update (2026-08-27):** D-26 closed `DEC-1`; D-27 and D-56 closed `DEC-2` by placing
+> `testAppGraphDependencies(...)` in `:shared:testing`, delivered by E0-07. E0-05 applied and
+> passed the D-18 Kover thresholds. The original Phase 0 omissions below are historical evidence,
+> not current open criteria. The backoff helper remains correctly owned by E3-03 rather than E0-03.
+
 ## Story
 
 `E0-03 - Base Core Modules - M` (`docs/BACKLOG.md`).

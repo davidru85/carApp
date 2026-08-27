@@ -73,7 +73,9 @@ Acceptance criteria:
 
 ### E0-03 - Base Core Modules - M
 
-Status: completed on 2026-08-21, PR #15, except the `testAppGraphDependencies(...)` and Kover criteria. See `docs/handoff-E0-03.md`.
+Status: completed. PR #15 delivered the Phase 0 scope; E0-05 later closed the Kover criterion and
+E0-07 closed the test-factory criterion in `:shared:testing` under D-27 and D-56. See
+`docs/handoff-E0-03.md`.
 
 Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20`.
 
@@ -126,7 +128,8 @@ Acceptance criteria:
 
 ### E0-05 - Quality Tooling and CI - M
 
-Status: completed on 2026-08-21, PR #18, except branch protection (`DEC-6`, owner action). See `docs/handoff-E0-05.md`.
+Status: completed. PR #18 delivered the quality and CI implementation; D-34 activated branch
+protection on 2026-08-21. See `docs/handoff-E0-05.md`.
 
 Configure ktlint, detekt, Kover, the contract check and CI.
 
@@ -206,7 +209,8 @@ Acceptance criteria:
 
 ### E0-07 - Walking Skeleton - L
 
-Status: completed on 2026-08-27. See `docs/handoff-E0-07.md`.
+Status: completed on 2026-08-27 through implementation PR #27 and D-73 evidence PR #28. See
+`docs/handoff-E0-07.md`.
 
 Build a single screen crossing native UI, shared state holder, SQLDelight, Firestore and real anonymous auth.
 
@@ -553,6 +557,8 @@ Acceptance criteria:
 
 ### E3-01 - Firestore Structure and Security Rules - M
 
+Status: completed on 2026-08-24, PR #26. See `docs/handoff-E3-01.md`.
+
 Create the Firestore rules, indexes and emulator tests.
 
 Prerequisite order: follows `E3-06` and precedes `E0-07` (`D-40`, `D-42`).
@@ -857,9 +863,9 @@ proof after E3-04.
 | E0-00 Owner decision closure (completed) | 0 | S | Yes |
 | E0-01 KMP bootstrap (completed) | 0 | M | — |
 | E0-02 Convention plugins (completed) | 0 | M | — |
-| E0-03 Base core modules (completed, 2 criteria open) | 0 | M | — |
+| E0-03 Base core modules (completed) | 0 | M | — |
 | E0-04 Architecture guards (completed, feature rules open) | 0 | M | — |
-| E0-05 Quality tooling and CI (completed, branch protection open) | 0 | M | — |
+| E0-05 Quality tooling and CI (completed) | 0 | M | — |
 | E0-06 ADRs and version matrix (completed) | 0 | S | — |
 | E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |
 
@@ -881,7 +887,7 @@ proof after E3-04.
 | E2-04 Account conversion F-4 | 2 | M | Yes |
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
-| E3-01 Firestore rules | 3 | M | Yes |
+| E3-01 Firestore rules (completed) | 3 | M | Yes |
 | E3-10 Account deletion server operation | 3 | M | Yes |
 | E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
 | E3-02 Firestore RemoteSyncSource | 3 | M | — |

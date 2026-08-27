@@ -1,5 +1,11 @@
 # Agent Handoff — E0-01 KMP Project Bootstrap
 
+> **Closure update (2026-08-27):** E0-06 replaced the provisional toolchain pins, D-37 fixed the
+> supported Apple targets to ARM64, and D-58/E0-07 moved the sole `Shared` framework to
+> `:composition:ios` with working Debug/Release native integration. The earlier XCFramework
+> follow-up is superseded. `docs/E0-01-READY-CHECK.md` is intentionally retained because the
+> append-only project log references it; it is a historical record, not open work.
+
 ## Story
 
 `E0-01 - KMP Project Bootstrap - M`
