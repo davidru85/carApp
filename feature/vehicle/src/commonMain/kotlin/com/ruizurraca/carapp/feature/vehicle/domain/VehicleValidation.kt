@@ -10,6 +10,12 @@ private const val MAX_VEHICLE_TEXT_LENGTH = 40
 private const val MIN_ODOMETER_KM = 0L
 private const val MAX_ODOMETER_KM = 2_000_000L
 
+private data class NormalisedVehicleFields(
+    val name: String,
+    val brand: String?,
+    val model: String?,
+)
+
 data class VehicleNameCandidate(
     val id: EntityId,
     val name: String,
@@ -55,68 +61,96 @@ private fun isInvalidOdometerUpdate(
     value != null &&
         (value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM || hasNonDeletedFuelEntries)
 
+private fun normaliseVehicleFields(
+    name: String,
+    brand: String?,
+    model: String?,
+): NormalisedVehicleFields =
+    NormalisedVehicleFields(
+        name = canonicalVehicleName(name),
+        brand = brand?.trim()?.takeIf(String::isNotEmpty),
+        model = model?.trim()?.takeIf(String::isNotEmpty),
+    )
+
+private fun validateVehicleFields(
+    fields: NormalisedVehicleFields,
+    invalidInitialOdometer: Boolean,
+    candidates: List<VehicleNameCandidate>,
+    excludedId: EntityId?,
+): ValidationError? =
+    when {
+        fields.name.isEmpty() -> {
+            ValidationError.RequiredField("name")
+        }
+
+        fields.name.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
+            ValidationError.InvalidLength(
+                "name",
+                MIN_TEXT_LENGTH,
+                MAX_VEHICLE_TEXT_LENGTH,
+            )
+        }
+
+        fields.brand != null && fields.brand.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
+            ValidationError.InvalidLength(
+                "brand",
+                MIN_TEXT_LENGTH,
+                MAX_VEHICLE_TEXT_LENGTH,
+            )
+        }
+
+        fields.model != null && fields.model.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
+            ValidationError.InvalidLength(
+                "model",
+                MIN_TEXT_LENGTH,
+                MAX_VEHICLE_TEXT_LENGTH,
+            )
+        }
+
+        invalidInitialOdometer -> {
+            ValidationError.OutOfRange(
+                "initialOdometerKm",
+                MIN_ODOMETER_KM,
+                MAX_ODOMETER_KM,
+            )
+        }
+
+        hasDuplicateName(candidates, fields.name.lowercase(), excludedId) -> {
+            ValidationError.DuplicateName(fields.name)
+        }
+
+        else -> {
+            null
+        }
+    }
+
+private fun <T> validationOutcome(
+    value: T,
+    error: ValidationError?,
+): Outcome<T, AppError> =
+    if (error == null) {
+        Outcome.Ok(value)
+    } else {
+        Outcome.Err(error)
+    }
+
 class ValidateCreateVehicle {
     operator fun invoke(
         command: CreateVehicleCommand,
         context: CreateVehicleValidationContext,
     ): Outcome<CreateVehicleCommand, AppError> {
-        val name = canonicalVehicleName(command.name)
-        val brand = command.brand?.trim()?.takeIf(String::isNotEmpty)
-        val model = command.model?.trim()?.takeIf(String::isNotEmpty)
-        val normalised = command.copy(name = name, brand = brand, model = model)
-        val nameFold = name.lowercase()
+        val fields = normaliseVehicleFields(command.name, command.brand, command.model)
+        val normalised = command.copy(name = fields.name, brand = fields.brand, model = fields.model)
         val error =
-            when {
-                name.isEmpty() -> {
-                    ValidationError.RequiredField("name")
-                }
+            validateVehicleFields(
+                fields = fields,
+                invalidInitialOdometer =
+                    command.initialOdometerKm !in MIN_ODOMETER_KM..MAX_ODOMETER_KM,
+                candidates = context.activeVehicles,
+                excludedId = null,
+            )
 
-                name.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
-                    ValidationError.InvalidLength(
-                        "name",
-                        MIN_TEXT_LENGTH,
-                        MAX_VEHICLE_TEXT_LENGTH,
-                    )
-                }
-
-                brand != null && brand.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
-                    ValidationError.InvalidLength(
-                        "brand",
-                        MIN_TEXT_LENGTH,
-                        MAX_VEHICLE_TEXT_LENGTH,
-                    )
-                }
-
-                model != null && model.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
-                    ValidationError.InvalidLength(
-                        "model",
-                        MIN_TEXT_LENGTH,
-                        MAX_VEHICLE_TEXT_LENGTH,
-                    )
-                }
-
-                command.initialOdometerKm !in MIN_ODOMETER_KM..MAX_ODOMETER_KM -> {
-                    ValidationError.OutOfRange(
-                        "initialOdometerKm",
-                        MIN_ODOMETER_KM,
-                        MAX_ODOMETER_KM,
-                    )
-                }
-
-                hasDuplicateName(context.activeVehicles, nameFold, excludedId = null) -> {
-                    ValidationError.DuplicateName(name)
-                }
-
-                else -> {
-                    null
-                }
-            }
-
-        return if (error == null) {
-            Outcome.Ok(normalised)
-        } else {
-            Outcome.Err(error)
-        }
+        return validationOutcome(normalised, error)
     }
 }
 
@@ -125,65 +159,20 @@ class ValidateUpdateVehicle {
         command: UpdateVehicleCommand,
         context: UpdateVehicleValidationContext,
     ): Outcome<UpdateVehicleCommand, AppError> {
-        val name = canonicalVehicleName(command.name)
-        val brand = command.brand?.trim()?.takeIf(String::isNotEmpty)
-        val model = command.model?.trim()?.takeIf(String::isNotEmpty)
-        val normalised = command.copy(name = name, brand = brand, model = model)
-        val nameFold = name.lowercase()
+        val fields = normaliseVehicleFields(command.name, command.brand, command.model)
+        val normalised = command.copy(name = fields.name, brand = fields.brand, model = fields.model)
         val error =
-            when {
-                name.isEmpty() -> {
-                    ValidationError.RequiredField("name")
-                }
+            validateVehicleFields(
+                fields = fields,
+                invalidInitialOdometer =
+                    isInvalidOdometerUpdate(
+                        command.initialOdometerKm,
+                        context.hasNonDeletedFuelEntries,
+                    ),
+                candidates = context.activeVehicles,
+                excludedId = command.id,
+            )
 
-                name.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
-                    ValidationError.InvalidLength(
-                        "name",
-                        MIN_TEXT_LENGTH,
-                        MAX_VEHICLE_TEXT_LENGTH,
-                    )
-                }
-
-                brand != null && brand.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
-                    ValidationError.InvalidLength(
-                        "brand",
-                        MIN_TEXT_LENGTH,
-                        MAX_VEHICLE_TEXT_LENGTH,
-                    )
-                }
-
-                model != null && model.length !in MIN_TEXT_LENGTH..MAX_VEHICLE_TEXT_LENGTH -> {
-                    ValidationError.InvalidLength(
-                        "model",
-                        MIN_TEXT_LENGTH,
-                        MAX_VEHICLE_TEXT_LENGTH,
-                    )
-                }
-
-                isInvalidOdometerUpdate(
-                    command.initialOdometerKm,
-                    context.hasNonDeletedFuelEntries,
-                ) -> {
-                    ValidationError.OutOfRange(
-                        "initialOdometerKm",
-                        MIN_ODOMETER_KM,
-                        MAX_ODOMETER_KM,
-                    )
-                }
-
-                hasDuplicateName(context.activeVehicles, nameFold, excludedId = command.id) -> {
-                    ValidationError.DuplicateName(name)
-                }
-
-                else -> {
-                    null
-                }
-            }
-
-        return if (error == null) {
-            Outcome.Ok(normalised)
-        } else {
-            Outcome.Err(error)
-        }
+        return validationOutcome(normalised, error)
     }
 }

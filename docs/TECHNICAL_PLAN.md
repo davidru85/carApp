@@ -424,7 +424,7 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: active. E1-02 is next; E1-02 through E1-10 remain.
+Status: active. E1-03 is next; E1-03 through E1-10 remain.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 
