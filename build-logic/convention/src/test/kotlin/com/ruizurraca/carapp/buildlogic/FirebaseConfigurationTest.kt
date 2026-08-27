@@ -133,4 +133,27 @@ class FirebaseConfigurationTest {
         assertTrue(xcodeProject.contains("CODE_SIGN_IDENTITY = \"iPhone Developer\";"))
         assertFalse(xcodeProject.contains("DEVELOPMENT_TEAM ="))
     }
+
+    @Test
+    fun iosKeychainPersistenceAcceptanceUsesASeparateTestOnlyUiTarget() {
+        val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val appEntitlements = repositoryRoot.resolve("iosApp/carApp.entitlements").readText()
+        val uiTest =
+            repositoryRoot
+                .resolve("iosApp/UITests/CarAppKeychainPersistenceUITests.swift")
+                .readText()
+
+        assertTrue(projectSpec.contains("carAppUITests:"))
+        assertTrue(projectSpec.contains("type: bundle.ui-testing"))
+        assertTrue(projectSpec.contains("PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.uitests"))
+        assertTrue(projectSpec.contains("SUPPORTED_PLATFORMS: iphonesimulator"))
+        assertTrue(projectSpec.contains("EXCLUDED_SOURCE_FILE_NAMES: CarAppKeychainPersistenceUITests.swift"))
+        assertFalse(appEntitlements.contains("keychain-access-groups"))
+        assertFalse(projectSpec.contains("KEYCHAIN_ACCESS_GROUPS"))
+        assertTrue(uiTest.contains("XCUIApplication()"))
+        assertTrue(uiTest.contains("app.terminate()"))
+        assertTrue(uiTest.substringAfter("app.terminate()").contains("app.launch()"))
+        assertTrue(uiTest.contains("app.staticTexts"))
+        assertFalse(uiTest.contains("@testable import"))
+    }
 }
