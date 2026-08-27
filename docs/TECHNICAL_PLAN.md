@@ -89,6 +89,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-72 | Billing cutoff acceptance trigger | Two controlled threshold events on the real topic, expected-versus-actual evidence and timed recovery | Accepted | Verifies the deployed destructive path and the already-disabled no-op without manufacturing billable usage. |
 | D-73 | Cloud Functions artifact retention | One-day cleanup on the exact Functions Artifact Registry repository with observed deletion | Accepted | Keeps a short inspection window while bounding development storage cost and treating Git as the source of truth. |
 | D-74 | iOS Keychain persistence acceptance | Test-only XCUITest bundle drives UI across a terminated and relaunched real app process | Accepted | Proves signed-app Keychain persistence without shared access groups, host hooks or manual interaction. |
+| D-75 | Firebase standalone Kotlin/Native test exception | Exempt exactly `:integration:firebase-auth` and `:integration:firebase-firestore` from standalone `iosSimulatorArm64Test` | Accepted | Avoids a second Firebase dependency manager or experimental toolchain while an exact-set guard and real-host acceptance keep the coverage loss explicit. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -534,6 +535,15 @@ a separate cycle. Each review MUST rerun the production dependency audit, the de
 reachability test and the current-state assessment in `docs/SECURITY_ADVISORY_REGISTER.md`. An
 immediate review is triggered by any high or critical finding, any expansion of this function into
 Storage, or the availability of a compatible official update.
+
+The same review also owns D-75; no separate review cycle is created. Each review MUST check both
+[GitLive issue #499](https://github.com/GitLiveApp/firebase-kotlin-sdk/issues/499) for supported
+transitive Apple linking and the status of
+[Kotlin SwiftPM import](https://kotlinlang.org/docs/multiplatform/multiplatform-spm-import.html).
+D-75 expires when either GitLive supports the standalone Kotlin/Native test link or SwiftPM import
+is stable in a Kotlin release compatible with the pinned project stack. A GitLive release that
+targets Firebase Apple 12.x or another successor also triggers a joint D-65/D-75 evaluation; the
+native SDK pin and the test exception MUST NOT be reviewed as unrelated migrations.
 
 | Review date | Owner | Outcome | Next review |
 |-------------|-------|---------|-------------|

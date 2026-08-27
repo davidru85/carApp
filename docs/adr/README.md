@@ -81,5 +81,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-72 | [ADR-0073](0073-exercise-cutoff-with-controlled-threshold-events.md) | Exercise the real cutoff with controlled threshold events. | Accepted |
 | D-73 | [ADR-0074](0074-retain-functions-artifacts-for-one-day.md) | Retain Cloud Functions deployment artifacts for one day. | Accepted |
 | D-74 | [ADR-0075](0075-use-xcuitest-for-keychain-persistence-acceptance.md) | Use a test-only XCUITest target for Keychain persistence acceptance. | Accepted |
+| D-75 | [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) | Exempt exactly two Firebase integration modules from standalone Native unit-test binaries. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -38,6 +38,24 @@
 
 ## Entries
 
+### 2026-08-27 — D-75 exact Firebase Native-test exception accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** exactly `:integration:firebase-auth` and `:integration:firebase-firestore` are
+  exempt from standalone `iosSimulatorArm64Test` execution; Android-host unit tests remain, and
+  real-host iOS coverage is stated path by path rather than treated as equivalent.
+- **Why:** GitLive does not link its Apple dependencies transitively into standalone Kotlin/Native
+  test binaries. CocoaPods, beta Kotlin SwiftPM import and a test-only XCFramework chain would each
+  introduce a second or experimental dependency path inconsistent with the pinned stack.
+- **Documents touched:** `docs/adr/0076-exempt-firebase-standalone-native-tests.md`, the four
+  decision mirrors, `docs/adr/0066-pin-firebase-apple-to-gitlive-bindings.md`, TD-01, and this log.
+- **Verification:** the E0-07 CI guard will assert the complete exemption set in both directions;
+  Android-host tests and the documented XCUITest paths remain required.
+- **Follow-ups / risks:** TD-01 reviews GitLive issue #499 and stable compatible Kotlin SwiftPM
+  import quarterly; a GitLive/Firebase Apple compatibility upgrade triggers joint D-65/D-75 review.
+
 ### 2026-08-25 — D-65 Firebase Apple compatibility pin accepted
 
 - **Type:** decision

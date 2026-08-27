@@ -31,6 +31,10 @@ Pin the Firebase Apple SDK to 11.8.0 exactly while the project uses GitLive 2.6.
 GitLive and Firebase Apple are one compatibility set. Neither version may be changed independently.
 When GitLive publishes Apple bindings generated against a supported newer Firebase Apple release,
 the coordinated upgrade requires a new owner-reviewed decision and full native-path verification.
+That review MUST include [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) (`D-75`): a
+GitLive release targeting Firebase Apple 12.x or another successor may also change the Apple-linking
+behavior that currently requires the exact standalone Native test exception. The two decisions are
+evaluated together rather than allowing the SDK pin and test topology to drift independently.
 
 ## Consequences
 
@@ -50,3 +54,8 @@ the coordinated upgrade requires a new owner-reviewed decision and full native-p
 - Native-path tests exercise anonymous authentication and Vehicle remote backup under the selected
   SDK.
 - `contractCheck` keeps D-65 and ADR-0066 aligned across all decision mirrors.
+
+## Related Decisions
+
+- [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) (`D-75`) records the exact test
+  coverage loss caused by GitLive's non-transitive Apple linking and its joint migration trigger.
