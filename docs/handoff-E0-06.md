@@ -1,5 +1,11 @@
 # Agent Handoff - E0-06
 
+> **Closure update (2026-08-27):** E0-05, E1-01, E3-01 and E0-07 exercised the quality,
+> database, Firebase/GitLive, Apple and Swift-interoperability portions of the pinned stack. D-36
+> replaced Room with SQLDelight and D-37 deliberately excludes `iosX64`, closing the former Intel
+> simulator gap without adding an unsupported target. Pins for later functionality remain owned by
+> their backlog stories; this is planned work, not an unresolved E0-06 acceptance criterion.
+
 ## Story
 
 `E0-06 - ADRs, Version Matrix and Decision Board Validation - S` (`docs/BACKLOG.md`).

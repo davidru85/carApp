@@ -1,5 +1,10 @@
 # Agent Handoff - E3-06
 
+> **Closure update (2026-08-27):** the prerequisite chain is complete: E3-01 merged in PR #26 and
+> E0-07 merged in PRs #27/#28. The closed provider registry now contains the real Firebase Auth,
+> Firestore and wiring modules, and the protected provider-decoupling job proves their exclusion on
+> Android host and Kotlin/Native. Future provider modules still require explicit registry entries.
+
 ## Story
 
 `E3-06 - Provider Decoupling Proof - S` (`docs/BACKLOG.md`).
@@ -56,7 +61,8 @@
 
 ## Out of Scope / Not Done
 
-- `E3-01` Firestore rules and `E0-07` walking skeleton remain separate later pull requests.
+- `E3-01` Firestore rules and the `E0-07` walking skeleton were deliberately left for separate
+  later pull requests; both are now complete, as the closure update above records.
 
 ## Files Changed
 

@@ -49,10 +49,14 @@ every physical build selects App Attest.
 
 ## Acceptance
 
-The story is not accepted until all of the following are recorded in `docs/handoff-E0-07.md`:
+E0-07 completed this acceptance on 2026-08-27. `docs/handoff-E0-07.md` records all five required
+results:
 
-1. an anonymous Authentication request without App Check is rejected after propagation;
-2. an equivalent request with a registered token succeeds;
-3. Android and iOS local native flows sign in anonymously and exercise Firestore;
-4. Authentication and Firestore service resources still report `ENFORCED`;
-5. Release dependency/configuration checks prove no debug provider or development plist ships.
+1. an anonymous Authentication request without App Check was rejected after propagation;
+2. an equivalent request with a registered token succeeded;
+3. Android and iOS local native flows signed in anonymously and exercised Firestore;
+4. Authentication and Firestore service resources reported `ENFORCED`;
+5. Release dependency/configuration checks proved no debug provider or development plist ships.
+
+Any future App Check provider, app registration or protected-service change must repeat the
+applicable live rejection/success evidence and update this runbook and the owning story handoff.

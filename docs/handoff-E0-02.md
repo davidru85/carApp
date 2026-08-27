@@ -1,5 +1,10 @@
 # Agent Handoff - E0-02
 
+> **Closure update (2026-08-27):** D-36 superseded the planned Room convention with the
+> `carapp.sqldelight` convention, which E1-01 exercised on Android and Kotlin/Native. E0-04 and
+> E0-05 added convention-plugin fixtures, architecture enforcement and CI. Only the feature
+> package-level Konsist rules remain deferred to E1-07 under D-28.
+
 ## Story
 
 `E0-02 - Gradle Convention Plugins - M` (`docs/BACKLOG.md`).

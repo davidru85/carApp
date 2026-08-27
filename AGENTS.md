@@ -90,6 +90,20 @@ accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is 
 `E0-07`, the walking skeleton, is complete. `E1-02`, the Vehicle domain story, is the next planned
 Phase 1 story.
 
+### Delivery status and remaining work
+
+- **Completed:** all Phase 0 stories; `E1-01`; the pulled-forward `E3-06` and `E3-01`
+  prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
+- **Next:** `E1-02`. No product implementation story is currently in flight; its Ready Check must
+  be recorded before implementation starts.
+- **Remaining Phase 1:** `E1-02` through `E1-10`.
+- **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
+- **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
+  `E3-05`, `E3-07` and `E3-09`. `E3-01` and `E3-06` are already complete.
+- **Remaining Phase 4:** `E4-01` through `E4-04`.
+
+`docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.
+
 ### Modules that exist
 
 ```text
@@ -117,6 +131,19 @@ build-logic/       convention plugins, an included build
 `:integration:firebase-analytics` and `:integration:firebase-crashlytics` do **not** exist yet.
 D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
 complete the remaining integration behavior in place.
+
+### Live development infrastructure
+
+- Firebase project `davidruiz-carapp-dev` uses Firestore Native mode in `europe-west1`.
+- Development billing is enabled with the D-66 EUR 10 notification-only budget and the tested
+  project-local cutoff. `stopBilling` is an active Gen 2 function on Node.js 22.
+- App Check is enforced for Authentication and Firestore; local debug providers are restricted to
+  Debug emulator/simulator paths and do not ship.
+- D-73 automatically removed the first eligible Functions artifacts while the deployed function
+  remained active. The exact evidence is in
+  `docs/runbooks/development-firebase-cost-controls.md`.
+- No production Firebase project exists. E4-04 owns production identifiers, billing, alerts and
+  release configuration; production MUST NOT inherit the development cutoff.
 
 ### Creating a module
 
@@ -169,8 +196,10 @@ invocation, including the `ARCHS=arm64` argument the project currently needs.
 Not yet enforced, each with the story that owns it:
 
 - feature-layer package rules and Konsist — `E1-07` (`D-28`)
-- the Objective-C golden header check, and moving that job back to macOS — `E0-07`
-- `testAppGraphDependencies` parity — `E0-07` (`D-27`)
+
+E0-07 made the Objective-C golden-header job executable on macOS and made
+`testAppGraphDependencies` parity executable. `contractCheck` currently reports no `PENDING`
+assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
 provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).
@@ -183,6 +212,11 @@ Each completed story leaves `docs/handoff-<STORY>.md`, filled in from
 `docs/templates/agent-handoff.md`. They carry the acceptance evidence, what was deliberately not
 done, and the follow-ups. **Read the handoff of any story you are extending**, and read the most
 recent entries of `docs/PROJECT_LOG.md` before starting anything.
+
+Handoffs preserve the state observed when their story merged. When a later story closes one of
+their follow-ups, a dated **Closure update** at the top records the current interpretation without
+rewriting the original evidence. Current open work is listed in this Repository State section and
+in `docs/BACKLOG.md`, not inferred from an older handoff's historical "Not Done" section.
 
 ## Normative Keywords
 

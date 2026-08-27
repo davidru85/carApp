@@ -117,7 +117,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Logging | Kermit behind `Logger` |
 
-Planned module structure:
+Current module structure, with the two remaining integration modules shown explicitly as planned:
 
 ```text
 build-logic/
@@ -134,8 +134,8 @@ gradle/libs.versions.toml
 
 :integration:firebase-auth
 :integration:firebase-firestore
-:integration:firebase-analytics
-:integration:firebase-crashlytics
+:integration:firebase-analytics      # planned: E3-09
+:integration:firebase-crashlytics   # planned: E4-04
 
 :feature:vehicle
 :feature:fuel
@@ -150,7 +150,10 @@ iosApp/
 firestore/
 ```
 
-Each feature is one Gradle module with internal `domain`, `data` and `presentation` packages. Module boundaries are enforced by a Gradle configuration check; package boundaries by source analysis. Both run in CI, and every rule has a failing fixture proving the check fires.
+Each feature is one Gradle module with internal `domain`, `data` and `presentation` packages.
+Module boundaries are enforced by a Gradle configuration check. The feature package-boundary
+Konsist rules remain assigned to E1-07 under D-28; they are the only architecture rules in the
+current plan that are not yet executable.
 
 ## Design
 
@@ -172,10 +175,10 @@ document wins and the discrepancy is escalated.
 | Phase | Goal | Main gate |
 |-------|------|-----------|
 | 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 1 - Local persistence | `:core:database`, then the walking skeleton, then vehicles and fuel entries useful offline | The walking skeleton (`E0-07`) is the phase gate: a real anonymous UID exercises the local/remote Vehicle path on both native hosts without claiming anonymous cross-device recovery. Then consumption calculation is fully tested and reviewed |
-| 2 - Authentication | Anonymous, local owner adoption, Google, Apple, conversion, anonymous retention notices, sign-out, account deletion | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot |
-| 3 - Backend and backup | Firestore rules, integration, backup engine, wiring, backup status | Recovery and provider decoupling are executable checks |
-| 4 - MVP hardening | Settings, accessibility, i18n, performance, release preparation | Store-readiness checklist complete |
+| 1 - Local persistence **(active)** | `E1-01` and the `E0-07` gate are complete; `E1-02` through `E1-10` remain | The walking skeleton already proves the native local/remote path. E1-05 remains the human-reviewed consumption gate |
+| 2 - Authentication **(planned)** | E2-01 through E2-07 remain | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot |
+| 3 - Backend and backup **(partially complete)** | E3-06 and E3-01 are complete; the remaining backend, cleanup, sync and recovery stories are open | Recovery and provider decoupling are executable checks |
+| 4 - MVP hardening **(planned)** | E4-01 through E4-04 remain | Store-readiness checklist complete |
 
 ## Human Review Gates
 

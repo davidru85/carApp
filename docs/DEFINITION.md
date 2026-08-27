@@ -88,14 +88,14 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 
 ## 9. Implementation Phases
 
-| Phase | Goal | Gate |
-|-------|------|------|
-| 0 | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every architecture rule has a failing fixture proving it fires |
-| 1 (opening) | `:core:database`, then the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth. `D-30` moved the skeleton out of Phase 0 because it needs the local database | The local/remote Vehicle path works under the same retained anonymous session on both native hosts; the Swift-facing surface constraints hold. Permanent-account cross-device recovery moves to E3-12 |
-| 1 | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
-| 2 | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
-| 4 | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
+| Phase | Status | Goal | Gate |
+|-------|--------|------|------|
+| 0 | Complete | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every implemented architecture rule has a failing fixture proving it fires |
+| 1 (opening) | Complete | `:core:database` and the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth | The local/remote Vehicle path works under the same retained anonymous session on both native hosts; the Swift-facing surface constraints hold. Permanent-account cross-device recovery moves to E3-12 |
+| 1 | Active; E1-02 next | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | `E1-05` fully tested, performant and human-reviewed |
+| 2 | Planned | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
+| 3 | Partial; E3-01 and E3-06 complete | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
+| 4 | Planned | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
 
 ## 10. Risks
 

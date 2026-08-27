@@ -1,5 +1,10 @@
 # Agent Handoff - E3-01
 
+> **Closure update (2026-08-27):** E0-07 supplied the real Android/iOS Firestore clients with
+> offline persistence disabled, exercised the rules through native acceptance, and closed the two
+> contract assertions that were still pending when E3-01 merged. E3-02 and E3-10 retain the
+> complete remote-source and Admin hard-delete work respectively.
+
 ## Story
 
 `E3-01 - Firestore Structure and Security Rules - M` (`docs/BACKLOG.md`).
