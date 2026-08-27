@@ -34,6 +34,7 @@ class ContractCheck(private val repoRoot: File) {
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
         *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
+        NativeTestExemptionContract.validate(read(".github/workflows/ci.yml")),
         reportProseInCodeFences(),
     )
 

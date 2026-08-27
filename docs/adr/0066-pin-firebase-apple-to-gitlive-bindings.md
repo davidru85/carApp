@@ -51,8 +51,8 @@ evaluated together rather than allowing the SDK pin and test topology to drift i
 - `docs/versions-matrix.md` records Firebase Apple 11.8.0 in the Firebase compatibility set.
 - The Xcode project and resolved package state select Firebase Apple 11.8.0.
 - The complete E0-07 Apple build links the `Shared` framework with Firebase Auth and Firestore.
-- Native-path tests exercise anonymous authentication and Vehicle remote backup under the selected
-  SDK.
+- Real native-host acceptance exercises the Firebase paths listed by D-75 under the selected SDK;
+  D-75 states the Firestore and standalone Native-test coverage that remains absent.
 - `contractCheck` keeps D-65 and ADR-0066 aligned across all decision mirrors.
 
 ## Related Decisions

@@ -101,6 +101,8 @@ build-logic/       convention plugins, an included build
 :core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
 :core:auth         staged auth contracts for the E0-07 application graph
 :core:sync         staged sync contracts for the E0-07 application graph
+:integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
+:integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
 :feature:vehicle   final module shell; only the E0-07 Vehicle slice is implemented here
 :feature:fuel      final module shell staged for the Swift-facing surface
 :feature:session   final module shell staged for the Swift-facing surface
@@ -111,8 +113,9 @@ build-logic/       convention plugins, an included build
 :androidApp        the Android host app
 ```
 
-`:integration:*` do **not** exist yet. D-55 stages their final paths during E0-07; later stories
-complete the non-slice behavior in place.
+`:integration:firebase-analytics` and `:integration:firebase-crashlytics` do **not** exist yet.
+D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
+complete the remaining integration behavior in place.
 
 ### Creating a module
 
@@ -140,7 +143,7 @@ and `carapp.sqldelight`.
 Everything CI runs, in one command:
 
 ```bash
-./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test           koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test
 ```
 
 Individually:
@@ -152,7 +155,7 @@ Individually:
 | `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
-| `./gradlew testAndroidHostTest iosSimulatorArm64Test` | Common tests on both the JVM and Kotlin/Native. Both matter: a test that only runs on the JVM cannot catch a Kotlin/Native divergence. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test` | Common tests on both the JVM and Kotlin/Native. D-75 exempts exactly the two Firebase integration modules from standalone Native binaries; their Android-host tests and explicitly listed real-host XCUITest paths remain required. |
 
 The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
 invocation, including the `ARCHS=arm64` argument the project currently needs.

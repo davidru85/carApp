@@ -1390,6 +1390,12 @@ Phase 0 defines the exact CI check names. Required checks:
 - `contract-check`
 - `objc-header-golden-check`
 
+The `shared-tests` check executes Android-host tests for every KMP module and
+`iosSimulatorArm64Test` for every module except exactly `:integration:firebase-auth` and
+`:integration:firebase-firestore` (`D-75`). The exemption is an exact set, not a pattern: CI MUST
+fail if either path disappears from it or any third path enters it. A new module therefore runs
+Native tests by default and cannot inherit the exception silently.
+
 Optional checks:
 
 - `database-lock` — when `core/database/.story-lock` exists, CI verifies that the current story named in the handoff owns `:core:database`. A failing lock means another in-flight story owns the shared-write module. The lock is created when a database story starts and removed in the same PR before completion; it is a coordination guard, not a permanent repository artifact.
@@ -1418,6 +1424,9 @@ Optional checks:
     normative runtime row in `docs/versions-matrix.md`; a hardcoded second runtime fails.
 20. The Google authentication and Cloud SDK GitHub Actions use the immutable SHAs recorded in
     `docs/versions-matrix.md`, not floating tags.
+21. The `shared-tests` workflow executes both aggregate test tasks and its standalone
+    Kotlin/Native exemption set equals exactly `:integration:firebase-auth` and
+    `:integration:firebase-firestore`; equality fails on either addition or removal.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
