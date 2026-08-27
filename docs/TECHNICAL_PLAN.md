@@ -88,6 +88,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-71 | iOS simulator signing | Normal Xcode simulator signing with no committed developer team or account-specific credential | Accepted | Restores Keychain-backed Auth persistence while keeping simulator acceptance reproducible and release signing fail-closed. |
 | D-72 | Billing cutoff acceptance trigger | Two controlled threshold events on the real topic, expected-versus-actual evidence and timed recovery | Accepted | Verifies the deployed destructive path and the already-disabled no-op without manufacturing billable usage. |
 | D-73 | Cloud Functions artifact retention | One-day cleanup on the exact Functions Artifact Registry repository with observed deletion | Accepted | Keeps a short inspection window while bounding development storage cost and treating Git as the source of truth. |
+| D-74 | iOS Keychain persistence acceptance | Test-only XCUITest bundle drives UI across a terminated and relaunched real app process | Accepted | Proves signed-app Keychain persistence without shared access groups, host hooks or manual interaction. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

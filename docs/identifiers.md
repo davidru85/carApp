@@ -9,6 +9,7 @@
 | Value | Status |
 |-------|--------|
 | Application and bundle identifiers | Accepted |
+| iOS UI-test bundle identifier | Accepted — test-only and non-distributed |
 | Development Firebase project ID | Accepted |
 | Production Firebase project ID | Deferred — decide before `E4-04` release preparation |
 | Firestore location | Accepted |
@@ -21,6 +22,7 @@
 | Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
+| iOS UI-test bundle identifier | `com.ruizurraca.carapp.uitests` | D-74 test-only XCUITest runner; never embedded, archived or distributed. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | Android build namespace, per module | Derived — see "Module Android namespaces" below | AGP 9 requires every module with an Android target to declare a unique namespace. The value is derived from the module path, so it is never invented. |
 | iOS framework name | `Shared` | Produced by `:composition:ios`, exporting `:shared`, and consumed as `import Shared`; this is the canonical module name. |
@@ -57,7 +59,7 @@ Because the value is derived, an agent MUST NOT write a namespace literal in a m
 The convention plugins of `E0-02` compute it from the Gradle project path, which is what makes the
 "agents MUST NOT invent identifiers" rule enforceable for the remaining modules.
 
-Debug builds use the `.debug` application ID suffix on Android so debug and release can coexist on one device. iOS uses a separate bundle identifier suffix `.debug` with its own Firebase app registration.
+Debug builds use the `.debug` application ID suffix on Android so debug and release can coexist on one device. iOS uses a separate bundle identifier suffix `.debug` with its own Firebase app registration. The `com.ruizurraca.carapp.uitests` identifier belongs only to the UI-test runner, has no Firebase app registration and MUST NOT appear in an archive or distribution configuration.
 
 ## Firebase
 

@@ -544,6 +544,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-71 | iOS simulator signing | Use normal Xcode simulator signing without a committed developer team or account-specific credential so Firebase Auth acceptance exercises Keychain persistence. | Accepted |
 | D-72 | Billing cutoff acceptance trigger | Exercise the real cutoff with two controlled threshold events, expected-versus-actual evidence and timed owner recovery. | Accepted |
 | D-73 | Cloud Functions artifact retention | Retain deployment artifacts for one day in the exact Cloud Functions Artifact Registry repository and verify real cleanup. | Accepted |
+| D-74 | iOS Keychain persistence acceptance | Use test-only XCUITest bundle `com.ruizurraca.carapp.uitests` to verify Firebase Auth through the UI across a real process restart. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

@@ -80,5 +80,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-71 | [ADR-0072](0072-use-normal-ios-simulator-signing.md) | Use normal Xcode simulator signing for Keychain-backed Auth acceptance. | Accepted |
 | D-72 | [ADR-0073](0073-exercise-cutoff-with-controlled-threshold-events.md) | Exercise the real cutoff with controlled threshold events. | Accepted |
 | D-73 | [ADR-0074](0074-retain-functions-artifacts-for-one-day.md) | Retain Cloud Functions deployment artifacts for one day. | Accepted |
+| D-74 | [ADR-0075](0075-use-xcuitest-for-keychain-persistence-acceptance.md) | Use a test-only XCUITest target for Keychain persistence acceptance. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
