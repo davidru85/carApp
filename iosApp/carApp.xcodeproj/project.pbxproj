@@ -18,15 +18,28 @@
 		C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 90CED6835AA58C9424996B48 /* en.lproj */; };
+		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		60E811793E62CC34C67D64DC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FB5E915613CCB05F145A42B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 61D239EC09A12F8A35BAA5D5;
+			remoteInfo = carApp;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
+		2D997286223049D1A5F7AA30 /* carAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
 		8EB8A37AF599C28041EB55CA /* es.lproj */ = {isa = PBXFileReference; path = es.lproj; sourceTree = "<group>"; };
 		90CED6835AA58C9424996B48 /* en.lproj */ = {isa = PBXFileReference; path = en.lproj; sourceTree = "<group>"; };
+		93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarAppKeychainPersistenceUITests.swift; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -59,8 +72,17 @@
 			isa = PBXGroup;
 			children = (
 				F7BD4918D057DEA4C8FB450F /* carApp.app */,
+				2D997286223049D1A5F7AA30 /* carAppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		45E5C76700F0706EA075BF34 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		E3D19A4D38694A47DC344CE6 = {
@@ -73,6 +95,7 @@
 				8EB8A37AF599C28041EB55CA /* es.lproj */,
 				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
 				2850FA255307524833517781 /* Debug */,
+				45E5C76700F0706EA075BF34 /* UITests */,
 				39881192AFE2CF4DD842531A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -80,6 +103,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		5694684097D198AE1BCA7DD4 /* carAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D3588A3E6824B80409A24B0 /* Build configuration list for PBXNativeTarget "carAppUITests" */;
+			buildPhases = (
+				DF58B6DB90B2D49606AFA31A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3C3BB4422FA19FE6C0B9236E /* PBXTargetDependency */,
+			);
+			name = carAppUITests;
+			packageProductDependencies = (
+			);
+			productName = carAppUITests;
+			productReference = 2D997286223049D1A5F7AA30 /* carAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		61D239EC09A12F8A35BAA5D5 /* carApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A341E26390F9E8DF3E134391 /* Build configuration list for PBXNativeTarget "carApp" */;
@@ -113,6 +154,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					5694684097D198AE1BCA7DD4 = {
+						TestTargetID = 61D239EC09A12F8A35BAA5D5;
+					};
 				};
 			};
 			buildConfigurationList = AD83A9D78271D1C38CABC5E3 /* Build configuration list for PBXProject "carApp" */;
@@ -133,6 +177,7 @@
 			projectRoot = "";
 			targets = (
 				61D239EC09A12F8A35BAA5D5 /* carApp */,
+				5694684097D198AE1BCA7DD4 /* carAppUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -184,7 +229,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DF58B6DB90B2D49606AFA31A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3C3BB4422FA19FE6C0B9236E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 61D239EC09A12F8A35BAA5D5 /* carApp */;
+			targetProxy = 60E811793E62CC34C67D64DC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		174E1FDA848B95D7D2059842 /* Release */ = {
@@ -308,6 +369,27 @@
 			};
 			name = Debug;
 		};
+		22699B17D703D61F9E4FD8D7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				EXCLUDED_SOURCE_FILE_NAMES = CarAppKeychainPersistenceUITests.swift;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.uitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Release;
+		};
 		40B51EC700B19C4FCB697F92 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -322,6 +404,26 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.debug;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DA1CF6562527F00C8516B7D0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.uitests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = carApp;
 			};
 			name = Debug;
 		};
@@ -346,6 +448,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1D3588A3E6824B80409A24B0 /* Build configuration list for PBXNativeTarget "carAppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA1CF6562527F00C8516B7D0 /* Debug */,
+				22699B17D703D61F9E4FD8D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		A341E26390F9E8DF3E134391 /* Build configuration list for PBXNativeTarget "carApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

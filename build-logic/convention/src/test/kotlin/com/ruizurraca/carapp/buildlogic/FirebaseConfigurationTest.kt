@@ -138,16 +138,30 @@ class FirebaseConfigurationTest {
     fun iosKeychainPersistenceAcceptanceUsesASeparateTestOnlyUiTarget() {
         val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
         val appEntitlements = repositoryRoot.resolve("iosApp/carApp.entitlements").readText()
+        val sharedScheme =
+            repositoryRoot
+                .resolve("iosApp/carApp.xcodeproj/xcshareddata/xcschemes/carApp.xcscheme")
+                .readText()
         val uiTest =
             repositoryRoot
                 .resolve("iosApp/UITests/CarAppKeychainPersistenceUITests.swift")
                 .readText()
+        val uiTestBuildEntry =
+            sharedScheme
+                .substringBefore("BuildableName = \"carAppUITests.xctest\"")
+                .substringAfterLast("<BuildActionEntry")
 
         assertTrue(projectSpec.contains("carAppUITests:"))
         assertTrue(projectSpec.contains("type: bundle.ui-testing"))
         assertTrue(projectSpec.contains("PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.uitests"))
+        assertTrue(projectSpec.contains("SKIP_INSTALL: YES"))
         assertTrue(projectSpec.contains("SUPPORTED_PLATFORMS: iphonesimulator"))
         assertTrue(projectSpec.contains("EXCLUDED_SOURCE_FILE_NAMES: CarAppKeychainPersistenceUITests.swift"))
+        assertTrue(uiTestBuildEntry.contains("buildForTesting = \"YES\""))
+        assertTrue(uiTestBuildEntry.contains("buildForRunning = \"NO\""))
+        assertTrue(uiTestBuildEntry.contains("buildForProfiling = \"NO\""))
+        assertTrue(uiTestBuildEntry.contains("buildForArchiving = \"NO\""))
+        assertTrue(uiTestBuildEntry.contains("buildForAnalyzing = \"NO\""))
         assertFalse(appEntitlements.contains("keychain-access-groups"))
         assertFalse(projectSpec.contains("KEYCHAIN_ACCESS_GROUPS"))
         assertTrue(uiTest.contains("XCUIApplication()"))
