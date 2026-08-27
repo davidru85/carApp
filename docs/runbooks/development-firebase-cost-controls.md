@@ -19,6 +19,8 @@ considered complete.
 | 2026-08-26T12:45:57.806803Z | `davidru85@gmail.com` | Manual `gcloud billing projects link` (`AssignResourceToBillingAccount`) | Billing enabled to deploy the approved D-66 cutoff controls. |
 | 2026-08-26T12:47:41.293609Z | `davidru85@gmail.com` | Manual `gcloud billing projects unlink` (`DisableResourceBilling`) | Billing deliberately disabled after Firebase rejected the first deployment for `retry: true`; no function had deployed, so this was manual containment and not the cutoff firing. |
 | 2026-08-26T12:54:55.587060Z | `davidru85@gmail.com` | Manual `gcloud billing projects link` (`AssignResourceToBillingAccount`) | Billing deliberately restored only after D-70 selected `retry: false`, so the approved function could be deployed and tested. |
+| 2026-08-26T23:56:09.839657Z | `development-billing-cutoff@davidruiz-carapp-dev.iam.gserviceaccount.com` | Deployed `stopBilling` (`DisableResourceBilling`) | D-72 controlled threshold event removed the billing association. The Billing API request time was 23:56:11.119930Z and the function logged `BILLING_DISABLED` at 23:56:11.181333Z. |
+| 2026-08-27T00:01:20.012443Z | `davidru85@gmail.com` | Manual `gcloud billing projects link` (`AssignResourceToBillingAccount`) | Recovery owner deliberately relinked after the complete disabled-state observation; `billingEnabled: true` was observed at 00:01:22Z. |
 
 ## Fixed Controls
 
@@ -34,6 +36,9 @@ considered complete.
   `projects/davidruiz-carapp-dev/alertPolicies/16719603493370820812`.
 - Runtime identity: keyless `development-billing-cutoff`; its broad billing-account role and
   minimal project role are governed by D-69.
+- Eventarc invocation: that identity holds `roles/run.invoker` only on the `stopbilling` Cloud Run
+  service. It MUST NOT hold a project-level Cloud Run role. Verify this service policy after every
+  deployment with `gcloud run services get-iam-policy stopbilling --region=europe-west1`.
 
 The deployed function was `ACTIVE` at 2026-08-26T12:56:47.496721996Z with revision
 `stopbilling-00001-kem`, Node.js 22, `RETRY_POLICY_DO_NOT_RETRY` and the dedicated runtime
@@ -41,9 +46,17 @@ identity. An intentional severity-ERROR acceptance event was ingested at
 2026-08-26T17:11:59.221985794Z and matched the function-error policy filter. Owner confirmation
 of email delivery remains part of the destructive acceptance evidence.
 
-The temporary acceptance budget is deliberately one nano-EUR, not EUR 0.01. This exact amount is
-used only to force the real cutoff. After recovery it MUST be changed to the final EUR 10 amount
-and verified through the Billing Budgets API.
+The first D-72 publication attempt exposed a missing Eventarc transport permission: messages
+`21346724746516520` and `21347059695302127`, published at 2026-08-26T23:51:42Z, reached Cloud Run
+but received HTTP 403 because the configured delivery identity lacked `run.routes.invoke`.
+Billing remained enabled. At 2026-08-26T23:54:36.808902Z, David Ruiz granted
+`roles/run.invoker` to that identity on the exact `stopbilling` service, with no project-level
+Cloud Run role. The repeated attempt then exercised the complete path successfully.
+
+The temporary acceptance budget was deliberately one nano-EUR, not EUR 0.01. It established the
+real publisher cadence but did not naturally cross its threshold because reported cost stayed at
+zero. D-72 therefore used controlled threshold messages. Recovery restored and API-verified the
+final EUR 10 amount.
 
 ## Budget Publication Cadence
 
@@ -92,17 +105,27 @@ observed outcome is forbidden because discrepancies are acceptance evidence.
 
 | Surface | Expected outcome while billing is disabled | Actual outcome |
 |---------|--------------------------------------------|----------------|
-| Firestore data | The acceptance document remains stored and unchanged. Firestore data-plane access stops while billing is detached, then the same document becomes readable after relink. | Pending controlled test. |
-| Firebase Authentication | Backend Authentication stops: new anonymous sign-in and token refresh fail. Any Keychain credential remains only as local persisted state and cannot make the backend operational. | Pending controlled test. |
-| Deployed `stopBilling` function | The first delivery completes and the deployed function resource and revision remain recorded. The immediately queued second delivery reaches the idempotent handler and returns `ALREADY_DISABLED`; later execution is unavailable until billing is restored. | Pending controlled test. |
-| Pub/Sub and budget publisher | Topic, subscription and budget configuration survive. The billing-account publisher remains configured, but project-local message delivery is expected to stop until relink because the development project deliberately stops serving. | Pending controlled test. |
-| Owner recovery | David Ruiz relinks the known billing account, waits for `billingEnabled: true`, verifies Auth, Firestore, Pub/Sub and the deployed function end to end, restores the EUR 10 budget and records total elapsed time. | Pending controlled test. |
+| Firestore data | The acceptance document remains stored and unchanged. Firestore data-plane access stops while billing is detached, then the same document becomes readable after relink. | **Different.** Admin data-plane reads returned HTTP 200 continuously through 00:00:44Z, more than four minutes after cutoff. The document field hash remained `6044d3434902d38180dbaf09818e4ea23201c04c3c19ff5f3fb6306d3fa18a0a`; no interruption or mutation was observed. The same hash was returned after relink. |
+| Firebase Authentication | Backend Authentication stops: new anonymous sign-in and token refresh fail. Any Keychain credential remains only as local persisted state and cannot make the backend operational. | **Different.** A new App-Check-protected anonymous sign-in returned HTTP 200 after billing reported disabled, and authenticated account lookups continued returning HTTP 200 through 00:00:44Z. Auth did not stop during the observed window. |
+| Deployed `stopBilling` function | The first delivery completes and the deployed function resource and revision remain recorded. The immediately queued second delivery reaches the idempotent handler and returns `ALREADY_DISABLED`; later execution is unavailable until billing is restored. | **Partly different.** Messages `21341922908322796` and `21341340469343468` were published back to back at 23:56:03Z. Logs record `BILLING_DISABLED` at 23:56:11.181333Z and `ALREADY_DISABLED` at 23:56:11.408501Z. Later redeliveries also returned `ALREADY_DISABLED` while detached. The Functions management API returned 403, but after relink the function remained `ACTIVE` on unchanged revision `stopbilling-00001-kem`. |
+| Pub/Sub and budget publisher | Topic, subscription and budget configuration survive. The billing-account publisher remains configured, but project-local message delivery is expected to stop until relink because the development project deliberately stops serving. | **Different.** The topic and pull subscription remained readable and `ACTIVE`; the budget remained readable with its topic and thresholds; Eventarc continued delivering queued messages to the warm function while billing was detached. No publisher or delivery interruption was observed. |
+| Owner recovery | David Ruiz relinks the known billing account, waits for `billingEnabled: true`, verifies Auth, Firestore, Pub/Sub and the deployed function end to end, restores the EUR 10 budget and records total elapsed time. | **Matched.** David Ruiz started relink at 00:01:19Z; the audit event is 00:01:20.012443Z and `billingEnabled: true` was observed at 00:01:22Z, three seconds after the command started. Auth and Firestore returned 200, the witness hash matched, Pub/Sub was `ACTIVE`, and the function remained `ACTIVE` on the same revision. The final EUR 10 amount was restored at 00:02:24.021839Z with 50/90/100% actual-cost thresholds and both notification paths intact; all end-to-end checks completed by 00:03:00Z, at most 101 seconds after recovery began. |
 
-The completed evidence will also record:
+The project was deliberately detached for 5m 10.173s between the disable and relink audit events.
+The test proves the billing-association removal and recovery path, but it disproves the prior claim
+that Authentication and Firestore necessarily stop immediately. In the observed free-tier state,
+the only confirmed outage was the Cloud Functions management read, which returned 403; the
+product data planes and already deployed event delivery continued serving. Future readers MUST
+not describe this control as an immediate universal service shutdown.
 
-- the budget publication that caused the cutoff;
+Completed evidence also records:
+
+- the controlled topic publication that caused the cutoff;
 - the function log and billing audit event;
-- observed Authentication and Firestore failures;
+- observed Authentication and Firestore responses, including discrepancies from expected outage;
 - the state of existing Firestore data before, during and after the outage;
 - the manual relink audit event and time to recovery;
 - the notification-channel delivery evidence.
+
+The schema-valid witness document, both temporary anonymous users and the temporary iOS App Check
+debug token were deleted after recovery; every cleanup API returned HTTP 200.

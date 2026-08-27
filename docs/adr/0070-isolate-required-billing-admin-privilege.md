@@ -34,6 +34,12 @@ Its project custom role contains exactly:
 - `resourcemanager.projects.deleteBillingAssignment`;
 - `serviceusage.services.use`.
 
+Eventarc delivers the Pub/Sub CloudEvent as the same identity. The identity additionally holds
+`roles/run.invoker` only on the Cloud Run service
+`projects/davidruiz-carapp-dev/locations/europe-west1/services/stopbilling`; it holds no Cloud Run
+role at project level. This service-scoped binding is transport permission, not product-data or
+billing-account authority.
+
 The identity has no Firebase Authentication, Firestore, Storage or other product-data role. A
 Cloud Monitoring log-match alert sends every Cloud Billing administrative change to
 `davidru85@gmail.com`. Every deliberate billing state transition is also appended to
@@ -56,11 +62,15 @@ Cloud Monitoring log-match alert sends every Cloud Billing administrative change
 
 - No other function may use the cutoff service account.
 - No service-account key may be created for it.
+- `roles/run.invoker` MUST remain scoped to `stopbilling`; project-level Cloud Run invocation is
+  forbidden.
 - Removing or weakening the billing-administration alert requires a superseding owner decision.
 
 ## Verification
 
 - IAM inspection proves the account role, exact project role and absence of service-account keys.
+- Cloud Run IAM inspection proves the service-scoped invoker binding and absence of a project-level
+  Cloud Run role.
 - The deployed endpoint names the dedicated runtime identity.
 - The billing-administration alert is enabled and its notification channel is verified.
 

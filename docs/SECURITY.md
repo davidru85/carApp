@@ -74,9 +74,11 @@ Requirements:
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the
   keyless `development-billing-cutoff` identity. Its project role contains only project read,
-  billing-assignment deletion and service use; it has no Auth, Firestore, Storage or product-data
-  role. A Cloud Monitoring alert sends every billing-account administrative change to the owner,
-  and the runbook records every deliberate billing-state transition.
+  billing-assignment deletion and service use; its `roles/run.invoker` binding is scoped only to
+  the `stopbilling` Cloud Run service so Eventarc can deliver the CloudEvent. It has no Auth,
+  Firestore, Storage or product-data role. A Cloud Monitoring alert sends every billing-account
+  administrative change to the owner, and the runbook records every deliberate billing-state
+  transition.
 - **Production Cloud Functions transitive advisory GHSA-w5hq-g745-h8pq** (`D-68`). The official
   Functions graph contains `uuid@9.0.1` through Firebase Admin's Cloud Storage dependency, and a
   production-only audit reports seven moderate entries. `firebase-admin` cannot be removed because
