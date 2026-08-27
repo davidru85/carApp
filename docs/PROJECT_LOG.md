@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-08-27 — D-75 amended to a graph-derived exception
+
+- **Type:** correction
+- **Story / Decision:** `E0-07` / `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** D-75 now derives the standalone Native-test exception from the transitive
+  project graph rooted at the Firebase Auth and Firestore integrations. Its current resolution is
+  those two modules, `:wiring:firebase` and `:composition:ios`.
+- **Why:** the first full verification after the two-module decision failed in
+  `:wiring:firebase`; the linker limitation propagates by transitive closure, so a static list
+  encoded the wrong invariant and would fail again when the graph grows.
+- **Documents touched:** `docs/adr/0076-exempt-firebase-standalone-native-tests.md`, the four
+  decision mirrors, `docs/CONTRACTS.md §18`, `AGENTS.md`, and this log.
+- **Verification:** the amended guard derives the qualifying set and will be mutation-tested for
+  both missing and stale declarations before the full E0-07 verification resumes.
+- **Follow-ups / risks:** `:composition:ios` has no tests and loses nothing today; adding tests to
+  it enlarges the coverage loss and requires an explicit coverage review. TD-01 expiry signals are
+  unchanged.
+
 ### 2026-08-27 — D-75 exact Firebase Native-test exception accepted
 
 - **Type:** decision

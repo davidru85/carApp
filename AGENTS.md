@@ -143,7 +143,7 @@ and `carapp.sqldelight`.
 Everything CI runs, in one command:
 
 ```bash
-./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
 ```
 
 Individually:
@@ -155,7 +155,7 @@ Individually:
 | `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
-| `./gradlew testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test` | Common tests on both the JVM and Kotlin/Native. D-75 exempts exactly the two Firebase integration modules from standalone Native binaries; their Android-host tests and explicitly listed real-host XCUITest paths remain required. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the four current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths; Android-host tests and explicitly listed real-host XCUITest paths remain required. |
 
 The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
 invocation, including the `ARCHS=arm64` argument the project currently needs.

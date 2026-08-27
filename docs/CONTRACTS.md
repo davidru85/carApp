@@ -1390,11 +1390,14 @@ Phase 0 defines the exact CI check names. Required checks:
 - `contract-check`
 - `objc-header-golden-check`
 
-The `shared-tests` check executes Android-host tests for every KMP module and
-`iosSimulatorArm64Test` for every module except exactly `:integration:firebase-auth` and
-`:integration:firebase-firestore` (`D-75`). The exemption is an exact set, not a pattern: CI MUST
-fail if either path disappears from it or any third path enters it. A new module therefore runs
-Native tests by default and cannot inherit the exception silently.
+The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
+`iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
+module whose Native test binary transitively links `:integration:firebase-auth` or
+`:integration:firebase-firestore` qualifies. CI compares that derived set with the explicit task
+exclusions and MUST fail in both directions. The current resolution is
+`:integration:firebase-auth`, `:integration:firebase-firestore`, `:wiring:firebase` and
+`:composition:ios`; this is observed output, not a permanent allowlist, and changes when the graph
+changes.
 
 Optional checks:
 
@@ -1424,9 +1427,10 @@ Optional checks:
     normative runtime row in `docs/versions-matrix.md`; a hardcoded second runtime fails.
 20. The Google authentication and Cloud SDK GitHub Actions use the immutable SHAs recorded in
     `docs/versions-matrix.md`, not floating tags.
-21. The `shared-tests` workflow executes both aggregate test tasks and its standalone
-    Kotlin/Native exemption set equals exactly `:integration:firebase-auth` and
-    `:integration:firebase-firestore`; equality fails on either addition or removal.
+21. The `shared-tests` workflow executes both aggregate test tasks. Its declared standalone
+    Kotlin/Native exclusions equal the set derived by taking the transitive reverse dependency
+    closure from `:integration:firebase-auth` and `:integration:firebase-firestore` across the
+    Native-test project graph; equality fails on either addition or removal.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
