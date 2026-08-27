@@ -129,3 +129,27 @@ Completed evidence also records:
 
 The schema-valid witness document, both temporary anonymous users and the temporary iOS App Check
 debug token were deleted after recovery; every cleanup API returned HTTP 200.
+
+## Cloud Functions Artifact Retention
+
+The deployed function's `buildConfig.dockerRepository` resolves to
+`projects/davidruiz-carapp-dev/locations/europe-west1/repositories/gcf-artifacts`. This is the
+repository governed by D-73; a repository name inferred from convention is not sufficient.
+
+At 2026-08-27T00:10:51.326151Z, the Firebase CLI applied cleanup policy
+`firebase-functions-cleanup` to that exact repository:
+
+- action: `DELETE`;
+- age: `86400s` (one day);
+- tag state: `ANY`.
+
+The pre-policy inventory was 110.685 MB and contained:
+
+| Created (UTC) | Package | Digest | Size | Tags |
+|---------------|---------|--------|------|------|
+| 2026-08-26T12:56:00.847439Z | `davidruiz--carapp--dev__europe--west1__stop_billing` | `sha256:31597e8d83c80b092fbea18d89ee8d6d12e0b22b4fa6baef66699237a855bf25` | 22,388,333 bytes | `latest`, `version_1` |
+| 2026-08-26T12:56:13.130863Z | `davidruiz--carapp--dev__europe--west1__stop_billing/cache` | `sha256:2ab9110b5cca334a8972927a9f31a2dc2e85da5d7a7a4cb1145c0561d4ef386f` | 90,966,053 bytes | `latest` |
+
+The images were not yet one day old when the policy was created. D-73 acceptance remains open
+until Artifact Registry's asynchronous cleanup removes an eligible image without manual deletion.
+The after-inventory and audit timestamp are appended here when that occurs.
