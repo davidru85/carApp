@@ -4,14 +4,12 @@ import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 
-private val defaultVehicleFuelType = FuelType.OTHER
-
 data class CreateVehicleCommand(
     val name: String,
     val initialOdometerKm: Long,
     val brand: String?,
     val model: String?,
-    val fuelType: FuelType = defaultVehicleFuelType,
+    val fuelType: FuelType = FuelType.GASOLINE,
     val confirmations: Set<Confirmation>,
 )
 
