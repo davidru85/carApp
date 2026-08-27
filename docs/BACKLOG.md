@@ -206,6 +206,8 @@ Acceptance criteria:
 
 ### E0-07 - Walking Skeleton - L
 
+Status: completed on 2026-08-27. See `docs/handoff-E0-07.md`.
+
 Build a single screen crossing native UI, shared state holder, SQLDelight, Firestore and real anonymous auth.
 
 Moved here from Phase 0 by `D-30`: it needs the local database, which lives in `:core:database`, and the Phase 0 module set forbade that module. It is the Phase 1 gate — no other Phase 1 story starts until it passes.
@@ -862,7 +864,7 @@ proof after E3-04.
 | E0-08 `:core:analytics` abstraction (completed) | 0 | S | — |
 
 | E1-01 `:core:database` (completed) | 1 | M | — |
-| E0-07 Walking skeleton | 1 | L | Yes |
+| E0-07 Walking skeleton (completed) | 1 | L | Yes |
 | E1-02 Vehicle domain | 1 | S | — |
 | E1-03 Vehicle data | 1 | M | — |
 | E1-04 Fuel entry domain | 1 | M | — |

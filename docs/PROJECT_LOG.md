@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-27 — E0-07 walking skeleton completed
+
+- **Type:** story
+- **Story / Decision:** `E0-07` / `D-73`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** PR #27 delivered the Android/iOS walking skeleton and was owner-approved and
+  merged. The final D-73 gate then observed both eligible Cloud Functions images disappear through
+  the Artifact Registry cleanup policy without manual deletion.
+- **Why:** E0-07 opens Phase 1 only after proving the complete native-to-local-to-Firebase path and
+  observing the development cost-control lifecycle rather than treating configured retention as
+  evidence of effective cleanup.
+- **Documents touched:** `docs/handoff-E0-07.md`,
+  `docs/runbooks/development-firebase-cost-controls.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `docs/DEFINITION.md`, and this log.
+- **Verification:** the final inventory was empty at 2026-08-27T14:31:45Z after both images were
+  present at 2026-08-27T13:30:04.831Z; the policy remained `DELETE` / `86400s` / `ANY`; billing
+  remained enabled; `stopBilling` remained `ACTIVE` on Node.js 22. `git diff --check` and
+  `./gradlew contractCheck` passed for the documentation closure.
+- **Follow-ups / risks:** Artifact Registry exposed no separate `BatchDeleteVersions` audit entry
+  at verification time, so the deletion timestamp is bounded by the two inventories. E1-02 is the
+  next planned Phase 1 story.
+
 ### 2026-08-27 — D-75 amended to a graph-derived exception
 
 - **Type:** correction
