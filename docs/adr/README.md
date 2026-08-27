@@ -82,5 +82,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-73 | [ADR-0074](0074-retain-functions-artifacts-for-one-day.md) | Retain Cloud Functions deployment artifacts for one day. | Accepted |
 | D-74 | [ADR-0075](0075-use-xcuitest-for-keychain-persistence-acceptance.md) | Use a test-only XCUITest target for Keychain persistence acceptance. | Accepted |
 | D-75 | [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) | Derive Firebase standalone Native-test exemptions from their transitive project graph. | Accepted |
+| D-76 | [ADR-0077](0077-vehicle-validation-uses-pre-write-facts.md) | Validate Vehicle commands from immutable pre-write facts. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

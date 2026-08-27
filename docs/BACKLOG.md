@@ -290,7 +290,8 @@ Acceptance criteria:
 - Name validation and `nameFold` uniqueness use `canonicalVehicleName(name).lowercase()` exactly as defined in `docs/CONTRACTS.md §5`.
 - `initialOdometerKm` range and its edit restriction are implemented.
 - `FuelType` exists with exactly the MVP values of `docs/CONTRACTS.md §20.4` and default `GASOLINE`; `ELECTRIC` and `HYBRID` are absent until a future energy-model story expands the enum.
-- Commands match `docs/CONTRACTS.md §20.5`; no command carries `ownerId`, `id` or timestamps.
+- Commands match `docs/CONTRACTS.md §20.5`; no command carries `ownerId` or timestamps, and only
+  `UpdateVehicleCommand` carries the target `id` required by that canonical shape.
 - Use cases have unit tests for success and for every error they declare.
 
 ### E1-03 - Vehicle Data, Local Only - M

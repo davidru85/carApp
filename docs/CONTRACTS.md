@@ -303,6 +303,11 @@ The complete set of consumption explanation reasons is `ConsumptionInvalidReason
 
 Write use cases validate commands before repository writes. Expected validation failures return typed errors and do not throw.
 
+Vehicle command validation follows D-76. The E1-03 data implementation loads the immutable
+pre-write facts declared in §13 and invokes the pure Vehicle validator immediately before the
+mutation inside the same local transaction. The validators perform no I/O, and validation-shaped
+database queries are not added to `VehicleRepository`.
+
 ### Normalisation
 
 Normalisation runs in the use case **before** validation, and the normalised value is what is persisted and what uniqueness is computed on:
@@ -957,6 +962,55 @@ Every use case:
 - Returns `Outcome<T, AppError>` for expected failures.
 - Does not depend on platform APIs, and does not access SQLDelight, SQLite, Firebase, GitLive, Koin, Ktor, Android or iOS APIs directly.
 - MAY use `kotlinx.coroutines.Flow`, `StateFlow` and `suspend` signatures. MUST NOT call `kotlinx.coroutines.GlobalScope`, `kotlinx.coroutines.runBlocking` or any `Dispatchers.*` static; execution context comes from the caller or injected abstractions.
+
+Vehicle command validation lives in the `:feature:vehicle` domain package:
+
+```kotlin
+data class VehicleNameCandidate(
+    val id: EntityId,
+    val name: String,
+)
+
+data class CreateVehicleValidationContext(
+    val activeVehicles: List<VehicleNameCandidate>,
+)
+
+data class UpdateVehicleValidationContext(
+    val activeVehicles: List<VehicleNameCandidate>,
+    val hasNonDeletedFuelEntries: Boolean,
+)
+
+class ValidateCreateVehicle {
+    operator fun invoke(
+        command: CreateVehicleCommand,
+        context: CreateVehicleValidationContext,
+    ): Outcome<CreateVehicleCommand, AppError>
+}
+
+class ValidateUpdateVehicle {
+    operator fun invoke(
+        command: UpdateVehicleCommand,
+        context: UpdateVehicleValidationContext,
+    ): Outcome<UpdateVehicleCommand, AppError>
+}
+```
+
+Both validators are pure and perform no repository call. `activeVehicles` contains only
+non-deleted vehicles for the current owner. Update validation excludes the candidate whose `id`
+equals `command.id`. E1-03 loads these facts and invokes the validator immediately before its
+write inside the same local transaction.
+
+The successful value is the fully normalised command. Validation order is required name, string
+lengths, odometer range and edit restriction, then folded-name uniqueness. The exact declared
+errors are:
+
+| Use case | Errors |
+|----------|--------|
+| `ValidateCreateVehicle` | `ValidationError.RequiredField(name)`, `InvalidLength(name, brand, model)`, `OutOfRange(initialOdometerKm)`, `DuplicateName` |
+| `ValidateUpdateVehicle` | The same set. A non-null `initialOdometerKm` when `hasNonDeletedFuelEntries` is true returns `OutOfRange(initialOdometerKm, 0, 2_000_000)` even when the supplied value is otherwise inside the numeric interval. |
+
+No other `AppError` leaf is returned by these pure validators. Entity absence, tombstones and
+persistence failures remain repository outcomes (§12).
 
 Consumption calculation:
 
@@ -1778,7 +1832,7 @@ data class CreateVehicleCommand(
     val initialOdometerKm: Long,
     val brand: String?,
     val model: String?,
-    val fuelType: FuelType,
+    val fuelType: FuelType = FuelType.GASOLINE,
     val confirmations: Set<Confirmation>,
 )
 
