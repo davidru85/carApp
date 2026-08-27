@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 1 open.** `E1-01`, `E3-06` and `E3-01` have delivered the SQLDelight database, executable provider decoupling and the reviewed Firestore rules. `E0-07`, the walking-skeleton gate, is in progress. There is no completed user-visible feature yet; the project builds on both platforms and `main` is protected by nine required CI checks.
+> **Project status:** **Phase 1 open.** `E1-01`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, executable provider decoupling, reviewed Firestore rules and the native walking skeleton. `E1-02`, the Vehicle domain story, is next. The project builds on both platforms and `main` is protected by nine required CI checks.
 
 ## Start here
 
@@ -14,7 +14,11 @@ The MVP is intentionally limited to **fuel expenses**: users can create vehicles
 
 ```bash
 ./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
-          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test \
+          -x :integration:firebase-auth:iosSimulatorArm64Test \
+          -x :integration:firebase-firestore:iosSimulatorArm64Test \
+          -x :wiring:firebase:iosSimulatorArm64Test \
+          -x :composition:ios:iosSimulatorArm64Test
 ```
 
 That is exactly what CI runs. `AGENTS.md` §`Repository State` explains what each check proves, how

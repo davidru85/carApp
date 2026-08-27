@@ -117,9 +117,11 @@
   paths, `retry: false`, concurrency 1 and maximum instances 1. `stopBilling` is `ACTIVE` in
   `europe-west1` on Node.js 22 with its dedicated keyless identity.
 - D-73 targets the deployed function's actual `europe-west1/gcf-artifacts` repository with
-  `DELETE`, `olderThan = 86400s` and `tagState = ANY`. The pre-policy inventory is recorded in the
-  cost-control runbook; the after-inventory and cleanup audit timestamp remain pending until the
-  asynchronous policy removes an eligible image.
+  `DELETE`, `olderThan = 86400s` and `tagState = ANY`. Both recorded images remained present at
+  2026-08-27T13:30:04.831Z and the inventory was empty at 2026-08-27T14:31:45Z, with no manual
+  deletion. The policy-update audit timestamp, bounded deletion window and absence of a separate
+  `BatchDeleteVersions` audit entry are recorded in the cost-control runbook. Billing remained
+  enabled and the Gen 2 `stopBilling` function remained `ACTIVE` on Node.js 22 after cleanup.
 
 ## Out of Scope / Not Done
 
@@ -257,12 +259,12 @@
 
 ## Shared-Write Modules Touched
 
-- `:core:database` — E0-07 owns the synchronized Vehicle mutation boundary while this story is in
-  flight. No other story may modify it concurrently.
+- `:core:database` — E0-07 owned the synchronized Vehicle mutation boundary while the story was in
+  flight. That exclusive ownership ended when PR #27 merged.
 
 ## Project Log Entry
 
-- [ ] Entry pending until the D-73 observed-deletion gate closes.
+- [x] The 2026-08-27 E0-07 completion entry records PR #27 and the observed D-73 deletion.
 
 ## Risks or Follow-ups
 
@@ -278,14 +280,12 @@
   update triggers re-evaluation.
 - Production Firebase configuration, budgets and alert-only intervention remain owned by E4-04;
   production MUST NOT inherit the development cutoff.
-- D-73 acceptance remains open until Artifact Registry removes an eligible image through the
-  cleanup policy without manual deletion. The live monitor owns the final evidence update.
 - E3-12 retains the permanent-account Android-to-iOS recovery proof. Anonymous credentials remain
   device-bound by design.
-- E0-07 is the Phase 1 opening gate and cannot merge without owner review of the native-host,
-  backend-control and Swift ABI evidence above.
+- PR #27 received owner review and merged on 2026-08-27. The post-merge D-73 evidence is isolated
+  in a documentation-only follow-up pull request.
 
 ## Human Review Gate
 
-- Applies: E0-07 and every gated path/topic listed in the Ready Check. The owner must review and
-  merge this pull request.
+- Applied to implementation PR #27. The owner must also review the documentation-only D-73 closure
+  pull request because it updates gated `AGENTS.md`.

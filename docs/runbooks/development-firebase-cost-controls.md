@@ -150,6 +150,20 @@ The pre-policy inventory was 110.685 MB and contained:
 | 2026-08-26T12:56:00.847439Z | `davidruiz--carapp--dev__europe--west1__stop_billing` | `sha256:31597e8d83c80b092fbea18d89ee8d6d12e0b22b4fa6baef66699237a855bf25` | 22,388,333 bytes | `latest`, `version_1` |
 | 2026-08-26T12:56:13.130863Z | `davidruiz--carapp--dev__europe--west1__stop_billing/cache` | `sha256:2ab9110b5cca334a8972927a9f31a2dc2e85da5d7a7a4cb1145c0561d4ef386f` | 90,966,053 bytes | `latest` |
 
-The images were not yet one day old when the policy was created. D-73 acceptance remains open
-until Artifact Registry's asynchronous cleanup removes an eligible image without manual deletion.
-The after-inventory and audit timestamp are appended here when that occurs.
+Both images were still present at 2026-08-27T13:30:04.831Z, after their one-day eligibility
+thresholds. At 2026-08-27T14:31:45Z, the same read-only inventory returned no images. No manual
+artifact deletion was performed. The observed automatic-deletion window is therefore
+2026-08-27T13:30:04.831Z to 2026-08-27T14:31:45Z.
+
+Cloud Audit Logs records the policy update at 2026-08-27T00:10:51.274842208Z as
+`google.devtools.artifactregistry.v1.ArtifactRegistry.UpdateRepository`, with
+`cleanupPolicyDryRun = false` and the exact D-73 policy. No `BatchDeleteVersions` audit entry was
+available at the final verification time, so this record deliberately bounds the deletion by the
+two inventories instead of claiming an unobserved exact deletion timestamp. Artifact Registry's
+aggregate repository size still reported 110.682 MB immediately after the empty inventory; that
+lagging aggregate is not used as deletion evidence.
+
+Post-cleanup verification confirmed that project billing remained enabled and that the Gen 2
+`stopBilling` function remained `ACTIVE` on `nodejs22`, revision `stopbilling-00001-kem`. D-73 is
+therefore accepted: the policy removed every eligible deployment artifact automatically while the
+deployed function remained available.

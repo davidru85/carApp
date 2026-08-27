@@ -87,7 +87,8 @@ tell what is already built from what is still a plan, and it is updated by the s
 `E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
 has made provider decoupling executable before any Firebase integration module exists. The owner
 accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is merged and
-`E0-07`, the walking skeleton, is the active Phase 1 story under `D-30`.
+`E0-07`, the walking skeleton, is complete. `E1-02`, the Vehicle domain story, is the next planned
+Phase 1 story.
 
 ### Modules that exist
 
