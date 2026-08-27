@@ -9,6 +9,7 @@
 | Value | Status |
 |-------|--------|
 | Application and bundle identifiers | Accepted |
+| iOS UI-test bundle identifier | Accepted — test-only and non-distributed |
 | Development Firebase project ID | Accepted |
 | Production Firebase project ID | Deferred — decide before `E4-04` release preparation |
 | Firestore location | Accepted |
@@ -21,9 +22,10 @@
 | Android `applicationId` | `com.ruizurraca.carapp` | Immutable once published to Google Play. |
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
+| iOS UI-test bundle identifier | `com.ruizurraca.carapp.uitests` | D-74 test-only XCUITest runner; never embedded, archived or distributed. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | Android build namespace, per module | Derived — see "Module Android namespaces" below | AGP 9 requires every module with an Android target to declare a unique namespace. The value is derived from the module path, so it is never invented. |
-| iOS framework name | `Shared` | Produced by `:shared` and consumed through SPM as `import Shared`; this is the canonical SPM module name. |
+| iOS framework name | `Shared` | Produced by `:composition:ios`, exporting `:shared`, and consumed as `import Shared`; this is the canonical module name. |
 | Android `minSdk` / `targetSdk` | `26` / pinned in `docs/versions-matrix.md` | `minSdk` is fixed by `docs/SPECIFICATION.md §11`. |
 | iOS deployment target | `16.0` | Fixed by `docs/SPECIFICATION.md §11`. |
 
@@ -38,6 +40,7 @@ modules MUST NOT share one. The value is **derived, not chosen**:
 | Module | Android build namespace |
 |--------|-------------------------|
 | `:shared` | `com.ruizurraca.carapp.shared` |
+| `:composition:ios` | `com.ruizurraca.carapp.composition.ios` |
 | `:core:model` | `com.ruizurraca.carapp.core.model` |
 | `:feature:fuel` | `com.ruizurraca.carapp.feature.fuel` |
 | `:integration:firebase-auth` | `com.ruizurraca.carapp.integration.firebaseauth` |
@@ -56,18 +59,21 @@ Because the value is derived, an agent MUST NOT write a namespace literal in a m
 The convention plugins of `E0-02` compute it from the Gradle project path, which is what makes the
 "agents MUST NOT invent identifiers" rule enforceable for the remaining modules.
 
-Debug builds use the `.debug` application ID suffix on Android so debug and release can coexist on one device. iOS uses a separate bundle identifier suffix `.debug` with its own Firebase app registration.
+Debug builds use the `.debug` application ID suffix on Android so debug and release can coexist on one device. iOS uses a separate bundle identifier suffix `.debug` with its own Firebase app registration. The `com.ruizurraca.carapp.uitests` identifier belongs only to the UI-test runner, has no Firebase app registration and MUST NOT appear in an archive or distribution configuration.
 
 ## Firebase
 
 | Item | Value | Notes |
 |------|-------|-------|
 | Development project ID | `davidruiz-carapp-dev` | Fixed by `D-32`. `carapp-dev`, originally chosen by `D-22`, is held by another Google Cloud customer and is unavailable; Google Cloud project IDs are globally unique. Used by debug builds and by manual testing during development. |
-| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. Its availability MUST be checked before it is recorded as decided (`D-32`). |
-| CI | Firestore emulator only | CI MUST NOT hold Firebase project credentials or write to a real project. |
+| Production project ID | Deferred until release preparation | A separate production Firebase project will be added before release; agents MUST NOT invent its project ID. Its availability MUST be checked before it is recorded as decided (`D-32`). It will use aggressive budget alerts and manual intervention; the development automatic cutoff MUST NOT be copied. |
+| CI | Firestore emulator plus read-only runtime metadata | Product tests MUST NOT hold Firebase client/admin credentials or write to a real project. D-66 adds one GitHub OIDC identity restricted to `cloudfunctions.functions.get` for the deployed-runtime assertion. |
 | Firestore location | `europe-west1` (Belgium, EU single region) | **Immutable after database creation.** Chosen by the owner for the Spanish initial user base. |
 | Firestore mode | Native mode | Not Datastore mode. |
 | Registered apps in the development project | Android debug and iOS debug | Release app registrations are deferred until the production project is created. |
+| Development billing | Billing account `01F6AF-2A3D04-00546B`; EUR 10 monthly budget | D-66 actual-cost alerts at 50%, 90% and 100%; the project-local 2nd gen function disables billing at 100%. D-69 isolates the required Billing Admin role and alerts on administrative changes. D-70 forbids automatic retry and alerts on execution errors. Budget notifications are not a hard cap and can be delayed. |
+| Production billing | No production project exists | E4-04 must configure a separate billing account association and aggressive alerts. Automatic billing shutdown is forbidden in production. |
+| Development App Check | Authentication and Firestore enforced | D-67: App Attest on iOS, Play Integrity on Android, debug providers only for local/CI-specific builds. |
 
 Configuration files are committed per `docs/SECURITY.md`, and the corresponding API keys MUST be restricted by package name, bundle identifier and signing certificate in the Google Cloud console.
 

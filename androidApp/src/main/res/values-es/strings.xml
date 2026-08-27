@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">carApp</string>
+    <string name="walking_skeleton_title">Prueba de copia del vehículo</string>
+    <string name="session_status">Sesión: %1$s</string>
+    <string name="session_unknown">Iniciando</string>
+    <string name="session_local">Solo local</string>
+    <string name="session_anonymous">Copia anónima activa</string>
+    <string name="session_permanent">Cuenta permanente</string>
+    <string name="session_signed_out">Sin conexión</string>
+    <string name="session_deleting">Eliminando</string>
+    <string name="continue_without_account">Continuar sin cuenta</string>
+    <string name="vehicle_name">Nombre del vehículo</string>
+    <string name="save_vehicle">Guardar vehículo</string>
+    <string name="restore_backup">Recuperar copia</string>
+    <string name="saved_vehicles">Vehículos guardados</string>
+    <string name="empty_vehicles">Todavía no hay vehículos guardados.</string>
+</resources>

@@ -11,8 +11,9 @@ package com.ruizurraca.carapp.buildlogic.architecture
  */
 object ArchitectureChecker {
 
-    /** Planned modules whose owning stories have not started yet. */
-    val NOT_YET_INTRODUCED_MODULES = setOf(":core:auth", ":core:sync")
+    /** Planned provider modules whose owning stories have not started yet. */
+    val NOT_YET_INTRODUCED_MODULES =
+        setOf(":integration:firebase-analytics", ":integration:firebase-crashlytics")
 
     private val PLATFORM_IMPORT_PREFIXES = listOf(
         "android.", "androidx.", "platform.Foundation", "platform.UIKit", "platform.darwin",
@@ -54,7 +55,9 @@ object ArchitectureChecker {
         val rule = ruleFor(module.path, rules)
 
         violations += checkModuleIsIntroducedByItsOwningStory(module)
-        violations += checkSkieIsOnlyInShared(module)
+        violations += checkSkieIsOnlyInIosComposition(module)
+        violations += checkCoreDoesNotDependOnShared(module)
+        violations += checkSharedTestingIsTestOnly(module)
         violations += checkNoFeatureToFeatureDependency(module)
         violations += checkCrashHasNoExpectActual(module)
         violations += checkDatabaseTypesStayInTheirModule(module)
@@ -102,7 +105,15 @@ object ArchitectureChecker {
      * are an artifact of the Gradle model, not an architectural edge.
      */
     private fun declaredEdges(module: ModuleUnderCheck): Set<String> =
-        module.projectDependencies.filterNot { it == module.path }.toSet()
+        module.projectDependencies
+            .filterNot { it == module.path }
+            .filter { dependency ->
+                val configurations = module.projectDependencyConfigurations[dependency].orEmpty()
+                configurations.isEmpty() || configurations.any { !isSkieMetadataConfiguration(it) }
+            }.toSet()
+
+    private fun isSkieMetadataConfiguration(configuration: String): Boolean =
+        configuration.startsWith("swiftPMDependenciesForLockFilesMetadataClasspath")
 
     private fun checkForbiddenModules(module: ModuleUnderCheck, rule: ModuleRule) =
         declaredEdges(module).filter { matchesAny(it, rule.forbiddenModules) }.map {
@@ -170,19 +181,52 @@ object ArchitectureChecker {
             emptyList()
         }
 
-    /** `D-2`: SKIE is applied only to `:shared`. */
-    private fun checkSkieIsOnlyInShared(module: ModuleUnderCheck): List<Violation> =
-        if ("co.touchlab.skie" in module.appliedPluginIds && module.path != ":shared") {
+    /** `D-58`: SKIE is applied only to the module that owns the exported iOS framework. */
+    private fun checkSkieIsOnlyInIosComposition(module: ModuleUnderCheck): List<Violation> =
+        if ("co.touchlab.skie" in module.appliedPluginIds && module.path != ":composition:ios") {
             listOf(
                 Violation(
                     module.path,
-                    "skie-outside-shared",
-                    "applies SKIE. D-2 restricts SKIE to :shared.",
+                    "skie-outside-ios-composition",
+                    "applies SKIE. D-58 restricts SKIE to :composition:ios.",
                 ),
             )
         } else {
             emptyList()
         }
+
+    /** `D-56`: core test utilities remain generic and no core module reaches the app graph. */
+    private fun checkCoreDoesNotDependOnShared(module: ModuleUnderCheck): List<Violation> {
+        if (!module.path.startsWith(":core:")) return emptyList()
+        return declaredEdges(module)
+            .filter { it == ":shared" || it.startsWith(":shared:") }
+            .map {
+                Violation(
+                    module.path,
+                    "core-to-shared-dependency",
+                    "depends on $it. D-56 forbids every :core:* -> :shared edge.",
+                )
+            }
+    }
+
+    /** `D-56`: app test support is never a production dependency of a consumer module. */
+    private fun checkSharedTestingIsTestOnly(module: ModuleUnderCheck): List<Violation> {
+        if (module.path == ":shared:testing") return emptyList()
+        return module.projectDependencyConfigurations[":shared:testing"].orEmpty()
+            .filterNot(::isAllowedSharedTestingConfiguration)
+            .map {
+                Violation(
+                    module.path,
+                    "shared-testing-outside-common-test",
+                    "declares :shared:testing in $it. D-56 permits only commonTest; the SKIE " +
+                        "metadata configuration is an automatically generated non-binary edge.",
+                )
+            }
+    }
+
+    private fun isAllowedSharedTestingConfiguration(configuration: String): Boolean =
+        configuration == "commonTestImplementation" ||
+            isSkieMetadataConfiguration(configuration)
 
     private fun checkNoFeatureToFeatureDependency(module: ModuleUnderCheck): List<Violation> {
         if (!module.path.startsWith(":feature:")) return emptyList()
@@ -217,16 +261,22 @@ object ArchitectureChecker {
      * `AppGraphDependencies` field of `:shared`.
      */
     private fun checkDatabaseTypesStayInTheirModule(module: ModuleUnderCheck): List<Violation> {
-        val allowed = setOf(":core:database", ":core:testing", ":shared")
+        val allowed = setOf(":core:database", ":core:testing", ":shared", ":shared:testing")
         if (module.path in allowed) return emptyList()
         return module.sourceLines
             .filter { Regex("""\b(AppDatabase|DatabaseFactory)\b""").containsMatchIn(it.text) }
+            .filterNot {
+                module.path == ":wiring:firebase" && Regex("""\bDatabaseFactory\b""").containsMatchIn(it.text) &&
+                    !Regex("""\bAppDatabase\b""").containsMatchIn(it.text)
+            }
             .map {
                 Violation(
                     module.path,
                     "database-type-outside-core-database",
                     "${it.file}:${it.number} references a :core:database type. docs/CONTRACTS.md §20.3.2 " +
-                        "allows it only in :core:database, :core:testing fakes and the :shared AppGraphDependencies field.",
+                        "allows it only in :core:database, :core:testing fakes, :shared:testing " +
+                            "composition, the :shared graph contracts and the :wiring:firebase " +
+                            "AppProviders implementation (DatabaseFactory only).",
                 )
             }
     }
@@ -307,7 +357,7 @@ object ArchitectureChecker {
     private fun checkReadModelWrites(module: ModuleUnderCheck): List<Violation> {
         if (module.path == ":core:database") return emptyList()
         return module.sourceLines
-            .filter { Regex("""\b(currentOdometerKm|odometerInconsistent)\s*=""").containsMatchIn(it.text) }
+            .filter { Regex("""\.\s*(currentOdometerKm|odometerInconsistent)\s*=""").containsMatchIn(it.text) }
             .map {
                 Violation(
                     module.path,
@@ -359,18 +409,19 @@ object ArchitectureChecker {
 
     /**
      * `docs/CONTRACTS.md §11.6`: `:integration:*` modules MAY declare Koin `Module` bindings but
-     * MUST NOT reference `createAppGraph`; only `:wiring:firebase` aggregates them into the graph.
+     * MUST NOT reference `buildAppGraph`; only platform composition may build the graph.
      */
     private fun checkIntegrationsDoNotBuildTheGraph(module: ModuleUnderCheck): List<Violation> {
         if (!module.path.startsWith(":integration:")) return emptyList()
         return module.sourceLines
-            .filter { it.text.contains("createAppGraph") }
+            .filter { it.text.contains("buildAppGraph") }
             .map {
                 Violation(
                     module.path,
                     "integration-builds-app-graph",
-                    "${it.file}:${it.number} references createAppGraph. Only :wiring:firebase may aggregate " +
-                        "bindings into the graph (docs/CONTRACTS.md §11.6).",
+                    "${it.file}:${it.number} references buildAppGraph. Integrations expose provider " +
+                        "implementations; only platform composition builds the graph " +
+                        "(docs/CONTRACTS.md §11.6).",
                 )
             }
     }

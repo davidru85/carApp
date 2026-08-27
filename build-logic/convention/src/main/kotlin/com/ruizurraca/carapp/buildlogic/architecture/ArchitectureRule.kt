@@ -86,6 +86,7 @@ data class Violation(
 data class ModuleUnderCheck(
     val path: String,
     val projectDependencies: Set<String> = emptySet(),
+    val projectDependencyConfigurations: Map<String, Set<String>> = emptyMap(),
     val externalDependencies: Set<String> = emptySet(),
     /** Fully-qualified imports found in `commonMain`-visible sources, plus declaration keywords. */
     val imports: Set<String> = emptySet(),

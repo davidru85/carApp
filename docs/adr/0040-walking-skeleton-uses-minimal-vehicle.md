@@ -4,10 +4,15 @@
 
 Accepted
 
+Amended by `D-64`: E0-07 now proves the Vehicle local/remote path while the same anonymous Firebase
+Auth session remains available. Permanent-account clean-device recovery is verified later by
+E3-12.
+
 ## Context
 
 `E0-07` must prove a value can cross native UI, shared presentation, SQLDelight, Firebase Auth and
-Firestore, then be restored on a clean second device. The closed Firestore schema permits only
+Firestore, then be fetched back after local product rows are cleared without transferring the
+anonymous credential. The closed Firestore schema permits only
 vehicles and fuel entries; a temporary walking-skeleton collection is forbidden. Implementing a
 full vehicle or fuel-entry feature would consume later Phase 1 stories inside an already-large gate.
 
@@ -31,7 +36,7 @@ value. No temporary remote collection or schema is introduced.
 
 - The proof uses the final local and remote vehicle schemas.
 - `E0-07` remains a walking skeleton instead of absorbing multiple Phase 1 stories.
-- The clean-device restore proves a real product entity survives the round trip.
+- The remote refetch proves a real product entity survives the round trip.
 
 ### Negative
 
@@ -45,7 +50,7 @@ value. No temporary remote collection or schema is introduced.
 
 ## Verification
 
-- E0-07 tests and its two-device acceptance evidence use a vehicle document.
+- E0-07 tests and native-host acceptance evidence use a vehicle document.
 - Firestore rules reject unknown collections and incomplete vehicle payloads.
 
 ## References

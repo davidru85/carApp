@@ -12,11 +12,13 @@ class ProviderSettingsFunctionalTest {
     fun providerRegistryIncludesExactlyExistingModules() = withSettingsFixture { fixture ->
         fixture.createProject(":integration:firebase-auth")
         fixture.createProject(":wiring:firebase")
+        fixture.createProject(":composition:ios")
 
         val output = fixture.runProjects()
 
         assertContains(output, "Project ':integration:firebase-auth'")
         assertContains(output, "Project ':wiring:firebase'")
+        assertContains(output, "Project ':composition:ios'")
         assertFalse(output.contains("Project ':integration:firebase-firestore'"))
         assertFalse(output.contains("Project ':integration:firebase-analytics'"))
         assertFalse(output.contains("Project ':integration:firebase-crashlytics'"))
@@ -30,6 +32,7 @@ class ProviderSettingsFunctionalTest {
             ":integration:firebase-analytics",
             ":integration:firebase-crashlytics",
             ":wiring:firebase",
+            ":composition:ios",
         )
         providerProjects.forEach(fixture::createProject)
 
@@ -62,12 +65,18 @@ private class SettingsFixture(private val root: File) {
         listOf(
             ":androidApp",
             ":shared",
+            ":shared:testing",
             ":core:model",
             ":core:common",
             ":core:analytics",
             ":core:crash",
             ":core:testing",
             ":core:database",
+            ":core:auth",
+            ":core:sync",
+            ":feature:vehicle",
+            ":feature:fuel",
+            ":feature:session",
         ).forEach(::createProject)
     }
 

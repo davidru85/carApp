@@ -35,6 +35,7 @@ class ArchitectureCheckerTest {
     private fun module(
         path: String,
         projectDependencies: Set<String> = emptySet(),
+        projectDependencyConfigurations: Map<String, Set<String>> = emptyMap(),
         externalDependencies: Set<String> = emptySet(),
         imports: Set<String> = emptySet(),
         source: String = "",
@@ -42,6 +43,7 @@ class ArchitectureCheckerTest {
     ) = ModuleUnderCheck(
         path = path,
         projectDependencies = projectDependencies,
+        projectDependencyConfigurations = projectDependencyConfigurations,
         externalDependencies = externalDependencies,
         imports = imports,
         sourceLines = source.lines().withIndex()
@@ -86,7 +88,7 @@ class ArchitectureCheckerTest {
         listOf(
             ":core:model", ":core:common", ":core:sync", ":core:database", ":core:auth",
             ":core:analytics", ":core:testing", ":core:crash", ":integration:*", ":shared",
-            ":wiring:firebase",
+            ":shared:testing", ":wiring:firebase", ":composition:ios",
         ).forEach { area ->
             assertTrue(area in areas, "docs/TECHNICAL_PLAN.md §4 has no row for $area; parsed: $areas")
         }
@@ -126,6 +128,91 @@ class ArchitectureCheckerTest {
             "forbidden-module-dependency",
         )
         assertAccepted(module(":shared", projectDependencies = setOf(":core:model", ":feature:fuel")))
+    }
+
+    @Test
+    fun iosCompositionMayDependOnlyOnSharedAndFirebaseWiring() {
+        assertRejected(
+            module(":composition:ios", projectDependencies = setOf(":core:model")),
+            "undeclared-module-dependency",
+        )
+        assertAccepted(
+            module(
+                ":composition:ios",
+                projectDependencies = setOf(":shared", ":wiring:firebase"),
+            ),
+        )
+    }
+
+    @Test
+    fun skieMetadataDoesNotCreateReverseArchitecturalEdges() {
+        val syntheticConfiguration = "swiftPMDependenciesForLockFilesMetadataClasspath"
+        val syntheticEdges = setOf(":composition:ios", ":wiring:firebase")
+
+        assertAccepted(
+            module(
+                path = ":shared",
+                projectDependencies = syntheticEdges,
+                projectDependencyConfigurations =
+                    syntheticEdges.associateWith { setOf(syntheticConfiguration) },
+            ),
+        )
+        assertRejected(
+            module(
+                path = ":shared",
+                projectDependencies = setOf(":wiring:firebase"),
+                projectDependencyConfigurations =
+                    mapOf(":wiring:firebase" to setOf("commonMainImplementation")),
+            ),
+            "undeclared-module-dependency",
+        )
+    }
+
+    @Test
+    fun coreModulesMayNotDependOnShared() {
+        listOf(
+            ":core:model",
+            ":core:common",
+            ":core:database",
+            ":core:auth",
+            ":core:sync",
+            ":core:analytics",
+            ":core:crash",
+            ":core:testing",
+        ).forEach { path ->
+            listOf(":shared", ":shared:testing").forEach { dependency ->
+                assertRejected(
+                    module(path, projectDependencies = setOf(dependency)),
+                    "core-to-shared-dependency",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun sharedTestingMayBeConsumedOnlyFromCommonTest() {
+        assertRejected(
+            module(
+                path = ":shared",
+                projectDependencies = setOf(":shared:testing"),
+                projectDependencyConfigurations = mapOf(":shared:testing" to setOf("commonMainImplementation")),
+            ),
+            "shared-testing-outside-common-test",
+        )
+        listOf(
+            "commonTestImplementation",
+            "swiftPMDependenciesForLockFilesMetadataClasspath",
+            "swiftPMDependenciesForLockFilesMetadataClasspathDependencies",
+        ).forEach { configuration ->
+            assertRuleDoesNotFire(
+                module(
+                    path = ":shared",
+                    projectDependencies = setOf(":shared:testing"),
+                    projectDependencyConfigurations = mapOf(":shared:testing" to setOf(configuration)),
+                ),
+                "shared-testing-outside-common-test",
+            )
+        }
     }
 
     @Test
@@ -190,21 +277,24 @@ class ArchitectureCheckerTest {
     // --- Source-level rules ------------------------------------------------------------------
 
     @Test
-    fun storiesMayNotCreateAuthOrSyncModulesEarly() {
+    fun storiesMayNotCreateUnownedProviderModulesEarly() {
         ArchitectureChecker.NOT_YET_INTRODUCED_MODULES.forEach {
             assertRejected(module(it), "module-before-owning-story")
         }
         assertAccepted(module(":core:model"))
         assertAccepted(module(":core:database"))
+        assertAccepted(module(":core:auth"))
+        assertAccepted(module(":core:sync"))
+        assertAccepted(module(":feature:vehicle"))
     }
 
     @Test
-    fun skieMayNotBeAppliedOutsideShared() {
+    fun skieMayNotBeAppliedOutsideIosComposition() {
         assertRejected(
-            module(":core:model", plugins = setOf("co.touchlab.skie")),
-            "skie-outside-shared",
+            module(":shared", plugins = setOf("co.touchlab.skie")),
+            "skie-outside-ios-composition",
         )
-        assertAccepted(module(":shared", plugins = setOf("co.touchlab.skie")))
+        assertAccepted(module(":composition:ios", plugins = setOf("co.touchlab.skie")))
     }
 
     @Test
@@ -225,6 +315,17 @@ class ArchitectureCheckerTest {
             )
         }
         assertAccepted(module(":core:testing", source = "class FakeDatabaseFactory : DatabaseFactory"))
+        assertAccepted(module(":shared:testing", source = "fun fake(): DatabaseFactory = error(\"x\")"))
+        assertAccepted(
+            module(
+                ":wiring:firebase",
+                source = "class FirebaseAppProviders(override val databaseFactory: DatabaseFactory)",
+            ),
+        )
+        assertRejected(
+            module(":wiring:firebase", source = "fun database(): AppDatabase = error(\"x\")"),
+            "database-type-outside-core-database",
+        )
     }
 
     @Test
@@ -277,6 +378,10 @@ class ArchitectureCheckerTest {
                 "read-model-write-outside-database",
             )
         }
+        assertRuleDoesNotFire(
+            module(":shared", source = "VehicleListItemUi(currentOdometerKm = row.currentOdometerKm)"),
+            "read-model-write-outside-database",
+        )
     }
 
     @Test
@@ -317,7 +422,10 @@ class ArchitectureCheckerTest {
     @Test
     fun integrationsMayDeclareKoinModulesButMayNotBuildTheGraph() {
         assertRejected(
-            module(":integration:firebase-auth", source = "val graph = createAppGraph(dependencies)"),
+            module(
+                ":integration:firebase-auth",
+                source = "val graph = buildAppGraph(isDebugBuild, providers)",
+            ),
             "integration-builds-app-graph",
         )
         assertAccepted(module(":integration:firebase-auth", source = "val authModule = module { single<AuthClient> { FirebaseAuthClient() } }"))

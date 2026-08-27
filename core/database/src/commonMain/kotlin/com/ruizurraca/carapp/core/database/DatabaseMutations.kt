@@ -12,6 +12,108 @@ class DatabaseMutations(
         get() = database.databaseQueries
 
     @Suppress("LongParameterList")
+    suspend fun insertVehicle(
+        id: String,
+        ownerId: String,
+        name: String,
+        nameFold: String,
+        initialOdometerKm: Long,
+        brand: String?,
+        model: String?,
+        fuelType: String,
+        createdAt: Long,
+        updatedAt: Long,
+        schemaVersion: Long,
+        outboxPayload: String?,
+    ) {
+        database.transaction {
+            val localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne()
+            queries.insertVehicleRow(
+                id = id,
+                ownerId = ownerId,
+                name = name,
+                nameFold = nameFold,
+                initialOdometerKm = initialOdometerKm,
+                currentOdometerKm = initialOdometerKm,
+                brand = brand,
+                model = model,
+                fuelType = fuelType,
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                serverUpdatedAt = null,
+                deleted = 0,
+                deletedAt = null,
+                syncState = "PENDING",
+                localRevision = 1,
+                localMutationSeq = localMutationSeq,
+                schemaVersion = schemaVersion,
+            )
+            if (outboxPayload != null) {
+                queries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = id,
+                    payload = outboxPayload,
+                    localRevision = 1,
+                )
+            }
+        }
+    }
+
+    suspend fun confirmVehiclePush(
+        entityId: String,
+        pushedLocalRevision: Long,
+        serverUpdatedAt: Long,
+    ) {
+        database.transaction {
+            queries.confirmVehiclePush(
+                serverUpdatedAt = serverUpdatedAt,
+                pushedLocalRevision = pushedLocalRevision,
+                entityId = entityId,
+            )
+            queries.deleteConfirmedVehicleOutbox(
+                entityId = entityId,
+                pushedLocalRevision = pushedLocalRevision,
+            )
+        }
+    }
+
+    @Suppress("LongParameterList")
+    suspend fun applyRemoteVehicle(
+        id: String,
+        ownerId: String,
+        name: String,
+        nameFold: String,
+        initialOdometerKm: Long,
+        brand: String?,
+        model: String?,
+        fuelType: String,
+        createdAt: Long,
+        updatedAt: Long,
+        serverUpdatedAt: Long,
+        deletedAt: Long?,
+        schemaVersion: Long,
+    ) {
+        database.transaction {
+            queries.upsertRemoteVehicleRow(
+                id = id,
+                ownerId = ownerId,
+                name = name,
+                nameFold = nameFold,
+                initialOdometerKm = initialOdometerKm,
+                brand = brand,
+                model = model,
+                fuelType = fuelType,
+                createdAt = createdAt,
+                updatedAt = updatedAt,
+                serverUpdatedAt = serverUpdatedAt,
+                deleted = if (deletedAt == null) 0 else 1,
+                deletedAt = deletedAt,
+                schemaVersion = schemaVersion,
+            )
+        }
+    }
+
+    @Suppress("LongParameterList")
     suspend fun insertFuelEntry(
         id: String,
         ownerId: String,

@@ -86,8 +86,8 @@ tell what is already built from what is still a plan, and it is updated by the s
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
 has made provider decoupling executable before any Firebase integration module exists. The owner
-accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`, so the next story is
-`E3-01`. `E0-07`, the walking skeleton, remains a Phase 1 story under `D-30`.
+accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is merged and
+`E0-07`, the walking skeleton, is the active Phase 1 story under `D-30`.
 
 ### Modules that exist
 
@@ -99,12 +99,23 @@ build-logic/       convention plugins, an included build
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
 :core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
-:shared            the iOS framework, still carrying only the E0-01 placeholder
+:core:auth         staged auth contracts for the E0-07 application graph
+:core:sync         staged sync contracts for the E0-07 application graph
+:integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
+:integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
+:feature:vehicle   final module shell; only the E0-07 Vehicle slice is implemented here
+:feature:fuel      final module shell staged for the Swift-facing surface
+:feature:session   final module shell staged for the Swift-facing surface
+:shared            provider-free graph contracts, Swift facade and exported shared declarations
+:shared:testing    KMP app-graph test factory, consumed from commonTest only
+:wiring:firebase   staged Firebase provider composition contract
+:composition:ios   sole Shared framework producer and iOS composition root
 :androidApp        the Android host app
 ```
 
-`:core:auth`, `:core:sync`, `:integration:*`, `:feature:*` and `:wiring:firebase` do **not** exist
-yet. `architectureCheck` rejects `:core:auth` and `:core:sync` until their owning stories start.
+`:integration:firebase-analytics` and `:integration:firebase-crashlytics` do **not** exist yet.
+D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
+complete the remaining integration behavior in place.
 
 ### Creating a module
 
@@ -123,7 +134,8 @@ dependencies {
 `carapp.kmp.library` sets Android plus the `iosArm64` and `iosSimulatorArm64` targets (`D-37`), the JDK toolchain, the host test runner,
 `kotlin-test`, coroutines, ktlint, detekt and Kover. The Android namespace is **derived** from the
 Gradle path (`D-24`), so a module MUST NOT declare one. The other plugins are
-`carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside `:shared`)
+`carapp.android.application`, `carapp.compose`, `carapp.skie` (refuses to apply outside
+`:composition:ios`)
 and `carapp.sqldelight`.
 
 ### Build and verify
@@ -131,7 +143,7 @@ and `carapp.sqldelight`.
 Everything CI runs, in one command:
 
 ```bash
-./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test           koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
 ```
 
 Individually:
@@ -143,7 +155,7 @@ Individually:
 | `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
-| `./gradlew testAndroidHostTest iosSimulatorArm64Test` | Common tests on both the JVM and Kotlin/Native. Both matter: a test that only runs on the JVM cannot catch a Kotlin/Native divergence. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the four current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths; Android-host tests and explicitly listed real-host XCUITest paths remain required. |
 
 The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
 invocation, including the `ARCHS=arm64` argument the project currently needs.
@@ -215,6 +227,8 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/adr/](docs/adr/) | One ADR per decision, with context, options, consequences, constraints introduced and verification. |
 | [docs/identifiers.md](docs/identifiers.md) | Application ID, bundle identifier, namespace, display name, Firebase project status, development Firebase project ID and Firestore location. Agents MUST NOT invent any of these. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
+| [docs/SECURITY_ADVISORY_REGISTER.md](docs/SECURITY_ADVISORY_REGISTER.md) | Dated, expiring accepted dependency advisories, executable evidence and current-state review history. |
+| [docs/runbooks/development-firebase-cost-controls.md](docs/runbooks/development-firebase-cost-controls.md) | Development billing-state history, alerts, budget cadence, destructive cutoff evidence and manual recovery. |
 | [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md) | Closed record of the documentation audit of the definition package. **Non-normative and historical**: all 20 findings are applied. It is kept only so that the `AUDIT-NN` IDs cited by `docs/PROJECT_LOG.md` resolve. Do not treat it as a source of rules or as a list of open work. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
@@ -264,7 +278,18 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 
 ## Scope Discipline
 
-Work only on the assigned backlog story. The authoritative out-of-scope list is `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts, export, receipt and odometer photos and OCR, local or on-device AI text recognition, reminders, shared vehicles, widgets, wearables and web, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write validation beyond account deletion, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+Work only on the assigned backlog story. The authoritative out-of-scope list is
+`docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
+export, receipt and odometer photos and OCR, local or on-device AI text recognition, fuel and
+maintenance reminders, operating-system notifications, shared vehicles, widgets, wearables and
+web, official fuel-price integrations, Cloud Functions-mediated product read/write validation
+beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
+account merging, simultaneous multi-device use, active multi-device synchronization,
+remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings
+synchronization, platform settings sync or backup through Google Play services / Android backup /
+iCloud, and electric or hybrid energy modelling. The foreground-only anonymous-account retention
+notices selected by `D-62`, D-66 development billing containment and D-67 App Check enforcement
+are in scope. The D-66 billing cutoff is infrastructure control and never reads product data.
 
 Escalate any request that touches out-of-scope functionality.
 
@@ -279,6 +304,11 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Features do not depend on other features.
 - `:core:sync` does not depend on integrations or features.
 - `:shared` does not depend on integrations.
+- `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single `Shared`
+  framework and contains no product logic.
+- `:shared:testing` depends only on `:shared` and `:core:testing`; consumers depend on it only from
+  `commonTest`.
+- No module under `:core` depends on `:shared` or `:shared:testing`.
 - Only `:wiring:firebase` constructs Firebase implementations, and it contains no product logic.
 - Firebase and GitLive types never leave `:integration:*`.
 - `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
@@ -294,11 +324,14 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 ## Product Rules
 
 - The UI observes only the local database.
-- The MVP supports one active device per account; the remote database is used only for backup and recovery on a new device.
+- The MVP supports one active device per account; the remote database is used only for backup and
+  permanent-account recovery on a new device. An unlinked anonymous identity is device-bound.
 - Every MVP write works without network access, and first launch works offline.
 - Nothing is enqueued for remote backup while the owner is `LOCAL_OWNER`.
 - IDs are client-generated UUID v4.
-- Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules. Account deletion hard deletes run only through the `D-23` Firebase Admin server operation.
+- Synchronized deletes are tombstones; client hard deletes are rejected by the Firestore rules.
+  Account and orphan cleanup hard deletes run only through the `D-23` / `D-63` Firebase Admin
+  operations and their shared deletion service.
 - Firestore remote documents use the closed schemas of `docs/CONTRACTS.md §16`; unknown collections, extra keys and local-only metadata are rejected.
 - Monetary values never use `Float` or `Double`, and the exact integer formulas of `docs/CONTRACTS.md §2` are implemented literally.
 - Consumption uses the full-to-full method, and the average is distance-weighted.
@@ -311,14 +344,21 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only
-  Firestore emulator dependencies live only in exact `package.json` entries plus
-  `package-lock.json` (`D-46`). Every pin is explained by `docs/versions-matrix.md` and MUST NOT be
-  repeated as a literal in CI.
+  dependencies live in exact root or `functions/` `package.json` entries plus adjacent lockfiles.
+  Every pin is explained by `docs/versions-matrix.md` and MUST NOT be repeated as a literal in CI.
 - npm dependency lifecycle scripts are disabled repository-wide by `.npmrc` (`D-51`). CI and local
   verification MUST NOT override that policy. A required install script needs a superseding owner
   decision after its exact package, version and command are reviewed.
-- SKIE is applied only to `:shared`.
+- SKIE is applied only to `:composition:ios`.
 - Firestore offline persistence is disabled.
+- App Check is enforced for Authentication and Firestore. Production providers are App Attest on
+  iOS and Play Integrity on Android; debug providers and tokens are restricted to local/CI-specific
+  builds and never ship.
+- The development project uses the D-66 EUR 10 alerts-only budget and project-local 2nd gen billing
+  cutoff. Budgets are notification-only, reporting is delayed, and production MUST NOT use the
+  automatic cutoff.
+- The single `functions/` package pins Node.js 22 while D-63 needs one 1st gen Auth trigger. Runtime
+  and trigger debt are one TD-01 item with a 2027-10-31 hard deadline.
 - Use GitLive 2.6.x, not 3.0 alpha.
 - Use Koin KMP for wiring and constructor injection for implementation classes.
 - Do not call Koin from domain, use cases, repositories or state holder business logic.

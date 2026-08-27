@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">carApp</string>
+    <string name="walking_skeleton_title">Vehicle backup proof</string>
+    <string name="session_status">Session: %1$s</string>
+    <string name="session_unknown">Starting</string>
+    <string name="session_local">Local only</string>
+    <string name="session_anonymous">Anonymous backup active</string>
+    <string name="session_permanent">Permanent account</string>
+    <string name="session_signed_out">Not connected</string>
+    <string name="session_deleting">Deleting</string>
+    <string name="continue_without_account">Continue without an account</string>
+    <string name="vehicle_name">Vehicle name</string>
+    <string name="save_vehicle">Save vehicle</string>
+    <string name="restore_backup">Restore backup</string>
+    <string name="saved_vehicles">Saved vehicles</string>
+    <string name="empty_vehicles">No vehicles saved yet.</string>
+</resources>

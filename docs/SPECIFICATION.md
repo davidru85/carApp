@@ -29,6 +29,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Google sign-in on Android and iOS.
 - Apple sign-in on iOS.
 - Anonymous account conversion without data loss.
+- Non-blocking anonymous-account retention notices on elapsed days 1, 3, 8 and 18.
 - Vehicle CRUD.
 - Fuel entry CRUD.
 - Consumption calculation per fuel entry where applicable.
@@ -39,6 +40,10 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Discreet backup status indicator with manual retry.
 - Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
 - Spanish and English localization.
+- Firebase App Check enforcement for Authentication and Firestore, using App Attest on iOS, Play
+  Integrity on Android and debug providers only in local or CI-specific builds (`D-67`).
+- Development-project billing safeguards: an alerts-only EUR 10 monthly budget and a best-effort
+  automatic billing shutdown at 100% actual cost (`D-66`).
 
 This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `docs/BACKLOG.md` MUST NOT restate a different one.
 
@@ -48,11 +53,13 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Advanced charts and statistics.
 - CSV/PDF export.
 - Receipt and odometer images with OCR, including local or on-device AI text recognition.
-- Reminders and notifications.
+- Fuel, maintenance and other scheduled reminders, and operating-system notifications. The
+  foreground-only anonymous-account retention notices selected by `D-62` are in scope.
 - Vehicle sharing.
 - Widgets, Wear OS, watchOS, and web.
 - Official fuel-price integrations.
-- Firebase App Check and Cloud Functions-mediated remote read/write validation beyond the `D-23` account deletion server operation.
+- Cloud Functions-mediated product read/write validation beyond the `D-23` and `D-63` account
+  identity and data-deletion operations. The D-66 infrastructure-only billing cutoff is in scope.
 - Automatic account merging.
 - Simultaneous use on more than one device, active multi-device synchronization, and remote-database-as-source-of-truth operation.
 - Real-time Firestore listeners.
@@ -70,7 +77,20 @@ Future scope may add settings synchronization through platform mechanisms such a
 
 Future scope may add receipt and odometer image capture with local AI text recognition to prefill fuel-entry fields. The target fields are the receipt total amount, the receipt price per liter and the odometer reading. That work requires a new story or ADR covering the on-device OCR or AI engine, supported languages, model packaging, binary size, latency, battery impact, privacy review, image retention rules, user correction flow, confidence thresholds, validation, accessibility, tests and whether any image-loading dependency is required. Receipt images, odometer images, recognized raw text and extracted fields MUST remain local unless a later explicit owner decision changes the privacy model. Agents MUST NOT add image capture, OCR, local AI models, model downloads, image storage, image-loading dependencies or image-derived fuel-entry fields in the MVP.
 
-Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23` account deletion server operation. The `D-23` account deletion server operation is the only MVP server-side privileged write. No other server-mediated write is in MVP scope. The intended future security goal is to validate incoming user data before it is inserted or updated remotely, and to verify the user's authenticated identity and authorization before any remote database read. That work requires a new story or ADR covering whether clients stop reading or writing Firestore directly, Firebase App Check or equivalent app integrity checks, authenticated callable or HTTPS function boundaries, server-side schema validation, owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling, emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add Cloud Functions security features beyond `D-23`, App Check enforcement, server-mediated product reads or additional privileged server-side product writes in the MVP.
+Future scope may add Cloud Functions-mediated access to the remote database beyond the `D-23`
+and `D-63` account identity and data-deletion operations. Those operations are the only MVP
+server-side privileged product writes. The D-66 billing cutoff is infrastructure control and never
+reads or writes product data. No other server-mediated product write is in MVP scope. App Check is
+already mandatory under D-67 because enabling billing converts abuse of frictionless anonymous
+authentication from console noise into a direct cost vector. App Check proves caller integrity but
+does not replace Firebase Authentication, authorization or Firestore Rules. The intended future
+security goal is to validate incoming user data before it is inserted or updated remotely, and to
+verify the user's authenticated identity and authorization before any remote database read. That
+work requires a new story or ADR covering whether clients stop reading or writing Firestore
+directly, authenticated callable or HTTPS function boundaries, server-side schema validation,
+owner matching, read filtering, rate limiting, abuse monitoring, audit logging, secret handling,
+emulator tests, deployment ownership and interaction with Firestore rules. Agents MUST NOT add
+server-mediated product reads or additional privileged server-side product writes in the MVP.
 
 Future scope may add simultaneous use on multiple devices for the same account. That work requires a new story or ADR covering the migration from local-database-as-source-of-truth to remote-database-as-source-of-truth, live or near-live synchronization semantics, conflict resolution, offline edit policy, local cache behaviour, remote validation, recovery from divergent devices, UX for stale data and required data migrations. Agents MUST NOT introduce active multi-device synchronization or make the remote database the product source of truth in the MVP.
 
@@ -79,7 +99,7 @@ Future scope may add simultaneous use on multiple devices for the same account. 
 | Actor | Description |
 |-------|-------------|
 | Local-only user | First launch without connectivity. Data is local under the `LOCAL_OWNER` sentinel and is not yet eligible for remote backup. Adopted into an anonymous identity as soon as connectivity allows. |
-| Anonymous user | Uses the app immediately. Data is local and backed up remotely under an anonymous Firebase identity when connectivity allows. If the user uninstalls before conversion, data loss is an accepted risk. |
+| Anonymous user | Uses the app immediately. Data is local and backed up remotely under an anonymous Firebase identity when connectivity allows. The identity is device-bound until linked to Google or Apple; uninstalling, clearing the Firebase Auth session or native cleanup after 30 days can make its backup unrecoverable. |
 | Authenticated user | Uses Google or Apple. Data can be recovered on another device from remote backup. |
 
 A user owns zero or more vehicles. A vehicle belongs to exactly one user. Shared ownership is out of scope. If the user has zero non-deleted vehicles after authentication, the app routes to first vehicle creation before showing the main app shell.
@@ -198,6 +218,13 @@ Synchronized tombstones may be purged locally once they are confirmed synced, ol
 4. The MVP has no other sign-in method. Email and password, email link, phone or one-time code, and any third-party identity provider other than Google and Apple are not part of the MVP. The complete provider set is `AuthProvider` in `docs/CONTRACTS.md §20.3` and the complete credential set is `NativeAuthCredential` in `§20.8`; both are closed, and widening either is a gated change under `AGENTS.md`.
 5. Routing MUST NOT happen while the authentication state is still undetermined. Once determined: if the user has no vehicles, route to first vehicle creation; otherwise route to the vehicle list.
 
+An unlinked anonymous identity is recoverable only on the device retaining its Firebase Auth
+session. The app MUST NOT describe that identity as a portable account or promise recovery on a
+different device. Permanent Google or Apple sign-in remains available from settings throughout an
+anonymous session. Authentication with Identity Platform native cleanup removes unlinked anonymous
+Auth accounts after the provider's fixed 30-day eligibility threshold; linked accounts are
+excluded. The application data cleanup path is specified in `docs/CONTRACTS.md §11.5`.
+
 ### F-2 First Vehicle Creation
 
 The form requires `name` and `initialOdometerKm`. `brand`, `model` and `fuelType` are optional in the domain, and `fuelType` is not exposed in the MVP UI. After save, route to vehicle detail with an empty state inviting the first fuel entry.
@@ -217,13 +244,20 @@ Save is local and immediate. Sync is asynchronous and transparent.
 
 ### F-4 Anonymous Account Conversion
 
-From settings, the user can link Google or Apple credentials to the current anonymous identity. Existing data remains attached. If a provider flow would change the UID, conversion is aborted with a typed error rather than risking data loss.
+From settings, the user can link Google or Apple credentials to the current anonymous identity.
+Existing data remains attached when linking succeeds and the UID is preserved.
 
 Credential collision:
 
-- If the credential belongs to another account, the MVP does not merge accounts.
-- The user can enter the existing account and discard the current anonymous data only after explicit destructive confirmation, which reports how much data will be lost.
-- The user can cancel; cancelling leaves the anonymous session and local data untouched.
+- If the credential belongs to another account, the MVP does not merge the two data sets.
+- The current anonymous-session snapshot wins only after explicit destructive confirmation that
+  the existing permanent-account data will be replaced. Cancellation leaves the anonymous session
+  and local data untouched.
+- After confirmation, the app persists a complete local snapshot and captures a fresh anonymous ID
+  token before signing into the existing permanent account. It replaces that account's remote data
+  with the snapshot through an idempotent, resumable flow, then requests deletion of the abandoned
+  anonymous identity. Exact failure and cleanup semantics are in `docs/CONTRACTS.md §11.3` and
+  `§11.5`.
 
 ### F-5 Sign-Out and Account Deletion
 
@@ -250,7 +284,7 @@ Account deletion is required for store compliance. It re-authenticates if needed
 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
 | Async | Coroutines and Flow |
 | DI | Koin KMP for wiring, constructor injection for implementation classes |
-| iOS interop | SKIE only in `:shared` |
+| iOS interop | SKIE only in `:composition:ios`, which exports `:shared` through the single `Shared` framework |
 | Serialization | `kotlinx.serialization` |
 | Dates | `kotlinx-datetime` |
 | Logging | Kermit behind `Logger` |
@@ -271,11 +305,13 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
 7. `:core:database` depends on `:core:model`, `:core:common`, SQLDelight and AndroidX SQLite; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
-9. Firebase and GitLive types never cross integration boundaries.
-10. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
-11. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
-12. Only `:wiring:firebase` aggregates Firebase implementations into the app graph.
-13. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
+9. `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single exported
+   framework and contains no product logic.
+10. Firebase and GitLive types never cross integration boundaries.
+11. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
+12. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
+13. Only `:wiring:firebase` aggregates Firebase implementations into the app graph.
+14. `vehicle.currentOdometerKm` and `fuel_entry.odometerInconsistent` are written only by `:core:database`.
 
 Module-level rules are enforced by a Gradle configuration check; package-level rules require source analysis. Both MUST be executable checks in CI, and each rule MUST have a failing fixture test proving the check fires.
 
@@ -287,15 +323,24 @@ Presentation logic is shared in `commonMain` through state holders exposing `Sta
 
 ### 8.5 Cloud Provider Decoupling
 
-`:shared` exposes a Kotlin-facing graph factory that accepts abstractions:
+`:shared` exposes a provider-free Kotlin graph factory that accepts the explicit `AppProviders`
+port:
 
 ```kotlin
-fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 ```
 
-That factory and `AppGraphDependencies` are not part of the Swift-facing ABI. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which exposes concrete state holders and no provider dependency container.
+That factory, `AppProviders` and `AppGraphDependencies` are not part of the Swift-facing ABI.
+`:composition:ios` owns the sole `createSwiftAppGraph(isDebugBuild)` declaration, constructs
+providers through `:wiring:firebase` and delegates to `buildAppGraph`. Swift still imports the
+single framework as `Shared` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which
+exposes concrete state holders and no provider dependency container.
 
-The provider decoupling criterion is executable: excluding `:integration:*` and `:wiring:firebase` from settings MUST leave `:core:*` and `:feature:*` compiling and testing with local fakes. `AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in `docs/CONTRACTS.md`.
+The provider decoupling criterion is executable: excluding `:integration:*`,
+`:wiring:firebase` and `:composition:ios` from settings MUST leave `:core:*`, `:feature:*` and
+`:shared` compiling and testing `buildAppGraph` with local fakes. `AppProviders`,
+`AppGraphDependencies`, the Swift-facing facade and all public interface contracts are defined in
+`docs/CONTRACTS.md`.
 
 ## 9. Remote Backup and Recovery
 
@@ -304,6 +349,8 @@ The provider decoupling criterion is executable: excluding `:integration:*` and 
 - The local database is the only UI source of truth.
 - Firestore is a backup and recovery replica only; it is never the product source of truth.
 - The remote database exists solely so a user can retrieve backed-up data on a new device.
+- New-device recovery requires a permanent Google or Apple credential. An unlinked anonymous
+  Firebase identity is device-bound and carries no cross-device recovery promise.
 - The MVP does not provide active multi-device collaboration or a real-time cross-device data layer.
 - Every write is local first.
 - Remote backup is background work.
@@ -361,6 +408,17 @@ users/{uid}/fuelEntries/{entryId}
 
 Rules MUST enforce authentication, owner match, `ownerId == uid`, `updatedAt == request.time`, the closed MVP remote `schemaVersion` contract, document ID consistency, exact allowed keys, presence, type, nullability and range of every field. Hard deletes are rejected. The complete rule shape and the required emulator tests are in `docs/CONTRACTS.md §16`.
 
+Firebase App Check baseline protection MUST be enforced for Authentication and Cloud Firestore
+before any build is distributed beyond local development. iOS uses App Attest, Android uses Play
+Integrity, and debug providers are restricted to local or CI-specific builds. App Check is an
+additional caller-integrity control; Authentication and Firestore Rules remain mandatory (`D-67`).
+
+The development Firebase project has an EUR 10 monthly alerts-only budget. Actual-cost thresholds
+at 50%, 90% and 100% notify the owner, and a 2nd gen Pub/Sub function removes the project's billing
+association at 100%. The budget is notification-only, cost reporting is delayed and neither control
+guarantees spend cannot exceed EUR 10. Automatic billing shutdown is forbidden in production,
+where aggressive alerts require manual intervention (`D-66`).
+
 ## 11. Non-Functional Requirements
 
 | Area | Requirement |
@@ -414,7 +472,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 |----|----------|--------|--------|
 | D-0 | Backend | Cloud Firestore. | Accepted |
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Superseded |
-| D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Accepted |
+| D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Superseded |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI; electric/hybrid values are deferred. | Accepted |
 | D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
@@ -465,6 +523,29 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-50 | Firestore first-page cursor | Use `startAt(overlapSince)` first, then the full timestamp/document-ID cursor on later pages. | Accepted |
 | D-51 | npm install-script policy | Disable dependency install scripts repository-wide. | Accepted |
 | D-52 | Firebase CLI audit residual | Retain Firebase CLI 15.28.1 and accept the documented moderate dev-tool-only residual. | Accepted |
+| D-53 | Development Firebase app provisioning | Register separate Android and iOS debug apps with Firebase-provisioned platform keys, then restrict each key before committing its configuration. | Accepted |
+| D-54 | Development Firebase configuration isolation | Keep Android and iOS Firebase configuration debug-only; release builds fail closed until production configuration exists. | Accepted |
+| D-55 | Walking-skeleton staged ownership | E0-07 creates the final module/public-contract structure and implements only the real Vehicle slice; later stories complete behavior in place. | Accepted |
+| D-56 | Test app graph factory module | `testAppGraphDependencies(...)` lives in `:shared:testing`; `AppGraphDependencies` remains in `:shared` and `:core:testing` remains generic. | Accepted |
+| D-57 | Android Firebase configuration plugin | Pin Google Services Gradle plugin 4.5.0. | Accepted |
+| D-58 | iOS framework composition ownership | `:composition:ios` produces the single `Shared` framework, exports `:shared` and composes `:wiring:firebase`. | Accepted |
+| D-59 | `AppProviders` port shape | Explicit typed properties for every graph dependency except `isDebugBuild`; `buildAppGraph` applies the flag. | Accepted |
+| D-60 | Anonymous identity retention and portability | Unlinked anonymous identities are device-bound and use Firebase's native 30-day automatic cleanup. | Accepted |
+| D-61 | Account-linking collision precedence | After explicit confirmation, the current anonymous-session snapshot replaces the existing permanent-account data. | Accepted |
+| D-62 | Anonymous sign-in benefit reminders | Show fixed, collapsible reminders on elapsed days 1, 3, 8 and 18. | Accepted |
+| D-63 | User-data cleanup implementation | Own an idempotent cleanup service, invoke it directly for collision cleanup and allow one temporary 1st gen Auth deletion trigger. | Accepted |
+| D-64 | Anonymous lifecycle delivery | Keep E0-07 narrow and implement conversion, reminders, cleanup and cross-device recovery in their owning stories. | Accepted |
+| D-65 | Firebase Apple SDK compatibility pin | Pin Firebase Apple SDK 11.8.0 exactly with GitLive 2.6.0 and upgrade them together. | Accepted |
+| D-66 | Development cloud cost containment | Use an EUR 10 alerts-only budget, actual-cost alerts and a development-only automatic billing cutoff with read-only OIDC runtime verification. | Accepted |
+| D-67 | Firebase App Check enforcement | Enforce Authentication and Firestore with App Attest, Play Integrity and build-restricted debug providers. | Accepted |
+| D-68 | Cloud Functions moderate advisory residual | Retain the official Functions SDK graph only while its moderate UUID advisory is dynamically unreachable and reviewed with TD-01. | Accepted |
+| D-69 | Billing cutoff account privilege | Isolate the required Billing Admin role to a keyless cutoff identity and alert on billing administration changes. | Accepted |
+| D-70 | Billing cutoff delivery policy | Disable retry, alert on every execution error and measure the recurring budget-notification cadence. | Accepted |
+| D-71 | iOS simulator signing | Use normal Xcode simulator signing without a committed developer team or account-specific credential so Firebase Auth acceptance exercises Keychain persistence. | Accepted |
+| D-72 | Billing cutoff acceptance trigger | Exercise the real cutoff with two controlled threshold events, expected-versus-actual evidence and timed owner recovery. | Accepted |
+| D-73 | Cloud Functions artifact retention | Retain deployment artifacts for one day in the exact Cloud Functions Artifact Registry repository and verify real cleanup. | Accepted |
+| D-74 | iOS Keychain persistence acceptance | Use test-only XCUITest bundle `com.ruizurraca.carapp.uitests` to verify Firebase Auth through the UI across a real process restart. | Accepted |
+| D-75 | Firebase standalone Kotlin/Native test exception | Derive the standalone Native-test exemption from the transitive dependency graph rooted at the Firebase integration modules; its current resolution is Auth, Firestore, Firebase wiring and iOS composition. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

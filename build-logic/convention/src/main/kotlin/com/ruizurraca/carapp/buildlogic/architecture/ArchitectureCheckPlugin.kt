@@ -42,12 +42,18 @@ class ArchitectureCheckPlugin : Plugin<Project> {
 
     private fun describe(project: Project): ModuleUnderCheck {
         val projectDependencies = mutableSetOf<String>()
+        val projectDependencyConfigurations = mutableMapOf<String, MutableSet<String>>()
         val externalDependencies = mutableSetOf<String>()
 
         project.configurations.forEach { configuration ->
             configuration.dependencies.forEach { dependency ->
                 when (dependency) {
-                    is ProjectDependency -> projectDependencies += dependency.path
+                    is ProjectDependency -> {
+                        projectDependencies += dependency.path
+                        projectDependencyConfigurations
+                            .getOrPut(dependency.path) { mutableSetOf() }
+                            .add(configuration.name)
+                    }
                     is ExternalModuleDependency -> externalDependencies += "${dependency.group}:${dependency.name}"
                     else -> Unit
                 }
@@ -69,7 +75,9 @@ class ArchitectureCheckPlugin : Plugin<Project> {
                         if (stripped.isNotBlank()) {
                             sourceLines += SourceLine(file.name, index + 1, stripped)
                         }
-                        if (stripped.trimStart().startsWith("import ")) {
+                        if (file.invariantSeparatorsPath.contains("/src/commonMain/") &&
+                            stripped.trimStart().startsWith("import ")
+                        ) {
                             imports += stripped.trim().removePrefix("import ").trim()
                         }
                     }
@@ -79,6 +87,7 @@ class ArchitectureCheckPlugin : Plugin<Project> {
         return ModuleUnderCheck(
             path = project.path,
             projectDependencies = projectDependencies,
+            projectDependencyConfigurations = projectDependencyConfigurations,
             externalDependencies = externalDependencies,
             imports = imports,
             sourceLines = sourceLines,

@@ -30,6 +30,8 @@ DerivedData/
 *.mobileprovision
 GoogleService-Info.plist
 google-services.json
+!androidApp/src/debug/google-services.json
+!iosApp/Config/Debug/GoogleService-Info-Debug.plist
 .env
 .env.*
 !.env.example
@@ -43,6 +45,8 @@ ui-debug.log
 # Tool output
 *.log
 node_modules/
+functions/lib/
+gha-creds-*.json
 
 # VS Code MCP config (contains per-developer API keys)
 .vscode/mcp.json

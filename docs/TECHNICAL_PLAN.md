@@ -16,7 +16,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 |----|----------|--------|--------|-----------|
 | D-0 | Backend | Cloud Firestore | Accepted | Fits the data model, avoids fixed Cloud SQL cost, provides client-ID idempotent writes and server timestamps. |
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Superseded | Replaced by `D-36` because the mandatory SQLite `CHECK` constraints could not be represented as one Room-generated schema. |
-| D-2 | Swift interop | SKIE only in `:shared` | Accepted | Better Swift ergonomics for Flow and sealed-like models than raw KMP export. |
+| D-2 | Swift interop | SKIE only in `:shared` | Superseded | D-58 retains SKIE and moves its application to the module that owns the exported framework. |
 | D-3 | DI | Koin KMP | Accepted | Owner-selected DI. Runtime wiring is acceptable if Koin is constrained to composition and wiring. |
 | D-4 | `fuelType` | Stored on `Vehicle` from day one, without electric/hybrid values in MVP | Accepted | Schema evolution is easier before users exist; selector is not part of MVP UI; electric/hybrid needs a future energy model. |
 | D-5 | Firestore access | Firebase Firestore integration behind `RemoteSyncSource` | Accepted | Firebase is the initial database backend, fully decoupled so a future Ktor/API implementation can replace it. |
@@ -67,6 +67,29 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-50 | Firestore first-page cursor | Timestamp-only `startAt(overlapSince)` | Accepted | Works with the pinned Firebase SDK and includes every document at the overlap boundary; later pages retain the full timestamp/document-ID cursor. |
 | D-51 | npm install-script policy | Repository-wide `ignore-scripts=true` | Accepted | Makes clean installs deterministic and prevents unnecessary transitive lifecycle execution. |
 | D-52 | Firebase CLI audit residual | Retain 15.28.1 with a documented moderate dev-only residual | Accepted | The affected paths do not execute in the emulator harness or ship in the app; forced alternatives violate the selected stack or upstream compatibility. |
+| D-53 | Development Firebase app provisioning | Separate Android and iOS debug apps with restricted Firebase-provisioned keys | Accepted | One application-restriction type is allowed per key, so platform isolation is required before public configuration files are committed. |
+| D-54 | Development Firebase configuration isolation | Debug-only platform configuration; release fails closed without production configuration | Accepted | Prevents accidental release traffic to the development backend while retaining reproducible restricted debug setup. |
+| D-55 | Walking-skeleton staged ownership | Final modules and public contracts now; real Vehicle slice only | Accepted | Keeps the complete Swift ABI gate early while later stories retain ownership of full feature, auth and sync behavior. |
+| D-56 | Test app graph factory module | Factory in `:shared:testing`; graph contract in `:shared`; generic fakes in `:core:testing` | Accepted | Preserves the application-to-core dependency direction and exposes reusable KMP test support from `commonMain`. |
+| D-57 | Android Firebase configuration plugin | Google Services Gradle plugin 4.5.0 | Accepted | Uses the current stable processor for the debug-only Firebase configuration and keeps its version centralized. |
+| D-58 | iOS framework composition ownership | `:composition:ios` owns the single `Shared` framework and composes `:shared` with `:wiring:firebase` | Accepted | Avoids a `:shared` to wiring cycle, preserves provider-free graph tests and keeps one Kotlin/Native runtime. |
+| D-59 | `AppProviders` port shape | Explicit typed properties except `isDebugBuild` | Accepted | Keeps construction compile-time checked and makes `buildAppGraph` the sole owner of the build-mode flag. |
+| D-60 | Anonymous identity retention and portability | Device-bound until linked; native 30-day Firebase cleanup | Accepted | Avoids an unsupported anonymous recovery promise and bounds abandoned-account retention. |
+| D-61 | Account-linking collision precedence | Current anonymous-session data wins after destructive confirmation | Accepted | Preserves the current device snapshot through an idempotent, resumable replacement flow. |
+| D-62 | Anonymous sign-in benefit reminders | Fixed days 1, 3, 8 and 18 with highest-due collapse | Accepted | Informs before cleanup without replaying a backlog of prompts. |
+| D-63 | User-data cleanup implementation | Owned idempotent service plus one temporary 1st gen Auth deletion trigger | Accepted | Avoids the externally dated Firebase Extensions management sunset; the Admin collision path calls the service directly. |
+| D-64 | Anonymous lifecycle delivery | Split work across E0-07, E2-02, E2-04, E2-07, E3-10, E3-11 and E3-12 | Accepted | Keeps story PRs reviewable and runs recovery evidence only after permanent auth and sync exist. |
+| D-65 | Firebase Apple SDK compatibility pin | Firebase Apple 11.8.0 exactly with GitLive 2.6.0 | Accepted | Keeps the native Apple SDK aligned with the exact version used to generate GitLive's cinterop bindings; both pins move together. |
+| D-66 | Development cloud cost containment | EUR 10 alerts-only budget plus project-local 2nd gen cutoff at 100% actual cost | Accepted | Bounds accidental development spend with an intentionally destructive response; production uses alerts and manual action. |
+| D-67 | Firebase App Check enforcement | App Attest, Play Integrity and local/CI-only debug providers; enforce Auth and Firestore | Accepted | Billing turns anonymous-authentication abuse into a direct cost vector, so caller integrity enters MVP scope. |
+| D-68 | Cloud Functions moderate advisory residual | Retain the official SDK graph while the affected UUID variants remain dynamically unreachable | Accepted | The finding is a production transitive, so CI exposes moderate reports, blocks high/critical and the acceptance expires into TD-01 review. |
+| D-69 | Billing cutoff account privilege | Dedicated keyless Billing Admin identity plus billing-administration alert | Accepted | The personal billing account cannot host a custom role; visibility compensates for the necessary broad standard role. |
+| D-70 | Billing cutoff delivery policy | No Pub/Sub retry; execution-error alert plus measured recurring budget notification | Accepted | Prevents a persistent failure from producing seven days of the recurring billable work the cutoff exists to stop. |
+| D-71 | iOS simulator signing | Normal Xcode simulator signing with no committed developer team or account-specific credential | Accepted | Restores Keychain-backed Auth persistence while keeping simulator acceptance reproducible and release signing fail-closed. |
+| D-72 | Billing cutoff acceptance trigger | Two controlled threshold events on the real topic, expected-versus-actual evidence and timed recovery | Accepted | Verifies the deployed destructive path and the already-disabled no-op without manufacturing billable usage. |
+| D-73 | Cloud Functions artifact retention | One-day cleanup on the exact Functions Artifact Registry repository with observed deletion | Accepted | Keeps a short inspection window while bounding development storage cost and treating Git as the source of truth. |
+| D-74 | iOS Keychain persistence acceptance | Test-only XCUITest bundle drives UI across a terminated and relaunched real app process | Accepted | Proves signed-app Keychain persistence without shared access groups, host hooks or manual interaction. |
+| D-75 | Firebase standalone Kotlin/Native test exception | Derive exemptions from the transitive Native-test project graph rooted at the Firebase integration modules; current resolution is four modules | Accepted | Avoids a second Firebase dependency manager or experimental toolchain while a graph-derived exact-set guard and real-host acceptance keep the changing coverage loss explicit. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -87,8 +110,7 @@ gradle/libs.versions.toml       single source of dependency versions
 :core:sync                      Outbox, cursor, backup/recovery engine, SyncController, RemoteSyncSource
 :core:analytics                 AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash                     CrashReporter abstraction and no-op implementation
-:core:testing                   fakes, builders, in-memory remote, deterministic simulator,
-                                testAppGraphDependencies factory
+:core:testing                   generic fakes, builders, in-memory remote, deterministic simulator
 
 :integration:firebase-auth      Firebase Auth implementation
 :integration:firebase-firestore Firestore RemoteSyncSource implementation
@@ -99,8 +121,10 @@ gradle/libs.versions.toml       single source of dependency versions
 :feature:fuel                   domain/data/presentation packages
 :feature:session                onboarding, auth, settings packages
 
-:shared                         iOS framework and shared graph factory
+:shared                         provider-free shared graph, Swift facade, state holders and models
+:shared:testing                 KMP testAppGraphDependencies factory, consumed from commonTest only
 :wiring:firebase                composition root that names Firebase integrations
+:composition:ios                sole Shared framework producer and iOS composition root
 :androidApp                     Android host app
 iosApp/                         SwiftUI host app
 firestore/                      rules and indexes
@@ -126,8 +150,10 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:core:testing` | every `:core:*` module plus test libraries (Turbine, `kotlin.test`) | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API (platform APIs are permitted only in `expect`/`actual` test doubles, per `docs/CONTRACTS.md §15.1`) |
 | `:core:crash` | `:core:common` | platform APIs, Firebase, GitLive, Koin, Ktor, integrations, features |
 | `:integration:*` | `:core:*` interfaces, provider SDKs | features, `:shared` |
-| `:shared` | `:core:*`, `:feature:*` | `:integration:*` |
-| `:wiring:firebase` | integrations, `:shared` graph, Koin | product logic |
+| `:shared` | `:core:*`, `:feature:*`, `:shared:testing` in test-support and SPM metadata configurations only | `:integration:*` |
+| `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
+| `:wiring:firebase` | `:integration:*`, `:shared` graph, Koin | product logic |
+| `:composition:ios` | `:shared`, `:wiring:firebase` | product logic, direct `:integration:*`, a second framework runtime |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
@@ -135,7 +161,7 @@ Feature `data` cannot depend on `:core:auth`, so the current owner reaches repos
 
 "Platform API" in this table means direct references to Android packages (`android.*`, `androidx.*`), Android-only `java.util.concurrent` types, Apple/native packages (`platform.Foundation`, `platform.UIKit`, `platform.darwin`, `kotlinx.cinterop.*`) or any direct `expect`/`actual` boundary not allowed by `docs/CONTRACTS.md §15.1`. The architecture fixtures MUST include at least one rejected platform API reference for `:core:crash` and one for `:core:testing` (a platform API used in the `commonMain` public surface, not in a permitted `expect`/`actual` test double).
 
-The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must be able to construct fakes for `AppGraphDependencies` (`docs/CONTRACTS.md §11.6`); it remains forbidden from reaching integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure.
+The three rows added for `:core:auth`, `:core:analytics` and `:core:testing` close the previous gap: every module in the canonical inventory of `docs/CONTRACTS.md §1.1` now has an enforceable dependency rule. `:core:auth` and `:core:analytics` are provider-free abstractions, so they forbid the same set of integrations and platform APIs as `:core:crash`; `:core:auth` additionally forbids SQLDelight and SQLite because auth owns no persistence. `:core:testing` is the only `:core:*` module allowed to depend on every other `:core:*` module, because it must provide generic fakes for every `AppGraphDependencies` abstraction; it remains forbidden from reaching `:shared`, integrations, wiring or features, and its platform-API permission is restricted to `expect`/`actual` test doubles so its `commonMain` public surface stays Kotlin-pure. `:shared:testing` performs the application-specific composition and exposes it to consumer `commonTest` source sets (`D-56`).
 
 "Product logic" in `:wiring:firebase` is defined checkably: every top-level declaration there MUST be a Koin `Module`, a factory returning an abstraction, or a platform initialiser. No use cases, repositories, mappers, validation or business `expect`/`actual`. `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own bindings, but MUST NOT reference `createAppGraph`; only `:wiring:firebase` may aggregate those bindings into the final graph.
 
@@ -165,19 +191,26 @@ Any change to those contracts is a human review gate and MUST update `docs/CONTR
 
 ## 5. Provider Decoupling
 
-`:shared` exposes a Kotlin-facing graph factory that receives a platform dependency container:
+`:shared` exposes a provider-free graph factory through an explicit port:
 
 ```kotlin
-fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 ```
 
-`AppGraphDependencies` and the Kotlin-facing `AppGraph` are defined in `docs/CONTRACTS.md §11.6` and `§20.10`; they are hidden from the Swift-facing Objective-C header. Swift calls `createSwiftAppGraph(isDebugBuild)` and consumes `SwiftAppGraph` plus the concrete state holders defined in `docs/CONTRACTS.md §20.10`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling check is:
+`AppProviders`, `AppGraphDependencies` and `buildAppGraph` are defined in
+`docs/CONTRACTS.md §11.6`; they are hidden from the Swift-facing Objective-C header. The sole
+exported `createSwiftAppGraph(isDebugBuild)` declaration lives in `:composition:ios`, constructs
+providers through `:wiring:firebase` and delegates to `buildAppGraph`. `:composition:ios` produces
+the only framework, keeps `baseName = "Shared"` and exports the state holders and models owned by
+`:shared`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling
+check is:
 
 ```text
 Set carapp.excludeFirebaseProviders=true in the canonical Gradle settings.
-Exclude every registered :integration:* module and :wiring:firebase whose directory exists.
+Exclude every registered :integration:* module, :wiring:firebase and :composition:ios whose
+directory exists.
 Compile and test :core:*, :feature:* and :shared on Android host and iosSimulatorArm64 using
-:core:testing fakes.
+:shared:testing and :core:testing fakes through buildAppGraph.
 ```
 
 The provider registry is explicit and closed (`D-44`); provider directories are never discovered
@@ -377,7 +410,10 @@ Entry condition: every `Proposed` decision in `docs/DECISION_BOARD.md` that a Ph
 
 ### Phase 1 Opening Gate - Walking Skeleton
 
-One end-to-end vertical slice: native UI, shared state holder, SQLDelight, Firestore, anonymous auth, Android-to-iOS sync, plus validation of the Swift-facing surface constraints.
+One end-to-end vertical slice on both native application paths: native UI, shared state holder,
+SQLDelight, Firestore and real anonymous auth under the same retained Firebase Auth session, plus
+validation of the Swift-facing surface constraints. The gate does not transfer an anonymous
+credential between devices; permanent-account Android-to-iOS recovery is owned by E3-12 (`D-64`).
 
 `D-36` resolved the database fallback before this gate: the walking skeleton exercises the accepted SQLDelight AndroidX bundled driver on both application paths.
 
@@ -387,11 +423,15 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 ### Phase 2 - Authentication
 
-Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion, sign-out, account deletion.
+Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
+anonymous retention notices, sign-out and account deletion.
 
 ### Phase 3 - Backend Backup and Recovery
 
-Firestore rules and emulator tests, Firestore integration for the development project, backup and recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account deletion server operation, provider decoupling proof.
+Firestore rules and emulator tests, Firestore integration for the development project, backup and
+recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account
+deletion and anonymous cleanup operations, permanent-account cross-device recovery proof, and
+provider decoupling proof.
 
 ### Phase 4 - MVP Hardening
 
@@ -407,6 +447,13 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 | SQLDelight AndroidX adapter maintenance or Native-link friction | Medium / Medium | Pin all three database components, keep the adapter confined to `:core:database`, compile and execute tests on Android and Kotlin/Native, and retain the official-driver alternatives in ADR-0037. |
 | Firestore rule mistake | Medium / Critical | Emulator tests for owner isolation, anonymous access, server timestamp enforcement, hard-delete rejection and range validation. |
 | Data loss at the `LOCAL_OWNER` boundary | Medium / Critical | Outbox suppressed before a real UID exists; adoption story with an idempotency test. |
+| Orphaned anonymous data | Medium / High | D-63 idempotent deletion service, explicit data-location registry, native cleanup trigger and a direct Admin collision path. |
+| Runaway development cloud cost | Low / High | D-66 EUR 10 alerts-only budget, actual-cost notifications, tested project-local cutoff and manual recovery runbook. Reporting delay means overshoot remains possible. |
+| Billed anonymous-client abuse | Medium / High | D-67 App Check enforcement for Authentication and Firestore, while retaining Auth and closed Firestore Rules. |
+| Moderate UUID advisory in the deployed Functions graph | Low / Medium | D-68 dynamic full-trigger reachability test, explicit advisory register, high/critical CI gate and expiring TD-01 review. |
+| Broad billing-account role on the cutoff identity | Low / High | D-69 dedicated keyless identity with no product-data role, minimal project role and an alert on billing administrative changes. |
+| Silent dropped cutoff event | Low / High | D-70 disables retries but alerts on every execution error and records the observed recurring budget publication cadence as the second-attempt bound. |
+| Temporary 1st gen Auth trigger becomes inherited infrastructure | Medium / Medium | `TD-01` names the sole exception, exact migration surface, quarterly owner review and a contract allowlist. |
 | Scope creep | Medium / Medium | Explicit out-of-scope list and review gate. |
 
 ## 12. Verification Strategy
@@ -414,7 +461,7 @@ Settings UI, accessibility, localization, performance, release builds, Crashlyti
 Automated on every PR:
 
 - Gradle build for Android and shared KMP modules.
-- iOS simulator target and `:shared` framework build on macOS.
+- iOS simulator target and the `Shared` framework from `:composition:ios` build on macOS.
 - ktlint, detekt.
 - Unit tests with Kover thresholds.
 - Architecture rule checks, each with a failing fixture test.
@@ -427,11 +474,98 @@ Manual at phase gates:
 
 - Offline first launch, create vehicle and fuel entries with no connectivity at any point, then connect and verify adoption and remote data.
 - Two-device edit conflict converges.
-- Anonymous conversion preserves data.
-- Credential collision is clear and non-destructive by default.
+- Normal anonymous linking preserves the UID and data.
+- Credential collision cancellation is non-destructive; confirmed replacement makes the current
+  anonymous snapshot win and resumes safely after interruption.
+- Permanent-account recovery succeeds across Android and iOS; no anonymous cross-device recovery
+  promise appears.
 - Device clock skew does not corrupt sync.
 - TalkBack and VoiceOver for critical flows.
 
-## 13. Out of Plan
+## 13. Tracked Technical Debt
 
-Maintenance expenses, advanced analytics, export, receipt images, odometer images, local or on-device AI text recognition, OCR, reminders, shared vehicles, widgets, wearables, web, App Check, Cloud Functions-mediated remote read/write validation beyond the `D-23` account deletion server operation, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+### TD-01 - Authentication deletion trigger pinned to Cloud Functions 1st gen
+
+`onAnonymousUserDeleted` is pinned to Cloud Functions 1st gen **solely** because
+`auth.user().onDelete` has no Cloud Functions 2nd gen equivalent, and for no other reason. The
+callable collision path and every other function use 2nd gen. No new 1st gen function may be added
+to this project; `onAnonymousUserDeleted` is the only permitted exception.
+
+The single `functions/` package is pinned to Node.js 22 only because it must host this temporary
+1st gen exception and the project's 2nd gen functions without a second runtime or deployment path.
+This is not separate technical debt: the runtime and Auth trigger move together in the same TD-01
+migration and recurring review. Node.js 22 deprecates on **2027-04-30** and is decommissioned on
+**2027-10-31**. Decommission is a hard deadline. If generally available 2nd gen Authentication
+deletion triggers do not exist in time, the owner MUST escalate rather than continue waiting:
+either isolate only the Auth function on a supported runtime and formally accept the split, or
+select a different cleanup mechanism through a superseding decision.
+
+Exact migration surface once E3-10 and E3-11 create it:
+
+| File or configuration | Affected declaration | Migration responsibility |
+|-----------------------|----------------------|--------------------------|
+| `functions/src/auth/onAnonymousUserDeleted.ts` | `onAnonymousUserDeleted` | Replace the `firebase-functions/v1` Auth deletion builder with the generally available 2nd gen Authentication deletion trigger. |
+| `functions/src/index.ts` | `onAnonymousUserDeleted` export | Retain the public deployed function name while switching its implementation export. |
+| `functions/test/contract/functionGenerationPolicy.test.ts` | sole-1st-gen allowlist | Remove the D-63 exception and require every exported function to use 2nd gen. |
+| `functions/test/integration/anonymousCleanup.test.ts` | automatic-cleanup trigger coverage | Run the same deletion, idempotency and overlap assertions against the 2nd gen trigger. |
+| `firebase.json` | Functions source/codebase deployment entry | Verify the existing deployment target deploys the migrated function; there is no permitted second codebase or hidden 1st gen deployment entry. |
+| `functions/package.json` | `firebase-functions` dependency and Functions test scripts | Raise the pinned SDK only if the first GA 2nd gen Auth trigger requires it, then update `docs/versions-matrix.md` under the normal library-review gate. |
+| `functions/package.json`, `firebase.json` | Node.js 22 runtime | Move the complete Functions package to a current supported runtime after the Auth trigger is 2nd gen; do not create a separate runtime migration story. |
+
+`functions/src/deletion/dataLocationRegistry.ts`,
+`functions/src/deletion/userDeletionService.ts` (`deleteUserData`) and
+`functions/src/callable/deleteOrphanedAnonymousAccount.ts`
+(`deleteOrphanedAnonymousAccount`) are intentionally generation-neutral or 2nd gen and MUST NOT be
+rewritten as part of this migration. That boundary keeps the migration surface narrow and known in
+advance.
+
+The owner watches both the [Firebase release notes](https://firebase.google.com/support/releases)
+and the [Cloud Functions Authentication trigger documentation](https://firebase.google.com/docs/functions/1st-gen/auth-events).
+The concrete availability signal is a Firebase announcement and SDK documentation for generally
+available Authentication user-deletion event triggers in Cloud Functions 2nd gen. Preview or
+private-preview availability does not trigger migration.
+
+Review owner: **David Ruiz**. The first recurring review is **2026-12-01** and repeats quarterly on
+March 1, June 1, September 1 and December 1 until migration completes or the owner formally
+re-accepts the constraint. Every completed review appends one dated row below; the next due date is
+never left implicit.
+
+The same review also owns the expiring D-68 acceptance for GHSA-w5hq-g745-h8pq; it does not create
+a separate cycle. Each review MUST rerun the production dependency audit, the deployed-trigger
+reachability test and the current-state assessment in `docs/SECURITY_ADVISORY_REGISTER.md`. An
+immediate review is triggered by any high or critical finding, any expansion of this function into
+Storage, or the availability of a compatible official update.
+
+The same review also owns D-75; no separate review cycle is created. Each review MUST check both
+[GitLive issue #499](https://github.com/GitLiveApp/firebase-kotlin-sdk/issues/499) for supported
+transitive Apple linking and the status of
+[Kotlin SwiftPM import](https://kotlinlang.org/docs/multiplatform/multiplatform-spm-import.html).
+D-75 expires when either GitLive supports the standalone Kotlin/Native test link or SwiftPM import
+is stable in a Kotlin release compatible with the pinned project stack. A GitLive release that
+targets Firebase Apple 12.x or another successor also triggers a joint D-65/D-75 evaluation; the
+native SDK pin and the test exception MUST NOT be reviewed as unrelated migrations.
+
+| Review date | Owner | Outcome | Next review |
+|-------------|-------|---------|-------------|
+| 2026-08-25 (baseline) | David Ruiz | D-63 accepted; no generally available 2nd gen Authentication user-deletion trigger exists. TD-01 opened with one permitted 1st gen function. | 2026-12-01 |
+
+Once 2nd gen Authentication user-deletion triggers are generally available, migration is scheduled
+as its own backlog story. It MUST NOT be folded into an unrelated story. Closing TD-01 requires the
+new story to migrate the trigger, remove the allowlist exception, pass the automatic-cleanup and
+overlap tests, move the complete Functions package to a current supported runtime, deploy under the
+retained function name, and append the final review outcome here. The deliberately temporary
+Node.js 24 -> 22 -> current-runtime sequence is rejected; Node.js 22 is selected once and leaves
+only when TD-01 closes.
+
+## 14. Out of Plan
+
+Maintenance expenses, advanced analytics, export, receipt images, odometer images, local or
+on-device AI text recognition, OCR, fuel and maintenance reminders, operating-system notifications,
+shared vehicles, widgets, wearables, web, Cloud Functions-mediated product read/write validation
+beyond the `D-23` and `D-63` account identity and data-deletion operations, automatic
+account merging, simultaneous multi-device use, active multi-device synchronization,
+remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings
+synchronization, platform settings sync or backup through Google Play services / Android backup /
+iCloud, and electric or hybrid energy modelling. The foreground-only anonymous-account retention
+notices selected by `D-62`, D-66 development billing containment and D-67 App Check enforcement
+are in plan.

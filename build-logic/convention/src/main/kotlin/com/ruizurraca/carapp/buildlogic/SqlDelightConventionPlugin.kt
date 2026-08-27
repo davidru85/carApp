@@ -31,13 +31,6 @@ class SqlDelightConventionPlugin : Plugin<Project> {
         dependencies.add("commonMainImplementation", libs.findLibrary("sqldelight-coroutines-extensions").get())
         dependencies.add("commonMainImplementation", libs.findLibrary("sqldelight-androidx-driver").get())
         dependencies.add("commonMainImplementation", libs.findLibrary("androidx-sqlite-bundled").get())
-
-        val sqliteVersion = libs.version("sqlite")
-        configurations.matching { it.name == "androidHostTestRuntimeClasspath" }.configureEach {
-            resolutionStrategy.dependencySubstitution {
-                substitute(module("androidx.sqlite:sqlite-bundled:$sqliteVersion"))
-                    .using(module("androidx.sqlite:sqlite-bundled-jvm:$sqliteVersion"))
-            }
-        }
+        Unit
     }
 }

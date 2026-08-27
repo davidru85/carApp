@@ -8,7 +8,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 |-------------|-----|----------|--------|
 | D-0 | [ADR-0001](0001-backend-cloud-firestore.md) | Use Cloud Firestore as remote backend. | Accepted |
 | D-1 | [ADR-0002](0002-local-database-room-kmp.md) | Use Room 3.0 KMP for the local database. | Superseded |
-| D-2 | [ADR-0003](0003-ios-interop-skie.md) | Use SKIE for Kotlin-to-Swift interop. | Accepted |
+| D-2 | [ADR-0003](0003-ios-interop-skie.md) | Use SKIE for Kotlin-to-Swift interop. | Superseded |
 | D-3 | [ADR-0004](0004-koin-dependency-injection.md) | Use Koin KMP for dependency injection. | Accepted |
 | D-4 | [ADR-0005](0005-vehicle-fuel-type-from-day-one.md) | Store MVP fuel type from day one; defer electric/hybrid values. | Accepted |
 | D-5 | [ADR-0006](0006-firestore-remote-sync-source.md) | Use Firebase Firestore behind `RemoteSyncSource`. | Accepted |
@@ -59,5 +59,28 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-50 | [ADR-0051](0051-firestore-first-page-cursor-is-timestamp-only.md) | Use a timestamp-only boundary for the first delta-pull page. | Accepted |
 | D-51 | [ADR-0052](0052-disable-npm-dependency-install-scripts.md) | Disable npm dependency install scripts repository-wide. | Accepted |
 | D-52 | [ADR-0053](0053-retain-firebase-cli-with-moderate-audit-residual.md) | Retain the pinned Firebase CLI with its documented moderate audit residual. | Accepted |
+| D-53 | [ADR-0054](0054-use-separate-firebase-debug-app-keys.md) | Use separately provisioned and restricted Android and iOS debug app keys. | Accepted |
+| D-54 | [ADR-0055](0055-keep-firebase-configuration-debug-only.md) | Keep development Firebase configuration isolated to debug builds. | Accepted |
+| D-55 | [ADR-0056](0056-stage-final-contracts-in-walking-skeleton.md) | Stage final public contracts while implementing only the walking-skeleton Vehicle slice. | Accepted |
+| D-56 | [ADR-0057](0057-place-test-app-graph-factory-in-shared-testing.md) | Place the test app graph factory in `:shared:testing`. | Accepted |
+| D-57 | [ADR-0058](0058-pin-google-services-gradle-plugin.md) | Pin Google Services Gradle plugin 4.5.0. | Accepted |
+| D-58 | [ADR-0059](0059-ios-composition-owns-shared-framework.md) | Move the `Shared` framework and Swift factory to `:composition:ios`. | Accepted |
+| D-59 | [ADR-0060](0060-explicit-app-providers-port.md) | Use explicit typed properties in `AppProviders`. | Accepted |
+| D-60 | [ADR-0061](0061-anonymous-identity-is-device-bound.md) | Treat unlinked anonymous identities as device-bound and enable native 30-day cleanup. | Accepted |
+| D-61 | [ADR-0062](0062-current-anonymous-data-wins-linking-collision.md) | Preserve current anonymous-session data on a confirmed linking collision. | Accepted |
+| D-62 | [ADR-0063](0063-anonymous-sign-in-benefit-reminders.md) | Use fixed, collapsible sign-in benefit reminders. | Accepted |
+| D-63 | [ADR-0064](0064-own-user-data-cleanup-service.md) | Own idempotent user-data cleanup with one tracked 1st gen Auth trigger. | Accepted |
+| D-64 | [ADR-0065](0065-split-anonymous-lifecycle-delivery.md) | Split anonymous lifecycle implementation across owning stories. | Accepted |
+| D-65 | [ADR-0066](0066-pin-firebase-apple-to-gitlive-bindings.md) | Pin Firebase Apple to the GitLive cinterop version. | Accepted |
+| D-66 | [ADR-0067](0067-contain-development-cloud-costs.md) | Contain development cloud costs with alerts and automatic billing shutdown. | Accepted |
+| D-67 | [ADR-0068](0068-enforce-firebase-app-check.md) | Enforce Firebase App Check for Authentication and Firestore. | Accepted |
+| D-68 | [ADR-0069](0069-retain-official-functions-stack-with-unreachable-moderate-advisory.md) | Retain the official Functions stack with an expiring unreachable moderate advisory. | Accepted |
+| D-69 | [ADR-0070](0070-isolate-required-billing-admin-privilege.md) | Isolate the required Billing Admin privilege and alert on its use. | Accepted |
+| D-70 | [ADR-0071](0071-disable-cutoff-retries-and-alert-on-errors.md) | Disable cutoff retries and surface every execution error. | Accepted |
+| D-71 | [ADR-0072](0072-use-normal-ios-simulator-signing.md) | Use normal Xcode simulator signing for Keychain-backed Auth acceptance. | Accepted |
+| D-72 | [ADR-0073](0073-exercise-cutoff-with-controlled-threshold-events.md) | Exercise the real cutoff with controlled threshold events. | Accepted |
+| D-73 | [ADR-0074](0074-retain-functions-artifacts-for-one-day.md) | Retain Cloud Functions deployment artifacts for one day. | Accepted |
+| D-74 | [ADR-0075](0075-use-xcuitest-for-keychain-persistence-acceptance.md) | Use a test-only XCUITest target for Keychain persistence acceptance. | Accepted |
+| D-75 | [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) | Derive Firebase standalone Native-test exemptions from their transitive project graph. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

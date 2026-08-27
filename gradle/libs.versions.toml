@@ -22,7 +22,7 @@ compileSdk = "37"
 # libraries follow the Kotlin release train.
 kotlin = "2.4.10"
 ksp = "2.3.11" # KSP versions its own line since 2.3.0; 2.3.10+ supports Kotlin 2.4.x
-skie = "0.10.14" # supports Kotlin 2.4.10; applied only to :shared (D-2)
+skie = "0.10.14" # supports Kotlin 2.4.10; applied only to :composition:ios (D-58)
 coroutines = "1.11.0"
 serialization = "1.11.0"
 datetime = "0.8.0" # Instant is kotlin.time.Instant; see docs/versions-matrix.md
@@ -34,6 +34,8 @@ sqlite = "2.7.0" # androidx.sqlite:sqlite-bundled, same bundled SQLite on both p
 
 # --- Firebase group (D-0, D-5, D-6, D-10, D-21) ---
 firebaseBom = "34.18.0"
+firebaseApple = "11.8.0" # D-65; exact GitLive 2.6.0 Apple cinterop generation version
+googleServices = "4.5.0" # D-57; processes Android's debug-only Firebase configuration
 gitlive = "2.6.0" # GitLive 2.6.x, never the 3.0 alpha (D-5, D-6)
 
 # --- Application libraries ---
@@ -68,6 +70,8 @@ androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.r
 
 # Firebase (D-0, D-5, D-6, D-10, D-21), introduced by E0-07 / E2-02
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appcheck-playintegrity" }
+firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
 gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
 
@@ -111,3 +115,4 @@ sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

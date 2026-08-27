@@ -40,7 +40,9 @@ gradle/libs.versions.toml
 :feature:session
 
 :shared
+:shared:testing
 :wiring:firebase
+:composition:ios
 :androidApp
 iosApp/
 firestore/
@@ -672,11 +674,65 @@ On first launch, when the user selects the "Continue without account" path, the 
 
 First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4).
 
+An unlinked Firebase anonymous identity is device-bound. It can be resumed only while the same
+device retains its Firebase Auth session; the app MUST NOT expose a cross-device recovery promise
+for it. Linking Google or Apple while preserving the UID converts it into a portable permanent
+identity.
+
+Authentication with Identity Platform native automatic cleanup MUST be enabled in every Firebase
+project. Firebase owns its fixed 30-day eligibility threshold. Unlinked anonymous accounts are
+eligible; accounts linked to any permanent provider are excluded. The provider's user-creation
+timestamp is the canonical origin for that elapsed time and for the reminder schedule below.
+
 ### 11.3 Anonymous conversion
 
-Anonymous conversion MUST preserve the UID through credential linking. If a provider flow would change the UID, the MVP aborts conversion and returns a typed error.
+Normal anonymous conversion MUST preserve the UID through credential linking. If linking succeeds,
+all existing data remains owned by that UID. A provider response that would change the UID without
+a credential collision aborts conversion and returns `AuthError.UidWouldChange`.
 
-Credential collision cancellation leaves the anonymous session and local data untouched. Choosing the existing account requires `Confirmation.AdoptExistingAccount`, clears local anonymous data, signs into the existing account, then performs an initial pull from `RemoteCursor.INITIAL`.
+`AuthError.CredentialAlreadyInUse` starts a separate collision flow. Cancellation leaves the
+anonymous session and all local and remote data untouched. Continuing requires
+`Confirmation.AdoptExistingAccount` after the UI states that the existing permanent-account data
+will be replaced by the current anonymous-session snapshot. The MVP never merges both data sets.
+
+After confirmation, the operation is ordered as follows:
+
+1. Persist a complete, durable local snapshot of the current anonymous owner's synchronized
+   `Vehicle` and `FuelEntry` rows, including tombstones, and capture a fresh Firebase ID token for
+   that anonymous UID.
+2. Sign into the permanent account that owns the colliding provider credential.
+3. Replace that permanent account's remote `vehicles` and `fuelEntries` data with the captured
+   snapshot. Replacement is idempotent and resumable; an interrupted attempt resumes from the
+   durable snapshot rather than pulling and overwriting it.
+4. Rebuild the permanent owner's local rows from the same snapshot, preserving a recoverable
+   operation marker until both the remote replacement and step 5 succeed.
+5. Call `deleteOrphanedAnonymousAccount` with the captured anonymous token. The backend verifies
+   the token, verifies that it represents the abandoned anonymous UID rather than the current
+   permanent UID, deletes that anonymous Firebase Auth account and directly invokes the D-63
+   user-data deletion service for the anonymous UID.
+
+Retry after any interruption MUST converge on the same permanent-account snapshot and the same
+deleted anonymous identity. It MUST NOT re-enter normal recovery pull while the replacement marker
+exists. Exact backend idempotency and deletion semantics are in §11.5.
+
+#### Anonymous sign-in benefit reminders
+
+The reminder schedule is the fixed list of elapsed-day thresholds `[1, 3, 8, 18]`, held in one
+configuration constant and anchored to the Firebase anonymous user-creation timestamp. Evaluation
+runs on app launch and foreground return. It is disabled for `LOCAL_OWNER`, signed-out and
+permanently authenticated sessions.
+
+The device persists the last-shown zero-based reminder index. When several unseen thresholds are
+due, exactly the highest due index is shown and that index is persisted, consuming every lower
+pending reminder. A reminder is dismissible and never blocks an existing feature. Index 3
+completes the schedule. Successful permanent-provider linking or sign-in clears the pending
+anonymous reminder state.
+
+The boundary cases are normative: no reminder at 12 hours; reminder 0 on day 1; no new reminder on
+day 2; reminder 1 on day 4; reminder 2 on day 9; only reminder 3 on day 20 even when no earlier
+reminder was shown; and no reminder on day 31 after reminder 3 has been consumed. The notice copy
+MUST explain the benefit of permanent sign-in and the device-bound, 30-day cleanup risk. These are
+foreground authentication-retention notices, not operating-system notifications.
 
 ### 11.4 Local owner adoption
 
@@ -708,9 +764,42 @@ The server operation MUST be idempotent for already-deleted documents and MUST N
 
 If the local database has pending outbox rows at the time of account deletion, those rows are dropped together with all local data after the server operation succeeds. The server operation is the authoritative purge; the client's outbox state is discarded. Rows typed shortly before deletion may be lost, which is the expected trade-off of the destructive operation.
 
+The D-63 user-data deletion service is the single reusable implementation that removes application
+data for a UID. Its explicit registry MUST contain every location declared by the remote data
+schema. The registry is currently exactly:
+
+```text
+Firestore collection: users/{uid}/fuelEntries/{entryId}
+Firestore collection: users/{uid}/vehicles/{vehicleId}
+Cloud Storage prefixes: []
+```
+
+The deletion order remains `fuelEntries`, then `vehicles`. Cloud Storage is not used by the MVP,
+but the empty prefix list is an executable registry entry rather than an undocumented convention.
+A server-side contract test compares the registry with the declared remote data schema and fails
+when either gains a location that the other omits.
+
+Two anonymous-deletion entry points reuse this service:
+
+- `onAnonymousUserDeleted` is the sole permitted Cloud Functions 1st gen function. The application
+  relies on it only for Firebase's native automatic anonymous-account cleanup path, and it invokes
+  the service for an eligible deleted anonymous UID. Delivery caused by another anonymous deletion
+  is treated as harmless idempotent overlap, never as the primary guarantee for that path.
+- `deleteOrphanedAnonymousAccount` is a Cloud Functions 2nd gen callable used by the confirmed
+  account-linking collision flow. It verifies the captured anonymous ID token and caller context,
+  deletes the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion
+  service directly after that deletion. It MUST NOT rely on `onAnonymousUserDeleted` being
+  delivered.
+
+Both paths are idempotent. Trigger/callable overlap is expected and harmless. An integration test
+MUST suppress or disregard trigger delivery for the Admin SDK path and still prove that
+`users/{uid}` is removed. The temporary 1st gen exception and its migration surface are tracked as
+`TD-01` in `docs/TECHNICAL_PLAN.md §13`; no other 1st gen function is permitted.
+
 ### 11.6 App Graph Contract
 
-`:shared` exposes the application graph through a dependency container:
+`:shared` exposes provider-free graph construction through an explicit port and retains the
+complete dependency container used internally by graph construction:
 
 ```kotlin
 data class AppGraphDependencies(
@@ -731,25 +820,60 @@ data class AppGraphDependencies(
     val syncTriggerAdapter: SyncTriggerAdapter,
 )
 
-fun createAppGraph(dependencies: AppGraphDependencies): AppGraph
+interface AppProviders {
+    val databaseFactory: DatabaseFactory
+    val authClient: AuthClient
+    val tokenProvider: TokenProvider
+    val ownerContext: OwnerContext
+    val remoteSyncSource: RemoteSyncSource
+    val analyticsTracker: AnalyticsTracker
+    val crashReporter: CrashReporter
+    val clock: AppClock
+    val dispatchers: DispatcherProvider
+    val uuidGenerator: UuidGenerator
+    val logger: Logger
+    val localeProvider: LocaleProvider
+    val connectivityObserver: ConnectivityObserver
+    val syncTriggerAdapter: SyncTriggerAdapter
+}
+
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 ```
 
 `CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
 
 `:core:crash` exposes the `CrashReporter` interface and a default no-op implementation in `commonMain`. It MUST NOT contain `expect`/`actual` declarations. Platform crash-reporting implementations live in `:integration:*` and are aggregated by `:wiring:firebase`.
 
-`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)` and the Kotlin-facing `AppGraph` are construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden from the generated Objective-C header through Kotlin/Native interop controls such as `@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade declared in §20.10.
+`AppProviders`, `AppGraphDependencies` and `buildAppGraph(isDebugBuild, providers)` are
+construction APIs for Kotlin callers. They are public to Kotlin/JVM and Kotlin/Native source that
+performs platform composition, but they are NOT part of the Swift-facing ABI. They MUST be hidden
+from the generated Objective-C header through Kotlin/Native interop controls such as
+`@HiddenFromObjC` or an equivalent explicit export exclusion. Swift code consumes only the facade
+declared in §20.10.
 
 Rules:
 
 - `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on SQLDelight or SQLite. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
-- Koin may construct `AppGraphDependencies` in wiring and platform modules.
+- Koin may construct `AppProviders` implementations only in wiring and platform composition.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
 - Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
-- Tests provide fakes without starting Koin, through the `:core:testing` factory `testAppGraphDependencies(...)` in which every parameter is defaulted. Adding a member REQUIRES updating that factory in the same change, preserving the same parameter order.
+- Tests provide fakes without starting Koin through the `:shared:testing` factory
+  `testAppGraphDependencies(...)`, whose implementation reuses the generic fakes from
+  `:core:testing`. Every parameter is defaulted. Adding a member REQUIRES updating that factory in
+  the same change, preserving the same parameter order. Consumer modules MUST depend on
+  `:shared:testing` only from `commonTest` (`D-56`).
+- `AppProviders` has exactly the same members and order as `AppGraphDependencies` after removing
+  `isDebugBuild`. `buildAppGraph` supplies that flag and maps every other member without replacing
+  or decorating it (`D-59`).
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
-- `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider bindings. `:wiring:firebase` is the module that aggregates those bindings into the `AppGraph`; integration modules MUST NOT reference `createAppGraph`.
+- `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider
+  bindings. `:wiring:firebase` is the only module that constructs Firebase implementations;
+  integration modules MUST NOT reference `buildAppGraph`.
+- `:composition:ios` produces the single framework named `Shared`, declares
+  `api(project(":shared"))`, exports `:shared`, depends on `:wiring:firebase` with
+  `implementation`, and owns the only `createSwiftAppGraph(isDebugBuild)` declaration. It contains
+  no product logic and delegates directly to `buildAppGraph` (`D-58`).
 
 ## 12. Repository Contracts
 
@@ -899,7 +1023,9 @@ Koin KMP is the accepted dependency injection library for the MVP.
 
 ### 15.3 Swift-facing surface
 
-The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin declarations". The allowlist is:
+The public Swift-facing ABI of the `Shared` framework is an allowlist, not "all public Kotlin
+declarations". `:composition:ios` produces the framework and exports the declarations owned by
+`:shared`. The allowlist is:
 
 - `SwiftAppGraph`.
 - `createSwiftAppGraph(isDebugBuild: Boolean)`.
@@ -909,7 +1035,9 @@ The public Swift-facing ABI of `:shared` is an allowlist, not "all public Kotlin
 
 Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, SQLDelight or SQLite types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
 
-`AppGraphDependencies`, `createAppGraph(AppGraphDependencies)`, the Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are Kotlin-facing contracts and MUST NOT be exported to Swift.
+`AppProviders`, `AppGraphDependencies`, `buildAppGraph(isDebugBuild, providers)`, the
+Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are
+Kotlin-facing contracts and MUST NOT be exported to Swift.
 
 `SegmentResult` and `ConsumptionReport` are domain types and MUST NOT appear on the Swift-facing ABI. Only their projected summary fields in `FuelEntryListUiState` and `FuelEntryListItemUi.consumptionScaled` / `invalidReason` cross the boundary.
 
@@ -921,7 +1049,10 @@ Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift b
 
 Nullable primitives and `StateFlow<T>` / `List<T>` exports MUST use the SKIE and Kotlin/Native annotations required by the pinned SKIE version to produce stable Swift types. The generated header golden is the executable source of truth for those annotations.
 
-A golden file of the generated Objective-C header is committed at `shared/build/generated/objc-header/Shared.h.golden` and diffed on every PR by the `objc-header-golden-check` CI step; a change to it is a review signal.
+A golden file of the generated Objective-C header remains committed at
+`shared/build/generated/objc-header/Shared.h.golden`. The `objc-header-golden-check` CI step
+generates its source from `composition/ios/build`, diffs the two files on every PR and treats a
+change as a review signal.
 
 ### 15.4 HTTP/API Client Contract
 
@@ -951,7 +1082,9 @@ users/{uid}/vehicles/{vehicleId}
 users/{uid}/fuelEntries/{entryId}
 ```
 
-There is no remote settings document in the MVP (§3).
+This list is also the declared Firestore data-location schema used by the D-63 deletion-registry
+parity test in §11.5. There is no remote settings document and there are no Cloud Storage prefixes
+in the MVP (§3).
 
 The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
 
@@ -1031,7 +1164,32 @@ service cloud.firestore {
 
 Account deletion hard deletes run only through the `D-23` Firebase Admin server operation. The Admin SDK bypasses Firestore rules entirely; the `allow delete: if false` rule therefore still rejects any mobile client hard delete, which is the load-bearing guarantee. The Admin operation's authorization comes from server IAM plus Firebase authentication token verification, not from Firestore rules. Firestore emulator tests MUST continue to prove that client SDK hard deletes are rejected.
 
-The rule file path is `firestore/rules/main.rules`. `knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. Without App Check, closed schema and range validation in rules are the only things preventing a compromised client from writing a document that breaks parsing on the user's other device.
+The rule file path is `firestore/rules/main.rules`. `knownCollection(collection)` MUST return true only for `vehicles` and `fuelEntries`. `validPayload()` MUST dispatch by collection and enforce the exact key sets above with `request.resource.data.keys().hasOnly([...])` and `hasAll([...])`, plus primitive type, enum, nullability, `deleted == (deletedAt != null)` and range checks for every field. App Check reduces calls from unofficial clients but does not authorize a user or validate a document. Closed schema and range validation in rules therefore remain the controls preventing an authenticated or attested compromised client from writing a document that breaks parsing on the user's other device.
+
+App Check baseline protection MUST be `ENFORCED` for both Firebase Authentication and Cloud
+Firestore before any build leaves local development (`D-67`). Provider selection is build-bound:
+
+- Android release code uses Play Integrity and contains neither the debug provider dependency nor
+  a debug provider factory.
+- iOS physical non-Debug code uses App Attest and contains no debug-token material.
+- Android emulator and iOS Simulator Debug builds may use the debug provider only with a token
+  registered outside the repository.
+- Debug tokens MUST NOT be committed, emitted in CI or embedded in a distributed build.
+- Firebase Authentication and these Firestore Rules remain mandatory when App Check is enforced.
+
+The development cloud-cost contract (`D-66`) is infrastructure-only. Its EUR 10 monthly budget
+uses actual-cost email thresholds at 50%, 90% and 100% and publishes to the project-local billing
+topic. The `stopBilling` 2nd gen function removes the development project's billing association
+when reported actual cost is greater than or equal to the budget. Budget alerts are notifications,
+not a spending cap; reporting delay can produce overshoot. Production MUST NOT deploy or inherit
+`stopBilling`: its budget response is aggressive notification plus manual intervention.
+
+`stopBilling` MUST use the dedicated keyless identity governed by D-69, check that billing remains
+enabled before attempting an update and return without writing when it is already disabled. Its
+Pub/Sub failure policy MUST set retry to false (`D-70`). Cloud Monitoring MUST notify the owner on
+every function execution error and every Cloud Billing administrative change. Acceptance MUST
+measure consecutive real publications from the project budget; documentation of the general
+Cloud Billing cadence is not a substitute for the observed interval.
 
 `validPayload()` MUST be equivalent to this shape:
 
@@ -1232,6 +1390,15 @@ Phase 0 defines the exact CI check names. Required checks:
 - `contract-check`
 - `objc-header-golden-check`
 
+The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
+`iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
+module whose Native test binary transitively links `:integration:firebase-auth` or
+`:integration:firebase-firestore` qualifies. CI compares that derived set with the explicit task
+exclusions and MUST fail in both directions. The current resolution is
+`:integration:firebase-auth`, `:integration:firebase-firestore`, `:wiring:firebase` and
+`:composition:ios`; this is observed output, not a permanent allowlist, and changes when the graph
+changes.
+
 Optional checks:
 
 - `database-lock` — when `core/database/.story-lock` exists, CI verifies that the current story named in the handoff owns `:core:database`. A failing lock means another in-flight story owns the shared-write module. The lock is created when a database story starts and removed in the same PR before completion; it is a coordination guard, not a permanent repository artifact.
@@ -1256,6 +1423,22 @@ Optional checks:
 16. No image-loading dependency appears in `gradle/libs.versions.toml` without a story reference and the Coil decision path required by §15.5.
 17. The push dependency order in `docs/TECHNICAL_PLAN.md §8` references the canonical order of §8 instead of restating a divergent order.
 18. `AuthProvider` is declared in §20.3 (`:core:common`) before any reference to it in §20.8 (`:core:auth`) or §20.9 (`:core:analytics`), so a Phase 0 module (`:core:analytics`) can compile without depending on a Phase 2 module (`:core:auth`).
+19. The Cloud Functions runtime, Functions manifest and cloud-runtime CI assertion equal the
+    normative runtime row in `docs/versions-matrix.md`; a hardcoded second runtime fails.
+20. The Google authentication and Cloud SDK GitHub Actions use the immutable SHAs recorded in
+    `docs/versions-matrix.md`, not floating tags.
+21. The `shared-tests` workflow executes both aggregate test tasks. Its declared standalone
+    Kotlin/Native exclusions equal the set derived by taking the transitive reverse dependency
+    closure from `:integration:firebase-auth` and `:integration:firebase-firestore` across the
+    Native-test project graph; equality fails on either addition or removal.
+
+The protected `contract-check` job also performs a read-only deployed-runtime assertion for
+internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
+provider condition restricted to the immutable repository/owner, the
+`cloud-runtime-verification` environment and those exact event/ref contexts. The service account's
+custom role contains exactly `cloudfunctions.functions.get`. The job reads the expected runtime
+from `docs/versions-matrix.md`, not from `functions/package.json`, then separately fails if the
+manifest disagrees with the matrix. Fork pull requests receive no cloud identity.
 
 For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide declarations from Objective-C export, and **SQLDelight-generated types owned by `:core:database`** (`AppDatabase`, generated query interfaces and generated row classes). SQLDelight-generated types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
@@ -1295,7 +1478,7 @@ data class Money(val minorUnits: Long, val currency: CurrencyCode)
 
 **Construction never validates.** These types have no `init` block, throw nothing, and reject nothing. Wrapping a malformed UUID or an unsupported currency code is legal at the type level. Validation lives in the use cases of §5, which return typed errors.
 
-This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. The MVP ships without App Check (`docs/SECURITY.md`), so such a document is reachable, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code.
+This is a deliberate constraint, not an oversight. §5 requires that a pull transaction MUST NOT fail because of a domain constraint or malformed remote payload. A throwing constructor would turn one malformed remote document into an exception inside the pull transaction, stalling the cursor permanently — the exact failure mode §5 exists to prevent. App Check proves caller integrity but does not validate payload semantics, and Firestore rules validate ranges and types but cannot verify that a string is a real ISO-4217 code, so such a document remains reachable from a compromised official client.
 
 **Every scaled value is a `Long`**, per §2. Mixing widths across these types is a contract violation.
 
@@ -1448,7 +1631,7 @@ A confirmation is required by the use case, not by the UI. The UI MUST NOT proce
 | `OdometerInconsistent` | Odometer warning override in fuel-entry create/update. |
 | `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. |
 | `DeleteAccount` | Account deletion destructive confirmation. |
-| `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user chooses the existing account. |
+| `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user confirms that the current anonymous-session snapshot replaces the existing permanent-account data. |
 
 ### 20.3 Platform abstractions — `:core:common`
 
@@ -1492,7 +1675,9 @@ interface CrashReporter {
 }
 ```
 
-The no-op implementation lives in `:core:crash` and is the default fake used by `:core:testing`. Firebase Crashlytics types stay inside `:integration:firebase-crashlytics` and `:wiring:firebase`.
+The no-op implementation lives in `:core:crash` and is the default fake selected by the
+`:shared:testing` graph factory. Firebase Crashlytics types stay inside
+`:integration:firebase-crashlytics` and `:wiring:firebase`.
 
 `recordNonFatal` trigger policy: it MUST be called for every `UnexpectedError` and for every `SyncError.Poisoned` / `FAILED_POISONED` transition; it MUST NOT be called for validation warnings, expected `AuthError` leaves (`Cancelled`, `RequiresRecentLogin`, `CredentialAlreadyInUse`), or connectivity-only `RemoteError` codes. `fields` follows the same allowlist as `Logger` (`§17`). An `E3-03` / `E4-04` fixture MUST assert the call sites.
 
@@ -1506,7 +1691,16 @@ The no-op implementation lives in `:core:crash` and is the default fake used by 
 interface DatabaseFactory { fun create(): AppDatabase }
 ```
 
-`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type `AppDatabase` is a SQLDelight-generated type owned by `:core:database`, and `:core:common` is forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from `:core:database`. `:core:testing` is allowed to depend on `:core:database` (`docs/TECHNICAL_PLAN.md §4`) so it can provide a fake. Any appearance of `AppDatabase` or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation.
+`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type
+`AppDatabase` is a SQLDelight-generated type owned by `:core:database`, and `:core:common` is
+forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries
+`databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from
+`:core:database`. `:core:testing` is allowed to depend on `:core:database` so it can provide a
+generic fake; `:shared:testing` composes that fake into `AppGraphDependencies` (`D-56`). D-59 also
+allows `:wiring:firebase` to reference the `DatabaseFactory` abstraction while implementing
+`AppProviders`, but it MUST NOT expose or reference `AppDatabase`. Any appearance of `AppDatabase`
+or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the Swift-facing public
+API remains a violation.
 
 ### 20.4 Domain models — `:core:model`
 
@@ -1834,7 +2028,7 @@ No leaf carries a free-text `String`. Adding one is a contract violation. The le
 
 `CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
 
-### 20.10 Shared surface — `:shared`
+### 20.10 Shared surface — `:shared`, exported by `:composition:ios`
 
 ```kotlin
 // Kotlin-facing construction API. Hidden from Objective-C/Swift export.
@@ -1848,7 +2042,7 @@ interface AppGraph {
     fun close()
 }
 
-// Swift-facing construction API. This is exported.
+// Swift-facing construction API. Declared once in :composition:ios and exported.
 fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph
 
 // Swift-facing facade. This is exported.
@@ -2075,4 +2269,9 @@ From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, 
 
 `VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`).
 
-The Kotlin-facing `AppGraph` and `createAppGraph(AppGraphDependencies)` MUST be absent from the Objective-C header. `createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState` classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`, `ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind` MUST be present.
+The Kotlin-facing `AppGraph`, `AppProviders`, `AppGraphDependencies` and
+`buildAppGraph(isDebugBuild, providers)` MUST be absent from the Objective-C header.
+`createSwiftAppGraph(isDebugBuild)`, `SwiftAppGraph`, the state-holder classes, the `UiState`
+classes, `UiMessage`, `SyncStatus`, `FuelType`, `AuthProvider`, `Confirmation`,
+`ConsumptionInvalidReason`, `MoneyInputMode`, `SessionPhase`, `SyncTrigger` and `UiMessageKind`
+MUST be present.

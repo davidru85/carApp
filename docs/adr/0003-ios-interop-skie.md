@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded
 
 ## Context
 
@@ -19,6 +19,10 @@ The project shares presentation state holders in KMP and consumes them from Swif
 ## Decision
 
 Use SKIE, applied only in `:shared`.
+
+D-58 supersedes the module-ownership part of this decision. SKIE remains the selected interop
+tool, but it is applied to `:composition:ios`, the module that now produces the exported
+framework and processes `:shared` as an exported dependency.
 
 ## Consequences
 
@@ -38,5 +42,9 @@ Use SKIE, applied only in `:shared`.
 
 ## Verification
 
-- Architecture/build checks ensure SKIE is applied only in `:shared`.
+- Architecture/build checks ensure SKIE is applied only in `:composition:ios` under D-58.
 - iOS simulator build runs in CI.
+
+## Superseded By
+
+- `docs/adr/0059-ios-composition-owns-shared-framework.md` (`D-58`)

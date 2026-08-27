@@ -38,6 +38,169 @@
 
 ## Entries
 
+### 2026-08-27 — D-75 amended to a graph-derived exception
+
+- **Type:** correction
+- **Story / Decision:** `E0-07` / `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** D-75 now derives the standalone Native-test exception from the transitive
+  project graph rooted at the Firebase Auth and Firestore integrations. Its current resolution is
+  those two modules, `:wiring:firebase` and `:composition:ios`.
+- **Why:** the first full verification after the two-module decision failed in
+  `:wiring:firebase`; the linker limitation propagates by transitive closure, so a static list
+  encoded the wrong invariant and would fail again when the graph grows.
+- **Documents touched:** `docs/adr/0076-exempt-firebase-standalone-native-tests.md`, the four
+  decision mirrors, `docs/CONTRACTS.md §18`, `AGENTS.md`, and this log.
+- **Verification:** the amended guard derives the qualifying set and will be mutation-tested for
+  both missing and stale declarations before the full E0-07 verification resumes.
+- **Follow-ups / risks:** `:composition:ios` has no tests and loses nothing today; adding tests to
+  it enlarges the coverage loss and requires an explicit coverage review. TD-01 expiry signals are
+  unchanged.
+
+### 2026-08-27 — D-75 exact Firebase Native-test exception accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** exactly `:integration:firebase-auth` and `:integration:firebase-firestore` are
+  exempt from standalone `iosSimulatorArm64Test` execution; Android-host unit tests remain, and
+  real-host iOS coverage is stated path by path rather than treated as equivalent.
+- **Why:** GitLive does not link its Apple dependencies transitively into standalone Kotlin/Native
+  test binaries. CocoaPods, beta Kotlin SwiftPM import and a test-only XCFramework chain would each
+  introduce a second or experimental dependency path inconsistent with the pinned stack.
+- **Documents touched:** `docs/adr/0076-exempt-firebase-standalone-native-tests.md`, the four
+  decision mirrors, `docs/adr/0066-pin-firebase-apple-to-gitlive-bindings.md`, TD-01, and this log.
+- **Verification:** the E0-07 CI guard will assert the complete exemption set in both directions;
+  Android-host tests and the documented XCUITest paths remain required.
+- **Follow-ups / risks:** TD-01 reviews GitLive issue #499 and stable compatible Kotlin SwiftPM
+  import quarterly; a GitLive/Firebase Apple compatibility upgrade triggers joint D-65/D-75 review.
+
+### 2026-08-25 — D-65 Firebase Apple compatibility pin accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-65`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Firebase Apple SDK 11.8.0 is pinned exactly for direct iOS integration with
+  GitLive 2.6.0.
+- **Why:** GitLive's Apple cinterop bindings were generated against 11.8.0, and mixing them with a
+  different native SDK can compile successfully but fail at runtime.
+- **Documents touched:** `docs/adr/0066-pin-firebase-apple-to-gitlive-bindings.md`, the four
+  decision mirrors, `docs/versions-matrix.md`, the E0-07 handoff and this log.
+- **Verification:** `contractCheck` verifies decision/ADR alignment; the E0-07 Apple build and
+  native-path tests will prove the pin in use.
+- **Follow-ups / risks:** Upgrade GitLive and Firebase Apple together once GitLive publishes
+  bindings for a supported newer Firebase Apple SDK; do not change either side independently.
+
+### 2026-08-25 — D-64 anonymous lifecycle story split accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-64`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** E0-07 retains only real anonymous auth and the minimal Vehicle local/remote
+  path; E2-02, E2-04, E2-07, E3-10, E3-11 and E3-12 own the remaining lifecycle behavior.
+- **Why:** the owner selected reviewable concern-specific PRs and moved cross-device evidence to
+  the first point where permanent auth and complete sync coexist.
+- **Documents touched:** `docs/adr/0065-split-anonymous-lifecycle-delivery.md`, the four decision
+  mirrors, `docs/BACKLOG.md`, the E0-07 handoff and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs.
+- **Follow-ups / risks:** E3-12 remains a human-gated permanent-account Android/iOS recovery proof.
+
+### 2026-08-25 — D-63 owned user-data cleanup accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-10`, `E3-11` / `D-63`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** an idempotent deletion service and executable data-location registry serve
+  user-requested deletion, direct collision cleanup and native anonymous cleanup; only
+  `onAnonymousUserDeleted` may use Cloud Functions 1st gen.
+- **Why:** Firebase Extensions has an externally imposed 2027-03-31 management sunset, while a
+  narrow owned trigger debt is versioned and migratable on the project's schedule.
+- **Documents touched:** `docs/adr/0064-own-user-data-cleanup-service.md`, the four decision mirrors,
+  `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13` (`TD-01`), `docs/BACKLOG.md` and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; TD-01 names the exact
+  migration surface, owner, first review and quarterly cadence.
+- **Follow-ups / risks:** David Ruiz reviews TD-01 first on 2026-12-01 and quarterly thereafter.
+
+### 2026-08-25 — D-62 anonymous sign-in benefit timeline accepted
+
+- **Type:** decision
+- **Story / Decision:** `E2-07` / `D-62`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** foreground retention notices use elapsed days 1, 3, 8 and 18, anchor to the
+  Firebase creation timestamp and collapse missed notices to the highest due index.
+- **Why:** the owner selected a deterministic, non-blocking timeline that warns before native
+  cleanup without replaying an inactive user's prompt backlog.
+- **Documents touched:** `docs/adr/0063-anonymous-sign-in-benefit-reminders.md`, the four decision
+  mirrors, `docs/CONTRACTS.md §11.3`, `docs/BACKLOG.md` and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; E2-07 lists the seven
+  required time-boundary tests.
+- **Follow-ups / risks:** the physical persistence location is deliberately left to E2-07 intake;
+  choosing it is a separate implementation decision if the existing contract does not force it.
+
+### 2026-08-25 — D-61 current anonymous snapshot precedence accepted
+
+- **Type:** decision
+- **Story / Decision:** `E2-04` / `D-61`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** after explicit destructive confirmation, the current anonymous-session snapshot
+  replaces pre-existing permanent-account data through a resumable flow; cancellation changes
+  nothing.
+- **Why:** the owner chose the current device's active data over the older account and rejected both
+  automatic merge and silent data loss.
+- **Documents touched:** `docs/adr/0062-current-anonymous-data-wins-linking-collision.md`, the four
+  decision mirrors, `docs/SPECIFICATION.md §7 F-4`, `docs/CONTRACTS.md §11.3`, `docs/BACKLOG.md` and
+  this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; the story now requires
+  interruption-boundary and idempotent-resume tests.
+- **Follow-ups / risks:** E2-04 depends on E3-11 so orphan cleanup exists before collision delivery.
+
+### 2026-08-25 — D-60 anonymous identity portability corrected
+
+- **Type:** decision
+- **Story / Decision:** `E0-07`, `E2-02`, `E3-12` / `D-60`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** an unlinked anonymous Firebase identity is device-bound, native Identity
+  Platform cleanup uses the fixed 30-day eligibility threshold, and only a linked permanent
+  provider enables new-device recovery.
+- **Why:** Firebase exposes no supported portable anonymous credential, so the original anonymous
+  cross-device walking-skeleton promise was not implementable safely.
+- **Documents touched:** `docs/adr/0061-anonymous-identity-is-device-bound.md`, the four decision
+  mirrors, the scope, auth, backup, backlog and E0-07 handoff records, and this log.
+- **Verification:** `contractCheck` reports 65 aligned decisions and ADRs; repository-wide searches
+  leave no current E0-07 clean-second-device acceptance claim.
+- **Follow-ups / risks:** E2-02 enables native cleanup; E3-12 proves permanent-account recovery.
+
+### 2026-08-25 — D-59 explicit AppProviders port accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-59`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `AppProviders` is defined as explicit typed properties for every graph
+  dependency except `isDebugBuild`, which `buildAppGraph` applies directly.
+- **Why:** the owner selected the compile-time-visible provider boundary over an opaque dependency
+  factory or a Firebase-only port that would leave platform construction unresolved.
+- **Documents touched:** `docs/adr/0060-explicit-app-providers-port.md`, the four decision mirrors,
+  the E0-07 handoff and this log.
+- **Verification:** `contractCheck` reports 60 aligned decisions and ADRs.
+- **Follow-ups / risks:** E0-07 must prove provider parity on Android host and Kotlin/Native.
+
+### 2026-08-25 — D-58 iOS composition framework ownership accepted
+
+- **Type:** decision
+- **Story / Decision:** `E0-07` / `D-58`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** a thin `:composition:ios` module becomes the sole producer of the `Shared`
+  framework and Swift graph factory; `:shared` remains provider-free and no longer produces a
+  framework.
+- **Why:** the owner selected an umbrella composition root to avoid the unavoidable
+  `:shared`/`:wiring:firebase` Gradle cycle without global registration or duplicate
+  Kotlin/Native runtimes.
+- **Documents touched:** `docs/adr/0059-ios-composition-owns-shared-framework.md`, D-2's
+  supersession record, the four decision mirrors, the E0-07 handoff and this log.
+- **Verification:** `contractCheck` reports 60 aligned decisions and ADRs.
+- **Follow-ups / risks:** E0-07 must move SKIE, Xcode embedding and header generation to the new
+  composition module while retaining Swift's `import Shared`.
+
 ### 2026-08-24 — E3-01 Firestore security rules completed
 
 - **Type:** story

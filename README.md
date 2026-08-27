@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 1 open.** `E1-01` has delivered the SQLDelight local database on Android and iOS, and `E3-06` has made provider decoupling executable. The next story is `E3-01`, which delivers the Firestore rules required before the `E0-07` walking-skeleton gate. There is no user-visible feature yet; the project builds on both platforms and `main` is protected by nine required CI checks.
+> **Project status:** **Phase 1 open.** `E1-01`, `E3-06` and `E3-01` have delivered the SQLDelight database, executable provider decoupling and the reviewed Firestore rules. `E0-07`, the walking-skeleton gate, is in progress. There is no completed user-visible feature yet; the project builds on both platforms and `main` is protected by nine required CI checks.
 
 ## Start here
 
@@ -35,6 +35,8 @@ targets, Xcode as pinned in [docs/versions-matrix.md](docs/versions-matrix.md).
 | [DEFINITION.md](docs/DEFINITION.md) | Executive overview and orientation. |
 | [CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contribution rules and PR expectations. |
 | [SECURITY.md](docs/SECURITY.md) | Vulnerability reporting, security-sensitive areas, secret handling. |
+| [SECURITY_ADVISORY_REGISTER.md](docs/SECURITY_ADVISORY_REGISTER.md) | Dated, expiring accepted dependency advisories and their review evidence. |
+| [development-firebase-cost-controls.md](docs/runbooks/development-firebase-cost-controls.md) | Development billing controls, state-change audit trail, destructive test and recovery procedure. |
 | [docs/adr/README.md](docs/adr/README.md) | ADR index, one per decision ID. |
 | [docs/identifiers.md](docs/identifiers.md) | Application identifiers, Firebase projects and Firestore location. |
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions, compatibility relation, performance measurement baselines. |
@@ -56,11 +58,20 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 
 ## MVP Scope
 
-The authoritative scope lists are in [SPECIFICATION.md §3](docs/SPECIFICATION.md). In summary: fuel expenses only, offline-first including first launch, anonymous-capable authentication with Google and Apple conversion, vehicle and fuel entry CRUD, full-to-full consumption, single-device active use, Firestore backup for recovery on a new device, minimal settings, Spanish and English.
+The authoritative scope lists are in [SPECIFICATION.md §3](docs/SPECIFICATION.md). In summary: fuel expenses only, offline-first including first launch, device-bound anonymous authentication with Google and Apple conversion, vehicle and fuel entry CRUD, full-to-full consumption, single-device active use, Firestore backup for permanent-account recovery on a new device, minimal settings, Spanish and English.
 
 Sign-in is anonymous, Google or Apple, and nothing else. The welcome screen offers the platform's providers directly — Google and continue-without-account on Android, Apple, Google and continue-without-account on iOS — with no intermediate provider picker and no provider-less "Sign in" control. The flow is normative in [SPECIFICATION.md §7 F-1](docs/SPECIFICATION.md); the provider set is closed in [CONTRACTS.md §20.3](docs/CONTRACTS.md).
 
-Out of scope: non-fuel expenses, advanced charts, export, receipt and odometer photos with OCR, local or on-device AI text recognition, reminders, shared vehicles, widgets and wearables, official fuel-price integrations, App Check, Cloud Functions-mediated remote read/write validation beyond account deletion, automatic account merging, simultaneous multi-device use, active multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore listeners, remote settings synchronization, platform settings sync or backup through Google Play services / Android backup / iCloud, and electric or hybrid energy modelling.
+Out of scope: non-fuel expenses, advanced charts, export, receipt and odometer photos with OCR,
+local or on-device AI text recognition, fuel and maintenance reminders, operating-system
+notifications, shared vehicles, widgets and wearables, official fuel-price integrations,
+Cloud Functions-mediated product read/write validation beyond the `D-23` and `D-63` account
+identity and data-deletion operations, automatic account merging, simultaneous multi-device use, active
+multi-device synchronization, remote-database-as-source-of-truth operation, real-time Firestore
+listeners, remote settings synchronization, platform settings sync or backup through Google Play
+services / Android backup / iCloud, and electric or hybrid energy modelling. The foreground-only
+anonymous-account retention notices selected by `D-62`, D-66 development billing containment and
+D-67 App Check enforcement are in scope.
 
 Any task touching out-of-scope functionality must be rejected or escalated before implementation.
 
@@ -98,7 +109,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Authentication | Firebase Authentication through GitLive 2.6.x behind `AuthClient` |
 | Metrics | Firebase Analytics behind `AnalyticsTracker`, off by default |
 | Crash reporting | Firebase Crashlytics behind `CrashReporter`, added in Phase 4 |
-| iOS interop | SKIE, applied only in `:shared` |
+| iOS interop | SKIE, applied only in `:composition:ios` |
 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Logging | Kermit behind `Logger` |
 
@@ -127,7 +138,9 @@ gradle/libs.versions.toml
 :feature:session
 
 :shared
+:shared:testing
 :wiring:firebase
+:composition:ios
 :androidApp
 iosApp/
 firestore/
@@ -155,8 +168,8 @@ document wins and the discrepancy is escalated.
 | Phase | Goal | Main gate |
 |-------|------|-----------|
 | 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 1 - Local persistence | `:core:database`, then the walking skeleton, then vehicles and fuel entries useful offline | The walking skeleton (`E0-07`) is the phase gate: data backed up remotely and restored on a clean second device. Then consumption calculation fully tested and reviewed |
-| 2 - Authentication | Anonymous, local owner adoption, Google, Apple, conversion, sign-out, account deletion | Adoption and conversion preserve data |
+| 1 - Local persistence | `:core:database`, then the walking skeleton, then vehicles and fuel entries useful offline | The walking skeleton (`E0-07`) is the phase gate: a real anonymous UID exercises the local/remote Vehicle path on both native hosts without claiming anonymous cross-device recovery. Then consumption calculation is fully tested and reviewed |
+| 2 - Authentication | Anonymous, local owner adoption, Google, Apple, conversion, anonymous retention notices, sign-out, account deletion | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot |
 | 3 - Backend and backup | Firestore rules, integration, backup engine, wiring, backup status | Recovery and provider decoupling are executable checks |
 | 4 - MVP hardening | Settings, accessibility, i18n, performance, release preparation | Store-readiness checklist complete |
 

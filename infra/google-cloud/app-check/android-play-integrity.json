@@ -1,0 +1,10 @@
+{
+  "name": "projects/330616809208/apps/1:330616809208:android:fa70311338f5e88e373d0d/playIntegrityConfig",
+  "tokenTtl": "3600s",
+  "appIntegrity": {
+    "allowUnrecognizedVersion": true
+  },
+  "deviceIntegrity": {
+    "minDeviceRecognitionLevel": "MEETS_DEVICE_INTEGRITY"
+  }
+}
