@@ -5,6 +5,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.register
@@ -15,12 +16,34 @@ class ContractCheckPlugin : Plugin<Project> {
         require(target == target.rootProject) {
             "carapp.contract applies to the root project only; it inspects the repository documents."
         }
-        target.tasks.register<ContractCheckTask>("contractCheck") {
+        val contractCheck = target.tasks.register<ContractCheckTask>("contractCheck") {
             group = "verification"
             description = "Asserts the repository invariants of docs/CONTRACTS.md §18."
             repoRoot = target.rootProject.projectDir
             outputs.upToDateWhen { false }
         }
+        target.gradle.projectsEvaluated {
+            contractCheck.configure {
+                nativeTestDependencyGraph =
+                    target.subprojects.mapNotNull { project ->
+                        project.configurations
+                            .findByName(NATIVE_TEST_CLASSPATH)
+                            ?.let { configuration ->
+                                project.path to
+                                    configuration.hierarchy
+                                        .flatMap { inherited ->
+                                                inherited.dependencies
+                                                    .withType(ProjectDependency::class.java)
+                                                .map(ProjectDependency::getPath)
+                                        }.toSet()
+                            }
+                    }.toMap()
+            }
+        }
+    }
+
+    private companion object {
+        const val NATIVE_TEST_CLASSPATH = "iosSimulatorArm64TestCompileKlibraries"
     }
 }
 
@@ -28,10 +51,13 @@ abstract class ContractCheckTask : DefaultTask() {
     @get:Internal
     internal var repoRoot: File? = null
 
+    @get:Internal
+    internal var nativeTestDependencyGraph: Map<String, Set<String>> = emptyMap()
+
     @TaskAction
     fun check() {
         val root = repoRoot ?: throw GradleException("Repository root was not set")
-        val results = ContractCheck(root).runAll()
+        val results = ContractCheck(root, nativeTestDependencyGraph).runAll()
 
         results.forEach { result ->
             val line = "  [${result.status}] ${result.id}. ${result.name}" +

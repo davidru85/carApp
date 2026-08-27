@@ -1,13 +1,43 @@
 package com.ruizurraca.carapp.buildlogic.contract
 
-/** D-75 exact-set guard for standalone Kotlin/Native Firebase test exemptions. */
+/** D-75 graph-derived exact-set guard for standalone Kotlin/Native Firebase test exemptions. */
 internal object NativeTestExemptionContract {
-    val expectedModules = sortedSetOf(
+    private val rootModules = setOf(
         ":integration:firebase-auth",
         ":integration:firebase-firestore",
     )
 
-    fun validate(workflow: String): AssertionResult {
+    fun deriveExpectedModules(
+        dependencyGraph: Map<String, Set<String>>,
+        nativeTestProjects: Set<String>,
+    ): Set<String> {
+        val reachesRoot = mutableMapOf<String, Boolean>()
+
+        fun reachesFirebaseIntegration(
+            module: String,
+            visiting: Set<String>,
+        ): Boolean {
+            reachesRoot[module]?.let { return it }
+            if (module in rootModules) return true.also { reachesRoot[module] = it }
+            if (module in visiting) return false
+
+            val result = dependencyGraph[module].orEmpty().any { dependency ->
+                reachesFirebaseIntegration(dependency, visiting + module)
+            }
+            reachesRoot[module] = result
+            return result
+        }
+
+        return nativeTestProjects
+            .filter { module -> reachesFirebaseIntegration(module, emptySet()) }
+            .toSortedSet()
+    }
+
+    fun validate(
+        workflow: String,
+        dependencyGraph: Map<String, Set<String>>,
+        nativeTestProjects: Set<String>,
+    ): AssertionResult {
         val sharedTestsJob = workflow
             .substringAfter(SHARED_TESTS_JOB, missingDelimiterValue = "")
             .substringBefore(NEXT_JOB)
@@ -18,6 +48,7 @@ internal object NativeTestExemptionContract {
         val actualModules = NATIVE_TEST_EXCLUSION.findAll(sharedTestsJob)
             .map { it.groupValues[1] }
             .toSortedSet()
+        val expectedModules = deriveExpectedModules(dependencyGraph, nativeTestProjects)
         val runsBothAggregates =
             sharedTestsJob.contains("testAndroidHostTest") &&
                 sharedTestsJob.contains("iosSimulatorArm64Test")

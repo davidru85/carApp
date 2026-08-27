@@ -154,12 +154,14 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       # Host and Kotlin/Native runs both matter: a common test that only ever executes on the JVM
-      # would not catch a Kotlin/Native divergence. D-75 exempts exactly the two Firebase modules:
-      # their standalone Native binaries cannot receive FirebaseCore transitively from GitLive.
+      # would not catch a Kotlin/Native divergence. D-75 derives the current four exclusions from
+      # the transitive Native-test project graph rooted at the two Firebase integrations.
       - run: >-
           ./gradlew testAndroidHostTest iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
           -x :integration:firebase-firestore:iosSimulatorArm64Test
+          -x :wiring:firebase:iosSimulatorArm64Test
+          -x :composition:ios:iosSimulatorArm64Test
           --stacktrace
       - name: Coverage thresholds
         run: ./gradlew koverVerify --stacktrace

@@ -14,7 +14,10 @@ data class AssertionResult(val id: Int, val name: String, val status: Status, va
  * rather than passing. A check that silently skips is worse than no check: it reads as coverage
  * that is not there.
  */
-class ContractCheck(private val repoRoot: File) {
+class ContractCheck(
+    private val repoRoot: File,
+    private val nativeTestDependencyGraph: Map<String, Set<String>>,
+) {
 
     private fun read(path: String): String = File(repoRoot, path).readText()
     private fun exists(path: String): Boolean = File(repoRoot, path).exists()
@@ -34,7 +37,11 @@ class ContractCheck(private val repoRoot: File) {
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
         *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
-        NativeTestExemptionContract.validate(read(".github/workflows/ci.yml")),
+        NativeTestExemptionContract.validate(
+            workflow = read(".github/workflows/ci.yml"),
+            dependencyGraph = nativeTestDependencyGraph,
+            nativeTestProjects = nativeTestDependencyGraph.keys,
+        ),
         reportProseInCodeFences(),
     )
 
