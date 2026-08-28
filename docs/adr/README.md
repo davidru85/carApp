@@ -84,5 +84,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-75 | [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) | Derive Firebase standalone Native-test exemptions from their transitive project graph. | Accepted |
 | D-76 | [ADR-0077](0077-vehicle-validation-uses-pre-write-facts.md) | Apply a functional-core / imperative-shell boundary to Vehicle validation from immutable pre-write facts. | Accepted |
 | D-77 | [ADR-0078](0078-fuel-entry-validation-uses-pre-write-facts.md) | Validate Fuel Entry commands from immutable pre-write facts and return canonical persistence values. | Accepted |
+| D-78 | [ADR-0079](0079-consumption-invalidation-precedence.md) | Apply an explicit structural-first precedence to singular consumption invalidation reasons. | Accepted |
+| D-79 | [ADR-0080](0080-move-consumption-filter-evidence-to-e1-06.md) | Put production repository-filter evidence in E1-06 and prove the E1-05 calculator does not filter. | Accepted |
+| D-80 | [ADR-0081](0081-consumption-performance-evidence.md) | Measure consumption with an uninstrumented JVM benchmark and an optimized iOS device-test binary. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

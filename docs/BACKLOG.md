@@ -350,7 +350,7 @@ Acceptance criteria:
 - Segment and average values are produced by the canonical consumption arithmetic of `docs/CONTRACTS.md §2`, and all four golden values in that section pass.
 - Average consumption is distance-weighted, not an arithmetic mean; the golden case where the two differ (`774` versus `776`) is covered by a test.
 - The function is total: no input throws.
-- The repository filter step is covered: `observeConsumption` passes only non-deleted entries for one vehicle to `CalculateConsumption`.
+- `CalculateConsumption` does not filter its input; entries from another vehicle or with a non-null `deletedAt` still participate when supplied directly.
 - 1,000 entries processed within the target of `docs/SPECIFICATION.md §11`, measured as defined in `docs/versions-matrix.md`.
 
 Human review required.
@@ -367,6 +367,7 @@ Acceptance criteria:
 - `observeFuelEntries` returns the `FuelEntryListItem` projection in chronological order and excludes orphan entries.
 - `FuelEntryListItem` maps partial rows to `consumption = null` and `invalidReason = EndEntryNotFullTank`, while still allowing those rows to contribute litres to the next full segment.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
+- The repository filter step is covered: `observeConsumption` passes only non-deleted entries for one vehicle to `CalculateConsumption`.
 - Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
 - Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
 - Logical delete works and triggers the `docs/CONTRACTS.md §3.1` recompute set.
