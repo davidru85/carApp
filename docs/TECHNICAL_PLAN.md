@@ -428,7 +428,8 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: active. E1-05 is next; E1-05 through E1-10 remain.
+Status: active. E1-05 is complete; E1-06 is next and E1-06 through E1-10 remain. D-80 leaves the
+manual optimized real-iPhone consumption measurement explicit for E4-03.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 

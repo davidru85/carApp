@@ -31,11 +31,12 @@ data and procedure but executes as a separate Java process without the Kover age
 dependency of normal tests or the repository-wide verification command. The task discards five
 warm-up runs, records twenty measurements and reports their median.
 
-The task initially reports rather than enforces the `< 100 ms` threshold. The owner reviews the
-actual measured margin before any CI gate is enabled. The same synthetic data and procedure are
-linked into an optimized `iosArm64` test binary for a later manual run on a real device. Linking is
-required in E1-05; a missing device result remains an explicit E1-05 handoff and project-log item
-owned as an open E4-03 entry.
+The first uninstrumented run measured a 3,392,708 ns median, leaving approximately 96.6% margin to
+the 100 ms target. Under the owner's approved wide-margin condition, the task now enforces the
+threshold in a separate Linux CI step. The same synthetic data and procedure are linked into an
+optimized `iosArm64` test binary for a later manual run on a real device. Linking is required in
+E1-05; a missing device result remains an explicit E1-05 handoff and project-log item owned as an
+open E4-03 entry.
 
 ## Consequences
 
@@ -50,7 +51,7 @@ owned as an open E4-03 entry.
 
 - The first E1-05 PR cannot claim complete iOS performance evidence without a connected iPhone.
 - A dedicated Gradle task and optimized Native test binary require maintenance.
-- CI enforcement requires a follow-up owner confirmation after the first measurement.
+- Shared-runner timing can still vary, although the first result leaves broad headroom.
 
 ### Constraints Introduced
 
@@ -63,6 +64,7 @@ owned as an open E4-03 entry.
 
 - Gradle task inspection proves the benchmark is a standalone `JavaExec` task without an agent.
 - The task output reports all required run counts and the median.
+- The required `contract-check` CI job invokes the benchmark as its own named step on Linux.
 - `linkReleaseTestIosArm64` produces the optimized device-test binary.
 - The handoff records the measured JVM result and explicitly leaves the iOS device result pending.
 

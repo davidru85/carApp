@@ -334,6 +334,9 @@ Acceptance criteria:
 
 ### E1-05 - Consumption Calculation R-3 - M
 
+Status: implementation completed on 2026-08-28. The optimized real-iPhone measurement remains an
+explicit D-80 item in E4-03; E1-05 does not claim that device evidence.
+
 Implement the pure `CalculateConsumption` use case.
 
 Acceptance criteria:
@@ -809,6 +812,7 @@ Measure and fix MVP performance.
 Acceptance criteria:
 
 - Cold start, list smoothness and consumption targets are met, measured exactly as defined in `docs/versions-matrix.md` on the reference devices.
+- Run and record the D-80 optimized consumption benchmark on a real iPhone, filling the device and date left open by E1-05.
 - No memory leaks in critical flows; state holder scopes are cancelled.
 
 ### E4-04 - Release Preparation - M
@@ -882,7 +886,7 @@ proof after E3-04.
 | E1-02 Vehicle domain (completed) | 1 | S | — |
 | E1-03 Vehicle data | 1 | M | — |
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
-| E1-05 Consumption calculation | 1 | M | Yes |
+| E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data | 1 | M | — |
 | E1-07 Android UI vehicles | 1 | M | — |
 | E1-08 Android UI fuel entries | 1 | L | — |

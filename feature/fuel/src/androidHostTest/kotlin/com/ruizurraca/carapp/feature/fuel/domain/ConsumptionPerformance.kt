@@ -18,4 +18,8 @@ fun main() {
             "medianNanos=${result.medianNanos}, thresholdNanos=$CONSUMPTION_THRESHOLD_NANOS, " +
             "javaAgents=${javaAgents.size}, checksum=${result.checksum}",
     )
+    check(result.medianNanos < CONSUMPTION_THRESHOLD_NANOS) {
+        "E1-05 consumption median ${result.medianNanos} ns must be below " +
+            "$CONSUMPTION_THRESHOLD_NANOS ns"
+    }
 }

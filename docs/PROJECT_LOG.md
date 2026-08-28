@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-28 — E1-05 consumption calculation implemented
+
+- **Type:** story
+- **Story / Decision:** `E1-05` / `D-78`, `D-79`, `D-80`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented the pure full-to-full consumption use case, structural-first
+  invalidation precedence, canonical segment and weighted-average arithmetic, cross-platform
+  behavior tests and an isolated uninstrumented performance gate. Moved production repository
+  filtering evidence verbatim to E1-06 and proved the use case does not filter its direct input.
+- **Why:** E1-05 closes the deterministic R-3 functional core without pulling SQLDelight work from
+  E1-06 or allowing Kover and debug Native compilation to invalidate performance evidence.
+- **Documents touched:** D-78 through D-80 and ADR-0079 through ADR-0081 in the four decision
+  mirrors, `docs/CONTRACTS.md §4`, `docs/BACKLOG.md`, `docs/versions-matrix.md`, current-state
+  documents and `docs/handoff-E1-05.md`.
+- **Verification:** 21 new tests were RED on both Android host and `iosSimulatorArm64`, then all 61
+  Android-host and 58 iOS feature tests passed unchanged. The first standalone JVM median was
+  3,392,708 ns with `javaAgents=0`; the enabled 100 ms gate passed at 3,568,521 ns and the optimized
+  `iosArm64` device-test binary linked. Full repository evidence is in the handoff.
+- **Follow-ups / risks:** E1-06 must add `FuelEntryRepositoryConsumptionFilterTest` for the moved
+  production criterion. The D-80 optimized real-iPhone result remains open for E4-03: device `—`,
+  date `—`; no simulator or linked-binary result substitutes for it.
+
 ### 2026-08-28 — E1-04 Fuel Entry domain completed
 
 - **Type:** story

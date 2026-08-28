@@ -31,30 +31,88 @@
 
 ## Scope Completed
 
-- Pending implementation.
+- Added the canonical `CalculateConsumption` contract and its default pure implementation.
+- Implemented full-to-full segment selection, partial-refuel accumulation, D-78 invalidation
+  precedence, canonical segment arithmetic and distance-weighted average calculation.
+- Added the shared functional, golden, ordering, totality, no-filter and complete overlap test
+  suites on Android host and `iosSimulatorArm64`.
+- Added the D-80 standalone uninstrumented JVM performance gate and optimized `iosArm64` test
+  binary without adding a dependency.
+- Added the protected Linux CI performance step and macOS optimized device-binary link step.
 
 ## Acceptance Evidence
 
-- Pending implementation.
+- Two full tanks produce one `NoPreviousFullTank` anchor and one valid segment; one valid segment
+  has a non-null average and is not reliable, while two valid segments set `isReliable = true`.
+- Partial entries produce no `SegmentResult`, never produce `EndEntryNotFullTank` in the use case,
+  and contribute litres to the next full-to-full segment.
+- An internal segment-facts test proves an intermediate row sharing `P.odometerKm` contributes its
+  litres and raises `DuplicateOdometerInSegment`; the public duplicate tests never use `E` as the
+  duplicate acceptance fixture.
+- Missed-entry and inconsistent-odometer flags invalidate only containing segments. D-78 tests
+  prove every coexisting reason pair and the zero-distance/no-flag case in canonical precedence.
+- Calculation sorts by `odometerKm, date, id`; a back-dated partial entry does not change its
+  odometer segment.
+- Feature tests exercise all three segment golden values and the weighted `774` average versus the
+  incorrect `776` arithmetic mean. The canonical `:core:model` golden suite remains green.
+- Empty, partial-only and extreme constructed input lists return without throwing.
+- A foreign-vehicle row with non-null `deletedAt` participates when supplied directly, proving the
+  D-79 use case performs no filtering.
+- The first uninstrumented 1,000-entry run reported a 3,392,708 ns median with five warm-ups,
+  twenty measurements, `javaAgents=0` and 96.6% headroom. The enabled gate later passed at
+  3,568,521 ns.
+- `linkReleaseTestIosArm64` produces the optimized device-test binary. The required manual result
+  is deliberately not claimed:
+
+| iOS performance evidence | Status | Device | Date |
+|--------------------------|--------|--------|------|
+| Optimized real-device median | Pending (E4-03, D-80) | — | — |
 
 ## Out of Scope / Not Done
 
-- E1-06 production repository filtering and persistence.
-- The real-iPhone performance result is unavailable and remains explicit under D-80.
+- E1-06 production repository filtering and persistence. Its
+  `FuelEntryRepositoryConsumptionFilterTest` must prove the moved criterion against the real
+  `observeConsumption` implementation.
+- The real-iPhone performance result is unavailable and remains explicit under D-80; neither the
+  simulator nor the linked release binary is reported as a substitute measurement.
 
 ## Files Changed
 
-- Pending implementation.
+- `feature/fuel/src/commonMain/**` — pure calculation contract, implementation and segment facts.
+- `feature/fuel/src/commonTest/**` — functional, precedence, golden, no-filter and benchmark data.
+- `feature/fuel/src/androidHostTest/**` — standalone uninstrumented JVM benchmark entry point.
+- `feature/fuel/src/iosArm64Test/**` — optimized real-device benchmark test entry point.
+- `feature/fuel/build.gradle.kts` and `.github/workflows/ci.yml` — isolated JVM task, optimized
+  Native test binary and protected CI steps.
+- D-78 through D-80 records — three ADRs and all four decision mirrors.
+- `docs/CONTRACTS.md §4`, `docs/BACKLOG.md`, `docs/versions-matrix.md` and current-state records.
 
 ## Decisions Made
 
 - D-78 fixes singular consumption invalidation precedence.
 - D-79 moves production repository-filter evidence to E1-06 and makes E1-05 prove no filtering.
 - D-80 isolates performance measurement from coverage and keeps real-device evidence explicit.
+- The owner approved the three decisions before RED, so they were recorded as `Accepted` without
+  creating a Definition-of-Ready contradiction.
+- No TDD exemption was used. RED, GREEN and REFACTOR are separate commits followed by one push.
 
 ## Verification Run
 
-- Pending implementation.
+- RED `./gradlew :feature:fuel:testAndroidHostTest` — failed as required: 61 tests executed, the 21
+  new behavior tests failed against the empty implementation.
+- RED `./gradlew :feature:fuel:iosSimulatorArm64Test` — failed as required: 58 tests executed, the
+  same 21 common behavior tests failed.
+- GREEN `./gradlew :feature:fuel:testAndroidHostTest :feature:fuel:iosSimulatorArm64Test` —
+  successful with the RED tests unchanged.
+- `./gradlew :feature:fuel:consumptionBenchmark :feature:fuel:linkReleaseTestIosArm64` — successful;
+  first real JVM median 3,392,708 ns, no Java agent, and optimized device binary linked.
+- `./gradlew :feature:fuel:testAndroidHostTest :feature:fuel:iosSimulatorArm64Test
+  :feature:fuel:consumptionBenchmark :feature:fuel:linkReleaseTestIosArm64
+  :feature:fuel:ktlintCheck :feature:fuel:detekt :feature:fuel:koverVerify architectureCheck
+  contractCheck` — successful after REFACTOR; gate median 3,568,521 ns, feature coverage passed,
+  16 architecture rules passed and 81 decision/ADR mirrors passed.
+- Complete repository verification command — passed (`BUILD SUCCESSFUL` in 8 seconds; 602 actionable tasks: 56 executed, 1 from cache and 545 up-to-date).
+- `git diff --check` — passed with no whitespace errors.
 
 ## Contract Impact
 
@@ -70,12 +128,13 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Entry appended.
 
 ## Risks or Follow-ups
 
 - E1-06 must prove that production `observeConsumption` supplies only non-deleted entries for the
-  requested vehicle to `CalculateConsumption`.
+  requested vehicle to `CalculateConsumption` through
+  `FuelEntryRepositoryConsumptionFilterTest`.
 - E4-03 must run and record the optimized benchmark on a real iPhone if it remains unavailable
   during E1-05.
 

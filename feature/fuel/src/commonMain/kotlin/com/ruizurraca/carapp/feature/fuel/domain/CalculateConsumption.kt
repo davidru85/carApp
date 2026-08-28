@@ -69,24 +69,7 @@ class DefaultCalculateConsumption : CalculateConsumption {
             )
         }
         val facts = consumptionSegmentFacts(entries, fromEntry, toEntry)
-        val invalidReason =
-            when {
-                facts.hasDuplicateStartOdometer -> {
-                    ConsumptionInvalidReason.DuplicateOdometerInSegment
-                }
-
-                facts.hasMissedEntries -> {
-                    ConsumptionInvalidReason.MissedEntriesInSegment
-                }
-
-                facts.hasInconsistentOdometer -> {
-                    ConsumptionInvalidReason.InconsistentOdometerInSegment
-                }
-
-                else -> {
-                    null
-                }
-            }
+        val invalidReason = facts.invalidReason
         return if (invalidReason == null) {
             SegmentResult.Valid(
                 fromEntryId = fromEntry.id,
@@ -116,7 +99,27 @@ internal data class ConsumptionSegmentFacts(
     val hasDuplicateStartOdometer: Boolean,
     val hasMissedEntries: Boolean,
     val hasInconsistentOdometer: Boolean,
-)
+) {
+    val invalidReason: ConsumptionInvalidReason?
+        get() =
+            when {
+                hasDuplicateStartOdometer -> {
+                    ConsumptionInvalidReason.DuplicateOdometerInSegment
+                }
+
+                hasMissedEntries -> {
+                    ConsumptionInvalidReason.MissedEntriesInSegment
+                }
+
+                hasInconsistentOdometer -> {
+                    ConsumptionInvalidReason.InconsistentOdometerInSegment
+                }
+
+                else -> {
+                    null
+                }
+            }
+}
 
 internal fun consumptionSegmentFacts(
     entries: List<FuelEntry>,
