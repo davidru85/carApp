@@ -304,13 +304,13 @@ The complete set of consumption explanation reasons is `ConsumptionInvalidReason
 Write use cases normally validate commands before repository writes. Expected validation failures
 return typed errors and do not throw.
 
-The Vehicle write path is the explicit D-76 exception to that sequencing rule and uses a
-functional-core / imperative-shell split. `ValidateCreateVehicle` and `ValidateUpdateVehicle` own
-the pure normalisation and validation rules and remain independently testable. The E1-03 data
-implementation owns the sequence: it loads the immutable pre-write facts declared in §13, invokes
-the validator and applies the mutation inside one local transaction. The data implementation does
-not own or duplicate the rules, the validators perform no I/O, and validation-shaped database
-queries are not added to `VehicleRepository`.
+The Vehicle and Fuel Entry write paths are the explicit D-76 and D-77 exceptions to that sequencing
+rule and use a functional-core / imperative-shell split. Their validators own the pure
+normalisation and validation rules and remain independently testable. The corresponding E1-03 and
+E1-06 data implementations own the sequence: each loads the immutable pre-write facts declared in
+§13, invokes the validator and applies the mutation inside one local transaction. Data
+implementations do not own or duplicate the rules, validators perform no I/O, and
+validation-shaped database queries are not added to the public repository contracts.
 
 ### Normalisation
 
@@ -341,6 +341,13 @@ Odometer inconsistency is a warning, not an automatic write:
 3. The identical command re-issued with `Confirmation.OdometerInconsistent` in `confirmations` succeeds, and the entry is stored with `odometerInconsistent = true`.
 
 A use case MUST NOT return `Ok` and a warning simultaneously. A warning MUST be idempotent.
+
+Under D-77, `FuelEntryValidationContext.earliestAllowedDate` is the already-resolved lower date
+bound for the target Vehicle and is never earlier than the Unix epoch. E1-04 validates against that
+fact without introducing calendar types into domain code. E1-06 owns calculating the fact from the
+Vehicle row before it validates and writes in one transaction. The exact fixed-duration or
+calendar-year representation of `vehicle.createdAt - 20 years` requires owner confirmation before
+E1-06 begins; E1-04 MUST NOT choose or embed that representation.
 
 ### Validation constraints
 
@@ -1019,6 +1026,68 @@ exact declared errors are:
 
 No other `AppError` leaf is returned by these pure validators. Entity absence, tombstones and
 persistence failures remain repository outcomes (§12).
+
+Fuel Entry command validation uses the D-77 functional core:
+
+```kotlin
+data class FuelEntryValidationContext(
+    val now: Instant,
+    val earliestAllowedDate: Instant,
+    val vehicleInitialOdometerKm: Long,
+    val previousOdometerKm: Long?,
+)
+
+data class ValidatedFuelEntryValues(
+    val vehicleId: EntityId,
+    val date: Instant,
+    val odometerKm: Long,
+    val litersScaled: Long,
+    val pricePerLiterScaled: Long,
+    val totalCostMinor: Long,
+    val currency: CurrencyCode,
+    val isFullTank: Boolean,
+    val hasMissedEntries: Boolean,
+    val notes: String?,
+)
+
+class ValidateCreateFuelEntry {
+    operator fun invoke(
+        command: CreateFuelEntryCommand,
+        context: FuelEntryValidationContext,
+    ): Outcome<ValidatedFuelEntryValues, AppError>
+}
+
+class ValidateUpdateFuelEntry {
+    operator fun invoke(
+        command: UpdateFuelEntryCommand,
+        context: FuelEntryValidationContext,
+    ): Outcome<ValidatedFuelEntryValues, AppError>
+}
+```
+
+Both validators are pure and perform no repository call. `earliestAllowedDate` is the resolved
+lower bound for the target Vehicle and MUST be at or after the Unix epoch. `previousOdometerKm` is
+the odometer of the previous non-deleted row in the command's target chronological position, or
+null when no predecessor exists. For update, E1-06 prepares the context after excluding the target
+row. E1-06 loads these facts, validates and writes in one local transaction.
+
+Validation normalises `notes` with the §5 nullable-text rule and returns the fully normalised,
+canonical persistence values. It checks currency support before monetary arithmetic, validates
+the two supplied `MoneyInput` values before deriving the third, then validates the complete triple.
+Numeric violations return `ValidationError.OutOfRange` with the canonical field name and §5
+bounds. An unsupported explicit currency returns `ValidationError.InvalidUnit(currency.value)`;
+a date beyond `context.now + 1 hour` returns `ValidationError.FutureDate`; and an invalid note
+returns `ValidationError.InvalidLength("notes", 1, 280)`.
+
+Hard validation precedes the R-1 warning. An odometer below `vehicleInitialOdometerKm` uses that
+initial value as the warning reference. Otherwise, an odometer less than or equal to a non-null
+`previousOdometerKm` uses the previous value. `Confirmation.OdometerInconsistent` suppresses only
+that warning; it never suppresses a hard range, date, money, currency or note error.
+
+`ValidatedFuelEntryValues` contains no target entry ID, owner, timestamps, synchronization
+metadata, `odometerInconsistent` value or supplied-pair marker. E1-06 takes the update target ID
+from `UpdateFuelEntryCommand`; `:core:database` remains the sole writer of the derived
+`odometerInconsistent` column.
 
 Consumption calculation:
 
@@ -1885,6 +1954,26 @@ data class UpdateFuelEntryCommand(
     val hasMissedEntries: Boolean,
     val notes: String?,
     val confirmations: Set<Confirmation>,
+)
+
+data class FuelEntryValidationContext(
+    val now: Instant,
+    val earliestAllowedDate: Instant,
+    val vehicleInitialOdometerKm: Long,
+    val previousOdometerKm: Long?,
+)
+
+data class ValidatedFuelEntryValues(
+    val vehicleId: EntityId,
+    val date: Instant,
+    val odometerKm: Long,
+    val litersScaled: Long,
+    val pricePerLiterScaled: Long,
+    val totalCostMinor: Long,
+    val currency: CurrencyCode,
+    val isFullTank: Boolean,
+    val hasMissedEntries: Boolean,
+    val notes: String?,
 )
 
 data class UpdateSettingsCommand(

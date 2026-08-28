@@ -83,5 +83,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-74 | [ADR-0075](0075-use-xcuitest-for-keychain-persistence-acceptance.md) | Use a test-only XCUITest target for Keychain persistence acceptance. | Accepted |
 | D-75 | [ADR-0076](0076-exempt-firebase-standalone-native-tests.md) | Derive Firebase standalone Native-test exemptions from their transitive project graph. | Accepted |
 | D-76 | [ADR-0077](0077-vehicle-validation-uses-pre-write-facts.md) | Apply a functional-core / imperative-shell boundary to Vehicle validation from immutable pre-write facts. | Accepted |
+| D-77 | [ADR-0078](0078-fuel-entry-validation-uses-pre-write-facts.md) | Validate Fuel Entry commands from immutable pre-write facts and return canonical persistence values. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
