@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 1 open.** `E1-01`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, executable provider decoupling, reviewed Firestore rules and the native walking skeleton. `E1-02`, the Vehicle domain story, is next. The project builds on both platforms and `main` is protected by nine required CI checks.
+> **Project status:** **Phase 1 open.** `E1-01`, `E1-02`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, Vehicle domain, executable provider decoupling, reviewed Firestore rules and the native walking skeleton. `E1-03`, the Vehicle data story, is next. The project builds on both platforms and `main` is protected by nine required CI checks.
 
 ## Start here
 
@@ -175,7 +175,7 @@ document wins and the discrepancy is escalated.
 | Phase | Goal | Main gate |
 |-------|------|-----------|
 | 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 1 - Local persistence **(active)** | `E1-01` and the `E0-07` gate are complete; `E1-02` through `E1-10` remain | The walking skeleton already proves the native local/remote path. E1-05 remains the human-reviewed consumption gate |
+| 1 - Local persistence **(active)** | `E1-01`, `E1-02` and the `E0-07` gate are complete; `E1-03` through `E1-10` remain | The walking skeleton already proves the native local/remote path. E1-05 remains the human-reviewed consumption gate |
 | 2 - Authentication **(planned)** | E2-01 through E2-07 remain | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot |
 | 3 - Backend and backup **(partially complete)** | E3-06 and E3-01 are complete; the remaining backend, cleanup, sync and recovery stories are open | Recovery and provider decoupling are executable checks |
 | 4 - MVP hardening **(planned)** | E4-01 through E4-04 remain | Store-readiness checklist complete |

@@ -90,6 +90,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-73 | Cloud Functions artifact retention | One-day cleanup on the exact Functions Artifact Registry repository with observed deletion | Accepted | Keeps a short inspection window while bounding development storage cost and treating Git as the source of truth. |
 | D-74 | iOS Keychain persistence acceptance | Test-only XCUITest bundle drives UI across a terminated and relaunched real app process | Accepted | Proves signed-app Keychain persistence without shared access groups, host hooks or manual interaction. |
 | D-75 | Firebase standalone Kotlin/Native test exception | Derive exemptions from the transitive Native-test project graph rooted at the Firebase integration modules; current resolution is four modules | Accepted | Avoids a second Firebase dependency manager or experimental toolchain while a graph-derived exact-set guard and real-host acceptance keep the changing coverage loss explicit. |
+| D-76 | Vehicle validation boundary | Pure validators consume immutable pre-write facts loaded by E1-03 | Accepted | Preserves a Kotlin-pure domain and keeps persistence-shaped validation queries out of the public repository contract. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -423,7 +424,7 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: active. E1-02 is next; E1-02 through E1-10 remain.
+Status: active. E1-03 is next; E1-03 through E1-10 remain.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 

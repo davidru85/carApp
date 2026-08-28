@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-28 — E1-02 Vehicle domain completed
+
+- **Type:** story
+- **Story / Decision:** `E1-02` / `D-76`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** completed the pure `:feature:vehicle` domain with canonical create/update
+  commands, the `VehicleRepository` contract, exact Vehicle-name normalisation and create/update
+  validators. Added D-76 to make validation consume immutable pre-write facts, and corrected the
+  derived backlog wording so only `UpdateVehicleCommand` carries its canonical target ID.
+- **Why:** E1-02 owns the business rules that must execute before local persistence. Immutable
+  validation contexts keep those rules Kotlin-pure and testable without adding database-shaped
+  query methods to the public repository contract.
+- **Documents touched:** D-76 and ADR-0077 in the four decision mirrors, `docs/CONTRACTS.md §5`,
+  `§13` and `§20.5`, `docs/BACKLOG.md`, current-state documents and `docs/handoff-E1-02.md`.
+- **Verification:** the RED Android-host run executed 29 tests with 28 expected behavioral
+  failures and the pre-existing FuelType inventory passing; GREEN and REFACTOR passed all 29 tests
+  on Android host and `iosSimulatorArm64`, feature lint, detekt and the 85% Kover gate. The complete
+  repository CI command passed 583 actionable tasks.
+- **Follow-ups / risks:** E1-03 must load the D-76 validation facts and perform validation plus
+  mutation in one local transaction, and it replaces the remaining E0-07 Vehicle runtime adapter.
+  E1-07 still owns executable feature package-layer rules.
+
 ### 2026-08-27 — Post-E0-07 documentation handoff reconciled
 
 - **Type:** handoff
