@@ -56,10 +56,7 @@ private fun hasDuplicateName(
 
 private fun isInvalidOdometerUpdate(
     value: Long?,
-    hasNonDeletedFuelEntries: Boolean,
-): Boolean =
-    value != null &&
-        (value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM || hasNonDeletedFuelEntries)
+): Boolean = value != null && value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM
 
 private fun normaliseVehicleFields(
     name: String,
@@ -75,6 +72,7 @@ private fun normaliseVehicleFields(
 private fun validateVehicleFields(
     fields: NormalisedVehicleFields,
     invalidInitialOdometer: Boolean,
+    initialOdometerEditNotAllowed: Boolean,
     candidates: List<VehicleNameCandidate>,
     excludedId: EntityId?,
 ): ValidationError? =
@@ -115,6 +113,10 @@ private fun validateVehicleFields(
             )
         }
 
+        initialOdometerEditNotAllowed -> {
+            ValidationError.EditNotAllowed("initialOdometerKm")
+        }
+
         hasDuplicateName(candidates, fields.name.lowercase(), excludedId) -> {
             ValidationError.DuplicateName(fields.name)
         }
@@ -146,6 +148,7 @@ class ValidateCreateVehicle {
                 fields = fields,
                 invalidInitialOdometer =
                     command.initialOdometerKm !in MIN_ODOMETER_KM..MAX_ODOMETER_KM,
+                initialOdometerEditNotAllowed = false,
                 candidates = context.activeVehicles,
                 excludedId = null,
             )
@@ -165,10 +168,9 @@ class ValidateUpdateVehicle {
             validateVehicleFields(
                 fields = fields,
                 invalidInitialOdometer =
-                    isInvalidOdometerUpdate(
-                        command.initialOdometerKm,
-                        context.hasNonDeletedFuelEntries,
-                    ),
+                    isInvalidOdometerUpdate(command.initialOdometerKm),
+                initialOdometerEditNotAllowed =
+                    command.initialOdometerKm != null && context.hasNonDeletedFuelEntries,
                 candidates = context.activeVehicles,
                 excludedId = command.id,
             )

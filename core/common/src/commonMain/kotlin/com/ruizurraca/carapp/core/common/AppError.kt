@@ -33,6 +33,12 @@ sealed interface ValidationError : AppError {
         override val code = "VALIDATION.OUT_OF_RANGE"
     }
 
+    data class EditNotAllowed(
+        val field: String,
+    ) : ValidationError {
+        override val code = "VALIDATION.EDIT_NOT_ALLOWED"
+    }
+
     data class DuplicateName(
         val name: String,
     ) : ValidationError {
