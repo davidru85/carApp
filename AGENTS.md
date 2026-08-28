@@ -87,16 +87,17 @@ tell what is already built from what is still a plan, and it is updated by the s
 `E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
 has made provider decoupling executable before any Firebase integration module exists. The owner
 accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is merged and
-`E0-07`, the walking skeleton, `E1-02`, the Vehicle domain story, and `E1-03`, the Vehicle data
-story, are complete. `E1-04`, the Fuel Entry domain story, is the next planned Phase 1 story.
+`E0-07`, the walking skeleton, `E1-02`, the Vehicle domain story, `E1-03`, the Vehicle data story,
+and `E1-04`, the Fuel Entry domain story, are complete. `E1-05`, the human-gated consumption
+calculation story, is the next planned Phase 1 story.
 
 ### Delivery status and remaining work
 
-- **Completed:** all Phase 0 stories; `E1-01`, `E1-02`, `E1-03`; the pulled-forward `E3-06` and `E3-01`
-  prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
-- **Next:** `E1-04`. No product implementation story is currently in flight; its Ready Check must
-  be recorded before implementation starts.
-- **Remaining Phase 1:** `E1-04` through `E1-10`.
+- **Completed:** all Phase 0 stories; `E1-01`, `E1-02`, `E1-03`, `E1-04`; the pulled-forward `E3-06`
+  and `E3-01` prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
+- **Next:** `E1-05`. No product implementation story is currently in flight; its Ready Check and
+  human review gate must be recorded before implementation starts.
+- **Remaining Phase 1:** `E1-05` through `E1-10`.
 - **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07` and `E3-09`. `E3-01` and `E3-06` are already complete.
@@ -119,7 +120,7 @@ build-logic/       convention plugins, an included build
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
 :feature:vehicle   Vehicle domain and SQLDelight-backed local repository implementation
-:feature:fuel      final module shell staged for the Swift-facing surface
+:feature:fuel      Fuel Entry commands, repository contract and pure R-1/R-2 validation
 :feature:session   final module shell staged for the Swift-facing surface
 :shared            provider-free graph contracts, Swift facade and exported shared declarations
 :shared:testing    KMP app-graph test factory, consumed from commonTest only
