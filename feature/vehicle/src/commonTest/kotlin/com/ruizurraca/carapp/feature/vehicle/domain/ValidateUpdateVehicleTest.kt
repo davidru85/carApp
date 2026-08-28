@@ -105,15 +105,12 @@ class ValidateUpdateVehicleTest {
     }
 
     @Test
-    fun nonNullOdometerWithExistingFuelEntriesReturnsOutOfRange() {
+    fun nonNullOdometerWithExistingFuelEntriesReturnsEditNotAllowed() {
         val context = UpdateVehicleValidationContext(emptyList(), true)
 
         val result = validate(updateCommand(initialOdometerKm = 10_000), context)
 
-        assertEquals(
-            ValidationError.OutOfRange("initialOdometerKm", 0, 2_000_000),
-            errorFrom(result),
-        )
+        assertEquals("VALIDATION.EDIT_NOT_ALLOWED", errorFrom(result).code)
     }
 
     @Test
