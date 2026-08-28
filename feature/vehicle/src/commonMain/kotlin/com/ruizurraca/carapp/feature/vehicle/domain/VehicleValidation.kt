@@ -54,9 +54,27 @@ private fun hasDuplicateName(
             canonicalVehicleName(it.name).lowercase() == nameFold
     }
 
-private fun isInvalidOdometerUpdate(
+private fun initialOdometerError(
     value: Long?,
-): Boolean = value != null && value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM
+    editNotAllowed: Boolean,
+): ValidationError? =
+    when {
+        value != null && value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM -> {
+            ValidationError.OutOfRange(
+                "initialOdometerKm",
+                MIN_ODOMETER_KM,
+                MAX_ODOMETER_KM,
+            )
+        }
+
+        value != null && editNotAllowed -> {
+            ValidationError.EditNotAllowed("initialOdometerKm")
+        }
+
+        else -> {
+            null
+        }
+    }
 
 private fun normaliseVehicleFields(
     name: String,
@@ -71,8 +89,7 @@ private fun normaliseVehicleFields(
 
 private fun validateVehicleFields(
     fields: NormalisedVehicleFields,
-    invalidInitialOdometer: Boolean,
-    initialOdometerEditNotAllowed: Boolean,
+    initialOdometerError: ValidationError?,
     candidates: List<VehicleNameCandidate>,
     excludedId: EntityId?,
 ): ValidationError? =
@@ -105,16 +122,8 @@ private fun validateVehicleFields(
             )
         }
 
-        invalidInitialOdometer -> {
-            ValidationError.OutOfRange(
-                "initialOdometerKm",
-                MIN_ODOMETER_KM,
-                MAX_ODOMETER_KM,
-            )
-        }
-
-        initialOdometerEditNotAllowed -> {
-            ValidationError.EditNotAllowed("initialOdometerKm")
+        initialOdometerError != null -> {
+            initialOdometerError
         }
 
         hasDuplicateName(candidates, fields.name.lowercase(), excludedId) -> {
@@ -146,9 +155,7 @@ class ValidateCreateVehicle {
         val error =
             validateVehicleFields(
                 fields = fields,
-                invalidInitialOdometer =
-                    command.initialOdometerKm !in MIN_ODOMETER_KM..MAX_ODOMETER_KM,
-                initialOdometerEditNotAllowed = false,
+                initialOdometerError = initialOdometerError(command.initialOdometerKm, false),
                 candidates = context.activeVehicles,
                 excludedId = null,
             )
@@ -167,10 +174,11 @@ class ValidateUpdateVehicle {
         val error =
             validateVehicleFields(
                 fields = fields,
-                invalidInitialOdometer =
-                    isInvalidOdometerUpdate(command.initialOdometerKm),
-                initialOdometerEditNotAllowed =
-                    command.initialOdometerKm != null && context.hasNonDeletedFuelEntries,
+                initialOdometerError =
+                    initialOdometerError(
+                        command.initialOdometerKm,
+                        context.hasNonDeletedFuelEntries,
+                    ),
                 candidates = context.activeVehicles,
                 excludedId = command.id,
             )

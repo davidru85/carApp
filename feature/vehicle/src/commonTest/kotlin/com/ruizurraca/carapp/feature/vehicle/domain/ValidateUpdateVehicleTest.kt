@@ -114,6 +114,18 @@ class ValidateUpdateVehicleTest {
     }
 
     @Test
+    fun outOfRangeOdometerWithExistingFuelEntriesReturnsOutOfRangeFirst() {
+        val context = UpdateVehicleValidationContext(emptyList(), true)
+
+        val result = validate(updateCommand(initialOdometerKm = 2_000_001), context)
+
+        assertEquals(
+            ValidationError.OutOfRange("initialOdometerKm", 0, 2_000_000),
+            errorFrom(result),
+        )
+    }
+
+    @Test
     fun unchangedOdometerIsAcceptedWithExistingFuelEntries() {
         val context = UpdateVehicleValidationContext(emptyList(), true)
 

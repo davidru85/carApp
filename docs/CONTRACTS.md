@@ -301,16 +301,21 @@ The complete set of consumption explanation reasons is `ConsumptionInvalidReason
 
 ## 5. Validation and Save Semantics
 
-Write use cases validate commands before repository writes. Expected validation failures return typed errors and do not throw.
+Write use cases normally validate commands before repository writes. Expected validation failures
+return typed errors and do not throw.
 
-Vehicle command validation follows D-76. The E1-03 data implementation loads the immutable
-pre-write facts declared in §13 and invokes the pure Vehicle validator immediately before the
-mutation inside the same local transaction. The validators perform no I/O, and validation-shaped
-database queries are not added to `VehicleRepository`.
+The Vehicle write path is the explicit D-76 exception to that sequencing rule and uses a
+functional-core / imperative-shell split. `ValidateCreateVehicle` and `ValidateUpdateVehicle` own
+the pure normalisation and validation rules and remain independently testable. The E1-03 data
+implementation owns the sequence: it loads the immutable pre-write facts declared in §13, invokes
+the validator and applies the mutation inside one local transaction. The data implementation does
+not own or duplicate the rules, the validators perform no I/O, and validation-shaped database
+queries are not added to `VehicleRepository`.
 
 ### Normalisation
 
-Normalisation runs in the use case **before** validation, and the normalised value is what is persisted and what uniqueness is computed on:
+Normalisation runs in the pure validator **before** its validation rules, and the normalised value
+is handed to the imperative shell for persistence and used for uniqueness:
 
 - All strings are `trim()`ed.
 - Internal Unicode whitespace runs in `name` collapse to one U+0020 space.
@@ -345,7 +350,7 @@ Both ends of every interval are closed and MUST be enforced.
 |-------|------|
 | Vehicle `name` | Trimmed length 1..40. Unique per owner among non-deleted vehicles, compared on `nameFold`. |
 | `brand`, `model` | Null, or trimmed length 1..40. |
-| `initialOdometerKm` | `CreateVehicleCommand.initialOdometerKm` is required and must be in `0..2_000_000`. `UpdateVehicleCommand.initialOdometerKm` is editable only while the vehicle has no non-deleted fuel entries; `null` means unchanged. A non-null update outside that condition returns `ValidationError.OutOfRange` and mutates nothing. |
+| `initialOdometerKm` | `CreateVehicleCommand.initialOdometerKm` is required and must be in `0..2_000_000`. `UpdateVehicleCommand.initialOdometerKm` is editable only while the vehicle has no non-deleted fuel entries; `null` means unchanged. A non-null in-range update after fuel entries exist returns `ValidationError.EditNotAllowed("initialOdometerKm")` and mutates nothing. `ValidationError.OutOfRange` is reserved for values outside the numeric interval. |
 | `fuelType` | One of `GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`. `ELECTRIC` and `HYBRID` are out of MVP scope. |
 | Fuel entry `date` | Not before `1970-01-01T00:00:00Z`, not before `vehicle.createdAt - 20 years`, and not more than 1 hour after `AppClock.now()`. |
 | `odometerKm` | 0..2_000_000; `>= vehicle.initialOdometerKm`; strictly greater than the previous non-deleted entry in chronological order unless confirmed inconsistent. |
@@ -966,6 +971,8 @@ Every use case:
 Vehicle command validation lives in the `:feature:vehicle` domain package:
 
 ```kotlin
+fun canonicalVehicleName(input: String): String
+
 data class VehicleNameCandidate(
     val id: EntityId,
     val name: String,
@@ -995,19 +1002,20 @@ class ValidateUpdateVehicle {
 }
 ```
 
-Both validators are pure and perform no repository call. `activeVehicles` contains only
-non-deleted vehicles for the current owner. Update validation excludes the candidate whose `id`
-equals `command.id`. E1-03 loads these facts and invokes the validator immediately before its
-write inside the same local transaction.
+Both validators form the functional core and perform no repository call. `activeVehicles`
+contains only non-deleted vehicles for the current owner. Update validation excludes the candidate
+whose `id` equals `command.id`. E1-03 is the imperative shell: it loads these facts, invokes the
+validator and writes inside the same local transaction.
 
 The successful value is the fully normalised command. Validation order is required name, string
-lengths, odometer range and edit restriction, then folded-name uniqueness. The exact declared
-errors are:
+lengths, numeric odometer range, odometer edit restriction, then folded-name uniqueness. When an
+update value is both outside the range and locked by existing fuel entries, `OutOfRange` wins. The
+exact declared errors are:
 
 | Use case | Errors |
 |----------|--------|
 | `ValidateCreateVehicle` | `ValidationError.RequiredField(name)`, `InvalidLength(name, brand, model)`, `OutOfRange(initialOdometerKm)`, `DuplicateName` |
-| `ValidateUpdateVehicle` | The same set. A non-null `initialOdometerKm` when `hasNonDeletedFuelEntries` is true returns `OutOfRange(initialOdometerKm, 0, 2_000_000)` even when the supplied value is otherwise inside the numeric interval. |
+| `ValidateUpdateVehicle` | `ValidationError.RequiredField(name)`, `InvalidLength(name, brand, model)`, `OutOfRange(initialOdometerKm)`, `EditNotAllowed(initialOdometerKm)`, `DuplicateName`. `EditNotAllowed` applies only to a non-null in-range value when `hasNonDeletedFuelEntries` is true. |
 
 No other `AppError` leaf is returned by these pure validators. Entity absence, tombstones and
 persistence failures remain repository outcomes (§12).
@@ -1606,6 +1614,7 @@ sealed interface ValidationError : AppError {
     data class RequiredField(val field: String) : ValidationError { override val code = "VALIDATION.REQUIRED_FIELD" }
     data class InvalidLength(val field: String, val min: Int, val max: Int) : ValidationError { override val code = "VALIDATION.INVALID_LENGTH" }
     data class OutOfRange(val field: String, val min: Long, val max: Long) : ValidationError { override val code = "VALIDATION.OUT_OF_RANGE" }
+    data class EditNotAllowed(val field: String) : ValidationError { override val code = "VALIDATION.EDIT_NOT_ALLOWED" }
     data class DuplicateName(val name: String) : ValidationError { override val code = "VALIDATION.DUPLICATE_NAME" }
     data object FutureDate : ValidationError { override val code = "VALIDATION.FUTURE_DATE" }
     data object InvalidMoneyInput : ValidationError { override val code = "VALIDATION.INVALID_MONEY_INPUT" }

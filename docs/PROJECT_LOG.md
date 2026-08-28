@@ -38,6 +38,27 @@
 
 ## Entries
 
+### 2026-08-28 — E1-02 human-review corrections applied
+
+- **Type:** correction
+- **Story / Decision:** `E1-02` / `D-76`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** recorded owner approval of D-76's selected option and corrected its rationale
+  to the established functional-core / imperative-shell pattern. Added
+  `ValidationError.EditNotAllowed` so a locked initial-odometer edit is not reported as a numeric
+  range failure, and declared the public `canonicalVehicleName` signature.
+- **Why:** `CalculateConsumption` already establishes the pure-function-from-prepared-facts
+  boundary, while Vehicle-name uniqueness deliberately has no database unique index so remote
+  duplicates remain ingestible. Only one local transaction containing fact loading, validation
+  and mutation can guarantee the local rule.
+- **Documents touched:** `docs/CONTRACTS.md §5`, `§13` and `§20.2`, D-76 and ADR-0077 in the four
+  decision mirrors, and `docs/handoff-E1-02.md`.
+- **Verification:** the correction RED test failed on `VALIDATION.OUT_OF_RANGE`; GREEN passed the
+  `:core:common` Android-host tests and Vehicle tests on Android host and `iosSimulatorArm64`.
+  Final repository checks are recorded in `docs/handoff-E1-02.md`.
+- **Follow-ups / risks:** E1-03 must prove fact loading, validation and mutation share one local
+  transaction. It must not add a `ValidatedCommand` key type or change `VehicleRepository`.
+
 ### 2026-08-28 — E1-02 Vehicle domain completed
 
 - **Type:** story

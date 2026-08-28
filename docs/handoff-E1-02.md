@@ -39,6 +39,8 @@
 - Added the exact `VehicleRepository` interface from `docs/CONTRACTS.md §12`.
 - Added pure `ValidateCreateVehicle` and `ValidateUpdateVehicle` use cases with immutable D-76
   contexts, exact normalisation, range checks, edit locking and folded-name uniqueness.
+- Added `ValidationError.EditNotAllowed("initialOdometerKm")` so an in-range odometer edit locked
+  by existing fuel entries is distinct from a numeric `OutOfRange` failure.
 - Reused the canonical `Vehicle` entity and closed `FuelType` enum staged in `:core:model` by E0-07
   rather than duplicating either type in the feature.
 - Added common tests executed unchanged on Android host and `iosSimulatorArm64`.
@@ -51,7 +53,10 @@
 - Duplicate-name tests use canonical whitespace and Unicode lowercase; a separate test proves
   composed and decomposed spellings remain distinct, with no unapproved Unicode normalisation.
 - Create and update tests cover both closed odometer bounds and both out-of-range sides. Update
-  tests prove a non-null odometer is rejected after fuel entries exist while null remains unchanged.
+  tests prove an in-range non-null odometer returns `EditNotAllowed` after fuel entries exist,
+  an out-of-range value still returns `OutOfRange` first, and null remains unchanged.
+- `AppErrorCodesTest` covers the new leaf and pins `VALIDATION.EDIT_NOT_ALLOWED` in the exhaustive
+  stable-code inventory used by logs and analytics.
 - The 1..40 bounds, required name and `InvalidLength` errors for name, brand and model are covered
   independently for both validators. All errors declared by the use cases have focused tests.
 - `VehicleCommandsTest` proves `GASOLINE` is the create default and `FuelType` contains exactly
@@ -59,6 +64,9 @@
 - The RED commit `68ed40f` executed 29 tests: 28 failed for deliberately absent behavior and the
   pre-existing enum-inventory test passed. GREEN commit `f5fb5dd` made the full suite pass before
   the final refactor centralized shared field validation without changing outcomes.
+- Human review correction RED commit `e7565f4` executed the focused edit-lock test and failed with
+  `VALIDATION.OUT_OF_RANGE`; GREEN commit `fbb266a` introduced the distinct taxonomy leaf and made
+  the common and Vehicle suites pass before the correction refactor.
 - Source inspection and architecture checks prove the domain package imports only Kotlin,
   `:core:model`, `:core:common` and `kotlinx.coroutines.flow`; it references no platform,
   persistence, sync, provider or wiring API.
@@ -67,6 +75,8 @@
 
 - E1-03 persistence, transactional validation-fact loading and replacement of the E0-07 runtime
   adapter.
+- A `ValidatedCommand` key type, Vehicle validation query ports and any change to the canonical
+  `VehicleRepository` contract.
 - E1-07 presentation and executable feature package-layer rules.
 
 ## Files Changed
@@ -74,6 +84,8 @@
 - `feature/vehicle/src/commonMain/**` — commands, repository contract, contexts, normalisation and
   validators.
 - `feature/vehicle/src/commonTest/**` — focused command, normalisation, create and update tests.
+- `core/common/src/commonMain/**` and `src/commonTest/**` — the stable `EditNotAllowed` taxonomy
+  leaf and its exhaustive code assertion.
 - D-76 records — `docs/adr/0077-*` and the four decision mirrors.
 - Story records and current state — `docs/handoff-E1-02.md`, `docs/PROJECT_LOG.md`, `AGENTS.md`,
   `README.md`, `docs/DEFINITION.md` and `docs/BACKLOG.md`.
@@ -81,6 +93,12 @@
 ## Decisions Made
 
 - D-76 selects pure validators over repository query ports or data-layer-only validation.
+- Human review approved the selected D-76 option and corrected its rationale: Vehicle validation
+  extends the existing `CalculateConsumption` functional-core pattern, while E1-03 is the
+  imperative shell that must load facts, validate and mutate inside one transaction. The absence
+  of a Vehicle-name unique index is deliberate so remote duplicates remain ingestible.
+- The odometer edit lock now returns `EditNotAllowed`; `OutOfRange` is reserved for the numeric
+  interval. This corrects error classification without changing D-76's selected boundary.
 - The owner explicitly requested one push after the RED, GREEN and REFACTOR commits for E1-02,
   superseding the default one-push-per-phase cadence of `docs/SPECIFICATION.md §11` while
   preserving the required commit order.
@@ -99,22 +117,37 @@
   :feature:vehicle:ktlintCheck :feature:vehicle:detekt :feature:vehicle:koverVerify` after GREEN and
   again after REFACTOR — successful; all 29 tests passed on both targets and the 85% feature
   coverage gate held.
+- `./gradlew :feature:vehicle:testAndroidHostTest --tests
+  'com.ruizurraca.carapp.feature.vehicle.domain.ValidateUpdateVehicleTest.nonNullOdometerWithExistingFuelEntriesReturnsEditNotAllowed'`
+  during the review-correction RED phase — failed as required because the implementation returned
+  `VALIDATION.OUT_OF_RANGE`.
+- `./gradlew :core:common:testAndroidHostTest :feature:vehicle:testAndroidHostTest
+  :feature:vehicle:iosSimulatorArm64Test` after the review-correction GREEN phase — successful.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :feature:vehicle:testAndroidHostTest :feature:vehicle:iosSimulatorArm64Test
+  :feature:vehicle:koverVerify` after the review-correction REFACTOR phase — successful; all 30
+  Vehicle tests passed on both targets, the 85% feature coverage gate held, all 77 decisions and
+  ADR statuses aligned, and the Objective-C golden header remained unchanged.
 - `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
   koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test
   -x :integration:firebase-auth:iosSimulatorArm64Test
   -x :integration:firebase-firestore:iosSimulatorArm64Test
   -x :wiring:firebase:iosSimulatorArm64Test
   -x :composition:ios:iosSimulatorArm64Test` — successful; 583 actionable tasks, with all 77
-  decisions and ADR statuses aligned and the exact D-75 Native-test exemption unchanged.
+  decisions and ADR statuses aligned and the exact D-75 Native-test exemption unchanged. The same
+  complete command passed again after the human-review corrections: 583 actionable tasks, 109
+  executed and 474 up-to-date.
 - `git diff --check` — successful after final documentation.
 
 ## Contract Impact
 
-- Updated `docs/CONTRACTS.md §5`, `§13` and `§20.5` for D-76 and the existing D-4 default.
+- Updated `docs/CONTRACTS.md §5`, `§13`, `§20.2` and `§20.5` for D-76, the functional-core /
+  imperative-shell exception, `EditNotAllowed` and the existing D-4 default.
 
 ## Decision Board Impact
 
-- Added D-76 and ADR-0077.
+- Added D-76 and ADR-0077; human review approved the selected option and corrected its rationale
+  without changing the decision.
 
 ## Shared-Write Modules Touched
 
@@ -126,13 +159,14 @@
 
 ## Risks or Follow-ups
 
-- E1-03 must load D-76 validation facts and write inside one local transaction so the pure
-  validation snapshot cannot become stale before mutation.
+- E1-03 must prove with a test that D-76 fact loading, validation and mutation execute inside one
+  local transaction so the pure validation snapshot cannot become stale before mutation.
 - The removable E0-07 Vehicle runtime remains until E1-03 supplies the complete data implementation.
 - E1-07 still owns executable feature-layer package rules under D-28. E1-02 source inspection and
   the existing module checks provide current evidence, but package enforcement is not claimed.
 
 ## Human Review Gate
 
-- Applies: gated contract, specification, decision-board and ADR paths. The owner must review and
-  merge the pull request.
+- Applies: gated contract, specification, decision-board and ADR paths. The owner approved D-76's
+  selected option and requested the recorded corrections; the pull request remains unmerged for
+  owner-controlled merge.
