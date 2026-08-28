@@ -4,10 +4,21 @@ FROM vehicle
 WHERE deleted = 0
 ORDER BY nameFold ASC, id ASC;
 
+selectVehiclesByOwner:
+SELECT *
+FROM vehicle
+WHERE ownerId = :ownerId AND (:includeDeleted = 1 OR deleted = 0)
+ORDER BY nameFold ASC, id ASC;
+
 selectVehicleById:
 SELECT *
 FROM vehicle
 WHERE id = :id;
+
+selectVehicleByOwnerAndId:
+SELECT *
+FROM vehicle
+WHERE ownerId = :ownerId AND id = :id;
 
 selectFuelEntryById:
 SELECT *
@@ -25,6 +36,11 @@ FROM fuel_entry
 WHERE vehicleId = :vehicleId AND deleted = 0
 ORDER BY date ASC, createdAt ASC, id ASC;
 
+countActiveFuelEntriesByVehicle:
+SELECT COUNT(*)
+FROM fuel_entry
+WHERE vehicleId = :vehicleId AND deleted = 0;
+
 insertVehicleRow:
 INSERT INTO vehicle(
   id, ownerId, name, nameFold, initialOdometerKm, currentOdometerKm, brand, model, fuelType,
@@ -36,6 +52,32 @@ VALUES (
   :fuelType, :createdAt, :updatedAt, :serverUpdatedAt, :deleted, :deletedAt, :syncState,
   :localRevision, :localMutationSeq, :schemaVersion
 );
+
+updateVehicleRow:
+UPDATE vehicle
+SET ownerId = :ownerId,
+  name = :name,
+  nameFold = :nameFold,
+  initialOdometerKm = :initialOdometerKm,
+  brand = :brand,
+  model = :model,
+  fuelType = :fuelType,
+  updatedAt = :updatedAt,
+  syncState = 'PENDING',
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq
+WHERE id = :id;
+
+tombstoneVehicleRow:
+UPDATE vehicle
+SET ownerId = :ownerId,
+  updatedAt = :updatedAt,
+  deleted = 1,
+  deletedAt = :deletedAt,
+  syncState = 'PENDING',
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq
+WHERE id = :id;
 
 upsertRemoteVehicleRow:
 INSERT INTO vehicle(
@@ -115,6 +157,17 @@ SET updatedAt = :updatedAt,
   deleted = 1,
   deletedAt = :deletedAt,
   syncState = :syncState,
+  localRevision = :localRevision,
+  localMutationSeq = :localMutationSeq
+WHERE id = :id;
+
+tombstoneFuelEntryForVehicleDelete:
+UPDATE fuel_entry
+SET ownerId = :ownerId,
+  updatedAt = :updatedAt,
+  deleted = 1,
+  deletedAt = :deletedAt,
+  syncState = 'PENDING',
   localRevision = :localRevision,
   localMutationSeq = :localMutationSeq
 WHERE id = :id;

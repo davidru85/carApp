@@ -43,6 +43,8 @@
 - RED phase: 57 Android-host tests compiled and executed; 26 focused E1-03 tests failed for absent
   mapper, observation, create, update, delete, error-boundary and transaction behavior, while all
   31 pre-existing tests passed.
+- GREEN phase: all 57 Vehicle tests passed unchanged on Android host and `iosSimulatorArm64`; the
+  existing `:core:database` Android-host suite also remained green after extending D-38.
 
 ## Out of Scope / Not Done
 
@@ -63,6 +65,9 @@
 
 - `./gradlew :feature:vehicle:testAndroidHostTest` during RED — failed as required: 57 tests
   executed, 26 failed for deliberately absent E1-03 behavior and 31 pre-existing tests passed.
+- `./gradlew :feature:vehicle:testAndroidHostTest` after GREEN — successful; all 57 tests passed.
+- `./gradlew :core:database:testAndroidHostTest :feature:vehicle:iosSimulatorArm64Test` after GREEN
+  — successful; the database regression suite and all 57 Vehicle tests passed on Kotlin/Native.
 
 ## Contract Impact
 

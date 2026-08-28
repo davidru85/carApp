@@ -8,6 +8,8 @@ dependencies {
     "commonMainImplementation"(projects.core.database)
     "commonMainImplementation"(projects.core.sync)
     "commonMainImplementation"(libs.kotlinx.serialization.json)
+    "commonMainImplementation"(libs.sqldelight.async.extensions)
+    "commonMainImplementation"(libs.sqldelight.coroutines.extensions)
     "commonTestImplementation"(projects.core.testing)
     "commonTestImplementation"(libs.kotlinx.coroutines.test)
     "commonTestImplementation"(libs.turbine)

@@ -1,13 +1,21 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.cash.sqldelight.async.coroutines.awaitAsOne
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
+import com.ruizurraca.carapp.core.database.DatabaseQueries
 import com.ruizurraca.carapp.core.database.Fuel_entry
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleNameCandidate
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlin.coroutines.EmptyCoroutineContext
 
 internal interface VehicleLocalDataSource {
     fun observeVehicles(
@@ -51,35 +59,57 @@ internal interface VehicleWriteScope {
 }
 
 internal class SqlDelightVehicleLocalDataSource(
-    database: AppDatabase,
+    private val database: AppDatabase,
 ) : VehicleLocalDataSource {
+    private val queries: DatabaseQueries = database.databaseQueries
     private val mutations = DatabaseMutations(database)
-    private val scope = RedVehicleWriteScope(mutations)
+    private val scope = SqlDelightVehicleWriteScope(queries, mutations)
 
     override fun observeVehicles(
         ownerId: OwnerId,
         includeDeleted: Boolean,
-    ): Flow<List<LocalVehicle>> = flowOf(emptyList())
+    ): Flow<List<LocalVehicle>> =
+        queries
+            .selectVehiclesByOwner(ownerId.value, if (includeDeleted) 1 else 0)
+            .asFlow()
+            .mapToList(EmptyCoroutineContext)
+            .map { rows -> rows.map { it.toLocalVehicle() } }
 
     override fun observeVehicle(
         ownerId: OwnerId,
         id: EntityId,
-    ): Flow<LocalVehicle?> = flowOf(null)
+    ): Flow<LocalVehicle?> =
+        queries
+            .selectVehicleByOwnerAndId(ownerId.value, id.value)
+            .asFlow()
+            .mapToOneOrNull(EmptyCoroutineContext)
+            .map { it?.toLocalVehicle() }
 
-    override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T = scope.block()
+    override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T =
+        database.transactionWithResult(noEnclosing = true) { scope.block() }
 }
 
-private class RedVehicleWriteScope(
+private class SqlDelightVehicleWriteScope(
+    private val queries: DatabaseQueries,
     private val mutations: DatabaseMutations,
 ) : VehicleWriteScope {
-    override suspend fun activeVehicleCandidates(ownerId: OwnerId): List<VehicleNameCandidate> = emptyList()
+    override suspend fun activeVehicleCandidates(ownerId: OwnerId): List<VehicleNameCandidate> =
+        queries
+            .selectVehiclesByOwner(ownerId.value, includeDeleted = 0)
+            .awaitAsList()
+            .map { VehicleNameCandidate(EntityId(it.id), it.name) }
 
     override suspend fun vehicle(
         ownerId: OwnerId,
         id: EntityId,
-    ): LocalVehicle? = null
+    ): LocalVehicle? =
+        queries
+            .selectVehicleByOwnerAndId(ownerId.value, id.value)
+            .awaitAsOneOrNull()
+            ?.toLocalVehicle()
 
-    override suspend fun hasActiveFuelEntries(id: EntityId): Boolean = false
+    override suspend fun hasActiveFuelEntries(id: EntityId): Boolean =
+        queries.countActiveFuelEntriesByVehicle(id.value).awaitAsOne() > 0
 
     override suspend fun insertVehicle(
         vehicle: LocalVehicle,
@@ -104,11 +134,33 @@ private class RedVehicleWriteScope(
     override suspend fun updateVehicle(
         vehicle: LocalVehicle,
         outboxPayload: String?,
-    ) = Unit
+    ) {
+        mutations.updateVehicle(
+            id = vehicle.id.value,
+            ownerId = vehicle.ownerId.value,
+            name = vehicle.name,
+            nameFold = vehicle.nameFold,
+            initialOdometerKm = vehicle.initialOdometerKm,
+            brand = vehicle.brand,
+            model = vehicle.model,
+            fuelType = vehicle.fuelType.name,
+            updatedAt = vehicle.updatedAt.toEpochMilliseconds(),
+            outboxPayload = outboxPayload,
+        )
+    }
 
     override suspend fun tombstoneVehicleCascade(
         vehicle: LocalVehicle,
         vehicleOutboxPayload: String?,
         fuelEntryOutboxPayload: (Fuel_entry) -> String?,
-    ) = Unit
+    ) {
+        mutations.tombstoneVehicleWithFuelEntries(
+            id = vehicle.id.value,
+            ownerId = vehicle.ownerId.value,
+            deletedAt = requireNotNull(vehicle.deletedAt).toEpochMilliseconds(),
+            updatedAt = vehicle.updatedAt.toEpochMilliseconds(),
+            vehicleOutboxPayload = vehicleOutboxPayload,
+            fuelEntryOutboxPayload = fuelEntryOutboxPayload,
+        )
+    }
 }
