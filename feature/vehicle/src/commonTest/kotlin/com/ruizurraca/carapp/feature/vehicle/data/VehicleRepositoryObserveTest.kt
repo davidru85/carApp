@@ -1,9 +1,12 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.model.Vehicle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -37,12 +40,14 @@ class VehicleRepositoryObserveTest {
                 seedVehicle(name = "Active")
                 seedVehicle(id = SECOND_VEHICLE_ID, name = "Deleted", deletedAt = 3_000)
 
-                val activeOnly = assertIs<Outcome.Ok<List<com.ruizurraca.carapp.core.model.Vehicle>>>(
-                    repository.observeVehicles(includeDeleted = false).first(),
-                )
-                val withDeleted = assertIs<Outcome.Ok<List<com.ruizurraca.carapp.core.model.Vehicle>>>(
-                    repository.observeVehicles(includeDeleted = true).first(),
-                )
+                val activeOnly =
+                    assertIs<Outcome.Ok<List<com.ruizurraca.carapp.core.model.Vehicle>>>(
+                        repository.observeVehicles(includeDeleted = false).first(),
+                    )
+                val withDeleted =
+                    assertIs<Outcome.Ok<List<com.ruizurraca.carapp.core.model.Vehicle>>>(
+                        repository.observeVehicles(includeDeleted = true).first(),
+                    )
 
                 assertEquals(listOf("Active"), activeOnly.value.map { it.name })
                 assertEquals(listOf("Active", "Deleted"), withDeleted.value.map { it.name })
@@ -55,11 +60,12 @@ class VehicleRepositoryObserveTest {
             withVehicleRepositoryTestScope(OwnerId("owner-a")) {
                 seedVehicle(deletedAt = 3_000)
 
-                val result = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.Vehicle?>>(
-                    repository.observeVehicle(EntityId(VEHICLE_ID)).first(),
-                )
+                val result =
+                    assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.Vehicle?>>(
+                        repository.observeVehicle(EntityId(VEHICLE_ID)).first(),
+                    )
 
-                assertEquals(InstantEpoch3Seconds, result.value?.deletedAt)
+                assertEquals(instantEpoch3Seconds, result.value?.deletedAt)
             }
         }
 
@@ -67,16 +73,17 @@ class VehicleRepositoryObserveTest {
     fun observeVehicleReturnsOkNullForAbsence() =
         runTest {
             withVehicleRepositoryTestScope {
-                val result = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.Vehicle?>>(
-                    repository.observeVehicle(EntityId(VEHICLE_ID)).first(),
-                )
+                val result =
+                    assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.Vehicle?>>(
+                        repository.observeVehicle(EntityId(VEHICLE_ID)).first(),
+                    )
 
                 assertNull(result.value)
             }
         }
 }
 
-private suspend fun app.cash.turbine.ReceiveTurbine<Outcome<List<com.ruizurraca.carapp.core.model.Vehicle>, com.ruizurraca.carapp.core.common.AppError>>.awaitOk(): List<com.ruizurraca.carapp.core.model.Vehicle> =
-    assertIs<Outcome.Ok<List<com.ruizurraca.carapp.core.model.Vehicle>>>(awaitItem()).value
+private suspend fun ReceiveTurbine<Outcome<List<Vehicle>, AppError>>.awaitOk(): List<Vehicle> =
+    assertIs<Outcome.Ok<List<Vehicle>>>(awaitItem()).value
 
-private val InstantEpoch3Seconds = kotlin.time.Instant.fromEpochMilliseconds(3_000)
+private val instantEpoch3Seconds = kotlin.time.Instant.fromEpochMilliseconds(3_000)

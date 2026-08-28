@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.database.VehicleDatabaseAccess
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -18,7 +19,7 @@ class SqlDelightVehicleLocalDataSourceTest {
         runTest {
             val factory = InMemoryDatabaseFactory()
             val database = factory.create()
-            val dataSource = SqlDelightVehicleLocalDataSource(database)
+            val dataSource = SqlDelightVehicleLocalDataSource(VehicleDatabaseAccess(database))
             try {
                 assertFailsWith<ExpectedFailure> {
                     dataSource.writeTransaction {
@@ -40,7 +41,7 @@ class SqlDelightVehicleLocalDataSourceTest {
                 seedVehicle()
                 seedFuelEntry(FIRST_FUEL_ENTRY_ID, date = 1_100, odometerKm = 20)
                 seedFuelEntry(SECOND_FUEL_ENTRY_ID, date = 1_200, odometerKm = 30)
-                val dataSource = SqlDelightVehicleLocalDataSource(database)
+                val dataSource = SqlDelightVehicleLocalDataSource(VehicleDatabaseAccess(database))
 
                 assertFailsWith<CascadeFailure> {
                     dataSource.writeTransaction {

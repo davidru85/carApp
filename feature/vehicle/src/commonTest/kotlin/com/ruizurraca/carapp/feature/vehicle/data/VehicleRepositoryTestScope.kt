@@ -5,7 +5,7 @@ import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.database.DatabaseMutations
 import com.ruizurraca.carapp.core.database.Fuel_entry
 import com.ruizurraca.carapp.core.database.Outbox
-import com.ruizurraca.carapp.core.database.Vehicle as DatabaseVehicle
+import com.ruizurraca.carapp.core.database.VehicleDatabaseAccess
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -17,6 +17,7 @@ import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import kotlin.time.Instant
+import com.ruizurraca.carapp.core.database.Vehicle as DatabaseVehicle
 
 internal class VehicleRepositoryTestScope(
     initialOwner: OwnerId = LOCAL_OWNER,
@@ -26,7 +27,13 @@ internal class VehicleRepositoryTestScope(
     val ownerContext = FakeOwnerContext(initialOwner)
     val clock = FakeAppClock(NOW)
     val uuidGenerator = FakeUuidGenerator()
-    val repository = SqlDelightVehicleRepository(database, ownerContext, clock, uuidGenerator)
+    val repository =
+        SqlDelightVehicleRepository(
+            VehicleDatabaseAccess(database),
+            ownerContext,
+            clock,
+            uuidGenerator,
+        )
     private val mutations = DatabaseMutations(database)
 
     fun close() = databaseFactory.close()
@@ -107,8 +114,7 @@ internal class VehicleRepositoryTestScope(
     suspend fun vehicle(id: String = VEHICLE_ID): DatabaseVehicle? =
         database.databaseQueries.selectVehicleById(id).awaitAsOneOrNull()
 
-    suspend fun fuelEntry(id: String): Fuel_entry? =
-        database.databaseQueries.selectFuelEntryById(id).awaitAsOneOrNull()
+    suspend fun fuelEntry(id: String): Fuel_entry? = database.databaseQueries.selectFuelEntryById(id).awaitAsOneOrNull()
 
     suspend fun outbox(
         entityType: String,

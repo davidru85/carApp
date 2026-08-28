@@ -298,6 +298,8 @@ Acceptance criteria:
 
 ### E1-03 - Vehicle Data, Local Only - M
 
+Status: completed on 2026-08-28. See `docs/handoff-E1-03.md`.
+
 Implements `VehicleRepository` (`docs/CONTRACTS.md §12`).
 
 Implement the local data source, mappers and repository implementation for vehicles.

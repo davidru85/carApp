@@ -36,7 +36,14 @@
 
 ## Scope Completed
 
-- Pending implementation.
+- Added SQLDelight-backed Vehicle observation, mapping and repository operations in
+  `:feature:vehicle`.
+- Added owner-scoped database queries and D-38 mutations for Vehicle update and transactional
+  Vehicle/FuelEntry tombstoning.
+- Kept SQLDelight-generated types and transaction ownership inside `:core:database` through a
+  neutral Vehicle database access boundary.
+- Replaced the E0-07 local Vehicle adapter with the complete E1-03 repository while retaining its
+  staged remote push and recovery orchestration.
 
 ## Acceptance Evidence
 
@@ -45,6 +52,15 @@
   31 pre-existing tests passed.
 - GREEN phase: all 57 Vehicle tests passed unchanged on Android host and `iosSimulatorArm64`; the
   existing `:core:database` Android-host suite also remained green after extending D-38.
+- Mapper tests cover row/domain round trips. Repository tests cover owner changes during
+  observation, deleted-row filtering, single-entity absence, normalisation, immutable metadata,
+  `PENDING` state, shared mutation sequences, duplicate-name validation and persistence errors.
+- Local-owner tests prove create, update and cascade delete produce no outbox rows. Permanent-owner
+  tests prove complete snapshots and coalescing preserve outbox order.
+- Transaction tests prove D-76 fact loading, validation and mutation share one transaction, and
+  prove both create and Vehicle/FuelEntry cascade changes roll back atomically on failure.
+- Source boundaries and `architectureCheck` prove `:feature:vehicle` references neither
+  `AuthClient`, Firebase, GitLive nor SQLDelight-generated row types.
 
 ## Out of Scope / Not Done
 
@@ -55,11 +71,28 @@
 
 ## Files Changed
 
-- Pending implementation.
+- `core/database/src/commonMain/sqldelight/com/ruizurraca/carapp/core/database/database.sq`
+- `core/database/src/commonMain/kotlin/com/ruizurraca/carapp/core/database/DatabaseMutations.kt`
+- `core/database/src/commonMain/kotlin/com/ruizurraca/carapp/core/database/DatabaseReadQueries.kt`
+- `core/database/src/commonMain/kotlin/com/ruizurraca/carapp/core/database/VehicleDatabaseAccess.kt`
+- `feature/vehicle/build.gradle.kts`
+- `feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/data/**`
+- `feature/vehicle/src/commonTest/kotlin/com/ruizurraca/carapp/feature/vehicle/data/**`
+- `shared/src/commonMain/kotlin/com/ruizurraca/carapp/VehicleSliceRuntime.kt`
+- `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` and this
+  handoff.
 
 ## Decisions Made
 
-- No implementation decision or TDD-order exemption recorded at intake.
+- No new product, representation, technology or build-model decision was required.
+- SQLDelight query definitions use the `docs/SPECIFICATION.md §11` schema exemption. Every
+  observable repository behavior was nevertheless specified by an executing RED test before the
+  query or implementation that made it pass.
+- The first GREEN architecture run exposed feature-data references to SQLDelight-generated types.
+  Refactoring introduced a neutral `:core:database` access boundary; this applies the existing
+  D-38 and module-boundary rules and does not introduce a new decision.
+- The owner required the story branch to start from freshly synchronized `main`; the initial branch
+  was safely recreated from `origin/main` before RED implementation began.
 
 ## Verification Run
 
@@ -68,14 +101,32 @@
 - `./gradlew :feature:vehicle:testAndroidHostTest` after GREEN — successful; all 57 tests passed.
 - `./gradlew :core:database:testAndroidHostTest :feature:vehicle:iosSimulatorArm64Test` after GREEN
   — successful; the database regression suite and all 57 Vehicle tests passed on Kotlin/Native.
+- `./gradlew :core:database:ktlintCheck :core:database:detekt :feature:vehicle:ktlintCheck
+  :feature:vehicle:detekt :feature:vehicle:koverVerify :shared:ktlintCheck :shared:detekt
+  architectureCheck contractCheck` after REFACTOR — successful; 16 architecture rules across 23
+  modules and all 77 decision/ADR mirrors passed.
+- `./gradlew :core:database:testAndroidHostTest :feature:vehicle:testAndroidHostTest
+  :feature:vehicle:iosSimulatorArm64Test :shared:testAndroidHostTest` after REFACTOR — successful.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test -x
+  :integration:firebase-auth:iosSimulatorArm64Test -x
+  :integration:firebase-firestore:iosSimulatorArm64Test -x
+  :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` after
+  documentation closure — successful; all 583 actionable tasks completed, including lint, detekt,
+  16 architecture rules, 77 decision/ADR contract mirrors, coverage, Android assembly,
+  Android-host tests and required iOS simulator tests.
+- `git diff --check` — successful.
+- Source scan of the Vehicle data package for `AuthClient`, Firebase, GitLive, SQLDelight imports
+  and generated row imports — no matches.
 
 ## Contract Impact
 
-- No contract changes expected.
+- No contract changes. E1-03 implements the existing `VehicleRepository`, persistence and outbox
+  contracts without changing their public shapes.
 
 ## Decision Board Impact
 
-- No decision changes expected.
+- No decision changes.
 
 ## Shared-Write Modules Touched
 
@@ -83,14 +134,14 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Entry appended.
 
 ## Risks or Follow-ups
 
-- D-76 requires an executable test proving fact loading, validation and mutation share one local
-  transaction.
-- E1-03 must preserve the E0-07 walking-skeleton behavior until later sync stories replace its
-  remote orchestration.
+- The E0-07 remote push and recovery orchestration remains deliberately staged. E3-02 and E3-03
+  replace it with the complete backup engine and outbox processor.
+- E1-06 owns Fuel Entry persistence beyond the deletion cascade required here. E1-07 owns Vehicle
+  presentation and executable package-level feature rules.
 
 ## Human Review Gate
 

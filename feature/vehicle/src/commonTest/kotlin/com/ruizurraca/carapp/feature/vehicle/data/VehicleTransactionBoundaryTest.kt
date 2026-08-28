@@ -1,7 +1,7 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
 import com.ruizurraca.carapp.core.common.Outcome
-import com.ruizurraca.carapp.core.database.Fuel_entry
+import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -81,7 +81,7 @@ private class RecordingVehicleLocalDataSource : VehicleLocalDataSource {
             override suspend fun tombstoneVehicleCascade(
                 vehicle: LocalVehicle,
                 vehicleOutboxPayload: String?,
-                fuelEntryOutboxPayload: (Fuel_entry) -> String?,
+                fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String?,
             ) = record("mutation.delete")
         }
 

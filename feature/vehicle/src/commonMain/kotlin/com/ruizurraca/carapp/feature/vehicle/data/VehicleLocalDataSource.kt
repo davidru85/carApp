@@ -1,21 +1,13 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOne
-import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
-import app.cash.sqldelight.coroutines.asFlow
-import app.cash.sqldelight.coroutines.mapToList
-import app.cash.sqldelight.coroutines.mapToOneOrNull
-import com.ruizurraca.carapp.core.database.AppDatabase
-import com.ruizurraca.carapp.core.database.DatabaseMutations
-import com.ruizurraca.carapp.core.database.DatabaseQueries
-import com.ruizurraca.carapp.core.database.Fuel_entry
+import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
+import com.ruizurraca.carapp.core.database.VehicleDatabaseAccess
+import com.ruizurraca.carapp.core.database.VehicleDatabaseWriteScope
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleNameCandidate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlin.coroutines.EmptyCoroutineContext
 
 internal interface VehicleLocalDataSource {
     fun observeVehicles(
@@ -54,79 +46,59 @@ internal interface VehicleWriteScope {
     suspend fun tombstoneVehicleCascade(
         vehicle: LocalVehicle,
         vehicleOutboxPayload: String?,
-        fuelEntryOutboxPayload: (Fuel_entry) -> String?,
+        fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String?,
     )
 }
 
 internal class SqlDelightVehicleLocalDataSource(
-    private val database: AppDatabase,
+    private val databaseAccess: VehicleDatabaseAccess,
 ) : VehicleLocalDataSource {
-    private val queries: DatabaseQueries = database.databaseQueries
-    private val mutations = DatabaseMutations(database)
-    private val scope = SqlDelightVehicleWriteScope(queries, mutations)
-
     override fun observeVehicles(
         ownerId: OwnerId,
         includeDeleted: Boolean,
     ): Flow<List<LocalVehicle>> =
-        queries
-            .selectVehiclesByOwner(ownerId.value, if (includeDeleted) 1 else 0)
-            .asFlow()
-            .mapToList(EmptyCoroutineContext)
+        databaseAccess
+            .observeVehicles(ownerId.value, includeDeleted)
             .map { rows -> rows.map { it.toLocalVehicle() } }
 
     override fun observeVehicle(
         ownerId: OwnerId,
         id: EntityId,
     ): Flow<LocalVehicle?> =
-        queries
-            .selectVehicleByOwnerAndId(ownerId.value, id.value)
-            .asFlow()
-            .mapToOneOrNull(EmptyCoroutineContext)
+        databaseAccess
+            .observeVehicle(ownerId.value, id.value)
             .map { it?.toLocalVehicle() }
 
     override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T =
-        database.transactionWithResult(noEnclosing = true) { scope.block() }
+        databaseAccess.writeTransaction {
+            SqlDelightVehicleWriteScope(this).block()
+        }
 }
 
 private class SqlDelightVehicleWriteScope(
-    private val queries: DatabaseQueries,
-    private val mutations: DatabaseMutations,
+    private val databaseScope: VehicleDatabaseWriteScope,
 ) : VehicleWriteScope {
     override suspend fun activeVehicleCandidates(ownerId: OwnerId): List<VehicleNameCandidate> =
-        queries
-            .selectVehiclesByOwner(ownerId.value, includeDeleted = 0)
-            .awaitAsList()
+        databaseScope
+            .activeVehicles(ownerId.value)
             .map { VehicleNameCandidate(EntityId(it.id), it.name) }
 
     override suspend fun vehicle(
         ownerId: OwnerId,
         id: EntityId,
     ): LocalVehicle? =
-        queries
-            .selectVehicleByOwnerAndId(ownerId.value, id.value)
-            .awaitAsOneOrNull()
+        databaseScope
+            .vehicle(ownerId.value, id.value)
             ?.toLocalVehicle()
 
-    override suspend fun hasActiveFuelEntries(id: EntityId): Boolean =
-        queries.countActiveFuelEntriesByVehicle(id.value).awaitAsOne() > 0
+    override suspend fun hasActiveFuelEntries(id: EntityId): Boolean = databaseScope.hasActiveFuelEntries(id.value)
 
     override suspend fun insertVehicle(
         vehicle: LocalVehicle,
         outboxPayload: String?,
     ) {
-        mutations.insertVehicle(
-            id = vehicle.id.value,
-            ownerId = vehicle.ownerId.value,
-            name = vehicle.name,
-            nameFold = vehicle.nameFold,
-            initialOdometerKm = vehicle.initialOdometerKm,
-            brand = vehicle.brand,
-            model = vehicle.model,
-            fuelType = vehicle.fuelType.name,
-            createdAt = vehicle.createdAt.toEpochMilliseconds(),
-            updatedAt = vehicle.updatedAt.toEpochMilliseconds(),
-            schemaVersion = vehicle.schemaVersion,
+        databaseScope.insertVehicle(
+            vehicle = vehicle.toDatabaseVehicle(),
             outboxPayload = outboxPayload,
         )
     }
@@ -135,16 +107,8 @@ private class SqlDelightVehicleWriteScope(
         vehicle: LocalVehicle,
         outboxPayload: String?,
     ) {
-        mutations.updateVehicle(
-            id = vehicle.id.value,
-            ownerId = vehicle.ownerId.value,
-            name = vehicle.name,
-            nameFold = vehicle.nameFold,
-            initialOdometerKm = vehicle.initialOdometerKm,
-            brand = vehicle.brand,
-            model = vehicle.model,
-            fuelType = vehicle.fuelType.name,
-            updatedAt = vehicle.updatedAt.toEpochMilliseconds(),
+        databaseScope.updateVehicle(
+            vehicle = vehicle.toDatabaseVehicle(),
             outboxPayload = outboxPayload,
         )
     }
@@ -152,13 +116,10 @@ private class SqlDelightVehicleWriteScope(
     override suspend fun tombstoneVehicleCascade(
         vehicle: LocalVehicle,
         vehicleOutboxPayload: String?,
-        fuelEntryOutboxPayload: (Fuel_entry) -> String?,
+        fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String?,
     ) {
-        mutations.tombstoneVehicleWithFuelEntries(
-            id = vehicle.id.value,
-            ownerId = vehicle.ownerId.value,
-            deletedAt = requireNotNull(vehicle.deletedAt).toEpochMilliseconds(),
-            updatedAt = vehicle.updatedAt.toEpochMilliseconds(),
+        databaseScope.tombstoneVehicleCascade(
+            vehicle = vehicle.toDatabaseVehicle(),
             vehicleOutboxPayload = vehicleOutboxPayload,
             fuelEntryOutboxPayload = fuelEntryOutboxPayload,
         )

@@ -7,8 +7,9 @@ import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.UuidGenerator
-import com.ruizurraca.carapp.core.database.AppDatabase
-import com.ruizurraca.carapp.core.database.Fuel_entry
+import com.ruizurraca.carapp.core.common.ValidationError
+import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
+import com.ruizurraca.carapp.core.database.VehicleDatabaseAccess
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.Vehicle
@@ -20,16 +21,14 @@ import com.ruizurraca.carapp.feature.vehicle.domain.ValidateCreateVehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateUpdateVehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.JsonNull
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SqlDelightVehicleRepository internal constructor(
     private val localDataSource: VehicleLocalDataSource,
     private val ownerContext: OwnerContext,
@@ -40,12 +39,12 @@ class SqlDelightVehicleRepository internal constructor(
     private val validateUpdate = ValidateUpdateVehicle()
 
     constructor(
-        database: AppDatabase,
+        databaseAccess: VehicleDatabaseAccess,
         ownerContext: OwnerContext,
         clock: AppClock,
         uuidGenerator: UuidGenerator,
     ) : this(
-        localDataSource = SqlDelightVehicleLocalDataSource(database),
+        localDataSource = SqlDelightVehicleLocalDataSource(databaseAccess),
         ownerContext = ownerContext,
         clock = clock,
         uuidGenerator = uuidGenerator,
@@ -80,7 +79,10 @@ class SqlDelightVehicleRepository internal constructor(
                             CreateVehicleValidationContext(activeVehicleCandidates(ownerId)),
                         )
                 ) {
-                    is Outcome.Err -> validation
+                    is Outcome.Err -> {
+                        validation
+                    }
+
                     is Outcome.Ok -> {
                         val normalised = validation.value
                         val vehicle =
@@ -103,7 +105,7 @@ class SqlDelightVehicleRepository internal constructor(
                                 localMutationSeq = 0,
                                 schemaVersion = CLIENT_MAX_SCHEMA_VERSION.toLong(),
                             )
-                        insertVehicle(vehicle, vehicle.outboxPayloadOrNull())
+                        insertVehicle(vehicle, vehicle.toVehicleOutboxPayloadOrNull())
                         Outcome.Ok(id)
                     }
                 }
@@ -115,10 +117,11 @@ class SqlDelightVehicleRepository internal constructor(
             val ownerId = ownerContext.current
             val now = clock.now()
             localDataSource.writeTransaction {
-                val existing = vehicle(ownerId, command.id)
-                    ?: return@writeTransaction Outcome.Err(com.ruizurraca.carapp.core.common.ValidationError.EntityNotFound)
+                val existing =
+                    vehicle(ownerId, command.id)
+                        ?: return@writeTransaction Outcome.Err(ValidationError.EntityNotFound)
                 if (existing.deletedAt != null) {
-                    return@writeTransaction Outcome.Err(com.ruizurraca.carapp.core.common.ValidationError.EntityDeleted)
+                    return@writeTransaction Outcome.Err(ValidationError.EntityDeleted)
                 }
                 when (
                     val validation =
@@ -130,7 +133,10 @@ class SqlDelightVehicleRepository internal constructor(
                             ),
                         )
                 ) {
-                    is Outcome.Err -> validation
+                    is Outcome.Err -> {
+                        validation
+                    }
+
                     is Outcome.Ok -> {
                         val normalised = validation.value
                         val updated =
@@ -147,7 +153,7 @@ class SqlDelightVehicleRepository internal constructor(
                                 syncState = PENDING,
                                 localRevision = existing.localRevision + 1,
                             )
-                        updateVehicle(updated, updated.outboxPayloadOrNull())
+                        updateVehicle(updated, updated.toVehicleOutboxPayloadOrNull())
                         Outcome.Ok(Unit)
                     }
                 }
@@ -159,8 +165,9 @@ class SqlDelightVehicleRepository internal constructor(
             val ownerId = ownerContext.current
             val now = clock.now()
             localDataSource.writeTransaction {
-                val existing = vehicle(ownerId, id)
-                    ?: return@writeTransaction Outcome.Err(com.ruizurraca.carapp.core.common.ValidationError.EntityNotFound)
+                val existing =
+                    vehicle(ownerId, id)
+                        ?: return@writeTransaction Outcome.Err(ValidationError.EntityNotFound)
                 if (existing.deletedAt != null) return@writeTransaction Outcome.Ok(Unit)
 
                 val tombstone =
@@ -173,9 +180,16 @@ class SqlDelightVehicleRepository internal constructor(
                     )
                 tombstoneVehicleCascade(
                     vehicle = tombstone,
-                    vehicleOutboxPayload = tombstone.outboxPayloadOrNull(),
+                    vehicleOutboxPayload = tombstone.toVehicleOutboxPayloadOrNull(),
                     fuelEntryOutboxPayload = { entry ->
-                        if (ownerId == LOCAL_OWNER) null else entry.toTombstonePayload(ownerId.value, now.toEpochMilliseconds())
+                        if (ownerId == LOCAL_OWNER) {
+                            null
+                        } else {
+                            entry.toFuelEntryTombstonePayload(
+                                ownerId = ownerId.value,
+                                timestamp = now.toEpochMilliseconds(),
+                            )
+                        }
                     },
                 )
                 Outcome.Ok(Unit)
@@ -200,49 +214,5 @@ class SqlDelightVehicleRepository internal constructor(
         emit(Outcome.Err(PersistenceError.DatabaseUnavailable))
     }
 }
-
-private fun LocalVehicle.outboxPayloadOrNull(): String? =
-    if (ownerId == LOCAL_OWNER) null else toOutboxPayload()
-
-private fun LocalVehicle.toOutboxPayload(): String =
-    buildJsonObject {
-        put("id", id.value)
-        put("ownerId", ownerId.value)
-        put("name", name)
-        put("initialOdometerKm", initialOdometerKm)
-        put("brand", brand?.let(::JsonPrimitive) ?: JsonNull)
-        put("model", model?.let(::JsonPrimitive) ?: JsonNull)
-        put("fuelType", fuelType.name)
-        put("createdAt", createdAt.toEpochMilliseconds())
-        put("updatedAt", updatedAt.toEpochMilliseconds())
-        put("deleted", deletedAt != null)
-        put("deletedAt", deletedAt?.let { JsonPrimitive(it.toEpochMilliseconds()) } ?: JsonNull)
-        put("schemaVersion", schemaVersion)
-    }.toString()
-
-private fun Fuel_entry.toTombstonePayload(
-    ownerId: String,
-    timestamp: Long,
-): String =
-    buildJsonObject {
-        put("id", id)
-        put("ownerId", ownerId)
-        put("vehicleId", vehicleId)
-        put("date", date)
-        put("odometerKm", odometerKm)
-        put("litersScaled", litersScaled)
-        put("pricePerLiterScaled", pricePerLiterScaled)
-        put("totalCostMinor", totalCostMinor)
-        put("currency", currency)
-        put("isFullTank", isFullTank != 0L)
-        put("hasMissedEntries", hasMissedEntries != 0L)
-        put("odometerInconsistent", odometerInconsistent != 0L)
-        put("notes", notes?.let(::JsonPrimitive) ?: JsonNull)
-        put("createdAt", createdAt)
-        put("updatedAt", timestamp)
-        put("deleted", true)
-        put("deletedAt", timestamp)
-        put("schemaVersion", schemaVersion)
-    }.toString()
 
 private const val PENDING = "PENDING"

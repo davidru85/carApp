@@ -1,6 +1,6 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
-import com.ruizurraca.carapp.core.database.Vehicle as DatabaseVehicle
+import com.ruizurraca.carapp.core.database.VehicleDatabaseRow
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -40,8 +40,8 @@ class VehicleMappersTest {
     }
 }
 
-private fun databaseVehicle(deletedAt: Long?): DatabaseVehicle =
-    DatabaseVehicle(
+private fun databaseVehicle(deletedAt: Long?): VehicleDatabaseRow =
+    VehicleDatabaseRow(
         id = VEHICLE_ID,
         ownerId = "owner-a",
         name = "Roadster",
@@ -54,7 +54,6 @@ private fun databaseVehicle(deletedAt: Long?): DatabaseVehicle =
         createdAt = 1_000,
         updatedAt = 2_000,
         serverUpdatedAt = 2_500,
-        deleted = if (deletedAt == null) 0 else 1,
         deletedAt = deletedAt,
         syncState = "FAILED_RETRYABLE",
         localRevision = 4,

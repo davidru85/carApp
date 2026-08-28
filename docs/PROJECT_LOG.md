@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-08-28 — E1-03 Vehicle data completed
+
+- **Type:** story
+- **Story / Decision:** `E1-03` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented the SQLDelight-backed local Vehicle repository, owner-scoped
+  observation, deterministic mapping, transactional create/update/delete operations, shared local
+  mutation sequencing and permanent-owner outbox coalescing. Replaced the E0-07 local adapter while
+  retaining its staged remote push and recovery behavior.
+- **Why:** E1-03 completes the offline Vehicle data boundary while preserving D-38 database-owned
+  mutation invariants and D-76's single-transaction validation requirement.
+- **Documents touched:** `docs/BACKLOG.md`, current-state documents and `docs/handoff-E1-03.md`.
+- **Verification:** 26 focused E1-03 tests were RED before implementation; all 57 Vehicle tests pass
+  on Android host and `iosSimulatorArm64`. Database and shared runtime regression tests, feature
+  coverage, lint, detekt, architecture and contract checks pass; full repository evidence is in the
+  handoff.
+- **Follow-ups / risks:** `E1-04` is next. `E1-06` completes Fuel Entry persistence, `E1-07`
+  completes presentation and package-level architecture checks, and later sync stories replace the
+  remaining staged remote orchestration.
+
 ### 2026-08-28 — E1-02 human-review corrections applied
 
 - **Type:** correction

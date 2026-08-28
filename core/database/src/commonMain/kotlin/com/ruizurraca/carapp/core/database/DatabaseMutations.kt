@@ -125,7 +125,7 @@ class DatabaseMutations(
         deletedAt: Long,
         updatedAt: Long,
         vehicleOutboxPayload: String?,
-        fuelEntryOutboxPayload: (Fuel_entry) -> String?,
+        fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String?,
     ) {
         database.transaction {
             val vehicle = queries.selectVehicleById(id).awaitAsOne()
@@ -137,7 +137,7 @@ class DatabaseMutations(
                     .filterNotTo(mutableSetOf()) { it in tombstonedIds }
 
             for (entry in entries) {
-                val payload = fuelEntryOutboxPayload(entry)
+                val payload = fuelEntryOutboxPayload(entry.toFuelEntryDatabaseRow())
                 val localRevision = entry.localRevision + 1
                 queries.tombstoneFuelEntryForVehicleDelete(
                     ownerId = ownerId,

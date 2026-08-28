@@ -9,8 +9,8 @@ import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import com.ruizurraca.carapp.core.testing.FakeUuidGenerator
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,8 +53,7 @@ private object FailingVehicleLocalDataSource : VehicleLocalDataSource {
         id: EntityId,
     ): Flow<LocalVehicle?> = flow { throw LocalFailure() }
 
-    override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T =
-        throw LocalFailure()
+    override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T = throw LocalFailure()
 }
 
 private class LocalFailure : RuntimeException()

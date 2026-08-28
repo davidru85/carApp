@@ -19,9 +19,10 @@ class VehicleRepositoryCreateTest {
     fun createPersistsTheNormalisedCommand() =
         runTest {
             withVehicleRepositoryTestScope {
-                val result = repository.createVehicle(
-                    createVehicleCommand(name = "  My\t Roadster  ", brand = "   ", model = "  One  "),
-                )
+                val result =
+                    repository.createVehicle(
+                        createVehicleCommand(name = "  My\t Roadster  ", brand = "   ", model = "  One  "),
+                    )
 
                 val id = assertIs<Outcome.Ok<EntityId>>(result).value.value
                 val row = requireNotNull(vehicle(id))

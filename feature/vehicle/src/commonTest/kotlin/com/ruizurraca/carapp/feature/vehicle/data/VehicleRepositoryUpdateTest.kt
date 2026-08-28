@@ -41,14 +41,15 @@ class VehicleRepositoryUpdateTest {
                 seedVehicle(initialOdometerKm = 10)
                 seedFuelEntry(FIRST_FUEL_ENTRY_ID, date = 1_100, odometerKm = 50)
 
-                val result = repository.updateVehicle(
-                    updateVehicleCommand(
-                        name = "  Updated\tRoadster ",
-                        initialOdometerKm = null,
-                        brand = " ",
-                        model = " Two ",
-                    ),
-                )
+                val result =
+                    repository.updateVehicle(
+                        updateVehicleCommand(
+                            name = "  Updated\tRoadster ",
+                            initialOdometerKm = null,
+                            brand = " ",
+                            model = " Two ",
+                        ),
+                    )
 
                 assertIs<Outcome.Ok<Unit>>(result)
                 val row = requireNotNull(vehicle())

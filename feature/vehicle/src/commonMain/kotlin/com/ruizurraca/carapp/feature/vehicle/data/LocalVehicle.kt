@@ -1,6 +1,6 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
-import com.ruizurraca.carapp.core.database.Vehicle as DatabaseVehicle
+import com.ruizurraca.carapp.core.database.VehicleDatabaseRow
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -27,7 +27,7 @@ internal data class LocalVehicle(
     val schemaVersion: Long,
 )
 
-internal fun DatabaseVehicle.toLocalVehicle(): LocalVehicle =
+internal fun VehicleDatabaseRow.toLocalVehicle(): LocalVehicle =
     LocalVehicle(
         id = EntityId(id),
         ownerId = OwnerId(ownerId),
@@ -48,8 +48,8 @@ internal fun DatabaseVehicle.toLocalVehicle(): LocalVehicle =
         schemaVersion = schemaVersion,
     )
 
-internal fun LocalVehicle.toDatabaseVehicle(): DatabaseVehicle =
-    DatabaseVehicle(
+internal fun LocalVehicle.toDatabaseVehicle(): VehicleDatabaseRow =
+    VehicleDatabaseRow(
         id = id.value,
         ownerId = ownerId.value,
         name = name,
@@ -62,7 +62,6 @@ internal fun LocalVehicle.toDatabaseVehicle(): DatabaseVehicle =
         createdAt = createdAt.toEpochMilliseconds(),
         updatedAt = updatedAt.toEpochMilliseconds(),
         serverUpdatedAt = serverUpdatedAt?.toEpochMilliseconds(),
-        deleted = if (deletedAt == null) 0 else 1,
         deletedAt = deletedAt?.toEpochMilliseconds(),
         syncState = syncState,
         localRevision = localRevision,

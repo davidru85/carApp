@@ -40,7 +40,10 @@ class VehicleRepositoryDeleteTest {
                 val first = requireNotNull(fuelEntry(FIRST_FUEL_ENTRY_ID))
                 val second = requireNotNull(fuelEntry(SECOND_FUEL_ENTRY_ID))
                 val deletedVehicle = requireNotNull(vehicle())
-                assertEquals(listOf(3L, 4L, 5L), listOf(first.localMutationSeq, second.localMutationSeq, deletedVehicle.localMutationSeq))
+                assertEquals(
+                    listOf(3L, 4L, 5L),
+                    listOf(first.localMutationSeq, second.localMutationSeq, deletedVehicle.localMutationSeq),
+                )
                 listOf(first, second).forEach { row ->
                     assertEquals(1, row.deleted)
                     assertEquals(2_000, row.deletedAt)
