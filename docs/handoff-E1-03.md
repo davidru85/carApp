@@ -118,6 +118,8 @@
 - `git diff --check` — successful.
 - Source scan of the Vehicle data package for `AuthClient`, Firebase, GitLive, SQLDelight imports
   and generated row imports — no matches.
+- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` — successful; the sole `Shared`
+  framework producer linked after the runtime replacement.
 
 ## Contract Impact
 
