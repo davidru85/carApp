@@ -78,6 +78,111 @@ class DatabaseMutations(
     }
 
     @Suppress("LongParameterList")
+    suspend fun updateVehicle(
+        id: String,
+        ownerId: String,
+        name: String,
+        nameFold: String,
+        initialOdometerKm: Long,
+        brand: String?,
+        model: String?,
+        fuelType: String,
+        updatedAt: Long,
+        outboxPayload: String?,
+    ) {
+        database.transaction {
+            val existing = queries.selectVehicleById(id).awaitAsOne()
+            val localRevision = existing.localRevision + 1
+            queries.updateVehicleRow(
+                ownerId = ownerId,
+                name = name,
+                nameFold = nameFold,
+                initialOdometerKm = initialOdometerKm,
+                brand = brand,
+                model = model,
+                fuelType = fuelType,
+                updatedAt = updatedAt,
+                localRevision = localRevision,
+                localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne(),
+                id = id,
+            )
+            queries.recomputeVehicleCurrentOdometer(id)
+            if (outboxPayload != null) {
+                queries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = id,
+                    payload = outboxPayload,
+                    localRevision = localRevision,
+                )
+            }
+        }
+    }
+
+    @Suppress("LongParameterList")
+    suspend fun tombstoneVehicleWithFuelEntries(
+        id: String,
+        ownerId: String,
+        deletedAt: Long,
+        updatedAt: Long,
+        vehicleOutboxPayload: String?,
+        fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String?,
+    ) {
+        database.transaction {
+            val vehicle = queries.selectVehicleById(id).awaitAsOne()
+            val entries = queries.selectActiveFuelEntriesByVehicle(id).awaitAsList()
+            val tombstonedIds = entries.mapTo(mutableSetOf()) { it.id }
+            val recomputeIds =
+                entries
+                    .mapNotNull { it.activeSuccessor()?.id }
+                    .filterNotTo(mutableSetOf()) { it in tombstonedIds }
+
+            for (entry in entries) {
+                val payload = fuelEntryOutboxPayload(entry.toFuelEntryDatabaseRow())
+                val localRevision = entry.localRevision + 1
+                queries.tombstoneFuelEntryForVehicleDelete(
+                    ownerId = ownerId,
+                    updatedAt = updatedAt,
+                    deletedAt = deletedAt,
+                    localRevision = localRevision,
+                    localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne(),
+                    id = entry.id,
+                )
+                if (payload != null) {
+                    queries.coalesceOutbox(
+                        entityType = "FUEL_ENTRY",
+                        entityId = entry.id,
+                        payload = payload,
+                        localRevision = localRevision,
+                    )
+                }
+            }
+
+            for (recomputeId in recomputeIds) {
+                queries.recomputeFuelEntryOdometerInconsistent(recomputeId)
+            }
+            queries.recomputeVehicleCurrentOdometer(id)
+
+            val vehicleRevision = vehicle.localRevision + 1
+            queries.tombstoneVehicleRow(
+                ownerId = ownerId,
+                updatedAt = updatedAt,
+                deletedAt = deletedAt,
+                localRevision = vehicleRevision,
+                localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne(),
+                id = id,
+            )
+            if (vehicleOutboxPayload != null) {
+                queries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = id,
+                    payload = vehicleOutboxPayload,
+                    localRevision = vehicleRevision,
+                )
+            }
+        }
+    }
+
+    @Suppress("LongParameterList")
     suspend fun applyRemoteVehicle(
         id: String,
         ownerId: String,

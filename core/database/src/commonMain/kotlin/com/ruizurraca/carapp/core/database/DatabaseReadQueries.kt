@@ -10,3 +10,8 @@ fun DatabaseQueries.observeVehicles(): Flow<List<Vehicle>> =
     selectAllVehicles().asFlow().mapToList(EmptyCoroutineContext)
 
 suspend fun DatabaseQueries.vehicleById(id: String): Vehicle? = selectVehicleById(id).awaitAsOneOrNull()
+
+suspend fun DatabaseQueries.outboxPayloadByEntity(
+    entityType: String,
+    entityId: String,
+): String? = selectOutboxByEntity(entityType, entityId).awaitAsOneOrNull()?.payload
