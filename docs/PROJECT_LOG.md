@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-28 — E1-04 Fuel Entry domain completed
+
+- **Type:** story
+- **Story / Decision:** `E1-04` / `D-77`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented canonical Fuel Entry commands and repository contract, pure
+  create/update validation for R-1 and R-2, exact three-way monetary derivation, closed-bound
+  validation, note normalization and the two-step odometer warning protocol. Added Android/JVM and
+  iOS/Foundation currency evidence plus persistence-shape and floating-point source guards.
+- **Why:** E1-04 establishes the independently testable domain boundary consumed by E1-06 while
+  preserving database ownership of derived odometer state and canonical-triple-only persistence.
+- **Documents touched:** D-77 and ADR-0078 in the four decision mirrors,
+  `docs/CONTRACTS.md §5`, `§13`, `§20.5`, current-state documents and
+  `docs/handoff-E1-04.md`.
+- **Verification:** RED produced 33 expected validator failures on both Android host and
+  `iosSimulatorArm64`; GREEN passed all 40 Android-host and 37 iOS tests; REFACTOR passed feature
+  lint, detekt, 85% Kover, architecture and contract checks. The complete 600-task repository CI
+  command passed.
+- **Follow-ups / risks:** E1-05 is next. Before E1-06 constructs the D-77 context, the owner must
+  select the exact `vehicle.createdAt - 20 years` representation; E1-06 must then prove fact
+  loading, validation and mutation share one transaction.
+
 ### 2026-08-28 — E1-03 Vehicle data completed
 
 - **Type:** story

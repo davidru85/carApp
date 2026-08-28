@@ -78,139 +78,118 @@ private fun validateRange(
     max: Long,
 ): ValidationError? = if (value in min..max) null else outOfRange(field, min, max)
 
+private inline fun canonicalMoneyOutcome(
+    suppliedError: ValidationError?,
+    derive: () -> CanonicalMoneyValues,
+    derivedError: (CanonicalMoneyValues) -> ValidationError?,
+): Outcome<CanonicalMoneyValues, ValidationError> =
+    if (suppliedError != null) {
+        Outcome.Err(suppliedError)
+    } else {
+        val values = derive()
+        derivedError(values)?.let { Outcome.Err(it) } ?: Outcome.Ok(values)
+    }
+
+private fun resolveLitersAndPrice(
+    input: MoneyInput.LitersAndPrice,
+    minorUnitFactor: Int,
+): Outcome<CanonicalMoneyValues, ValidationError> =
+    canonicalMoneyOutcome(
+        suppliedError =
+            validateRange(
+                "litersScaled",
+                input.litersScaled,
+                MIN_LITERS_SCALED,
+                MAX_LITERS_SCALED,
+            ) ?: validateRange(
+                "pricePerLiterScaled",
+                input.pricePerLiterScaled,
+                MIN_PRICE_PER_LITER_SCALED,
+                MAX_PRICE_PER_LITER_SCALED,
+            ),
+        derive = {
+            CanonicalMoneyValues(
+                input.litersScaled,
+                input.pricePerLiterScaled,
+                totalCostMinorOf(input.litersScaled, input.pricePerLiterScaled, minorUnitFactor),
+            )
+        },
+        derivedError = {
+            validateRange("totalCostMinor", it.totalCostMinor, MIN_TOTAL_COST_MINOR, MAX_TOTAL_COST_MINOR)
+        },
+    )
+
+private fun resolveLitersAndTotal(
+    input: MoneyInput.LitersAndTotal,
+    minorUnitFactor: Int,
+): Outcome<CanonicalMoneyValues, ValidationError> =
+    canonicalMoneyOutcome(
+        suppliedError =
+            validateRange(
+                "litersScaled",
+                input.litersScaled,
+                MIN_LITERS_SCALED,
+                MAX_LITERS_SCALED,
+            ) ?: validateRange(
+                "totalCostMinor",
+                input.totalCostMinor,
+                MIN_TOTAL_COST_MINOR,
+                MAX_TOTAL_COST_MINOR,
+            ),
+        derive = {
+            CanonicalMoneyValues(
+                input.litersScaled,
+                pricePerLiterScaledOf(input.totalCostMinor, input.litersScaled, minorUnitFactor),
+                input.totalCostMinor,
+            )
+        },
+        derivedError = {
+            validateRange(
+                "pricePerLiterScaled",
+                it.pricePerLiterScaled,
+                MIN_PRICE_PER_LITER_SCALED,
+                MAX_PRICE_PER_LITER_SCALED,
+            )
+        },
+    )
+
+private fun resolvePriceAndTotal(
+    input: MoneyInput.PriceAndTotal,
+    minorUnitFactor: Int,
+): Outcome<CanonicalMoneyValues, ValidationError> =
+    canonicalMoneyOutcome(
+        suppliedError =
+            validateRange(
+                "pricePerLiterScaled",
+                input.pricePerLiterScaled,
+                MIN_PRICE_PER_LITER_SCALED,
+                MAX_PRICE_PER_LITER_SCALED,
+            ) ?: validateRange(
+                "totalCostMinor",
+                input.totalCostMinor,
+                MIN_TOTAL_COST_MINOR,
+                MAX_TOTAL_COST_MINOR,
+            ),
+        derive = {
+            CanonicalMoneyValues(
+                litersScaledOf(input.totalCostMinor, input.pricePerLiterScaled, minorUnitFactor),
+                input.pricePerLiterScaled,
+                input.totalCostMinor,
+            )
+        },
+        derivedError = {
+            validateRange("litersScaled", it.litersScaled, MIN_LITERS_SCALED, MAX_LITERS_SCALED)
+        },
+    )
+
 private fun resolveMoney(
     input: MoneyInput,
     minorUnitFactor: Int,
 ): Outcome<CanonicalMoneyValues, ValidationError> =
     when (input) {
-        is MoneyInput.LitersAndPrice -> {
-            val suppliedError =
-                validateRange(
-                    "litersScaled",
-                    input.litersScaled,
-                    MIN_LITERS_SCALED,
-                    MAX_LITERS_SCALED,
-                ) ?: validateRange(
-                    "pricePerLiterScaled",
-                    input.pricePerLiterScaled,
-                    MIN_PRICE_PER_LITER_SCALED,
-                    MAX_PRICE_PER_LITER_SCALED,
-                )
-            if (suppliedError != null) {
-                Outcome.Err(suppliedError)
-            } else {
-                val totalCostMinor =
-                    totalCostMinorOf(
-                        input.litersScaled,
-                        input.pricePerLiterScaled,
-                        minorUnitFactor,
-                    )
-                val derivedError =
-                    validateRange(
-                        "totalCostMinor",
-                        totalCostMinor,
-                        MIN_TOTAL_COST_MINOR,
-                        MAX_TOTAL_COST_MINOR,
-                    )
-                if (derivedError == null) {
-                    Outcome.Ok(
-                        CanonicalMoneyValues(
-                            input.litersScaled,
-                            input.pricePerLiterScaled,
-                            totalCostMinor,
-                        ),
-                    )
-                } else {
-                    Outcome.Err(derivedError)
-                }
-            }
-        }
-
-        is MoneyInput.LitersAndTotal -> {
-            val suppliedError =
-                validateRange(
-                    "litersScaled",
-                    input.litersScaled,
-                    MIN_LITERS_SCALED,
-                    MAX_LITERS_SCALED,
-                ) ?: validateRange(
-                    "totalCostMinor",
-                    input.totalCostMinor,
-                    MIN_TOTAL_COST_MINOR,
-                    MAX_TOTAL_COST_MINOR,
-                )
-            if (suppliedError != null) {
-                Outcome.Err(suppliedError)
-            } else {
-                val pricePerLiterScaled =
-                    pricePerLiterScaledOf(
-                        input.totalCostMinor,
-                        input.litersScaled,
-                        minorUnitFactor,
-                    )
-                val derivedError =
-                    validateRange(
-                        "pricePerLiterScaled",
-                        pricePerLiterScaled,
-                        MIN_PRICE_PER_LITER_SCALED,
-                        MAX_PRICE_PER_LITER_SCALED,
-                    )
-                if (derivedError == null) {
-                    Outcome.Ok(
-                        CanonicalMoneyValues(
-                            input.litersScaled,
-                            pricePerLiterScaled,
-                            input.totalCostMinor,
-                        ),
-                    )
-                } else {
-                    Outcome.Err(derivedError)
-                }
-            }
-        }
-
-        is MoneyInput.PriceAndTotal -> {
-            val suppliedError =
-                validateRange(
-                    "pricePerLiterScaled",
-                    input.pricePerLiterScaled,
-                    MIN_PRICE_PER_LITER_SCALED,
-                    MAX_PRICE_PER_LITER_SCALED,
-                ) ?: validateRange(
-                    "totalCostMinor",
-                    input.totalCostMinor,
-                    MIN_TOTAL_COST_MINOR,
-                    MAX_TOTAL_COST_MINOR,
-                )
-            if (suppliedError != null) {
-                Outcome.Err(suppliedError)
-            } else {
-                val litersScaled =
-                    litersScaledOf(
-                        input.totalCostMinor,
-                        input.pricePerLiterScaled,
-                        minorUnitFactor,
-                    )
-                val derivedError =
-                    validateRange(
-                        "litersScaled",
-                        litersScaled,
-                        MIN_LITERS_SCALED,
-                        MAX_LITERS_SCALED,
-                    )
-                if (derivedError == null) {
-                    Outcome.Ok(
-                        CanonicalMoneyValues(
-                            litersScaled,
-                            input.pricePerLiterScaled,
-                            input.totalCostMinor,
-                        ),
-                    )
-                } else {
-                    Outcome.Err(derivedError)
-                }
-            }
-        }
+        is MoneyInput.LitersAndPrice -> resolveLitersAndPrice(input, minorUnitFactor)
+        is MoneyInput.LitersAndTotal -> resolveLitersAndTotal(input, minorUnitFactor)
+        is MoneyInput.PriceAndTotal -> resolvePriceAndTotal(input, minorUnitFactor)
     }
 
 private fun hardValidationError(
@@ -276,77 +255,90 @@ private fun validateFuelEntry(
     fields: FuelEntryFields,
     context: FuelEntryValidationContext,
 ): Outcome<ValidatedFuelEntryValues, AppError> {
-    val minorUnitFactor =
-        MinorUnits.factorFor(fields.currency)
-            ?: return Outcome.Err(ValidationError.InvalidUnit(fields.currency.value))
+    val minorUnitFactor = MinorUnits.factorFor(fields.currency)
     val normalisedNotes = fields.notes?.trim()?.takeIf(String::isNotEmpty)
-    hardValidationError(fields, context, normalisedNotes)?.let { return Outcome.Err(it) }
-    val money =
-        when (val result = resolveMoney(fields.money, minorUnitFactor)) {
-            is Outcome.Ok -> result.value
-            is Outcome.Err -> return Outcome.Err(result.error)
-        }
-    val warning = odometerWarning(fields, context)
-    if (warning != null && Confirmation.OdometerInconsistent !in fields.confirmations) {
-        return Outcome.Err(warning)
+    val hardError = hardValidationError(fields, context, normalisedNotes)
+    return when {
+        minorUnitFactor == null -> Outcome.Err(ValidationError.InvalidUnit(fields.currency.value))
+        hardError != null -> Outcome.Err(hardError)
+        else -> validateResolvedFields(fields, context, normalisedNotes, minorUnitFactor)
+    }
+}
+
+private fun validateResolvedFields(
+    fields: FuelEntryFields,
+    context: FuelEntryValidationContext,
+    normalisedNotes: String?,
+    minorUnitFactor: Int,
+): Outcome<ValidatedFuelEntryValues, AppError> =
+    when (val money = resolveMoney(fields.money, minorUnitFactor)) {
+        is Outcome.Err -> Outcome.Err(money.error)
+        is Outcome.Ok -> validatedOutcome(fields, context, normalisedNotes, money.value)
     }
 
-    return Outcome.Ok(
-        ValidatedFuelEntryValues(
-            vehicleId = fields.vehicleId,
-            date = fields.date,
-            odometerKm = fields.odometerKm,
-            litersScaled = money.litersScaled,
-            pricePerLiterScaled = money.pricePerLiterScaled,
-            totalCostMinor = money.totalCostMinor,
-            currency = fields.currency,
-            isFullTank = fields.isFullTank,
-            hasMissedEntries = fields.hasMissedEntries,
-            notes = normalisedNotes,
-        ),
-    )
+private fun validatedOutcome(
+    fields: FuelEntryFields,
+    context: FuelEntryValidationContext,
+    normalisedNotes: String?,
+    money: CanonicalMoneyValues,
+): Outcome<ValidatedFuelEntryValues, AppError> {
+    val warning = odometerWarning(fields, context)
+    return if (warning != null && Confirmation.OdometerInconsistent !in fields.confirmations) {
+        Outcome.Err(warning)
+    } else {
+        Outcome.Ok(
+            ValidatedFuelEntryValues(
+                vehicleId = fields.vehicleId,
+                date = fields.date,
+                odometerKm = fields.odometerKm,
+                litersScaled = money.litersScaled,
+                pricePerLiterScaled = money.pricePerLiterScaled,
+                totalCostMinor = money.totalCostMinor,
+                currency = fields.currency,
+                isFullTank = fields.isFullTank,
+                hasMissedEntries = fields.hasMissedEntries,
+                notes = normalisedNotes,
+            ),
+        )
+    }
 }
+
+private fun CreateFuelEntryCommand.toFields(): FuelEntryFields =
+    FuelEntryFields(
+        vehicleId = vehicleId,
+        date = date,
+        odometerKm = odometerKm,
+        money = money,
+        currency = currency,
+        isFullTank = isFullTank,
+        hasMissedEntries = hasMissedEntries,
+        notes = notes,
+        confirmations = confirmations,
+    )
+
+private fun UpdateFuelEntryCommand.toFields(): FuelEntryFields =
+    FuelEntryFields(
+        vehicleId = vehicleId,
+        date = date,
+        odometerKm = odometerKm,
+        money = money,
+        currency = currency,
+        isFullTank = isFullTank,
+        hasMissedEntries = hasMissedEntries,
+        notes = notes,
+        confirmations = confirmations,
+    )
 
 class ValidateCreateFuelEntry {
     operator fun invoke(
         command: CreateFuelEntryCommand,
         context: FuelEntryValidationContext,
-    ): Outcome<ValidatedFuelEntryValues, AppError> =
-        validateFuelEntry(
-            fields =
-                FuelEntryFields(
-                    vehicleId = command.vehicleId,
-                    date = command.date,
-                    odometerKm = command.odometerKm,
-                    money = command.money,
-                    currency = command.currency,
-                    isFullTank = command.isFullTank,
-                    hasMissedEntries = command.hasMissedEntries,
-                    notes = command.notes,
-                    confirmations = command.confirmations,
-                ),
-            context = context,
-        )
+    ): Outcome<ValidatedFuelEntryValues, AppError> = validateFuelEntry(command.toFields(), context)
 }
 
 class ValidateUpdateFuelEntry {
     operator fun invoke(
         command: UpdateFuelEntryCommand,
         context: FuelEntryValidationContext,
-    ): Outcome<ValidatedFuelEntryValues, AppError> =
-        validateFuelEntry(
-            fields =
-                FuelEntryFields(
-                    vehicleId = command.vehicleId,
-                    date = command.date,
-                    odometerKm = command.odometerKm,
-                    money = command.money,
-                    currency = command.currency,
-                    isFullTank = command.isFullTank,
-                    hasMissedEntries = command.hasMissedEntries,
-                    notes = command.notes,
-                    confirmations = command.confirmations,
-                ),
-            context = context,
-        )
+    ): Outcome<ValidatedFuelEntryValues, AppError> = validateFuelEntry(command.toFields(), context)
 }

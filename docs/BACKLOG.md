@@ -316,6 +316,8 @@ Acceptance criteria:
 
 ### E1-04 - Fuel Entry Domain - M
 
+Status: completed on 2026-08-28. See `docs/handoff-E1-04.md`.
+
 Implement the `:feature:fuel` domain package, CRUD use cases and rules R-1 and R-2.
 
 Acceptance criteria:
@@ -878,7 +880,7 @@ proof after E3-04.
 | E0-07 Walking skeleton (completed) | 1 | L | Yes |
 | E1-02 Vehicle domain (completed) | 1 | S | — |
 | E1-03 Vehicle data | 1 | M | — |
-| E1-04 Fuel entry domain | 1 | M | — |
+| E1-04 Fuel entry domain (completed) | 1 | M | — |
 | E1-05 Consumption calculation | 1 | M | Yes |
 | E1-06 Fuel entry data | 1 | M | — |
 | E1-07 Android UI vehicles | 1 | M | — |
