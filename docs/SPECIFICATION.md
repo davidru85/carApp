@@ -546,7 +546,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-73 | Cloud Functions artifact retention | Retain deployment artifacts for one day in the exact Cloud Functions Artifact Registry repository and verify real cleanup. | Accepted |
 | D-74 | iOS Keychain persistence acceptance | Use test-only XCUITest bundle `com.ruizurraca.carapp.uitests` to verify Firebase Auth through the UI across a real process restart. | Accepted |
 | D-75 | Firebase standalone Kotlin/Native test exception | Derive the standalone Native-test exemption from the transitive dependency graph rooted at the Firebase integration modules; its current resolution is Auth, Firestore, Firebase wiring and iOS composition. | Accepted |
-| D-76 | Vehicle validation boundary | Pure Vehicle validators receive immutable pre-write facts; E1-03 loads those facts and invokes the validators before persistence. | Accepted |
+| D-76 | Vehicle validation boundary | Pure Vehicle validators receive immutable pre-write facts; E1-03 is the imperative shell that loads facts, validates and mutates in one transaction. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
