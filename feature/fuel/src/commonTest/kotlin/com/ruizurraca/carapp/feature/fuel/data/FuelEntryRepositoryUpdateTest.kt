@@ -2,6 +2,7 @@ package com.ruizurraca.carapp.feature.fuel.data
 
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
+import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -16,9 +17,10 @@ class FuelEntryRepositoryUpdateTest {
         runTest {
             withFuelEntryRepositoryTestScope {
                 seedVehicle()
-                val created = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.EntityId>>(
-                    repository.createFuelEntry(createFuelEntryCommand()),
-                ).value.value
+                val created =
+                    assertIs<Outcome.Ok<EntityId>>(
+                        repository.createFuelEntry(createFuelEntryCommand()),
+                    ).value.value
                 val before = assertNotNull(fuelEntry(created))
                 clock.advanceBy(1_000L)
 
@@ -73,9 +75,10 @@ class FuelEntryRepositoryUpdateTest {
         runTest {
             withFuelEntryRepositoryTestScope(OwnerId("owner-a")) {
                 seedVehicle()
-                val id = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.EntityId>>(
-                    repository.createFuelEntry(createFuelEntryCommand()),
-                ).value.value
+                val id =
+                    assertIs<Outcome.Ok<EntityId>>(
+                        repository.createFuelEntry(createFuelEntryCommand()),
+                    ).value.value
                 val initial = assertNotNull(outbox(id))
 
                 assertIs<Outcome.Ok<Unit>>(

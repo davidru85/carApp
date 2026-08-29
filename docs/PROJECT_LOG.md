@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-08-29 — E1-06 local Fuel Entry data completed
+
+- **Type:** story
+- **Story / Decision:** `E1-06` / `D-81`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented owner-scoped SQLDelight Fuel Entry queries, neutral database access,
+  transactional local CRUD, canonical mappers and outbox snapshots, list and consumption
+  projections, production D-79 filtering and the D-81 UTC calendar-year fact producer.
+- **Why:** E1-06 completes the offline Fuel Entry repository while keeping D-77 validation facts and
+  D-38 mutation invariants inside one transaction and preserving the UI's local-only source of
+  truth.
+- **Documents touched:** D-81 and ADR-0082 in the four decision mirrors,
+  `docs/CONTRACTS.md §2` and `§5`, current-state documents and `docs/handoff-E1-06.md`.
+- **Verification:** 29 repository behavior tests and three D-81 helper tests were RED on both KMP
+  targets; GREEN passed the focused Android-host and iOS suites. Lint, detekt, Kover, 16
+  architecture rules and 82 decision/ADR mirrors pass; full repository evidence is in the handoff.
+- **Follow-ups / risks:** E1-07 is next and owns Android Vehicle UI plus the D-28 package rules. The
+  D-80 real-iPhone performance result remains with E4-03. Owner review is required before merge.
+
 ### 2026-08-28 — E1-05 consumption calculation implemented
 
 - **Type:** story

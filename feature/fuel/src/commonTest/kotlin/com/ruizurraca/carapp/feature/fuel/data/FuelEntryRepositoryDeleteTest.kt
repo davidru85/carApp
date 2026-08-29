@@ -18,7 +18,10 @@ class FuelEntryRepositoryDeleteTest {
         runTest {
             withFuelEntryRepositoryTestScope {
                 seedVehicle()
-                val id = assertIs<Outcome.Ok<EntityId>>(repository.createFuelEntry(createFuelEntryCommand())).value.value
+                val id =
+                    assertIs<Outcome.Ok<EntityId>>(
+                        repository.createFuelEntry(createFuelEntryCommand()),
+                    ).value.value
                 clock.advanceBy(1_000L)
 
                 assertIs<Outcome.Ok<Unit>>(repository.deleteFuelEntry(EntityId(id)))
@@ -39,7 +42,11 @@ class FuelEntryRepositoryDeleteTest {
             withFuelEntryRepositoryTestScope {
                 seedVehicle(initialOdometerKm = 0L)
                 seedFuelEntry(FIRST_ENTRY_ID, date = ENTRY_DATE, odometerKm = 200L)
-                seedFuelEntry(SECOND_ENTRY_ID, date = ENTRY_DATE + kotlin.time.Duration.parse("1s"), odometerKm = 100L)
+                seedFuelEntry(
+                    SECOND_ENTRY_ID,
+                    date = ENTRY_DATE + kotlin.time.Duration.parse("1s"),
+                    odometerKm = 100L,
+                )
                 assertEquals(1L, fuelEntry(SECOND_ENTRY_ID)?.odometerInconsistent)
 
                 assertIs<Outcome.Ok<Unit>>(repository.deleteFuelEntry(EntityId(FIRST_ENTRY_ID)))
@@ -66,7 +73,10 @@ class FuelEntryRepositoryDeleteTest {
         runTest {
             withFuelEntryRepositoryTestScope(OwnerId("owner-a")) {
                 seedVehicle()
-                val id = assertIs<Outcome.Ok<EntityId>>(repository.createFuelEntry(createFuelEntryCommand())).value.value
+                val id =
+                    assertIs<Outcome.Ok<EntityId>>(
+                        repository.createFuelEntry(createFuelEntryCommand()),
+                    ).value.value
 
                 assertIs<Outcome.Ok<Unit>>(repository.deleteFuelEntry(EntityId(id)))
                 val outbox = assertNotNull(outbox(id))

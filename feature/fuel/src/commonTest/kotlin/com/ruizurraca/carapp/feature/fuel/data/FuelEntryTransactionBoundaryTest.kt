@@ -2,6 +2,7 @@ package com.ruizurraca.carapp.feature.fuel.data
 
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationWarning
+import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.testing.FakeAppClock
@@ -147,7 +148,7 @@ private fun localEntryWithOdometer(odometerKm: Long): LocalFuelEntry =
         litersScaled = 40_000L,
         pricePerLiterScaled = 1_500L,
         totalCostMinor = 6_000L,
-        currency = com.ruizurraca.carapp.core.model.CurrencyCode("EUR"),
+        currency = CurrencyCode("EUR"),
         isFullTank = true,
         hasMissedEntries = false,
         odometerInconsistent = false,

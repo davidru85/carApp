@@ -12,7 +12,7 @@ package com.ruizurraca.carapp.buildlogic.architecture
 object ArchitectureChecker {
 
     private const val D81_HELPER_FILE =
-        "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
+        "src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
 
     /** Planned provider modules whose owning stories have not started yet. */
     val NOT_YET_INTRODUCED_MODULES =

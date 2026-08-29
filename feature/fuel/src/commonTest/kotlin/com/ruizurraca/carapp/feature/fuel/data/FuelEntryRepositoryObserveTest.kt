@@ -4,7 +4,9 @@ import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
 import com.ruizurraca.carapp.core.model.ConsumptionL100Km
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.FuelEntry
 import com.ruizurraca.carapp.core.model.FuelEntryListItem
+import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -55,21 +57,30 @@ class FuelEntryRepositoryObserveTest {
     @Test
     fun getFuelEntryIsOwnerScopedAndAbsenceIsOkNull() =
         runTest {
-            withFuelEntryRepositoryTestScope(com.ruizurraca.carapp.core.model.OwnerId("owner-a")) {
+            withFuelEntryRepositoryTestScope(OwnerId("owner-a")) {
                 seedVehicle()
                 seedFuelEntry(FIRST_ENTRY_ID, date = ENTRY_DATE, odometerKm = 100L)
-                seedVehicle(id = SECOND_VEHICLE_ID, ownerId = com.ruizurraca.carapp.core.model.OwnerId("owner-b"))
+                seedVehicle(id = SECOND_VEHICLE_ID, ownerId = OwnerId("owner-b"))
                 seedFuelEntry(
                     SECOND_ENTRY_ID,
-                    ownerId = com.ruizurraca.carapp.core.model.OwnerId("owner-b"),
+                    ownerId = OwnerId("owner-b"),
                     vehicleId = SECOND_VEHICLE_ID,
                     date = ENTRY_DATE,
                     odometerKm = 100L,
                 )
 
-                val own = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.FuelEntry?>>(repository.getFuelEntry(EntityId(FIRST_ENTRY_ID)))
-                val other = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.FuelEntry?>>(repository.getFuelEntry(EntityId(SECOND_ENTRY_ID)))
-                val missing = assertIs<Outcome.Ok<com.ruizurraca.carapp.core.model.FuelEntry?>>(repository.getFuelEntry(EntityId(THIRD_ENTRY_ID)))
+                val own =
+                    assertIs<Outcome.Ok<FuelEntry?>>(
+                        repository.getFuelEntry(EntityId(FIRST_ENTRY_ID)),
+                    )
+                val other =
+                    assertIs<Outcome.Ok<FuelEntry?>>(
+                        repository.getFuelEntry(EntityId(SECOND_ENTRY_ID)),
+                    )
+                val missing =
+                    assertIs<Outcome.Ok<FuelEntry?>>(
+                        repository.getFuelEntry(EntityId(THIRD_ENTRY_ID)),
+                    )
 
                 assertEquals(FIRST_ENTRY_ID, own.value?.id?.value)
                 assertNull(other.value)

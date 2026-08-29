@@ -1,5 +1,7 @@
 package com.ruizurraca.carapp.feature.fuel.data
 
+import com.ruizurraca.carapp.core.model.CurrencyCode
+import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.serialization.json.Json
@@ -34,15 +36,15 @@ class FuelEntryOutboxMapperTest {
 
 private fun localEntry(ownerId: OwnerId): LocalFuelEntry =
     LocalFuelEntry(
-        id = com.ruizurraca.carapp.core.model.EntityId(FIRST_ENTRY_ID),
+        id = EntityId(FIRST_ENTRY_ID),
         ownerId = ownerId,
-        vehicleId = com.ruizurraca.carapp.core.model.EntityId(VEHICLE_ID),
+        vehicleId = EntityId(VEHICLE_ID),
         date = ENTRY_DATE,
         odometerKm = 500L,
         litersScaled = 40_000L,
         pricePerLiterScaled = 1_500L,
         totalCostMinor = 6_000L,
-        currency = com.ruizurraca.carapp.core.model.CurrencyCode("EUR"),
+        currency = CurrencyCode("EUR"),
         isFullTank = true,
         hasMissedEntries = false,
         odometerInconsistent = false,

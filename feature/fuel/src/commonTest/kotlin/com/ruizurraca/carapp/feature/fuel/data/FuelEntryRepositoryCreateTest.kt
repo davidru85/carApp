@@ -43,7 +43,10 @@ class FuelEntryRepositoryCreateTest {
             withFuelEntryRepositoryTestScope {
                 seedVehicle()
 
-                val id = assertIs<Outcome.Ok<EntityId>>(repository.createFuelEntry(createFuelEntryCommand())).value.value
+                val id =
+                    assertIs<Outcome.Ok<EntityId>>(
+                        repository.createFuelEntry(createFuelEntryCommand()),
+                    ).value.value
 
                 assertEquals("PENDING", fuelEntry(id)?.syncState)
                 assertNull(outbox(id))
@@ -56,7 +59,10 @@ class FuelEntryRepositoryCreateTest {
             withFuelEntryRepositoryTestScope(OwnerId("owner-a")) {
                 seedVehicle()
 
-                val id = assertIs<Outcome.Ok<EntityId>>(repository.createFuelEntry(createFuelEntryCommand())).value.value
+                val id =
+                    assertIs<Outcome.Ok<EntityId>>(
+                        repository.createFuelEntry(createFuelEntryCommand()),
+                    ).value.value
 
                 val payload = assertNotNull(outbox(id)).payload
                 kotlin.test.assertTrue(payload.contains("\"entityType\":\"FUEL_ENTRY\""))

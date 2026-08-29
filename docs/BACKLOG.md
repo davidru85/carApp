@@ -360,6 +360,8 @@ Human review required.
 
 ### E1-06 - Fuel Entry Data, Local Only - M
 
+Status: implementation completed on 2026-08-29.
+
 Implements `FuelEntryRepository` (`docs/CONTRACTS.md §12`).
 
 Implement the local data source, mappers, projections and repository implementation for fuel entries.
@@ -887,7 +889,7 @@ proof after E3-04.
 | E1-03 Vehicle data | 1 | M | — |
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
 | E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
-| E1-06 Fuel entry data | 1 | M | — |
+| E1-06 Fuel entry data (completed) | 1 | M | — |
 | E1-07 Android UI vehicles | 1 | M | — |
 | E1-08 Android UI fuel entries | 1 | L | — |
 | E1-09 iOS UI | 1 | L | — |

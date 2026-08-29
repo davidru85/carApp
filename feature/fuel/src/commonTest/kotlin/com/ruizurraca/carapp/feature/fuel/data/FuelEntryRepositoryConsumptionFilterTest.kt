@@ -2,6 +2,7 @@ package com.ruizurraca.carapp.feature.fuel.data
 
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.ConsumptionReport
+import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelEntry
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -114,7 +115,7 @@ private fun localEntry(
         litersScaled = 10_000L,
         pricePerLiterScaled = 1_500L,
         totalCostMinor = 1_500L,
-        currency = com.ruizurraca.carapp.core.model.CurrencyCode("EUR"),
+        currency = CurrencyCode("EUR"),
         isFullTank = true,
         hasMissedEntries = false,
         odometerInconsistent = false,

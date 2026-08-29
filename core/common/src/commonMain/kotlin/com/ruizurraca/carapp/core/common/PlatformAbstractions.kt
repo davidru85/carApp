@@ -2,12 +2,12 @@ package com.ruizurraca.carapp.core.common
 
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.OwnerId
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.minus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlin.time.Instant
 
 /*
@@ -28,6 +28,7 @@ fun interface AppClock {
 }
 
 /** D-81 Fuel Entry lower date bound, using literal calendar years in UTC. */
+@Suppress("MagicNumber")
 fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant =
     maxOf(
         Instant.fromEpochMilliseconds(0L),

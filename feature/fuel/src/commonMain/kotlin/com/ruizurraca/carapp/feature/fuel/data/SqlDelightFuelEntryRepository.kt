@@ -102,7 +102,10 @@ class SqlDelightFuelEntryRepository internal constructor(
                             validationContext(now, vehicle, previous),
                         )
                 ) {
-                    is Outcome.Err -> validation
+                    is Outcome.Err -> {
+                        validation
+                    }
+
                     is Outcome.Ok -> {
                         val entry = validation.value.toLocalFuelEntry(id, ownerId, now)
                         insertFuelEntry(entry, LocalFuelEntry::toFuelEntryOutboxPayloadOrNull)
@@ -144,7 +147,10 @@ class SqlDelightFuelEntryRepository internal constructor(
                             validationContext(now, vehicle, previous),
                         )
                 ) {
-                    is Outcome.Err -> validation
+                    is Outcome.Err -> {
+                        validation
+                    }
+
                     is Outcome.Ok -> {
                         val updated = existing.withValidatedValues(validation.value, ownerId, now)
                         updateFuelEntry(updated, LocalFuelEntry::toFuelEntryOutboxPayloadOrNull)
