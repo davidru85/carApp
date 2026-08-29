@@ -299,6 +299,11 @@ Consumption (R-3) operates on non-deleted fuel entries of one vehicle in **calcu
 
 The complete set of consumption explanation reasons is `ConsumptionInvalidReason` (§20). `EndEntryNotFullTank` is a list-projection reason for partial rows; it is not a `SegmentResult.Invalid` reason.
 
+When more than one segment invalidation reason applies, precedence is
+`NoPreviousFullTank > NonPositiveDistance > DuplicateOdometerInSegment >`
+`MissedEntriesInSegment > InconsistentOdometerInSegment` (`D-78`).
+`EndEntryNotFullTank` does not participate because `CalculateConsumption` never emits it.
+
 ## 5. Validation and Save Semantics
 
 Write use cases normally validate commands before repository writes. Expected validation failures

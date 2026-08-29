@@ -126,3 +126,13 @@ The reference OS is the baseline the thresholds were defined against, and it mat
 `targetSdk`, so the app is measured on the runtime contract it actually opts into.
 
 If a reference device is unavailable, the measurement is still run and the actual device is recorded in the handoff and in `docs/PROJECT_LOG.md`; it does not silently pass.
+
+`D-80` makes the JVM consumption measurement a standalone
+`:feature:fuel:consumptionBenchmark` task. It reuses shared test data but runs outside every normal
+test task and without the Kover agent, so coverage instrumentation cannot affect the result. The
+first task run reported a 3,392,708 ns median without instrumentation. That approximately 96.6%
+margin satisfied the owner-approved condition for enabling the `< 100 ms` gate, so the dedicated
+task now enforces the threshold in a separate Linux CI step. The same data and measurement
+procedure are compiled into an optimized `iosArm64` test binary for the mandatory manual device
+run. Linking that binary is acceptance evidence; it does not substitute for the real-device
+result, which remains explicitly pending when no iPhone is available.

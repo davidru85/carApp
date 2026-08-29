@@ -334,6 +334,9 @@ Acceptance criteria:
 
 ### E1-05 - Consumption Calculation R-3 - M
 
+Status: implementation completed on 2026-08-28. The optimized real-iPhone measurement remains an
+explicit D-80 item in E4-03; E1-05 does not claim that device evidence.
+
 Implement the pure `CalculateConsumption` use case.
 
 Acceptance criteria:
@@ -350,7 +353,7 @@ Acceptance criteria:
 - Segment and average values are produced by the canonical consumption arithmetic of `docs/CONTRACTS.md §2`, and all four golden values in that section pass.
 - Average consumption is distance-weighted, not an arithmetic mean; the golden case where the two differ (`774` versus `776`) is covered by a test.
 - The function is total: no input throws.
-- The repository filter step is covered: `observeConsumption` passes only non-deleted entries for one vehicle to `CalculateConsumption`.
+- `CalculateConsumption` does not filter its input; entries from another vehicle or with a non-null `deletedAt` still participate when supplied directly.
 - 1,000 entries processed within the target of `docs/SPECIFICATION.md §11`, measured as defined in `docs/versions-matrix.md`.
 
 Human review required.
@@ -367,6 +370,7 @@ Acceptance criteria:
 - `observeFuelEntries` returns the `FuelEntryListItem` projection in chronological order and excludes orphan entries.
 - `FuelEntryListItem` maps partial rows to `consumption = null` and `invalidReason = EndEntryNotFullTank`, while still allowing those rows to contribute litres to the next full segment.
 - `observeConsumption` is backed by a dedicated projection query, not by the UI list.
+- The repository filter step is covered: `observeConsumption` passes only non-deleted entries for one vehicle to `CalculateConsumption`.
 - Created and edited rows become `PENDING`; no outbox row while `LOCAL_OWNER`; `LOCAL_OWNER + PENDING + no outbox` is a valid stored state.
 - Created, edited and tombstoned rows receive a fresh `localMutationSeq` from the shared local sequence.
 - Logical delete works and triggers the `docs/CONTRACTS.md §3.1` recompute set.
@@ -808,6 +812,7 @@ Measure and fix MVP performance.
 Acceptance criteria:
 
 - Cold start, list smoothness and consumption targets are met, measured exactly as defined in `docs/versions-matrix.md` on the reference devices.
+- Run and record the D-80 optimized consumption benchmark on a real iPhone, filling the device and date left open by E1-05.
 - No memory leaks in critical flows; state holder scopes are cancelled.
 
 ### E4-04 - Release Preparation - M
@@ -881,7 +886,7 @@ proof after E3-04.
 | E1-02 Vehicle domain (completed) | 1 | S | — |
 | E1-03 Vehicle data | 1 | M | — |
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
-| E1-05 Consumption calculation | 1 | M | Yes |
+| E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data | 1 | M | — |
 | E1-07 Android UI vehicles | 1 | M | — |
 | E1-08 Android UI fuel entries | 1 | L | — |

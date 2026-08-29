@@ -85,6 +85,8 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew contractCheck --stacktrace
+      - name: Uninstrumented consumption performance gate
+        run: ./gradlew :feature:fuel:consumptionBenchmark --stacktrace
       - name: Install Firestore rules test dependencies
         run: npm ci
       - name: Firestore security rules emulator tests
@@ -191,6 +193,8 @@ jobs:
           if [ "$PINNED" != "$ACTUAL" ]; then
             echo "::warning::Xcode patch drift: pinned $PINNED, runner has $ACTUAL."
           fi
+      - name: Link the optimized consumption device-test binary
+        run: ./gradlew :feature:fuel:linkReleaseTestIosArm64 --stacktrace
       - run: ./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace
       - name: Build the iOS app
         working-directory: iosApp
