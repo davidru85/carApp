@@ -265,6 +265,22 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 
 `odometerInconsistent` is recomputed only for rows whose previous non-deleted chronological neighbour may have changed. The recompute set is de-duplicated by `id` and is:
 
+For each active row in that set, D-82 defines the complete derivation as:
+
+```text
+odometerInconsistent =
+  (previousActiveEntry != null && odometerKm <= previousActiveEntry.odometerKm) ||
+  (vehicle != null && odometerKm < vehicle.initialOdometerKm)
+```
+
+The neighbour comparison is `<=`; the initial-odometer comparison is `<`. Because `fuel_entry`
+has no enforced foreign key, a missing Vehicle makes only the second branch false: the neighbour
+branch still applies, the row MUST NOT be flagged merely because it is orphaned, and recomputation
+MUST neither throw nor produce `NULL`. The SQL expression retains an outer `COALESCE(..., 0)` as
+the final orphan and missing-neighbour defense.
+
+The exact recompute set remains:
+
 - Create: inserted row in its new position, plus its new successor.
 - Update where `vehicleId`, `date`, `createdAt`, `id` or `odometerKm` changes: updated row in its new position, plus its pre-update successor (the next non-deleted entry in chronological order before the update), plus its post-update successor (the next non-deleted entry in chronological order after the update). If pre- and post-successors coincide, the row is included once.
 - Update that does not modify `vehicleId`, `date`, `createdAt`, `id` or `odometerKm`: no `odometerInconsistent` recompute is required, because chronological neighbours and comparison values are unchanged.
@@ -272,6 +288,10 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 - Vehicle-level fuel-entry cascade tombstone: the union of the successor of each tombstoned row in its pre-cascade chronological position, de-duplicated by `id`. A successor that is itself being tombstoned is not added.
 
 All rows in the recompute set are recalculated in the same database transaction as the write that caused the recompute. A missing successor means no row is added for that position. The edited or deleted row's own stored `odometerInconsistent` remains meaningful only while the row is non-deleted; tombstoned rows are ignored by validation, projections and consumption.
+
+The initial-odometer branch adds no recompute trigger: `vehicle.initialOdometerKm` is editable only
+while the Vehicle has no non-deleted Fuel Entries, so no Fuel Entry flag can become stale through a
+legal Vehicle write.
 
 An architecture check MUST assert that no `UPDATE vehicle SET currentOdometerKm` and no write to `odometerInconsistent` exists outside `:core:database`.
 
@@ -961,7 +981,13 @@ interface FuelEntryRepository {
 | `deleteFuelEntry` | tombstones one row, recomputes read models, enqueues a tombstone snapshot | `EntityNotFound`, `PersistenceError` |
 | `observeConsumption` | none | `PersistenceError` |
 
-The MVP loads at most `MAX_ENTRIES_IN_MEMORY = 5_000` entries per vehicle. Consumption is computed from a dedicated projection query, not from the UI list.
+The MVP loads at most `MAX_ENTRIES_IN_MEMORY = 5_000` entries per vehicle. D-83 keeps the highest
+5,000 rows under each projection's complete canonical ordering: the chronologically newest rows
+for the list and the highest-odometer calculation rows for consumption. Each query selects that
+window in descending order under the limit and returns it in the ascending §4 ordering. The
+production repository always binds the named constant; tests MAY inject a smaller positive limit
+to prove the same window semantics without materialising 5,000 rows. Consumption is computed from
+a dedicated projection query, not from the UI list.
 
 `FuelEntryRepository.observeConsumption` returns the full `ConsumptionReport` and is Kotlin-only. It is never observed directly from the Swift facade. Swift-facing fuel-entry list state projects it onto `FuelEntryListUiState.consumptionAverageScaled`, `validConsumptionSegmentCount`, `isConsumptionReliable` and per-row `FuelEntryListItemUi.consumptionScaled` / `invalidReason`.
 
