@@ -80,6 +80,9 @@
   :feature:vehicle:detekt` — successful after moving the executable fixtures into correctly matched
   Android-host test packages; all Vehicle host tests, the three production package rules and the
   three firing fixtures passed with clean lint and static analysis.
+- D-28 REFACTOR repeated the same test, lint and detekt command unchanged — successful after
+  replacing per-layer branching with declarative allowed-layer policies and exact package-segment
+  matching.
 
 ## Contract Impact
 

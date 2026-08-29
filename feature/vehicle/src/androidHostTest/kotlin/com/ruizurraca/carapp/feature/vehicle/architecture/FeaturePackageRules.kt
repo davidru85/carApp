@@ -19,17 +19,7 @@ internal object FeaturePackageRules {
         layer: Layer,
         directory: String?,
     ) {
-        val violations =
-            scope(directory)
-                .files
-                .filter { file -> file.packageName().hasLayer(layer) }
-                .flatMap { file ->
-                    val ownFeaturePrefix = file.packageName().ownFeaturePrefix()
-                    file.imports
-                        .map { declaration -> declaration.name }
-                        .filterNot { importName -> layer.allows(importName, ownFeaturePrefix) }
-                        .map { importName -> "${file.name}: $importName" }
-                }
+        val violations = violationsFor(layer, directory)
 
         if (violations.isNotEmpty()) {
             throw AssertionError(
@@ -43,7 +33,22 @@ internal object FeaturePackageRules {
         }
     }
 
-    private fun scope(directory: String?) =
+    private fun violationsFor(
+        layer: Layer,
+        directory: String?,
+    ): List<String> =
+        scopeFor(directory)
+            .files
+            .filter { file -> file.packageName().isFeatureLayer(layer) }
+            .flatMap { file ->
+                val ownFeaturePrefix = file.packageName().ownFeaturePrefix()
+                file.imports
+                    .map { declaration -> declaration.name }
+                    .filterNot { importName -> layer.allows(importName, ownFeaturePrefix) }
+                    .map { importName -> "${file.name}: $importName" }
+            }
+
+    private fun scopeFor(directory: String?) =
         if (directory == null) {
             Konsist.scopeFromProduction()
         } else {
@@ -57,7 +62,11 @@ internal object FeaturePackageRules {
             ?.get(1)
             .orEmpty()
 
-    private fun String.hasLayer(layer: Layer): Boolean = contains(".feature.") && contains(".${layer.packageSegment}")
+    private fun String.isFeatureLayer(layer: Layer): Boolean {
+        val segments = split('.')
+        val featureIndex = segments.indexOf("feature")
+        return featureIndex >= 0 && segments.getOrNull(featureIndex + 2) == layer.packageSegment
+    }
 
     private fun String.ownFeaturePrefix(): String {
         val featureName = substringAfter(".feature.").substringBefore('.')
@@ -67,6 +76,7 @@ internal object FeaturePackageRules {
     private enum class Layer(
         val packageSegment: String,
         private val allowedSharedPrefixes: Set<String>,
+        private val allowedOwnLayers: Set<String>,
     ) {
         DOMAIN(
             packageSegment = "domain",
@@ -76,6 +86,7 @@ internal object FeaturePackageRules {
                     CORE_MODEL_PREFIX,
                     COROUTINES_PREFIX,
                 ),
+            allowedOwnLayers = setOf("domain"),
         ),
         DATA(
             packageSegment = "data",
@@ -88,6 +99,7 @@ internal object FeaturePackageRules {
                     COROUTINES_PREFIX,
                     SERIALIZATION_PREFIX,
                 ),
+            allowedOwnLayers = setOf("domain", "data"),
         ),
         PRESENTATION(
             packageSegment = "presentation",
@@ -97,6 +109,7 @@ internal object FeaturePackageRules {
                     CORE_MODEL_PREFIX,
                     COROUTINES_PREFIX,
                 ),
+            allowedOwnLayers = setOf("domain", "presentation"),
         ),
         ;
 
@@ -112,19 +125,7 @@ internal object FeaturePackageRules {
                 importName
                     .removePrefix(ownFeaturePrefix)
                     .substringBefore('.')
-            return when (this) {
-                DOMAIN -> {
-                    importedLayer == DOMAIN.packageSegment
-                }
-
-                DATA -> {
-                    importedLayer == DOMAIN.packageSegment || importedLayer == DATA.packageSegment
-                }
-
-                PRESENTATION -> {
-                    importedLayer == DOMAIN.packageSegment || importedLayer == PRESENTATION.packageSegment
-                }
-            }
+            return importedLayer in allowedOwnLayers
         }
     }
 
