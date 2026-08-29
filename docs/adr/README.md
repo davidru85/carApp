@@ -87,5 +87,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-78 | [ADR-0079](0079-consumption-invalidation-precedence.md) | Apply an explicit structural-first precedence to singular consumption invalidation reasons. | Accepted |
 | D-79 | [ADR-0080](0080-move-consumption-filter-evidence-to-e1-06.md) | Put production repository-filter evidence in E1-06 and prove the E1-05 calculator does not filter. | Accepted |
 | D-80 | [ADR-0081](0081-consumption-performance-evidence.md) | Measure consumption with an uninstrumented JVM benchmark and an optimized iOS device-test binary. | Accepted |
+| D-81 | [ADR-0082](0082-use-utc-calendar-years-for-fuel-entry-bound.md) | Use UTC calendar years for the Fuel Entry earliest-date bound. | Accepted |
+| D-82 | [ADR-0083](0083-align-odometer-inconsistency-with-validation.md) | Align persisted odometer inconsistency with the validation predicate. | Accepted |
+| D-83 | [ADR-0084](0084-retain-newest-fuel-entry-window.md) | Retain the newest Fuel Entry projection window under the memory cap. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -279,6 +279,41 @@ class DatabaseMutations(
         }
     }
 
+    suspend fun insertLocalFuelEntry(
+        entry: FuelEntryDatabaseRow,
+        outboxPayload: (FuelEntryDatabaseRow) -> String?,
+    ) {
+        database.transaction {
+            val localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne()
+            insertFuelEntry(
+                id = entry.id,
+                ownerId = entry.ownerId,
+                vehicleId = entry.vehicleId,
+                date = entry.date,
+                odometerKm = entry.odometerKm,
+                litersScaled = entry.litersScaled,
+                pricePerLiterScaled = entry.pricePerLiterScaled,
+                totalCostMinor = entry.totalCostMinor,
+                currency = entry.currency,
+                isFullTank = if (entry.isFullTank) 1L else 0L,
+                hasMissedEntries = if (entry.hasMissedEntries) 1L else 0L,
+                notes = entry.notes,
+                createdAt = entry.createdAt,
+                updatedAt = entry.updatedAt,
+                serverUpdatedAt = null,
+                deletedAt = null,
+                syncState = "PENDING",
+                localRevision = 1L,
+                localMutationSeq = localMutationSeq,
+                schemaVersion = entry.schemaVersion,
+            )
+            val stored = queries.selectFuelEntryById(entry.id).awaitAsOne().toFuelEntryDatabaseRow()
+            outboxPayload(stored)?.let { payload ->
+                queries.coalesceOutbox("FUEL_ENTRY", stored.id, payload, stored.localRevision)
+            }
+        }
+    }
+
     @Suppress("LongParameterList")
     suspend fun updateFuelEntry(
         existingId: String,
@@ -358,6 +393,43 @@ class DatabaseMutations(
         }
     }
 
+    suspend fun updateLocalFuelEntry(
+        entry: FuelEntryDatabaseRow,
+        outboxPayload: (FuelEntryDatabaseRow) -> String?,
+    ) {
+        database.transaction {
+            val existing = queries.selectFuelEntryById(entry.id).awaitAsOne()
+            val localRevision = existing.localRevision + 1L
+            updateFuelEntry(
+                existingId = entry.id,
+                id = entry.id,
+                ownerId = entry.ownerId,
+                vehicleId = entry.vehicleId,
+                date = entry.date,
+                odometerKm = entry.odometerKm,
+                litersScaled = entry.litersScaled,
+                pricePerLiterScaled = entry.pricePerLiterScaled,
+                totalCostMinor = entry.totalCostMinor,
+                currency = entry.currency,
+                isFullTank = if (entry.isFullTank) 1L else 0L,
+                hasMissedEntries = if (entry.hasMissedEntries) 1L else 0L,
+                notes = entry.notes,
+                createdAt = existing.createdAt,
+                updatedAt = entry.updatedAt,
+                serverUpdatedAt = existing.serverUpdatedAt,
+                deletedAt = existing.deletedAt,
+                syncState = "PENDING",
+                localRevision = localRevision,
+                localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne(),
+                schemaVersion = existing.schemaVersion,
+            )
+            val stored = queries.selectFuelEntryById(entry.id).awaitAsOne().toFuelEntryDatabaseRow()
+            outboxPayload(stored)?.let { payload ->
+                queries.coalesceOutbox("FUEL_ENTRY", stored.id, payload, stored.localRevision)
+            }
+        }
+    }
+
     suspend fun tombstoneFuelEntry(
         id: String,
         deletedAt: Long,
@@ -381,6 +453,27 @@ class DatabaseMutations(
 
             successor?.let { queries.recomputeFuelEntryOdometerInconsistent(it.id) }
             queries.recomputeVehicleCurrentOdometer(before.vehicleId)
+        }
+    }
+
+    suspend fun tombstoneLocalFuelEntry(
+        entry: FuelEntryDatabaseRow,
+        outboxPayload: (FuelEntryDatabaseRow) -> String?,
+    ) {
+        database.transaction {
+            val existing = queries.selectFuelEntryById(entry.id).awaitAsOne()
+            tombstoneFuelEntry(
+                id = entry.id,
+                deletedAt = requireNotNull(entry.deletedAt),
+                updatedAt = entry.updatedAt,
+                syncState = "PENDING",
+                localRevision = existing.localRevision + 1L,
+                localMutationSeq = queries.nextLocalMutationSequence().awaitAsOne(),
+            )
+            val stored = queries.selectFuelEntryById(entry.id).awaitAsOne().toFuelEntryDatabaseRow()
+            outboxPayload(stored)?.let { payload ->
+                queries.coalesceOutbox("FUEL_ENTRY", stored.id, payload, stored.localRevision)
+            }
         }
     }
 

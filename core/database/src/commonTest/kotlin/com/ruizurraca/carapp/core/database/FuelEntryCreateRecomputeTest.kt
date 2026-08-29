@@ -14,6 +14,22 @@ class FuelEntryCreateRecomputeTest {
     }
 
     @Test
+    fun orphanEntryWithoutVehicleRemainsConsistent() =
+        runTest {
+            val database = createDatabase()
+
+            DatabaseMutations(database.database).insertFuelEntryForTest(
+                id = "orphan-entry",
+                vehicleId = "missing-vehicle",
+                date = 1,
+                createdAt = 1,
+                odometerKm = 50,
+            )
+
+            assertEquals(0L, database.fuelEntryInconsistent("orphan-entry"))
+        }
+
+    @Test
     fun createRecomputesInsertedEntrySuccessorAndVehicleMaximum() =
         runTest {
             val database = createDatabase()

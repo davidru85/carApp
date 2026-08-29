@@ -73,7 +73,12 @@ class ArchitectureCheckPlugin : Plugin<Project> {
                     file.readLines().forEachIndexed { index, text ->
                         val stripped = stripComment(text)
                         if (stripped.isNotBlank()) {
-                            sourceLines += SourceLine(file.name, index + 1, stripped)
+                            sourceLines +=
+                                SourceLine(
+                                    file.relativeTo(project.projectDir).invariantSeparatorsPath,
+                                    index + 1,
+                                    stripped,
+                                )
                         }
                         if (file.invariantSeparatorsPath.contains("/src/commonMain/") &&
                             stripped.trimStart().startsWith("import ")

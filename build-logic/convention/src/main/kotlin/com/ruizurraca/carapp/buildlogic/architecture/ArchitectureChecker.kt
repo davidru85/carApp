@@ -11,6 +11,9 @@ package com.ruizurraca.carapp.buildlogic.architecture
  */
 object ArchitectureChecker {
 
+    private const val D81_HELPER_FILE =
+        "src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
+
     /** Planned provider modules whose owning stories have not started yet. */
     val NOT_YET_INTRODUCED_MODULES =
         setOf(":integration:firebase-analytics", ":integration:firebase-crashlytics")
@@ -69,6 +72,7 @@ object ArchitectureChecker {
         violations += checkDatabaseMutationFacade(module)
         violations += checkConsumptionTypesStayInCoreModel(module)
         violations += checkIntegrationsDoNotBuildTheGraph(module)
+        violations += checkCalendarTypeBoundary(module)
 
         if (rule != null) {
             violations += checkForbiddenModules(module, rule)
@@ -165,6 +169,47 @@ object ArchitectureChecker {
             }
         }
         return violations
+    }
+
+    /** `D-81`: calendar types stay in presentation except for one UTC helper in `:core:common`. */
+    private fun checkCalendarTypeBoundary(module: ModuleUnderCheck): List<Violation> {
+        if (!module.path.startsWith(":core:") && !module.path.startsWith(":feature:") && module.path != ":shared") return emptyList()
+
+        val nonImportTimeZoneUses =
+            module.sourceLines.count { line ->
+                line.file.endsWith(D81_HELPER_FILE) &&
+                    !line.text.trimStart().startsWith("import ") &&
+                    Regex("""\bTimeZone\b""").containsMatchIn(line.text) &&
+                    !line.isComment()
+            }
+        return module.sourceLines
+            .filterNot { it.file.contains("/presentation/") || it.isComment() }
+            .filter { line ->
+                val mentionsLocalCalendar =
+                    Regex("""\b(LocalDate|LocalDateTime)\b""").containsMatchIn(line.text)
+                val mentionsTimeZone = Regex("""\bTimeZone\b""").containsMatchIn(line.text)
+                when {
+                    mentionsLocalCalendar -> true
+                    !mentionsTimeZone -> false
+                    !line.file.endsWith(D81_HELPER_FILE) -> true
+                    line.text.trim() == "import kotlinx.datetime.TimeZone" -> false
+                    "TimeZone.UTC" !in line.text -> true
+                    nonImportTimeZoneUses != 1 -> true
+                    else -> false
+                }
+            }.map { line ->
+                Violation(
+                    module.path,
+                    "calendar-type-outside-d81-helper",
+                    "${line.file}:${line.number} widens calendar-type use beyond presentation or the " +
+                        "single D-81 TimeZone.UTC helper in :core:common.",
+                )
+            }
+    }
+
+    private fun SourceLine.isComment(): Boolean {
+        val trimmed = text.trimStart()
+        return trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")
     }
 
     /** A planned module becomes legal only when its owning backlog story starts. */

@@ -25,6 +25,59 @@ SELECT *
 FROM fuel_entry
 WHERE id = :id;
 
+selectFuelEntryByOwnerAndId:
+SELECT *
+FROM fuel_entry
+WHERE ownerId = :ownerId AND id = :id;
+
+selectFuelEntriesForList:
+SELECT fuel_entry.*
+FROM fuel_entry
+WHERE fuel_entry.id IN (
+  SELECT candidate.id
+  FROM fuel_entry AS candidate
+  INNER JOIN vehicle
+    ON vehicle.id = candidate.vehicleId
+    AND vehicle.ownerId = :ownerId
+  WHERE candidate.ownerId = :ownerId
+    AND candidate.vehicleId = :vehicleId
+    AND (:includeDeleted = 1 OR candidate.deleted = 0)
+  ORDER BY candidate.date DESC, candidate.createdAt DESC, candidate.id DESC
+  LIMIT :rowLimit
+)
+ORDER BY date ASC, createdAt ASC, id ASC;
+
+selectFuelEntriesForConsumption:
+SELECT fuel_entry.*
+FROM fuel_entry
+WHERE fuel_entry.id IN (
+  SELECT candidate.id
+  FROM fuel_entry AS candidate
+  INNER JOIN vehicle
+    ON vehicle.id = candidate.vehicleId
+    AND vehicle.ownerId = :ownerId
+  WHERE candidate.ownerId = :ownerId
+    AND candidate.vehicleId = :vehicleId
+    AND candidate.deleted = 0
+  ORDER BY candidate.odometerKm DESC, candidate.date DESC, candidate.id DESC
+  LIMIT :rowLimit
+)
+ORDER BY odometerKm ASC, date ASC, id ASC;
+
+selectPreviousActiveFuelEntry:
+SELECT *
+FROM fuel_entry
+WHERE vehicleId = :vehicleId
+  AND deleted = 0
+  AND id != COALESCE(:excludedId, '')
+  AND (
+    date < :date
+    OR (date = :date AND createdAt < :createdAt)
+    OR (date = :date AND createdAt = :createdAt AND id < :targetId)
+  )
+ORDER BY date DESC, createdAt DESC, id DESC
+LIMIT 1;
+
 selectOutboxByEntity:
 SELECT *
 FROM outbox
@@ -188,22 +241,29 @@ LIMIT 1;
 recomputeFuelEntryOdometerInconsistent:
 UPDATE fuel_entry
 SET odometerInconsistent = COALESCE(
-  odometerKm <= (
-    SELECT previous.odometerKm
-    FROM fuel_entry AS previous
-    WHERE previous.vehicleId = fuel_entry.vehicleId
-      AND previous.deleted = 0
-      AND (
-        previous.date < fuel_entry.date
-        OR (previous.date = fuel_entry.date AND previous.createdAt < fuel_entry.createdAt)
-        OR (
-          previous.date = fuel_entry.date
-          AND previous.createdAt = fuel_entry.createdAt
-          AND previous.id < fuel_entry.id
+  (
+    odometerKm <= (
+      SELECT previous.odometerKm
+      FROM fuel_entry AS previous
+      WHERE previous.vehicleId = fuel_entry.vehicleId
+        AND previous.deleted = 0
+        AND (
+          previous.date < fuel_entry.date
+          OR (previous.date = fuel_entry.date AND previous.createdAt < fuel_entry.createdAt)
+          OR (
+            previous.date = fuel_entry.date
+            AND previous.createdAt = fuel_entry.createdAt
+            AND previous.id < fuel_entry.id
+          )
         )
-      )
-    ORDER BY previous.date DESC, previous.createdAt DESC, previous.id DESC
-    LIMIT 1
+      ORDER BY previous.date DESC, previous.createdAt DESC, previous.id DESC
+      LIMIT 1
+    )
+    OR odometerKm < (
+      SELECT vehicle.initialOdometerKm
+      FROM vehicle
+      WHERE vehicle.id = fuel_entry.vehicleId
+    )
   ),
   0
 )

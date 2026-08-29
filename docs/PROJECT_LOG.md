@@ -38,6 +38,60 @@
 
 ## Entries
 
+### 2026-08-29 — E1-06 second owner-review corrections applied
+
+- **Type:** correction
+- **Story / Decision:** `E1-06` / `D-82`, `D-83`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** aligned persisted odometer inconsistency with both validation branches, made
+  bounded projections retain their highest canonical-order windows and replaced the quadratic list
+  projection scan with one segment index per emission.
+- **Why:** confirmed initial-odometer warnings lost their persisted trace, ascending SQL limits hid
+  new rows after the memory cap, and repeated segment searches made list projection quadratic.
+- **Documents touched:** `docs/CONTRACTS.md §3.1` and `§12`, D-82 and D-83 in the four decision
+  mirrors, ADR-0083, ADR-0084 and `docs/handoff-E1-06.md`.
+- **Verification:** four behavior tests failed first on Android host and iOS, then the complete
+  repository command passed in 7 seconds with 602 actionable tasks. The Shared framework link
+  passed in 4 seconds with 69 actionable tasks; detailed evidence is in the handoff.
+- **Follow-ups / risks:** GitHub issue #36 owns the pre-existing Vehicle cascade Fuel Entry
+  tombstone payload omission. PR #35 remains human-gated and MUST NOT be merged by the agent.
+
+### 2026-08-29 — D-81 implementation constraints approved
+
+- **Type:** decision
+- **Story / Decision:** `E1-06` / `D-81`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner approved D-81 as implemented and made its dependency encapsulation
+  and architecture-exception identity intentional constraints. The calendar boundary now also
+  guards `:shared` production code, and §20.3 catalogues the public helper explicitly.
+- **Why:** `kotlinx-datetime` must remain an implementation detail of `:core:common`, and matching
+  the full helper package path prevents an unrelated file name from claiming the exception.
+- **Documents touched:** `docs/CONTRACTS.md §20.3`, ADR-0082 and `docs/handoff-E1-06.md`.
+- **Verification:** a new fixture failed before `:shared` entered the guarded scope. The real-tree
+  extension found no production violations; focused checks and full evidence are recorded in the
+  E1-06 handoff.
+- **Follow-ups / risks:** none. The pull request remains human-gated and MUST NOT be merged by the
+  agent.
+
+### 2026-08-29 — E1-06 local Fuel Entry data completed
+
+- **Type:** story
+- **Story / Decision:** `E1-06` / `D-81`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented owner-scoped SQLDelight Fuel Entry queries, neutral database access,
+  transactional local CRUD, canonical mappers and outbox snapshots, list and consumption
+  projections, production D-79 filtering and the D-81 UTC calendar-year fact producer.
+- **Why:** E1-06 completes the offline Fuel Entry repository while keeping D-77 validation facts and
+  D-38 mutation invariants inside one transaction and preserving the UI's local-only source of
+  truth.
+- **Documents touched:** D-81 and ADR-0082 in the four decision mirrors,
+  `docs/CONTRACTS.md §2` and `§5`, current-state documents and `docs/handoff-E1-06.md`.
+- **Verification:** 29 repository behavior tests and three D-81 helper tests were RED on both KMP
+  targets; GREEN passed the focused Android-host and iOS suites. Lint, detekt, Kover, 16
+  architecture rules and 82 decision/ADR mirrors pass; full repository evidence is in the handoff.
+- **Follow-ups / risks:** E1-07 is next and owns Android Vehicle UI plus the D-28 package rules. The
+  D-80 real-iPhone performance result remains with E4-03. Owner review is required before merge.
+
 ### 2026-08-28 — E1-05 consumption calculation implemented
 
 - **Type:** story

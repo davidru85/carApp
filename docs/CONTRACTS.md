@@ -68,7 +68,12 @@ Value classes are Kotlin-internal. They MUST NOT appear on the Swift-facing surf
 | Local `updatedAt` | `Instant` | INTEGER epoch milliseconds | Provisional local timestamp. **Never** authoritative for remote conflict arbitration. |
 | `serverUpdatedAt` | `Instant?` | INTEGER epoch milliseconds | Authoritative timestamp received from Firestore. Null means never synced. |
 
-`LocalDate`, `LocalDateTime` and `TimeZone` MUST NOT appear in domain, data or sync code. They are permitted only in presentation formatting.
+`LocalDate`, `LocalDateTime` and `TimeZone` MUST NOT appear in domain, data or sync code. They are permitted only in presentation formatting. D-81 adds one bounded infrastructure exception:
+`earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant` in `:core:common` imports
+`TimeZone` only to pass the literal `TimeZone.UTC` to
+`vehicleCreatedAt.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamps the result to the Unix
+epoch. `LocalDate` and `LocalDateTime` remain forbidden in that helper and every other non-presentation
+source. An architecture rule rejects any wider calendar-type use.
 
 All time reads go through the injected `AppClock` (§20). Direct use of a system clock is FORBIDDEN outside `:wiring:*` and `:core:testing`.
 
@@ -260,6 +265,22 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 
 `odometerInconsistent` is recomputed only for rows whose previous non-deleted chronological neighbour may have changed. The recompute set is de-duplicated by `id` and is:
 
+For each active row in that set, D-82 defines the complete derivation as:
+
+```text
+odometerInconsistent =
+  (previousActiveEntry != null && odometerKm <= previousActiveEntry.odometerKm) ||
+  (vehicle != null && odometerKm < vehicle.initialOdometerKm)
+```
+
+The neighbour comparison is `<=`; the initial-odometer comparison is `<`. Because `fuel_entry`
+has no enforced foreign key, a missing Vehicle makes only the second branch false: the neighbour
+branch still applies, the row MUST NOT be flagged merely because it is orphaned, and recomputation
+MUST neither throw nor produce `NULL`. The SQL expression retains an outer `COALESCE(..., 0)` as
+the final orphan and missing-neighbour defense.
+
+The exact recompute set remains:
+
 - Create: inserted row in its new position, plus its new successor.
 - Update where `vehicleId`, `date`, `createdAt`, `id` or `odometerKm` changes: updated row in its new position, plus its pre-update successor (the next non-deleted entry in chronological order before the update), plus its post-update successor (the next non-deleted entry in chronological order after the update). If pre- and post-successors coincide, the row is included once.
 - Update that does not modify `vehicleId`, `date`, `createdAt`, `id` or `odometerKm`: no `odometerInconsistent` recompute is required, because chronological neighbours and comparison values are unchanged.
@@ -267,6 +288,10 @@ The following are maintained exclusively by `:core:database`, inside the caller'
 - Vehicle-level fuel-entry cascade tombstone: the union of the successor of each tombstoned row in its pre-cascade chronological position, de-duplicated by `id`. A successor that is itself being tombstoned is not added.
 
 All rows in the recompute set are recalculated in the same database transaction as the write that caused the recompute. A missing successor means no row is added for that position. The edited or deleted row's own stored `odometerInconsistent` remains meaningful only while the row is non-deleted; tombstoned rows are ignored by validation, projections and consumption.
+
+The initial-odometer branch adds no recompute trigger: `vehicle.initialOdometerKm` is editable only
+while the Vehicle has no non-deleted Fuel Entries, so no Fuel Entry flag can become stale through a
+legal Vehicle write.
 
 An architecture check MUST assert that no `UPDATE vehicle SET currentOdometerKm` and no write to `odometerInconsistent` exists outside `:core:database`.
 
@@ -350,9 +375,10 @@ A use case MUST NOT return `Ok` and a warning simultaneously. A warning MUST be 
 Under D-77, `FuelEntryValidationContext.earliestAllowedDate` is the already-resolved lower date
 bound for the target Vehicle and is never earlier than the Unix epoch. E1-04 validates against that
 fact without introducing calendar types into domain code. E1-06 owns calculating the fact from the
-Vehicle row before it validates and writes in one transaction. The exact fixed-duration or
-calendar-year representation of `vehicle.createdAt - 20 years` requires owner confirmation before
-E1-06 begins; E1-04 MUST NOT choose or embed that representation.
+Vehicle row before it validates and writes in one transaction. D-81 defines the fact as 20 literal
+calendar years before `vehicle.createdAt` in UTC, clamped to the Unix epoch. The producer clamp and
+the validator's independent `maxOf(UNIX_EPOCH, context.earliestAllowedDate)` defense are both
+required.
 
 ### Validation constraints
 
@@ -955,7 +981,13 @@ interface FuelEntryRepository {
 | `deleteFuelEntry` | tombstones one row, recomputes read models, enqueues a tombstone snapshot | `EntityNotFound`, `PersistenceError` |
 | `observeConsumption` | none | `PersistenceError` |
 
-The MVP loads at most `MAX_ENTRIES_IN_MEMORY = 5_000` entries per vehicle. Consumption is computed from a dedicated projection query, not from the UI list.
+The MVP loads at most `MAX_ENTRIES_IN_MEMORY = 5_000` entries per vehicle. D-83 keeps the highest
+5,000 rows under each projection's complete canonical ordering: the chronologically newest rows
+for the list and the highest-odometer calculation rows for consumption. Each query selects that
+window in descending order under the limit and returns it in the ascending §4 ordering. The
+production repository always binds the named constant; tests MAY inject a smaller positive limit
+to prove the same window semantics without materialising 5,000 rows. Consumption is computed from
+a dedicated projection query, not from the UI list.
 
 `FuelEntryRepository.observeConsumption` returns the full `ConsumptionReport` and is Kotlin-only. It is never observed directly from the Swift facade. Swift-facing fuel-entry list state projects it onto `FuelEntryListUiState.consumptionAverageScaled`, `validConsumptionSegmentCount`, `isConsumptionReliable` and per-row `FuelEntryListItemUi.consumptionScaled` / `invalidReason`.
 
@@ -1771,6 +1803,9 @@ A confirmation is required by the use case, not by the UI. The UI MUST NOT proce
 | `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user confirms that the current anonymous-session snapshot replaces the existing permanent-account data. |
 
 ### 20.3 Platform abstractions — `:core:common`
+
+The public `earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant` helper is the bounded
+D-81 calendar exception specified normatively in §2.
 
 ```kotlin
 fun interface AppClock { fun now(): Instant }
