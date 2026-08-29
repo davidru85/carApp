@@ -38,6 +38,23 @@
 
 ## Entries
 
+### 2026-08-29 — D-81 implementation constraints approved
+
+- **Type:** decision
+- **Story / Decision:** `E1-06` / `D-81`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner approved D-81 as implemented and made its dependency encapsulation
+  and architecture-exception identity intentional constraints. The calendar boundary now also
+  guards `:shared` production code, and §20.3 catalogues the public helper explicitly.
+- **Why:** `kotlinx-datetime` must remain an implementation detail of `:core:common`, and matching
+  the full helper package path prevents an unrelated file name from claiming the exception.
+- **Documents touched:** `docs/CONTRACTS.md §20.3`, ADR-0082 and `docs/handoff-E1-06.md`.
+- **Verification:** a new fixture failed before `:shared` entered the guarded scope. The real-tree
+  extension found no production violations; focused checks and full evidence are recorded in the
+  E1-06 handoff.
+- **Follow-ups / risks:** none. The pull request remains human-gated and MUST NOT be merged by the
+  agent.
+
 ### 2026-08-29 — E1-06 local Fuel Entry data completed
 
 - **Type:** story

@@ -173,7 +173,7 @@ object ArchitectureChecker {
 
     /** `D-81`: calendar types stay in presentation except for one UTC helper in `:core:common`. */
     private fun checkCalendarTypeBoundary(module: ModuleUnderCheck): List<Violation> {
-        if (!module.path.startsWith(":core:") && !module.path.startsWith(":feature:")) return emptyList()
+        if (!module.path.startsWith(":core:") && !module.path.startsWith(":feature:") && module.path != ":shared") return emptyList()
 
         val nonImportTimeZoneUses =
             module.sourceLines.count { line ->

@@ -94,6 +94,12 @@
   GREEN and REFACTOR commits. Commit phases remain separate and ordered.
 - SQLDelight query definitions use the `docs/SPECIFICATION.md §11` schema exemption; every
   observable repository behavior remains covered by executing tests.
+- The owner approved D-81 as implemented and made two implementation constraints intentional:
+  `kotlinx-datetime` remains an implementation dependency of `:core:common`, and the architecture
+  exception remains anchored to the helper's full package path rather than its file name alone.
+- The owner-review extension of the calendar boundary to `:shared` found no production-source
+  violations. The only existing `:shared` calendar references are in `commonTest`, which the
+  architecture scanner deliberately excludes so fixtures may name forbidden types.
 - The shared sequence assertions follow the pre-existing `LocalSequenceTest`: a fresh database
   first returns `2`, so a locally seeded Vehicle receives `2`, its first Fuel Entry receives `3`
   and the next Fuel Entry mutation receives `4`.
@@ -120,6 +126,11 @@
 - Complete repository verification command — successful (`BUILD SUCCESSFUL` in 31 seconds; 602
   actionable tasks: 484 executed, 17 from cache and 101 up-to-date).
 - `git diff --check` — passed with no whitespace errors.
+- Owner-review RED fixture — failed because `:shared` was outside the calendar-boundary scope.
+- Owner-review GREEN `:build-logic:convention:test` and real-tree `architectureCheck` — successful;
+  extending the rule to `:shared` found no production-source violations.
+- Owner-review complete repository verification command — successful (`BUILD SUCCESSFUL` in 38
+  seconds; 602 actionable tasks: 540 executed, 19 from cache and 43 up-to-date).
 
 ## Contract Impact
 

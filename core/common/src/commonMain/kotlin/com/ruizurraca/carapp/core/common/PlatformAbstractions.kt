@@ -28,12 +28,13 @@ fun interface AppClock {
 }
 
 /** D-81 Fuel Entry lower date bound, using literal calendar years in UTC. */
-@Suppress("MagicNumber")
 fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant =
     maxOf(
         Instant.fromEpochMilliseconds(0L),
-        vehicleCreatedAt.minus(20, DateTimeUnit.YEAR, TimeZone.UTC),
+        vehicleCreatedAt.minus(FUEL_ENTRY_HISTORY_YEARS, DateTimeUnit.YEAR, TimeZone.UTC),
     )
+
+private const val FUEL_ENTRY_HISTORY_YEARS = 20
 
 /** Produces lowercase canonical UUID v4 strings. */
 fun interface UuidGenerator {

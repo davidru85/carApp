@@ -1778,6 +1778,9 @@ A confirmation is required by the use case, not by the UI. The UI MUST NOT proce
 
 ### 20.3 Platform abstractions — `:core:common`
 
+The public `earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant` helper is the bounded
+D-81 calendar exception specified normatively in §2.
+
 ```kotlin
 fun interface AppClock { fun now(): Instant }
 

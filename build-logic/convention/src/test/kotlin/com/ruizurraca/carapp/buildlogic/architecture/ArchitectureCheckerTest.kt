@@ -284,6 +284,10 @@ class ArchitectureCheckerTest {
             module(":core:common", source = "val zone = TimeZone.currentSystemDefault()"),
             "calendar-type-outside-d81-helper",
         )
+        assertRejected(
+            module(":shared", source = "val zone = TimeZone.UTC"),
+            "calendar-type-outside-d81-helper",
+        )
 
         val helperFile = "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
         assertRuleDoesNotFire(

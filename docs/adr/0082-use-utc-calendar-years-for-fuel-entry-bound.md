@@ -64,13 +64,19 @@ Unix-epoch clamp as defense against any independently constructed validation con
   `TimeZone.UTC`.
 - The helper MUST clamp its result to the Unix epoch.
 - No hand-written `LocalDate` or `LocalDateTime` decomposition is permitted.
+- `:core:common` MUST declare `kotlinx-datetime` as an implementation dependency rather than an API
+  dependency, so no library type is exposed through its public surface.
+- The architecture exception MUST match the helper's full package path, not only the
+  `PlatformAbstractions.kt` file name, and the guarded production scope MUST include `:core:*`,
+  `:feature:*` and `:shared`.
 - Tests pin ordinary calendar subtraction, time-of-day preservation, the synthetic 2120 leap-day
   clamp and the Unix-epoch clamp.
 
 ## Verification
 
 - Common tests execute the helper on Android host and `iosSimulatorArm64`.
-- An architecture fixture rejects calendar types outside the bounded D-81 exception.
+- Architecture fixtures reject calendar types outside the bounded D-81 exception, including in
+  `:shared` production code.
 - `architectureCheck` verifies the real source tree and `contractCheck` verifies the decision and
   ADR mirrors.
 
