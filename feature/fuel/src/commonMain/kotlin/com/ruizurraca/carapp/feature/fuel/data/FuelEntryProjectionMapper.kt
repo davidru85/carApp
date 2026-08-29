@@ -1,13 +1,12 @@
 package com.ruizurraca.carapp.feature.fuel.data
 
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
-import com.ruizurraca.carapp.core.model.ConsumptionReport
+import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelEntryListItem
 import com.ruizurraca.carapp.core.model.SegmentResult
 
-internal fun LocalFuelEntry.toFuelEntryListItem(report: ConsumptionReport): FuelEntryListItem {
-    val segment = report.segments.firstOrNull { result -> result.toEntryId() == id }
-    return FuelEntryListItem(
+internal fun LocalFuelEntry.toFuelEntryListItem(segment: SegmentResult?): FuelEntryListItem =
+    FuelEntryListItem(
         id = id,
         date = date,
         odometerKm = odometerKm,
@@ -23,9 +22,8 @@ internal fun LocalFuelEntry.toFuelEntryListItem(report: ConsumptionReport): Fuel
                 else -> null
             },
     )
-}
 
-private fun SegmentResult.toEntryId() =
+internal fun SegmentResult.toEntryId(): EntityId =
     when (this) {
         is SegmentResult.Invalid -> toEntryId
         is SegmentResult.Valid -> toEntryId

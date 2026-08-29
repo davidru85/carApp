@@ -38,6 +38,24 @@
 
 ## Entries
 
+### 2026-08-29 — E1-06 second owner-review corrections applied
+
+- **Type:** correction
+- **Story / Decision:** `E1-06` / `D-82`, `D-83`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** aligned persisted odometer inconsistency with both validation branches, made
+  bounded projections retain their highest canonical-order windows and replaced the quadratic list
+  projection scan with one segment index per emission.
+- **Why:** confirmed initial-odometer warnings lost their persisted trace, ascending SQL limits hid
+  new rows after the memory cap, and repeated segment searches made list projection quadratic.
+- **Documents touched:** `docs/CONTRACTS.md §3.1` and `§12`, D-82 and D-83 in the four decision
+  mirrors, ADR-0083, ADR-0084 and `docs/handoff-E1-06.md`.
+- **Verification:** four behavior tests failed first on Android host and iOS, then the complete
+  repository command passed in 7 seconds with 602 actionable tasks. The Shared framework link
+  passed in 4 seconds with 69 actionable tasks; detailed evidence is in the handoff.
+- **Follow-ups / risks:** GitHub issue #36 owns the pre-existing Vehicle cascade Fuel Entry
+  tombstone payload omission. PR #35 remains human-gated and MUST NOT be merged by the agent.
+
 ### 2026-08-29 — D-81 implementation constraints approved
 
 - **Type:** decision

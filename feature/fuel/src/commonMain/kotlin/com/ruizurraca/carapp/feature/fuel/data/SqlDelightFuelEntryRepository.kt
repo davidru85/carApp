@@ -67,7 +67,8 @@ class SqlDelightFuelEntryRepository internal constructor(
                 val calculationRows =
                     rows.filter { it.vehicleId == vehicleId && it.deletedAt == null }
                 val report = calculateConsumption(calculationRows.map(LocalFuelEntry::toDomainFuelEntry))
-                Outcome.Ok(rows.map { it.toFuelEntryListItem(report) })
+                val segmentsByEntryId = report.segments.associateBy { it.toEntryId() }
+                Outcome.Ok(rows.map { it.toFuelEntryListItem(segmentsByEntryId[it.id]) })
             }.catch { throwable -> emitReadFailure(throwable) }
 
     override suspend fun getFuelEntry(id: EntityId): Outcome<FuelEntry?, AppError> =
