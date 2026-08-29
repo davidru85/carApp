@@ -2,6 +2,8 @@ package com.ruizurraca.carapp.feature.sample.data
 
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 
+interface SampleDataSource
+
 class DataViolation(
-    private val repository: VehicleRepository,
+    val repository: VehicleRepository,
 )

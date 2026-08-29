@@ -76,6 +76,10 @@
   '*FeaturePackageRulesTest'` — failed as required: six tests executed, the three production-scope
   scaffold checks passed and the domain, data and presentation fixtures failed because their rules
   did not yet reject the forbidden imports.
+- D-28 GREEN `./gradlew :feature:vehicle:testAndroidHostTest :feature:vehicle:ktlintCheck
+  :feature:vehicle:detekt` — successful after moving the executable fixtures into correctly matched
+  Android-host test packages; all Vehicle host tests, the three production package rules and the
+  three firing fixtures passed with clean lint and static analysis.
 
 ## Contract Impact
 

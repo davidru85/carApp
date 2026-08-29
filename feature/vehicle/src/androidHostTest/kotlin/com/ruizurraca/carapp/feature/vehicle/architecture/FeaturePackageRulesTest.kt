@@ -41,5 +41,5 @@ class FeaturePackageRulesTest {
     }
 
     private fun fixtureDirectory(layer: String): String =
-        "feature/vehicle/src/androidHostTest/resources/architecture-fixtures/$layer"
+        "feature/vehicle/src/androidHostTest/kotlin/com/ruizurraca/carapp/feature/sample/$layer"
 }
