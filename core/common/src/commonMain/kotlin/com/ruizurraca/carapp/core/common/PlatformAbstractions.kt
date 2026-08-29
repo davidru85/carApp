@@ -24,6 +24,9 @@ fun interface AppClock {
     fun now(): Instant
 }
 
+/** D-81 Fuel Entry lower date bound. Calendar behavior is introduced during E1-06 GREEN. */
+fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant = vehicleCreatedAt
+
 /** Produces lowercase canonical UUID v4 strings. */
 fun interface UuidGenerator {
     fun newId(): String

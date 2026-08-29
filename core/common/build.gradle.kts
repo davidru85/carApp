@@ -4,4 +4,5 @@ plugins {
 
 dependencies {
     "commonMainApi"(projects.core.model)
+    "commonMainImplementation"(libs.kotlinx.datetime)
 }

@@ -95,9 +95,8 @@ are complete. `E1-06`, Fuel Entry data, is the next planned Phase 1 story.
 
 - **Completed:** all Phase 0 stories; `E1-01`, `E1-02`, `E1-03`, `E1-04`, `E1-05`; the pulled-forward `E3-06`
   and `E3-01` prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
-- **Next:** `E1-06`. It owns production `observeConsumption` filtering under D-79 and still needs
-  the owner decision for the exact `vehicle.createdAt - 20 years` representation before its Ready
-  Check can close.
+- **Next:** `E1-06`. It owns production `observeConsumption` filtering under D-79. D-81 has closed
+  the exact `vehicle.createdAt - 20 years` representation as UTC calendar-year arithmetic.
 - **Remaining Phase 1:** `E1-06` through `E1-10`.
 - **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,

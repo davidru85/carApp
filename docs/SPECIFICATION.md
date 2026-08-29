@@ -551,6 +551,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-78 | Consumption invalidation precedence | Apply the single-reason precedence `NoPreviousFullTank > NonPositiveDistance > DuplicateOdometerInSegment > MissedEntriesInSegment > InconsistentOdometerInSegment`. | Accepted |
 | D-79 | Consumption repository-filter evidence | Move production repository-filter acceptance from E1-05 to E1-06 and make E1-05 prove that `CalculateConsumption` does not filter its input. | Accepted |
 | D-80 | Consumption performance evidence | Measure the shared 1,000-entry dataset through an uninstrumented JVM benchmark task and an optimized iOS device-test binary, reviewing the JVM margin before enabling the CI threshold gate. | Accepted |
+| D-81 | Fuel Entry earliest-date calendar | Subtract 20 calendar years from `vehicle.createdAt` with `Instant.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamp the result to the Unix epoch. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

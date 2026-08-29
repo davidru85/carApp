@@ -274,6 +274,41 @@ class ArchitectureCheckerTest {
         )
     }
 
+    @Test
+    fun calendarTypesAreRestrictedToPresentationAndTheD81UtcHelper() {
+        assertRejected(
+            module(":feature:fuel", source = "import kotlinx.datetime.LocalDate"),
+            "calendar-type-outside-d81-helper",
+        )
+        assertRejected(
+            module(":core:common", source = "val zone = TimeZone.currentSystemDefault()"),
+            "calendar-type-outside-d81-helper",
+        )
+
+        val helperFile = "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
+        assertRuleDoesNotFire(
+            ModuleUnderCheck(
+                path = ":core:common",
+                sourceLines =
+                    listOf(
+                        SourceLine(helperFile, 3, "import kotlinx.datetime.TimeZone"),
+                        SourceLine(helperFile, 30, "TimeZone.UTC"),
+                    ),
+            ),
+            "calendar-type-outside-d81-helper",
+        )
+        assertRuleDoesNotFire(
+            ModuleUnderCheck(
+                path = ":feature:fuel",
+                sourceLines =
+                    listOf(
+                        SourceLine("feature/fuel/src/commonMain/kotlin/example/presentation/Formatter.kt", 1, "import kotlinx.datetime.LocalDate"),
+                    ),
+            ),
+            "calendar-type-outside-d81-helper",
+        )
+    }
+
     // --- Source-level rules ------------------------------------------------------------------
 
     @Test

@@ -68,7 +68,12 @@ Value classes are Kotlin-internal. They MUST NOT appear on the Swift-facing surf
 | Local `updatedAt` | `Instant` | INTEGER epoch milliseconds | Provisional local timestamp. **Never** authoritative for remote conflict arbitration. |
 | `serverUpdatedAt` | `Instant?` | INTEGER epoch milliseconds | Authoritative timestamp received from Firestore. Null means never synced. |
 
-`LocalDate`, `LocalDateTime` and `TimeZone` MUST NOT appear in domain, data or sync code. They are permitted only in presentation formatting.
+`LocalDate`, `LocalDateTime` and `TimeZone` MUST NOT appear in domain, data or sync code. They are permitted only in presentation formatting. D-81 adds one bounded infrastructure exception:
+`earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant` in `:core:common` imports
+`TimeZone` only to pass the literal `TimeZone.UTC` to
+`vehicleCreatedAt.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamps the result to the Unix
+epoch. `LocalDate` and `LocalDateTime` remain forbidden in that helper and every other non-presentation
+source. An architecture rule rejects any wider calendar-type use.
 
 All time reads go through the injected `AppClock` (§20). Direct use of a system clock is FORBIDDEN outside `:wiring:*` and `:core:testing`.
 
@@ -350,9 +355,10 @@ A use case MUST NOT return `Ok` and a warning simultaneously. A warning MUST be 
 Under D-77, `FuelEntryValidationContext.earliestAllowedDate` is the already-resolved lower date
 bound for the target Vehicle and is never earlier than the Unix epoch. E1-04 validates against that
 fact without introducing calendar types into domain code. E1-06 owns calculating the fact from the
-Vehicle row before it validates and writes in one transaction. The exact fixed-duration or
-calendar-year representation of `vehicle.createdAt - 20 years` requires owner confirmation before
-E1-06 begins; E1-04 MUST NOT choose or embed that representation.
+Vehicle row before it validates and writes in one transaction. D-81 defines the fact as 20 literal
+calendar years before `vehicle.createdAt` in UTC, clamped to the Unix epoch. The producer clamp and
+the validator's independent `maxOf(UNIX_EPOCH, context.earliestAllowedDate)` defense are both
+required.
 
 ### Validation constraints
 

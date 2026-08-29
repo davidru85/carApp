@@ -95,6 +95,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-78 | Consumption invalidation precedence | Apply the explicit structural-first single-reason precedence | Accepted | Keeps the unconditional non-positive-distance guarantee reachable and preserves the canonical result and Swift projection shapes. |
 | D-79 | Consumption repository-filter evidence | E1-06 proves production filtering; E1-05 proves the pure calculator does not filter | Accepted | Places the acceptance evidence with the implementation that owns it without substituting a fake or pulling database work forward. |
 | D-80 | Consumption performance evidence | Standalone uninstrumented JVM benchmark plus optimized iOS device-test binary over shared data | Accepted | Preserves meaningful wall-clock evidence, keeps normal tests fast and leaves unavailable real-device evidence visibly pending. |
+| D-81 | Fuel Entry earliest-date calendar | Subtract 20 calendar years from `vehicle.createdAt` with `Instant.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamp the result to the Unix epoch | Accepted | Implements literal calendar years with the accepted commonMain library and keeps the persisted fact at or after the Unix epoch. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
