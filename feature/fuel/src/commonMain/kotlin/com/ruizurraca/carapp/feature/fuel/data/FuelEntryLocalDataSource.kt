@@ -73,6 +73,7 @@ internal interface FuelEntryWriteScope {
 
 internal class SqlDelightFuelEntryLocalDataSource(
     private val databaseAccess: FuelEntryDatabaseAccess,
+    private val rowLimit: Long = MAX_ENTRIES_IN_MEMORY.toLong(),
 ) : FuelEntryLocalDataSource {
     override fun observeFuelEntryList(
         ownerId: OwnerId,
@@ -84,7 +85,7 @@ internal class SqlDelightFuelEntryLocalDataSource(
                 ownerId.value,
                 vehicleId.value,
                 includeDeleted,
-                MAX_ENTRIES_IN_MEMORY.toLong(),
+                rowLimit,
             ).map { rows -> rows.map { it.toLocalFuelEntry() } }
 
     override fun observeConsumptionEntries(
@@ -92,7 +93,7 @@ internal class SqlDelightFuelEntryLocalDataSource(
         vehicleId: EntityId,
     ): Flow<List<LocalFuelEntry>> =
         databaseAccess
-            .observeConsumptionEntries(ownerId.value, vehicleId.value, MAX_ENTRIES_IN_MEMORY.toLong())
+            .observeConsumptionEntries(ownerId.value, vehicleId.value, rowLimit)
             .map { rows -> rows.map { it.toLocalFuelEntry() } }
 
     override suspend fun fuelEntry(

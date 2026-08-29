@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.feature.fuel.data
 
+import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
@@ -10,9 +11,61 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class FuelEntryRepositoryCreateTest {
+    @Test
+    fun confirmedFirstEntryBelowInitialOdometerIsStoredInconsistent() =
+        runTest {
+            withFuelEntryRepositoryTestScope {
+                seedVehicle(initialOdometerKm = 100_000L)
+
+                val result =
+                    repository.createFuelEntry(
+                        createFuelEntryCommand(
+                            odometerKm = 50_000L,
+                            confirmations = setOf(Confirmation.OdometerInconsistent),
+                        ),
+                    )
+                val id = assertIs<Outcome.Ok<EntityId>>(result).value.value
+
+                assertEquals(1L, assertNotNull(fuelEntry(id)).odometerInconsistent)
+            }
+        }
+
+    @Test
+    fun confirmedFirstEntryBelowInitialOdometerEnqueuesInconsistentSnapshot() =
+        runTest {
+            withFuelEntryRepositoryTestScope(OwnerId("owner-a")) {
+                seedVehicle(initialOdometerKm = 100_000L)
+
+                val result =
+                    repository.createFuelEntry(
+                        createFuelEntryCommand(
+                            odometerKm = 50_000L,
+                            confirmations = setOf(Confirmation.OdometerInconsistent),
+                        ),
+                    )
+                val id = assertIs<Outcome.Ok<EntityId>>(result).value.value
+
+                assertTrue(assertNotNull(outbox(id)).payload.contains("\"odometerInconsistent\":true"))
+            }
+        }
+
+    @Test
+    fun firstEntryAtInitialOdometerIsStoredConsistent() =
+        runTest {
+            withFuelEntryRepositoryTestScope {
+                seedVehicle(initialOdometerKm = 100_000L)
+
+                val result = repository.createFuelEntry(createFuelEntryCommand(odometerKm = 100_000L))
+                val id = assertIs<Outcome.Ok<EntityId>>(result).value.value
+
+                assertEquals(0L, assertNotNull(fuelEntry(id)).odometerInconsistent)
+            }
+        }
+
     @Test
     fun createPersistsCanonicalPendingRowWithFreshSharedSequence() =
         runTest {
@@ -65,8 +118,8 @@ class FuelEntryRepositoryCreateTest {
                     ).value.value
 
                 val payload = assertNotNull(outbox(id)).payload
-                kotlin.test.assertTrue(payload.contains("\"entityType\":\"FUEL_ENTRY\""))
-                kotlin.test.assertTrue(payload.contains("\"id\":\"$id\""))
+                assertTrue(payload.contains("\"entityType\":\"FUEL_ENTRY\""))
+                assertTrue(payload.contains("\"id\":\"$id\""))
             }
         }
 

@@ -38,6 +38,9 @@ internal class FuelEntryRepositoryTestScope(
     val localDataSource = SqlDelightFuelEntryLocalDataSource(FuelEntryDatabaseAccess(database))
     private val mutations = DatabaseMutations(database)
 
+    fun localDataSourceWithLimit(rowLimit: Long): FuelEntryLocalDataSource =
+        SqlDelightFuelEntryLocalDataSource(FuelEntryDatabaseAccess(database), rowLimit)
+
     fun close() = databaseFactory.close()
 
     suspend fun seedVehicle(
