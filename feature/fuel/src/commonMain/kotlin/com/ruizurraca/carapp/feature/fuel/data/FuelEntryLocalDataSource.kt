@@ -57,17 +57,17 @@ internal interface FuelEntryWriteScope {
 
     suspend fun insertFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
+        outboxPayload: (LocalFuelEntry) -> String?,
     )
 
     suspend fun updateFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
+        outboxPayload: (LocalFuelEntry) -> String?,
     )
 
     suspend fun tombstoneFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
+        outboxPayload: (LocalFuelEntry) -> String?,
     )
 }
 
@@ -143,16 +143,16 @@ private class SqlDelightFuelEntryWriteScope(
 
     override suspend fun insertFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
-    ) = databaseScope.insertFuelEntry(entry.toDatabaseFuelEntry(), outboxPayload)
+        outboxPayload: (LocalFuelEntry) -> String?,
+    ) = databaseScope.insertFuelEntry(entry.toDatabaseFuelEntry()) { outboxPayload(it.toLocalFuelEntry()) }
 
     override suspend fun updateFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
-    ) = databaseScope.updateFuelEntry(entry.toDatabaseFuelEntry(), outboxPayload)
+        outboxPayload: (LocalFuelEntry) -> String?,
+    ) = databaseScope.updateFuelEntry(entry.toDatabaseFuelEntry()) { outboxPayload(it.toLocalFuelEntry()) }
 
     override suspend fun tombstoneFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
-    ) = databaseScope.tombstoneFuelEntry(entry.toDatabaseFuelEntry(), outboxPayload)
+        outboxPayload: (LocalFuelEntry) -> String?,
+    ) = databaseScope.tombstoneFuelEntry(entry.toDatabaseFuelEntry()) { outboxPayload(it.toLocalFuelEntry()) }
 }

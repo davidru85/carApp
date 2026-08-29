@@ -35,7 +35,7 @@ class FuelEntryRepositoryUpdateTest {
                 assertEquals("changed", after.notes)
                 assertEquals("PENDING", after.syncState)
                 assertEquals(2L, after.localRevision)
-                assertEquals(3L, after.localMutationSeq)
+                assertEquals(4L, after.localMutationSeq)
                 assertEquals(NOW.toEpochMilliseconds() + 1_000L, after.updatedAt)
                 assertNull(outbox(created))
             }

@@ -2,6 +2,9 @@ package com.ruizurraca.carapp.core.common
 
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.OwnerId
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +27,12 @@ fun interface AppClock {
     fun now(): Instant
 }
 
-/** D-81 Fuel Entry lower date bound. Calendar behavior is introduced during E1-06 GREEN. */
-fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant = vehicleCreatedAt
+/** D-81 Fuel Entry lower date bound, using literal calendar years in UTC. */
+fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant =
+    maxOf(
+        Instant.fromEpochMilliseconds(0L),
+        vehicleCreatedAt.minus(20, DateTimeUnit.YEAR, TimeZone.UTC),
+    )
 
 /** Produces lowercase canonical UUID v4 strings. */
 fun interface UuidGenerator {

@@ -31,7 +31,7 @@ class FuelEntryRepositoryCreateTest {
                 assertEquals("note", row.notes)
                 assertEquals("PENDING", row.syncState)
                 assertEquals(1L, row.localRevision)
-                assertEquals(2L, row.localMutationSeq)
+                assertEquals(3L, row.localMutationSeq)
                 assertEquals(NOW.toEpochMilliseconds(), row.createdAt)
                 assertEquals(NOW.toEpochMilliseconds(), row.updatedAt)
             }

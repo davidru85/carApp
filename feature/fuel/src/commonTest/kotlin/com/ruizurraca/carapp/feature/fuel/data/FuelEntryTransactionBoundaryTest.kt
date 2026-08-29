@@ -121,19 +121,19 @@ private class TracingFuelEntryWriteScope(
 
     override suspend fun insertFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
+        outboxPayload: (LocalFuelEntry) -> String?,
     ) {
         trace += "mutation.insert"
     }
 
     override suspend fun updateFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
+        outboxPayload: (LocalFuelEntry) -> String?,
     ) = error("unused")
 
     override suspend fun tombstoneFuelEntry(
         entry: LocalFuelEntry,
-        outboxPayload: String?,
+        outboxPayload: (LocalFuelEntry) -> String?,
     ) = error("unused")
 }
 

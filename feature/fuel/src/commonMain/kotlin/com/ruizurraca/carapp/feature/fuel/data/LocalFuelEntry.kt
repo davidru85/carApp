@@ -31,7 +31,30 @@ internal data class LocalFuelEntry(
     val schemaVersion: Long,
 )
 
-internal fun FuelEntryDatabaseRow.toLocalFuelEntry(): LocalFuelEntry = redLocalFuelEntry()
+internal fun FuelEntryDatabaseRow.toLocalFuelEntry(): LocalFuelEntry =
+    LocalFuelEntry(
+        id = EntityId(id),
+        ownerId = OwnerId(ownerId),
+        vehicleId = EntityId(vehicleId),
+        date = Instant.fromEpochMilliseconds(date),
+        odometerKm = odometerKm,
+        litersScaled = litersScaled,
+        pricePerLiterScaled = pricePerLiterScaled,
+        totalCostMinor = totalCostMinor,
+        currency = CurrencyCode(currency),
+        isFullTank = isFullTank,
+        hasMissedEntries = hasMissedEntries,
+        odometerInconsistent = odometerInconsistent,
+        notes = notes,
+        createdAt = Instant.fromEpochMilliseconds(createdAt),
+        updatedAt = Instant.fromEpochMilliseconds(updatedAt),
+        serverUpdatedAt = serverUpdatedAt?.let(Instant::fromEpochMilliseconds),
+        deletedAt = deletedAt?.let(Instant::fromEpochMilliseconds),
+        syncState = syncState,
+        localRevision = localRevision,
+        localMutationSeq = localMutationSeq,
+        schemaVersion = schemaVersion,
+    )
 
 internal fun LocalFuelEntry.toDatabaseFuelEntry(): FuelEntryDatabaseRow =
     FuelEntryDatabaseRow(
@@ -58,49 +81,22 @@ internal fun LocalFuelEntry.toDatabaseFuelEntry(): FuelEntryDatabaseRow =
         schemaVersion = schemaVersion,
     )
 
-internal fun LocalFuelEntry.toDomainFuelEntry(): FuelEntry = redDomainFuelEntry()
-
-private fun redLocalFuelEntry(): LocalFuelEntry =
-    LocalFuelEntry(
-        id = EntityId(""),
-        ownerId = OwnerId(""),
-        vehicleId = EntityId(""),
-        date = Instant.fromEpochMilliseconds(0L),
-        odometerKm = 0L,
-        litersScaled = 0L,
-        pricePerLiterScaled = 0L,
-        totalCostMinor = 0L,
-        currency = CurrencyCode("EUR"),
-        isFullTank = false,
-        hasMissedEntries = false,
-        odometerInconsistent = false,
-        notes = null,
-        createdAt = Instant.fromEpochMilliseconds(0L),
-        updatedAt = Instant.fromEpochMilliseconds(0L),
-        serverUpdatedAt = null,
-        deletedAt = null,
-        syncState = "PENDING",
-        localRevision = 0L,
-        localMutationSeq = 0L,
-        schemaVersion = 0L,
-    )
-
-private fun redDomainFuelEntry(): FuelEntry =
+internal fun LocalFuelEntry.toDomainFuelEntry(): FuelEntry =
     FuelEntry(
-        id = EntityId(""),
-        ownerId = OwnerId(""),
-        vehicleId = EntityId(""),
-        date = Instant.fromEpochMilliseconds(0L),
-        odometerKm = 0L,
-        litersScaled = 0L,
-        pricePerLiterScaled = 0L,
-        totalCostMinor = 0L,
-        currency = CurrencyCode("EUR"),
-        isFullTank = false,
-        hasMissedEntries = false,
-        odometerInconsistent = false,
-        notes = null,
-        createdAt = Instant.fromEpochMilliseconds(0L),
-        updatedAt = Instant.fromEpochMilliseconds(0L),
-        deletedAt = null,
+        id = id,
+        ownerId = ownerId,
+        vehicleId = vehicleId,
+        date = date,
+        odometerKm = odometerKm,
+        litersScaled = litersScaled,
+        pricePerLiterScaled = pricePerLiterScaled,
+        totalCostMinor = totalCostMinor,
+        currency = currency,
+        isFullTank = isFullTank,
+        hasMissedEntries = hasMissedEntries,
+        odometerInconsistent = odometerInconsistent,
+        notes = notes,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        deletedAt = deletedAt,
     )

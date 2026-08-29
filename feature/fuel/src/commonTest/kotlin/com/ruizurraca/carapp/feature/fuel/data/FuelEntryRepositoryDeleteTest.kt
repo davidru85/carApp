@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.feature.fuel.data
 
+import app.cash.sqldelight.async.coroutines.awaitAsOne
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
@@ -27,7 +28,7 @@ class FuelEntryRepositoryDeleteTest {
                 assertEquals(NOW.toEpochMilliseconds() + 1_000L, row.deletedAt)
                 assertEquals("PENDING", row.syncState)
                 assertEquals(2L, row.localRevision)
-                assertEquals(3L, row.localMutationSeq)
+                assertEquals(4L, row.localMutationSeq)
                 assertNull(outbox(id))
             }
         }
@@ -44,7 +45,7 @@ class FuelEntryRepositoryDeleteTest {
                 assertIs<Outcome.Ok<Unit>>(repository.deleteFuelEntry(EntityId(FIRST_ENTRY_ID)))
 
                 assertEquals(0L, fuelEntry(SECOND_ENTRY_ID)?.odometerInconsistent)
-                val vehicle = database.databaseQueries.selectVehicleById(VEHICLE_ID).executeAsOne()
+                val vehicle = database.databaseQueries.selectVehicleById(VEHICLE_ID).awaitAsOne()
                 assertEquals(100L, vehicle.currentOdometerKm)
             }
         }

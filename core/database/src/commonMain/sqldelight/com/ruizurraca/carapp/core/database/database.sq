@@ -25,6 +25,49 @@ SELECT *
 FROM fuel_entry
 WHERE id = :id;
 
+selectFuelEntryByOwnerAndId:
+SELECT *
+FROM fuel_entry
+WHERE ownerId = :ownerId AND id = :id;
+
+selectFuelEntriesForList:
+SELECT fuel_entry.*
+FROM fuel_entry
+INNER JOIN vehicle
+  ON vehicle.id = fuel_entry.vehicleId
+  AND vehicle.ownerId = :ownerId
+WHERE fuel_entry.ownerId = :ownerId
+  AND fuel_entry.vehicleId = :vehicleId
+  AND (:includeDeleted = 1 OR fuel_entry.deleted = 0)
+ORDER BY fuel_entry.date ASC, fuel_entry.createdAt ASC, fuel_entry.id ASC
+LIMIT :rowLimit;
+
+selectFuelEntriesForConsumption:
+SELECT fuel_entry.*
+FROM fuel_entry
+INNER JOIN vehicle
+  ON vehicle.id = fuel_entry.vehicleId
+  AND vehicle.ownerId = :ownerId
+WHERE fuel_entry.ownerId = :ownerId
+  AND fuel_entry.vehicleId = :vehicleId
+  AND fuel_entry.deleted = 0
+ORDER BY fuel_entry.odometerKm ASC, fuel_entry.date ASC, fuel_entry.id ASC
+LIMIT :rowLimit;
+
+selectPreviousActiveFuelEntry:
+SELECT *
+FROM fuel_entry
+WHERE vehicleId = :vehicleId
+  AND deleted = 0
+  AND id != COALESCE(:excludedId, '')
+  AND (
+    date < :date
+    OR (date = :date AND createdAt < :createdAt)
+    OR (date = :date AND createdAt = :createdAt AND id < :targetId)
+  )
+ORDER BY date DESC, createdAt DESC, id DESC
+LIMIT 1;
+
 selectOutboxByEntity:
 SELECT *
 FROM outbox
