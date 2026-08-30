@@ -380,6 +380,8 @@ Acceptance criteria:
 
 ### E1-07 - Android UI: Vehicles - M
 
+**Status:** Completed on 2026-08-30.
+
 Implement the vehicle list, create/edit form and detail shell with a shared presentation state holder.
 
 Design reference (non-normative): `docs/DESIGN.md §4`, Android screens 02 home, 03 vehicle form and 04 vehicle detail.
@@ -841,7 +843,7 @@ Prepare release assets and store requirements.
 
 Acceptance criteria:
 
-- Branch protection for `main` is active with the nine `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
+- Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
 
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
@@ -908,7 +910,7 @@ proof after E3-04.
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
 | E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data (completed) | 1 | M | — |
-| E1-07 Android UI vehicles | 1 | M | — |
+| E1-07 Android UI vehicles (completed) | 1 | M | — |
 | E1-08 Android UI fuel entries | 1 | L | — |
 | E1-09 iOS UI | 1 | L | — |
 | E1-10 Settings persistence | 1 | S | — |

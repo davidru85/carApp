@@ -1,6 +1,6 @@
 package com.ruizurraca.carapp.wiring.firebase
 
-import com.ruizurraca.carapp.SwiftAppGraph
+import com.ruizurraca.carapp.AppGraph
 import com.ruizurraca.carapp.buildAppGraph
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
@@ -27,10 +27,11 @@ import kotlin.test.assertSame
 
 class FirebaseAppProvidersTest {
     @Test
-    fun providerFactoryBuildsTheSharedGraphWithoutGlobalRegistration() {
+    fun providerFactoryBuildsTheKotlinGraphWithoutGlobalRegistration() {
         val graph = buildAppGraph(isDebugBuild = true, providers = firebaseAppProviders())
 
-        assertIs<SwiftAppGraph>(graph)
+        assertIs<AppGraph>(graph)
+        graph.close()
     }
 
     @Test

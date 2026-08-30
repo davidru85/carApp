@@ -47,19 +47,64 @@
 
 ## Scope Completed
 
-- Pending implementation.
+- Added executable D-28 Konsist rules for feature `domain`, `data` and `presentation` packages,
+  with an independently firing fixture for every rule.
+- Added the reactive `VehicleEditFacts` repository projection and database read support used to
+  keep editability authoritative while Fuel Entries change.
+- Moved Vehicle presentation models and state holders into `:feature:vehicle`, moved shared UI
+  primitives into `:core:common`, and preserved the exact Objective-C and Swift names in the
+  generated Shared framework header.
+- Separated Kotlin `AppGraph` construction from the composed `SwiftAppGraph` facade. Android now
+  supplies `viewModelScope`; the Swift facade owns and closes its child scopes while preserving
+  caching, idempotent close and post-close rejection.
+- Implemented the Compose Vehicle list, create/edit form and detail shell with native Navigation,
+  typed-error resource mapping, English and Spanish resources, logical deletion and the empty
+  detail invitation.
+- Added the protected API 36 emulator job and the instrumented creation test. The flow creates a
+  Vehicle, never renders a Fuel Type input and routes to the empty detail shell.
+- Recorded D-84 through D-88, regenerated the Objective-C golden header and updated the current
+  repository, verification and contribution records.
 
 ## Acceptance Evidence
 
-- Pending implementation and verification.
+- `VehicleListStateHolder` and `VehicleFormStateHolder` live in `:feature:vehicle` `commonMain`,
+  take a caller-owned scope, expose `close()` and collect and publish on `dispatchers.main`.
+- State-holder tests cover loading, empty, typed-error mapping, successful creation, reactive edit
+  facts, authoritative initial-odometer rejection, `fuelType` round-trip and constant D-88 `Idle`.
+- The production list test records the exact `observeVehicles(includeDeleted = false)` argument
+  and proves a deleted row cannot enter the emitted list.
+- Android maps stable message and validation codes to `values` and `values-es`; `UiState` contains
+  codes and data only, and the Compose source contains no hardcoded user-facing copy.
+- `VehicleCreationTest` runs on an API 36 emulator and proves creation, absence of
+  `FUEL_TYPE_INPUT`, detail navigation and the first-Fuel-Entry invitation.
+- `VehicleRepositoryEditFactsTest` observes the Vehicle and active-Fuel-Entry fact as one reactive
+  projection; state-holder tests prove a stale editable flag cannot bypass repository validation.
+- `AppGraphContractTest` and existing Swift graph tests prove Kotlin graph construction, Android
+  scope ownership and the composed Swift facade's caching and close behavior.
+- The linked `Shared.framework` header exactly matches the committed golden, preserves
+  `SyncSyncStatus`, `UiMessage` and `UiMessageKind`, and exposes no provider type.
+- D-28's three real-tree rules and three violation fixtures pass on the Android host.
 
 ## Out of Scope / Not Done
 
-- E1-08 and later Fuel Entry UI, complete synchronization, authentication and settings behavior.
+- E1-08 and later Fuel Entry UI, E1-09 SwiftUI, complete synchronization, authentication and
+  settings behavior.
+- D-88 deliberately leaves Vehicle presentation on constant `SyncStatus.Idle` and direct D-55
+  restoration until E3-03 supplies the final shared controller.
 
 ## Files Changed
 
-- Pending implementation.
+- Android host and UI test: `androidApp/build.gradle.kts`, `androidApp/src/main/**`,
+  `androidApp/src/androidTest/**` and `.github/workflows/ci.yml`.
+- Shared contracts and graph: `core/common`, `core/sync`, `shared`, `composition/ios` and the
+  generated Objective-C header golden.
+- Vehicle facts, presentation and tests: `core/database`, `feature/vehicle` and its Android-host
+  architecture fixtures.
+- Build and version pins: `gradle/libs.versions.toml`, `feature/vehicle/build.gradle.kts` and the
+  build-logic contract tests.
+- Decision and delivery records: the five normative decision mirrors, ADR-0085 through ADR-0089,
+  `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/CONTRIBUTING.md`, `docs/identifiers.md`, this
+  handoff and `docs/PROJECT_LOG.md`.
 
 ## Decisions Made
 
@@ -97,6 +142,40 @@
   `:feature:vehicle:compileAndroidHostTest`: `VehicleEditFacts`,
   `observeVehicleEditFacts`, `SyncStatus`/`UiMessageKind` in `:core:common`, the moved Vehicle
   state holders and the Kotlin `AppGraph` behavior were absent.
+- Vehicle behavior GREEN `./gradlew :feature:vehicle:testAndroidHostTest
+  :shared:testAndroidHostTest` — successful with the reactive repository facts, shared Vehicle
+  presentation and Kotlin/Swift graph separation in place.
+- Android compilation `./gradlew :androidApp:compileDebugKotlin
+  :androidApp:compileDebugAndroidTestKotlin` — successful.
+- Instrumented GREEN `./gradlew :androidApp:connectedDebugAndroidTest` — successful on local AVD
+  `E1_07_API_36` (Android API 36); one test passed. An initial run on the pre-existing API 37
+  preview AVD failed in Espresso before application code because that platform removed the legacy
+  `InputManager.getInstance` API, so D-84 fixes the supported CI target at API 36.
+- Focused GREEN `./gradlew architectureCheck :build-logic:convention:test contractCheck
+  :androidApp:assembleDebug` — successful: 16 module rules, their firing fixtures and 89
+  decision/ADR mirrors passed with no pending contract assertion; Android assembled.
+- REFACTOR `./gradlew ktlintFormat detekt` — successful after import ordering, line wrapping and an
+  explicit coroutine-test opt-in; no behavior changed.
+- Shared framework `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by an
+  exact generated-header/golden comparison — successful; the regenerated golden is byte-exact.
+- The first complete repository run correctly failed contract assertion 7 after direct module
+  export exposed `AppError`, `Outcome` and `VehicleRepository`. D-85's non-allowlisted common and
+  Vehicle declarations are now Kotlin-only through `@HiddenFromObjC`; a regenerated header passes
+  the allowlist and forbidden-symbol contract with no provider, repository, command or use-case
+  declaration.
+- The next complete runs exposed three stale cross-module assumptions: the `:core:sync` contract
+  test lacked the moved `SyncStatus` import, `:core:common` presentation types had no direct
+  coverage, and the Firebase provider test still expected `SwiftAppGraph`. Each check failed before
+  correction; focused reruns then passed with the D-86 Kotlin `AppGraph` expectation and the 90%
+  common coverage floor retained.
+- Final repository command `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest
+  iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x
+  :integration:firebase-firestore:iosSimulatorArm64Test -x
+  :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` — successful in
+  7 seconds with 607 actionable tasks. Lint, detekt, coverage, Android assembly, Android-host and
+  required iOS simulator tests all passed; architecture reported 16 rules over 23 modules and
+  contract check reported 89 mirrored decisions/ADRs with no pending assertion.
 
 ## Contract Impact
 
@@ -117,7 +196,7 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Entry appended.
 
 ## Risks or Follow-ups
 

@@ -111,8 +111,7 @@ internal class VehicleAppViewModel(
         fun factory(application: Application): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    VehicleAppViewModel(application) as T
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = VehicleAppViewModel(application) as T
             }
     }
 }
@@ -221,10 +220,19 @@ private fun VehicleListContent(
         contentAlignment = Alignment.Center,
     ) {
         when {
-            state.isLoading && state.vehicles.isEmpty() -> CircularProgressIndicator()
-            state.message != null && state.vehicles.isEmpty() -> ErrorText(state.message)
-            state.vehicles.isEmpty() -> Text(stringResource(R.string.empty_vehicles))
-            else ->
+            state.isLoading && state.vehicles.isEmpty() -> {
+                CircularProgressIndicator()
+            }
+
+            state.message != null && state.vehicles.isEmpty() -> {
+                ErrorText(state.message)
+            }
+
+            state.vehicles.isEmpty() -> {
+                Text(stringResource(R.string.empty_vehicles))
+            }
+
+            else -> {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(state.vehicles, key = VehicleListItemUi::id) { vehicle ->
                         Column(
@@ -241,6 +249,7 @@ private fun VehicleListContent(
                         HorizontalDivider()
                     }
                 }
+            }
         }
     }
 }
@@ -267,7 +276,13 @@ private fun VehicleFormScreen(
                 title = {
                     Text(
                         stringResource(
-                            if (originalVehicleId == null) R.string.create_vehicle_title else R.string.edit_vehicle_title,
+                            if (originalVehicleId ==
+                                null
+                            ) {
+                                R.string.create_vehicle_title
+                            } else {
+                                R.string.edit_vehicle_title
+                            },
                         ),
                     )
                 },
@@ -443,19 +458,28 @@ private fun ErrorText(message: UiMessage?) {
 private fun UiMessage.stringResource(): Int =
     when (code) {
         "VALIDATION.REQUIRED_FIELD" -> R.string.error_required_field
+
         "VALIDATION.INVALID_LENGTH" -> R.string.error_invalid_length
+
         "VALIDATION.OUT_OF_RANGE" -> R.string.error_out_of_range
+
         "VALIDATION.EDIT_NOT_ALLOWED" -> R.string.error_edit_not_allowed
+
         "VALIDATION.DUPLICATE_NAME" -> R.string.error_duplicate_vehicle_name
+
         "VALIDATION.NO_OP" -> R.string.error_no_changes
+
         "VALIDATION.ENTITY_DELETED" -> R.string.error_vehicle_deleted
+
         "VALIDATION.ENTITY_NOT_FOUND" -> R.string.vehicle_not_found
+
         "PERSISTENCE.DATABASE_UNAVAILABLE",
         "PERSISTENCE.TRANSACTION_FAILED",
         "PERSISTENCE.MIGRATION_FAILED",
         "PERSISTENCE.SERIALIZATION_FAILED",
         "PERSISTENCE.CONSTRAINT_VIOLATION",
         -> R.string.error_persistence
+
         "REMOTE.UNAVAILABLE",
         "REMOTE.DEADLINE_EXCEEDED",
         "REMOTE.PERMISSION_DENIED",
@@ -464,6 +488,7 @@ private fun UiMessage.stringResource(): Int =
         "REMOTE.NOT_FOUND",
         "REMOTE.UNKNOWN",
         -> R.string.error_restore
+
         else -> R.string.error_unexpected
     }
 

@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.core.sync
 
+import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.model.EntityId
 import kotlin.test.Test
 import kotlin.test.assertEquals

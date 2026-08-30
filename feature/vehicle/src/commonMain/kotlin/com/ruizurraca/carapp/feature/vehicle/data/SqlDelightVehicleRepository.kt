@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.vehicle.data
 
 import com.ruizurraca.carapp.core.common.AppClock
@@ -19,8 +21,8 @@ import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleValidationContext
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateCreateVehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateUpdateVehicle
-import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
+import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -28,8 +30,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
+import kotlin.native.HiddenFromObjC
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@HiddenFromObjC
 class SqlDelightVehicleRepository internal constructor(
     private val localDataSource: VehicleLocalDataSource,
     private val ownerContext: OwnerContext,

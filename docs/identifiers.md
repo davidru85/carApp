@@ -89,7 +89,7 @@ repository artifacts. The iOS development key is restricted to the debug bundle 
 |------|-------|
 | Git remote | `git@github.com:davidru85/carApp.git` |
 | Default branch | `main` |
-| Visibility | **Public** (`D-34`). Branch protection for `main` is active with the nine `docs/CONTRACTS.md §18` checks. Because the repository is public, the API keys in `google-services.json` and `GoogleService-Info.plist` are readable by anyone and MUST be restricted before those files are committed (`docs/SECURITY.md`). |
+| Visibility | **Public** (`D-34`). Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks. Because the repository is public, the API keys in `google-services.json` and `GoogleService-Info.plist` are readable by anyone and MUST be restricted before those files are committed (`docs/SECURITY.md`). |
 | Branch naming | `story/<STORY-ID>-<short-slug>` |
 
 ## Change policy

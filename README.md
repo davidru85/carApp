@@ -4,7 +4,7 @@ Cross-platform mobile app for Android and iOS to track vehicle costs.
 
 The MVP is intentionally limited to **fuel expenses**: users can create vehicles, log refueling events, review their history, and calculate real-world fuel consumption in **L/100 km**. Later phases may add maintenance, insurance, taxes, and other expense types, but they are out of scope for the MVP.
 
-> **Project status:** **Phase 1 open.** `E1-01` through `E1-06`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, complete local Vehicle and Fuel Entry repositories, Fuel Entry validation, reviewed full-to-full consumption, executable provider decoupling, reviewed Firestore rules and the native walking skeleton. `E1-07`, Android Vehicle UI, is next. The project builds on both platforms and `main` is protected by nine required CI checks.
+> **Project status:** **Phase 1 open.** `E1-01` through `E1-07`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, complete local Vehicle and Fuel Entry repositories, Fuel Entry validation, reviewed full-to-full consumption, executable provider decoupling, reviewed Firestore rules, the native walking skeleton and the Android Vehicle flow. `E1-08`, Android Fuel Entry UI, is next. The project builds on both platforms and `main` is protected by ten required CI checks.
 
 ## Start here
 
@@ -21,9 +21,11 @@ The MVP is intentionally limited to **fuel expenses**: users can create vehicles
           -x :composition:ios:iosSimulatorArm64Test
 ```
 
-That is exactly what CI runs. `AGENTS.md` §`Repository State` explains what each check proves, how
-to create a module, and which rules are not enforced yet. Requirements: JDK 21 and, for the iOS
-targets, Xcode as pinned in [docs/versions-matrix.md](docs/versions-matrix.md).
+Those are the non-instrumented CI tasks. The protected Android UI job additionally runs
+`./gradlew :androidApp:connectedDebugAndroidTest` on the D-84 API 36 emulator. `AGENTS.md`
+§`Repository State` explains what each check proves and how to create a module. Requirements: JDK
+21, the Android SDK and, for the iOS targets, Xcode as pinned in
+[docs/versions-matrix.md](docs/versions-matrix.md).
 
 ## Documentation
 
@@ -151,9 +153,8 @@ firestore/
 ```
 
 Each feature is one Gradle module with internal `domain`, `data` and `presentation` packages.
-Module boundaries are enforced by a Gradle configuration check. The feature package-boundary
-Konsist rules remain assigned to E1-07 under D-28; they are the only architecture rules in the
-current plan that are not yet executable.
+Module boundaries are enforced by a Gradle configuration check. D-28 feature package-boundary
+rules are executable through Konsist and include a firing fixture for every rule.
 
 ## Design
 
@@ -175,7 +176,7 @@ document wins and the discrepancy is escalated.
 | Phase | Goal | Main gate |
 |-------|------|-----------|
 | 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 1 - Local persistence **(active)** | `E1-01` through `E1-06` and the `E0-07` gate are complete; `E1-07` through `E1-10` remain | The walking skeleton proves the native local/remote path and the local Vehicle and Fuel Entry repositories are complete |
+| 1 - Local persistence **(active)** | `E1-01` through `E1-07` and the `E0-07` gate are complete; `E1-08` through `E1-10` remain | The walking skeleton proves the native local/remote path, the local repositories are complete and the Android Vehicle flow is executable |
 | 2 - Authentication **(planned)** | E2-01 through E2-07 remain | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot |
 | 3 - Backend and backup **(partially complete)** | E3-06 and E3-01 are complete; the remaining backend, cleanup, sync and recovery stories are open | Recovery and provider decoupling are executable checks |
 | 4 - MVP hardening **(planned)** | E4-01 through E4-04 remain | Store-readiness checklist complete |

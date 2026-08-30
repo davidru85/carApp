@@ -1,8 +1,8 @@
 package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
-import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations

@@ -41,16 +41,18 @@ class SwiftAppGraph {
 
     fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder {
         val graph = requireOpenGraph()
-        return cachedVehicleForms.getOrPut(vehicleId) {
-            newScopedHolder { scope -> graph.vehicleFormStateHolder(scope, vehicleId) }
-        }.holder
+        return cachedVehicleForms
+            .getOrPut(vehicleId) {
+                newScopedHolder { scope -> graph.vehicleFormStateHolder(scope, vehicleId) }
+            }.holder
     }
 
     fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder {
         val graph = requireOpenGraph()
-        return cachedFuelEntryLists.getOrPut(vehicleId) {
-            newScopedHolder { scope -> graph.fuelEntryListStateHolder(scope, vehicleId) }
-        }.holder
+        return cachedFuelEntryLists
+            .getOrPut(vehicleId) {
+                newScopedHolder { scope -> graph.fuelEntryListStateHolder(scope, vehicleId) }
+            }.holder
     }
 
     fun fuelEntryFormStateHolder(
@@ -58,9 +60,10 @@ class SwiftAppGraph {
         entryId: String?,
     ): FuelEntryFormStateHolder {
         val graph = requireOpenGraph()
-        return cachedFuelEntryForms.getOrPut(vehicleId to entryId) {
-            newScopedHolder { scope -> graph.fuelEntryFormStateHolder(scope, vehicleId, entryId) }
-        }.holder
+        return cachedFuelEntryForms
+            .getOrPut(vehicleId to entryId) {
+                newScopedHolder { scope -> graph.fuelEntryFormStateHolder(scope, vehicleId, entryId) }
+            }.holder
     }
 
     fun sessionStateHolder(): SessionStateHolder {

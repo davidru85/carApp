@@ -14,6 +14,7 @@ import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
@@ -29,6 +30,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class VehicleStateHoldersTest {
     @Test
     fun listObservesActiveVehiclesOnlyAndNeverPublishesTombstones() =

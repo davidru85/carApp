@@ -59,7 +59,7 @@ class VehicleListStateHolder internal constructor(
             transientMessage,
         ) { result, isRefreshing, selectedId, message ->
             when (result) {
-                is Outcome.Ok ->
+                is Outcome.Ok -> {
                     VehicleListUiState(
                         isLoading = isRefreshing,
                         vehicles =
@@ -78,8 +78,9 @@ class VehicleListStateHolder internal constructor(
                         syncStatus = SyncStatus.Idle,
                         message = message,
                     )
+                }
 
-                is Outcome.Err ->
+                is Outcome.Err -> {
                     VehicleListUiState(
                         isLoading = isRefreshing,
                         vehicles = emptyList(),
@@ -87,6 +88,7 @@ class VehicleListStateHolder internal constructor(
                         syncStatus = SyncStatus.Idle,
                         message = message ?: result.error.toErrorMessage(),
                     )
+                }
             }
         }.stateIn(
             scope = holderScope + dispatchers.main,
@@ -224,7 +226,9 @@ class VehicleFormStateHolder internal constructor(
                     if (snapshot.vehicleId == null) {
                         createVehicle(snapshot.toCreateCommand())
                     } else {
-                        updateVehicle(snapshot.toUpdateCommand(loadedInitialOdometerKm)).map { EntityId(snapshot.vehicleId) }
+                        updateVehicle(
+                            snapshot.toUpdateCommand(loadedInitialOdometerKm),
+                        ).map { EntityId(snapshot.vehicleId) }
                     }
                 }
             when (result) {
@@ -253,7 +257,10 @@ class VehicleFormStateHolder internal constructor(
 
     private fun applyEditFacts(result: Outcome<VehicleEditFacts?, AppError>) {
         when (result) {
-            is Outcome.Err -> transientMessage.value = result.error.toErrorMessage()
+            is Outcome.Err -> {
+                transientMessage.value = result.error.toErrorMessage()
+            }
+
             is Outcome.Ok -> {
                 val facts = result.value
                 if (facts == null) {

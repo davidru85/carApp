@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.common
 
 import com.ruizurraca.carapp.core.model.CurrencyCode
@@ -8,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Instant
 
 /*
@@ -23,11 +26,13 @@ import kotlin.time.Instant
  *
  * The `Instant` package is pinned in `docs/versions-matrix.md` and is `kotlin.time.Instant`.
  */
+@HiddenFromObjC
 fun interface AppClock {
     fun now(): Instant
 }
 
 /** D-81 Fuel Entry lower date bound, using literal calendar years in UTC. */
+@HiddenFromObjC
 fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant =
     maxOf(
         Instant.fromEpochMilliseconds(0L),
@@ -37,28 +42,34 @@ fun earliestAllowedFuelEntryDate(vehicleCreatedAt: Instant): Instant =
 private const val FUEL_ENTRY_HISTORY_YEARS = 20
 
 /** Produces lowercase canonical UUID v4 strings. */
+@HiddenFromObjC
 fun interface UuidGenerator {
     fun newId(): String
 }
 
+@HiddenFromObjC
 interface DispatcherProvider {
     val main: CoroutineDispatcher
     val default: CoroutineDispatcher
     val io: CoroutineDispatcher
 }
 
+@HiddenFromObjC
 enum class LogLevel { DEBUG, INFO, WARN, ERROR }
 
+@HiddenFromObjC
 data class LocaleInfo(
     val languageTag: String,
     val region: String?,
     val suggestedCurrency: CurrencyCode,
 )
 
+@HiddenFromObjC
 fun interface LocaleProvider {
     fun current(): LocaleInfo
 }
 
+@HiddenFromObjC
 interface ConnectivityObserver {
     val isOnline: StateFlow<Boolean>
 }
@@ -71,6 +82,7 @@ enum class SyncTrigger {
     Periodic,
 }
 
+@HiddenFromObjC
 fun interface SyncTriggerAdapter {
     fun schedule(reason: SyncTrigger)
 }
@@ -90,6 +102,7 @@ enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }
  * (`docs/TECHNICAL_PLAN.md §4`), so it reaches the owner through this abstraction, which
  * `:core:auth` implements and wiring binds.
  */
+@HiddenFromObjC
 interface OwnerContext {
     val current: OwnerId
 

@@ -1,8 +1,8 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
 import app.cash.turbine.test
-import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
@@ -47,5 +47,7 @@ class VehicleRepositoryEditFactsTest {
         }
 }
 
-private suspend fun app.cash.turbine.ReceiveTurbine<Outcome<VehicleEditFacts?, AppError>>.awaitFacts(): VehicleEditFacts =
+private suspend fun app.cash.turbine.ReceiveTurbine<
+    Outcome<VehicleEditFacts?, AppError>,
+>.awaitFacts(): VehicleEditFacts =
     requireNotNull(assertIs<Outcome.Ok<VehicleEditFacts?>>(awaitItem()).value)

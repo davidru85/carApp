@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.testing
 
 import com.ruizurraca.carapp.core.common.AppClock
@@ -19,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Instant
 
 /*
@@ -31,6 +34,7 @@ import kotlin.time.Instant
  */
 
 /** A clock that never moves unless [advanceBy] or [set] is called. */
+@HiddenFromObjC
 class FakeAppClock(
     initial: Instant = DEFAULT_NOW,
 ) : AppClock {
@@ -53,6 +57,7 @@ class FakeAppClock(
 }
 
 /** Emits `00000000-0000-4000-8000-<counter>`, so generated IDs are stable and ordered. */
+@HiddenFromObjC
 class FakeUuidGenerator : UuidGenerator {
     private var counter = 0L
 
@@ -69,6 +74,7 @@ class FakeUuidGenerator : UuidGenerator {
 }
 
 /** Every dispatcher is [Dispatchers.Unconfined], so fake-driven tests run without a scheduler. */
+@HiddenFromObjC
 class TestDispatcherProvider(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
 ) : DispatcherProvider {
@@ -78,6 +84,7 @@ class TestDispatcherProvider(
 }
 
 /** Captures log lines so a test can assert on levels, codes and fields without a sink. */
+@HiddenFromObjC
 class RecordingLogger : Logger {
     data class Entry(
         val level: LogLevel,
@@ -105,6 +112,7 @@ class RecordingLogger : Logger {
 }
 
 /** Reports a fixed locale; defaults to Spain and EUR, the MVP's initial market. */
+@HiddenFromObjC
 class FakeLocaleProvider(
     private var info: LocaleInfo = LocaleInfo("es-ES", "ES", CurrencyCode("EUR")),
 ) : LocaleProvider {
@@ -116,6 +124,7 @@ class FakeLocaleProvider(
 }
 
 /** Connectivity that a test drives explicitly; online by default. */
+@HiddenFromObjC
 class FakeConnectivityObserver(
     initiallyOnline: Boolean = true,
 ) : ConnectivityObserver {
@@ -129,6 +138,7 @@ class FakeConnectivityObserver(
 }
 
 /** Owner context starting at the `LOCAL_OWNER` sentinel of `§11.4`. */
+@HiddenFromObjC
 class FakeOwnerContext(
     initial: OwnerId = LOCAL_OWNER,
 ) : OwnerContext {
@@ -144,6 +154,7 @@ class FakeOwnerContext(
 }
 
 /** Records scheduling requests instead of touching a platform scheduler. */
+@HiddenFromObjC
 class RecordingSyncTriggerAdapter : SyncTriggerAdapter {
     private val recorded = mutableListOf<SyncTrigger>()
 

@@ -1,8 +1,7 @@
 # CI for carApp.
 #
 # The job names below are the check names fixed by docs/CONTRACTS.md §18 and MUST NOT be renamed:
-# branch protection for main requires them by name. Two of them have nothing to verify yet and say
-# so out loud rather than passing silently — see the notes on each.
+# branch protection for main requires them by name.
 #
 # CI duration under 20 minutes is a monitored objective, not a pass/fail criterion (E0-05).
 

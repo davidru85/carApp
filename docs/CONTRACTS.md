@@ -1557,7 +1557,7 @@ Redaction is the responsibility of the `Logger` implementation, not the caller. 
 
 ## 18. CI and Branch Protection Contract
 
-Phase 0 defines the exact CI check names. Required checks:
+D-31 and D-84 define the exact CI check names. Required checks:
 
 - `android-assemble`
 - `shared-tests`

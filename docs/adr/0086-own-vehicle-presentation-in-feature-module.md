@@ -52,6 +52,8 @@ export the feature and common modules through the sole `Shared` framework.
 
 - Vehicle presentation MUST NOT depend on `:core:sync` or feature `data`.
 - The documented Swift names MUST remain byte-exact in the generated header.
+- Public declarations in the exported feature and common modules that are outside the §15.3
+  allowlist MUST remain Kotlin-only through `@HiddenFromObjC`.
 - E1-08 and E2-05 MUST move their staged feature presentation types into their owning modules.
 - `SyncStateHolder` remains the app-level exception in `:shared`.
 

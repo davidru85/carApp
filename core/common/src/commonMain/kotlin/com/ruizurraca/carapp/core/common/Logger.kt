@@ -1,4 +1,8 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.common
+
+import kotlin.native.HiddenFromObjC
 
 /**
  * The logging contract of `docs/CONTRACTS.md §17`.
@@ -19,6 +23,7 @@ package com.ruizurraca.carapp.core.common
  * This is not an analytics or crash-reporting API. Logging events MUST NOT be treated as
  * `AnalyticsEvent` values or crash reports.
  */
+@HiddenFromObjC
 interface Logger {
     fun log(
         level: LogLevel,

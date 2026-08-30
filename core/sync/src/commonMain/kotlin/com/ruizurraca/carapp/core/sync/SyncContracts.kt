@@ -3,8 +3,8 @@ package com.ruizurraca.carapp.core.sync
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
-import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.StateFlow

@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-30 — E1-07 Android Vehicle UI completed
+
+- **Type:** story
+- **Story / Decision:** `E1-07` / `D-84` through `D-88`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented the Compose Vehicle list, create/edit form and detail shell, shared
+  Vehicle presentation state holders, reactive edit facts, Kotlin/Swift graph separation and the
+  protected API 36 creation test. D-28 feature package rules now execute with one firing fixture
+  per rule.
+- **Why:** E1-07 makes the local Vehicle slice usable on Android while keeping validation in the
+  repository, display copy native, provider types outside the shared framework and final sync
+  ownership staged for E3-03.
+- **Documents touched:** D-84 through D-88 and ADR-0085 through ADR-0089 in the four decision
+  mirrors, current-state and CI records, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`.
+- **Verification:** Vehicle presentation and graph behavior were RED before implementation; the
+  API 36 instrumented creation flow, Android-host and iOS tests, lint, detekt, coverage,
+  architecture, contract, Android assembly and Shared framework header checks pass. Detailed
+  commands and results are in the handoff.
+- **Follow-ups / risks:** E1-08 owns Android Fuel Entry UI. E3-03 replaces D-88 constant `Idle`
+  with the single final `SyncController`; E3-08 completes the staged AppGraph factories. Owner
+  review is required before merge.
+
 ### 2026-08-29 — E1-06 second owner-review corrections applied
 
 - **Type:** correction
