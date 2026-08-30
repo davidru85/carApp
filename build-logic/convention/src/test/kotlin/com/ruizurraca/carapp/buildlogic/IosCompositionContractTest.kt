@@ -87,20 +87,33 @@ class IosCompositionContractTest {
 
     @Test
     fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
-        val expectedAnnotations =
+        val expectedNames =
             listOf(
-                "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt" to
-                    "@ObjCName(name = \"SharedConfirmation\", swiftName = \"Confirmation\", exact = true)",
-                "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt" to
-                    "@ObjCName(name = \"SharedAuthProvider\", swiftName = \"AuthProvider\", exact = true)",
-                "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt" to
-                    "@ObjCName(name = \"SharedSyncTrigger\", swiftName = \"SyncTrigger\", exact = true)",
+                ExactEnumName(APP_ERROR_PATH, "SharedConfirmation", "Confirmation"),
+                ExactEnumName(PLATFORM_ABSTRACTIONS_PATH, "SharedAuthProvider", "AuthProvider"),
+                ExactEnumName(PLATFORM_ABSTRACTIONS_PATH, "SharedSyncTrigger", "SyncTrigger"),
             )
         val missing =
-            expectedAnnotations
-                .filterNot { (path, annotation) -> repositoryRoot.resolve(path).readText().contains(annotation) }
-                .map { (_, annotation) -> annotation }
+            expectedNames.filterNot { expected ->
+                repositoryRoot.resolve(expected.path).readText().contains(expected.annotation)
+            }
 
         assertEquals(emptyList(), missing)
+    }
+
+    private data class ExactEnumName(
+        val path: String,
+        val objectiveCName: String,
+        val swiftName: String,
+    ) {
+        val annotation: String =
+            "@ObjCName(name = \"$objectiveCName\", swiftName = \"$swiftName\", exact = true)"
+    }
+
+    private companion object {
+        const val APP_ERROR_PATH =
+            "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt"
+        const val PLATFORM_ABSTRACTIONS_PATH =
+            "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
     }
 }
