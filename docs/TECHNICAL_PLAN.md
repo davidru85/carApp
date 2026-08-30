@@ -103,6 +103,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-86 | Kotlin and Swift graph separation | Hidden Kotlin `AppGraph`, wrapped by `SwiftAppGraph` | Accepted | Separates caller-owned Kotlin scopes from cached Swift-owned child scopes without leaking Kotlin-only APIs. |
 | D-87 | Vehicle editability projection | Reactive `VehicleEditFacts` projection | Accepted | Re-emits after Vehicle or active Fuel Entry changes while write validation stays authoritative. |
 | D-88 | Pre-E3-03 sync-status staging | Direct restore plus constant `Idle` until E3-03 | Accepted | Avoids a provisional second source of sync truth. |
+| D-89 | Local database lifetime ownership | `DatabaseFactory` returns an idempotently closeable `DatabaseHandle` | Accepted | Keeps the SQL driver in `:core:database` and gives each application graph explicit ownership of one connection. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

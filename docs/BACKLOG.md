@@ -401,6 +401,9 @@ Acceptance criteria:
   repository's authoritative initial-odometer write validation.
 - `buildAppGraph` returns the Kotlin-facing `AppGraph`; Android passes `viewModelScope`, while
   `SwiftAppGraph` wraps the graph and retains its caching and close semantics.
+- `AppGraph.close()` idempotently releases its graph-owned `DatabaseHandle`, and
+  `SwiftAppGraph.close()` releases that database connection transitively without changing the
+  Objective-C header.
 - Compose Navigation and the instrumented UI stack are pinned by D-84, and the creation test runs
   in the protected `android-instrumented-tests` emulator job.
 

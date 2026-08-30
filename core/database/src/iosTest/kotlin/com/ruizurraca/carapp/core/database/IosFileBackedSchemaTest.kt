@@ -31,12 +31,15 @@ class IosFileBackedSchemaTest {
     fun persistentFactoryCreatesSchemaAtTheProvidedPath() =
         runTest {
             val path = "${NSTemporaryDirectory()}carapp-e0-07-${Random.nextLong()}.db"
+            val databaseHandle = createPersistentDatabaseFactory(path).create()
 
             try {
-                val database = createPersistentDatabaseFactory(path).create()
-
-                assertEquals(emptyList(), database.databaseQueries.selectAllVehicles().awaitAsList())
+                assertEquals(
+                    emptyList(),
+                    databaseHandle.database.databaseQueries.selectAllVehicles().awaitAsList(),
+                )
             } finally {
+                databaseHandle.close()
                 listOf(path, "$path-shm", "$path-wal").forEach { candidate ->
                     if (NSFileManager.defaultManager.fileExistsAtPath(candidate)) {
                         NSFileManager.defaultManager.removeItemAtPath(candidate, error = null)

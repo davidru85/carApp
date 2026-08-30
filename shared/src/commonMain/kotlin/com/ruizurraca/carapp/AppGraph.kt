@@ -40,7 +40,8 @@ interface AppGraph {
 internal class DefaultAppGraph(
     internal val dependencies: AppGraphDependencies,
 ) : AppGraph {
-    private val vehicleRuntime = VehicleSliceRuntime(dependencies, dependencies.databaseFactory.create())
+    private val databaseHandle = dependencies.databaseFactory.create()
+    private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database)
     private var closed = false
 
     override fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder {
@@ -98,6 +99,7 @@ internal class DefaultAppGraph(
     override fun close() {
         if (closed) return
         closed = true
+        databaseHandle.close()
     }
 
     private fun checkOpen() {

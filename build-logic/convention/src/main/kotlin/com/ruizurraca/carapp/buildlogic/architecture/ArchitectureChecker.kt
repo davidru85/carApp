@@ -301,18 +301,18 @@ object ArchitectureChecker {
     }
 
     /**
-     * `docs/CONTRACTS.md §20.3.2`: `AppDatabase` and `DatabaseFactory` are owned by
-     * `:core:database` and may appear only there, in `:core:testing` fakes and in the
-     * `AppGraphDependencies` field of `:shared`.
+     * `docs/CONTRACTS.md §20.3.2`: `AppDatabase`, `DatabaseHandle` and `DatabaseFactory`
+     * are owned by `:core:database` and may appear only there, in `:core:testing` fakes
+     * and in the `AppGraphDependencies` field of `:shared`.
      */
     private fun checkDatabaseTypesStayInTheirModule(module: ModuleUnderCheck): List<Violation> {
         val allowed = setOf(":core:database", ":core:testing", ":shared", ":shared:testing")
         if (module.path in allowed) return emptyList()
         return module.sourceLines
-            .filter { Regex("""\b(AppDatabase|DatabaseFactory)\b""").containsMatchIn(it.text) }
+            .filter { Regex("""\b(AppDatabase|DatabaseHandle|DatabaseFactory)\b""").containsMatchIn(it.text) }
             .filterNot {
                 module.path == ":wiring:firebase" && Regex("""\bDatabaseFactory\b""").containsMatchIn(it.text) &&
-                    !Regex("""\bAppDatabase\b""").containsMatchIn(it.text)
+                    !Regex("""\b(AppDatabase|DatabaseHandle)\b""").containsMatchIn(it.text)
             }
             .map {
                 Violation(

@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -31,14 +32,15 @@ class VehicleFormStateHolderTest {
     fun savePersistsACompletePendingVehicleForTheCurrentOwner() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val graph =
                 buildAppGraph(
                     isDebugBuild = true,
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                             ),
                         ),
@@ -77,14 +79,15 @@ class VehicleFormStateHolderTest {
     fun saveEnqueuesTheClosedRemoteVehicleSnapshot() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val graph =
                 buildAppGraph(
                     isDebugBuild = true,
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                             ),
                         ),
@@ -133,7 +136,8 @@ class VehicleFormStateHolderTest {
     fun savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val remote =
                 RecordingRemoteSyncSource { ownerId, snapshot ->
                     val localVehicle =
@@ -149,7 +153,7 @@ class VehicleFormStateHolderTest {
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                                 remoteSyncSource = remote,
                             ),
@@ -177,7 +181,8 @@ class VehicleFormStateHolderTest {
     fun successfulRemoteAckMarksTheVehicleSyncedAndClearsItsOutboxRow() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val remote = RecordingRemoteSyncSource { _, _ -> }
             val graph =
                 buildAppGraph(
@@ -185,7 +190,7 @@ class VehicleFormStateHolderTest {
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                                 remoteSyncSource = remote,
                             ),
@@ -223,7 +228,8 @@ class VehicleFormStateHolderTest {
     fun localOwnerSavePersistsPendingVehicleWithoutOutboxOrRemotePush() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val remote = RecordingRemoteSyncSource { _, _ -> }
             val graph =
                 buildAppGraph(
@@ -231,7 +237,7 @@ class VehicleFormStateHolderTest {
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(LOCAL_OWNER),
                                 remoteSyncSource = remote,
                             ),
@@ -266,9 +272,9 @@ class VehicleFormStateHolderTest {
             }
         }
 
-    private fun fixedDatabaseFactory(database: com.ruizurraca.carapp.core.database.AppDatabase): DatabaseFactory =
+    private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =
         object : DatabaseFactory {
-            override fun create() = database
+            override fun create() = databaseHandle
         }
 
     private fun fixedOwnerContext(ownerId: OwnerId): OwnerContext =

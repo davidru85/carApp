@@ -915,6 +915,9 @@ Rules:
   or decorating it (`D-59`).
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
+- Each `AppGraph` owns exactly one `DatabaseHandle` created by its `DatabaseFactory` and releases it
+  idempotently from `close()`. `SwiftAppGraph.close()` closes its wrapped graph after its cached
+  holders, so the same handle is released transitively (`D-89`).
 - `:integration:firebase-*` modules MAY declare Koin `Module` declarations for their own provider
   bindings. `:wiring:firebase` is the only module that constructs Firebase implementations;
   integration modules MUST NOT reference `buildAppGraph`.
@@ -1620,7 +1623,7 @@ custom role contains exactly `cloudfunctions.functions.get`. The job reads the e
 from `docs/versions-matrix.md`, not from `functions/package.json`, then separately fails if the
 manifest disagrees with the matrix. Fork pull requests receive no cloud identity.
 
-For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide declarations from Objective-C export, and **SQLDelight-generated types owned by `:core:database`** (`AppDatabase`, generated query interfaces and generated row classes). SQLDelight-generated types are allowed only in `:core:database` signatures and in `DatabaseFactory` (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
+For assertion 1, the parser strips comments and string literals before collecting identifiers. It ignores the following non-project identifiers: Kotlin primitives (`String`, `Long`, `Int`, `Boolean`, `Unit`), Kotlin standard library containers and primitives (`List`, `Set`, `Map`, `MutableMap`, `Pair`, `Nothing`), nullable markers, `Throwable`, `kotlinx.coroutines` types (`Flow`, `StateFlow`, `CoroutineScope`, `CoroutineDispatcher`), the pinned datetime type recorded in `docs/versions-matrix.md`, platform annotation names used only to hide declarations from Objective-C export, and **SQLDelight-generated types owned by `:core:database`** (`AppDatabase`, generated query interfaces and generated row classes). SQLDelight-generated types are allowed only in `:core:database` signatures and in the `DatabaseHandle` / `DatabaseFactory` declarations (`§20.3.2`); any appearance in `:core:common`, `:core:sync`, feature `domain` or the `:shared` public API remains a violation. Before `E0-06` pins the datetime package, the `Instant` reference in §20 is treated as a known `TBD` placeholder and `contract-check` reports the `E0-06` blocker instead of accepting a guessed package. After `E0-06`, the ignored type MUST equal the exact fully-qualified `Instant` package recorded in the matrix. Any other capitalized identifier in a public signature is treated as project-owned and MUST be declared in §20.
 
 For the Objective-C header assertion, `contract-check` MUST fail if the header exports any forbidden type from §15.3 or omits any Swift-facing type explicitly listed in §20.10.
 
@@ -1889,21 +1892,31 @@ The no-op implementation lives in `:core:crash` and is the default fake selected
 ```kotlin
 // AppDatabase is the SQLDelight-generated database type owned by :core:database.
 // It is generated from the committed .sq schema; contract-check assertion 1 allows
-// SQLDelight-generated types only in :core:database and DatabaseFactory signatures.
+// SQLDelight-generated types only in :core:database and these database-owner signatures.
 
-interface DatabaseFactory { fun create(): AppDatabase }
+interface DatabaseHandle {
+    val database: AppDatabase
+    fun close()
+}
+
+interface DatabaseFactory { fun create(): DatabaseHandle }
 ```
 
-`DatabaseFactory` lives in `:core:database` (not `:core:common`) because its return type
-`AppDatabase` is a SQLDelight-generated type owned by `:core:database`, and `:core:common` is
+`DatabaseHandle` owns exactly one `AppDatabase` and its underlying `SqlDriver`. Its `close()` is
+idempotent, releases that driver exactly once and makes later database operations fail. The caller
+of `DatabaseFactory.create()` owns the returned handle; the factory does not retain or close it.
+
+`DatabaseFactory` and `DatabaseHandle` live in `:core:database` (not `:core:common`) because their
+signatures contain `AppDatabase`, a SQLDelight-generated type owned by `:core:database`, and `:core:common` is
 forbidden from depending on SQLDelight or SQLite (`docs/TECHNICAL_PLAN.md §4`). `:shared` carries
 `databaseFactory: DatabaseFactory` in `AppGraphDependencies` (`§11.6`) and imports it from
 `:core:database`. `:core:testing` is allowed to depend on `:core:database` so it can provide a
 generic fake; `:shared:testing` composes that fake into `AppGraphDependencies` (`D-56`). D-59 also
 allows `:wiring:firebase` to reference the `DatabaseFactory` abstraction while implementing
 `AppProviders`, but it MUST NOT expose or reference `AppDatabase`. Any appearance of `AppDatabase`
-or `DatabaseFactory` in `:core:common`, `:core:sync`, feature `domain` or the Swift-facing public
-API remains a violation.
+or either database lifetime type in `:core:common`, `:core:sync`, feature `domain` or the
+Swift-facing public API remains a violation. `DatabaseHandle` and `DatabaseFactory` MUST NOT appear
+in the Objective-C header.
 
 ### 20.4 Domain models — `:core:model`
 
@@ -2469,6 +2482,11 @@ It is never display copy.
 The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
 
 `SwiftAppGraph` state-holder factories are idempotent within the same graph instance: the first call creates and caches a state holder, and later calls for the same factory arguments return the same instance. After `SwiftAppGraph.close()`, cached state holders are cancelled and removed; any later factory call throws `IllegalStateException`.
+
+`AppGraph.close()` is idempotent and releases the graph-owned `DatabaseHandle`. `SwiftAppGraph.close()`
+first closes its cached state holders and then closes the wrapped `AppGraph`, so the database
+connection is released transitively. The D-55 staged Fuel, Session and Sync shells do not acquire
+additional database handles and remain safe to close.
 
 `FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
 

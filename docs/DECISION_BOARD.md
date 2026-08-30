@@ -117,6 +117,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-86 | Kotlin and Swift graph separation | `buildAppGraph` returns hidden `AppGraph`; `SwiftAppGraph` wraps it by composition | Separate Android factory; make `SwiftAppGraph` implement `AppGraph` | Accepted | Gives Android caller-owned scopes without leaking `CoroutineScope`, `SyncController` or `AppGraph` into Objective-C. |
 | D-87 | Vehicle editability projection | Observe reactive `VehicleEditFacts` from Vehicle and active Fuel Entry changes | One-shot suspend query; optimistic edit with save-time rejection only | Accepted | The form converges after background recovery while transactional validation remains authoritative. |
 | D-88 | Pre-E3-03 sync-status staging | Keep D-55 direct Vehicle restoration and constant `SyncStatus.Idle`; do not create a provisional controller | Provisional controller; pull E3-03 forward | Accepted | Avoids a second sync source of truth; E3-03 closes the explicit temporary exception. |
+| D-89 | Local database lifetime ownership | `DatabaseFactory.create()` returns a `DatabaseHandle` that owns one `AppDatabase` and its `SqlDriver` | Add `DatabaseFactory.close(database)`; expose the driver to `:shared` | Accepted | Keeps the closeable resource in `:core:database`; `AppGraph.close()` releases its handle exactly once and `SwiftAppGraph.close()` does so transitively without changing the Swift ABI. |
 
 ## Library Review Matrix
 

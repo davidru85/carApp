@@ -1,6 +1,5 @@
 package com.ruizurraca.carapp.core.testing
 
-import app.cash.sqldelight.db.SqlDriver
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
@@ -10,7 +9,7 @@ import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
-import com.ruizurraca.carapp.core.database.AppDatabase
+import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -24,7 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Creates isolated SQLDelight databases backed by the bundled in-memory SQLite driver. */
 expect class InMemoryDatabaseFactory() : DatabaseFactory {
-    override fun create(): AppDatabase
+    override fun create(): DatabaseHandle
 
     fun close()
 }
@@ -91,16 +90,16 @@ class FakeRemoteSyncSource(
     ): Outcome<RemotePage, RemoteError> = pullResult
 }
 
-internal class TrackedInMemoryDatabases {
-    private val drivers = mutableListOf<SqlDriver>()
+internal class TrackedDatabaseHandles {
+    private val handles = mutableListOf<DatabaseHandle>()
 
-    fun create(driver: SqlDriver): AppDatabase {
-        drivers += driver
-        return AppDatabase(driver)
+    fun track(handle: DatabaseHandle): DatabaseHandle {
+        handles += handle
+        return handle
     }
 
     fun close() {
-        drivers.forEach(SqlDriver::close)
-        drivers.clear()
+        handles.forEach(DatabaseHandle::close)
+        handles.clear()
     }
 }

@@ -26,15 +26,18 @@ class AndroidFileBackedSchemaTest {
     fun persistentFactoryCreatesSchemaAtTheProvidedPath() =
         runTest {
             val directory = Files.createTempDirectory("carapp-e0-07-").toFile()
+            val databaseHandle =
+                createPersistentDatabaseFactory(
+                    directory.resolve("carapp.db").absolutePath,
+                ).create()
 
             try {
-                val database =
-                    createPersistentDatabaseFactory(
-                        directory.resolve("carapp.db").absolutePath,
-                    ).create()
-
-                assertEquals(emptyList(), database.databaseQueries.selectAllVehicles().awaitAsList())
+                assertEquals(
+                    emptyList(),
+                    databaseHandle.database.databaseQueries.selectAllVehicles().awaitAsList(),
+                )
             } finally {
+                databaseHandle.close()
                 directory.deleteRecursively()
             }
         }

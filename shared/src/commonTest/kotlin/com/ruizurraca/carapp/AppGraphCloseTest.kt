@@ -1,15 +1,14 @@
 package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.DispatcherProvider
-import com.ruizurraca.carapp.core.database.AppDatabase
+import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.database.DatabaseFactory
-import com.ruizurraca.carapp.core.database.VehicleDatabaseAccess
 import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
-import kotlin.test.assertFails
+import kotlin.test.assertEquals
 
 class AppGraphCloseTest {
     @Test
@@ -33,10 +32,10 @@ class AppGraphCloseTest {
 
     private suspend fun assertGraphCloseReleasesDatabase(closeGraph: (AppGraph, DispatcherProvider) -> Unit) {
         val owningFactory = InMemoryDatabaseFactory()
-        val database = owningFactory.create()
+        val recordingFactory = RecordingDatabaseFactory(owningFactory)
         val dependencies =
             testAppGraphDependencies(
-                databaseFactory = fixedDatabaseFactory(database),
+                databaseFactory = recordingFactory,
             )
         val graph =
             buildAppGraph(
@@ -46,19 +45,28 @@ class AppGraphCloseTest {
 
         try {
             closeGraph(graph, dependencies.dispatchers)
-
-            assertFails {
-                VehicleDatabaseAccess(database).writeTransaction {
-                    activeVehicles("test-owner")
-                }
-            }
+            assertEquals(1, recordingFactory.closeCalls)
         } finally {
             owningFactory.close()
         }
     }
+}
 
-    private fun fixedDatabaseFactory(database: AppDatabase): DatabaseFactory =
-        object : DatabaseFactory {
-            override fun create(): AppDatabase = database
+private class RecordingDatabaseFactory(
+    private val delegate: DatabaseFactory,
+) : DatabaseFactory {
+    var closeCalls: Int = 0
+        private set
+
+    override fun create(): DatabaseHandle {
+        val handle = delegate.create()
+        return object : DatabaseHandle {
+            override val database = handle.database
+
+            override fun close() {
+                closeCalls += 1
+                handle.close()
+            }
         }
+    }
 }

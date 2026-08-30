@@ -10,8 +10,8 @@ import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDriver
  */
 fun createStagedDatabaseFactory(): DatabaseFactory =
     object : DatabaseFactory {
-        override fun create(): AppDatabase =
-            AppDatabase(
+        override fun create(): DatabaseHandle =
+            SqlDriverDatabaseHandle(
                 AndroidxSqliteDriver(
                     driver = BundledSQLiteDriver(),
                     databaseType = AndroidxSqliteDatabaseType.Memory,
