@@ -1,170 +1,499 @@
 package com.ruizurraca.carapp
 
+import android.app.Application
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListUiState
 import com.ruizurraca.carapp.wiring.firebase.firebaseAppProviders
 
 class MainActivity : ComponentActivity() {
-    private lateinit var graph: SwiftAppGraph
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val providers =
-            firebaseAppProviders(
-                databaseFilePath = getDatabasePath(DATABASE_FILE_NAME).absolutePath,
-            )
-        val isDebugBuild = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
-        graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)
+        val viewModel =
+            ViewModelProvider(
+                owner = this,
+                factory = VehicleAppViewModel.factory(application),
+            )[VehicleAppViewModel::class.java]
 
         setContent {
             MaterialTheme {
-                Surface {
-                    WalkingSkeletonScreen(graph = graph)
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    VehicleApp(viewModel = viewModel)
                 }
             }
         }
     }
+}
 
-    override fun onDestroy() {
-        if (::graph.isInitialized) graph.close()
-        super.onDestroy()
+internal class VehicleAppViewModel(
+    application: Application,
+) : ViewModel() {
+    private val providers =
+        firebaseAppProviders(
+            databaseFilePath = application.getDatabasePath(DATABASE_FILE_NAME).absolutePath,
+        )
+    private val isDebugBuild = application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    private val graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)
+    val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
+    private val formStateHolders = mutableMapOf<String, VehicleFormStateHolder>()
+
+    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder =
+        formStateHolders.getOrPut(vehicleId.cacheKey()) {
+            graph.vehicleFormStateHolder(scope = viewModelScope, vehicleId = vehicleId)
+        }
+
+    fun closeVehicleForm(vehicleId: String?) {
+        formStateHolders.remove(vehicleId.cacheKey())?.close()
+    }
+
+    override fun onCleared() {
+        formStateHolders.values.forEach(VehicleFormStateHolder::close)
+        formStateHolders.clear()
+        vehicleListStateHolder.close()
+        graph.close()
+    }
+
+    companion object {
+        fun factory(application: Application): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    VehicleAppViewModel(application) as T
+            }
     }
 }
 
 @Composable
-private fun WalkingSkeletonScreen(graph: SwiftAppGraph) {
-    val sessionStateHolder = remember(graph) { graph.sessionStateHolder() }
-    val vehicleFormStateHolder = remember(graph) { graph.vehicleFormStateHolder(vehicleId = null) }
-    val vehicleListStateHolder = remember(graph) { graph.vehicleListStateHolder() }
-    val sessionState by sessionStateHolder.state.collectAsState()
-    val vehicleFormState by vehicleFormStateHolder.state.collectAsState()
-    val vehicleListState by vehicleListStateHolder.state.collectAsState()
-
-    DisposableEffect(vehicleFormStateHolder) {
-        onDispose { vehicleFormStateHolder.close() }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+private fun VehicleApp(viewModel: VehicleAppViewModel) {
+    val navController = rememberNavController()
+    NavHost(
+        navController = navController,
+        startDestination = VehicleRoutes.LIST,
     ) {
-        Text(
-            text = stringResource(R.string.walking_skeleton_title),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        SessionSection(
-            state = sessionState,
-            onStartAnonymousSignIn = { sessionStateHolder.startAnonymousSignIn() },
-        )
-        VehicleEditor(
-            state = vehicleFormState,
-            onNameChange = vehicleFormStateHolder::setName,
-            onSave = { vehicleFormStateHolder.save() },
-            onRefresh = { vehicleListStateHolder.refresh() },
-            isRefreshing = vehicleListState.isLoading,
-        )
-        VehicleList(state = vehicleListState)
-    }
-}
-
-@Composable
-private fun SessionSection(
-    state: SessionUiState,
-    onStartAnonymousSignIn: () -> Unit,
-) {
-    Text(text = stringResource(R.string.session_status, state.phase.localizedLabel()))
-    if (state.phase == SessionPhase.SIGNED_OUT || state.phase == SessionPhase.LOCAL) {
-        Button(onClick = onStartAnonymousSignIn, enabled = !state.isBusy) {
-            Text(stringResource(R.string.continue_without_account))
+        composable(VehicleRoutes.LIST) {
+            VehicleListScreen(
+                stateHolder = viewModel.vehicleListStateHolder,
+                onCreate = { navController.navigate(VehicleRoutes.CREATE) },
+                onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
+            )
+        }
+        composable(VehicleRoutes.CREATE) {
+            VehicleFormScreen(
+                stateHolder = viewModel.vehicleFormStateHolder(vehicleId = null),
+                originalVehicleId = null,
+                onBack = navController::popBackStack,
+                onSaved = { vehicleId ->
+                    navController.navigate(VehicleRoutes.detail(vehicleId)) {
+                        popUpTo(VehicleRoutes.CREATE) { inclusive = true }
+                    }
+                },
+                releaseForm = { viewModel.closeVehicleForm(vehicleId = null) },
+            )
+        }
+        composable(
+            route = VehicleRoutes.EDIT,
+            arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
+        ) { entry ->
+            val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+            VehicleFormScreen(
+                stateHolder = viewModel.vehicleFormStateHolder(vehicleId),
+                originalVehicleId = vehicleId,
+                onBack = navController::popBackStack,
+                onSaved = { navController.popBackStack() },
+                releaseForm = { viewModel.closeVehicleForm(vehicleId) },
+            )
+        }
+        composable(
+            route = VehicleRoutes.DETAIL,
+            arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
+        ) { entry ->
+            val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+            VehicleDetailScreen(
+                navController = navController,
+                stateHolder = viewModel.vehicleListStateHolder,
+                vehicleId = vehicleId,
+            )
         }
     }
-    if (state.isBusy) CircularProgressIndicator()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VehicleListScreen(
+    stateHolder: VehicleListStateHolder,
+    onCreate: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    val state by stateHolder.state.collectAsState()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.vehicle_list_title)) },
+                actions = {
+                    TextButton(
+                        onClick = stateHolder::refresh,
+                        enabled = !state.isLoading,
+                    ) {
+                        Text(stringResource(R.string.restore_backup))
+                    }
+                },
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onCreate,
+                modifier = Modifier.testTag(VehicleTestTags.ADD_VEHICLE),
+            ) {
+                Text(stringResource(R.string.add_vehicle))
+            }
+        },
+    ) { padding ->
+        VehicleListContent(
+            state = state,
+            onOpen = onOpen,
+            modifier = Modifier.padding(padding),
+        )
+    }
 }
 
 @Composable
-private fun VehicleEditor(
+private fun VehicleListContent(
+    state: VehicleListUiState,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxSize().padding(horizontal = 20.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            state.isLoading && state.vehicles.isEmpty() -> CircularProgressIndicator()
+            state.message != null && state.vehicles.isEmpty() -> ErrorText(state.message)
+            state.vehicles.isEmpty() -> Text(stringResource(R.string.empty_vehicles))
+            else ->
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(state.vehicles, key = VehicleListItemUi::id) { vehicle ->
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onOpen(vehicle.id) }
+                                    .padding(vertical = 16.dp)
+                                    .testTag(VehicleTestTags.vehicleRow(vehicle.id)),
+                        ) {
+                            Text(vehicle.name, style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
+                        }
+                        HorizontalDivider()
+                    }
+                }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VehicleFormScreen(
+    stateHolder: VehicleFormStateHolder,
+    originalVehicleId: String?,
+    onBack: () -> Unit,
+    onSaved: (String) -> Unit,
+    releaseForm: () -> Unit,
+) {
+    val state by stateHolder.state.collectAsState()
+    DisposableEffect(stateHolder) { onDispose { releaseForm() } }
+    LaunchedEffect(state.vehicleId, state.isSaving) {
+        val savedVehicleId = state.vehicleId
+        if (originalVehicleId == null && savedVehicleId != null && !state.isSaving) onSaved(savedVehicleId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        stringResource(
+                            if (originalVehicleId == null) R.string.create_vehicle_title else R.string.edit_vehicle_title,
+                        ),
+                    )
+                },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+                },
+            )
+        },
+    ) { padding ->
+        VehicleForm(
+            state = state,
+            onNameChange = stateHolder::setName,
+            onOdometerChange = stateHolder::setInitialOdometerKm,
+            onBrandChange = stateHolder::setBrand,
+            onModelChange = stateHolder::setModel,
+            onSave = stateHolder::save,
+            modifier = Modifier.padding(padding),
+        )
+    }
+}
+
+@Composable
+private fun VehicleForm(
     state: VehicleFormUiState,
     onNameChange: (String) -> Unit,
+    onOdometerChange: (Long) -> Unit,
+    onBrandChange: (String?) -> Unit,
+    onModelChange: (String?) -> Unit,
     onSave: () -> Unit,
-    onRefresh: () -> Unit,
-    isRefreshing: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
-        value = state.name,
-        onValueChange = onNameChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text(stringResource(R.string.vehicle_name)) },
-        singleLine = true,
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Button(onClick = onSave, enabled = !state.isSaving) {
-            Text(stringResource(R.string.save_vehicle))
-        }
-        Button(onClick = onRefresh, enabled = !isRefreshing) {
-            Text(stringResource(R.string.restore_backup))
+    Column(
+        modifier = modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        OutlinedTextField(
+            value = state.name,
+            onValueChange = onNameChange,
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.NAME),
+            label = { Text(stringResource(R.string.vehicle_name)) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = state.initialOdometerKm.toString(),
+            onValueChange = { value -> value.toLongOrNull()?.let(onOdometerChange) },
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.ODOMETER),
+            enabled = state.canEditInitialOdometer,
+            label = { Text(stringResource(R.string.initial_odometer)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = state.brand.orEmpty(),
+            onValueChange = { value -> onBrandChange(value.ifBlank { null }) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.vehicle_brand)) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = state.model.orEmpty(),
+            onValueChange = { value -> onModelChange(value.ifBlank { null }) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.vehicle_model)) },
+            singleLine = true,
+        )
+        state.message?.let { ErrorText(it) }
+        Button(
+            onClick = onSave,
+            enabled = !state.isSaving,
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.SAVE),
+        ) {
+            if (state.isSaving) {
+                CircularProgressIndicator()
+            } else {
+                Text(stringResource(R.string.save_vehicle))
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VehicleList(state: VehicleListUiState) {
-    Column {
-        Text(
-            text = stringResource(R.string.saved_vehicles),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        if (state.vehicles.isEmpty()) {
-            Text(stringResource(R.string.empty_vehicles))
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(state.vehicles, key = { vehicle -> vehicle.id }) { vehicle ->
-                    Text(
-                        text = vehicle.name,
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                    )
-                    HorizontalDivider()
+private fun VehicleDetailScreen(
+    navController: NavHostController,
+    stateHolder: VehicleListStateHolder,
+    vehicleId: String,
+) {
+    val state by stateHolder.state.collectAsState()
+    val vehicle = state.vehicles.firstOrNull { item -> item.id == vehicleId }
+    val showDeleteDialog = state.selectedVehicleId == vehicleId && state.message?.code == DELETE_CONFIRMATION_CODE
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = stateHolder::clearMessage,
+            title = { Text(stringResource(R.string.delete_vehicle_title)) },
+            text = { Text(stringResource(R.string.delete_vehicle_confirmation)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        stateHolder.confirmDelete(vehicleId)
+                        navController.popBackStack(VehicleRoutes.LIST, inclusive = false)
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
                 }
+            },
+            dismissButton = {
+                TextButton(onClick = stateHolder::clearMessage) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.vehicle_detail_title)) },
+                navigationIcon = {
+                    TextButton(onClick = navController::popBackStack) { Text(stringResource(R.string.back)) }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            when {
+                state.isLoading && vehicle == null -> CircularProgressIndicator()
+                vehicle == null -> Text(stringResource(R.string.vehicle_not_found))
+                else -> VehicleDetailContent(vehicle, navController, stateHolder)
             }
         }
     }
 }
 
 @Composable
-private fun SessionPhase.localizedLabel(): String =
-    stringResource(
-        when (this) {
-            SessionPhase.UNKNOWN -> R.string.session_unknown
-            SessionPhase.LOCAL -> R.string.session_local
-            SessionPhase.ANONYMOUS -> R.string.session_anonymous
-            SessionPhase.PERMANENT -> R.string.session_permanent
-            SessionPhase.SIGNED_OUT -> R.string.session_signed_out
-            SessionPhase.DELETING -> R.string.session_deleting
-        },
+private fun VehicleDetailContent(
+    vehicle: VehicleListItemUi,
+    navController: NavHostController,
+    stateHolder: VehicleListStateHolder,
+) {
+    Text(
+        text = vehicle.name,
+        style = MaterialTheme.typography.headlineMedium,
+        modifier = Modifier.testTag(VehicleTestTags.DETAIL_NAME),
     )
+    Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
+    Text(
+        text = stringResource(R.string.add_first_fuel_entry_invitation),
+        modifier = Modifier.testTag(VehicleTestTags.FIRST_FUEL_INVITATION),
+    )
+    Row {
+        Button(onClick = { navController.navigate(VehicleRoutes.edit(vehicle.id)) }) {
+            Text(stringResource(R.string.edit_vehicle))
+        }
+        Spacer(Modifier.width(12.dp))
+        OutlinedButton(onClick = { stateHolder.requestDelete(vehicle.id) }) {
+            Text(stringResource(R.string.delete_vehicle))
+        }
+    }
+}
+
+@Composable
+private fun ErrorText(message: UiMessage?) {
+    if (message == null) return
+    Text(
+        text = stringResource(message.stringResource()),
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.testTag(VehicleTestTags.ERROR),
+    )
+}
+
+private fun UiMessage.stringResource(): Int =
+    when (code) {
+        "VALIDATION.REQUIRED_FIELD" -> R.string.error_required_field
+        "VALIDATION.INVALID_LENGTH" -> R.string.error_invalid_length
+        "VALIDATION.OUT_OF_RANGE" -> R.string.error_out_of_range
+        "VALIDATION.EDIT_NOT_ALLOWED" -> R.string.error_edit_not_allowed
+        "VALIDATION.DUPLICATE_NAME" -> R.string.error_duplicate_vehicle_name
+        "VALIDATION.NO_OP" -> R.string.error_no_changes
+        "VALIDATION.ENTITY_DELETED" -> R.string.error_vehicle_deleted
+        "VALIDATION.ENTITY_NOT_FOUND" -> R.string.vehicle_not_found
+        "PERSISTENCE.DATABASE_UNAVAILABLE",
+        "PERSISTENCE.TRANSACTION_FAILED",
+        "PERSISTENCE.MIGRATION_FAILED",
+        "PERSISTENCE.SERIALIZATION_FAILED",
+        "PERSISTENCE.CONSTRAINT_VIOLATION",
+        -> R.string.error_persistence
+        "REMOTE.UNAVAILABLE",
+        "REMOTE.DEADLINE_EXCEEDED",
+        "REMOTE.PERMISSION_DENIED",
+        "REMOTE.UNAUTHENTICATED",
+        "REMOTE.INVALID_ARGUMENT",
+        "REMOTE.NOT_FOUND",
+        "REMOTE.UNKNOWN",
+        -> R.string.error_restore
+        else -> R.string.error_unexpected
+    }
+
+private fun String?.cacheKey(): String = this ?: CREATE_FORM_CACHE_KEY
+
+private object VehicleRoutes {
+    const val VEHICLE_ID = "vehicleId"
+    const val LIST = "vehicles"
+    const val CREATE = "vehicles/create"
+    const val EDIT = "vehicles/edit/{$VEHICLE_ID}"
+    const val DETAIL = "vehicles/detail/{$VEHICLE_ID}"
+
+    fun edit(vehicleId: String): String = "vehicles/edit/$vehicleId"
+
+    fun detail(vehicleId: String): String = "vehicles/detail/$vehicleId"
+}
+
+object VehicleTestTags {
+    const val ADD_VEHICLE = "add_vehicle"
+    const val NAME = "vehicle_name"
+    const val ODOMETER = "vehicle_odometer"
+    const val SAVE = "save_vehicle"
+    const val DETAIL_NAME = "vehicle_detail_name"
+    const val FIRST_FUEL_INVITATION = "first_fuel_invitation"
+    const val ERROR = "vehicle_error"
+    const val FUEL_TYPE_INPUT = "fuel_type_input"
+
+    fun vehicleRow(vehicleId: String): String = "vehicle_row_$vehicleId"
+}
 
 private const val DATABASE_FILE_NAME = "carapp.db"
+private const val CREATE_FORM_CACHE_KEY = "__create__"
+private const val DELETE_CONFIRMATION_CODE = "INFO.CONFIRM_DELETE_VEHICLE"

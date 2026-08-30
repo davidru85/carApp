@@ -18,7 +18,7 @@ class BuildAppGraphTest {
 
         assertEquals(
             suppliedDependencies.copy(isDebugBuild = false),
-            graph.dependencies,
+            (graph as DefaultAppGraph).dependencies,
         )
     }
 }

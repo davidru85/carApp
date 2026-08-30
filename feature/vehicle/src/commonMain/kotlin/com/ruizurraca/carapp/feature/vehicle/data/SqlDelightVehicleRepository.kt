@@ -20,6 +20,7 @@ import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleValidationConte
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateCreateVehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateUpdateVehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
+import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -64,6 +65,21 @@ class SqlDelightVehicleRepository internal constructor(
             .flatMapLatest { ownerId -> localDataSource.observeVehicle(ownerId, id) }
             .map<LocalVehicle?, Outcome<Vehicle?, AppError>> { row ->
                 Outcome.Ok(row?.toDomainVehicle())
+            }.catch { throwable -> emitReadFailure(throwable) }
+
+    override fun observeVehicleEditFacts(id: EntityId): Flow<Outcome<VehicleEditFacts?, AppError>> =
+        ownerContext
+            .observe()
+            .flatMapLatest { ownerId -> localDataSource.observeVehicleEditFacts(ownerId, id) }
+            .map<LocalVehicleEditFacts?, Outcome<VehicleEditFacts?, AppError>> { facts ->
+                Outcome.Ok(
+                    facts?.let {
+                        VehicleEditFacts(
+                            vehicle = it.vehicle.toDomainVehicle(),
+                            canEditInitialOdometer = it.canEditInitialOdometer,
+                        )
+                    },
+                )
             }.catch { throwable -> emitReadFailure(throwable) }
 
     override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =

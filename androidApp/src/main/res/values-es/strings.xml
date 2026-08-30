@@ -1,18 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">carApp</string>
-    <string name="walking_skeleton_title">Prueba de copia del vehículo</string>
-    <string name="session_status">Sesión: %1$s</string>
-    <string name="session_unknown">Iniciando</string>
-    <string name="session_local">Solo local</string>
-    <string name="session_anonymous">Copia anónima activa</string>
-    <string name="session_permanent">Cuenta permanente</string>
-    <string name="session_signed_out">Sin conexión</string>
-    <string name="session_deleting">Eliminando</string>
-    <string name="continue_without_account">Continuar sin cuenta</string>
+    <string name="vehicle_list_title">Vehículos</string>
+    <string name="add_vehicle">Añadir vehículo</string>
+    <string name="create_vehicle_title">Crear vehículo</string>
+    <string name="edit_vehicle_title">Editar vehículo</string>
+    <string name="vehicle_detail_title">Detalles del vehículo</string>
+    <string name="back">Atrás</string>
     <string name="vehicle_name">Nombre del vehículo</string>
+    <string name="initial_odometer">Kilometraje inicial (km)</string>
+    <string name="vehicle_brand">Marca (opcional)</string>
+    <string name="vehicle_model">Modelo (opcional)</string>
     <string name="save_vehicle">Guardar vehículo</string>
     <string name="restore_backup">Recuperar copia</string>
-    <string name="saved_vehicles">Vehículos guardados</string>
     <string name="empty_vehicles">Todavía no hay vehículos guardados.</string>
+    <string name="vehicle_odometer">%1$d km</string>
+    <string name="add_first_fuel_entry_invitation">Añade el primer repostaje para empezar a medir el consumo.</string>
+    <string name="edit_vehicle">Editar vehículo</string>
+    <string name="delete_vehicle">Eliminar vehículo</string>
+    <string name="delete_vehicle_title">¿Eliminar el vehículo?</string>
+    <string name="delete_vehicle_confirmation">También se eliminarán sus repostajes de este dispositivo.</string>
+    <string name="delete">Eliminar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="vehicle_not_found">Este vehículo ya no está disponible.</string>
+    <string name="error_required_field">Completa el campo obligatorio.</string>
+    <string name="error_invalid_length">Comprueba la longitud del campo.</string>
+    <string name="error_out_of_range">Introduce un valor dentro del intervalo permitido.</string>
+    <string name="error_edit_not_allowed">Ya no se puede cambiar el kilometraje inicial.</string>
+    <string name="error_duplicate_vehicle_name">Ya existe otro vehículo con este nombre.</string>
+    <string name="error_no_changes">No hay cambios que guardar.</string>
+    <string name="error_vehicle_deleted">Este vehículo se ha eliminado.</string>
+    <string name="error_persistence">No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo.</string>
+    <string name="error_restore">No se ha podido recuperar la copia. Tus datos locales siguen disponibles.</string>
+    <string name="error_unexpected">Algo ha salido mal. Inténtalo de nuevo.</string>
 </resources>

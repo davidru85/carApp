@@ -16,6 +16,7 @@ import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
@@ -46,8 +47,8 @@ class VehicleListStateHolderTest {
                 )
 
             try {
-                val list = graph.vehicleListStateHolder()
-                val form = graph.vehicleFormStateHolder(vehicleId = null)
+                val list = graph.vehicleListStateHolder(backgroundScope)
+                val form = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 form.setName("Roadster")
 
                 form.save()
@@ -91,7 +92,7 @@ class VehicleListStateHolderTest {
                 )
 
             try {
-                val list = graph.vehicleListStateHolder()
+                val list = graph.vehicleListStateHolder(backgroundScope)
 
                 list.refresh()
                 list.state.first { state -> !state.isLoading }

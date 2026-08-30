@@ -95,6 +95,11 @@ private class RecordingVehicleLocalDataSource : VehicleLocalDataSource {
         id: EntityId,
     ): Flow<LocalVehicle?> = flowOf(null)
 
+    override fun observeVehicleEditFacts(
+        ownerId: OwnerId,
+        id: EntityId,
+    ): Flow<LocalVehicleEditFacts?> = flowOf(null)
+
     override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T {
         mutableTrace += "transaction.begin"
         inTransaction = true

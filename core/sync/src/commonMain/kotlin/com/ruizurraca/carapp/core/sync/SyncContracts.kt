@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncTrigger
+import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.StateFlow
@@ -73,21 +74,6 @@ data class QuarantineRecord(
     val rawJson: String,
     val createdAt: Instant,
 )
-
-sealed class SyncStatus {
-    data object Idle : SyncStatus()
-
-    data object Syncing : SyncStatus()
-
-    data class Pending(
-        val count: Int,
-    ) : SyncStatus()
-
-    data class Failed(
-        val retryableCount: Int,
-        val poisonedCount: Int,
-    ) : SyncStatus()
-}
 
 interface SyncController {
     val status: StateFlow<SyncStatus>

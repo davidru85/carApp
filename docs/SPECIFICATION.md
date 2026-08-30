@@ -305,8 +305,9 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
 7. `:core:database` depends on `:core:model`, `:core:common`, SQLDelight and AndroidX SQLite; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
-9. `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single exported
-   framework and contains no product logic.
+9. `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 export-only
+   `:feature:vehicle` / `:core:common` declarations, owns the single exported framework and
+   contains no product logic or direct `:integration:*` dependency.
 10. Firebase and GitLive types never cross integration boundaries.
 11. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
 12. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.

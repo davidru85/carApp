@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -40,7 +41,7 @@ class VehicleStateHoldersTest {
                     dispatchers = TestDispatcherProvider(),
                     refreshVehicles = { Outcome.Ok(Unit) },
                 )
-            backgroundScope.launch { holder.state.collect() }
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
 
             repository.vehicles.value = Outcome.Ok(listOf(vehicle(), vehicle(deleted = true)))
             advanceUntilIdle()
@@ -73,7 +74,7 @@ class VehicleStateHoldersTest {
                     },
                     updateVehicle = { Outcome.Ok(Unit) },
                 )
-            backgroundScope.launch { holder.state.collect() }
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
 
             holder.setName("Roadster")
             holder.setInitialOdometerKm(125)
@@ -107,7 +108,7 @@ class VehicleStateHoldersTest {
                         Outcome.Err(ValidationError.EditNotAllowed("initialOdometerKm"))
                     },
                 )
-            backgroundScope.launch { holder.state.collect() }
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
             advanceUntilIdle()
             assertTrue(holder.state.value.canEditInitialOdometer)
 

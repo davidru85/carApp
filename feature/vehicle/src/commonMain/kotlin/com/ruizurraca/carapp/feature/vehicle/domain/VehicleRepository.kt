@@ -11,9 +11,16 @@ interface VehicleRepository {
 
     fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>>
 
+    fun observeVehicleEditFacts(id: EntityId): Flow<Outcome<VehicleEditFacts?, AppError>>
+
     suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError>
 
     suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError>
 
     suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError>
 }
+
+data class VehicleEditFacts(
+    val vehicle: Vehicle,
+    val canEditInitialOdometer: Boolean,
+)

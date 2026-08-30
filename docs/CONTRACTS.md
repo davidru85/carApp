@@ -1842,13 +1842,9 @@ fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
 @ObjCName(name = "SharedSyncSyncStatus", swiftName = "SyncSyncStatus", exact = true)
 sealed class SyncStatus {
-    @ObjCName(name = "SharedSyncSyncStatusIdle", swiftName = "SyncSyncStatus.Idle", exact = true)
     data object Idle : SyncStatus()
-    @ObjCName(name = "SharedSyncSyncStatusSyncing", swiftName = "SyncSyncStatus.Syncing", exact = true)
     data object Syncing : SyncStatus()
-    @ObjCName(name = "SharedSyncSyncStatusPending", swiftName = "SyncSyncStatus.Pending", exact = true)
     data class Pending(val count: Int) : SyncStatus()
-    @ObjCName(name = "SharedSyncSyncStatusFailed", swiftName = "SyncSyncStatus.Failed", exact = true)
     data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus()
 }
 

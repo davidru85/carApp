@@ -28,15 +28,6 @@ import kotlin.time.Instant
 
 class VehicleFormStateHolderTest {
     @Test
-    fun nameIntentUpdatesFormState() {
-        val holder = VehicleFormStateHolder(vehicleId = null)
-
-        holder.setName("Roadster")
-
-        assertEquals("Roadster", holder.state.value.name)
-    }
-
-    @Test
     fun savePersistsACompletePendingVehicleForTheCurrentOwner() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
@@ -54,7 +45,7 @@ class VehicleFormStateHolderTest {
                 )
 
             try {
-                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -100,7 +91,7 @@ class VehicleFormStateHolderTest {
                 )
 
             try {
-                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -166,7 +157,7 @@ class VehicleFormStateHolderTest {
                 )
 
             try {
-                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -202,7 +193,7 @@ class VehicleFormStateHolderTest {
                 )
 
             try {
-                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -248,7 +239,7 @@ class VehicleFormStateHolderTest {
                 )
 
             try {
-                val holder = graph.vehicleFormStateHolder(vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 holder.setName("Offline Roadster")
 
                 holder.save()

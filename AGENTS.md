@@ -340,8 +340,9 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Features do not depend on other features.
 - `:core:sync` does not depend on integrations or features.
 - `:shared` does not depend on integrations.
-- `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single `Shared`
-  framework and contains no product logic.
+- `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 export-only
+  `:feature:vehicle` / `:core:common` declarations, owns the single `Shared` framework, contains
+  no product logic and never depends directly on `:integration:*`.
 - `:shared:testing` depends only on `:shared` and `:core:testing`; consumers depend on it only from
   `commonTest`.
 - No module under `:core` depends on `:shared` or `:shared:testing`.

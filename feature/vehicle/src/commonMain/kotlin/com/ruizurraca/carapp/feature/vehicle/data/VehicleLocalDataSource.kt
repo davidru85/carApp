@@ -7,6 +7,7 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleNameCandidate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 internal interface VehicleLocalDataSource {
@@ -19,6 +20,11 @@ internal interface VehicleLocalDataSource {
         ownerId: OwnerId,
         id: EntityId,
     ): Flow<LocalVehicle?>
+
+    fun observeVehicleEditFacts(
+        ownerId: OwnerId,
+        id: EntityId,
+    ): Flow<LocalVehicleEditFacts?>
 
     suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T
 }
@@ -69,11 +75,32 @@ internal class SqlDelightVehicleLocalDataSource(
             .observeVehicle(ownerId.value, id.value)
             .map { it?.toLocalVehicle() }
 
+    override fun observeVehicleEditFacts(
+        ownerId: OwnerId,
+        id: EntityId,
+    ): Flow<LocalVehicleEditFacts?> =
+        combine(
+            databaseAccess.observeVehicle(ownerId.value, id.value),
+            databaseAccess.observeHasActiveFuelEntries(id.value),
+        ) { vehicle, hasActiveFuelEntries ->
+            vehicle?.let { row ->
+                LocalVehicleEditFacts(
+                    vehicle = row.toLocalVehicle(),
+                    canEditInitialOdometer = !hasActiveFuelEntries,
+                )
+            }
+        }
+
     override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T =
         databaseAccess.writeTransaction {
             SqlDelightVehicleWriteScope(this).block()
         }
 }
+
+internal data class LocalVehicleEditFacts(
+    val vehicle: LocalVehicle,
+    val canEditInitialOdometer: Boolean,
+)
 
 private class SqlDelightVehicleWriteScope(
     private val databaseScope: VehicleDatabaseWriteScope,

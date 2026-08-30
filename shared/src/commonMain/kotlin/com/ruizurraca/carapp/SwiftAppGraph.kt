@@ -1,69 +1,129 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.common.DispatcherProvider
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlin.experimental.ExperimentalObjCRefinement
+import kotlin.native.HiddenFromObjC
 
-/** Swift-facing application graph facade. State-holder accessors are added by E0-07 in place. */
+/** Swift-facing application graph facade with graph-owned state-holder scopes (`D-86`). */
 class SwiftAppGraph {
-    private var backingDependencies: AppGraphDependencies? = null
-    private var graphScope: CoroutineScope? = null
-    private var vehicleSliceRuntime: VehicleSliceRuntime? = null
-    private var cachedVehicleListStateHolder: VehicleListStateHolder? = null
-    private var cachedSessionStateHolder: SessionStateHolder? = null
+    private var backingGraph: AppGraph? = null
+    private var dispatchers: DispatcherProvider? = null
+    private var cachedVehicleList: ScopedHolder<VehicleListStateHolder>? = null
+    private val cachedVehicleForms = mutableMapOf<String?, ScopedHolder<VehicleFormStateHolder>>()
+    private val cachedFuelEntryLists = mutableMapOf<String, ScopedHolder<FuelEntryListStateHolder>>()
+    private val cachedFuelEntryForms = mutableMapOf<Pair<String, String?>, ScopedHolder<FuelEntryFormStateHolder>>()
+    private var cachedSession: ScopedHolder<SessionStateHolder>? = null
+    private var cachedSync: ScopedHolder<SyncStateHolder>? = null
+    private var closed = false
 
     constructor()
 
-    internal constructor(dependencies: AppGraphDependencies) {
-        backingDependencies = dependencies
-        graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.main)
-        vehicleSliceRuntime = VehicleSliceRuntime(dependencies, dependencies.databaseFactory.create())
+    internal constructor(
+        graph: AppGraph,
+        dispatchers: DispatcherProvider,
+    ) {
+        backingGraph = graph
+        this.dispatchers = dispatchers
     }
 
-    internal val dependencies: AppGraphDependencies
-        get() = checkNotNull(backingDependencies) { "SwiftAppGraph was not built from AppProviders" }
+    fun vehicleListStateHolder(): VehicleListStateHolder {
+        val graph = requireOpenGraph()
+        return cachedVehicleList?.holder
+            ?: newScopedHolder { scope -> graph.vehicleListStateHolder(scope) }
+                .also { cachedVehicleList = it }
+                .holder
+    }
 
-    fun vehicleListStateHolder(): VehicleListStateHolder =
-        cachedVehicleListStateHolder
-            ?: VehicleListStateHolder(
-                scope = graphScope,
-                vehicles = vehicleSliceRuntime?.observeVehicles(),
-                refreshVehicles = vehicleSliceRuntime?.let { runtime -> runtime::refresh },
-            ).also { cachedVehicleListStateHolder = it }
+    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder {
+        val graph = requireOpenGraph()
+        return cachedVehicleForms.getOrPut(vehicleId) {
+            newScopedHolder { scope -> graph.vehicleFormStateHolder(scope, vehicleId) }
+        }.holder
+    }
 
-    fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder =
-        VehicleFormStateHolder(
-            vehicleId = vehicleId,
-            scope = graphScope,
-            saveVehicle = vehicleSliceRuntime?.let { runtime -> runtime::save },
-        )
-
-    fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder = FuelEntryListStateHolder(vehicleId)
+    fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder {
+        val graph = requireOpenGraph()
+        return cachedFuelEntryLists.getOrPut(vehicleId) {
+            newScopedHolder { scope -> graph.fuelEntryListStateHolder(scope, vehicleId) }
+        }.holder
+    }
 
     fun fuelEntryFormStateHolder(
         vehicleId: String,
         entryId: String?,
-    ): FuelEntryFormStateHolder = FuelEntryFormStateHolder(vehicleId, entryId)
+    ): FuelEntryFormStateHolder {
+        val graph = requireOpenGraph()
+        return cachedFuelEntryForms.getOrPut(vehicleId to entryId) {
+            newScopedHolder { scope -> graph.fuelEntryFormStateHolder(scope, vehicleId, entryId) }
+        }.holder
+    }
 
     fun sessionStateHolder(): SessionStateHolder {
-        val scope = checkNotNull(graphScope) { "SwiftAppGraph is closed or was not built from AppProviders" }
-        return cachedSessionStateHolder
-            ?: SessionStateHolder(
-                scope = scope,
-                authClient = dependencies.authClient,
-            ).also { cachedSessionStateHolder = it }
+        val graph = requireOpenGraph()
+        return cachedSession?.holder
+            ?: newScopedHolder { scope -> graph.sessionStateHolder(scope) }
+                .also { cachedSession = it }
+                .holder
     }
 
-    fun syncStateHolder(): SyncStateHolder = SyncStateHolder()
+    fun syncStateHolder(): SyncStateHolder {
+        requireOpenGraph()
+        return cachedSync?.holder
+            ?: newScopedHolder { SyncStateHolder() }
+                .also { cachedSync = it }
+                .holder
+    }
 
     fun close() {
-        cachedVehicleListStateHolder?.close()
-        cachedVehicleListStateHolder = null
-        cachedSessionStateHolder?.close()
-        cachedSessionStateHolder = null
-        graphScope?.cancel()
-        graphScope = null
-        vehicleSliceRuntime = null
-        backingDependencies = null
+        if (closed) return
+        closed = true
+        cachedVehicleList?.close(VehicleListStateHolder::close)
+        cachedVehicleForms.values.forEach { it.close(VehicleFormStateHolder::close) }
+        cachedFuelEntryLists.values.forEach { it.close(FuelEntryListStateHolder::close) }
+        cachedFuelEntryForms.values.forEach { it.close(FuelEntryFormStateHolder::close) }
+        cachedSession?.close(SessionStateHolder::close)
+        cachedSync?.close(SyncStateHolder::close)
+        cachedVehicleList = null
+        cachedVehicleForms.clear()
+        cachedFuelEntryLists.clear()
+        cachedFuelEntryForms.clear()
+        cachedSession = null
+        cachedSync = null
+        backingGraph?.close()
+        backingGraph = null
+        dispatchers = null
+    }
+
+    private fun requireOpenGraph(): AppGraph {
+        check(!closed) { "SwiftAppGraph is closed" }
+        return checkNotNull(backingGraph) { "SwiftAppGraph was not created by createSwiftAppGraph" }
+    }
+
+    private fun <T> newScopedHolder(factory: (CoroutineScope) -> T): ScopedHolder<T> {
+        val dispatcherProvider = checkNotNull(dispatchers)
+        val scope = CoroutineScope(SupervisorJob() + dispatcherProvider.main)
+        return ScopedHolder(scope = scope, holder = factory(scope))
     }
 }
+
+private data class ScopedHolder<T>(
+    val scope: CoroutineScope,
+    val holder: T,
+) {
+    fun close(closeHolder: T.() -> Unit) {
+        holder.closeHolder()
+        scope.cancel()
+    }
+}
+
+@OptIn(ExperimentalObjCRefinement::class)
+@HiddenFromObjC
+fun wrapAppGraphForSwift(
+    graph: AppGraph,
+    dispatchers: DispatcherProvider,
+): SwiftAppGraph = SwiftAppGraph(graph = graph, dispatchers = dispatchers)

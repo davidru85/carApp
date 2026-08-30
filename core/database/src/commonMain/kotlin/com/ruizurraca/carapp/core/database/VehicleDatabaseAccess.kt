@@ -5,6 +5,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOne
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -109,6 +110,13 @@ class VehicleDatabaseAccess(
             .asFlow()
             .mapToOneOrNull(EmptyCoroutineContext)
             .map { it?.toVehicleDatabaseRow() }
+
+    fun observeHasActiveFuelEntries(id: String): Flow<Boolean> =
+        queries
+            .countActiveFuelEntriesByVehicle(id)
+            .asFlow()
+            .mapToOne(EmptyCoroutineContext)
+            .map { count -> count > 0 }
 
     suspend fun <T> writeTransaction(block: suspend VehicleDatabaseWriteScope.() -> T): T =
         database.transactionWithResult(noEnclosing = true) { writeScope.block() }

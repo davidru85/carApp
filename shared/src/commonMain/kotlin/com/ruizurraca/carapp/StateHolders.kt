@@ -6,110 +6,16 @@ import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
+import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.FuelType
-import com.ruizurraca.carapp.core.sync.SyncStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-
-class VehicleListStateHolder internal constructor(
-    private val scope: CoroutineScope? = null,
-    vehicles: Flow<List<VehicleListItemUi>>? = null,
-    private val refreshVehicles: (suspend () -> Unit)? = null,
-) {
-    private var closed = false
-    private val mutableState =
-        MutableStateFlow(VehicleListUiState(false, emptyList(), null, SyncStatus.Idle, null))
-    private val observationJob: Job? =
-        if (scope != null && vehicles != null) {
-            scope.launch {
-                vehicles.collect { items ->
-                    mutableState.value = mutableState.value.copy(vehicles = items)
-                }
-            }
-        } else {
-            null
-        }
-    val state: StateFlow<VehicleListUiState> = mutableState
-
-    fun refresh() {
-        if (closed) return
-        val operationScope = scope ?: return
-        val operation = refreshVehicles ?: return
-        mutableState.value = mutableState.value.copy(isLoading = true)
-        operationScope.launch {
-            operation()
-            mutableState.value = mutableState.value.copy(isLoading = false)
-        }
-    }
-
-    fun selectVehicle(vehicleId: String?) = vehicleId.let { Unit }
-
-    fun requestDelete(vehicleId: String) = vehicleId.let { Unit }
-
-    fun confirmDelete(vehicleId: String) = vehicleId.let { Unit }
-
-    fun clearMessage() = Unit
-
-    fun close() {
-        if (closed) return
-        closed = true
-        observationJob?.cancel()
-    }
-}
-
-class VehicleFormStateHolder internal constructor(
-    vehicleId: String?,
-    private val scope: CoroutineScope? = null,
-    private val saveVehicle: (suspend (VehicleFormUiState) -> Unit)? = null,
-) {
-    private val mutableState =
-        MutableStateFlow(
-            VehicleFormUiState(
-                vehicleId = vehicleId,
-                name = "",
-                initialOdometerKm = 0L,
-                brand = null,
-                model = null,
-                fuelType = FuelType.GASOLINE,
-                canEditInitialOdometer = true,
-                isSaving = false,
-                message = null,
-            ),
-        )
-    val state: StateFlow<VehicleFormUiState> = mutableState
-
-    fun setName(value: String) {
-        mutableState.value = mutableState.value.copy(name = value)
-    }
-
-    fun setInitialOdometerKm(value: Long) = value.let { Unit }
-
-    fun setBrand(value: String?) = value.let { Unit }
-
-    fun setModel(value: String?) = value.let { Unit }
-
-    fun setFuelType(value: FuelType) = value.let { Unit }
-
-    fun save() {
-        val operation = saveVehicle ?: return
-        val operationScope = scope ?: return
-        mutableState.value = mutableState.value.copy(isSaving = true)
-        operationScope.launch {
-            operation(mutableState.value)
-            mutableState.value = mutableState.value.copy(isSaving = false)
-        }
-    }
-
-    fun clearMessage() = Unit
-
-    fun close() = Unit
-}
 
 class FuelEntryListStateHolder internal constructor(
     vehicleId: String,

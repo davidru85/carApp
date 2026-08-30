@@ -23,7 +23,12 @@ class SessionStateHolderTest {
                     providers = setOf(AuthProvider.ANONYMOUS),
                 )
             val authClient = FakeAuthClient(sessionResult = Outcome.Ok(session))
-            val graph = SwiftAppGraph(testAppGraphDependencies(authClient = authClient))
+            val dependencies = testAppGraphDependencies(authClient = authClient)
+            val graph =
+                SwiftAppGraph(
+                    graph = DefaultAppGraph(dependencies),
+                    dispatchers = dependencies.dispatchers,
+                )
             val stateHolder = graph.sessionStateHolder()
 
             stateHolder.startAnonymousSignIn()

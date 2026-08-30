@@ -1,18 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">carApp</string>
-    <string name="walking_skeleton_title">Vehicle backup proof</string>
-    <string name="session_status">Session: %1$s</string>
-    <string name="session_unknown">Starting</string>
-    <string name="session_local">Local only</string>
-    <string name="session_anonymous">Anonymous backup active</string>
-    <string name="session_permanent">Permanent account</string>
-    <string name="session_signed_out">Not connected</string>
-    <string name="session_deleting">Deleting</string>
-    <string name="continue_without_account">Continue without an account</string>
+    <string name="vehicle_list_title">Vehicles</string>
+    <string name="add_vehicle">Add vehicle</string>
+    <string name="create_vehicle_title">Create vehicle</string>
+    <string name="edit_vehicle_title">Edit vehicle</string>
+    <string name="vehicle_detail_title">Vehicle details</string>
+    <string name="back">Back</string>
     <string name="vehicle_name">Vehicle name</string>
+    <string name="initial_odometer">Initial odometer (km)</string>
+    <string name="vehicle_brand">Brand (optional)</string>
+    <string name="vehicle_model">Model (optional)</string>
     <string name="save_vehicle">Save vehicle</string>
     <string name="restore_backup">Restore backup</string>
-    <string name="saved_vehicles">Saved vehicles</string>
     <string name="empty_vehicles">No vehicles saved yet.</string>
+    <string name="vehicle_odometer">%1$d km</string>
+    <string name="add_first_fuel_entry_invitation">Add the first fuel entry to start tracking consumption.</string>
+    <string name="edit_vehicle">Edit vehicle</string>
+    <string name="delete_vehicle">Delete vehicle</string>
+    <string name="delete_vehicle_title">Delete vehicle?</string>
+    <string name="delete_vehicle_confirmation">This also deletes its fuel entries from this device.</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="vehicle_not_found">This vehicle is no longer available.</string>
+    <string name="error_required_field">Complete the required field.</string>
+    <string name="error_invalid_length">Check the field length.</string>
+    <string name="error_out_of_range">Enter a value within the allowed range.</string>
+    <string name="error_edit_not_allowed">The initial odometer can no longer be changed.</string>
+    <string name="error_duplicate_vehicle_name">Another vehicle already has this name.</string>
+    <string name="error_no_changes">There are no changes to save.</string>
+    <string name="error_vehicle_deleted">This vehicle has been deleted.</string>
+    <string name="error_persistence">The change could not be saved on this device. Try again.</string>
+    <string name="error_restore">The backup could not be restored. Your local data is still available.</string>
+    <string name="error_unexpected">Something went wrong. Try again.</string>
 </resources>

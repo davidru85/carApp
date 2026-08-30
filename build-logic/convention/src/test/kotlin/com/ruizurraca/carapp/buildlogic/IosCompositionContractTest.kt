@@ -26,6 +26,8 @@ class IosCompositionContractTest {
         assertTrue(compositionBuild.contains("api(project(\":shared\"))"))
         assertTrue(compositionBuild.contains("implementation(project(\":wiring:firebase\"))"))
         assertTrue(compositionBuild.contains("export(project(\":shared\"))"))
+        assertTrue(compositionBuild.contains("export(project(\":feature:vehicle\"))"))
+        assertTrue(compositionBuild.contains("export(project(\":core:common\"))"))
         assertTrue(compositionBuild.contains("baseName = \"Shared\""))
         assertTrue(skiePlugin.contains("SKIE_ALLOWED_MODULE = \":composition:ios\""))
     }
