@@ -1,5 +1,10 @@
 # Agent Handoff - E1-07
 
+> **Owner-review correction — 2026-08-30:** the owner ratified D-84 through D-88 without
+> amendment and identified a release-blocking SQLDelight driver leak in `AppGraph.close()`. The
+> correction adds D-89 / ADR-0090, gives each graph an owned `DatabaseHandle`, and preserves the
+> existing Objective-C golden header byte-for-byte.
+
 ## Story
 
 `E1-07 - Android UI: Vehicles - M` (`docs/BACKLOG.md`).
@@ -25,13 +30,14 @@
   selects Turbine; D-18 requires 85% feature-domain coverage; D-20 fixes native localization;
   D-55 limits the E0-07 staged behavior; D-76 fixes the pure Vehicle validation boundary; and
   owner-approved D-84 through D-88 fix the Android UI stack, feature presentation ownership,
-  graph separation, reactive edit facts and the pre-E3-03 sync-status exception. Every dependency
-  is `Accepted`; no unresolved decision blocks the story.
+  graph separation, reactive edit facts and the pre-E3-03 sync-status exception. The owner-review
+  correction adds accepted D-89 for graph-owned local database lifetime. Every dependency is
+  `Accepted`; no unresolved decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §3`, `§5.1`, `§7 F-2`, `§8.3`, `§8.4`
   and `§11`; `docs/CONTRACTS.md §6`, `§12`, `§14`, `§15`, `§20.2`, `§20.4`, `§20.5` and
   `§20.10`; `docs/DECISION_BOARD.md` D-3, D-4, D-7, D-8, D-16, D-17, D-18, D-20, D-28, D-55 and
-  D-76 and D-84 through D-88; `docs/TECHNICAL_PLAN.md §3`, `§4`, `§10` and `§12`; ADR-0017,
-  ADR-0029 and ADR-0085 through ADR-0089; the E0-07,
+  D-76 and D-84 through D-89; `docs/TECHNICAL_PLAN.md §3`, `§4`, `§10` and `§12`; ADR-0017,
+  ADR-0029 and ADR-0085 through ADR-0090; the E0-07,
   E1-03 and E1-06 handoffs; and the non-normative Android design references indexed by
   `docs/DESIGN.md §4`.
 - [x] Expected verification identified — baseline architecture and contract checks; RED/GREEN
@@ -62,8 +68,12 @@
   detail invitation.
 - Added the protected API 36 emulator job and the instrumented creation test. The flow creates a
   Vehicle, never renders a Fuel Type input and routes to the empty detail shell.
+- Corrected the owner-review resource leak by returning an owned, idempotently closeable
+  `DatabaseHandle` from every production and test `DatabaseFactory`; direct `AppGraph.close()` and
+  transitive `SwiftAppGraph.close()` now release the SQL driver exactly once.
 - Recorded D-84 through D-88, regenerated the Objective-C golden header and updated the current
   repository, verification and contribution records.
+- Recorded D-89 without reopening or amending the owner-ratified D-84 through D-88 records.
 
 ## Acceptance Evidence
 
@@ -81,6 +91,9 @@
   projection; state-holder tests prove a stale editable flag cannot bypass repository validation.
 - `AppGraphContractTest` and existing Swift graph tests prove Kotlin graph construction, Android
   scope ownership and the composed Swift facade's caching and close behavior.
+- `AppGraphCloseTest` observes the owned handle directly on Android host and iOS, proving one
+  release after repeated Kotlin-graph close calls and one release after repeated Swift-transitive
+  close calls.
 - The linked `Shared.framework` header exactly matches the committed golden, preserves
   `SyncSyncStatus`, `UiMessage` and `UiMessageKind`, and exposes no provider type.
 - D-28's three real-tree rules and three violation fixtures pass on the Android host.
@@ -105,6 +118,9 @@
 - Decision and delivery records: the five normative decision mirrors, ADR-0085 through ADR-0089,
   `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/CONTRIBUTING.md`, `docs/identifiers.md`, this
   handoff and `docs/PROJECT_LOG.md`.
+- Owner-review correction: the `:core:database` lifetime contract and factories, `:core:testing`
+  factory fakes, graph factory callers and tests, D-89 / ADR-0090 mirrors, this handoff and the
+  project log.
 
 ## Decisions Made
 
@@ -116,6 +132,10 @@
   the Kotlin `AppGraph` from its composed Swift facade. D-87 adds reactive Vehicle edit facts.
   D-88 keeps direct restoration and constant `Idle` until E3-03 instead of adding a provisional
   controller.
+- The owner ratified D-84 through D-88 during human review and required that their ADRs and mirror
+  rows remain unchanged. The review correction required a new public `DatabaseFactory` contract,
+  so D-89 selects a `:core:database`-owned `DatabaseHandle`; the alternatives were a factory-level
+  `close(database)` operation or leaking `SqlDriver` ownership into `:shared`.
 - Native Compose host code uses the TDD-order exemption in
   `docs/SPECIFICATION.md §11`; it still requires executing UI tests.
 
@@ -176,6 +196,38 @@
   7 seconds with 607 actionable tasks. Lint, detekt, coverage, Android assembly, Android-host and
   required iOS simulator tests all passed; architecture reported 16 rules over 23 modules and
   contract check reported 89 mirrored decisions/ADRs with no pending assertion.
+- Owner-review RED `./gradlew :shared:testAndroidHostTest --tests '*AppGraphCloseTest'` — failed as
+  required: both release tests observed that direct and Swift-transitive graph close did not
+  release the graph-created database connection.
+- Owner-review GREEN `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --tests
+  '*AppGraphCloseTest'` — successful on both platforms with an observable recording handle; two
+  close calls release the Kotlin graph's handle exactly once and the Swift facade does so
+  transitively exactly once.
+- Owner-review focused regression `./gradlew :core:database:testAndroidHostTest
+  :core:database:iosSimulatorArm64Test :core:testing:testAndroidHostTest
+  :core:testing:iosSimulatorArm64Test :feature:vehicle:testAndroidHostTest
+  :feature:vehicle:iosSimulatorArm64Test :feature:fuel:testAndroidHostTest
+  :feature:fuel:iosSimulatorArm64Test :shared:testAndroidHostTest
+  :shared:iosSimulatorArm64Test architectureCheck :build-logic:convention:test contractCheck
+  :composition:ios:linkDebugFrameworkIosSimulatorArm64` — successful across the affected database,
+  fake, feature, graph, architecture and contract surfaces; contract check reports 90 accepted
+  decision/ADR mirrors. The generated Objective-C header remains byte-exact with the unchanged
+  golden.
+- Owner-review REFACTOR `./gradlew ktlintFormat` — successful; normalized the GREEN import and
+  expression formatting and ensured the graph-construction contract test closes its owned
+  database handle even if its assertion fails.
+- Owner-review final repository command `./gradlew ktlintCheck detekt architectureCheck
+  contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug
+  testAndroidHostTest iosSimulatorArm64Test -x
+  :integration:firebase-auth:iosSimulatorArm64Test -x
+  :integration:firebase-firestore:iosSimulatorArm64Test -x
+  :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` — successful in
+  43 seconds with 607 actionable tasks. Lint, detekt, coverage, Android assembly, Android-host and
+  required iOS simulator tests all passed; architecture reported 16 rules over 23 modules and
+  contract check reported 90 accepted decision/ADR mirrors with no pending assertion.
+- Owner-review framework check `./gradlew
+  :composition:ios:linkDebugFrameworkIosSimulatorArm64`, exact generated-header/golden comparison
+  and `git diff --check` — successful with 69 framework tasks; the committed golden is unchanged.
 
 ## Contract Impact
 
@@ -184,15 +236,20 @@
   `SyncStatus` move to `:core:common` with the prior Swift ABI preserved.
 - `VehicleRepository` gains reactive `observeVehicleEditFacts`; `VehicleEditFacts` is Kotlin-only.
 - D-88 records the temporary constant-`Idle` exception to the final single-controller contract.
+- `DatabaseFactory.create()` now returns a `DatabaseHandle` that owns its `AppDatabase` and driver;
+  `AppGraph.close()` releases it idempotently and `SwiftAppGraph.close()` delegates transitively.
 
 ## Decision Board Impact
 
 - Added accepted D-84 through D-88 with ADR-0085 through ADR-0089 and identical mirrors.
+- Added accepted D-89 with ADR-0090 and identical mirrors; D-84 through D-88 were not reopened or
+  amended during owner review.
 
 ## Shared-Write Modules Touched
 
-- `:core:database` read access gains a reactive active-Fuel-Entry count projection. No schema,
-  query source, mutation path or migration changes.
+- `:core:database` read access gains a reactive active-Fuel-Entry count projection and its public
+  factory now returns a closeable lifetime handle. No schema, query source, mutation path or
+  migration changes.
 
 ## Project Log Entry
 
@@ -204,8 +261,11 @@
   D-55 direct restoration adapter exists. E3-03 must wire every exposing holder to one
   `SyncController.status` and add the two-holder convergence test.
 - E3-08 still owns completing the staged Fuel, Session and Sync factories on `AppGraph`.
+- The owner-review findings about the staged sync exception test, D-28 fixture location, duplicated
+  log text and emulator cleanup remain explicitly outside this correction and were not changed.
 
 ## Human Review Gate
 
 - Applies: module boundaries and dependency rules, the Swift-facing API surface and pinned
-  versions are gated topics. Owner review is required before merge.
+  versions are gated topics. The owner-review correction preserves the Objective-C golden header;
+  final owner review is still required before merge, and the agent MUST NOT merge the pull request.

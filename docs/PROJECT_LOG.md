@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-30 — E1-07 owner-review database lifetime correction
+
+- **Type:** correction
+- **Story / Decision:** `E1-07` / `D-89`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `DatabaseFactory` now returns a `DatabaseHandle` that owns its SQLDelight
+  database and driver. Kotlin and Swift application graphs release the handle exactly once when
+  closed, and architecture checks guard the new lifetime boundary.
+- **Why:** human review found that `DefaultAppGraph` discarded the created driver's ownership, so
+  both direct and Swift-transitive close leaked the local database connection. D-89 keeps that
+  closeable resource in `:core:database` without changing the Swift ABI.
+- **Documents touched:** `docs/CONTRACTS.md §11.6`, `§20.3.2` and `§20.10`, D-89 and ADR-0090 in
+  the four decision mirrors, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`. Owner-ratified D-84
+  through D-88 and ADR-0085 through ADR-0089 remain unchanged.
+- **Verification:** the Android-host release tests failed before implementation, then direct and
+  Swift-transitive release passed on Android host and iOS. Affected database, fake, feature,
+  shared, architecture and contract checks pass with 90 accepted decision/ADR mirrors, and the
+  generated Objective-C header remains byte-exact with its unchanged golden. Full repository and
+  protected-CI evidence is recorded in the handoff.
+- **Follow-ups / risks:** PR #37 remains owner-gated and MUST NOT be merged by the agent. The other
+  review observations were explicitly left outside this correction.
+
 ### 2026-08-30 — E1-07 Android Vehicle UI completed
 
 - **Type:** story

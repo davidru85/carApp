@@ -53,7 +53,8 @@ holders and then the wrapped graph, releasing the same handle transitively.
 
 ## Verification
 
-- Android-host and iOS tests prove database operations fail after direct and Swift-transitive graph close.
+- Android-host and iOS tests use an observable recording handle to prove one release after repeated
+  direct and Swift-transitive graph close calls.
 - The architecture fixture rejects `DatabaseHandle` outside the allowed database/test/graph boundary.
 - `objc-header-golden-check` compares against the unchanged golden header.
 - `contractCheck` verifies 90 decision/ADR mirrors.

@@ -36,7 +36,9 @@ class IosFileBackedSchemaTest {
             try {
                 assertEquals(
                     emptyList(),
-                    databaseHandle.database.databaseQueries.selectAllVehicles().awaitAsList(),
+                    databaseHandle.database.databaseQueries
+                        .selectAllVehicles()
+                        .awaitAsList(),
                 )
             } finally {
                 databaseHandle.close()

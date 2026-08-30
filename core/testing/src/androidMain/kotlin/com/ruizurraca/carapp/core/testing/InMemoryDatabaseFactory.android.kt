@@ -1,7 +1,7 @@
 package com.ruizurraca.carapp.core.testing
 
-import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 
 actual class InMemoryDatabaseFactory actual constructor() : DatabaseFactory {
