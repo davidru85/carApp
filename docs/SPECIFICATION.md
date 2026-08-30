@@ -563,6 +563,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-88 | Pre-E3-03 sync-status staging | Keep direct Vehicle restoration and constant `SyncStatus.Idle` without a provisional controller until E3-03. | Accepted |
 | D-89 | Local database lifetime ownership | Return an idempotently closeable `DatabaseHandle` from `DatabaseFactory` so each application graph releases its SQL driver. | Accepted |
 | D-90 | Swift holder release and Vehicle creation completion | Add keyed Swift holder release, keep saved IDs separate from form identity and reset creation inputs after success. | Accepted |
+| D-91 | Stable Swift names for exported common enums | Pin `Confirmation`, `AuthProvider` and `SyncTrigger` to their Kotlin-matching Objective-C and Swift names. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

@@ -105,6 +105,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-88 | Pre-E3-03 sync-status staging | Direct restore plus constant `Idle` until E3-03 | Accepted | Avoids a provisional second source of sync truth. |
 | D-89 | Local database lifetime ownership | `DatabaseFactory` returns an idempotently closeable `DatabaseHandle` | Accepted | Keeps the SQL driver in `:core:database` and gives each application graph explicit ownership of one connection. |
 | D-90 | Swift holder release and Vehicle creation completion | Keyed Swift cache release plus separate `savedVehicleId` | Accepted | Bounds Swift-owned scopes and prevents a successful creation form from silently becoming an editor. |
+| D-91 | Stable Swift names for exported common enums | Exact Kotlin-matching `@ObjCName` annotations | Accepted | Prevents framework export configuration from renaming three already exported common enums. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

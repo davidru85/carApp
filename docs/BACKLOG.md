@@ -408,6 +408,9 @@ Acceptance criteria:
 - `SwiftAppGraph` exposes keyed release for Vehicle forms, Fuel Entry lists and Fuel Entry forms;
   releasing closes the holder and cancels its child scope, and the next request returns a fresh
   instance.
+- D-91 pins the exported common enums to `Confirmation`, `AuthProvider` and `SyncTrigger` in Swift
+  with the matching `SharedConfirmation`, `SharedAuthProvider` and `SharedSyncTrigger` Objective-C
+  names; the rename from the pre-E1-07 module-derived names is intentional.
 - Compose Navigation and the instrumented UI stack are pinned by D-84, and the creation test runs
   in the protected `android-instrumented-tests` emulator job.
 

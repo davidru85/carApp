@@ -1231,7 +1231,7 @@ Kotlin-facing contracts and MUST NOT be exported to Swift.
 
 `SwiftAppGraph` MUST expose a no-argument constructor on the Swift-facing side. The `isDebugBuild` flag is consumed by `createSwiftAppGraph(isDebugBuild)` and applied during graph construction. State holders MUST NOT use Kotlin default arguments anywhere in public signatures.
 
-Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift boundary. Where SKIE or Kotlin/Native would otherwise alter names, the enum class or entries MUST use explicit Objective-C naming annotations so generated headers contain the contract names.
+Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift boundary. Where SKIE or Kotlin/Native would otherwise alter names, the enum class or entries MUST use explicit Objective-C naming annotations so generated headers contain the contract names. The exact common-enum names are `SharedConfirmation` / `Confirmation`, `SharedAuthProvider` / `AuthProvider` and `SharedSyncTrigger` / `SyncTrigger` for Objective-C / Swift respectively (`D-91`).
 
 Nullable primitives and `StateFlow<T>` / `List<T>` exports MUST use the SKIE and Kotlin/Native annotations required by the pinned SKIE version to produce stable Swift types. The generated header golden is the executable source of truth for those annotations.
 
@@ -1807,6 +1807,7 @@ data class UnexpectedError(
     val throwableClassName: String,
 ) : AppError { override val code = "UNEXPECTED" }
 
+@ObjCName(name = "SharedConfirmation", swiftName = "Confirmation", exact = true)
 enum class Confirmation { OdometerInconsistent, DiscardPendingChanges, DeleteAccount, AdoptExistingAccount }
 ```
 
@@ -1844,6 +1845,7 @@ fun interface LocaleProvider { fun current(): LocaleInfo }
 
 interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 
+@ObjCName(name = "SharedSyncTrigger", swiftName = "SyncTrigger", exact = true)
 enum class SyncTrigger { AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
@@ -1866,6 +1868,7 @@ data class UiMessage(
     val confirmation: Confirmation?,
 )
 
+@ObjCName(name = "SharedAuthProvider", swiftName = "AuthProvider", exact = true)
 enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }   // shared by :core:analytics (Phase 0) and :core:auth (Phase 2); lives here so neither module depends on the other
 
 interface OwnerContext {

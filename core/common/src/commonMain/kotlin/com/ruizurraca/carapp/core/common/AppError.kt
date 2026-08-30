@@ -1,8 +1,12 @@
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+@file:OptIn(
+    kotlin.experimental.ExperimentalObjCName::class,
+    kotlin.experimental.ExperimentalObjCRefinement::class,
+)
 
 package com.ruizurraca.carapp.core.common
 
 import kotlin.native.HiddenFromObjC
+import kotlin.native.ObjCName
 
 /**
  * The error taxonomy of `docs/CONTRACTS.md §20.2`.
@@ -290,6 +294,7 @@ data class UnexpectedError(
  * A confirmation is required by the use case, not by the UI. The UI MUST NOT proceed without an
  * explicit confirmation returned to the use case (`docs/CONTRACTS.md §20.2`).
  */
+@ObjCName(name = "SharedConfirmation", swiftName = "Confirmation", exact = true)
 enum class Confirmation {
     OdometerInconsistent,
     DiscardPendingChanges,

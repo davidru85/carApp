@@ -97,5 +97,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-88 | [ADR-0089](0089-stage-idle-sync-status-until-e3-03.md) | Stage idle sync status until E3-03. | Accepted |
 | D-89 | [ADR-0090](0090-own-database-lifetime-with-closeable-handle.md) | Own database lifetime with a closeable handle. | Accepted |
 | D-90 | [ADR-0091](0091-release-swift-holders-and-separate-save-completion.md) | Release Swift holders and separate Vehicle save completion. | Accepted |
+| D-91 | [ADR-0092](0092-pin-exported-common-enum-names.md) | Pin exported common enum names. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

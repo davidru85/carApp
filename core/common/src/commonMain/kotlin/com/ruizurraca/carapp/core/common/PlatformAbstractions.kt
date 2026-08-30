@@ -1,4 +1,7 @@
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+@file:OptIn(
+    kotlin.experimental.ExperimentalObjCName::class,
+    kotlin.experimental.ExperimentalObjCRefinement::class,
+)
 
 package com.ruizurraca.carapp.core.common
 
@@ -11,6 +14,7 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlin.native.HiddenFromObjC
+import kotlin.native.ObjCName
 import kotlin.time.Instant
 
 /*
@@ -74,6 +78,7 @@ interface ConnectivityObserver {
     val isOnline: StateFlow<Boolean>
 }
 
+@ObjCName(name = "SharedSyncTrigger", swiftName = "SyncTrigger", exact = true)
 enum class SyncTrigger {
     AppForeground,
     ConnectivityRecovered,
@@ -95,6 +100,7 @@ fun interface SyncTriggerAdapter {
  * The provider set is closed: anonymous, Google and Apple, and nothing else
  * (`docs/CONTRACTS.md §20.3`, `docs/SPECIFICATION.md §7 F-1`).
  */
+@ObjCName(name = "SharedAuthProvider", swiftName = "AuthProvider", exact = true)
 enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }
 
 /**
