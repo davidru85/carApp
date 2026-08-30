@@ -165,6 +165,7 @@ class VehicleFormStateHolder internal constructor(
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
     private val inputs = MutableStateFlow(FormInputs(vehicleId = vehicleId))
+    private val savedVehicleId = MutableStateFlow<String?>(null)
     private val canEditInitialOdometer = MutableStateFlow(true)
     private val saving = MutableStateFlow(false)
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
@@ -184,9 +185,16 @@ class VehicleFormStateHolder internal constructor(
     }
 
     val state: StateFlow<VehicleFormUiState> =
-        combine(inputs, canEditInitialOdometer, saving, transientMessage) { input, canEdit, isSaving, message ->
+        combine(
+            inputs,
+            savedVehicleId,
+            canEditInitialOdometer,
+            saving,
+            transientMessage,
+        ) { input, savedId, canEdit, isSaving, message ->
             VehicleFormUiState(
                 vehicleId = input.vehicleId,
+                savedVehicleId = savedId,
                 name = input.name,
                 initialOdometerKm = input.initialOdometerKm,
                 brand = input.brand,
@@ -219,6 +227,7 @@ class VehicleFormStateHolder internal constructor(
         if (closed || saving.value) return
         val snapshot = inputs.value
         saving.value = true
+        savedVehicleId.value = null
         transientMessage.value = null
         holderScope.launch(dispatchers.main) {
             val result =
@@ -230,9 +239,12 @@ class VehicleFormStateHolder internal constructor(
                             snapshot.toUpdateCommand(loadedInitialOdometerKm),
                         ).map { EntityId(snapshot.vehicleId) }
                     }
-                }
+            }
             when (result) {
-                is Outcome.Ok -> inputs.value = inputs.value.copy(vehicleId = result.value.value)
+                is Outcome.Ok -> {
+                    if (snapshot.vehicleId == null) inputs.value = FormInputs(vehicleId = null)
+                    savedVehicleId.value = result.value.value
+                }
                 is Outcome.Err -> transientMessage.value = result.error.toErrorMessage()
             }
             saving.value = false
@@ -324,6 +336,7 @@ private data class FormInputs(
 private fun FormInputs.toUiState(): VehicleFormUiState =
     VehicleFormUiState(
         vehicleId = vehicleId,
+        savedVehicleId = null,
         name = name,
         initialOdometerKm = initialOdometerKm,
         brand = brand,

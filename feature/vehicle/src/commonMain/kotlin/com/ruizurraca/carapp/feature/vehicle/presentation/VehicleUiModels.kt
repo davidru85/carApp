@@ -28,6 +28,7 @@ data class VehicleListItemUi(
 @ObjCName(name = "SharedVehicleFormUiState", swiftName = "VehicleFormUiState", exact = true)
 data class VehicleFormUiState(
     val vehicleId: String?,
+    val savedVehicleId: String?,
     val name: String,
     val initialOdometerKm: Long,
     val brand: String?,

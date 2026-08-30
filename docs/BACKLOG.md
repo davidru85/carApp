@@ -402,8 +402,12 @@ Acceptance criteria:
 - `buildAppGraph` returns the Kotlin-facing `AppGraph`; Android passes `viewModelScope`, while
   `SwiftAppGraph` wraps the graph and retains its caching and close semantics.
 - `AppGraph.close()` idempotently releases its graph-owned `DatabaseHandle`, and
-  `SwiftAppGraph.close()` releases that database connection transitively without changing the
-  Objective-C header.
+  `SwiftAppGraph.close()` releases that database connection transitively.
+- D-90 keeps a creation holder's route identity `null`, reports completion through
+  `savedVehicleId` and resets its inputs after success so it cannot overwrite the created Vehicle.
+- `SwiftAppGraph` exposes keyed release for Vehicle forms, Fuel Entry lists and Fuel Entry forms;
+  releasing closes the holder and cancels its child scope, and the next request returns a fresh
+  instance.
 - Compose Navigation and the instrumented UI stack are pinned by D-84, and the creation test runs
   in the protected `android-instrumented-tests` emulator job.
 

@@ -118,6 +118,7 @@ One vocabulary, shared with the ADR `Status` field. An ADR recording a deferral 
 | D-87 | Vehicle editability projection | Observe reactive `VehicleEditFacts` from Vehicle and active Fuel Entry changes | One-shot suspend query; optimistic edit with save-time rejection only | Accepted | The form converges after background recovery while transactional validation remains authoritative. |
 | D-88 | Pre-E3-03 sync-status staging | Keep D-55 direct Vehicle restoration and constant `SyncStatus.Idle`; do not create a provisional controller | Provisional controller; pull E3-03 forward | Accepted | Avoids a second sync source of truth; E3-03 closes the explicit temporary exception. |
 | D-89 | Local database lifetime ownership | `DatabaseFactory.create()` returns a `DatabaseHandle` that owns one `AppDatabase` and its `SqlDriver` | Add `DatabaseFactory.close(database)`; expose the driver to `:shared` | Accepted | Keeps the closeable resource in `:core:database`; `AppGraph.close()` releases its handle exactly once and `SwiftAppGraph.close()` does so transitively without changing the Swift ABI. |
+| D-90 | Swift holder release and Vehicle creation completion | Add keyed release functions to `SwiftAppGraph`; expose `savedVehicleId` separately and reset creation inputs after success | Rekey a creation holder as an editor; drop holder caching | Accepted | Prevents a cached creation holder from overwriting its first Vehicle, makes creation completion explicit and bounds Swift-owned holder scopes without weakening factory idempotence. |
 
 ## Library Review Matrix
 

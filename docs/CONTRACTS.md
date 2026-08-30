@@ -1215,6 +1215,10 @@ The allowlist is:
 - `UiState` data classes and UI row data classes declared in §20.10.
 - `UiMessage`, `UiMessageKind`, `SyncStatus` and the typed enums referenced by those state classes.
 
+`SwiftAppGraph` exposes keyed release functions for cached Vehicle forms, Fuel Entry lists and
+Fuel Entry forms. Each release removes and closes one holder and cancels its graph-owned child
+scope; a later factory call for the same key returns a fresh holder (`D-90`).
+
 Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, SQLDelight or SQLite types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
 
 `AppProviders`, `AppGraphDependencies`, `buildAppGraph(isDebugBuild, providers)`, the
@@ -2295,8 +2299,11 @@ fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph
 class SwiftAppGraph {
     fun vehicleListStateHolder(): VehicleListStateHolder
     fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder
+    fun releaseVehicleFormStateHolder(vehicleId: String?)
     fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder
+    fun releaseFuelEntryListStateHolder(vehicleId: String)
     fun fuelEntryFormStateHolder(vehicleId: String, entryId: String?): FuelEntryFormStateHolder
+    fun releaseFuelEntryFormStateHolder(vehicleId: String, entryId: String?)
     fun sessionStateHolder(): SessionStateHolder
     fun syncStateHolder(): SyncStateHolder
     fun close()
@@ -2391,6 +2398,7 @@ data class VehicleListItemUi(
 
 data class VehicleFormUiState(
     val vehicleId: String?,
+    val savedVehicleId: String?,
     val name: String,
     val initialOdometerKm: Long,
     val brand: String?,
@@ -2481,7 +2489,7 @@ It is never display copy.
 
 The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
 
-`SwiftAppGraph` state-holder factories are idempotent within the same graph instance: the first call creates and caches a state holder, and later calls for the same factory arguments return the same instance. After `SwiftAppGraph.close()`, cached state holders are cancelled and removed; any later factory call throws `IllegalStateException`.
+`SwiftAppGraph` state-holder factories are idempotent within the same graph instance: the first call creates and caches a state holder, and later calls for the same factory arguments return the same instance. `releaseVehicleFormStateHolder`, `releaseFuelEntryListStateHolder` and `releaseFuelEntryFormStateHolder` idempotently remove and close one cached holder and cancel its child scope; a later factory call for the released key creates a fresh instance. After `SwiftAppGraph.close()`, cached state holders are cancelled and removed; any later factory call throws `IllegalStateException`.
 
 `AppGraph.close()` is idempotent and releases the graph-owned `DatabaseHandle`. `SwiftAppGraph.close()`
 first closes its cached state holders and then closes the wrapped `AppGraph`, so the database
@@ -2491,6 +2499,12 @@ additional database handles and remain safe to close.
 `FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
 
 `VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
+
+`VehicleFormUiState.vehicleId` is the identity being edited and remains `null` for a creation
+holder. `savedVehicleId` is a completion signal: it is cleared when `save()` begins and contains
+the successfully created or updated ID after completion. Successful creation resets every input
+to its creation default before publishing `savedVehicleId`, so a retained creation holder cannot
+take the update path or retain the previous Vehicle's fields (`D-90`).
 
 The MVP `VehicleListStateHolder` calls `observeVehicles(includeDeleted = false)`; `VehicleListItemUi.deleted` is present for future/debug use and is always `false` in the MVP list. A debug screen (referenced by `E3-03`) MAY call `observeVehicles(includeDeleted = true)` outside the state holder. An `E1-07` fixture MUST assert the production list never contains `deleted = true`.
 

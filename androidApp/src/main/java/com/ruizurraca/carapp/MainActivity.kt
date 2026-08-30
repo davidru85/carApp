@@ -265,8 +265,8 @@ private fun VehicleFormScreen(
 ) {
     val state by stateHolder.state.collectAsState()
     DisposableEffect(stateHolder) { onDispose { releaseForm() } }
-    LaunchedEffect(state.vehicleId, state.isSaving) {
-        val savedVehicleId = state.vehicleId
+    LaunchedEffect(state.savedVehicleId, state.isSaving) {
+        val savedVehicleId = state.savedVehicleId
         if (originalVehicleId == null && savedVehicleId != null && !state.isSaving) onSaved(savedVehicleId)
     }
 

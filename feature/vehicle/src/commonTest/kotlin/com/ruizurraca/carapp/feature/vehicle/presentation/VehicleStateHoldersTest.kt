@@ -88,7 +88,8 @@ class VehicleStateHoldersTest {
 
             assertEquals(FuelType.DIESEL, requireNotNull(captured).fuelType)
             assertEquals(125, requireNotNull(captured).initialOdometerKm)
-            assertEquals(VEHICLE_ID, holder.state.value.vehicleId)
+            assertNull(holder.state.value.vehicleId)
+            assertEquals(VEHICLE_ID, holder.state.value.savedVehicleId)
             assertFalse(holder.state.value.isSaving)
             assertNull(holder.state.value.message)
             holder.close()
@@ -137,6 +138,7 @@ class VehicleStateHoldersTest {
                 createCommands.map(CreateVehicleCommand::name),
             )
             assertEquals(emptyList(), updateCommands)
+            assertEquals(SECOND_VEHICLE_ID, holder.state.value.savedVehicleId)
             holder.close()
         }
 
