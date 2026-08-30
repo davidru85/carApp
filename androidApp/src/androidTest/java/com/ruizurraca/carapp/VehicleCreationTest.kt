@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -32,5 +33,29 @@ class VehicleCreationTest {
             .assertIsDisplayed()
             .assertTextEquals(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.FIRST_FUEL_INVITATION).assertIsDisplayed()
+    }
+
+    @Test
+    fun configurationChangePreservesTheDraftAndBackStackExitReleasesIt() {
+        val draftName = "Rotating draft ${System.currentTimeMillis()}"
+
+        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(draftName)
+        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("321")
+
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(draftName)
+        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).assertTextContains("321")
+
+        composeRule.activityRule.scenario.onActivity { activity ->
+            activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+
+        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextEquals("")
+        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).assertTextContains("0")
     }
 }
