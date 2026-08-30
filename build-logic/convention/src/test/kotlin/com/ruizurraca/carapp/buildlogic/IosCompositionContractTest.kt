@@ -84,4 +84,23 @@ class IosCompositionContractTest {
         )
         assertTrue(ci.contains("shared/build/generated/objc-header/Shared.h.golden"))
     }
+
+    @Test
+    fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
+        val expectedAnnotations =
+            listOf(
+                "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt" to
+                    "@ObjCName(name = \"SharedConfirmation\", swiftName = \"Confirmation\", exact = true)",
+                "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt" to
+                    "@ObjCName(name = \"SharedAuthProvider\", swiftName = \"AuthProvider\", exact = true)",
+                "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt" to
+                    "@ObjCName(name = \"SharedSyncTrigger\", swiftName = \"SyncTrigger\", exact = true)",
+            )
+        val missing =
+            expectedAnnotations
+                .filterNot { (path, annotation) -> repositoryRoot.resolve(path).readText().contains(annotation) }
+                .map { (_, annotation) -> annotation }
+
+        assertEquals(emptyList(), missing)
+    }
 }
