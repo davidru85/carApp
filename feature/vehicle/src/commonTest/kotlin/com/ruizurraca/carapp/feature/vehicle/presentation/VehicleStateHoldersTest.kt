@@ -95,6 +95,52 @@ class VehicleStateHoldersTest {
         }
 
     @Test
+    fun successfulCreateResetsThePublicFormAndTheNextSaveCreatesAnotherVehicle() =
+        runTest {
+            val repository = FakeVehicleRepository()
+            val createCommands = mutableListOf<CreateVehicleCommand>()
+            val updateCommands = mutableListOf<UpdateVehicleCommand>()
+            val createdIds = ArrayDeque(listOf(EntityId(VEHICLE_ID), EntityId(SECOND_VEHICLE_ID)))
+            val holder =
+                createVehicleFormStateHolder(
+                    scope = backgroundScope,
+                    vehicleId = null,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    createVehicle = { command ->
+                        createCommands += command
+                        Outcome.Ok(createdIds.removeFirst())
+                    },
+                    updateVehicle = { command ->
+                        updateCommands += command
+                        Outcome.Ok(Unit)
+                    },
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+
+            holder.setName("First vehicle")
+            holder.setInitialOdometerKm(125)
+            holder.save()
+            advanceUntilIdle()
+            val stateBeforeSecondCreate = holder.state.value
+
+            holder.setName("Second vehicle")
+            holder.setInitialOdometerKm(250)
+            holder.save()
+            advanceUntilIdle()
+
+            assertNull(stateBeforeSecondCreate.vehicleId)
+            assertEquals("", stateBeforeSecondCreate.name)
+            assertEquals(0, stateBeforeSecondCreate.initialOdometerKm)
+            assertEquals(
+                listOf("First vehicle", "Second vehicle"),
+                createCommands.map(CreateVehicleCommand::name),
+            )
+            assertEquals(emptyList(), updateCommands)
+            holder.close()
+        }
+
+    @Test
     fun editabilityReactsToFactsAndAStaleTrueStillReportsTheWriteRejection() =
         runTest {
             val repository = FakeVehicleRepository()
@@ -175,4 +221,5 @@ private fun vehicle(deleted: Boolean = false): Vehicle =
     )
 
 private const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
+private const val SECOND_VEHICLE_ID = "00000000-0000-4000-8000-000000000003"
 private const val DELETED_VEHICLE_ID = "00000000-0000-4000-8000-000000000002"
