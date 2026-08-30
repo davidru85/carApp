@@ -98,6 +98,11 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-81 | Fuel Entry earliest-date calendar | Subtract 20 calendar years from `vehicle.createdAt` with `Instant.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamp the result to the Unix epoch | Accepted | Implements literal calendar years with the accepted commonMain library and keeps the persisted fact at or after the Unix epoch. |
 | D-82 | Fuel Entry odometer inconsistency derivation | Database-owned neighbour-or-initial-odometer predicate with a missing-Vehicle fallback | Accepted | Aligns persistence with validation and keeps confirmed warnings in local and outbox snapshots without weakening the sole-writer boundary. |
 | D-83 | Fuel Entry bounded projection window | Descending inner limit over each canonical ordering, followed by the canonical ascending outer order | Accepted | Retains the newest/highest rows under the 5,000-row memory ceiling while preserving deterministic list and calculation order. |
+| D-84 | Android Vehicle UI support stack | Compose Navigation 2.9.8, instrumented Compose UI tests and a SHA-pinned emulator CI job | Accepted | Runs the real Android Vehicle creation flow with stable AndroidX tooling. |
+| D-85 | Vehicle presentation ownership | Vehicle presentation in `:feature:vehicle`; shared UI primitives in `:core:common` | Accepted | Enforces the feature boundary without allowing presentation to depend on `:core:sync`. |
+| D-86 | Kotlin and Swift graph separation | Hidden Kotlin `AppGraph`, wrapped by `SwiftAppGraph` | Accepted | Separates caller-owned Kotlin scopes from cached Swift-owned child scopes without leaking Kotlin-only APIs. |
+| D-87 | Vehicle editability projection | Reactive `VehicleEditFacts` projection | Accepted | Re-emits after Vehicle or active Fuel Entry changes while write validation stays authoritative. |
+| D-88 | Pre-E3-03 sync-status staging | Direct restore plus constant `Idle` until E3-03 | Accepted | Avoids a provisional second source of sync truth. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

@@ -90,5 +90,10 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-81 | [ADR-0082](0082-use-utc-calendar-years-for-fuel-entry-bound.md) | Use UTC calendar years for the Fuel Entry earliest-date bound. | Accepted |
 | D-82 | [ADR-0083](0083-align-odometer-inconsistency-with-validation.md) | Align persisted odometer inconsistency with the validation predicate. | Accepted |
 | D-83 | [ADR-0084](0084-retain-newest-fuel-entry-window.md) | Retain the newest Fuel Entry projection window under the memory cap. | Accepted |
+| D-84 | [ADR-0085](0085-use-compose-navigation-and-instrumented-ui-tests.md) | Use Compose Navigation and instrumented Android UI tests. | Accepted |
+| D-85 | [ADR-0086](0086-own-vehicle-presentation-in-feature-module.md) | Own Vehicle presentation in `:feature:vehicle`. | Accepted |
+| D-86 | [ADR-0087](0087-separate-kotlin-app-graph-from-swift-facade.md) | Separate the Kotlin AppGraph from the Swift facade. | Accepted |
+| D-87 | [ADR-0088](0088-observe-reactive-vehicle-edit-facts.md) | Observe reactive Vehicle edit facts. | Accepted |
+| D-88 | [ADR-0089](0089-stage-idle-sync-status-until-e3-03.md) | Stage idle sync status until E3-03. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -885,7 +885,7 @@ interface AppProviders {
     val syncTriggerAdapter: SyncTriggerAdapter
 }
 
-fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): AppGraph
 ```
 
 `CrashReporter` is a required graph dependency from Phase 0 so graph construction never changes shape when release hardening begins. `:core:crash` owns the abstraction and the no-op implementation used by tests and local builds. Firebase Crashlytics is introduced only in Phase 4, in `:integration:firebase-crashlytics`, and MUST be bound through `:wiring:firebase` before release builds point at Firebase.
@@ -919,9 +919,11 @@ Rules:
   bindings. `:wiring:firebase` is the only module that constructs Firebase implementations;
   integration modules MUST NOT reference `buildAppGraph`.
 - `:composition:ios` produces the single framework named `Shared`, declares
-  `api(project(":shared"))`, exports `:shared`, depends on `:wiring:firebase` with
-  `implementation`, and owns the only `createSwiftAppGraph(isDebugBuild)` declaration. It contains
-  no product logic and delegates directly to `buildAppGraph` (`D-58`).
+  `api(project(":shared"))`, exports `:shared` plus the `:feature:vehicle` and `:core:common`
+  declarations moved by D-85, depends on `:wiring:firebase` with `implementation`, and owns the
+  only `createSwiftAppGraph(isDebugBuild)` declaration. It contains no product logic, wraps the
+  `AppGraph` returned by `buildAppGraph` in `SwiftAppGraph`, and never exports an integration
+  module (`D-58`, `D-86`).
 
 ## 12. Repository Contracts
 
@@ -943,6 +945,7 @@ Repositories obtain the current owner through `OwnerContext` from `:core:common`
 interface VehicleRepository {
     fun observeVehicles(includeDeleted: Boolean): Flow<Outcome<List<Vehicle>, AppError>>
     fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>>
+    fun observeVehicleEditFacts(id: EntityId): Flow<Outcome<VehicleEditFacts?, AppError>>
     suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError>
     suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError>
     suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError>
@@ -953,6 +956,7 @@ interface VehicleRepository {
 |--------|--------------|----------------------|
 | `observeVehicles` | none | `PersistenceError` |
 | `observeVehicle` | none; absence is `Ok(null)` | `PersistenceError` |
+| `observeVehicleEditFacts` | none; observes the Vehicle and active Fuel Entry count; absence is `Ok(null)` | `PersistenceError` |
 | `createVehicle` | inserts one row, enqueues one outbox snapshot | `ValidationError.{RequiredField, InvalidLength, OutOfRange, DuplicateName}`, `PersistenceError` |
 | `updateVehicle` | updates one row, bumps `localRevision`, coalesces the outbox snapshot | as above plus `EntityNotFound`, `EntityDeleted` |
 | `deleteVehicle` | tombstones the vehicle and all its non-deleted fuel entries in one transaction, enqueues tombstone snapshots in dependency order | `EntityNotFound`, `PersistenceError` |
@@ -1142,7 +1146,8 @@ Contract: `entries` MUST contain only non-deleted entries for one vehicle, in an
 
 Shared state holders:
 
-- Live in feature `presentation` packages.
+- Live in feature `presentation` packages. `SyncStateHolder` is the app-level exception and lives
+  in `:shared`.
 - Expose immutable `StateFlow<UiState>` built with `stateIn(scope = scope + dispatchers.main, started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS), initialValue = initialValue)`.
 - Accept intent functions.
 - Kotlin-facing factories take a `scope: CoroutineScope` parameter and the caller owns that scope. Android passes `viewModelScope`.
@@ -1155,6 +1160,11 @@ Shared state holders:
 `UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
 
 Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status` from `SyncStateHolder`) observes the same `SyncController.status: StateFlow<SyncStatus>` flow. The values are eventually consistent and converge to the same `SyncStatus`. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
+
+D-88 records the one temporary exception: E1-07 retains D-55 direct Vehicle restoration and
+publishes constant `SyncStatus.Idle` without constructing a provisional `SyncController`. E3-03
+MUST remove that exception, wire every exposing holder to the single controller and add the
+two-holder convergence test.
 
 Platform adapters contain rendering and lifecycle glue only. Validation, formatting decisions, repository calls and business logic remain shared.
 
@@ -1192,8 +1202,9 @@ Koin KMP is the accepted dependency injection library for the MVP.
 ### 15.3 Swift-facing surface
 
 The public Swift-facing ABI of the `Shared` framework is an allowlist, not "all public Kotlin
-declarations". `:composition:ios` produces the framework and exports the declarations owned by
-`:shared`. The allowlist is:
+declarations". `:composition:ios` produces the framework and exports the allowlisted declarations
+owned by `:shared`, `:feature:vehicle` and `:core:common`. It MUST NOT export `:integration:*`.
+The allowlist is:
 
 - `SwiftAppGraph`.
 - `createSwiftAppGraph(isDebugBuild: Boolean)`.
@@ -1557,6 +1568,7 @@ Phase 0 defines the exact CI check names. Required checks:
 - `provider-decoupling`
 - `contract-check`
 - `objc-header-golden-check`
+- `android-instrumented-tests`
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
@@ -1828,6 +1840,29 @@ interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 enum class SyncTrigger { AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
+@ObjCName(name = "SharedSyncSyncStatus", swiftName = "SyncSyncStatus", exact = true)
+sealed class SyncStatus {
+    @ObjCName(name = "SharedSyncSyncStatusIdle", swiftName = "SyncSyncStatus.Idle", exact = true)
+    data object Idle : SyncStatus()
+    @ObjCName(name = "SharedSyncSyncStatusSyncing", swiftName = "SyncSyncStatus.Syncing", exact = true)
+    data object Syncing : SyncStatus()
+    @ObjCName(name = "SharedSyncSyncStatusPending", swiftName = "SyncSyncStatus.Pending", exact = true)
+    data class Pending(val count: Int) : SyncStatus()
+    @ObjCName(name = "SharedSyncSyncStatusFailed", swiftName = "SyncSyncStatus.Failed", exact = true)
+    data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus()
+}
+
+@ObjCName(name = "SharedUiMessageKind", swiftName = "UiMessageKind", exact = true)
+enum class UiMessageKind { INFO, WARNING, ERROR }
+
+@ObjCName(name = "SharedUiMessage", swiftName = "UiMessage", exact = true)
+data class UiMessage(
+    val id: Long,
+    val kind: UiMessageKind,
+    val code: String,
+    val confirmation: Confirmation?,
+)
+
 enum class AuthProvider { ANONYMOUS, GOOGLE, APPLE }   // shared by :core:analytics (Phase 0) and :core:auth (Phase 2); lives here so neither module depends on the other
 
 interface OwnerContext {
@@ -1941,6 +1976,19 @@ data class UserSettings(
 - For an entry with `isFullTank = true` whose segment result is `SegmentResult.Invalid`, `consumption = null` and `invalidReason = segment.reason`.
 
 The list projection MUST NOT run a different consumption algorithm. It derives row values from the same full-to-full segment rules of §4 and §20.6.
+
+### 20.4.1 Vehicle edit projection — `:feature:vehicle` domain
+
+```kotlin
+data class VehicleEditFacts(
+    val vehicle: Vehicle,
+    val canEditInitialOdometer: Boolean,
+)
+```
+
+`VehicleEditFacts` is Kotlin-only and MUST NOT appear in the Swift-facing surface. Its editability
+value is advisory; the `updateVehicle` transaction remains authoritative and rejects a stale
+optimistic edit with `ValidationError.EditNotAllowed("initialOdometerKm")`.
 
 ### 20.5 Commands
 
@@ -2131,19 +2179,16 @@ data class QuarantineRecord(
     val createdAt: Instant,
 )
 
-sealed class SyncStatus {
-    data object Idle : SyncStatus()
-    data object Syncing : SyncStatus()
-    data class Pending(val count: Int) : SyncStatus()
-    data class Failed(val retryableCount: Int, val poisonedCount: Int) : SyncStatus()
-}
-
 interface SyncController {
     val status: StateFlow<SyncStatus>
     fun requestSync(reason: SyncTrigger)
     suspend fun retryFailed(): Outcome<Unit, AppError>
 }
 ```
+
+`SyncStatus` is declared in §20.3 and owned by `:core:common`; `SyncController` remains owned by
+`:core:sync` and imports it. This preserves the strict feature-presentation dependency boundary
+selected by D-85.
 
 A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`. Deleting the row is the only supported way to force a full re-pull.
 
@@ -2406,14 +2451,7 @@ data class SyncUiState(
     val message: UiMessage?,
 )
 
-data class UiMessage(
-    val id: Long,
-    val kind: UiMessageKind,
-    val code: String,
-    val confirmation: Confirmation?,
-)
-
-enum class UiMessageKind { INFO, WARNING, ERROR }
+// UiMessage and UiMessageKind are declared in §20.3 and owned by :core:common.
 ```
 
 Identifiers and currency codes cross the Swift-facing boundary as `String`, never as `EntityId`, `OwnerId` or `CurrencyCode`, per §15.3. Swift-facing `id` fields are lowercase canonical UUID v4 strings. Kotlin-to-Swift conversion is a contract: `EntityId.value` is exactly the field value, already lowercase. Dates cross as epoch milliseconds in UTC. The `litersScaled`, `totalCostMinor`, `odometerKm`, `dateEpochMillis`, `consumptionAverageScaled` and `consumptionScaled` suffixes are the Swift-facing scale documentation; `:shared` README material MUST document those factors for iOS consumers.
@@ -2456,6 +2494,13 @@ UNKNOWN -> SIGNED_OUT after local-data clear
 From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
 
 `SyncStatus` is exported through the SKIE/Kotlin-Native sealed-class shape fixed by the generated header. Swift consumers MUST be able to distinguish `Idle`, `Syncing`, `Pending(count)` and `Failed(retryableCount, poisonedCount)` exhaustively.
+
+The declarations moved by D-85 MUST use exact Objective-C names matching the committed golden
+header: `SharedVehicleListStateHolder`, `SharedVehicleFormStateHolder`,
+`SharedVehicleListUiState`, `SharedVehicleListItemUi`, `SharedVehicleFormUiState`,
+`SharedUiMessage`, `SharedUiMessageKind`, `SharedSyncSyncStatus` and its four existing leaf names.
+Their existing Swift names MUST also remain unchanged. A module-derived rename is a contract
+failure, not an acceptable golden update.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
 
