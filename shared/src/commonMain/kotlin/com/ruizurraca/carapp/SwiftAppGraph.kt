@@ -48,7 +48,7 @@ class SwiftAppGraph {
     }
 
     fun releaseVehicleFormStateHolder(vehicleId: String?) {
-        cachedVehicleForms.remove(vehicleId)?.close(VehicleFormStateHolder::close)
+        cachedVehicleForms.release(vehicleId, VehicleFormStateHolder::close)
     }
 
     fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder {
@@ -60,7 +60,7 @@ class SwiftAppGraph {
     }
 
     fun releaseFuelEntryListStateHolder(vehicleId: String) {
-        cachedFuelEntryLists.remove(vehicleId)?.close(FuelEntryListStateHolder::close)
+        cachedFuelEntryLists.release(vehicleId, FuelEntryListStateHolder::close)
     }
 
     fun fuelEntryFormStateHolder(
@@ -78,7 +78,7 @@ class SwiftAppGraph {
         vehicleId: String,
         entryId: String?,
     ) {
-        cachedFuelEntryForms.remove(vehicleId to entryId)?.close(FuelEntryFormStateHolder::close)
+        cachedFuelEntryForms.release(vehicleId to entryId, FuelEntryFormStateHolder::close)
     }
 
     fun sessionStateHolder(): SessionStateHolder {
@@ -137,6 +137,13 @@ private data class ScopedHolder<T>(
         holder.closeHolder()
         scope.cancel()
     }
+}
+
+private fun <K, T> MutableMap<K, ScopedHolder<T>>.release(
+    key: K,
+    closeHolder: T.() -> Unit,
+) {
+    remove(key)?.close(closeHolder)
 }
 
 @OptIn(ExperimentalObjCRefinement::class)

@@ -1,8 +1,8 @@
 package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
-import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
@@ -45,7 +45,12 @@ class SwiftAppGraphLifecycleTest {
 
                 swiftGraph.releaseVehicleFormStateHolder(vehicleId = null)
 
-                assertFalse(recordingGraph.vehicleFormScopes.single().coroutineContext[Job]!!.isActive)
+                assertFalse(
+                    recordingGraph.vehicleFormScopes
+                        .single()
+                        .coroutineContext[Job]!!
+                        .isActive,
+                )
                 val second = swiftGraph.vehicleFormStateHolder(vehicleId = null)
                 assertNotSame(first, second)
                 assertEquals("", second.state.value.name)
