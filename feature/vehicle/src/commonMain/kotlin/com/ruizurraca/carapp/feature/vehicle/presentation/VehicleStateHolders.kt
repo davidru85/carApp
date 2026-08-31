@@ -312,7 +312,11 @@ class VehicleFormStateHolder internal constructor(
                             brand = if (FormField.BRAND in editedFields) currentInputs.brand else facts.vehicle.brand,
                             model = if (FormField.MODEL in editedFields) currentInputs.model else facts.vehicle.model,
                             fuelType =
-                                if (FormField.FUEL_TYPE in editedFields) currentInputs.fuelType else facts.vehicle.fuelType,
+                                if (FormField.FUEL_TYPE in editedFields) {
+                                    currentInputs.fuelType
+                                } else {
+                                    facts.vehicle.fuelType
+                                },
                         )
                 }
                 canEditInitialOdometer.value = facts.canEditInitialOdometer

@@ -36,6 +36,7 @@ class VehicleFormStateRestorationTest {
         val commands = mutableListOf<CreateVehicleCommand>()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val repository = EmptyVehicleRepository()
+
         fun newHolder() =
             createVehicleFormStateHolder(
                 scope = scope,

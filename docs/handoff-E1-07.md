@@ -6,6 +6,11 @@
 > D-90 adds three release operations and `savedVehicleId`; D-91 pins the already generated
 > Kotlin-matching enum names instead of leaving them dependent on framework export configuration.
 
+> **Second-round review corrections — 2026-08-31:** N-1 republishes restored Android drafts into
+> a fresh holder and preserves fields edited before the first edit-facts emission. N-2 exposes the
+> existing initial-odometer range as a Kotlin-only domain declaration consumed by Android. These
+> corrections add no decision, ADR or Swift-facing ABI change; the Objective-C golden is unchanged.
+
 ## Story
 
 `E1-07 - Android UI: Vehicles - M` (`docs/BACKLOG.md`).
@@ -83,6 +88,11 @@
   holder and a later route starts clean.
 - Preserved raw initial-odometer text in the Android host. Empty, non-numeric, overflowing and
   out-of-range input remains visible, maps to a localized error and cannot be saved.
+- Republished restored saveable text and valid odometer values into fresh holders so the displayed
+  draft is the exact draft used by save. The first edit-facts emission now fills only untouched
+  fields while continuing to update `canEditInitialOdometer` authoritatively.
+- Replaced Android's duplicated initial-odometer range with the Kotlin-only
+  `INITIAL_ODOMETER_RANGE_KM` domain source of truth.
 - Recorded D-84 through D-88, regenerated the Objective-C golden header and updated the current
   repository, verification and contribution records.
 - Recorded D-89 without reopening or amending the owner-ratified D-84 through D-88 records.
@@ -117,6 +127,11 @@
   fresh reconstruction for Vehicle forms, Fuel Entry lists and Fuel Entry forms.
 - `VehicleCreationTest` proves draft retention across activity recreation, holder release after
   back-stack exit, raw empty and overflowing odometer retention and a visible localized error.
+- `VehicleFormStateRestorationTest` destroys the original holder while retaining saveable
+  composition state and proves the resulting `CreateVehicleCommand` carries the displayed name and
+  odometer. `VehicleStateHoldersTest` proves pre-facts edits survive into `UpdateVehicleCommand`.
+- The Android range test binds both accepted boundaries and their adjacent rejected values to the
+  domain range and proves the host no longer declares its duplicate range field.
 
 ## Out of Scope / Not Done
 
@@ -135,6 +150,10 @@
   architecture-check hardening story.
 - Delete request/confirmation and restoration error branches still need dedicated presentation
   tests; no owning backlog story is currently assigned.
+- N-3 remains out of scope: `ReleaseVehicleFormOnBackStackExit` retains its hand-written observer
+  and deferred release until a future navigation-lifetime correction.
+- N-4 remains out of scope: the existing invalid-odometer test still asserts literal English copy
+  instead of resolving `R.string.error_out_of_range`.
 
 ## Files Changed
 
@@ -155,6 +174,8 @@
 - Owner code-review corrections: Vehicle and Swift graph presentation state, Android host and
   instrumented tests, explicit common enum annotations, the generated Objective-C golden, D-90 /
   ADR-0091 and D-91 / ADR-0092 mirrors, this handoff and the project log.
+- Second-round corrections: Android saveable-form synchronization and tests, Vehicle form-holder
+  edit tracking, the Kotlin-only Vehicle odometer range, this handoff and the project log.
 
 ## Decisions Made
 
@@ -180,6 +201,11 @@
   incidental consequence of framework exports.
 - Android configuration retention and raw odometer parsing stay host-private and add no shared or
   Swift surface, so they do not require another gated decision.
+- N-1 uses the requested host-side one-shot republication effects. Private per-field edit tracking
+  is also required because the mandated `:feature:vehicle` common test does not execute Compose;
+  the first facts emission therefore fills only untouched fields while D-87 editability remains
+  facts-owned. N-2 reuses the existing range under `@HiddenFromObjC`. Neither correction requires
+  a new decision or ADR.
 
 ## Verification Run
 
@@ -309,6 +335,20 @@
   2 seconds with 607 actionable tasks. Contract check passed 92 decision/ADR mirrors with no
   unresolved decision; architecture reported 16 rules over 23 modules.
 - Final `git diff --check` — successful with no output.
+- N-1 RED common test failed with `expected:<Edited roadster> but was:<Roadster>`; its restoration
+  test failed with `expected:<Restored draft> but was:<>` in the captured create command.
+- N-1 GREEN and REFACTOR targeted common and API 36 restoration tests passed after one-shot draft
+  republication and centralized private edited-field tracking.
+- N-2 RED failed with `NoSuchMethodException` for
+  `VehicleValidationKt.getINITIAL_ODOMETER_RANGE_KM`. GREEN and REFACTOR API 36 boundary tests
+  passed after Android consumed the hidden domain range directly.
+- Second-round final verification completed successfully. The first aggregate invocation stopped
+  on one overlong N-1 line; the continuation stopped on import ordering and a missing test blank
+  line. Focused Vehicle Detekt and Android KtLint checks passed after those behavior-neutral
+  formatting corrections, and the remaining 450 aggregate tasks then passed. Targeted host tests,
+  Android compilation, all five instrumented tests, Shared framework linking, architecture,
+  contracts, coverage, assembly and Android-host/iOS tests are green. The exact golden comparison
+  and `git diff --check` produced no output.
 
 ## Contract Impact
 
@@ -324,6 +364,8 @@
   route identity. `SwiftAppGraph` adds keyed release for its three cached holder families.
 - `Confirmation`, `AuthProvider` and `SyncTrigger` now have explicit Kotlin-matching Swift names
   and matching `Shared...` Objective-C names.
+- `INITIAL_ODOMETER_RANGE_KM` is a Kotlin-only domain declaration used by shared validation and
+  the Android adapter; it is hidden from Objective-C and does not alter the Swift-facing ABI.
 
 ## Decision Board Impact
 
@@ -332,6 +374,7 @@
   amended during owner review.
 - Added accepted D-90 with ADR-0091 and D-91 with ADR-0092, including identical rows in every
   required mirror; D-84 through D-89 remain unchanged.
+- The second-round corrections add no decision or ADR; D-84 through D-91 remain unchanged.
 
 ## Shared-Write Modules Touched
 
@@ -354,10 +397,13 @@
 - The six 2026-08-31 code-review follow-ups listed under “Out of Scope / Not Done” remain
   deliberately unimplemented; E3-03 owns the staged sync and restoration items, while the other
   four require future backlog assignment.
+- N-3 and N-4 from the second review remain deliberately unimplemented alongside those six
+  pre-existing follow-ups.
 
 ## Human Review Gate
 
 - Applies: module boundaries and dependency rules, the Swift-facing API surface and pinned
   versions are gated topics. The owner code-review correction intentionally changes the
   Objective-C golden under D-90 and records exact enum names under D-91. Final owner review is
-  still required before merge, and the agent MUST NOT merge the pull request.
+  still required before merge. The second-round changes do not alter that golden or ABI, and the
+  agent MUST NOT merge the pull request.

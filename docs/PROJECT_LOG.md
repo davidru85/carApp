@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-08-31 — E1-07 second-round review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-07`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** restored Android form drafts are republished into fresh state holders, fields
+  edited before initial facts are preserved, and the Android odometer adapter now consumes the
+  Kotlin-only domain range instead of duplicating it.
+- **Why:** second-round review found that saveable UI text could diverge from the command persisted
+  after process restoration or late edit facts, and that Android duplicated a shared validation
+  boundary. The corrections add no decision, ADR or Swift ABI change.
+- **Documents touched:** `docs/handoff-E1-07.md` and this log; D-84 through D-91 remain unchanged.
+- **Verification:** both defects have RED, GREEN and REFACTOR commits. Targeted common and API 36
+  tests pass; the complete repository and unchanged golden evidence is recorded in the handoff and
+  PR #37.
+- **Follow-ups / risks:** N-3 navigation lifetime cleanup and N-4 locale-independent assertion stay
+  out of scope alongside the six pre-existing follow-ups. PR #37 remains owner-gated and MUST NOT
+  be merged by the agent.
+
 ### 2026-08-31 — E1-07 owner code-review corrections
 
 - **Type:** correction
