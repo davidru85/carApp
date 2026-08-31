@@ -171,11 +171,7 @@ class VehicleFormStateHolder internal constructor(
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var loadedInitialOdometerKm: Long? = null
     private var loadedFacts = false
-    private var nameEdited = false
-    private var initialOdometerEdited = false
-    private var brandEdited = false
-    private var modelEdited = false
-    private var fuelTypeEdited = false
+    private val editedFields = mutableSetOf<FormField>()
     private var closed = false
 
     init {
@@ -216,29 +212,24 @@ class VehicleFormStateHolder internal constructor(
         )
 
     fun setName(value: String) {
-        nameEdited = true
-        updateInputs { copy(name = value) }
+        editInput(FormField.NAME) { copy(name = value) }
     }
 
     fun setInitialOdometerKm(value: Long) {
         if (!canEditInitialOdometer.value) return
-        initialOdometerEdited = true
-        updateInputs { copy(initialOdometerKm = value) }
+        editInput(FormField.INITIAL_ODOMETER) { copy(initialOdometerKm = value) }
     }
 
     fun setBrand(value: String?) {
-        brandEdited = true
-        updateInputs { copy(brand = value) }
+        editInput(FormField.BRAND) { copy(brand = value) }
     }
 
     fun setModel(value: String?) {
-        modelEdited = true
-        updateInputs { copy(model = value) }
+        editInput(FormField.MODEL) { copy(model = value) }
     }
 
     fun setFuelType(value: FuelType) {
-        fuelTypeEdited = true
-        updateInputs { copy(fuelType = value) }
+        editInput(FormField.FUEL_TYPE) { copy(fuelType = value) }
     }
 
     fun save() {
@@ -283,8 +274,12 @@ class VehicleFormStateHolder internal constructor(
         holderScope.cancel()
     }
 
-    private fun updateInputs(transform: FormInputs.() -> FormInputs) {
+    private fun editInput(
+        field: FormField,
+        transform: FormInputs.() -> FormInputs,
+    ) {
         if (closed) return
+        editedFields += field
         inputs.value = inputs.value.transform()
     }
 
@@ -307,22 +302,31 @@ class VehicleFormStateHolder internal constructor(
                     inputs.value =
                         FormInputs(
                             vehicleId = facts.vehicle.id.value,
-                            name = if (nameEdited) currentInputs.name else facts.vehicle.name,
+                            name = if (FormField.NAME in editedFields) currentInputs.name else facts.vehicle.name,
                             initialOdometerKm =
-                                if (initialOdometerEdited) {
+                                if (FormField.INITIAL_ODOMETER in editedFields) {
                                     currentInputs.initialOdometerKm
                                 } else {
                                     facts.vehicle.initialOdometerKm
                                 },
-                            brand = if (brandEdited) currentInputs.brand else facts.vehicle.brand,
-                            model = if (modelEdited) currentInputs.model else facts.vehicle.model,
-                            fuelType = if (fuelTypeEdited) currentInputs.fuelType else facts.vehicle.fuelType,
+                            brand = if (FormField.BRAND in editedFields) currentInputs.brand else facts.vehicle.brand,
+                            model = if (FormField.MODEL in editedFields) currentInputs.model else facts.vehicle.model,
+                            fuelType =
+                                if (FormField.FUEL_TYPE in editedFields) currentInputs.fuelType else facts.vehicle.fuelType,
                         )
                 }
                 canEditInitialOdometer.value = facts.canEditInitialOdometer
             }
         }
     }
+}
+
+private enum class FormField {
+    NAME,
+    INITIAL_ODOMETER,
+    BRAND,
+    MODEL,
+    FUEL_TYPE,
 }
 
 @HiddenFromObjC

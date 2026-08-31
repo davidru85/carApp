@@ -3,7 +3,7 @@ package com.ruizurraca.carapp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
