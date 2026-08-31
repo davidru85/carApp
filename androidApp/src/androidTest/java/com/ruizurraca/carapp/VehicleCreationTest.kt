@@ -16,9 +16,10 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.ruizurraca.carapp.feature.vehicle.domain.INITIAL_ODOMETER_RANGE_KM
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
-import org.junit.Assert.assertFalse
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
@@ -116,29 +117,32 @@ class VehicleCreationTest {
 
     @Test
     fun odometerValidationUsesTheSharedDomainRange() {
-        val domainRange =
-            Class
-                .forName("com.ruizurraca.carapp.feature.vehicle.domain.VehicleValidationKt")
-                .getMethod("getINITIAL_ODOMETER_RANGE_KM")
-                .invoke(null) as LongRange
         val hostFields = Class.forName("com.ruizurraca.carapp.MainActivityKt").declaredFields
         assertFalse(hostFields.any { field -> field.name == "ODOMETER_RANGE_KM" })
 
         composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
 
-        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement(domainRange.first.toString())
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ODOMETER)
+            .performTextReplacement(INITIAL_ODOMETER_RANGE_KM.first.toString())
         composeRule.onNodeWithTag(VehicleTestTags.ERROR).assertDoesNotExist()
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).assertIsEnabled()
 
-        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement((domainRange.first - 1).toString())
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ODOMETER)
+            .performTextReplacement((INITIAL_ODOMETER_RANGE_KM.first - 1).toString())
         composeRule.onNodeWithTag(VehicleTestTags.ERROR).assertIsDisplayed()
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).assertIsNotEnabled()
 
-        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement(domainRange.last.toString())
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ODOMETER)
+            .performTextReplacement(INITIAL_ODOMETER_RANGE_KM.last.toString())
         composeRule.onNodeWithTag(VehicleTestTags.ERROR).assertDoesNotExist()
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).assertIsEnabled()
 
-        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement((domainRange.last + 1).toString())
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ODOMETER)
+            .performTextReplacement((INITIAL_ODOMETER_RANGE_KM.last + 1).toString())
         composeRule.onNodeWithTag(VehicleTestTags.ERROR).assertIsDisplayed()
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).assertIsNotEnabled()
     }
