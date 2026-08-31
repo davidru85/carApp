@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -228,7 +229,7 @@ private fun releaseVehicleFormAfterDisposal(
             val observer =
                 object : LifecycleEventObserver {
                     override fun onStateChanged(
-                        source: androidx.lifecycle.LifecycleOwner,
+                        source: LifecycleOwner,
                         event: Lifecycle.Event,
                     ) {
                         if (event != Lifecycle.Event.ON_DESTROY) return
@@ -334,22 +335,15 @@ private fun VehicleFormScreen(
     onSaved: (String) -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
-    var name by rememberSaveable(stateHolder) { mutableStateOf(state.name) }
-    var brand by rememberSaveable(stateHolder) { mutableStateOf(state.brand.orEmpty()) }
-    var model by rememberSaveable(stateHolder) { mutableStateOf(state.model.orEmpty()) }
-    var nameEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
-    var brandEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
-    var modelEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
-
-    LaunchedEffect(state.name) {
-        if (!nameEdited) name = state.name
-    }
-    LaunchedEffect(state.brand) {
-        if (!brandEdited) brand = state.brand.orEmpty()
-    }
-    LaunchedEffect(state.model) {
-        if (!modelEdited) model = state.model.orEmpty()
-    }
+    val name = rememberSaveableFormText(stateHolder, state.name, stateHolder::setName)
+    val brand =
+        rememberSaveableFormText(stateHolder, state.brand.orEmpty()) { value ->
+            stateHolder.setBrand(value.ifBlank { null })
+        }
+    val model =
+        rememberSaveableFormText(stateHolder, state.model.orEmpty()) { value ->
+            stateHolder.setModel(value.ifBlank { null })
+        }
     LaunchedEffect(state.savedVehicleId, state.isSaving) {
         val savedVehicleId = state.savedVehicleId
         if (originalVehicleId == null && savedVehicleId != null && !state.isSaving) onSaved(savedVehicleId)
@@ -380,29 +374,40 @@ private fun VehicleFormScreen(
         VehicleForm(
             state =
                 state.copy(
-                    name = name,
-                    brand = brand.ifBlank { null },
-                    model = model.ifBlank { null },
+                    name = name.value,
+                    brand = brand.value.ifBlank { null },
+                    model = model.value.ifBlank { null },
                 ),
-            onNameChange = { value ->
-                nameEdited = true
-                name = value
-                stateHolder.setName(value)
-            },
+            onNameChange = name.onValueChange,
             onOdometerChange = stateHolder::setInitialOdometerKm,
-            onBrandChange = { value ->
-                brandEdited = true
-                brand = value.orEmpty()
-                stateHolder.setBrand(value)
-            },
-            onModelChange = { value ->
-                modelEdited = true
-                model = value.orEmpty()
-                stateHolder.setModel(value)
-            },
+            onBrandChange = { value -> brand.onValueChange(value.orEmpty()) },
+            onModelChange = { value -> model.onValueChange(value.orEmpty()) },
             onSave = stateHolder::save,
             modifier = Modifier.padding(padding),
         )
+    }
+}
+
+private data class SaveableFormText(
+    val value: String,
+    val onValueChange: (String) -> Unit,
+)
+
+@Composable
+private fun rememberSaveableFormText(
+    key: Any,
+    sharedValue: String,
+    publish: (String) -> Unit,
+): SaveableFormText {
+    var value by rememberSaveable(key) { mutableStateOf(sharedValue) }
+    var edited by rememberSaveable(key) { mutableStateOf(false) }
+    LaunchedEffect(sharedValue) {
+        if (!edited) value = sharedValue
+    }
+    return SaveableFormText(value) { updatedValue ->
+        edited = true
+        value = updatedValue
+        publish(updatedValue)
     }
 }
 
