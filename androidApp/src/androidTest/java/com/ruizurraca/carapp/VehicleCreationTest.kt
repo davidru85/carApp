@@ -76,4 +76,38 @@ class VehicleCreationTest {
             )
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).assertTextContains("0")
     }
+
+    @Test
+    fun odometerPreservesInvalidRawInputAndShowsLocalizedError() {
+        val overflowingOdometer = "999999999999999999999"
+
+        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("")
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ODOMETER)
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.EditableText,
+                    AnnotatedString(""),
+                ),
+            )
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ERROR)
+            .assertIsDisplayed()
+            .assertTextEquals("Enter a value within the allowed range.")
+
+        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement(overflowingOdometer)
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ODOMETER)
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.EditableText,
+                    AnnotatedString(overflowingOdometer),
+                ),
+            )
+        composeRule
+            .onNodeWithTag(VehicleTestTags.ERROR)
+            .assertIsDisplayed()
+            .assertTextEquals("Enter a value within the allowed range.")
+    }
 }
