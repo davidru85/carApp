@@ -64,6 +64,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.feature.vehicle.domain.INITIAL_ODOMETER_RANGE_KM
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
@@ -435,7 +436,7 @@ private fun rememberSaveableOdometerInput(
     LaunchedEffect(sharedValue) {
         if (!edited) text = sharedValue.toString()
     }
-    val value = text.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }
+    val value = text.toLongOrNull()?.takeIf { parsed -> parsed in INITIAL_ODOMETER_RANGE_KM }
     LaunchedEffect(edited, value, sharedValue) {
         if (edited && value != null && value != sharedValue) publish(value)
     }
@@ -445,7 +446,7 @@ private fun rememberSaveableOdometerInput(
         onValueChange = { updatedText ->
             edited = true
             text = updatedText
-            updatedText.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }?.let(publish)
+            updatedText.toLongOrNull()?.takeIf { parsed -> parsed in INITIAL_ODOMETER_RANGE_KM }?.let(publish)
         },
     )
 }
@@ -679,4 +680,3 @@ object VehicleTestTags {
 private const val DATABASE_FILE_NAME = "carapp.db"
 private const val CREATE_FORM_CACHE_KEY = "__create__"
 private const val DELETE_CONFIRMATION_CODE = "INFO.CONFIRM_DELETE_VEHICLE"
-private val ODOMETER_RANGE_KM = 0L..2_000_000L

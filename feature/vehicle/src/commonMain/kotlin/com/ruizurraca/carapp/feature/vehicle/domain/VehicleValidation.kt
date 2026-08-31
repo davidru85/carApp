@@ -10,8 +10,9 @@ import kotlin.native.HiddenFromObjC
 
 private const val MIN_TEXT_LENGTH = 1
 private const val MAX_VEHICLE_TEXT_LENGTH = 40
-private const val MIN_ODOMETER_KM = 0L
-private const val MAX_ODOMETER_KM = 2_000_000L
+
+@HiddenFromObjC
+val INITIAL_ODOMETER_RANGE_KM: LongRange = 0L..2_000_000L
 
 private data class NormalisedVehicleFields(
     val name: String,
@@ -66,11 +67,11 @@ private fun initialOdometerError(
     editNotAllowed: Boolean,
 ): ValidationError? =
     when {
-        value != null && value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM -> {
+        value != null && value !in INITIAL_ODOMETER_RANGE_KM -> {
             ValidationError.OutOfRange(
                 "initialOdometerKm",
-                MIN_ODOMETER_KM,
-                MAX_ODOMETER_KM,
+                INITIAL_ODOMETER_RANGE_KM.first,
+                INITIAL_ODOMETER_RANGE_KM.last,
             )
         }
 
