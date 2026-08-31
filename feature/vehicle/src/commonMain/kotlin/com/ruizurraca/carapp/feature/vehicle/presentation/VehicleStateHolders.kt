@@ -239,13 +239,16 @@ class VehicleFormStateHolder internal constructor(
                             snapshot.toUpdateCommand(loadedInitialOdometerKm),
                         ).map { EntityId(snapshot.vehicleId) }
                     }
-            }
+                }
             when (result) {
                 is Outcome.Ok -> {
                     if (snapshot.vehicleId == null) inputs.value = FormInputs(vehicleId = null)
                     savedVehicleId.value = result.value.value
                 }
-                is Outcome.Err -> transientMessage.value = result.error.toErrorMessage()
+
+                is Outcome.Err -> {
+                    transientMessage.value = result.error.toErrorMessage()
+                }
             }
             saving.value = false
         }

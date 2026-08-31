@@ -1,9 +1,10 @@
 # Agent Handoff - E1-07
 
-> **Owner-review correction — 2026-08-30:** the owner ratified D-84 through D-88 without
-> amendment and identified a release-blocking SQLDelight driver leak in `AppGraph.close()`. The
-> correction adds D-89 / ADR-0090, gives each graph an owned `DatabaseHandle`, and preserves the
-> existing Objective-C golden header byte-for-byte.
+> **Owner code-review corrections — 2026-08-31:** D-84 through D-89 remain unchanged. The
+> corrections add D-90 / ADR-0091 for keyed Swift holder release and creation completion, and D-91
+> / ADR-0092 for explicit common-enum export names. The Objective-C golden changes intentionally:
+> D-90 adds three release operations and `savedVehicleId`; D-91 pins the already generated
+> Kotlin-matching enum names instead of leaving them dependent on framework export configuration.
 
 ## Story
 
@@ -31,13 +32,14 @@
   D-55 limits the E0-07 staged behavior; D-76 fixes the pure Vehicle validation boundary; and
   owner-approved D-84 through D-88 fix the Android UI stack, feature presentation ownership,
   graph separation, reactive edit facts and the pre-E3-03 sync-status exception. The owner-review
-  correction adds accepted D-89 for graph-owned local database lifetime. Every dependency is
-  `Accepted`; no unresolved decision blocks the story.
+  corrections add accepted D-89 for graph-owned local database lifetime, D-90 for keyed Swift
+  holder release and safe creation completion, and D-91 for exact common-enum export names. Every
+  dependency is `Accepted`; no unresolved decision blocks the story.
 - [x] Normative sections reviewed — `docs/SPECIFICATION.md §3`, `§5.1`, `§7 F-2`, `§8.3`, `§8.4`
   and `§11`; `docs/CONTRACTS.md §6`, `§12`, `§14`, `§15`, `§20.2`, `§20.4`, `§20.5` and
   `§20.10`; `docs/DECISION_BOARD.md` D-3, D-4, D-7, D-8, D-16, D-17, D-18, D-20, D-28, D-55 and
-  D-76 and D-84 through D-89; `docs/TECHNICAL_PLAN.md §3`, `§4`, `§10` and `§12`; ADR-0017,
-  ADR-0029 and ADR-0085 through ADR-0090; the E0-07,
+  D-76 and D-84 through D-91; `docs/TECHNICAL_PLAN.md §3`, `§4`, `§10` and `§12`; ADR-0017,
+  ADR-0029 and ADR-0085 through ADR-0092; the E0-07,
   E1-03 and E1-06 handoffs; and the non-normative Android design references indexed by
   `docs/DESIGN.md §4`.
 - [x] Expected verification identified — baseline architecture and contract checks; RED/GREEN
@@ -58,8 +60,8 @@
 - Added the reactive `VehicleEditFacts` repository projection and database read support used to
   keep editability authoritative while Fuel Entries change.
 - Moved Vehicle presentation models and state holders into `:feature:vehicle`, moved shared UI
-  primitives into `:core:common`, and preserved the exact Objective-C and Swift names in the
-  generated Shared framework header.
+  primitives into `:core:common`, retained the declared Vehicle presentation export names and
+  later made the three reviewed common-enum renames explicit under D-91.
 - Separated Kotlin `AppGraph` construction from the composed `SwiftAppGraph` facade. Android now
   supplies `viewModelScope`; the Swift facade owns and closes its child scopes while preserving
   caching, idempotent close and post-close rejection.
@@ -71,6 +73,16 @@
 - Corrected the owner-review resource leak by returning an owned, idempotently closeable
   `DatabaseHandle` from every production and test `DatabaseFactory`; direct `AppGraph.close()` and
   transitive `SwiftAppGraph.close()` now release the SQL driver exactly once.
+- Corrected the cached creation-form corruption by preserving `vehicleId = null`, publishing the
+  created identifier through `savedVehicleId`, resetting successful creation inputs and adding
+  keyed release for every cached Swift state-holder family.
+- Pinned `Confirmation`, `AuthProvider` and `SyncTrigger` to intentional Objective-C and Swift
+  names with exact `@ObjCName` annotations and recorded the ABI change as D-91.
+- Bound Android form-holder release to navigation exit rather than composition disposal. Saveable
+  native draft text now survives configuration changes, while leaving the route releases the
+  holder and a later route starts clean.
+- Preserved raw initial-odometer text in the Android host. Empty, non-numeric, overflowing and
+  out-of-range input remains visible, maps to a localized error and cannot be saved.
 - Recorded D-84 through D-88, regenerated the Objective-C golden header and updated the current
   repository, verification and contribution records.
 - Recorded D-89 without reopening or amending the owner-ratified D-84 through D-88 records.
@@ -94,9 +106,17 @@
 - `AppGraphCloseTest` observes the owned handle directly on Android host and iOS, proving one
   release after repeated Kotlin-graph close calls and one release after repeated Swift-transitive
   close calls.
-- The linked `Shared.framework` header exactly matches the committed golden, preserves
-  `SyncSyncStatus`, `UiMessage` and `UiMessageKind`, and exposes no provider type.
+- The linked `Shared.framework` header exactly matches the committed golden. Compared with `main`,
+  the E1-07 surface intentionally adds the D-90 holder-release and creation-completion API and
+  uses the D-91 exact names `Confirmation`, `AuthProvider` and `SyncTrigger`; provider types remain
+  absent.
 - D-28's three real-tree rules and three violation fixtures pass on the Android host.
+- `VehicleStateHoldersTest` proves that two saves through one creation holder issue two create
+  commands, never an update, and that successful creation resets the public inputs.
+- `SwiftAppGraphLifecycleTest` proves keyed holder caching, release, child-scope cancellation and
+  fresh reconstruction for Vehicle forms, Fuel Entry lists and Fuel Entry forms.
+- `VehicleCreationTest` proves draft retention across activity recreation, holder release after
+  back-stack exit, raw empty and overflowing odometer retention and a visible localized error.
 
 ## Out of Scope / Not Done
 
@@ -104,6 +124,17 @@
   settings behavior.
 - D-88 deliberately leaves Vehicle presentation on constant `SyncStatus.Idle` and direct D-55
   restoration until E3-03 supplies the final shared controller.
+- `DefaultAppGraph.syncController()` remains a staged runtime error until E3-03.
+- `VehicleFormStateHolder.loadedInitialOdometerKm` is not refreshed after a successful edit; no
+  owning backlog story is currently assigned.
+- `VehicleCreationTest` still uses the device database and accumulates rows across runs; no owning
+  backlog story is currently assigned.
+- `VehicleSliceRuntime.refresh()` still returns success when an individual remote apply fails;
+  E3-03 owns replacement of the staged restoration path.
+- D-28 package rules still inspect imports only, so fully qualified forbidden usages need a future
+  architecture-check hardening story.
+- Delete request/confirmation and restoration error branches still need dedicated presentation
+  tests; no owning backlog story is currently assigned.
 
 ## Files Changed
 
@@ -121,6 +152,9 @@
 - Owner-review correction: the `:core:database` lifetime contract and factories, `:core:testing`
   factory fakes, graph factory callers and tests, D-89 / ADR-0090 mirrors, this handoff and the
   project log.
+- Owner code-review corrections: Vehicle and Swift graph presentation state, Android host and
+  instrumented tests, explicit common enum annotations, the generated Objective-C golden, D-90 /
+  ADR-0091 and D-91 / ADR-0092 mirrors, this handoff and the project log.
 
 ## Decisions Made
 
@@ -138,6 +172,14 @@
   `close(database)` operation or leaking `SqlDriver` ownership into `:shared`.
 - Native Compose host code uses the TDD-order exemption in
   `docs/SPECIFICATION.md §11`; it still requires executing UI tests.
+- D-90 selects keyed release operations on `SwiftAppGraph` and a separate `savedVehicleId`
+  completion signal. This retains caching without unbounded child scopes and keeps a creation
+  holder permanently on the create path after a successful save.
+- D-91 selects exact Kotlin-matching common-enum names because no current Swift source consumes
+  the prior module-derived names. The change is intentional and owner-visible rather than an
+  incidental consequence of framework exports.
+- Android configuration retention and raw odometer parsing stay host-private and add no shared or
+  Swift surface, so they do not require another gated decision.
 
 ## Verification Run
 
@@ -211,8 +253,8 @@
   :shared:iosSimulatorArm64Test architectureCheck :build-logic:convention:test contractCheck
   :composition:ios:linkDebugFrameworkIosSimulatorArm64` — successful across the affected database,
   fake, feature, graph, architecture and contract surfaces; contract check reports 90 accepted
-  decision/ADR mirrors. The generated Objective-C header remains byte-exact with the unchanged
-  golden.
+  decision/ADR mirrors. At the D-89-only correction step, the generated Objective-C header
+  remained byte-exact with the then-current golden.
 - Owner-review REFACTOR `./gradlew ktlintFormat` — successful; normalized the GREEN import and
   expression formatting and ensured the graph-construction contract test closes its owned
   database handle even if its assertion fails.
@@ -227,23 +269,69 @@
   contract check reported 90 accepted decision/ADR mirrors with no pending assertion.
 - Owner-review framework check `./gradlew
   :composition:ios:linkDebugFrameworkIosSimulatorArm64`, exact generated-header/golden comparison
-  and `git diff --check` — successful with 69 framework tasks; the committed golden is unchanged.
+  and `git diff --check` — successful with 69 framework tasks; D-89 itself did not change the
+  then-current committed golden.
+- C-1 RED `./gradlew :feature:vehicle:testAndroidHostTest :shared:testAndroidHostTest --tests
+  '*VehicleStateHoldersTest' --tests '*SwiftAppGraphLifecycleTest'` — failed before the correction
+  because the cached creation holder became an editor and cached Swift holders had no keyed
+  release.
+- C-1 GREEN and REFACTOR focused runs — successful after separating `savedVehicleId`, resetting
+  creation inputs and centralizing keyed close-and-release for all three Swift holder caches.
+- C-2 RED common and framework contract tests failed before exact annotations because the three
+  enum names were derived rather than declared. GREEN and REFACTOR runs passed after adding exact
+  `@ObjCName` annotations and one shared export-name expectation table.
+- C-3 RED `./gradlew :androidApp:connectedDebugAndroidTest
+  -Pandroid.testInstrumentationRunnerArguments.class=com.ruizurraca.carapp.VehicleCreationTest` —
+  failed because activity recreation disposed and removed the cached holder. GREEN and REFACTOR
+  runs passed all creation and rotation tests on `E1_07_API_36`; Android lint and compilation also
+  passed.
+- C-5 RED isolated instrumented test failed with `EditableText = '0'` after clearing the field.
+  GREEN and REFACTOR runs preserve empty and overflowing raw text, show the localized range error
+  and pass all three `VehicleCreationTest` cases on `E1_07_API_36`.
+- Final owner-code-review host tests `./gradlew :feature:vehicle:testAndroidHostTest
+  :shared:testAndroidHostTest :core:common:testAndroidHostTest` — successful in 5 seconds with 81
+  actionable tasks.
+- Final Android compilation `./gradlew :androidApp:compileDebugKotlin
+  :androidApp:compileDebugAndroidTestKotlin` — successful in 1 second with 113 actionable tasks.
+- Final instrumented suite `./gradlew :androidApp:connectedDebugAndroidTest` — successful in 9
+  seconds with 212 actionable tasks; all three tests passed on `E1_07_API_36`.
+- Final Shared framework link `./gradlew
+  :composition:ios:linkDebugFrameworkIosSimulatorArm64` and the exact generated-header/golden
+  comparison — successful in 4 seconds with 69 actionable tasks; `diff -u` produced no output.
+- The first final repository attempt exposed Android long-method limits and a stale host-contract
+  source assertion; the second exposed formatting left in the C-1 GREEN source. Focused lint,
+  detekt and build-logic reruns passed after behavior-neutral extraction and formatting.
+- Final repository command `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest
+  iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x
+  :integration:firebase-firestore:iosSimulatorArm64Test -x
+  :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` — successful in
+  2 seconds with 607 actionable tasks. Contract check passed 92 decision/ADR mirrors with no
+  unresolved decision; architecture reported 16 rules over 23 modules.
+- Final `git diff --check` — successful with no output.
 
 ## Contract Impact
 
 - `buildAppGraph` returns Kotlin-facing `AppGraph`; `SwiftAppGraph` wraps it.
 - Vehicle presentation ownership moves to `:feature:vehicle`; `UiMessage`, `UiMessageKind` and
-  `SyncStatus` move to `:core:common` with the prior Swift ABI preserved.
+  `SyncStatus` move to `:core:common`. Vehicle presentation names remain stable, while D-91 makes
+  the reviewed common-enum rename intentional and exact.
 - `VehicleRepository` gains reactive `observeVehicleEditFacts`; `VehicleEditFacts` is Kotlin-only.
 - D-88 records the temporary constant-`Idle` exception to the final single-controller contract.
 - `DatabaseFactory.create()` now returns a `DatabaseHandle` that owns its `AppDatabase` and driver;
   `AppGraph.close()` releases it idempotently and `SwiftAppGraph.close()` delegates transitively.
+- `VehicleFormUiState.savedVehicleId` is the creation-completion signal; `vehicleId` remains the
+  route identity. `SwiftAppGraph` adds keyed release for its three cached holder families.
+- `Confirmation`, `AuthProvider` and `SyncTrigger` now have explicit Kotlin-matching Swift names
+  and matching `Shared...` Objective-C names.
 
 ## Decision Board Impact
 
 - Added accepted D-84 through D-88 with ADR-0085 through ADR-0089 and identical mirrors.
 - Added accepted D-89 with ADR-0090 and identical mirrors; D-84 through D-88 were not reopened or
   amended during owner review.
+- Added accepted D-90 with ADR-0091 and D-91 with ADR-0092, including identical rows in every
+  required mirror; D-84 through D-89 remain unchanged.
 
 ## Shared-Write Modules Touched
 
@@ -263,9 +351,13 @@
 - E3-08 still owns completing the staged Fuel, Session and Sync factories on `AppGraph`.
 - The owner-review findings about the staged sync exception test, D-28 fixture location, duplicated
   log text and emulator cleanup remain explicitly outside this correction and were not changed.
+- The six 2026-08-31 code-review follow-ups listed under “Out of Scope / Not Done” remain
+  deliberately unimplemented; E3-03 owns the staged sync and restoration items, while the other
+  four require future backlog assignment.
 
 ## Human Review Gate
 
 - Applies: module boundaries and dependency rules, the Swift-facing API surface and pinned
-  versions are gated topics. The owner-review correction preserves the Objective-C golden header;
-  final owner review is still required before merge, and the agent MUST NOT merge the pull request.
+  versions are gated topics. The owner code-review correction intentionally changes the
+  Objective-C golden under D-90 and records exact enum names under D-91. Final owner review is
+  still required before merge, and the agent MUST NOT merge the pull request.

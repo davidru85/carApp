@@ -183,14 +183,19 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
             route = VehicleRoutes.DETAIL,
             arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
         ) { entry ->
-            val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
-            VehicleDetailScreen(
-                navController = navController,
-                stateHolder = viewModel.vehicleListStateHolder,
-                vehicleId = vehicleId,
-            )
+            VehicleDetailRoute(entry, navController, viewModel.vehicleListStateHolder)
         }
     }
+}
+
+@Composable
+private fun VehicleDetailRoute(
+    entry: NavBackStackEntry,
+    navController: NavHostController,
+    stateHolder: VehicleListStateHolder,
+) {
+    val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+    VehicleDetailScreen(navController, stateHolder, vehicleId)
 }
 
 @Composable
@@ -344,13 +349,13 @@ private fun VehicleFormScreen(
         rememberSaveableFormText(stateHolder, state.model.orEmpty()) { value ->
             stateHolder.setModel(value.ifBlank { null })
         }
-    var odometerText by rememberSaveable(stateHolder) { mutableStateOf(state.initialOdometerKm.toString()) }
-    var odometerEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
-    LaunchedEffect(state.initialOdometerKm) {
-        if (!odometerEdited) odometerText = state.initialOdometerKm.toString()
-    }
-    val parsedOdometer = odometerText.toLongOrNull()?.takeIf { value -> value in ODOMETER_RANGE_KM }
-    val hasOdometerError = odometerEdited && parsedOdometer == null
+    val odometer =
+        rememberSaveableOdometerInput(
+            key = stateHolder,
+            sharedValue = state.initialOdometerKm,
+            publish = stateHolder::setInitialOdometerKm,
+        )
+    val titleResource = if (originalVehicleId == null) R.string.create_vehicle_title else R.string.edit_vehicle_title
     LaunchedEffect(state.savedVehicleId, state.isSaving) {
         val savedVehicleId = state.savedVehicleId
         if (originalVehicleId == null && savedVehicleId != null && !state.isSaving) onSaved(savedVehicleId)
@@ -360,17 +365,7 @@ private fun VehicleFormScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        stringResource(
-                            if (originalVehicleId ==
-                                null
-                            ) {
-                                R.string.create_vehicle_title
-                            } else {
-                                R.string.edit_vehicle_title
-                            },
-                        ),
-                    )
+                    Text(stringResource(titleResource))
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
@@ -386,18 +381,12 @@ private fun VehicleFormScreen(
                     model = model.value.ifBlank { null },
                 ),
             onNameChange = name.onValueChange,
-            odometerText = odometerText,
-            hasOdometerError = hasOdometerError,
-            onOdometerChange = { value ->
-                odometerEdited = true
-                odometerText = value
-                value.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }?.let {
-                    stateHolder.setInitialOdometerKm(it)
-                }
-            },
+            odometerText = odometer.text,
+            hasOdometerError = odometer.hasError,
+            onOdometerChange = odometer.onValueChange,
             onBrandChange = { value -> brand.onValueChange(value.orEmpty()) },
             onModelChange = { value -> model.onValueChange(value.orEmpty()) },
-            onSave = { if (parsedOdometer != null) stateHolder.save() },
+            onSave = stateHolder::save,
             modifier = Modifier.padding(padding),
         )
     }
@@ -424,6 +413,35 @@ private fun rememberSaveableFormText(
         value = updatedValue
         publish(updatedValue)
     }
+}
+
+private data class SaveableOdometerInput(
+    val text: String,
+    val hasError: Boolean,
+    val onValueChange: (String) -> Unit,
+)
+
+@Composable
+private fun rememberSaveableOdometerInput(
+    key: Any,
+    sharedValue: Long,
+    publish: (Long) -> Unit,
+): SaveableOdometerInput {
+    var text by rememberSaveable(key) { mutableStateOf(sharedValue.toString()) }
+    var edited by rememberSaveable(key) { mutableStateOf(false) }
+    LaunchedEffect(sharedValue) {
+        if (!edited) text = sharedValue.toString()
+    }
+    val value = text.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }
+    return SaveableOdometerInput(
+        text = text,
+        hasError = edited && value == null,
+        onValueChange = { updatedText ->
+            edited = true
+            text = updatedText
+            updatedText.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }?.let(publish)
+        },
+    )
 }
 
 @Composable

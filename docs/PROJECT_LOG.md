@@ -38,6 +38,29 @@
 
 ## Entries
 
+### 2026-08-31 — E1-07 owner code-review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-07` / `D-90`, `D-91`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** creation holders remain creation-only after save; Swift holder caches now have
+  keyed release; reviewed common enums have exact Objective-C and Swift names; Android form drafts
+  survive configuration changes; and raw invalid odometer text remains visible with a localized
+  error.
+- **Why:** owner review found a cached-holder data-corruption path, unbounded Swift child scopes,
+  configuration-dependent enum names, draft loss during activity recreation and silently discarded
+  odometer input. D-90 and D-91 make the two Swift ABI changes explicit while the Android fixes stay
+  host-private.
+- **Documents touched:** `docs/CONTRACTS.md §15.3` and `§20.10`, D-90 / ADR-0091 and D-91 /
+  ADR-0092 in all decision mirrors, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`.
+- **Verification:** each correction has RED, GREEN and REFACTOR commits. Focused common, shared,
+  Android compilation and API 36 instrumented tests pass; complete repository, framework-header
+  and protected-check evidence is recorded in the handoff and PR #37.
+- **Follow-ups / risks:** E3-03 owns the staged `syncController()` and restoration error handling.
+  Refreshing the loaded edit odometer, hermetic UI database setup, fully qualified D-28 detection
+  and the missing delete/refresh presentation tests require future backlog assignment. PR #37
+  remains owner-gated and MUST NOT be merged by the agent.
+
 ### 2026-08-30 — E1-07 owner-review database lifetime correction
 
 - **Type:** correction
