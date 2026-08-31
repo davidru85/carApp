@@ -106,6 +106,12 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-89 | Local database lifetime ownership | `DatabaseFactory` returns an idempotently closeable `DatabaseHandle` | Accepted | Keeps the SQL driver in `:core:database` and gives each application graph explicit ownership of one connection. |
 | D-90 | Swift holder release and Vehicle creation completion | Keyed Swift cache release plus separate `savedVehicleId` | Accepted | Bounds Swift-owned scopes and prevents a successful creation form from silently becoming an editor. |
 | D-91 | Stable Swift names for exported common enums | Exact Kotlin-matching `@ObjCName` annotations | Accepted | Prevents framework export configuration from renaming three already exported common enums. |
+| D-92 | Fuel Entry row indicators | Extend `FuelEntryListItem` with both warning flags | Accepted | Preserves independent row facts through the existing reactive projection. |
+| D-93 | Live Fuel Entry money resolution | Reuse the existing pure `MoneyInput` resolver | Accepted | Prevents presentation and save arithmetic from diverging. |
+| D-94 | Fuel Entry form defaults | Compose clock, Vehicle odometer and supported locale currency in `AppGraph` | Accepted | Keeps features isolated and E1-10 outside E1-08. |
+| D-95 | Pre-E3-03 Fuel sync-status staging | Constant Fuel list `Idle` until E3-03 | Accepted | Extends staging without creating a provisional controller. |
+| D-96 | Fuel Entry calendar-day conversion | Inject the device zone for native selected-day conversion and formatting | Accepted | Keeps local calendar behavior deterministic without changing the ABI. |
+| D-97 | Fuel presentation iOS export | Refined `:feature:fuel` export with exact existing ABI names | Accepted | Moves presentation ownership without leaking non-allowlisted declarations. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

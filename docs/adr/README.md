@@ -98,5 +98,11 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-89 | [ADR-0090](0090-own-database-lifetime-with-closeable-handle.md) | Own database lifetime with a closeable handle. | Accepted |
 | D-90 | [ADR-0091](0091-release-swift-holders-and-separate-save-completion.md) | Release Swift holders and separate Vehicle save completion. | Accepted |
 | D-91 | [ADR-0092](0092-pin-exported-common-enum-names.md) | Pin exported common enum names. | Accepted |
+| D-92 | [ADR-0093](0093-preserve-fuel-entry-row-indicators.md) | Preserve Fuel Entry row indicators in the canonical list projection. | Accepted |
+| D-93 | [ADR-0094](0094-reuse-pure-money-input-resolution.md) | Reuse pure MoneyInput resolution for live form derivation. | Accepted |
+| D-94 | [ADR-0095](0095-compose-fuel-entry-form-defaults-in-app-graph.md) | Compose Fuel Entry form defaults in AppGraph. | Accepted |
+| D-95 | [ADR-0096](0096-stage-fuel-sync-status-until-e3-03.md) | Stage Fuel Entry sync status until E3-03. | Accepted |
+| D-96 | [ADR-0097](0097-use-device-local-fuel-entry-calendar-days.md) | Use injected device-local Fuel Entry calendar days. | Accepted |
+| D-97 | [ADR-0098](0098-export-fuel-presentation-with-stable-abi.md) | Export Fuel presentation with a stable refined ABI. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

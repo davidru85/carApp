@@ -564,6 +564,12 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-89 | Local database lifetime ownership | Return an idempotently closeable `DatabaseHandle` from `DatabaseFactory` so each application graph releases its SQL driver. | Accepted |
 | D-90 | Swift holder release and Vehicle creation completion | Add keyed Swift holder release, keep saved IDs separate from form identity and reset creation inputs after success. | Accepted |
 | D-91 | Stable Swift names for exported common enums | Pin `Confirmation`, `AuthProvider` and `SyncTrigger` to their Kotlin-matching Objective-C and Swift names. | Accepted |
+| D-92 | Fuel Entry row indicators | Carry missed-entry and inconsistent-odometer facts in every Fuel Entry list projection row. | Accepted |
+| D-93 | Live Fuel Entry money resolution | Reuse the pure `MoneyInput` resolver for validation and live form derivation. | Accepted |
+| D-94 | Fuel Entry form defaults | Compose clock, Vehicle odometer and supported locale currency in `AppGraph` until E1-10 supplies persisted settings. | Accepted |
+| D-95 | Pre-E3-03 Fuel sync-status staging | Publish constant Fuel Entry list `SyncStatus.Idle` without a provisional controller until E3-03. | Accepted |
+| D-96 | Fuel Entry calendar-day conversion | Convert and format selected Fuel Entry days in an injected device time zone while preserving untouched `now`. | Accepted |
+| D-97 | Fuel presentation iOS export | Export refined `:feature:fuel` presentation declarations through the sole Shared framework with a byte-identical ABI. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
