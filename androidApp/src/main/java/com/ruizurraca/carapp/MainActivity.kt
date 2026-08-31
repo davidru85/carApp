@@ -344,6 +344,13 @@ private fun VehicleFormScreen(
         rememberSaveableFormText(stateHolder, state.model.orEmpty()) { value ->
             stateHolder.setModel(value.ifBlank { null })
         }
+    var odometerText by rememberSaveable(stateHolder) { mutableStateOf(state.initialOdometerKm.toString()) }
+    var odometerEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
+    LaunchedEffect(state.initialOdometerKm) {
+        if (!odometerEdited) odometerText = state.initialOdometerKm.toString()
+    }
+    val parsedOdometer = odometerText.toLongOrNull()?.takeIf { value -> value in ODOMETER_RANGE_KM }
+    val hasOdometerError = odometerEdited && parsedOdometer == null
     LaunchedEffect(state.savedVehicleId, state.isSaving) {
         val savedVehicleId = state.savedVehicleId
         if (originalVehicleId == null && savedVehicleId != null && !state.isSaving) onSaved(savedVehicleId)
@@ -379,10 +386,18 @@ private fun VehicleFormScreen(
                     model = model.value.ifBlank { null },
                 ),
             onNameChange = name.onValueChange,
-            onOdometerChange = stateHolder::setInitialOdometerKm,
+            odometerText = odometerText,
+            hasOdometerError = hasOdometerError,
+            onOdometerChange = { value ->
+                odometerEdited = true
+                odometerText = value
+                value.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }?.let {
+                    stateHolder.setInitialOdometerKm(it)
+                }
+            },
             onBrandChange = { value -> brand.onValueChange(value.orEmpty()) },
             onModelChange = { value -> model.onValueChange(value.orEmpty()) },
-            onSave = stateHolder::save,
+            onSave = { if (parsedOdometer != null) stateHolder.save() },
             modifier = Modifier.padding(padding),
         )
     }
@@ -415,7 +430,9 @@ private fun rememberSaveableFormText(
 private fun VehicleForm(
     state: VehicleFormUiState,
     onNameChange: (String) -> Unit,
-    onOdometerChange: (Long) -> Unit,
+    odometerText: String,
+    hasOdometerError: Boolean,
+    onOdometerChange: (String) -> Unit,
     onBrandChange: (String?) -> Unit,
     onModelChange: (String?) -> Unit,
     onSave: () -> Unit,
@@ -433,10 +450,11 @@ private fun VehicleForm(
             singleLine = true,
         )
         OutlinedTextField(
-            value = state.initialOdometerKm.toString(),
-            onValueChange = { value -> value.toLongOrNull()?.let(onOdometerChange) },
+            value = odometerText,
+            onValueChange = onOdometerChange,
             modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.ODOMETER),
             enabled = state.canEditInitialOdometer,
+            isError = hasOdometerError,
             label = { Text(stringResource(R.string.initial_odometer)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
@@ -455,10 +473,18 @@ private fun VehicleForm(
             label = { Text(stringResource(R.string.vehicle_model)) },
             singleLine = true,
         )
-        state.message?.let { ErrorText(it) }
+        if (hasOdometerError) {
+            Text(
+                text = stringResource(R.string.error_out_of_range),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag(VehicleTestTags.ERROR),
+            )
+        } else {
+            state.message?.let { ErrorText(it) }
+        }
         Button(
             onClick = onSave,
-            enabled = !state.isSaving,
+            enabled = !state.isSaving && !hasOdometerError,
             modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.SAVE),
         ) {
             if (state.isSaving) {
@@ -629,3 +655,4 @@ object VehicleTestTags {
 private const val DATABASE_FILE_NAME = "carapp.db"
 private const val CREATE_FORM_CACHE_KEY = "__create__"
 private const val DELETE_CONFIRMATION_CODE = "INFO.CONFIRM_DELETE_VEHICLE"
+private val ODOMETER_RANGE_KM = 0L..2_000_000L
