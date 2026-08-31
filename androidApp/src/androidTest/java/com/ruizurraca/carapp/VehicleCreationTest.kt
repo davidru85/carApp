@@ -1,13 +1,18 @@
 package com.ruizurraca.carapp
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.AnnotatedString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -25,8 +30,13 @@ class VehicleCreationTest {
         composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
         composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).assertDoesNotExist()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
+        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("125")
+        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()
+        }
 
         composeRule
             .onNodeWithTag(VehicleTestTags.DETAIL_NAME)
@@ -42,6 +52,7 @@ class VehicleCreationTest {
         composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(draftName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("321")
+        composeRule.waitForIdle()
 
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
@@ -55,7 +66,14 @@ class VehicleCreationTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
 
-        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextEquals("")
+        composeRule
+            .onNodeWithTag(VehicleTestTags.NAME)
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.EditableText,
+                    AnnotatedString(""),
+                ),
+            )
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).assertTextContains("0")
     }
 }

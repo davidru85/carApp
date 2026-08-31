@@ -3,6 +3,8 @@ package com.ruizurraca.carapp
 import android.app.Application
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -37,15 +39,23 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -130,9 +140,16 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
                 onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
             )
         }
-        composable(VehicleRoutes.CREATE) {
+        composable(VehicleRoutes.CREATE) { entry ->
+            val stateHolder =
+                remember(entry) {
+                    viewModel.vehicleFormStateHolder(vehicleId = null)
+                }
+            ReleaseVehicleFormOnBackStackExit(entry) {
+                viewModel.closeVehicleForm(vehicleId = null)
+            }
             VehicleFormScreen(
-                stateHolder = viewModel.vehicleFormStateHolder(vehicleId = null),
+                stateHolder = stateHolder,
                 originalVehicleId = null,
                 onBack = navController::popBackStack,
                 onSaved = { vehicleId ->
@@ -140,7 +157,6 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
                         popUpTo(VehicleRoutes.CREATE) { inclusive = true }
                     }
                 },
-                releaseForm = { viewModel.closeVehicleForm(vehicleId = null) },
             )
         }
         composable(
@@ -148,12 +164,18 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
             arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
         ) { entry ->
             val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+            val stateHolder =
+                remember(entry) {
+                    viewModel.vehicleFormStateHolder(vehicleId)
+                }
+            ReleaseVehicleFormOnBackStackExit(entry) {
+                viewModel.closeVehicleForm(vehicleId)
+            }
             VehicleFormScreen(
-                stateHolder = viewModel.vehicleFormStateHolder(vehicleId),
+                stateHolder = stateHolder,
                 originalVehicleId = vehicleId,
                 onBack = navController::popBackStack,
                 onSaved = { navController.popBackStack() },
-                releaseForm = { viewModel.closeVehicleForm(vehicleId) },
             )
         }
         composable(
@@ -166,6 +188,55 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
                 stateHolder = viewModel.vehicleListStateHolder,
                 vehicleId = vehicleId,
             )
+        }
+    }
+}
+
+@Composable
+private fun ReleaseVehicleFormOnBackStackExit(
+    entry: NavBackStackEntry,
+    releaseForm: () -> Unit,
+) {
+    val activity = LocalContext.current as? ComponentActivity
+    DisposableEffect(entry, activity) {
+        onDispose {
+            if (activity == null) {
+                releaseForm()
+            } else {
+                Handler(Looper.getMainLooper()).post {
+                    releaseVehicleFormAfterDisposal(activity, releaseForm)
+                }
+            }
+        }
+    }
+}
+
+private fun releaseVehicleFormAfterDisposal(
+    activity: ComponentActivity,
+    releaseForm: () -> Unit,
+) {
+    when (activity.lifecycle.currentState) {
+        Lifecycle.State.RESUMED -> {
+            releaseForm()
+        }
+
+        Lifecycle.State.DESTROYED -> {
+            if (!activity.isChangingConfigurations) releaseForm()
+        }
+
+        else -> {
+            val observer =
+                object : LifecycleEventObserver {
+                    override fun onStateChanged(
+                        source: androidx.lifecycle.LifecycleOwner,
+                        event: Lifecycle.Event,
+                    ) {
+                        if (event != Lifecycle.Event.ON_DESTROY) return
+                        source.lifecycle.removeObserver(this)
+                        if (!activity.isChangingConfigurations) releaseForm()
+                    }
+                }
+            activity.lifecycle.addObserver(observer)
         }
     }
 }
@@ -261,10 +332,24 @@ private fun VehicleFormScreen(
     originalVehicleId: String?,
     onBack: () -> Unit,
     onSaved: (String) -> Unit,
-    releaseForm: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
-    DisposableEffect(stateHolder) { onDispose { releaseForm() } }
+    var name by rememberSaveable(stateHolder) { mutableStateOf(state.name) }
+    var brand by rememberSaveable(stateHolder) { mutableStateOf(state.brand.orEmpty()) }
+    var model by rememberSaveable(stateHolder) { mutableStateOf(state.model.orEmpty()) }
+    var nameEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
+    var brandEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
+    var modelEdited by rememberSaveable(stateHolder) { mutableStateOf(false) }
+
+    LaunchedEffect(state.name) {
+        if (!nameEdited) name = state.name
+    }
+    LaunchedEffect(state.brand) {
+        if (!brandEdited) brand = state.brand.orEmpty()
+    }
+    LaunchedEffect(state.model) {
+        if (!modelEdited) model = state.model.orEmpty()
+    }
     LaunchedEffect(state.savedVehicleId, state.isSaving) {
         val savedVehicleId = state.savedVehicleId
         if (originalVehicleId == null && savedVehicleId != null && !state.isSaving) onSaved(savedVehicleId)
@@ -293,11 +378,28 @@ private fun VehicleFormScreen(
         },
     ) { padding ->
         VehicleForm(
-            state = state,
-            onNameChange = stateHolder::setName,
+            state =
+                state.copy(
+                    name = name,
+                    brand = brand.ifBlank { null },
+                    model = model.ifBlank { null },
+                ),
+            onNameChange = { value ->
+                nameEdited = true
+                name = value
+                stateHolder.setName(value)
+            },
             onOdometerChange = stateHolder::setInitialOdometerKm,
-            onBrandChange = stateHolder::setBrand,
-            onModelChange = stateHolder::setModel,
+            onBrandChange = { value ->
+                brandEdited = true
+                brand = value.orEmpty()
+                stateHolder.setBrand(value)
+            },
+            onModelChange = { value ->
+                modelEdited = true
+                model = value.orEmpty()
+                stateHolder.setModel(value)
+            },
             onSave = stateHolder::save,
             modifier = Modifier.padding(padding),
         )
