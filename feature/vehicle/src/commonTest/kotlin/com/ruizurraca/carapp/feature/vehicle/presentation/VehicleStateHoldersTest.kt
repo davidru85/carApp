@@ -183,6 +183,48 @@ class VehicleStateHoldersTest {
             assertFalse(holder.state.value.canEditInitialOdometer)
             holder.close()
         }
+
+    @Test
+    fun editsBeforeFirstFactsSurviveAndTheUpdateMatchesTheDisplayedDraft() =
+        runTest {
+            val repository = FakeVehicleRepository()
+            var captured: UpdateVehicleCommand? = null
+            val holder =
+                VehicleFormStateHolder(
+                    scope = backgroundScope,
+                    vehicleId = VEHICLE_ID,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    createVehicle = { Outcome.Ok(EntityId(VEHICLE_ID)) },
+                    updateVehicle = { command ->
+                        captured = command
+                        Outcome.Ok(Unit)
+                    },
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+
+            holder.setName("Edited roadster")
+            holder.setInitialOdometerKm(321)
+            holder.setBrand("Edited brand")
+            holder.setModel("Edited model")
+            repository.editFacts.value = Outcome.Ok(VehicleEditFacts(vehicle(), true))
+            advanceUntilIdle()
+
+            assertEquals("Edited roadster", holder.state.value.name)
+            assertEquals(321, holder.state.value.initialOdometerKm)
+            assertEquals("Edited brand", holder.state.value.brand)
+            assertEquals("Edited model", holder.state.value.model)
+            assertTrue(holder.state.value.canEditInitialOdometer)
+
+            holder.save()
+            advanceUntilIdle()
+
+            assertEquals("Edited roadster", requireNotNull(captured).name)
+            assertEquals(321, requireNotNull(captured).initialOdometerKm)
+            assertEquals("Edited brand", requireNotNull(captured).brand)
+            assertEquals("Edited model", requireNotNull(captured).model)
+            holder.close()
+        }
 }
 
 private class FakeVehicleRepository : VehicleRepository {

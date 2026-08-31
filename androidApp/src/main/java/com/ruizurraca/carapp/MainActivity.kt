@@ -333,7 +333,7 @@ private fun VehicleListContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VehicleFormScreen(
+internal fun VehicleFormScreen(
     stateHolder: VehicleFormStateHolder,
     originalVehicleId: String?,
     onBack: () -> Unit,
