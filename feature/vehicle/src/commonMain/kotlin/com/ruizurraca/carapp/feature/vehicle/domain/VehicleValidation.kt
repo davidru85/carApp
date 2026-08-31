@@ -1,14 +1,18 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.vehicle.domain
 
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
+import kotlin.native.HiddenFromObjC
 
 private const val MIN_TEXT_LENGTH = 1
 private const val MAX_VEHICLE_TEXT_LENGTH = 40
-private const val MIN_ODOMETER_KM = 0L
-private const val MAX_ODOMETER_KM = 2_000_000L
+
+@HiddenFromObjC
+val INITIAL_ODOMETER_RANGE_KM: LongRange = 0L..2_000_000L
 
 private data class NormalisedVehicleFields(
     val name: String,
@@ -16,20 +20,24 @@ private data class NormalisedVehicleFields(
     val model: String?,
 )
 
+@HiddenFromObjC
 data class VehicleNameCandidate(
     val id: EntityId,
     val name: String,
 )
 
+@HiddenFromObjC
 data class CreateVehicleValidationContext(
     val activeVehicles: List<VehicleNameCandidate>,
 )
 
+@HiddenFromObjC
 data class UpdateVehicleValidationContext(
     val activeVehicles: List<VehicleNameCandidate>,
     val hasNonDeletedFuelEntries: Boolean,
 )
 
+@HiddenFromObjC
 fun canonicalVehicleName(input: String): String =
     buildString {
         var whitespacePending = false
@@ -59,11 +67,11 @@ private fun initialOdometerError(
     editNotAllowed: Boolean,
 ): ValidationError? =
     when {
-        value != null && value !in MIN_ODOMETER_KM..MAX_ODOMETER_KM -> {
+        value != null && value !in INITIAL_ODOMETER_RANGE_KM -> {
             ValidationError.OutOfRange(
                 "initialOdometerKm",
-                MIN_ODOMETER_KM,
-                MAX_ODOMETER_KM,
+                INITIAL_ODOMETER_RANGE_KM.first,
+                INITIAL_ODOMETER_RANGE_KM.last,
             )
         }
 
@@ -145,6 +153,7 @@ private fun <T> validationOutcome(
         Outcome.Err(error)
     }
 
+@HiddenFromObjC
 class ValidateCreateVehicle {
     operator fun invoke(
         command: CreateVehicleCommand,
@@ -164,6 +173,7 @@ class ValidateCreateVehicle {
     }
 }
 
+@HiddenFromObjC
 class ValidateUpdateVehicle {
     operator fun invoke(
         command: UpdateVehicleCommand,

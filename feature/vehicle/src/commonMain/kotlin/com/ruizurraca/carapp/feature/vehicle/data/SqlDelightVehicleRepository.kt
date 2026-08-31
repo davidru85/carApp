@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.vehicle.data
 
 import com.ruizurraca.carapp.core.common.AppClock
@@ -19,6 +21,7 @@ import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleValidationContext
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateCreateVehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.ValidateUpdateVehicle
+import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,8 +30,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
+import kotlin.native.HiddenFromObjC
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@HiddenFromObjC
 class SqlDelightVehicleRepository internal constructor(
     private val localDataSource: VehicleLocalDataSource,
     private val ownerContext: OwnerContext,
@@ -64,6 +69,21 @@ class SqlDelightVehicleRepository internal constructor(
             .flatMapLatest { ownerId -> localDataSource.observeVehicle(ownerId, id) }
             .map<LocalVehicle?, Outcome<Vehicle?, AppError>> { row ->
                 Outcome.Ok(row?.toDomainVehicle())
+            }.catch { throwable -> emitReadFailure(throwable) }
+
+    override fun observeVehicleEditFacts(id: EntityId): Flow<Outcome<VehicleEditFacts?, AppError>> =
+        ownerContext
+            .observe()
+            .flatMapLatest { ownerId -> localDataSource.observeVehicleEditFacts(ownerId, id) }
+            .map<LocalVehicleEditFacts?, Outcome<VehicleEditFacts?, AppError>> { facts ->
+                Outcome.Ok(
+                    facts?.let {
+                        VehicleEditFacts(
+                            vehicle = it.vehicle.toDomainVehicle(),
+                            canEditInitialOdometer = it.canEditInitialOdometer,
+                        )
+                    },
+                )
             }.catch { throwable -> emitReadFailure(throwable) }
 
     override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =

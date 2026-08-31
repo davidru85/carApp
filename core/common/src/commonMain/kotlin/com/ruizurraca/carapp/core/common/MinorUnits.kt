@@ -1,6 +1,9 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.common
 
 import com.ruizurraca.carapp.core.model.CurrencyCode
+import kotlin.native.HiddenFromObjC
 
 /**
  * ISO-4217 minor-unit factors for the MVP currency set (`docs/CONTRACTS.md §2`, `§20.3`).
@@ -13,6 +16,7 @@ import com.ruizurraca.carapp.core.model.CurrencyCode
  * A locale suggesting a code outside the set falls back to `EUR`; an explicit user selection
  * outside the set is a `ValidationError.InvalidUnit`.
  */
+@HiddenFromObjC
 object MinorUnits {
     fun factorFor(currency: CurrencyCode): Int? =
         if (currency.value in SUPPORTED_CURRENCY_CODES) TWO_DECIMAL_FACTOR else null

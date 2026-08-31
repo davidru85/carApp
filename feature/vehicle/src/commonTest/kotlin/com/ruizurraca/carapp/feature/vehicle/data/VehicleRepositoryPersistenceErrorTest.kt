@@ -53,6 +53,11 @@ private object FailingVehicleLocalDataSource : VehicleLocalDataSource {
         id: EntityId,
     ): Flow<LocalVehicle?> = flow { throw LocalFailure() }
 
+    override fun observeVehicleEditFacts(
+        ownerId: OwnerId,
+        id: EntityId,
+    ): Flow<LocalVehicleEditFacts?> = flow { throw LocalFailure() }
+
     override suspend fun <T> writeTransaction(block: suspend VehicleWriteScope.() -> T): T = throw LocalFailure()
 }
 

@@ -1,8 +1,7 @@
 # CI for carApp.
 #
 # The job names below are the check names fixed by docs/CONTRACTS.md §18 and MUST NOT be renamed:
-# branch protection for main requires them by name. Two of them have nothing to verify yet and say
-# so out loud rather than passing silently — see the notes on each.
+# branch protection for main requires them by name.
 #
 # CI duration under 20 minutes is a monitored objective, not a pass/fail criterion (E0-05).
 
@@ -137,6 +136,30 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+  android-instrumented-tests:
+    name: android-instrumented-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run Vehicle creation on an API 36 emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 36
+          arch: x86_64
+          target: default
+          disable-animations: true
+          script: ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace
 
   # shared-tests and ios-simulator-build are deliberately separate (D-35, ADR-0036). They answer
   # different questions — "does the shared logic behave the same on the JVM and on Kotlin/Native?"

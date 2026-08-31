@@ -16,9 +16,13 @@ class BuildAppGraphTest {
                 providers = testAppProviders(suppliedDependencies),
             )
 
-        assertEquals(
-            suppliedDependencies.copy(isDebugBuild = false),
-            graph.dependencies,
-        )
+        try {
+            assertEquals(
+                suppliedDependencies.copy(isDebugBuild = false),
+                (graph as DefaultAppGraph).dependencies,
+            )
+        } finally {
+            graph.close()
+        }
     }
 }

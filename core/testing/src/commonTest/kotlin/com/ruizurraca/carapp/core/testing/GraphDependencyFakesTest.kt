@@ -19,7 +19,7 @@ class GraphDependencyFakesTest {
     fun inMemoryFactoryCreatesAnIsolatedDatabase() {
         val factory = InMemoryDatabaseFactory()
         try {
-            assertNotNull(factory.create())
+            assertNotNull(factory.create().database)
         } finally {
             factory.close()
         }

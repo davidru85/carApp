@@ -3,14 +3,14 @@ package com.ruizurraca.carapp
 import kotlin.experimental.ExperimentalObjCRefinement
 import kotlin.native.HiddenFromObjC
 
-/** Builds the Swift facade without linking any concrete provider module (`D-58`, `D-59`). */
+/** Builds the Kotlin graph without linking any concrete provider module (`D-58`, `D-59`, `D-86`). */
 @OptIn(ExperimentalObjCRefinement::class)
 @HiddenFromObjC
 fun buildAppGraph(
     isDebugBuild: Boolean,
     providers: AppProviders,
-): SwiftAppGraph =
-    SwiftAppGraph(
+): AppGraph =
+    DefaultAppGraph(
         AppGraphDependencies(
             databaseFactory = providers.databaseFactory,
             authClient = providers.authClient,

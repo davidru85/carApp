@@ -6,7 +6,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSValue.h>
 
-@class Shared__SkieTypeExportsKt, Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedCreateSwiftAppGraphKt, SharedCommonSyncTrigger, SharedCommonConfirmation, SharedCommonAuthProvider, SharedByte, SharedBoolean, SharedBase, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
+@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
 
 @protocol SharedSkie_DispatcherDelegate, SharedKotlinx_coroutines_coreStateFlow, SharedKotlinx_coroutines_coreSharedFlow, SharedKotlinx_coroutines_coreRunnable, SharedKotlinx_coroutines_coreMutableStateFlow, SharedKotlinx_coroutines_coreMutableSharedFlow, SharedKotlinx_coroutines_coreFlowCollector, SharedKotlinx_coroutines_coreFlow, SharedKotlinIterator, SharedKotlinComparable, NSCopying;
 
@@ -1059,7 +1059,7 @@ __attribute__((swift_name("FuelEntryFormStateHolder")))
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
 - (void)clearMessage __attribute__((swift_name("clearMessage()")));
 - (void)close __attribute__((swift_name("close()")));
-- (void)confirmSaveConfirmation:(SharedCommonConfirmation *)confirmation __attribute__((swift_name("confirmSave(confirmation:)")));
+- (void)confirmSaveConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmSave(confirmation:)")));
 - (void)save __attribute__((swift_name("save()")));
 - (void)setCurrencyCodeValue:(NSString *)value __attribute__((swift_name("setCurrencyCode(value:)")));
 - (void)setDateEpochMillisValue:(int64_t)value __attribute__((swift_name("setDateEpochMillis(value:)")));
@@ -1200,14 +1200,14 @@ __attribute__((swift_name("SessionStateHolder")))
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
 - (void)clearMessage __attribute__((swift_name("clearMessage()")));
 - (void)close __attribute__((swift_name("close()")));
-- (void)confirmAccountConversionConfirmation:(SharedCommonConfirmation *)confirmation __attribute__((swift_name("confirmAccountConversion(confirmation:)")));
-- (void)confirmDeleteAccountConfirmation:(SharedCommonConfirmation *)confirmation __attribute__((swift_name("confirmDeleteAccount(confirmation:)")));
-- (void)confirmSignOutConfirmation:(SharedCommonConfirmation *)confirmation __attribute__((swift_name("confirmSignOut(confirmation:)")));
+- (void)confirmAccountConversionConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmAccountConversion(confirmation:)")));
+- (void)confirmDeleteAccountConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmDeleteAccount(confirmation:)")));
+- (void)confirmSignOutConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmSignOut(confirmation:)")));
 - (void)requestDeleteAccount __attribute__((swift_name("requestDeleteAccount()")));
 - (void)requestSignOut __attribute__((swift_name("requestSignOut()")));
-- (void)startAccountConversionProvider:(SharedCommonAuthProvider *)provider __attribute__((swift_name("startAccountConversion(provider:)")));
+- (void)startAccountConversionProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startAccountConversion(provider:)")));
 - (void)startAnonymousSignIn __attribute__((swift_name("startAnonymousSignIn()")));
-- (void)startPermanentSignInProvider:(SharedCommonAuthProvider *)provider __attribute__((swift_name("startPermanentSignIn(provider:)")));
+- (void)startPermanentSignInProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startPermanentSignIn(provider:)")));
 @end
 
 __attribute__((objc_subclassing_restricted))
@@ -1216,16 +1216,16 @@ __attribute__((swift_name("SessionUiState")))
 @property (readonly) BOOL isBusy __attribute__((swift_name("isBusy")));
 @property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
 @property (readonly) SharedSessionPhase *phase __attribute__((swift_name("phase")));
-@property (readonly) NSArray<SharedCommonAuthProvider *> *providers __attribute__((swift_name("providers")));
-- (instancetype)initWithPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedCommonAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(phase:providers:isBusy:message:)"))) __attribute__((objc_designated_initializer));
-- (SharedSessionUiState *)doCopyPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedCommonAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(phase:providers:isBusy:message:)")));
+@property (readonly) NSArray<SharedAuthProvider *> *providers __attribute__((swift_name("providers")));
+- (instancetype)initWithPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(phase:providers:isBusy:message:)"))) __attribute__((objc_designated_initializer));
+- (SharedSessionUiState *)doCopyPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(phase:providers:isBusy:message:)")));
 - (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
 - (NSUInteger)hash __attribute__((swift_name("hash()")));
 - (NSString *)description __attribute__((swift_name("description()")));
 @end
 
 
-/** Swift-facing application graph facade. State-holder accessors are added by E0-07 in place. */
+/** Swift-facing application graph facade with graph-owned state-holder scopes (`D-86`). */
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("SwiftAppGraph")))
 @interface SharedSwiftAppGraph : SharedBase
@@ -1234,6 +1234,9 @@ __attribute__((swift_name("SwiftAppGraph")))
 - (void)close __attribute__((swift_name("close()")));
 - (SharedFuelEntryFormStateHolder *)fuelEntryFormStateHolderVehicleId:(NSString *)vehicleId entryId:(NSString * _Nullable)entryId __attribute__((swift_name("fuelEntryFormStateHolder(vehicleId:entryId:)")));
 - (SharedFuelEntryListStateHolder *)fuelEntryListStateHolderVehicleId:(NSString *)vehicleId __attribute__((swift_name("fuelEntryListStateHolder(vehicleId:)")));
+- (void)releaseFuelEntryFormStateHolderVehicleId:(NSString *)vehicleId entryId:(NSString * _Nullable)entryId __attribute__((swift_name("releaseFuelEntryFormStateHolder(vehicleId:entryId:)")));
+- (void)releaseFuelEntryListStateHolderVehicleId:(NSString *)vehicleId __attribute__((swift_name("releaseFuelEntryListStateHolder(vehicleId:)")));
+- (void)releaseVehicleFormStateHolderVehicleId:(NSString * _Nullable)vehicleId __attribute__((swift_name("releaseVehicleFormStateHolder(vehicleId:)")));
 - (SharedSessionStateHolder *)sessionStateHolder __attribute__((swift_name("sessionStateHolder()")));
 - (SharedSyncStateHolder *)syncStateHolder __attribute__((swift_name("syncStateHolder()")));
 - (SharedVehicleFormStateHolder *)vehicleFormStateHolderVehicleId:(NSString * _Nullable)vehicleId __attribute__((swift_name("vehicleFormStateHolder(vehicleId:)")));
@@ -1246,7 +1249,7 @@ __attribute__((swift_name("SyncStateHolder")))
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
 - (void)clearMessage __attribute__((swift_name("clearMessage()")));
 - (void)close __attribute__((swift_name("close()")));
-- (void)requestSyncReason:(SharedCommonSyncTrigger *)reason __attribute__((swift_name("requestSync(reason:)")));
+- (void)requestSyncReason:(SharedSyncTrigger *)reason __attribute__((swift_name("requestSync(reason:)")));
 - (void)retryFailed __attribute__((swift_name("retryFailed()")));
 @end
 
@@ -1263,15 +1266,136 @@ __attribute__((swift_name("SyncUiState")))
 - (NSString *)description __attribute__((swift_name("description()")));
 @end
 
+
+/**
+ * Shared by `:core:analytics` (Phase 0) and `:core:auth` (Phase 2). It lives here so that neither
+ * module has to depend on the other, which is what lets a Phase 0 module compile without a Phase 2
+ * module (`docs/CONTRACTS.md §18`, assertion 18).
+ *
+ * The provider set is closed: anonymous, Google and Apple, and nothing else
+ * (`docs/CONTRACTS.md §20.3`, `docs/SPECIFICATION.md §7 F-1`).
+ */
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("AuthProvider")))
+@interface SharedAuthProvider : SharedKotlinEnum<SharedAuthProvider *>
+@property (class, readonly) SharedAuthProvider *anonymous __attribute__((swift_name("anonymous")));
+@property (class, readonly) SharedAuthProvider *google __attribute__((swift_name("google")));
+@property (class, readonly) SharedAuthProvider *apple __attribute__((swift_name("apple")));
+@property (class, readonly) NSArray<SharedAuthProvider *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
+
+/**
+ * Shared by `:core:analytics` (Phase 0) and `:core:auth` (Phase 2). It lives here so that neither
+ * module has to depend on the other, which is what lets a Phase 0 module compile without a Phase 2
+ * module (`docs/CONTRACTS.md §18`, assertion 18).
+ *
+ * The provider set is closed: anonymous, Google and Apple, and nothing else
+ * (`docs/CONTRACTS.md §20.3`, `docs/SPECIFICATION.md §7 F-1`).
+ */
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedAuthProvider *> *)values __attribute__((swift_name("values()")));
+@end
+
+
+/**
+ * A confirmation is required by the use case, not by the UI. The UI MUST NOT proceed without an
+ * explicit confirmation returned to the use case (`docs/CONTRACTS.md §20.2`).
+ */
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("Confirmation")))
+@interface SharedConfirmation : SharedKotlinEnum<SharedConfirmation *>
+@property (class, readonly) SharedConfirmation *odometerinconsistent __attribute__((swift_name("odometerinconsistent")));
+@property (class, readonly) SharedConfirmation *discardpendingchanges __attribute__((swift_name("discardpendingchanges")));
+@property (class, readonly) SharedConfirmation *deleteaccount __attribute__((swift_name("deleteaccount")));
+@property (class, readonly) SharedConfirmation *adoptexistingaccount __attribute__((swift_name("adoptexistingaccount")));
+@property (class, readonly) NSArray<SharedConfirmation *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
+
+/**
+ * A confirmation is required by the use case, not by the UI. The UI MUST NOT proceed without an
+ * explicit confirmation returned to the use case (`docs/CONTRACTS.md §20.2`).
+ */
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedConfirmation *> *)values __attribute__((swift_name("values()")));
+@end
+
+__attribute__((swift_name("SyncSyncStatus")))
+@interface SharedSyncSyncStatus : SharedBase
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SyncSyncStatus.Failed")))
+@interface SharedSyncSyncStatusFailed : SharedSyncSyncStatus
+@property (readonly) int32_t poisonedCount __attribute__((swift_name("poisonedCount")));
+@property (readonly) int32_t retryableCount __attribute__((swift_name("retryableCount")));
+- (instancetype)initWithRetryableCount:(int32_t)retryableCount poisonedCount:(int32_t)poisonedCount __attribute__((swift_name("init(retryableCount:poisonedCount:)"))) __attribute__((objc_designated_initializer));
+- (SharedSyncSyncStatusFailed *)doCopyRetryableCount:(int32_t)retryableCount poisonedCount:(int32_t)poisonedCount __attribute__((swift_name("doCopy(retryableCount:poisonedCount:)")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SyncSyncStatus.Idle")))
+@interface SharedSyncSyncStatusIdle : SharedSyncSyncStatus
+@property (class, readonly, getter=shared) SharedSyncSyncStatusIdle *shared __attribute__((swift_name("shared")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
++ (instancetype)idle __attribute__((swift_name("init()")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SyncSyncStatus.Pending")))
+@interface SharedSyncSyncStatusPending : SharedSyncSyncStatus
+@property (readonly) int32_t count __attribute__((swift_name("count")));
+- (instancetype)initWithCount:(int32_t)count __attribute__((swift_name("init(count:)"))) __attribute__((objc_designated_initializer));
+- (SharedSyncSyncStatusPending *)doCopyCount:(int32_t)count __attribute__((swift_name("doCopy(count:)")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SyncSyncStatus.Syncing")))
+@interface SharedSyncSyncStatusSyncing : SharedSyncSyncStatus
+@property (class, readonly, getter=shared) SharedSyncSyncStatusSyncing *shared __attribute__((swift_name("shared")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
++ (instancetype)syncing __attribute__((swift_name("init()")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SyncTrigger")))
+@interface SharedSyncTrigger : SharedKotlinEnum<SharedSyncTrigger *>
+@property (class, readonly) SharedSyncTrigger *appforeground __attribute__((swift_name("appforeground")));
+@property (class, readonly) SharedSyncTrigger *connectivityrecovered __attribute__((swift_name("connectivityrecovered")));
+@property (class, readonly) SharedSyncTrigger *postwritedebounce __attribute__((swift_name("postwritedebounce")));
+@property (class, readonly) SharedSyncTrigger *pulltorefresh __attribute__((swift_name("pulltorefresh")));
+@property (class, readonly) SharedSyncTrigger *periodic __attribute__((swift_name("periodic")));
+@property (class, readonly) NSArray<SharedSyncTrigger *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedSyncTrigger *> *)values __attribute__((swift_name("values()")));
+@end
+
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("UiMessage")))
 @interface SharedUiMessage : SharedBase
 @property (readonly) NSString *code __attribute__((swift_name("code")));
-@property (readonly) SharedCommonConfirmation * _Nullable confirmation __attribute__((swift_name("confirmation")));
+@property (readonly) SharedConfirmation * _Nullable confirmation __attribute__((swift_name("confirmation")));
 @property (readonly) int64_t id __attribute__((swift_name("id")));
 @property (readonly) SharedUiMessageKind *kind __attribute__((swift_name("kind")));
-- (instancetype)initWithId:(int64_t)id kind:(SharedUiMessageKind *)kind code:(NSString *)code confirmation:(SharedCommonConfirmation * _Nullable)confirmation __attribute__((swift_name("init(id:kind:code:confirmation:)"))) __attribute__((objc_designated_initializer));
-- (SharedUiMessage *)doCopyId:(int64_t)id kind:(SharedUiMessageKind *)kind code:(NSString *)code confirmation:(SharedCommonConfirmation * _Nullable)confirmation __attribute__((swift_name("doCopy(id:kind:code:confirmation:)")));
+- (instancetype)initWithId:(int64_t)id kind:(SharedUiMessageKind *)kind code:(NSString *)code confirmation:(SharedConfirmation * _Nullable)confirmation __attribute__((swift_name("init(id:kind:code:confirmation:)"))) __attribute__((objc_designated_initializer));
+- (SharedUiMessage *)doCopyId:(int64_t)id kind:(SharedUiMessageKind *)kind code:(NSString *)code confirmation:(SharedConfirmation * _Nullable)confirmation __attribute__((swift_name("doCopy(id:kind:code:confirmation:)")));
 - (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
 - (NSUInteger)hash __attribute__((swift_name("hash()")));
 - (NSString *)description __attribute__((swift_name("description()")));
@@ -1315,9 +1439,10 @@ __attribute__((swift_name("VehicleFormUiState")))
 @property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
 @property (readonly) NSString * _Nullable model __attribute__((swift_name("model")));
 @property (readonly) NSString *name __attribute__((swift_name("name")));
+@property (readonly) NSString * _Nullable savedVehicleId __attribute__((swift_name("savedVehicleId")));
 @property (readonly) NSString * _Nullable vehicleId __attribute__((swift_name("vehicleId")));
-- (instancetype)initWithVehicleId:(NSString * _Nullable)vehicleId name:(NSString *)name initialOdometerKm:(int64_t)initialOdometerKm brand:(NSString * _Nullable)brand model:(NSString * _Nullable)model fuelType:(SharedModelFuelType *)fuelType canEditInitialOdometer:(BOOL)canEditInitialOdometer isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(vehicleId:name:initialOdometerKm:brand:model:fuelType:canEditInitialOdometer:isSaving:message:)"))) __attribute__((objc_designated_initializer));
-- (SharedVehicleFormUiState *)doCopyVehicleId:(NSString * _Nullable)vehicleId name:(NSString *)name initialOdometerKm:(int64_t)initialOdometerKm brand:(NSString * _Nullable)brand model:(NSString * _Nullable)model fuelType:(SharedModelFuelType *)fuelType canEditInitialOdometer:(BOOL)canEditInitialOdometer isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(vehicleId:name:initialOdometerKm:brand:model:fuelType:canEditInitialOdometer:isSaving:message:)")));
+- (instancetype)initWithVehicleId:(NSString * _Nullable)vehicleId savedVehicleId:(NSString * _Nullable)savedVehicleId name:(NSString *)name initialOdometerKm:(int64_t)initialOdometerKm brand:(NSString * _Nullable)brand model:(NSString * _Nullable)model fuelType:(SharedModelFuelType *)fuelType canEditInitialOdometer:(BOOL)canEditInitialOdometer isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(vehicleId:savedVehicleId:name:initialOdometerKm:brand:model:fuelType:canEditInitialOdometer:isSaving:message:)"))) __attribute__((objc_designated_initializer));
+- (SharedVehicleFormUiState *)doCopyVehicleId:(NSString * _Nullable)vehicleId savedVehicleId:(NSString * _Nullable)savedVehicleId name:(NSString *)name initialOdometerKm:(int64_t)initialOdometerKm brand:(NSString * _Nullable)brand model:(NSString * _Nullable)model fuelType:(SharedModelFuelType *)fuelType canEditInitialOdometer:(BOOL)canEditInitialOdometer isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(vehicleId:savedVehicleId:name:initialOdometerKm:brand:model:fuelType:canEditInitialOdometer:isSaving:message:)")));
 - (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
 - (NSUInteger)hash __attribute__((swift_name("hash()")));
 - (NSString *)description __attribute__((swift_name("description()")));
@@ -1379,12 +1504,6 @@ __attribute__((swift_name("__SkieSuspendWrappersKt")))
 + (void)Skie_Suspend__0__collectDispatchReceiver:(id<SharedKotlinx_coroutines_coreFlow>)dispatchReceiver collector:(id<SharedKotlinx_coroutines_coreFlowCollector>)collector suspendHandler:(SharedSkie_SuspendHandler *)suspendHandler __attribute__((swift_name("Skie_Suspend__0__collect(dispatchReceiver:collector:suspendHandler:)")));
 + (void)Skie_Suspend__1__emitDispatchReceiver:(id<SharedKotlinx_coroutines_coreFlowCollector>)dispatchReceiver value:(id _Nullable)value suspendHandler:(SharedSkie_SuspendHandler *)suspendHandler __attribute__((swift_name("Skie_Suspend__1__emit(dispatchReceiver:value:suspendHandler:)")));
 + (void)Skie_Suspend__2__hasNextDispatchReceiver:(SharedSkieColdFlowIterator<id> *)dispatchReceiver suspendHandler:(SharedSkie_SuspendHandler *)suspendHandler __attribute__((swift_name("Skie_Suspend__2__hasNext(dispatchReceiver:suspendHandler:)")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("__SkieTypeExportsKt")))
-@interface Shared__SkieTypeExportsKt : SharedBase
-+ (void)skieTypeExports_0P0:(SharedSyncSyncStatusFailed *)p0 p1:(SharedSyncSyncStatusIdle *)p1 p2:(SharedSyncSyncStatusPending *)p2 p3:(SharedSyncSyncStatusSyncing *)p3 __attribute__((swift_name("skieTypeExports_0(p0:p1:p2:p3:)")));
 @end
 
 __attribute__((swift_name("KotlinThrowable")))
@@ -1465,30 +1584,6 @@ __attribute__((swift_name("Kotlinx_coroutines_coreRunnable")))
 @end
 
 
-/**
- * A confirmation is required by the use case, not by the UI. The UI MUST NOT proceed without an
- * explicit confirmation returned to the use case (`docs/CONTRACTS.md §20.2`).
- */
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("CommonConfirmation")))
-@interface SharedCommonConfirmation : SharedKotlinEnum<SharedCommonConfirmation *>
-@property (class, readonly) SharedCommonConfirmation *odometerinconsistent __attribute__((swift_name("odometerinconsistent")));
-@property (class, readonly) SharedCommonConfirmation *discardpendingchanges __attribute__((swift_name("discardpendingchanges")));
-@property (class, readonly) SharedCommonConfirmation *deleteaccount __attribute__((swift_name("deleteaccount")));
-@property (class, readonly) SharedCommonConfirmation *adoptexistingaccount __attribute__((swift_name("adoptexistingaccount")));
-@property (class, readonly) NSArray<SharedCommonConfirmation *> *entries __attribute__((swift_name("entries")));
-+ (instancetype)alloc __attribute__((unavailable));
-
-/**
- * A confirmation is required by the use case, not by the UI. The UI MUST NOT proceed without an
- * explicit confirmation returned to the use case (`docs/CONTRACTS.md §20.2`).
- */
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
-+ (SharedKotlinArray<SharedCommonConfirmation *> *)values __attribute__((swift_name("values()")));
-@end
-
-
 /** Canonical consumption result shapes from `docs/CONTRACTS.md §20.6`. */
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("ModelConsumptionInvalidReason")))
@@ -1506,10 +1601,6 @@ __attribute__((swift_name("ModelConsumptionInvalidReason")))
 + (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
 - (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
 + (SharedKotlinArray<SharedModelConsumptionInvalidReason *> *)values __attribute__((swift_name("values()")));
-@end
-
-__attribute__((swift_name("SyncSyncStatus")))
-@interface SharedSyncSyncStatus : SharedBase
 @end
 
 __attribute__((objc_subclassing_restricted))
@@ -1534,52 +1625,6 @@ __attribute__((swift_name("KotlinArray")))
 @end
 
 
-/**
- * Shared by `:core:analytics` (Phase 0) and `:core:auth` (Phase 2). It lives here so that neither
- * module has to depend on the other, which is what lets a Phase 0 module compile without a Phase 2
- * module (`docs/CONTRACTS.md §18`, assertion 18).
- *
- * The provider set is closed: anonymous, Google and Apple, and nothing else
- * (`docs/CONTRACTS.md §20.3`, `docs/SPECIFICATION.md §7 F-1`).
- */
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("CommonAuthProvider")))
-@interface SharedCommonAuthProvider : SharedKotlinEnum<SharedCommonAuthProvider *>
-@property (class, readonly) SharedCommonAuthProvider *anonymous __attribute__((swift_name("anonymous")));
-@property (class, readonly) SharedCommonAuthProvider *google __attribute__((swift_name("google")));
-@property (class, readonly) SharedCommonAuthProvider *apple __attribute__((swift_name("apple")));
-@property (class, readonly) NSArray<SharedCommonAuthProvider *> *entries __attribute__((swift_name("entries")));
-+ (instancetype)alloc __attribute__((unavailable));
-
-/**
- * Shared by `:core:analytics` (Phase 0) and `:core:auth` (Phase 2). It lives here so that neither
- * module has to depend on the other, which is what lets a Phase 0 module compile without a Phase 2
- * module (`docs/CONTRACTS.md §18`, assertion 18).
- *
- * The provider set is closed: anonymous, Google and Apple, and nothing else
- * (`docs/CONTRACTS.md §20.3`, `docs/SPECIFICATION.md §7 F-1`).
- */
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
-+ (SharedKotlinArray<SharedCommonAuthProvider *> *)values __attribute__((swift_name("values()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("CommonSyncTrigger")))
-@interface SharedCommonSyncTrigger : SharedKotlinEnum<SharedCommonSyncTrigger *>
-@property (class, readonly) SharedCommonSyncTrigger *appforeground __attribute__((swift_name("appforeground")));
-@property (class, readonly) SharedCommonSyncTrigger *connectivityrecovered __attribute__((swift_name("connectivityrecovered")));
-@property (class, readonly) SharedCommonSyncTrigger *postwritedebounce __attribute__((swift_name("postwritedebounce")));
-@property (class, readonly) SharedCommonSyncTrigger *pulltorefresh __attribute__((swift_name("pulltorefresh")));
-@property (class, readonly) SharedCommonSyncTrigger *periodic __attribute__((swift_name("periodic")));
-@property (class, readonly) NSArray<SharedCommonSyncTrigger *> *entries __attribute__((swift_name("entries")));
-+ (instancetype)alloc __attribute__((unavailable));
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
-+ (SharedKotlinArray<SharedCommonSyncTrigger *> *)values __attribute__((swift_name("values()")));
-@end
-
-
 /** Canonical product models from `docs/CONTRACTS.md §20.4`. Construction does not validate. */
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("ModelFuelType")))
@@ -1596,53 +1641,6 @@ __attribute__((swift_name("ModelFuelType")))
 + (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
 - (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
 + (SharedKotlinArray<SharedModelFuelType *> *)values __attribute__((swift_name("values()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("SyncSyncStatus.Failed")))
-@interface SharedSyncSyncStatusFailed : SharedSyncSyncStatus
-@property (readonly) int32_t poisonedCount __attribute__((swift_name("poisonedCount")));
-@property (readonly) int32_t retryableCount __attribute__((swift_name("retryableCount")));
-- (instancetype)initWithRetryableCount:(int32_t)retryableCount poisonedCount:(int32_t)poisonedCount __attribute__((swift_name("init(retryableCount:poisonedCount:)"))) __attribute__((objc_designated_initializer));
-- (SharedSyncSyncStatusFailed *)doCopyRetryableCount:(int32_t)retryableCount poisonedCount:(int32_t)poisonedCount __attribute__((swift_name("doCopy(retryableCount:poisonedCount:)")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("SyncSyncStatus.Idle")))
-@interface SharedSyncSyncStatusIdle : SharedSyncSyncStatus
-@property (class, readonly, getter=shared) SharedSyncSyncStatusIdle *shared __attribute__((swift_name("shared")));
-+ (instancetype)alloc __attribute__((unavailable));
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-+ (instancetype)idle __attribute__((swift_name("init()")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("SyncSyncStatus.Pending")))
-@interface SharedSyncSyncStatusPending : SharedSyncSyncStatus
-@property (readonly) int32_t count __attribute__((swift_name("count")));
-- (instancetype)initWithCount:(int32_t)count __attribute__((swift_name("init(count:)"))) __attribute__((objc_designated_initializer));
-- (SharedSyncSyncStatusPending *)doCopyCount:(int32_t)count __attribute__((swift_name("doCopy(count:)")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("SyncSyncStatus.Syncing")))
-@interface SharedSyncSyncStatusSyncing : SharedSyncSyncStatus
-@property (class, readonly, getter=shared) SharedSyncSyncStatusSyncing *shared __attribute__((swift_name("shared")));
-+ (instancetype)alloc __attribute__((unavailable));
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-+ (instancetype)syncing __attribute__((swift_name("init()")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
 @end
 
 __attribute__((swift_name("KotlinIterator")))

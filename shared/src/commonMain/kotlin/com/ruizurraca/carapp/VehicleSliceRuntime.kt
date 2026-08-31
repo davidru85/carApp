@@ -1,5 +1,7 @@
 package com.ruizurraca.carapp
 
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.database.AppDatabase
@@ -14,8 +16,7 @@ import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.feature.vehicle.data.SqlDelightVehicleRepository
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -28,7 +29,7 @@ internal class VehicleSliceRuntime(
     private val database: AppDatabase,
 ) {
     private val mutations = DatabaseMutations(database)
-    private val repository =
+    val repository =
         SqlDelightVehicleRepository(
             databaseAccess = VehicleDatabaseAccess(database),
             ownerContext = dependencies.ownerContext,
@@ -36,24 +37,23 @@ internal class VehicleSliceRuntime(
             uuidGenerator = dependencies.uuidGenerator,
         )
 
-    suspend fun save(form: VehicleFormUiState) {
-        check(form.vehicleId == null) { "E0-07 only creates the minimal Vehicle slice" }
-        val createResult =
-            repository.createVehicle(
-                CreateVehicleCommand(
-                    name = form.name,
-                    initialOdometerKm = form.initialOdometerKm,
-                    brand = form.brand,
-                    model = form.model,
-                    fuelType = form.fuelType,
-                    confirmations = emptySet(),
-                ),
-            )
-        if (createResult !is Outcome.Ok) return
+    suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> {
+        val result = repository.createVehicle(command)
+        if (result is Outcome.Ok) pushVehicleIfEligible(result.value)
+        return result
+    }
 
-        val id = createResult.value.value
+    suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> {
+        val result = repository.updateVehicle(command)
+        if (result is Outcome.Ok) pushVehicleIfEligible(command.id)
+        return result
+    }
+
+    private suspend fun pushVehicleIfEligible(entityId: EntityId) {
+        val id = entityId.value
         val owner = dependencies.ownerContext.current
         if (owner != LOCAL_OWNER && dependencies.connectivityObserver.isOnline.value) {
+            val vehicle = database.databaseQueries.selectVehicleById(id).awaitAsOneOrNull() ?: return
             val snapshot =
                 database.databaseQueries
                     .outboxPayloadByEntity(entityType = "VEHICLE", entityId = id)
@@ -72,37 +72,16 @@ internal class VehicleSliceRuntime(
             if (result is Outcome.Ok) {
                 mutations.confirmVehiclePush(
                     entityId = id,
-                    pushedLocalRevision = 1,
+                    pushedLocalRevision = vehicle.localRevision,
                     serverUpdatedAt = result.value.serverUpdatedAt.toEpochMilliseconds(),
                 )
             }
         }
     }
 
-    fun observeVehicles(): Flow<List<VehicleListItemUi>> =
-        repository.observeVehicles(includeDeleted = false).map { result ->
-            when (result) {
-                is Outcome.Err -> {
-                    emptyList()
-                }
-
-                is Outcome.Ok -> {
-                    result.value.map { vehicle ->
-                        VehicleListItemUi(
-                            id = vehicle.id.value,
-                            name = vehicle.name,
-                            currentOdometerKm = vehicle.currentOdometerKm,
-                            fuelType = vehicle.fuelType,
-                            deleted = vehicle.deletedAt != null,
-                        )
-                    }
-                }
-            }
-        }
-
-    suspend fun refresh() {
+    suspend fun refresh(): Outcome<Unit, AppError> {
         val owner = dependencies.ownerContext.current
-        if (owner == LOCAL_OWNER || !dependencies.connectivityObserver.isOnline.value) return
+        if (owner == LOCAL_OWNER || !dependencies.connectivityObserver.isOnline.value) return Outcome.Ok(Unit)
 
         val result =
             dependencies.remoteSyncSource.pullChanges(
@@ -111,9 +90,13 @@ internal class VehicleSliceRuntime(
                 cursor = RemoteCursor.INITIAL,
                 limit = REMOTE_PAGE_LIMIT,
             )
-        if (result !is Outcome.Ok) return
-
-        result.value.items.forEach { snapshot -> applyRemoteVehicle(owner.value, snapshot) }
+        val page =
+            when (result) {
+                is Outcome.Err -> return result
+                is Outcome.Ok -> result.value
+            }
+        page.items.forEach { snapshot -> applyRemoteVehicle(owner.value, snapshot) }
+        return Outcome.Ok(Unit)
     }
 
     private suspend fun applyRemoteVehicle(

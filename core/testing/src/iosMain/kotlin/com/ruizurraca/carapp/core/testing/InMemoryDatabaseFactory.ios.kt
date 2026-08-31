@@ -1,22 +1,14 @@
 package com.ruizurraca.carapp.core.testing
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDatabaseType
-import com.eygraber.sqldelight.androidx.driver.AndroidxSqliteDriver
-import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.database.DatabaseHandle
+import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 
 actual class InMemoryDatabaseFactory actual constructor() : DatabaseFactory {
-    private val databases = TrackedInMemoryDatabases()
+    private val delegate = createStagedDatabaseFactory()
+    private val handles = TrackedDatabaseHandles()
 
-    actual override fun create(): AppDatabase =
-        databases.create(
-            AndroidxSqliteDriver(
-                driver = BundledSQLiteDriver(),
-                databaseType = AndroidxSqliteDatabaseType.Memory,
-                schema = AppDatabase.Schema,
-            ),
-        )
+    actual override fun create(): DatabaseHandle = handles.track(delegate.create())
 
-    actual fun close() = databases.close()
+    actual fun close() = handles.close()
 }

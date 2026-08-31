@@ -45,10 +45,11 @@ costs seconds instead of a round trip:
 
 ## Pull Requests
 
-`main` is protected. A change reaches it only through a pull request, and the nine checks of
+`main` is protected. A change reaches it only through a pull request, and the ten checks of
 `docs/CONTRACTS.md §18` MUST report green: `android-assemble`, `shared-tests`,
 `ios-simulator-build`, `ktlint`, `detekt`, `architecture-check`, `provider-decoupling`,
-`contract-check`, `objc-header-golden-check`. Force pushes and branch deletion are refused.
+`contract-check`, `objc-header-golden-check`, `android-instrumented-tests`. Force pushes and branch
+deletion are refused.
 
 Administrator enforcement is off, so the repository owner can bypass a red build. That is an escape
 hatch for a single-maintainer repository, not a workflow: **do not ask for it, and do not rely on

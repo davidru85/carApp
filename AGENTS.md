@@ -89,15 +89,15 @@ has made provider decoupling executable before any Firebase integration module e
 accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is merged and
 `E0-07`, the walking skeleton, `E1-02`, the Vehicle domain story, `E1-03`, the Vehicle data story,
 `E1-04`, the Fuel Entry domain story, and `E1-05`, the human-gated consumption calculation story,
-and `E1-06`, Fuel Entry data, are complete. `E1-07`, Android Vehicle UI, is the next planned
-Phase 1 story.
+`E1-06`, Fuel Entry data, and `E1-07`, Android Vehicle UI, are complete. `E1-08`, Android Fuel
+Entry UI, is the next planned Phase 1 story.
 
 ### Delivery status and remaining work
 
-- **Completed:** all Phase 0 stories; `E1-01` through `E1-06`; the pulled-forward `E3-06` and
+- **Completed:** all Phase 0 stories; `E1-01` through `E1-07`; the pulled-forward `E3-06` and
   `E3-01` prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
-- **Next:** `E1-07`, Android Vehicle UI and the D-28 feature package-boundary checks.
-- **Remaining Phase 1:** `E1-07` through `E1-10`.
+- **Next:** `E1-08`, Android Fuel Entry UI.
+- **Remaining Phase 1:** `E1-08` through `E1-10`.
 - **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07` and `E3-09`. `E3-01` and `E3-06` are already complete.
@@ -110,7 +110,7 @@ Phase 1 story.
 ```text
 build-logic/       convention plugins, an included build
 :core:model        identifiers, money, scaled values, the canonical arithmetic of CONTRACTS §2
-:core:common       Outcome, the AppError taxonomy, platform abstractions, named constants
+:core:common       Outcome, AppError, platform abstractions, named constants, shared UI primitives
 :core:analytics    AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
@@ -119,14 +119,14 @@ build-logic/       convention plugins, an included build
 :core:sync         staged sync contracts for the E0-07 application graph
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
-:feature:vehicle   Vehicle domain and SQLDelight-backed local repository implementation
+:feature:vehicle   Vehicle domain, local repository and shared presentation state holders
 :feature:fuel      Fuel Entry domain, SQLDelight local repository, projections and R-3 consumption
 :feature:session   final module shell staged for the Swift-facing surface
 :shared            provider-free graph contracts, Swift facade and exported shared declarations
 :shared:testing    KMP app-graph test factory, consumed from commonTest only
 :wiring:firebase   staged Firebase provider composition contract
 :composition:ios   sole Shared framework producer and iOS composition root
-:androidApp        the Android host app
+:androidApp        the Android host app and Compose Vehicle flow
 ```
 
 `:integration:firebase-analytics` and `:integration:firebase-crashlytics` do **not** exist yet.
@@ -169,7 +169,7 @@ and `carapp.sqldelight`.
 
 ### Build and verify
 
-Everything CI runs, in one command:
+Every non-instrumented CI job runs the tasks in this command:
 
 ```bash
 ./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
@@ -185,18 +185,16 @@ Individually:
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
 | `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the four current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths; Android-host tests and explicitly listed real-host XCUITest paths remain required. |
+| `./gradlew :androidApp:connectedDebugAndroidTest` on the D-84 API 36 emulator | The protected `android-instrumented-tests` job exercises the Compose Vehicle creation flow. |
 
 The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
 invocation, including the `ARCHS=arm64` argument the project currently needs.
 
 ### What is enforced, and what is not
 
-`main` is protected: nine required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`). Administrator enforcement is off, so the owner can bypass; nobody else can.
-
-Not yet enforced, each with the story that owns it:
-
-- feature-layer package rules and Konsist — `E1-07` (`D-28`)
+`main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
+(`D-31`, `D-34`, `D-84`). Administrator enforcement is off, so the owner can bypass; nobody else
+can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made
 `testAppGraphDependencies` parity executable. `contractCheck` currently reports no `PENDING`
@@ -340,8 +338,9 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Features do not depend on other features.
 - `:core:sync` does not depend on integrations or features.
 - `:shared` does not depend on integrations.
-- `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single `Shared`
-  framework and contains no product logic.
+- `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 export-only
+  `:feature:vehicle` / `:core:common` declarations, owns the single `Shared` framework, contains
+  no product logic and never depends directly on `:integration:*`.
 - `:shared:testing` depends only on `:shared` and `:core:testing`; consumers depend on it only from
   `commonTest`.
 - No module under `:core` depends on `:shared` or `:shared:testing`.

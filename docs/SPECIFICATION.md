@@ -305,8 +305,9 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
 7. `:core:database` depends on `:core:model`, `:core:common`, SQLDelight and AndroidX SQLite; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
-9. `:composition:ios` depends only on `:shared` and `:wiring:firebase`, owns the single exported
-   framework and contains no product logic.
+9. `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 export-only
+   `:feature:vehicle` / `:core:common` declarations, owns the single exported framework and
+   contains no product logic or direct `:integration:*` dependency.
 10. Firebase and GitLive types never cross integration boundaries.
 11. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
 12. Ktor is deferred and MUST NOT be added until an HTTP API remote implementation is approved by ADR.
@@ -327,12 +328,13 @@ Presentation logic is shared in `commonMain` through state holders exposing `Sta
 port:
 
 ```kotlin
-fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
+fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): AppGraph
 ```
 
 That factory, `AppProviders` and `AppGraphDependencies` are not part of the Swift-facing ABI.
 `:composition:ios` owns the sole `createSwiftAppGraph(isDebugBuild)` declaration, constructs
-providers through `:wiring:firebase` and delegates to `buildAppGraph`. Swift still imports the
+providers through `:wiring:firebase`, wraps the `AppGraph` returned by `buildAppGraph` in
+`SwiftAppGraph` and exports the allowlisted declarations. Swift still imports the
 single framework as `Shared` and consumes the facade defined in `docs/CONTRACTS.md §20.10`, which
 exposes concrete state holders and no provider dependency container.
 
@@ -554,6 +556,14 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-81 | Fuel Entry earliest-date calendar | Subtract 20 calendar years from `vehicle.createdAt` with `Instant.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamp the result to the Unix epoch. | Accepted |
 | D-82 | Fuel Entry odometer inconsistency derivation | Derive the stored flag from both the previous active chronological neighbour and the Vehicle initial odometer, with an orphan-safe missing-Vehicle fallback. | Accepted |
 | D-83 | Fuel Entry bounded projection window | Retain the highest 5,000 rows in each canonical projection ordering, then return the retained window in canonical ascending order. | Accepted |
+| D-84 | Android Vehicle UI support stack | Use Compose Navigation 2.9.8, BOM-managed Compose UI tests, AndroidX Test runner/rules 1.7.0 and a SHA-pinned emulator CI job. | Accepted |
+| D-85 | Vehicle presentation ownership | Move Vehicle presentation to `:feature:vehicle` and shared UI primitives to `:core:common`, preserving the Swift ABI. | Accepted |
+| D-86 | Kotlin and Swift graph separation | `buildAppGraph` returns hidden `AppGraph`; `SwiftAppGraph` wraps it by composition. | Accepted |
+| D-87 | Vehicle editability projection | Observe reactive Vehicle edit facts while retaining authoritative transactional validation. | Accepted |
+| D-88 | Pre-E3-03 sync-status staging | Keep direct Vehicle restoration and constant `SyncStatus.Idle` without a provisional controller until E3-03. | Accepted |
+| D-89 | Local database lifetime ownership | Return an idempotently closeable `DatabaseHandle` from `DatabaseFactory` so each application graph releases its SQL driver. | Accepted |
+| D-90 | Swift holder release and Vehicle creation completion | Add keyed Swift holder release, keep saved IDs separate from form identity and reset creation inputs after success. | Accepted |
+| D-91 | Stable Swift names for exported common enums | Pin `Confirmation`, `AuthProvider` and `SyncTrigger` to their Kotlin-matching Objective-C and Swift names. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

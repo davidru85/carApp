@@ -26,6 +26,8 @@ class IosCompositionContractTest {
         assertTrue(compositionBuild.contains("api(project(\":shared\"))"))
         assertTrue(compositionBuild.contains("implementation(project(\":wiring:firebase\"))"))
         assertTrue(compositionBuild.contains("export(project(\":shared\"))"))
+        assertTrue(compositionBuild.contains("export(project(\":feature:vehicle\"))"))
+        assertTrue(compositionBuild.contains("export(project(\":core:common\"))"))
         assertTrue(compositionBuild.contains("baseName = \"Shared\""))
         assertTrue(skiePlugin.contains("SKIE_ALLOWED_MODULE = \":composition:ios\""))
     }
@@ -81,5 +83,37 @@ class IosCompositionContractTest {
             ),
         )
         assertTrue(ci.contains("shared/build/generated/objc-header/Shared.h.golden"))
+    }
+
+    @Test
+    fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
+        val expectedNames =
+            listOf(
+                ExactEnumName(APP_ERROR_PATH, "SharedConfirmation", "Confirmation"),
+                ExactEnumName(PLATFORM_ABSTRACTIONS_PATH, "SharedAuthProvider", "AuthProvider"),
+                ExactEnumName(PLATFORM_ABSTRACTIONS_PATH, "SharedSyncTrigger", "SyncTrigger"),
+            )
+        val missing =
+            expectedNames.filterNot { expected ->
+                repositoryRoot.resolve(expected.path).readText().contains(expected.annotation)
+            }
+
+        assertEquals(emptyList(), missing)
+    }
+
+    private data class ExactEnumName(
+        val path: String,
+        val objectiveCName: String,
+        val swiftName: String,
+    ) {
+        val annotation: String =
+            "@ObjCName(name = \"$objectiveCName\", swiftName = \"$swiftName\", exact = true)"
+    }
+
+    private companion object {
+        const val APP_ERROR_PATH =
+            "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt"
+        const val PLATFORM_ABSTRACTIONS_PATH =
+            "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
     }
 }

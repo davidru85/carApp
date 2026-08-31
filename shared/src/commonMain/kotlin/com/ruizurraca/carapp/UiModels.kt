@@ -2,37 +2,9 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
+import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
-import com.ruizurraca.carapp.core.model.FuelType
-import com.ruizurraca.carapp.core.sync.SyncStatus
-
-data class VehicleListUiState(
-    val isLoading: Boolean,
-    val vehicles: List<VehicleListItemUi>,
-    val selectedVehicleId: String?,
-    val syncStatus: SyncStatus,
-    val message: UiMessage?,
-)
-
-data class VehicleListItemUi(
-    val id: String,
-    val name: String,
-    val currentOdometerKm: Long,
-    val fuelType: FuelType,
-    val deleted: Boolean,
-)
-
-data class VehicleFormUiState(
-    val vehicleId: String?,
-    val name: String,
-    val initialOdometerKm: Long,
-    val brand: String?,
-    val model: String?,
-    val fuelType: FuelType,
-    val canEditInitialOdometer: Boolean,
-    val isSaving: Boolean,
-    val message: UiMessage?,
-)
 
 data class FuelEntryListUiState(
     val vehicleId: String,
@@ -92,12 +64,3 @@ data class SyncUiState(
     val isOnline: Boolean,
     val message: UiMessage?,
 )
-
-data class UiMessage(
-    val id: Long,
-    val kind: UiMessageKind,
-    val code: String,
-    val confirmation: Confirmation?,
-)
-
-enum class UiMessageKind { INFO, WARNING, ERROR }

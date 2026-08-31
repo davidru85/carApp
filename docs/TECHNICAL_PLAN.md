@@ -98,6 +98,14 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-81 | Fuel Entry earliest-date calendar | Subtract 20 calendar years from `vehicle.createdAt` with `Instant.minus(20, DateTimeUnit.YEAR, TimeZone.UTC)`, then clamp the result to the Unix epoch | Accepted | Implements literal calendar years with the accepted commonMain library and keeps the persisted fact at or after the Unix epoch. |
 | D-82 | Fuel Entry odometer inconsistency derivation | Database-owned neighbour-or-initial-odometer predicate with a missing-Vehicle fallback | Accepted | Aligns persistence with validation and keeps confirmed warnings in local and outbox snapshots without weakening the sole-writer boundary. |
 | D-83 | Fuel Entry bounded projection window | Descending inner limit over each canonical ordering, followed by the canonical ascending outer order | Accepted | Retains the newest/highest rows under the 5,000-row memory ceiling while preserving deterministic list and calculation order. |
+| D-84 | Android Vehicle UI support stack | Compose Navigation 2.9.8, instrumented Compose UI tests and a SHA-pinned emulator CI job | Accepted | Runs the real Android Vehicle creation flow with stable AndroidX tooling. |
+| D-85 | Vehicle presentation ownership | Vehicle presentation in `:feature:vehicle`; shared UI primitives in `:core:common` | Accepted | Enforces the feature boundary without allowing presentation to depend on `:core:sync`. |
+| D-86 | Kotlin and Swift graph separation | Hidden Kotlin `AppGraph`, wrapped by `SwiftAppGraph` | Accepted | Separates caller-owned Kotlin scopes from cached Swift-owned child scopes without leaking Kotlin-only APIs. |
+| D-87 | Vehicle editability projection | Reactive `VehicleEditFacts` projection | Accepted | Re-emits after Vehicle or active Fuel Entry changes while write validation stays authoritative. |
+| D-88 | Pre-E3-03 sync-status staging | Direct restore plus constant `Idle` until E3-03 | Accepted | Avoids a provisional second source of sync truth. |
+| D-89 | Local database lifetime ownership | `DatabaseFactory` returns an idempotently closeable `DatabaseHandle` | Accepted | Keeps the SQL driver in `:core:database` and gives each application graph explicit ownership of one connection. |
+| D-90 | Swift holder release and Vehicle creation completion | Keyed Swift cache release plus separate `savedVehicleId` | Accepted | Bounds Swift-owned scopes and prevents a successful creation form from silently becoming an editor. |
+| D-91 | Stable Swift names for exported common enums | Exact Kotlin-matching `@ObjCName` annotations | Accepted | Prevents framework export configuration from renaming three already exported common enums. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -161,7 +169,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:shared` | `:core:*`, `:feature:*`, `:shared:testing` in test-support and SPM metadata configurations only | `:integration:*` |
 | `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
 | `:wiring:firebase` | `:integration:*`, `:shared` graph, Koin | product logic |
-| `:composition:ios` | `:shared`, `:wiring:firebase` | product logic, direct `:integration:*`, a second framework runtime |
+| `:composition:ios` | `:shared`, `:wiring:firebase`, `:feature:vehicle`, `:core:common` | product logic, direct `:integration:*`, a second framework runtime, any other feature or core module |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
@@ -431,7 +439,7 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: active. E1-06 is complete; E1-07 is next and E1-07 through E1-10 remain. D-80 leaves the
+Status: active. E1-07 is complete; E1-08 is next and E1-08 through E1-10 remain. D-80 leaves the
 manual optimized real-iPhone consumption measurement explicit for E4-03.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.

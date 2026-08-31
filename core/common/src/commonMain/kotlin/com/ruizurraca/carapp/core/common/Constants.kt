@@ -1,4 +1,8 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.common
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * The named constants of `docs/CONTRACTS.md §20.0.1`.
@@ -9,24 +13,31 @@ package com.ruizurraca.carapp.core.common
  */
 
 /** Highest `schemaVersion` this client applies (`§9.5`). */
+@HiddenFromObjC
 const val CLIENT_MAX_SCHEMA_VERSION: Int = 1
 
 /** `attemptCount` ceiling (`§9.7`). */
+@HiddenFromObjC
 const val MAX_RETRYABLE_ATTEMPTS: Int = 10
 
 /** Per-vehicle fuel entry load ceiling (`§12`). */
+@HiddenFromObjC
 const val MAX_ENTRIES_IN_MEMORY: Int = 5_000
 
 /** Android `enqueueUniqueWork` name (`§9.1`). */
+@HiddenFromObjC
 const val SYNC_WORK: String = "carapp-sync"
 
 /** `WhileSubscribed` timeout (`§14`). */
+@HiddenFromObjC
 const val STATE_HOLDER_TIMEOUT_MS: Long = 5_000L
 
 /** Five minutes (`§9.8`). */
+@HiddenFromObjC
 const val FOREGROUND_RESUME_THRESHOLD_MS: Long = 300_000L
 
 /** Five minutes (`§11.5`). */
+@HiddenFromObjC
 const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L
 
 /**
@@ -37,6 +48,7 @@ const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L
  * `EUR` rather than accepting a different factor. Extending this table is a backlog story, not an
  * agent decision.
  */
+@HiddenFromObjC
 val SUPPORTED_CURRENCY_CODES: Set<String> =
     setOf(
         "ARS",
@@ -63,6 +75,7 @@ val SUPPORTED_CURRENCY_CODES: Set<String> =
     )
 
 /** Failures that MUST NOT consume the poison budget (`§9.7`). */
+@HiddenFromObjC
 val CONNECTIVITY_ERROR_CODES: Set<String> =
     setOf(
         "REMOTE.UNAVAILABLE",

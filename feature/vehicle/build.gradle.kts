@@ -11,4 +11,5 @@ dependencies {
     "commonTestImplementation"(projects.core.testing)
     "commonTestImplementation"(libs.kotlinx.coroutines.test)
     "commonTestImplementation"(libs.turbine)
+    "androidHostTestImplementation"(libs.konsist)
 }

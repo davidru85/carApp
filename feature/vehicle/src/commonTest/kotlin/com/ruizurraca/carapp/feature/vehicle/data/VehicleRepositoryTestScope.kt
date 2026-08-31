@@ -23,7 +23,7 @@ internal class VehicleRepositoryTestScope(
     initialOwner: OwnerId = LOCAL_OWNER,
 ) {
     private val databaseFactory = InMemoryDatabaseFactory()
-    val database = databaseFactory.create()
+    val database = databaseFactory.create().database
     val ownerContext = FakeOwnerContext(initialOwner)
     val clock = FakeAppClock(NOW)
     val uuidGenerator = FakeUuidGenerator()

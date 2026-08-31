@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -16,6 +17,7 @@ import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
@@ -32,22 +34,23 @@ class VehicleListStateHolderTest {
     fun listPublishesVehiclesPersistedThroughTheSharedForm() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val graph =
                 buildAppGraph(
                     isDebugBuild = true,
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(LOCAL_OWNER),
                             ),
                         ),
                 )
 
             try {
-                val list = graph.vehicleListStateHolder()
-                val form = graph.vehicleFormStateHolder(vehicleId = null)
+                val list = graph.vehicleListStateHolder(backgroundScope)
+                val form = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
                 form.setName("Roadster")
 
                 form.save()
@@ -75,7 +78,8 @@ class VehicleListStateHolderTest {
     fun refreshRestoresRemoteVehicleIntoEmptyLocalDatabaseForTheSameOwner() =
         runTest {
             val defaultDependencies = testAppGraphDependencies()
-            val database = defaultDependencies.databaseFactory.create()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val database = databaseHandle.database
             val remote = PullOnlyRemoteSyncSource(remoteVehicleSnapshot())
             val graph =
                 buildAppGraph(
@@ -83,7 +87,7 @@ class VehicleListStateHolderTest {
                     providers =
                         testAppProviders(
                             defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(database),
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                                 remoteSyncSource = remote,
                             ),
@@ -91,7 +95,7 @@ class VehicleListStateHolderTest {
                 )
 
             try {
-                val list = graph.vehicleListStateHolder()
+                val list = graph.vehicleListStateHolder(backgroundScope)
 
                 list.refresh()
                 list.state.first { state -> !state.isLoading }
@@ -125,9 +129,9 @@ class VehicleListStateHolderTest {
             }
         }
 
-    private fun fixedDatabaseFactory(database: com.ruizurraca.carapp.core.database.AppDatabase): DatabaseFactory =
+    private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =
         object : DatabaseFactory {
-            override fun create() = database
+            override fun create() = databaseHandle
         }
 
     private fun fixedOwnerContext(ownerId: OwnerId): OwnerContext =

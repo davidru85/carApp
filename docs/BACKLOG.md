@@ -380,6 +380,8 @@ Acceptance criteria:
 
 ### E1-07 - Android UI: Vehicles - M
 
+**Status:** Completed on 2026-08-30.
+
 Implement the vehicle list, create/edit form and detail shell with a shared presentation state holder.
 
 Design reference (non-normative): `docs/DESIGN.md §4`, Android screens 02 home, 03 vehicle form and 04 vehicle detail.
@@ -391,6 +393,26 @@ Acceptance criteria:
 - Loading, empty and error states exist and map typed errors to platform strings.
 - Spanish and English strings exist; no hardcoded user-facing strings.
 - Vehicle creation UI test exists.
+- The Vehicle presentation types live in the `:feature:vehicle` `presentation` package; their
+  existing Objective-C and Swift names remain byte-exact in the generated framework header.
+- The create/edit form never renders a `fuelType` selector, while the stored value round-trips.
+- The production list calls `observeVehicles(includeDeleted = false)` and never emits a deleted row.
+- Edit forms observe `VehicleEditFacts` reactively, and a stale editable UI flag cannot bypass the
+  repository's authoritative initial-odometer write validation.
+- `buildAppGraph` returns the Kotlin-facing `AppGraph`; Android passes `viewModelScope`, while
+  `SwiftAppGraph` wraps the graph and retains its caching and close semantics.
+- `AppGraph.close()` idempotently releases its graph-owned `DatabaseHandle`, and
+  `SwiftAppGraph.close()` releases that database connection transitively.
+- D-90 keeps a creation holder's route identity `null`, reports completion through
+  `savedVehicleId` and resets its inputs after success so it cannot overwrite the created Vehicle.
+- `SwiftAppGraph` exposes keyed release for Vehicle forms, Fuel Entry lists and Fuel Entry forms;
+  releasing closes the holder and cancels its child scope, and the next request returns a fresh
+  instance.
+- D-91 pins the exported common enums to `Confirmation`, `AuthProvider` and `SyncTrigger` in Swift
+  with the matching `SharedConfirmation`, `SharedAuthProvider` and `SharedSyncTrigger` Objective-C
+  names; the rename from the pre-E1-07 module-derived names is intentional.
+- Compose Navigation and the instrumented UI stack are pinned by D-84, and the creation test runs
+  in the protected `android-instrumented-tests` emulator job.
 
 ### E1-08 - Android UI: Fuel Entries - L
 
@@ -406,6 +428,8 @@ Acceptance criteria:
 - Entries with no consumption show an accessible explanation derived from `ConsumptionInvalidReason`, including `EndEntryNotFullTank` for partial refuels.
 - `hasMissedEntries` and `odometerInconsistent` flags are rendered on every row, including partial refuels where `invalidReason = EndEntryNotFullTank`.
 - Empty consumption state follows the specification.
+- Move the Fuel Entry state holders and their `UiState` and row types from the D-55 `:shared`
+  shells into the `:feature:fuel` `presentation` package, preserving the Swift ABI.
 
 ### E1-09 - iOS UI: Vehicles and Fuel Entries - L
 
@@ -565,6 +589,9 @@ Acceptance criteria:
 - A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
 - Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
 - Account deletion is accessible from settings.
+- Move Session state holders and their `UiState` types from the D-55 `:shared` shells into the
+  `:feature:session` `presentation` package, preserving the Swift ABI. `SyncStateHolder` remains
+  the app-level state holder in `:shared`.
 
 ## Phase 3 - Backend and Synchronization
 
@@ -679,6 +706,9 @@ Acceptance criteria:
 - Debug screen exposes the outbox, cursors, quarantine and row sync state.
 - Sync retry and poison decisions read `lastErrorCode` only; `lastError` is debug/UI context and is never read by sync logic.
 - Quarantine records include `QuarantineReason`, raw payload JSON, `schemaVersion`, `serverUpdatedAt` and redacted logging for unsupported schema and malformed supported-version payloads.
+- Wire every state holder that exposes `SyncStatus` to the single `SyncController.status` flow and
+  add the `docs/CONTRACTS.md §14` unit test proving that two holders converge. This closes the D-88
+  E1-07 exception for constant `Idle` and direct Vehicle restoration.
 
 Human review required.
 
@@ -823,7 +853,7 @@ Prepare release assets and store requirements.
 
 Acceptance criteria:
 
-- Branch protection for `main` is active with the nine `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
+- Branch protection for `main` is active with the ten `docs/CONTRACTS.md §18` checks, or the repository is still private and `D-33` still holds. A public repository without branch protection fails this story.
 
 - App icons and splash are present.
 - Privacy policy and store privacy labels are prepared and cover analytics, which is off by default.
@@ -890,7 +920,7 @@ proof after E3-04.
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
 | E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data (completed) | 1 | M | — |
-| E1-07 Android UI vehicles | 1 | M | — |
+| E1-07 Android UI vehicles (completed) | 1 | M | — |
 | E1-08 Android UI fuel entries | 1 | L | — |
 | E1-09 iOS UI | 1 | L | — |
 | E1-10 Settings persistence | 1 | S | — |

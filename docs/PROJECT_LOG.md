@@ -38,6 +38,92 @@
 
 ## Entries
 
+### 2026-08-31 — E1-07 second-round review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-07`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** restored Android form drafts are republished into fresh state holders, fields
+  edited before initial facts are preserved, and the Android odometer adapter now consumes the
+  Kotlin-only domain range instead of duplicating it.
+- **Why:** second-round review found that saveable UI text could diverge from the command persisted
+  after process restoration or late edit facts, and that Android duplicated a shared validation
+  boundary. The corrections add no decision, ADR or Swift ABI change.
+- **Documents touched:** `docs/handoff-E1-07.md` and this log; D-84 through D-91 remain unchanged.
+- **Verification:** both defects have RED, GREEN and REFACTOR commits. Targeted common and API 36
+  tests pass; the complete repository and unchanged golden evidence is recorded in the handoff and
+  PR #37.
+- **Follow-ups / risks:** N-3 navigation lifetime cleanup and N-4 locale-independent assertion stay
+  out of scope alongside the six pre-existing follow-ups. PR #37 remains owner-gated and MUST NOT
+  be merged by the agent.
+
+### 2026-08-31 — E1-07 owner code-review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-07` / `D-90`, `D-91`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** creation holders remain creation-only after save; Swift holder caches now have
+  keyed release; reviewed common enums have exact Objective-C and Swift names; Android form drafts
+  survive configuration changes; and raw invalid odometer text remains visible with a localized
+  error.
+- **Why:** owner review found a cached-holder data-corruption path, unbounded Swift child scopes,
+  configuration-dependent enum names, draft loss during activity recreation and silently discarded
+  odometer input. D-90 and D-91 make the two Swift ABI changes explicit while the Android fixes stay
+  host-private.
+- **Documents touched:** `docs/CONTRACTS.md §15.3` and `§20.10`, D-90 / ADR-0091 and D-91 /
+  ADR-0092 in all decision mirrors, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`.
+- **Verification:** each correction has RED, GREEN and REFACTOR commits. Focused common, shared,
+  Android compilation and API 36 instrumented tests pass; complete repository, framework-header
+  and protected-check evidence is recorded in the handoff and PR #37.
+- **Follow-ups / risks:** E3-03 owns the staged `syncController()` and restoration error handling.
+  Refreshing the loaded edit odometer, hermetic UI database setup, fully qualified D-28 detection
+  and the missing delete/refresh presentation tests require future backlog assignment. PR #37
+  remains owner-gated and MUST NOT be merged by the agent.
+
+### 2026-08-30 — E1-07 owner-review database lifetime correction
+
+- **Type:** correction
+- **Story / Decision:** `E1-07` / `D-89`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `DatabaseFactory` now returns a `DatabaseHandle` that owns its SQLDelight
+  database and driver. Kotlin and Swift application graphs release the handle exactly once when
+  closed, and architecture checks guard the new lifetime boundary.
+- **Why:** human review found that `DefaultAppGraph` discarded the created driver's ownership, so
+  both direct and Swift-transitive close leaked the local database connection. D-89 keeps that
+  closeable resource in `:core:database` without changing the Swift ABI.
+- **Documents touched:** `docs/CONTRACTS.md §11.6`, `§20.3.2` and `§20.10`, D-89 and ADR-0090 in
+  the four decision mirrors, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`. Owner-ratified D-84
+  through D-88 and ADR-0085 through ADR-0089 remain unchanged.
+- **Verification:** the Android-host release tests failed before implementation, then direct and
+  Swift-transitive release passed on Android host and iOS. Affected database, fake, feature,
+  shared, architecture and contract checks pass with 90 accepted decision/ADR mirrors, and the
+  generated Objective-C header remains byte-exact with its unchanged golden. Full repository and
+  protected-CI evidence is recorded in the handoff.
+- **Follow-ups / risks:** PR #37 remains owner-gated and MUST NOT be merged by the agent. The other
+  review observations were explicitly left outside this correction.
+
+### 2026-08-30 — E1-07 Android Vehicle UI completed
+
+- **Type:** story
+- **Story / Decision:** `E1-07` / `D-84` through `D-88`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented the Compose Vehicle list, create/edit form and detail shell, shared
+  Vehicle presentation state holders, reactive edit facts, Kotlin/Swift graph separation and the
+  protected API 36 creation test. D-28 feature package rules now execute with one firing fixture
+  per rule.
+- **Why:** E1-07 makes the local Vehicle slice usable on Android while keeping validation in the
+  repository, display copy native, provider types outside the shared framework and final sync
+  ownership staged for E3-03.
+- **Documents touched:** D-84 through D-88 and ADR-0085 through ADR-0089 in the four decision
+  mirrors, current-state and CI records, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`.
+- **Verification:** Vehicle presentation and graph behavior were RED before implementation; the
+  API 36 instrumented creation flow, Android-host and iOS tests, lint, detekt, coverage,
+  architecture, contract, Android assembly and Shared framework header checks pass. Detailed
+  commands and results are in the handoff.
+- **Follow-ups / risks:** E1-08 owns Android Fuel Entry UI. E3-03 replaces D-88 constant `Idle`
+  with the single final `SyncController`; E3-08 completes the staged AppGraph factories. Owner
+  review is required before merge.
+
 ### 2026-08-29 — E1-06 second owner-review corrections applied
 
 - **Type:** correction

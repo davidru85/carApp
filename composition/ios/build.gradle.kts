@@ -9,12 +9,16 @@ kotlin {
             baseName = "Shared"
             isStatic = true
             export(project(":shared"))
+            export(project(":feature:vehicle"))
+            export(project(":core:common"))
         }
     }
 
     sourceSets {
         commonMain.dependencies {
             api(project(":shared"))
+            api(project(":feature:vehicle"))
+            api(project(":core:common"))
             implementation(project(":wiring:firebase"))
         }
     }

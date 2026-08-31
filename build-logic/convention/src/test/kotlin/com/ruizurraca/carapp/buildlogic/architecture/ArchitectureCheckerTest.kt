@@ -348,11 +348,14 @@ class ArchitectureCheckerTest {
     @Test
     fun databaseTypesMayNotLeakOutOfTheirModule() {
         listOf(":core:common", ":core:sync", ":feature:fuel").forEach {
-            assertRejected(
-                module(it, source = "fun open(): AppDatabase = error(\"x\")"),
-                "database-type-outside-core-database",
-            )
+            listOf("AppDatabase", "DatabaseHandle", "DatabaseFactory").forEach { databaseType ->
+                assertRejected(
+                    module(it, source = "fun open(): $databaseType = error(\"x\")"),
+                    "database-type-outside-core-database",
+                )
+            }
         }
+        assertAccepted(module(":core:database", source = "interface DatabaseHandle"))
         assertAccepted(module(":core:testing", source = "class FakeDatabaseFactory : DatabaseFactory"))
         assertAccepted(module(":shared:testing", source = "fun fake(): DatabaseFactory = error(\"x\")"))
         assertAccepted(

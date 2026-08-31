@@ -18,7 +18,7 @@ class SqlDelightVehicleLocalDataSourceTest {
     fun failedWriteRollsBackAnInsertedVehicle() =
         runTest {
             val factory = InMemoryDatabaseFactory()
-            val database = factory.create()
+            val database = factory.create().database
             val dataSource = SqlDelightVehicleLocalDataSource(VehicleDatabaseAccess(database))
             try {
                 assertFailsWith<ExpectedFailure> {
