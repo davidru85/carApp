@@ -57,6 +57,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -64,6 +65,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
+import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.domain.INITIAL_ODOMETER_RANGE_KM
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
@@ -102,6 +105,8 @@ internal class VehicleAppViewModel(
     private val graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)
     val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
     private val formStateHolders = mutableMapOf<String, VehicleFormStateHolder>()
+    private val fuelEntryListStateHolders = mutableMapOf<String, FuelEntryListStateHolder>()
+    private val fuelEntryFormStateHolders = mutableMapOf<Pair<String, String?>, FuelEntryFormStateHolder>()
 
     fun vehicleFormStateHolder(vehicleId: String?): VehicleFormStateHolder =
         formStateHolders.getOrPut(vehicleId.cacheKey()) {
@@ -112,9 +117,37 @@ internal class VehicleAppViewModel(
         formStateHolders.remove(vehicleId.cacheKey())?.close()
     }
 
+    fun fuelEntryListStateHolder(vehicleId: String): FuelEntryListStateHolder =
+        fuelEntryListStateHolders.getOrPut(vehicleId) {
+            graph.fuelEntryListStateHolder(scope = viewModelScope, vehicleId = vehicleId)
+        }
+
+    fun closeFuelEntryList(vehicleId: String) {
+        fuelEntryListStateHolders.remove(vehicleId)?.close()
+    }
+
+    fun fuelEntryFormStateHolder(
+        vehicleId: String,
+        entryId: String?,
+    ): FuelEntryFormStateHolder =
+        fuelEntryFormStateHolders.getOrPut(vehicleId to entryId) {
+            graph.fuelEntryFormStateHolder(scope = viewModelScope, vehicleId = vehicleId, entryId = entryId)
+        }
+
+    fun closeFuelEntryForm(
+        vehicleId: String,
+        entryId: String?,
+    ) {
+        fuelEntryFormStateHolders.remove(vehicleId to entryId)?.close()
+    }
+
     override fun onCleared() {
         formStateHolders.values.forEach(VehicleFormStateHolder::close)
+        fuelEntryListStateHolders.values.forEach(FuelEntryListStateHolder::close)
+        fuelEntryFormStateHolders.values.forEach(FuelEntryFormStateHolder::close)
         formStateHolders.clear()
+        fuelEntryListStateHolders.clear()
+        fuelEntryFormStateHolders.clear()
         vehicleListStateHolder.close()
         graph.close()
     }
@@ -135,57 +168,102 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
         navController = navController,
         startDestination = VehicleRoutes.LIST,
     ) {
-        composable(VehicleRoutes.LIST) {
-            VehicleListScreen(
-                stateHolder = viewModel.vehicleListStateHolder,
-                onCreate = { navController.navigate(VehicleRoutes.CREATE) },
-                onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
-            )
-        }
-        composable(VehicleRoutes.CREATE) { entry ->
-            val stateHolder =
-                remember(entry) {
-                    viewModel.vehicleFormStateHolder(vehicleId = null)
-                }
-            ReleaseVehicleFormOnBackStackExit(entry) {
-                viewModel.closeVehicleForm(vehicleId = null)
+        vehicleRoutes(navController, viewModel)
+        fuelEntryRoutes(navController, viewModel)
+    }
+}
+
+private fun NavGraphBuilder.vehicleRoutes(
+    navController: NavHostController,
+    viewModel: VehicleAppViewModel,
+) {
+    composable(VehicleRoutes.LIST) {
+        VehicleListScreen(
+            stateHolder = viewModel.vehicleListStateHolder,
+            onCreate = { navController.navigate(VehicleRoutes.CREATE) },
+            onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
+        )
+    }
+    composable(VehicleRoutes.CREATE) { entry ->
+        val stateHolder =
+            remember(entry) {
+                viewModel.vehicleFormStateHolder(vehicleId = null)
             }
-            VehicleFormScreen(
-                stateHolder = stateHolder,
-                originalVehicleId = null,
-                onBack = navController::popBackStack,
-                onSaved = { vehicleId ->
-                    navController.navigate(VehicleRoutes.detail(vehicleId)) {
-                        popUpTo(VehicleRoutes.CREATE) { inclusive = true }
-                    }
-                },
-            )
+        ReleaseHolderOnBackStackExit(entry) {
+            viewModel.closeVehicleForm(vehicleId = null)
         }
-        composable(
-            route = VehicleRoutes.EDIT,
-            arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
-        ) { entry ->
-            val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
-            val stateHolder =
-                remember(entry) {
-                    viewModel.vehicleFormStateHolder(vehicleId)
+        VehicleFormScreen(
+            stateHolder = stateHolder,
+            originalVehicleId = null,
+            onBack = navController::popBackStack,
+            onSaved = { vehicleId ->
+                navController.navigate(VehicleRoutes.detail(vehicleId)) {
+                    popUpTo(VehicleRoutes.CREATE) { inclusive = true }
                 }
-            ReleaseVehicleFormOnBackStackExit(entry) {
-                viewModel.closeVehicleForm(vehicleId)
+            },
+        )
+    }
+    composable(
+        route = VehicleRoutes.EDIT,
+        arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
+    ) { entry ->
+        val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+        val stateHolder =
+            remember(entry) {
+                viewModel.vehicleFormStateHolder(vehicleId)
             }
-            VehicleFormScreen(
-                stateHolder = stateHolder,
-                originalVehicleId = vehicleId,
-                onBack = navController::popBackStack,
-                onSaved = { navController.popBackStack() },
-            )
+        ReleaseHolderOnBackStackExit(entry) {
+            viewModel.closeVehicleForm(vehicleId)
         }
-        composable(
-            route = VehicleRoutes.DETAIL,
-            arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
-        ) { entry ->
-            VehicleDetailRoute(entry, navController, viewModel.vehicleListStateHolder)
-        }
+        VehicleFormScreen(
+            stateHolder = stateHolder,
+            originalVehicleId = vehicleId,
+            onBack = navController::popBackStack,
+            onSaved = { navController.popBackStack() },
+        )
+    }
+    composable(
+        route = VehicleRoutes.DETAIL,
+        arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
+    ) { entry ->
+        VehicleDetailRoute(entry, navController, viewModel)
+    }
+}
+
+private fun NavGraphBuilder.fuelEntryRoutes(
+    navController: NavHostController,
+    viewModel: VehicleAppViewModel,
+) {
+    composable(
+        route = VehicleRoutes.FUEL_CREATE,
+        arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
+    ) { entry ->
+        val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+        val stateHolder = remember(entry) { viewModel.fuelEntryFormStateHolder(vehicleId, entryId = null) }
+        ReleaseHolderOnBackStackExit(entry) { viewModel.closeFuelEntryForm(vehicleId, entryId = null) }
+        FuelEntryFormScreen(
+            stateHolder = stateHolder,
+            onBack = navController::popBackStack,
+            onSaved = { navController.popBackStack() },
+        )
+    }
+    composable(
+        route = VehicleRoutes.FUEL_EDIT,
+        arguments =
+            listOf(
+                navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType },
+                navArgument(VehicleRoutes.ENTRY_ID) { type = NavType.StringType },
+            ),
+    ) { entry ->
+        val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
+        val entryId = checkNotNull(entry.arguments?.getString(VehicleRoutes.ENTRY_ID))
+        val stateHolder = remember(entry) { viewModel.fuelEntryFormStateHolder(vehicleId, entryId) }
+        ReleaseHolderOnBackStackExit(entry) { viewModel.closeFuelEntryForm(vehicleId, entryId) }
+        FuelEntryFormScreen(
+            stateHolder = stateHolder,
+            onBack = navController::popBackStack,
+            onSaved = { navController.popBackStack() },
+        )
     }
 }
 
@@ -193,14 +271,21 @@ private fun VehicleApp(viewModel: VehicleAppViewModel) {
 private fun VehicleDetailRoute(
     entry: NavBackStackEntry,
     navController: NavHostController,
-    stateHolder: VehicleListStateHolder,
+    viewModel: VehicleAppViewModel,
 ) {
     val vehicleId = checkNotNull(entry.arguments?.getString(VehicleRoutes.VEHICLE_ID))
-    VehicleDetailScreen(navController, stateHolder, vehicleId)
+    val fuelEntryListStateHolder = remember(entry) { viewModel.fuelEntryListStateHolder(vehicleId) }
+    ReleaseHolderOnBackStackExit(entry) { viewModel.closeFuelEntryList(vehicleId) }
+    VehicleDetailScreen(
+        navController = navController,
+        stateHolder = viewModel.vehicleListStateHolder,
+        fuelEntryListStateHolder = fuelEntryListStateHolder,
+        vehicleId = vehicleId,
+    )
 }
 
 @Composable
-private fun ReleaseVehicleFormOnBackStackExit(
+private fun ReleaseHolderOnBackStackExit(
     entry: NavBackStackEntry,
     releaseForm: () -> Unit,
 ) {
@@ -526,29 +611,20 @@ private fun VehicleForm(
 private fun VehicleDetailScreen(
     navController: NavHostController,
     stateHolder: VehicleListStateHolder,
+    fuelEntryListStateHolder: FuelEntryListStateHolder,
     vehicleId: String,
 ) {
     val state by stateHolder.state.collectAsState()
+    val fuelState by fuelEntryListStateHolder.state.collectAsState()
     val vehicle = state.vehicles.firstOrNull { item -> item.id == vehicleId }
     val showDeleteDialog = state.selectedVehicleId == vehicleId && state.message?.code == DELETE_CONFIRMATION_CODE
 
     if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = stateHolder::clearMessage,
-            title = { Text(stringResource(R.string.delete_vehicle_title)) },
-            text = { Text(stringResource(R.string.delete_vehicle_confirmation)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        stateHolder.confirmDelete(vehicleId)
-                        navController.popBackStack(VehicleRoutes.LIST, inclusive = false)
-                    },
-                ) {
-                    Text(stringResource(R.string.delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = stateHolder::clearMessage) { Text(stringResource(R.string.cancel)) }
+        VehicleDeleteConfirmation(
+            onDismiss = stateHolder::clearMessage,
+            onConfirm = {
+                stateHolder.confirmDelete(vehicleId)
+                navController.popBackStack(VehicleRoutes.LIST, inclusive = false)
             },
         )
     }
@@ -562,25 +638,67 @@ private fun VehicleDetailScreen(
                 },
             )
         },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { navController.navigate(VehicleRoutes.fuelCreate(vehicleId)) },
+                modifier = Modifier.testTag(FuelEntryTestTags.ADD_FUEL_ENTRY),
+            ) {
+                Text(stringResource(R.string.add_fuel_entry))
+            }
+        },
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when {
-                state.isLoading && vehicle == null -> CircularProgressIndicator()
-                vehicle == null -> Text(stringResource(R.string.vehicle_not_found))
-                else -> VehicleDetailContent(vehicle, navController, stateHolder)
+                state.isLoading && vehicle == null -> {
+                    CircularProgressIndicator()
+                }
+
+                vehicle == null -> {
+                    Text(stringResource(R.string.vehicle_not_found))
+                }
+
+                else -> {
+                    VehicleDetailContent(
+                        vehicle = vehicle,
+                        fuelState = fuelState,
+                        navController = navController,
+                        stateHolder = stateHolder,
+                        fuelListModifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+private fun VehicleDeleteConfirmation(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.delete_vehicle_title)) },
+        text = { Text(stringResource(R.string.delete_vehicle_confirmation)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+@Composable
 private fun VehicleDetailContent(
     vehicle: VehicleListItemUi,
+    fuelState: com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListUiState,
     navController: NavHostController,
     stateHolder: VehicleListStateHolder,
+    fuelListModifier: Modifier,
 ) {
     Text(
         text = vehicle.name,
@@ -588,10 +706,6 @@ private fun VehicleDetailContent(
         modifier = Modifier.testTag(VehicleTestTags.DETAIL_NAME),
     )
     Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
-    Text(
-        text = stringResource(R.string.add_first_fuel_entry_invitation),
-        modifier = Modifier.testTag(VehicleTestTags.FIRST_FUEL_INVITATION),
-    )
     Row {
         Button(onClick = { navController.navigate(VehicleRoutes.edit(vehicle.id)) }) {
             Text(stringResource(R.string.edit_vehicle))
@@ -601,10 +715,15 @@ private fun VehicleDetailContent(
             Text(stringResource(R.string.delete_vehicle))
         }
     }
+    FuelEntryListContent(
+        state = fuelState,
+        onEdit = { entryId -> navController.navigate(VehicleRoutes.fuelEdit(vehicle.id, entryId)) },
+        modifier = fuelListModifier,
+    )
 }
 
 @Composable
-private fun ErrorText(message: UiMessage?) {
+internal fun ErrorText(message: UiMessage?) {
     if (message == null) return
     Text(
         text = stringResource(message.stringResource()),
@@ -613,7 +732,7 @@ private fun ErrorText(message: UiMessage?) {
     )
 }
 
-private fun UiMessage.stringResource(): Int =
+internal fun UiMessage.stringResource(): Int =
     when (code) {
         "VALIDATION.REQUIRED_FIELD" -> R.string.error_required_field
 
@@ -652,16 +771,26 @@ private fun UiMessage.stringResource(): Int =
 
 private fun String?.cacheKey(): String = this ?: CREATE_FORM_CACHE_KEY
 
-private object VehicleRoutes {
+internal object VehicleRoutes {
     const val VEHICLE_ID = "vehicleId"
+    const val ENTRY_ID = "entryId"
     const val LIST = "vehicles"
     const val CREATE = "vehicles/create"
     const val EDIT = "vehicles/edit/{$VEHICLE_ID}"
     const val DETAIL = "vehicles/detail/{$VEHICLE_ID}"
+    const val FUEL_CREATE = "vehicles/{$VEHICLE_ID}/fuel/create"
+    const val FUEL_EDIT = "vehicles/{$VEHICLE_ID}/fuel/{$ENTRY_ID}/edit"
 
     fun edit(vehicleId: String): String = "vehicles/edit/$vehicleId"
 
     fun detail(vehicleId: String): String = "vehicles/detail/$vehicleId"
+
+    fun fuelCreate(vehicleId: String): String = "vehicles/$vehicleId/fuel/create"
+
+    fun fuelEdit(
+        vehicleId: String,
+        entryId: String,
+    ): String = "vehicles/$vehicleId/fuel/$entryId/edit"
 }
 
 object VehicleTestTags {

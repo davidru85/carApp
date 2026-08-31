@@ -26,8 +26,9 @@ data implementations and domain helpers forbidden by the Swift allowlist.
 `:composition:ios` adds `api(project(":feature:fuel"))` and exports the module from its sole
 `Shared` framework. All non-allowlisted Fuel Entry domain, repository, validation and data
 declarations are hidden from Objective-C. Moved presentation declarations use exact
-`SharedFuelEntry...` Objective-C names and their existing `FuelEntry...` Swift names. The expected
-generated-header diff is empty.
+`SharedFuelEntry...` Objective-C names and their existing `FuelEntry...` Swift names. Kotlin/Native
+groups declarations by their owning package, so the reviewed golden diff relocates the six exact
+declaration blocks and changes no declaration text.
 
 ## Consequences
 
@@ -46,12 +47,13 @@ generated-header diff is empty.
 - `FuelEntryRepository`, commands, `MoneyInput`, validators, domain helpers and
   `SqlDelightFuelEntryRepository` MUST remain absent from the Objective-C header.
 - `SharedFuelEntryListItemUi` keeps its existing two Boolean indicator fields and exact signature.
-- Any non-empty golden-header diff is a contract failure for E1-08.
+- Any E1-08 golden-header change beyond package-order relocation is a contract failure.
 
 ## Verification
 
 - Framework linking succeeds with the added export.
-- Exact generated-versus-golden comparison produces no output.
+- The reviewed pre-update diff contains only block relocation; the regenerated-versus-updated
+  golden comparison then produces no output.
 - Contract tests reject forbidden symbols and module-derived presentation renames.
 
 ## References

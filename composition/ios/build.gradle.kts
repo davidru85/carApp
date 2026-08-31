@@ -10,6 +10,7 @@ kotlin {
             isStatic = true
             export(project(":shared"))
             export(project(":feature:vehicle"))
+            export(project(":feature:fuel"))
             export(project(":core:common"))
         }
     }
@@ -18,6 +19,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":shared"))
             api(project(":feature:vehicle"))
+            api(project(":feature:fuel"))
             api(project(":core:common"))
             implementation(project(":wiring:firebase"))
         }

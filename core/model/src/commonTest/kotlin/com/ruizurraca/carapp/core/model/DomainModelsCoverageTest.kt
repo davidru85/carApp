@@ -99,6 +99,8 @@ class DomainModelsCoverageTest {
                 isFullTank = true,
                 consumption = ConsumptionL100Km(655),
                 invalidReason = null,
+                hasMissedEntries = true,
+                odometerInconsistent = true,
             )
 
         assertEquals(id, item.id)
@@ -110,6 +112,8 @@ class DomainModelsCoverageTest {
         assertTrue(item.isFullTank)
         assertEquals(ConsumptionL100Km(655), item.consumption)
         assertNull(item.invalidReason)
+        assertTrue(item.hasMissedEntries)
+        assertTrue(item.odometerInconsistent)
     }
 
     @Test

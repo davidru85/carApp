@@ -17,7 +17,7 @@
   data; E1-07 provides Compose Navigation, instrumented Android UI tests, the Kotlin/Swift graph
   split and keyed holder release. E1-10 and E3-03 remain later stories and are not implemented or
   partially absorbed here.
-- [x] Decisions checked — D-8, D-20, D-55, D-77 through D-88 and D-90 through D-97 apply and are
+- [x] Decisions checked — D-8, D-20, D-55, D-77 through D-88 and D-90 through D-98 apply and are
   `Accepted`. D-92 through D-97 record the owner-approved E1-08 projection, money-resolution,
   defaults, staged sync, calendar-day and iOS export choices. No `Proposed` or `Pending` decision
   blocks E1-08.
@@ -28,7 +28,7 @@
 - [x] Expected verification identified — focused `:core:model`, `:feature:fuel` and `:shared`
   Android-host and iOS simulator tests; Android compilation and API 36 instrumented tests; feature
   lint, detekt and Kover; architecture fixtures and checks; contract checks; Shared framework
-  linking with an exact empty golden-header diff; the complete repository command from
+  linking with an ordering-only pre-update golden diff followed by an exact empty comparison; the complete repository command from
   `AGENTS.md`; and `git diff --check`.
 - [x] Human review gates identified before work — gated `docs/SPECIFICATION.md`,
   `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/adr/**`, module boundaries and the
@@ -55,6 +55,12 @@
 ## Decisions Made
 
 - D-92 through D-97 record the six owner-approved E1-08 technical choices.
+- D-98 records the Kotlin-only successful-save completion signal selected after the API 36 UI test
+  proved that inferring navigation from conflated `isSaving` and `message` state is racy.
+- D-97's RED wording predicted an empty pre-update diff. The linked framework proved that
+  Kotlin/Native relocates declarations by their new owning package. Its record was corrected to the
+  owner's stated acceptance boundary: ordering-only relocation is recorded, while names and
+  signatures remain byte-identical and any module-derived rename remains a failure.
 - Native Compose host code uses the TDD-order exemption in `docs/SPECIFICATION.md §11`; it still
   requires instrumented UI tests. Shared presentation, domain and graph behavior remain test-first.
 - The owner explicitly requires three ordered commits — RED, GREEN and REFACTOR — followed by one
@@ -79,7 +85,7 @@
 
 ## Decision Board Impact
 
-- Added accepted D-92 through D-97 with ADR-0093 through ADR-0098 and identical mirrors.
+- Added accepted D-92 through D-98 with ADR-0093 through ADR-0099 and identical mirrors.
 
 ## Shared-Write Modules Touched
 

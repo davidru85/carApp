@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.fuel.domain
 
 import com.ruizurraca.carapp.core.common.AppError
@@ -11,6 +13,7 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.litersScaledOf
 import com.ruizurraca.carapp.core.model.pricePerLiterScaledOf
 import com.ruizurraca.carapp.core.model.totalCostMinorOf
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
@@ -27,6 +30,7 @@ private const val MAX_TOTAL_COST_MINOR = 99_999_999L
 
 private val UNIX_EPOCH = Instant.fromEpochMilliseconds(0L)
 
+@HiddenFromObjC
 data class FuelEntryValidationContext(
     val now: Instant,
     val earliestAllowedDate: Instant,
@@ -34,6 +38,7 @@ data class FuelEntryValidationContext(
     val previousOdometerKm: Long?,
 )
 
+@HiddenFromObjC
 data class ValidatedFuelEntryValues(
     val vehicleId: EntityId,
     val date: Instant,
@@ -59,7 +64,8 @@ private data class FuelEntryFields(
     val confirmations: Set<Confirmation>,
 )
 
-private data class CanonicalMoneyValues(
+@HiddenFromObjC
+internal data class CanonicalMoneyValues(
     val litersScaled: Long,
     val pricePerLiterScaled: Long,
     val totalCostMinor: Long,
@@ -182,7 +188,8 @@ private fun resolvePriceAndTotal(
         },
     )
 
-private fun resolveMoney(
+@HiddenFromObjC
+internal fun resolveMoney(
     input: MoneyInput,
     minorUnitFactor: Int,
 ): Outcome<CanonicalMoneyValues, ValidationError> =
@@ -329,6 +336,7 @@ private fun UpdateFuelEntryCommand.toFields(): FuelEntryFields =
         confirmations = confirmations,
     )
 
+@HiddenFromObjC
 class ValidateCreateFuelEntry {
     operator fun invoke(
         command: CreateFuelEntryCommand,
@@ -336,6 +344,7 @@ class ValidateCreateFuelEntry {
     ): Outcome<ValidatedFuelEntryValues, AppError> = validateFuelEntry(command.toFields(), context)
 }
 
+@HiddenFromObjC
 class ValidateUpdateFuelEntry {
     operator fun invoke(
         command: UpdateFuelEntryCommand,

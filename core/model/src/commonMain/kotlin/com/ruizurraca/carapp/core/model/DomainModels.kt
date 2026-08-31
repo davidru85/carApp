@@ -52,6 +52,8 @@ data class FuelEntryListItem(
     val isFullTank: Boolean,
     val consumption: ConsumptionL100Km?,
     val invalidReason: ConsumptionInvalidReason?,
+    val hasMissedEntries: Boolean,
+    val odometerInconsistent: Boolean,
 )
 
 data class UserSettings(

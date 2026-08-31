@@ -234,6 +234,9 @@ The form requires `name` and `initialOdometerKm`. `brand`, `model` and `fuelType
 The form is optimized for speed:
 
 - Date defaults to now.
+- Fuel Entry calendar days are presented and edited in the device time zone. The untouched `now`
+  instant remains the creation default; choosing a calendar day replaces it with that day's start
+  in the same device zone. E1-09 applies the identical rule on iOS.
 - Odometer is suggested from `currentOdometerKm`. The suggestion never bypasses R-1.
 - `isFullTank` defaults to true.
 - Currency defaults from settings.
@@ -305,8 +308,8 @@ The canonical module inventory is defined in `docs/CONTRACTS.md §1.1`. The spec
 6. `:core:analytics` and `:core:crash` contain provider-free abstractions and no product logic; provider SDK types stay in `:integration:*`.
 7. `:core:database` depends on `:core:model`, `:core:common`, SQLDelight and AndroidX SQLite; it never depends on `:integration:*`, features or `:core:sync`.
 8. `:shared` never depends on `:integration:*`.
-9. `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 export-only
-   `:feature:vehicle` / `:core:common` declarations, owns the single exported framework and
+9. `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 / D-97 export-only
+   `:feature:vehicle` / `:feature:fuel` / `:core:common` declarations, owns the single exported framework and
    contains no product logic or direct `:integration:*` dependency.
 10. Firebase and GitLive types never cross integration boundaries.
 11. Koin is used only for dependency wiring and MUST NOT be accessed from domain or use case logic.
@@ -569,7 +572,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-94 | Fuel Entry form defaults | Compose clock, Vehicle odometer and supported locale currency in `AppGraph` until E1-10 supplies persisted settings. | Accepted |
 | D-95 | Pre-E3-03 Fuel sync-status staging | Publish constant Fuel Entry list `SyncStatus.Idle` without a provisional controller until E3-03. | Accepted |
 | D-96 | Fuel Entry calendar-day conversion | Convert and format selected Fuel Entry days in an injected device time zone while preserving untouched `now`. | Accepted |
-| D-97 | Fuel presentation iOS export | Export refined `:feature:fuel` presentation declarations through the sole Shared framework with a byte-identical ABI. | Accepted |
+| D-97 | Fuel presentation iOS export | Export refined `:feature:fuel` presentation declarations through the sole Shared framework with byte-identical names and signatures. | Accepted |
+| D-98 | Fuel form save completion | Navigate after an explicit Kotlin-only Fuel Entry save-completion event rather than inferring success from form state. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

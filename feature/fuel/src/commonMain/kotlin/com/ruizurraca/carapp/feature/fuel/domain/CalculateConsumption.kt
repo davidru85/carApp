@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.fuel.domain
 
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
@@ -7,13 +9,16 @@ import com.ruizurraca.carapp.core.model.FuelEntry
 import com.ruizurraca.carapp.core.model.SegmentResult
 import com.ruizurraca.carapp.core.model.averageConsumptionScaledOf
 import com.ruizurraca.carapp.core.model.segmentConsumptionScaledOf
+import kotlin.native.HiddenFromObjC
 
 /** Pure R-3 contract from `docs/CONTRACTS.md §13`. */
+@HiddenFromObjC
 fun interface CalculateConsumption {
     operator fun invoke(entries: List<FuelEntry>): ConsumptionReport
 }
 
 /** Default pure R-3 implementation. */
+@HiddenFromObjC
 class DefaultCalculateConsumption : CalculateConsumption {
     override fun invoke(entries: List<FuelEntry>): ConsumptionReport {
         val calculationOrder = entries.sortedWith(CALCULATION_ORDER)

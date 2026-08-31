@@ -120,7 +120,7 @@ build-logic/       convention plugins, an included build
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
 :feature:vehicle   Vehicle domain, local repository and shared presentation state holders
-:feature:fuel      Fuel Entry domain, SQLDelight local repository, projections and R-3 consumption
+:feature:fuel      Fuel Entry domain, SQLDelight local repository, projections, R-3 consumption and presentation
 :feature:session   final module shell staged for the Swift-facing surface
 :shared            provider-free graph contracts, Swift facade and exported shared declarations
 :shared:testing    KMP app-graph test factory, consumed from commonTest only
@@ -338,8 +338,8 @@ The normative table is `docs/TECHNICAL_PLAN.md §4`, which also generates the ar
 - Features do not depend on other features.
 - `:core:sync` does not depend on integrations or features.
 - `:shared` does not depend on integrations.
-- `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 export-only
-  `:feature:vehicle` / `:core:common` declarations, owns the single `Shared` framework, contains
+- `:composition:ios` depends on `:shared`, `:wiring:firebase` and the D-85 / D-97 export-only
+  `:feature:vehicle` / `:feature:fuel` / `:core:common` declarations, owns the single `Shared` framework, contains
   no product logic and never depends directly on `:integration:*`.
 - `:shared:testing` depends only on `:shared` and `:core:testing`; consumers depend on it only from
   `commonTest`.

@@ -112,6 +112,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-95 | Pre-E3-03 Fuel sync-status staging | Constant Fuel list `Idle` until E3-03 | Accepted | Extends staging without creating a provisional controller. |
 | D-96 | Fuel Entry calendar-day conversion | Inject the device zone for native selected-day conversion and formatting | Accepted | Keeps local calendar behavior deterministic without changing the ABI. |
 | D-97 | Fuel presentation iOS export | Refined `:feature:fuel` export with exact existing ABI names | Accepted | Moves presentation ownership without leaking non-allowlisted declarations. |
+| D-98 | Fuel form save completion | Kotlin-only holder completion flow | Accepted | Removes Android navigation races without changing exported UI state. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -175,7 +176,7 @@ Each feature is one Gradle module. Layer separation is enforced by package-level
 | `:shared` | `:core:*`, `:feature:*`, `:shared:testing` in test-support and SPM metadata configurations only | `:integration:*` |
 | `:shared:testing` | `:shared`, `:core:testing`, test libraries | `:integration:*`, `:wiring:*`, `:feature:*`, platform APIs in `commonMain` public API |
 | `:wiring:firebase` | `:integration:*`, `:shared` graph, Koin | product logic |
-| `:composition:ios` | `:shared`, `:wiring:firebase`, `:feature:vehicle`, `:core:common` | product logic, direct `:integration:*`, a second framework runtime, any other feature or core module |
+| `:composition:ios` | `:shared`, `:wiring:firebase`, `:feature:vehicle`, `:feature:fuel`, `:core:common` | product logic, direct `:integration:*`, a second framework runtime, any other feature or core module |
 
 `:core:model` is the vocabulary and `:core:common` is the plumbing that speaks it, so the dependency runs `:core:common` -> `:core:model` and never the reverse. The direction is load-bearing rather than stylistic: `OwnerContext`, `LocaleInfo` and `MinorUnits` live in `:core:common` (`docs/CONTRACTS.md §20.3`) and refer to `OwnerId` and `CurrencyCode`, which live in `:core:model` (`§20.0`). Because the architecture check is generated from this table, leaving the edge undeclared would either fail the build on a legal dependency or leave the rule unenforced.
 
@@ -223,8 +224,9 @@ fun buildAppGraph(isDebugBuild: Boolean, providers: AppProviders): SwiftAppGraph
 `docs/CONTRACTS.md §11.6`; they are hidden from the Swift-facing Objective-C header. The sole
 exported `createSwiftAppGraph(isDebugBuild)` declaration lives in `:composition:ios`, constructs
 providers through `:wiring:firebase` and delegates to `buildAppGraph`. `:composition:ios` produces
-the only framework, keeps `baseName = "Shared"` and exports the state holders and models owned by
-`:shared`. Only `:wiring:firebase` creates Firebase implementations. The executable decoupling
+the only framework, keeps `baseName = "Shared"` and exports the allowlisted state holders and
+models owned by `:shared`, `:feature:vehicle`, `:feature:fuel` and `:core:common`. Only
+`:wiring:firebase` creates Firebase implementations. The executable decoupling
 check is:
 
 ```text

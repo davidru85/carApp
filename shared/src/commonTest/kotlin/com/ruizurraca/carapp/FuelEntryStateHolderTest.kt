@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -41,7 +42,7 @@ class FuelEntryStateHolderTest {
             try {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 12_345L)
                 val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch { holder.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
                 advanceUntilIdle()
 
                 val state = holder.state.value
@@ -67,7 +68,7 @@ class FuelEntryStateHolderTest {
             try {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 1L)
                 val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch { holder.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
                 advanceUntilIdle()
 
                 assertEquals("EUR", holder.state.value.currencyCode)
@@ -84,7 +85,7 @@ class FuelEntryStateHolderTest {
             try {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
                 val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch { holder.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
 
                 holder.setLitersScaled(45_123L)
                 holder.setPricePerLiterScaled(1_789L)
@@ -105,7 +106,7 @@ class FuelEntryStateHolderTest {
             try {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
                 val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch { holder.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
 
                 holder.setLitersScaled(40_000L)
                 holder.setPricePerLiterScaled(1_000_000L)
@@ -117,11 +118,11 @@ class FuelEntryStateHolderTest {
                 assertNull(holder.state.value.message)
 
                 holder.save()
-                advanceUntilIdle()
+                val savedState = holder.state.first { state -> state.message != null }
 
                 assertEquals(
                     "VALIDATION.OUT_OF_RANGE",
-                    holder.state.value.message
+                    savedState.message
                         ?.code,
                 )
             } finally {
@@ -138,8 +139,12 @@ class FuelEntryStateHolderTest {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
                 val list = graph.fuelEntryListStateHolder(backgroundScope, vehicleId)
                 val form = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch { list.state.collect() }
-                backgroundScope.launch { form.state.collect() }
+                var saveCompletionCount = 0
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { form.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                    form.observeSaveCompletions().collect { saveCompletionCount += 1 }
+                }
 
                 form.setOdometerKm(50L)
                 form.setLitersScaled(40_000L)
@@ -147,16 +152,16 @@ class FuelEntryStateHolderTest {
                 form.setFullTank(false)
                 form.setMissedEntries(true)
                 form.save()
-                advanceUntilIdle()
+                val warningState = form.state.first { state -> state.message != null }
 
                 assertEquals(
                     "WARNING.ODOMETER_INCONSISTENT",
-                    form.state.value.message
+                    warningState.message
                         ?.code,
                 )
                 assertEquals(
                     Confirmation.OdometerInconsistent,
-                    form.state.value.message
+                    warningState.message
                         ?.confirmation,
                 )
                 assertTrue(
@@ -165,16 +170,15 @@ class FuelEntryStateHolderTest {
                 )
 
                 form.confirmSave(Confirmation.OdometerInconsistent)
-                advanceUntilIdle()
+                val publishedState = list.state.first { state -> state.entries.isNotEmpty() }
 
-                val row =
-                    list.state.value.entries
-                        .single()
+                val row = publishedState.entries.single()
                 assertFalse(row.isFullTank)
                 assertTrue(row.hasMissedEntries)
                 assertTrue(row.odometerInconsistent)
                 assertEquals(ConsumptionInvalidReason.EndEntryNotFullTank, row.invalidReason)
-                assertEquals(SyncStatus.Idle, list.state.value.syncStatus)
+                assertEquals(SyncStatus.Idle, publishedState.syncStatus)
+                assertEquals(1, saveCompletionCount)
             } finally {
                 graph.close()
             }
@@ -188,14 +192,13 @@ class FuelEntryStateHolderTest {
             try {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
                 val list = graph.fuelEntryListStateHolder(backgroundScope, vehicleId)
-                backgroundScope.launch { list.state.collect() }
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect() }
 
-                saveFullEntry(graph, backgroundScope, vehicleId, odometerKm = 100L)
-                saveFullEntry(graph, backgroundScope, vehicleId, odometerKm = 500L)
-                saveFullEntry(graph, backgroundScope, vehicleId, odometerKm = 900L)
-                advanceUntilIdle()
+                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 100L, expectedCount = 1)
+                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 500L, expectedCount = 2)
+                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 900L, expectedCount = 3)
 
-                val state = list.state.value
+                val state = list.state.first { value -> value.entries.size == 3 }
                 assertEquals(3, state.entries.size)
                 assertEquals(1_000L, state.consumptionAverageScaled)
                 assertEquals(2, state.validConsumptionSegmentCount)
@@ -214,13 +217,10 @@ class FuelEntryStateHolderTest {
             try {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
                 val list = graph.fuelEntryListStateHolder(backgroundScope, vehicleId)
-                backgroundScope.launch { list.state.collect() }
-                saveFullEntry(graph, backgroundScope, vehicleId, odometerKm = 100L)
-                advanceUntilIdle()
-                val entryId =
-                    list.state.value.entries
-                        .single()
-                        .id
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect() }
+                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 100L, expectedCount = 1)
+                val populatedState = list.state.first { state -> state.entries.isNotEmpty() }
+                val entryId = populatedState.entries.single().id
 
                 list.requestDelete(entryId)
                 advanceUntilIdle()
@@ -233,24 +233,21 @@ class FuelEntryStateHolderTest {
                 assertEquals(1, list.state.value.entries.size)
 
                 list.confirmDelete(entryId)
-                advanceUntilIdle()
+                val deletedState = list.state.first { state -> !state.isLoading && state.entries.isEmpty() }
 
-                assertTrue(
-                    list.state.value.entries
-                        .isEmpty(),
-                )
+                assertTrue(deletedState.entries.isEmpty())
             } finally {
                 graph.close()
             }
         }
 
-    private suspend fun createVehicle(
+    private suspend fun TestScope.createVehicle(
         graph: AppGraph,
         scope: CoroutineScope,
         initialOdometerKm: Long,
     ): String {
         val holder = graph.vehicleFormStateHolder(scope, vehicleId = null)
-        scope.launch { holder.state.collect() }
+        scope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
         holder.setName("Roadster")
         holder.setInitialOdometerKm(initialOdometerKm)
         holder.save()
@@ -262,16 +259,18 @@ class FuelEntryStateHolderTest {
     private suspend fun TestScope.saveFullEntry(
         graph: AppGraph,
         scope: CoroutineScope,
+        list: com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder,
         vehicleId: String,
         odometerKm: Long,
+        expectedCount: Int,
     ) {
         val holder = graph.fuelEntryFormStateHolder(scope, vehicleId, entryId = null)
-        scope.launch { holder.state.collect() }
+        scope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
         holder.setOdometerKm(odometerKm)
         holder.setLitersScaled(40_000L)
         holder.setPricePerLiterScaled(1_500L)
         holder.save()
-        advanceUntilIdle()
+        list.state.first { state -> state.entries.size == expectedCount }
         assertNull(holder.state.value.message)
         holder.close()
     }

@@ -104,5 +104,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-95 | [ADR-0096](0096-stage-fuel-sync-status-until-e3-03.md) | Stage Fuel Entry sync status until E3-03. | Accepted |
 | D-96 | [ADR-0097](0097-use-device-local-fuel-entry-calendar-days.md) | Use injected device-local Fuel Entry calendar days. | Accepted |
 | D-97 | [ADR-0098](0098-export-fuel-presentation-with-stable-abi.md) | Export Fuel presentation with a stable refined ABI. | Accepted |
+| D-98 | [ADR-0099](0099-publish-kotlin-only-fuel-save-completion.md) | Publish Kotlin-only Fuel save completion. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -1,6 +1,8 @@
 package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.DispatcherProvider
+import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
+import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import kotlinx.coroutines.CoroutineScope
