@@ -67,6 +67,7 @@ import androidx.navigation.navArgument
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
+import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListUiState
 import com.ruizurraca.carapp.feature.vehicle.domain.INITIAL_ODOMETER_RANGE_KM
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
@@ -695,7 +696,7 @@ private fun VehicleDeleteConfirmation(
 @Composable
 private fun VehicleDetailContent(
     vehicle: VehicleListItemUi,
-    fuelState: com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListUiState,
+    fuelState: FuelEntryListUiState,
     navController: NavHostController,
     stateHolder: VehicleListStateHolder,
     fuelListModifier: Modifier,

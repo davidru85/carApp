@@ -38,19 +38,56 @@
 
 ## Scope Completed
 
-- Pending RED, GREEN and REFACTOR implementation.
+- Extended the canonical Fuel Entry list projection with independent missed-entry and
+  inconsistent-odometer facts and preserved both through SQLDelight projection mapping.
+- Moved Fuel Entry UI models and state holders into `:feature:fuel`, backed them with the local
+  repository and consumption flows, and composed exact clock, Vehicle odometer and temporary
+  locale-currency defaults in `AppGraph`.
+- Reused the promoted pure `MoneyInput` resolver for live form derivation, kept live range errors
+  silent and nullable, and retained save-time validation and two-step odometer confirmation.
+- Implemented the Android Fuel Entry list, empty and summary states, accessible invalid-segment
+  explanations, row indicators, create/edit form, local-calendar date picker and delete flow.
+- Exported refined Fuel Entry presentation declarations from the sole iOS framework, hid domain
+  and data declarations, and regenerated the ordering-only Objective-C header golden.
+- Added the D-95 staged `SyncStatus.Idle` record and the D-96 cross-platform calendar-day rule
+  without implementing E1-10 or E3-03.
 
 ## Acceptance Evidence
 
-- Pending implementation and verification.
+- `DomainModelsCoverageTest` and `FuelEntryProjectionMapperTest` prove that a partial refuel with
+  `EndEntryNotFullTank` retains both independent row flags.
+- `FuelEntryStateHolderTest` proves exact-clock, Vehicle-odometer and supported-locale defaults,
+  EUR fallback, live R-2 derivation, silent live range failure, two-step confirmation, both row
+  indicators, weighted summary, staged `Idle`, successful-save signaling and confirmed deletion.
+- `FuelEntryFlowTest` drives the API 36 Compose flow through vehicle creation, live money
+  derivation, partial refuel, warning confirmation, accessible explanation and both visible row
+  indicators. Its deterministic zone test proves Europe/Madrid local-day conversion across UTC
+  and daylight-saving boundaries.
+- The Android create and edit destinations use the same shared form holder; edit loads the selected
+  local entry and persists through `UpdateFuelEntryCommand`.
+- Framework linking plus an exact generated-versus-golden comparison proves that only reviewed
+  declaration ordering moved. Exact Objective-C/Swift names and signatures are unchanged, the two
+  existing `FuelEntryListItemUi` flags are unchanged, and all forbidden Fuel domain/data symbols
+  remain absent.
 
 ## Out of Scope / Not Done
 
-- E1-10 settings persistence and E3-03 synchronization engine behavior remain out of scope.
+- E1-10 settings persistence remains unimplemented; the only related change is the required
+  composition-point TODO for replacing the temporary locale-derived currency.
+- E3-03 synchronization behavior remains unimplemented; the Fuel list publishes the recorded
+  D-95 constant `SyncStatus.Idle` only.
+- E1-09 owns the iOS screens and must apply D-96's identical device-local calendar-day rule.
 
 ## Files Changed
 
-- Pending implementation.
+- `:core:model` and `:feature:fuel`: row projection facts, promoted pure money resolution,
+  Objective-C refinement and production Fuel Entry presentation.
+- `:shared`: graph composition and removal of the D-55 Fuel Entry presentation shells.
+- `:androidApp`: Compose Fuel Entry list/form screens, navigation, localization and API 36 tests.
+- `:composition:ios`, build contract checks and the Shared header golden: refined feature export
+  with allowlist enforcement and stable ABI evidence.
+- `AGENTS.md`, `README.md` and `docs/**`: D-92 through D-98, representation and behavior contracts,
+  current state, acceptance evidence and delivery records.
 
 ## Decisions Made
 
@@ -77,11 +114,31 @@
 - RED `./gradlew ktlintCheck detekt architectureCheck contractCheck` — architecture and contracts
   passed with 98 decision/ADR mirrors; the first run identified only formatting in the new shared
   test, which was corrected before the RED commit.
-- GREEN and REFACTOR evidence pending.
+- GREEN `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test :core:model:testAndroidHostTest :feature:fuel:testAndroidHostTest
+  :shared:testAndroidHostTest :androidApp:assembleDebug` — successful with 99 accepted decision/ADR
+  mirrors and no unresolved decisions.
+- Focused `env ANDROID_SERIAL=emulator-5554 ./gradlew
+  :androidApp:connectedDebugAndroidTest
+  -Pandroid.testInstrumentationRunnerArguments.class=com.ruizurraca.carapp.FuelEntryFlowTest` —
+  both E1-08 API 36 tests passed.
+- `./gradlew :feature:fuel:koverXmlReport` — 907 covered lines and 8 missed lines (99.13%); the
+  complete `koverVerify` threshold is green without exclusions or suppressions.
+- Complete repository command from `AGENTS.md` — successful: 607 actionable tasks, including
+  `ktlintCheck`, `detekt`, 16 architecture rules, 99 decision/ADR contract mirrors,
+  `:build-logic:convention:test`, `koverVerify`, Android assembly, Android-host tests and required
+  iOS simulator tests with the four D-75 exclusions.
+- `env ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` — successful:
+  all 7 tests passed on the D-84 API 36 emulator with no physical-device target.
+- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` — successful with 69 actionable
+  tasks; exact `diff -u` between generated `Shared.h` and its golden produced no output.
+- `git diff --check` — successful before the REFACTOR commit.
 
 ## Contract Impact
 
-- Pending updates to Fuel Entry projection, presentation, platform-day and iOS export contracts.
+- Updated `docs/CONTRACTS.md §11.6`, `§14`, `§15.3`, `§20.4` and `§20.10` for the Fuel export,
+  staged sync status, projection flags, local calendar day, refined allowlist and Kotlin-only save
+  completion signal.
 
 ## Decision Board Impact
 
@@ -93,7 +150,7 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended
+- [x] Entry appended
 
 ## Risks or Follow-ups
 

@@ -9,6 +9,7 @@ import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
+import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.CoroutineScope
@@ -43,9 +44,8 @@ class FuelEntryStateHolderTest {
                 val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 12_345L)
                 val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
                 backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
-                advanceUntilIdle()
 
-                val state = holder.state.value
+                val state = holder.state.first { value -> value.odometerKm == 12_345L }
                 assertEquals(now.toEpochMilliseconds(), state.dateEpochMillis)
                 assertEquals(12_345L, state.odometerKm)
                 assertEquals("USD", state.currencyCode)
@@ -89,10 +89,10 @@ class FuelEntryStateHolderTest {
 
                 holder.setLitersScaled(45_123L)
                 holder.setPricePerLiterScaled(1_789L)
-                advanceUntilIdle()
+                val derivedState = holder.state.first { state -> state.totalCostMinor == 8_073L }
 
-                assertEquals(8_073L, holder.state.value.totalCostMinor)
-                assertNull(holder.state.value.message)
+                assertEquals(8_073L, derivedState.totalCostMinor)
+                assertNull(derivedState.message)
             } finally {
                 graph.close()
             }
@@ -110,12 +110,15 @@ class FuelEntryStateHolderTest {
 
                 holder.setLitersScaled(40_000L)
                 holder.setPricePerLiterScaled(1_000_000L)
-                advanceUntilIdle()
+                val liveState =
+                    holder.state.first { state ->
+                        state.litersScaled == 40_000L && state.pricePerLiterScaled == 1_000_000L
+                    }
 
-                assertEquals(40_000L, holder.state.value.litersScaled)
-                assertEquals(1_000_000L, holder.state.value.pricePerLiterScaled)
-                assertNull(holder.state.value.totalCostMinor)
-                assertNull(holder.state.value.message)
+                assertEquals(40_000L, liveState.litersScaled)
+                assertEquals(1_000_000L, liveState.pricePerLiterScaled)
+                assertNull(liveState.totalCostMinor)
+                assertNull(liveState.message)
 
                 holder.save()
                 val savedState = holder.state.first { state -> state.message != null }
@@ -223,14 +226,14 @@ class FuelEntryStateHolderTest {
                 val entryId = populatedState.entries.single().id
 
                 list.requestDelete(entryId)
-                advanceUntilIdle()
+                val confirmationState = list.state.first { state -> state.message != null }
 
                 assertEquals(
                     "INFO.CONFIRM_DELETE_FUEL_ENTRY",
-                    list.state.value.message
+                    confirmationState.message
                         ?.code,
                 )
-                assertEquals(1, list.state.value.entries.size)
+                assertEquals(1, confirmationState.entries.size)
 
                 list.confirmDelete(entryId)
                 val deletedState = list.state.first { state -> !state.isLoading && state.entries.isEmpty() }
@@ -259,7 +262,7 @@ class FuelEntryStateHolderTest {
     private suspend fun TestScope.saveFullEntry(
         graph: AppGraph,
         scope: CoroutineScope,
-        list: com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder,
+        list: FuelEntryListStateHolder,
         vehicleId: String,
         odometerKm: Long,
         expectedCount: Int,

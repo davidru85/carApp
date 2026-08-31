@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-08-31 — E1-08 Android Fuel Entry UI completed
+
+- **Type:** story
+- **Story / Decision:** `E1-08` / `D-92` through `D-98`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented the reactive Android Fuel Entry list, create/edit form, live money
+  derivation, two-step odometer warning, consumption summary and accessible row explanations and
+  indicators. Fuel presentation now belongs to `:feature:fuel` and is exported through the sole
+  Shared framework with stable names and signatures.
+- **Why:** E1-08 makes the complete local Fuel Entry workflow usable on Android while preserving
+  feature isolation, shared arithmetic, deterministic device-local calendar days and the staged
+  boundaries owned by E1-10 and E3-03.
+- **Documents touched:** D-92 through D-98 and ADR-0093 through ADR-0099 in the four decision
+  mirrors, `docs/CONTRACTS.md`, current-state documents, `docs/BACKLOG.md` and
+  `docs/handoff-E1-08.md`.
+- **Verification:** RED, GREEN and REFACTOR are separate commits. The complete repository command,
+  99.13% `:feature:fuel` line coverage, all 7 API 36 instrumented tests, the iOS framework link and
+  exact generated-versus-golden header comparison pass; detailed commands are in the handoff.
+- **Follow-ups / risks:** E1-09 must reuse D-96 on iOS, E1-10 replaces the temporary locale currency
+  at the composition point, and E3-03 replaces D-95 constant `Idle`. Owner review is required
+  before merge.
+
 ### 2026-08-31 — E1-07 second-round review corrections
 
 - **Type:** correction

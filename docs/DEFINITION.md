@@ -8,7 +8,7 @@
 
 `carApp` is a cross-platform Android and iOS mobile app for tracking vehicle costs. The MVP is limited to fuel expenses and one active device per account. Users can create vehicles, log refueling events, review history, calculate real consumption, keep their data available offline, and back it up for recovery on a new device.
 
-Phase 0 is complete and Phase 1 is open: `E1-01` through `E1-07`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, complete local Vehicle and Fuel Entry repositories, Fuel Entry validation, reviewed full-to-full consumption, executable provider decoupling, reviewed Firestore rules, the native walking skeleton and the Android Vehicle flow. `E1-08`, Android Fuel Entry UI, is next. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
+Phase 0 is complete and Phase 1 is open: `E1-01` through `E1-08`, `E3-06`, `E3-01` and `E0-07` have delivered the SQLDelight database, complete local Vehicle and Fuel Entry repositories, Fuel Entry validation, reviewed full-to-full consumption, executable provider decoupling, reviewed Firestore rules, the native walking skeleton and the Android Vehicle and Fuel Entry flows. `E1-09`, iOS UI, is next. See `AGENTS.md` §`Repository State` for what exists and how to verify it.
 
 ## 2. MVP Objective
 
@@ -92,7 +92,7 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 |-------|--------|------|------|
 | 0 | Complete | Owner decisions closed, KMP bootstrap, convention plugins, core modules, quality tooling, CI, architecture and contract checks, ADRs, version matrix | Android and iOS compile in CI; every implemented architecture rule has a failing fixture proving it fires |
 | 1 (opening) | Complete | `:core:database` and the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth | The local/remote Vehicle path works under the same retained anonymous session on both native hosts; the Swift-facing surface constraints hold. Permanent-account cross-device recovery moves to E3-12 |
-| 1 | Active; E1-08 next | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | Local repositories and the Android Vehicle flow are complete; real-iPhone performance evidence remains explicit for E4-03 under D-80 |
+| 1 | Active; E1-09 next | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | Local repositories and the Android Vehicle and Fuel Entry flows are complete; real-iPhone performance evidence remains explicit for E4-03 under D-80 |
 | 2 | Planned | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
 | 3 | Partial; E3-01 and E3-06 complete | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
 | 4 | Planned | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
