@@ -408,6 +408,9 @@ private fun rememberSaveableFormText(
     LaunchedEffect(sharedValue) {
         if (!edited) value = sharedValue
     }
+    LaunchedEffect(edited, value, sharedValue) {
+        if (edited && value != sharedValue) publish(value)
+    }
     return SaveableFormText(value) { updatedValue ->
         edited = true
         value = updatedValue
@@ -433,6 +436,9 @@ private fun rememberSaveableOdometerInput(
         if (!edited) text = sharedValue.toString()
     }
     val value = text.toLongOrNull()?.takeIf { parsed -> parsed in ODOMETER_RANGE_KM }
+    LaunchedEffect(edited, value, sharedValue) {
+        if (edited && value != null && value != sharedValue) publish(value)
+    }
     return SaveableOdometerInput(
         text = text,
         hasError = edited && value == null,

@@ -171,6 +171,11 @@ class VehicleFormStateHolder internal constructor(
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var loadedInitialOdometerKm: Long? = null
     private var loadedFacts = false
+    private var nameEdited = false
+    private var initialOdometerEdited = false
+    private var brandEdited = false
+    private var modelEdited = false
+    private var fuelTypeEdited = false
     private var closed = false
 
     init {
@@ -210,18 +215,31 @@ class VehicleFormStateHolder internal constructor(
             initialValue = inputs.value.toUiState(),
         )
 
-    fun setName(value: String) = updateInputs { copy(name = value) }
+    fun setName(value: String) {
+        nameEdited = true
+        updateInputs { copy(name = value) }
+    }
 
     fun setInitialOdometerKm(value: Long) {
         if (!canEditInitialOdometer.value) return
+        initialOdometerEdited = true
         updateInputs { copy(initialOdometerKm = value) }
     }
 
-    fun setBrand(value: String?) = updateInputs { copy(brand = value) }
+    fun setBrand(value: String?) {
+        brandEdited = true
+        updateInputs { copy(brand = value) }
+    }
 
-    fun setModel(value: String?) = updateInputs { copy(model = value) }
+    fun setModel(value: String?) {
+        modelEdited = true
+        updateInputs { copy(model = value) }
+    }
 
-    fun setFuelType(value: FuelType) = updateInputs { copy(fuelType = value) }
+    fun setFuelType(value: FuelType) {
+        fuelTypeEdited = true
+        updateInputs { copy(fuelType = value) }
+    }
 
     fun save() {
         if (closed || saving.value) return
@@ -285,14 +303,20 @@ class VehicleFormStateHolder internal constructor(
                 if (!loadedFacts) {
                     loadedFacts = true
                     loadedInitialOdometerKm = facts.vehicle.initialOdometerKm
+                    val currentInputs = inputs.value
                     inputs.value =
                         FormInputs(
                             vehicleId = facts.vehicle.id.value,
-                            name = facts.vehicle.name,
-                            initialOdometerKm = facts.vehicle.initialOdometerKm,
-                            brand = facts.vehicle.brand,
-                            model = facts.vehicle.model,
-                            fuelType = facts.vehicle.fuelType,
+                            name = if (nameEdited) currentInputs.name else facts.vehicle.name,
+                            initialOdometerKm =
+                                if (initialOdometerEdited) {
+                                    currentInputs.initialOdometerKm
+                                } else {
+                                    facts.vehicle.initialOdometerKm
+                                },
+                            brand = if (brandEdited) currentInputs.brand else facts.vehicle.brand,
+                            model = if (modelEdited) currentInputs.model else facts.vehicle.model,
+                            fuelType = if (fuelTypeEdited) currentInputs.fuelType else facts.vehicle.fuelType,
                         )
                 }
                 canEditInitialOdometer.value = facts.canEditInitialOdometer
