@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-01 — E1-09: iOS UI for Vehicles and Fuel Entries
+
+- **Type:** story
+- **Story / Decision:** `E1-09` / `D-100`, `D-101`, `D-102`, `D-103`, `D-104`
+- **Author:** Gemini (Antigravity session), on behalf of David Ruiz
+- **What changed:** implemented native iOS SwiftUI views (`VehicleListView`, `VehicleFormView`, `VehicleDetailView`, `FuelEntryFormView`), `@MainActor ObservableObject` view models with bounded holder lifecycles, scaled value formatting parity with Android (scales 1000, 1000, 100, 100), device-local calendar day conversions, localized UI error mapping, walking-skeleton debug diagnostics view under `#if DEBUG`, dedicated unit test target `carAppTests` (15 tests), end-to-end UI automation in `carAppUITests`, and added iOS test execution to the protected `ios-simulator-build` CI job.
+- **Why:** Delivers Phase 1 story E1-09 providing native iOS user interfaces for Vehicle management (F-2) and Fuel Entry management (F-3) with functional parity with Android while strictly preserving the exported Swift ABI and avoiding business logic duplication in Swift.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0101-walking-skeleton-debug-diagnostics-screen.md`, `docs/adr/0102-ios-deployment-target-and-observableobject-lifecycle.md`, `docs/adr/0103-ios-unit-and-ui-test-targets-in-ci.md`, `docs/adr/0104-ios-navigationstack-and-sheet-presentation.md`, `docs/adr/0105-scaled-value-formatting-parity-on-ios.md`, `docs/handoff-E1-09.md`, `.github/workflows/ci.yml`.
+- **Verification:** `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -sdk iphonesimulator test` passed 15 unit tests and 1 UI test (1 skipped for AppCheck). Full repository checks pass.
+- **Follow-ups / risks:** E1-10 will deliver persisted user settings (including selected currency).
+
 ### 2026-09-01 — Launcher icons designed in Figma for both platforms
 
 - **Type:** milestone
