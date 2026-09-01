@@ -30,13 +30,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -150,7 +151,7 @@ class FuelEntryFormStateHolder internal constructor(
         )
     private val saving = MutableStateFlow(false)
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
-    private val saveCompletions = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val saveCompletions = Channel<Unit>(capacity = Channel.BUFFERED)
     private var pendingConfirmationInputs: FormInputs? = null
     private var odometerEdited = false
     private var closed = false
@@ -203,7 +204,7 @@ class FuelEntryFormStateHolder internal constructor(
     fun setNotes(value: String?) = editInputs { copy(notes = value) }
 
     @HiddenFromObjC
-    fun observeSaveCompletions(): Flow<Unit> = saveCompletions
+    fun observeSaveCompletions(): Flow<Unit> = saveCompletions.receiveAsFlow()
 
     fun save() {
         if (closed || saving.value) return
@@ -227,6 +228,7 @@ class FuelEntryFormStateHolder internal constructor(
         if (closed) return
         closed = true
         pendingConfirmationInputs = null
+        saveCompletions.close()
         holderScope.cancel()
     }
 
@@ -260,7 +262,7 @@ class FuelEntryFormStateHolder internal constructor(
             when (result) {
                 is Outcome.Ok -> {
                     pendingConfirmationInputs = null
-                    saveCompletions.tryEmit(Unit)
+                    saveCompletions.trySend(Unit)
                 }
 
                 is Outcome.Err -> {
