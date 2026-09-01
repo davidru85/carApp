@@ -41,6 +41,9 @@ class VehicleCreationTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()
         }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(VehicleTestTags.FIRST_FUEL_INVITATION).fetchSemanticsNodes().isNotEmpty()
+        }
 
         composeRule
             .onNodeWithTag(VehicleTestTags.DETAIL_NAME)

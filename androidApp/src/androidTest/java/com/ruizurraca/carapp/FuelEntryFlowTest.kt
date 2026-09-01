@@ -89,6 +89,9 @@ class FuelEntryFlowTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()
         }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(FuelEntryTestTags.CONSUMPTION_EMPTY).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithTag(FuelEntryTestTags.CONSUMPTION_EMPTY).assertIsDisplayed()
 
         composeRule.onNodeWithTag(FuelEntryTestTags.ADD_FUEL_ENTRY).performClick()
