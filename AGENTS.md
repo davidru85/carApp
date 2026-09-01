@@ -97,7 +97,7 @@ accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is 
 - **Completed:** all Phase 0 stories; `E1-01` through `E1-09`; the pulled-forward `E3-06` and
   `E3-01` prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
 - **Next:** `E1-10`, Settings.
-- **Remaining Phase 1:** `E1-10`.
+- **Remaining Phase 1:** `E1-10`, `E1-11`, `E1-12`.
 - **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07` and `E3-09`. `E3-01` and `E3-06` are already complete.

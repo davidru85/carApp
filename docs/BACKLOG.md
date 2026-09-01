@@ -503,6 +503,43 @@ Acceptance criteria:
 
 Blocks: E2-06.
 
+### E1-12 - `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on Graph Close - S
+
+Status: open. Registered as GitHub issue #42. Tracked as a follow-up of `E1-08` introduced by
+commits `a5150d4`, `87abdd0`, `ba8823a`. This story is a test-infrastructure defect, not a
+production defect: no production code path closes an `AppGraph` while its state holders are still
+collecting.
+
+Make `:shared:iosSimulatorArm64Test` deterministic: closing the `AppGraph` in a test's `finally`
+block never races with collectors that the same test left running, and the suite either passes or
+fails on an assertion, never on a signal.
+
+Acceptance criteria:
+
+- `FuelEntryStateHolderTest` and every other test class in `:shared` that builds an `AppGraph` and
+  launches collector coroutines on `runTest`'s `backgroundScope` cancels those collectors before
+  `graph.close()` runs in its `finally` block, so no subscriber outlives the native SQLite driver.
+- A reusable test helper owns a child `CoroutineScope` that is cancelled before the graph is
+  closed, so the ordering cannot be forgotten by a future test. The helper is the single supported
+  way to launch state-holder collectors in `:shared` tests; direct `backgroundScope.launch` on a
+  state-holder flow is removed from the existing tests.
+- `./gradlew :shared:iosSimulatorArm64Test` is deterministic across repeated runs on an
+  Apple-silicon host and on the CI `macos` runner. The handoff records the repeated-run count used
+  to confirm determinism.
+- All test classes in `:shared` that mount an `AppGraph` are audited for the same shape; the
+  handoff lists every audited file and confirms none reproduces the use-after-free pattern.
+- The fix is confined to test code unless a separate, explicitly-scoped sub-task decides otherwise
+  (see "Decision deferred" below). Production code in `AppGraph.close()`, `StateHolders.close()`
+  and `DatabaseFactory` is not changed by this story.
+- No schema, migration, contract, architecture-rule or decision change is introduced by this story.
+
+Decision deferred: whether `AppGraph.close()` itself should be made safe against live subscribers
+is a production-code change that touches the D-89 handle-ownership contract and the gated path
+`core/database/**`. That change is deliberately out of scope for E1-12 and, if pursued, MUST get
+its own story with its own human review gate. The handoff records this deferral explicitly.
+
+Human review required.
+
 ## Phase 2 - Authentication
 
 ### E2-01 - `:core:auth` - S
@@ -924,6 +961,7 @@ E0-00 owner decisions (completed)
                   -> E0-07 walking skeleton gate (moved here by D-30)
                       -> the rest of Phase 1
                       -> E1-11 vehicle outbox entityType fix blocks E2-06
+                      -> E1-12 shared test graph-close race fix (issue #42, from E1-08)
                       -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
                       -> Phase 3 sync wiring depends on Phases 1 and 2
                       -> Phase 4
@@ -945,6 +983,19 @@ snapshots onto cascade tombstones, while the adoption acceptance criteria requir
 outbox order; a Vehicle snapshot or a tombstone missing `entityType` makes the enqueued or coalesced
 payload non-conformant with `docs/CONTRACTS.md §8`. `E1-11` also MUST precede `E3-03` because the
 sync engine is the first consumer that assumes every outbox payload satisfies §8.
+
+`E1-12` closes GitHub issue #42, the `FuelEntryStateHolderTest` Kotlin/Native `SIGSEGV` introduced
+by `E1-08`. The defect is confined to test infrastructure in `:shared`: a test's `finally` block
+closes the `AppGraph` (and the native SQLite driver via D-89) while collectors launched on
+`runTest`'s `backgroundScope` are still subscribed, so the collectors touch a freed native
+connection. `runTest` cancels `backgroundScope` only after the test body returns, including its
+`finally`, so the window is real. On the JVM the same pattern surfaces as a catchable exception;
+on Kotlin/Native it is a use-after-free that aborts the process with signal 11. The fix is
+test-only: cancel the collectors before closing the graph, through a helper that makes the
+ordering impossible to forget. Making `AppGraph.close()` itself safe against live subscribers is a
+production change touching D-89 and the gated path `core/database/**`, and is deliberately deferred
+out of E1-12 into its own gated story if pursued. E1-12 has no dependency on E1-11 and may run in
+parallel with it.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -977,6 +1028,7 @@ proof after E3-04.
 | E1-09 iOS UI | 1 | L | — |
 | E1-10 Settings persistence | 1 | S | — |
 | E1-11 `:feature:vehicle` outbox payload entityType fix | 1 | S | — |
+| E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (issue #42) | 1 | S | Yes |
 | E2-01 `:core:auth` | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 | 2 | M | — |

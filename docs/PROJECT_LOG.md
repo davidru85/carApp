@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-01 — E1-12 registered: `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close
+
+- **Type:** correction
+- **Story / Decision:** `E1-12` / —
+- **Author:** opencode agent, on behalf of David Ruiz
+- **What changed:** added backlog story `E1-12` to `docs/BACKLOG.md` Phase 1, sized S, registering
+  GitHub issue #42. The story fixes the intermittent `SIGSEGV` on `:shared:iosSimulatorArm64Test`
+  where `FuelEntryStateHolderTest` closes the `AppGraph` (and the native SQLite driver via D-89) in a
+  `finally` block while collector coroutines launched on `runTest`'s `backgroundScope` are still
+  subscribed, producing a use-after-free on Kotlin/Native. The fix is test-only: cancel collectors
+  before closing the graph, through a helper that makes the ordering impossible to forget, and
+  audit every `:shared` test that mounts an `AppGraph` for the same shape. Also added the
+  execution-order line, the rationale paragraph and the story-index row, and updated the
+  "Remaining Phase 1" count in `AGENTS.md`.
+- **Why:** the defect had no backlog owner: it existed only as GitHub issue #42 and was diagnosed
+  in that issue. It arrived with `E1-08` (`a5150d4`, `87abdd0`, `ba8823a`) and makes CI
+  non-deterministic. A new S-sized Phase 1 bugfix story follows the precedent set by `E1-11`
+  (issue #36). Making `AppGraph.close()` itself safe against live subscribers is a production
+  change touching D-89 and the gated path `core/database/**`; it is deliberately deferred out of
+  E1-12 into its own gated story if pursued, and the handoff must record that deferral.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** documentation-only change; no code, schema, contract or decision change. The
+  referenced paths and symbols in issue #42 (`FuelEntryStateHolderTest.kt`, `AppGraph.kt:139`,
+  `StateHolders.kt:77`, `DatabaseFactory.kt:38`) were confirmed against the issue body.
+- **Follow-ups / risks:** `E1-12` implementation remains open. It has no dependency on `E1-11` and
+  may run in parallel. The D-89 production-safety question is explicitly deferred and, if
+  pursued, needs its own gated story.
+
 ### 2026-09-01 — E1-11 registered: `:feature:vehicle` outbox payload `entityType` fix
 
 - **Type:** correction
