@@ -7,6 +7,50 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testVehicleSwipeDeleteShowsConfirmationDialog() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        addTeardownBlock { app.terminate() }
+
+        let vehicleName = "AAA-Swipe-\(Int(Date().timeIntervalSince1970))"
+
+        let addVehicleButton = app.buttons["add_vehicle"]
+        XCTAssertTrue(addVehicleButton.waitForExistence(timeout: timeout))
+        addVehicleButton.tap()
+
+        let vehicleNameField = app.textFields["vehicle_name"]
+        XCTAssertTrue(vehicleNameField.waitForExistence(timeout: timeout))
+        vehicleNameField.tap()
+        vehicleNameField.typeText(vehicleName)
+
+        let odometerField = app.textFields["vehicle_odometer"]
+        odometerField.tap()
+        odometerField.typeText("10000")
+
+        let saveVehicleButton = app.buttons["save_vehicle"]
+        XCTAssertTrue(saveVehicleButton.isEnabled)
+        saveVehicleButton.tap()
+        XCTAssertTrue(saveVehicleButton.waitForNonExistence(timeout: timeout))
+
+        let vehicleRow = app.staticTexts[vehicleName]
+        if !vehicleRow.waitForExistence(timeout: 2) {
+            app.swipeDown()
+        }
+        XCTAssertTrue(vehicleRow.waitForExistence(timeout: timeout))
+
+        vehicleRow.swipeLeft()
+        let deleteButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Delete' OR label CONTAINS 'delete'")).firstMatch
+        XCTAssertTrue(deleteButton.waitForExistence(timeout: timeout), "Swipe should reveal a delete action")
+        deleteButton.tap()
+
+        let confirmDeleteButton = app.alerts.buttons["delete"].firstMatch
+        XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: timeout), "A confirmation dialog should appear before the vehicle is deleted")
+        confirmDeleteButton.tap()
+
+        XCTAssertTrue(vehicleRow.waitForNonExistence(timeout: timeout), "The vehicle row should disappear after confirming deletion")
+    }
+
     func testVehicleAndFuelEntryCreationFlow() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]

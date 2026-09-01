@@ -46,6 +46,12 @@ final class ScaledFormattingTests: XCTestCase {
         XCTAssertEqual(acceptScaledInput(previous: "12", candidate: "12a", scale: 3), "12")
     }
 
+    func testFormatScaledNegativeValue() {
+        XCTAssertEqual(formatScaled(-7363, scale: ScaledFormat.minorUnitScale), "-73.63")
+        XCTAssertEqual(formatScaled(-1, scale: ScaledFormat.minorUnitScale), "-0.01")
+        XCTAssertEqual(formatScaled(-45200, scale: ScaledFormat.litersScale), "-45.200")
+    }
+
     func testIsValidOdometerText() {
         XCTAssertTrue(isValidOdometerText(""))
         XCTAssertTrue(isValidOdometerText("0"))
