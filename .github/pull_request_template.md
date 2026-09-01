@@ -16,6 +16,17 @@
 - [ ] Expected verification identified
 - [ ] Human review gates identified before work
 
+## In-Progress Checkpoint
+
+- Date:
+- Branch and base:
+- Current phase and latest commit:
+- Push and pull-request status:
+- Completed since the previous checkpoint:
+- Verification evidence and known failures:
+- Open decisions or blockers:
+- Exact next step:
+
 ## Scope Completed
 
 -

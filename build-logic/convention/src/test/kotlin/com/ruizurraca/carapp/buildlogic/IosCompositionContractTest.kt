@@ -56,7 +56,7 @@ class IosCompositionContractTest {
             ),
         )
         val factory = declarations.single().readText()
-        assertTrue(factory.contains("firebaseAppProviders(databaseFilePath = iosDatabaseFilePath())"))
+        assertTrue(factory.contains("localeProvider = IosLocaleProvider()"))
         assertTrue(factory.contains("buildAppGraph(isDebugBuild, providers)"))
         assertTrue(factory.contains("NSApplicationSupportDirectory"))
     }
@@ -83,6 +83,15 @@ class IosCompositionContractTest {
             ),
         )
         assertTrue(ci.contains("shared/build/generated/objc-header/Shared.h.golden"))
+    }
+
+    @Test
+    fun androidHostLocaleProviderTestsRunInCanonicalVerification() {
+        val agents = repositoryRoot.resolve("AGENTS.md").readText()
+        val ci = repositoryRoot.resolve(".github/workflows/ci.yml").readText()
+
+        assertTrue(agents.contains(":androidApp:testDebugUnitTest"))
+        assertTrue(ci.contains(":androidApp:testDebugUnitTest testAndroidHostTest"))
     }
 
     @Test

@@ -580,6 +580,11 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-102 | iOS test targets in CI | Dedicated `carAppTests` unit test target + extended `carAppUITests`, both run in protected `ios-simulator-build` CI job. | Accepted |
 | D-103 | iOS NavigationStack and sheet presentation | Root `NavigationStack` with typed route for list -> detail; modal `.sheet` presentation for Vehicle Form and Fuel Entry Form. | Accepted |
 | D-104 | Scaled value formatting parity on iOS | Swift pure integer formatting with strict scale constants (1000, 1000, 100, 100) and comma/dot parsing. | Accepted |
+| D-105 | Continuous agent progress handoff | Maintain the story handoff from intake through completion, checkpoint every material state change and before yielding unfinished work. | Accepted |
+| D-106 | Settings default bootstrap ownership | Keep repository self-healing authoritative and use a one-shot, silently best-effort AppGraph read to accelerate first-launch creation. | Accepted |
+| D-107 | Fuel Entry form settings snapshot | Apply only the first persisted currency to a new form, preserving its locale fallback, explicit edits and all existing-entry currency values. | Accepted |
+| D-108 | Native locale-provider ownership | Inject native Android and iOS locale providers at host composition boundaries; keep the production provider factory parameter explicit. | Accepted |
+| D-109 | Native locale-provider verification topology | Require Android host unit tests in standard local and CI verification; retain the D-75 iOS behavior gap under E1-13. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

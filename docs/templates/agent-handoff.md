@@ -16,6 +16,19 @@ Fill in every section. This template is the canonical field list; `AGENTS.md` li
 - Expected verification:
 - Human review gates identified before work:
 
+## In-Progress Checkpoint
+
+Update this section at every material state change and before yielding unfinished work (`D-105`).
+
+- Date:
+- Branch and base:
+- Current phase and latest commit:
+- Push and pull-request status:
+- Completed since the previous checkpoint:
+- Verification evidence and known failures:
+- Open decisions or blockers:
+- Exact next step:
+
 ## Scope Completed
 
 - 

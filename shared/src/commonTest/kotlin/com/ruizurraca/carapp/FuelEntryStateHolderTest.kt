@@ -7,6 +7,8 @@ import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
+import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
+import com.ruizurraca.carapp.core.database.SettingsDatabaseRow
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
@@ -15,16 +17,19 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
+import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -38,6 +43,40 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FuelEntryStateHolderTest {
+    @Test
+    fun graphBootstrapCreatesSettingsWithoutAConsumer() =
+        runTest {
+            val dependencies =
+                testAppGraphDependencies(
+                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
+                    localeProvider =
+                        FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+                )
+            val databaseHandle = dependencies.databaseFactory.create()
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+                        ),
+                )
+
+            try {
+                val persisted =
+                    SettingsDatabaseAccess(databaseHandle.database)
+                        .observeSettings()
+                        .first { row -> row != null }
+
+                assertEquals(
+                    SettingsDatabaseRow("USD", "KM", "LITER", analyticsEnabled = false),
+                    persisted,
+                )
+            } finally {
+                graph.close()
+            }
+        }
+
     @Test
     fun odometerSuggestionsIgnoreRepositoryErrorsAndMissingVehicles() =
         runTest {
@@ -109,6 +148,44 @@ class FuelEntryStateHolderTest {
 
                 assertEquals("EUR", holder.state.value.currencyCode)
             } finally {
+                graph.close()
+            }
+        }
+
+    @Test
+    fun persistedSettingsCurrencyOverridesTheCurrentLocaleForNewEntries() =
+        runTest {
+            val dependencies =
+                testAppGraphDependencies(
+                    localeProvider =
+                        FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+                )
+            val databaseHandle = dependencies.databaseFactory.create()
+            SettingsDatabaseAccess(databaseHandle.database).upsertSettings(
+                SettingsDatabaseRow("GBP", "KM", "LITER", analyticsEnabled = false),
+            )
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+                        ),
+                )
+            val holder =
+                graph.fuelEntryFormStateHolder(
+                    backgroundScope,
+                    vehicleId = "00000000-0000-4000-8000-000000000099",
+                    entryId = null,
+                )
+            val collector =
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+
+            try {
+                assertEquals("GBP", holder.state.first { it.currencyCode == "GBP" }.currencyCode)
+            } finally {
+                holder.close()
+                collector.cancelAndJoin()
                 graph.close()
             }
         }

@@ -62,12 +62,16 @@ fun firebaseAppProviders(): AppProviders {
 }
 
 /** Creates the production Firebase boundaries for a platform-owned persistent database path. */
-fun firebaseAppProviders(databaseFilePath: String): AppProviders {
+fun firebaseAppProviders(
+    databaseFilePath: String,
+    localeProvider: LocaleProvider,
+): AppProviders {
     val authClient = FirebaseAuthClient()
     return firebaseAppProviders(
         databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
         authClient = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
+        localeProvider = localeProvider,
     )
 }
 
@@ -75,6 +79,7 @@ internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
     authClient: AuthClient,
     remoteSyncSource: RemoteSyncSource,
+    localeProvider: LocaleProvider = stagedLocaleProvider(),
 ): AppProviders {
     val connectivityState = MutableStateFlow(true)
 
@@ -90,7 +95,7 @@ internal fun firebaseAppProviders(
         override val dispatchers = stagedDispatcherProvider()
         override val uuidGenerator = stagedUuidGenerator()
         override val logger = stagedLogger()
-        override val localeProvider = stagedLocaleProvider()
+        override val localeProvider = localeProvider
         override val connectivityObserver = stagedConnectivityObserver(connectivityState)
         override val syncTriggerAdapter = SyncTriggerAdapter { }
     }

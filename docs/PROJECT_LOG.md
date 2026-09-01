@@ -38,6 +38,62 @@
 
 ## Entries
 
+### 2026-09-01 — E1-10 second-review verification and lifecycle corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-10` / `D-109`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** made the AppGraph closure flag volatile; moved the missing-row creation gate
+  ahead of locale resolution; collapsed and documented the SQLDelight settings repository
+  constructors; clarified bootstrap ordering and common supported-set re-checks; added
+  `:androidApp:testDebugUnitTest` to every current canonical-command mirror and the CI unit-test
+  job; and registered D-109 / ADR-0110. D-106 and the handoff now state the residual non-atomic
+  check-then-act window instead of claiming that a post-close write is impossible.
+- **Why:** `AndroidLocaleProviderTest` existed but was absent from standard verification, while the
+  Foundation adapter's `NSNumberFormatter.maximumFractionDigits` behavior has no executable test.
+  D-75 excludes the `:composition:ios` standalone Native test binary, so E1-13 now owns an
+  executable iOS-host route that preserves D-75 and the D-108 host boundary.
+- **Documents touched:** `AGENTS.md`, `README.md`, `.github/workflows/ci.yml`,
+  `docs/CONTRIBUTING.md`, `docs/BACKLOG.md`, all four D-109 decision mirrors, ADR-0107, ADR-0109,
+  ADR-0110, `docs/handoff-E1-10.md` and the pull-request description.
+- **Verification:** the corrected focused Android and convention-plugin tasks passed with forced
+  execution, including both `AndroidLocaleProviderTest` cases. The expanded exact non-instrumented
+  command from `AGENTS.md` passed with 627 actionable tasks. `contractCheck` reports 110 aligned
+  decisions and ADRs, no unresolved decisions and the unchanged exact D-75 exclusion set.
+- **Follow-ups / risks:** E1-13 owns executable iOS locale-provider behavior. E1-12 / issue #42
+  still owns the intermittent Kotlin/Native graph-close race. PR #44 remains gated and the agent
+  MUST NOT merge it.
+
+### 2026-09-01 — E1-10 device-local settings persistence completed
+
+- **Type:** story
+- **Story / Decision:** `E1-10` / `D-105`, `D-106`, `D-107`, `D-108`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented the fixed-row SQLDelight settings access, self-healing
+  `SettingsRepository`, validated partial updates and device-local deletion recovery; injected
+  native Android and iOS locale providers; applied the first persisted currency to new Fuel Entry
+  forms only; and added a one-shot, non-blocking AppGraph settings bootstrap with ordered scope and
+  database closure. D-105 also makes every in-flight story handoff a continuously updated,
+  versioned recovery point for replacement AI agents.
+- **Why:** E1-10 completes persistent local defaults without creating remote settings or outbox
+  work. The owner selected repository self-healing plus eager graph bootstrap, a holder-owned first
+  persisted currency snapshot, and native host adapters because those choices preserve existing
+  repository, synchronous factory, platform and provider boundaries. The AppGraph locale fallback
+  now delegates to `resolveLocaleCurrency`, removing the last inline copy of the D-94 rule.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
+  `docs/adr/README.md`, ADR-0106 through ADR-0109, `docs/CONTRIBUTING.md`, the handoff and pull
+  request templates, and `docs/handoff-E1-10.md`.
+- **Verification:** focused Android-host settings, Fuel Entry and graph tests pass; focused
+  `:feature:fuel`, `:feature:session` and `:shared` iOS simulator tests pass; the exact complete
+  non-instrumented command from `AGENTS.md` passes with 621 actionable tasks, including ktlint,
+  detekt, architecture, 109-decision contract parity, convention-plugin tests, coverage, Android
+  debug assembly and all required Android-host and Kotlin/Native tests.
+- **Follow-ups / risks:** the pull request changes gated `core/database/**` and requires human
+  review; the implementing agent must not merge it. E1-12 / issue #42 still owns the general
+  Kotlin/Native test graph-close race under D-89 even though it did not reproduce in final E1-10
+  verification. E1-11 is the next planned Phase 1 story.
+
 ### 2026-09-01 — E1-12 registered: `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close
 
 - **Type:** correction
