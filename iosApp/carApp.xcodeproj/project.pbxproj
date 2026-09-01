@@ -7,14 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
 		1132B312C49E6B6844B3934B /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 8EB8A37AF599C28041EB55CA /* es.lproj */; };
+		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
+		4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */; };
+		5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */; };
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
+		7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
+		C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */; };
 		C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 90CED6835AA58C9424996B48 /* en.lproj */; };
@@ -29,17 +35,31 @@
 			remoteGlobalIDString = 61D239EC09A12F8A35BAA5D5;
 			remoteInfo = carApp;
 		};
+		764ACFF0F4A7A38EEDF9487C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FB5E915613CCB05F145A42B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 61D239EC09A12F8A35BAA5D5;
+			remoteInfo = carApp;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
+		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
 		2D997286223049D1A5F7AA30 /* carAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryCalendarDay.swift; sourceTree = "<group>"; };
 		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
+		33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMapping.swift; sourceTree = "<group>"; };
+		48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMappingTests.swift; sourceTree = "<group>"; };
+		4B75BD49AED901E7C93582F7 /* carAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
 		8EB8A37AF599C28041EB55CA /* es.lproj */ = {isa = PBXFileReference; path = es.lproj; sourceTree = "<group>"; };
 		90CED6835AA58C9424996B48 /* en.lproj */ = {isa = PBXFileReference; path = en.lproj; sourceTree = "<group>"; };
 		93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarAppKeychainPersistenceUITests.swift; sourceTree = "<group>"; };
+		96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayTests.swift; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -72,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				F7BD4918D057DEA4C8FB450F /* carApp.app */,
+				4B75BD49AED901E7C93582F7 /* carAppTests.xctest */,
 				2D997286223049D1A5F7AA30 /* carAppUITests.xctest */,
 			);
 			name = Products;
@@ -85,6 +106,16 @@
 			path = UITests;
 			sourceTree = "<group>";
 		};
+		C9FE68B9523949AB829ECCA0 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */,
+				278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */,
+				48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
 		E3D19A4D38694A47DC344CE6 = {
 			isa = PBXGroup;
 			children = (
@@ -93,8 +124,12 @@
 				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
 				90CED6835AA58C9424996B48 /* en.lproj */,
 				8EB8A37AF599C28041EB55CA /* es.lproj */,
+				2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */,
+				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
+				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
 				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
 				2850FA255307524833517781 /* Debug */,
+				C9FE68B9523949AB829ECCA0 /* Tests */,
 				45E5C76700F0706EA075BF34 /* UITests */,
 				39881192AFE2CF4DD842531A /* Products */,
 			);
@@ -103,6 +138,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3FC8C97CE364F5F4625D607B /* carAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 602D83EE0073F69545A82E1F /* Build configuration list for PBXNativeTarget "carAppTests" */;
+			buildPhases = (
+				4BF4973DFA58D3BA3F889F91 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0C991A263DA8559DE7F609A1 /* PBXTargetDependency */,
+			);
+			name = carAppTests;
+			packageProductDependencies = (
+			);
+			productName = carAppTests;
+			productReference = 4B75BD49AED901E7C93582F7 /* carAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		5694684097D198AE1BCA7DD4 /* carAppUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1D3588A3E6824B80409A24B0 /* Build configuration list for PBXNativeTarget "carAppUITests" */;
@@ -154,6 +207,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					3FC8C97CE364F5F4625D607B = {
+						TestTargetID = 61D239EC09A12F8A35BAA5D5;
+					};
 					5694684097D198AE1BCA7DD4 = {
 						TestTargetID = 61D239EC09A12F8A35BAA5D5;
 					};
@@ -177,6 +233,7 @@
 			projectRoot = "";
 			targets = (
 				61D239EC09A12F8A35BAA5D5 /* carApp */,
+				3FC8C97CE364F5F4625D607B /* carAppTests */,
 				5694684097D198AE1BCA7DD4 /* carAppUITests */,
 			);
 		};
@@ -218,12 +275,25 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		4BF4973DFA58D3BA3F889F91 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */,
+				1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */,
+				5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BD446437D5E90F9764FF8B6E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */,
 				8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */,
+				0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */,
+				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
+				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,
 				3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */,
 				624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */,
 			);
@@ -240,6 +310,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		0C991A263DA8559DE7F609A1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 61D239EC09A12F8A35BAA5D5 /* carApp */;
+			targetProxy = 764ACFF0F4A7A38EEDF9487C /* PBXContainerItemProxy */;
+		};
 		3C3BB4422FA19FE6C0B9236E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 61D239EC09A12F8A35BAA5D5 /* carApp */;
@@ -390,6 +465,28 @@
 			};
 			name = Release;
 		};
+		336F533D7A8848A8901515BC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.tests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/carApp.app/carApp";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Release;
+		};
 		40B51EC700B19C4FCB697F92 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -427,6 +524,28 @@
 			};
 			name = Debug;
 		};
+		EDE85C62437804C2C3CF5CD5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ruizurraca.carapp.tests;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = iphonesimulator;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/carApp.app/carApp";
+				TEST_TARGET_NAME = carApp;
+			};
+			name = Debug;
+		};
 		FB442A824F2183F823E95EE9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -453,6 +572,15 @@
 			buildConfigurations = (
 				DA1CF6562527F00C8516B7D0 /* Debug */,
 				22699B17D703D61F9E4FD8D7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		602D83EE0073F69545A82E1F /* Build configuration list for PBXNativeTarget "carAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EDE85C62437804C2C3CF5CD5 /* Debug */,
+				336F533D7A8848A8901515BC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

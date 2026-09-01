@@ -22,6 +22,9 @@ targets:
       - path: WalkingSkeletonModel.swift
       - path: AppCheckProviderFactory.swift
       - path: carAppApp.swift
+      - path: ScaledFormatting.swift
+      - path: FuelEntryCalendarDay.swift
+      - path: UiMessageMapping.swift
       - path: en.lproj
         buildPhase: resources
       - path: es.lproj
@@ -53,6 +56,22 @@ targets:
         Release:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
           EXCLUDED_SOURCE_FILE_NAMES: GoogleService-Info-Debug.plist
+  carAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: Tests
+    dependencies:
+      - target: carApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        TEST_TARGET_NAME: carApp
+        SUPPORTED_PLATFORMS: iphonesimulator
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(BUILT_PRODUCTS_DIR)
   carAppUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -76,12 +95,14 @@ schemes:
     build:
       targets:
         carApp: all
+        carAppTests: [test]
         carAppUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
+        - carAppTests
         - carAppUITests
       environmentVariables:
         CARAPP_IOS_APP_CHECK_DEBUG_TOKEN: $(CARAPP_XCUITEST_APP_CHECK_DEBUG_TOKEN)

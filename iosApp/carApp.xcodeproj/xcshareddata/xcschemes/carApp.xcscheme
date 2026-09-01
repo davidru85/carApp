@@ -29,6 +29,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3FC8C97CE364F5F4625D607B"
+               BuildableName = "carAppTests.xctest"
+               BlueprintName = "carAppTests"
+               ReferencedContainer = "container:carApp.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "5694684097D198AE1BCA7DD4"
                BuildableName = "carAppUITests.xctest"
                BlueprintName = "carAppUITests"
@@ -53,6 +67,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3FC8C97CE364F5F4625D607B"
+               BuildableName = "carAppTests.xctest"
+               BlueprintName = "carAppTests"
+               ReferencedContainer = "container:carApp.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
          <TestableReference
             skipped = "NO"
             parallelizable = "NO">
