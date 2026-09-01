@@ -25,12 +25,14 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -278,6 +280,23 @@ class FuelEntryStateHoldersTest {
                 holder.state.value.message
                     ?.confirmation,
             )
+        }
+
+    @Test
+    fun saveCompletionWaitsForTheNextCollectorAndIsConsumedOnce() =
+        runTest {
+            val repository = FakeFuelEntryRepository()
+            val holder = createForm(backgroundScope, repository)
+            holder.enterValidCreateValues()
+
+            holder.save()
+            advanceUntilIdle()
+
+            val completion = withTimeoutOrNull(1_000L) { holder.observeSaveCompletions().first() }
+            assertEquals(Unit, completion)
+
+            val duplicate = withTimeoutOrNull(1L) { holder.observeSaveCompletions().first() }
+            assertNull(duplicate)
         }
 
     @Test
