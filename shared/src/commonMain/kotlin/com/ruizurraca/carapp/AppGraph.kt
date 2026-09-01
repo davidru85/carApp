@@ -2,12 +2,14 @@
 
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SUPPORTED_CURRENCY_CODES
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.feature.fuel.data.SqlDelightFuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
@@ -19,7 +21,8 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleListStateHolder
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.transform
 import kotlin.native.HiddenFromObjC
 
 @HiddenFromObjC
@@ -115,12 +118,7 @@ internal class DefaultAppGraph(
             initialOdometerKm =
                 vehicleRuntime.repository
                     .observeVehicle(EntityId(vehicleId))
-                    .map { result ->
-                        when (result) {
-                            is Outcome.Ok -> result.value?.currentOdometerKm ?: 0L
-                            is Outcome.Err -> 0L
-                        }
-                    },
+                    .fuelEntryOdometerSuggestions(),
             // TODO(E1-10): Replace the locale-derived creation currency with persisted settings.
             initialCurrencyCode = initialFuelEntryCurrency().value,
             repository = fuelRepository,
@@ -160,3 +158,8 @@ internal class DefaultAppGraph(
         }
     }
 }
+
+internal fun Flow<Outcome<Vehicle?, AppError>>.fuelEntryOdometerSuggestions(): Flow<Long> =
+    transform { result ->
+        if (result is Outcome.Ok) result.value?.let { vehicle -> emit(vehicle.currentOdometerKm) }
+    }
