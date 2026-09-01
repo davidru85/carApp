@@ -41,6 +41,8 @@ before the file matches the scripts again.
 | 16 | `16-native-status-bars.figma.js` | Platform-native status bars, all 24 frames | ✅ ×2 |
 | 17 | `17-minimal-sheet-actions.figma.js` | Circular ✕ / ✓ actions on the three iOS sheets | ✅ |
 | 18 | `18-android-settings-expressive.figma.js` | Android settings rebuilt in the Expressive idiom | ✅ |
+| 19 | `19-android-launcher-icon.figma.js` | Android `launcher-icon` section (adaptive icon) | ✅ ×2 |
+| 20 | `20-ios-launcher-icon.figma.js` | iOS `launcher-icon` section (app icon) | ✅ ×2 |
 
 `11` is a generated merge of `09` and `10` that does the same work in **one** MCP call instead
 of two. That mattered acutely on the old 20-call/month budget, and it is the script that actually
@@ -84,6 +86,11 @@ instead of a token. Those source scripts were **not** retrofitted — `14` is a 
 the build from scratch therefore means running `00`–`15` in order, not `00`–`11`.
 
 The welcome pass is the only outstanding work; see [Authentication surface](#authentication-surface).
+
+`19` and `20` are marked ✅ ×2 because each ran twice: once as built, then again after the first
+render exposed a defect in each (the Android mark was too large for the circle mask, the iOS
+plate went white behind a white disc). Both are idempotent, so the second run replaced the first
+rather than stacking. See [Launcher icons](#launcher-icons).
 
 ### Access history (resolved 2026-08-20)
 
@@ -168,6 +175,9 @@ Frame x-positions preserve flow order on each page:
 
 Two rows per page. Light frames sit at **y=0**; their dark twins, named `<screen> · dark`, sit at
 **y=1100** at the same x. The offset clears the tallest light frame (Android, 917) with margin.
+
+Below both rows, at **y=2300**, each page carries a `launcher-icon` **section** — not a frame.
+See [Launcher icons](#launcher-icons) for why that distinction is load-bearing.
 
 ## Six traps worth knowing before you edit
 
@@ -490,6 +500,77 @@ and no-ops when the frame or the shapes are absent.
 
 That is real missing auth UI. It needs a decision and a script of its own — it is not part of this
 pass.
+
+## Launcher icons
+
+Scripts `19` and `20` add the platform launcher icons, one section per page. They post-date the
+six-screen flow and are independent of it: nothing else references them, and neither script
+touches an existing frame.
+
+### They are sections, and that is deliberate
+
+Script `13` rebuilds the dark row from
+`page.children.filter(n => n.type === 'FRAME' && !n.name.endsWith(' · dark'))`. A top-level
+**frame** named `launcher-icon` would therefore be cloned into the dark row at y=1100 on 13's
+next run, landing on top of `screen-welcome · dark`. A **section** is skipped by that type
+filter, so the two scripts stay independent without either having to know about the other.
+
+A section's children carry coordinates **relative to the section origin** — verified rather than
+assumed, because the board is positioned from inside it.
+
+### One mark, two executions
+
+Both icons reuse the welcome screen's vocabulary rather than inventing a third mark, so the
+launcher and the first screen the user sees are recognisably the same product:
+
+| | Android | iOS |
+|---|---|---|
+| Ground | flat `color/primary` #006A57 | ambient plate on `background/ambient-a` |
+| Container | Expressive scalloped star, `primary-container` | raised glass disc, `material/regular/fill-raised` |
+| Glyph | lucide car, `on-primary-container` | lucide car, `accent/brand` |
+
+### Android — the container is 52dp, not 66dp
+
+108dp canvas, 72dp mask viewport, 66dp safe zone. The first pass drew the scalloped container at
+the full 66dp on the reasoning that the safe zone is what every mask guarantees. That is true and
+it still looked wrong: at 66dp the circle mask **sheared the scallop points flat**, and `primary`
+survived only as slivers in the corners, so the icon read as a mint blob with no ground. 66dp is
+a ceiling, not a target. At **52dp** — 72% of the visible viewport — the silhouette clears every
+mask intact and the deep teal reads as a deliberate field. Check any change to that number
+against the circle mask first; it is the tightest of the four.
+
+The monochrome layer runs the opposite way, at 44dp. Themed icons drop both colour layers, so the
+container cannot survive the recolour and the car has to hold the viewport alone.
+
+Masters are drawn at 4x (432 px = 108dp @xxxhdpi), so the density set falls on clean quarters.
+`minSdk` is 26, so the delivery is vector drawables and no PNG mipmap set is required.
+
+### iOS — the plate cannot be white
+
+The screens build their ambient backdrop on `background/system`, which is white. Copied verbatim
+into a 1024 icon it failed: the top-right corner resolved to near-white and the white glass disc
+dissolved into it. The plate is based on `background/ambient-a` instead, so every corner stays
+tinted and the disc separates all the way round. It carries into Dark for free — the same token
+is a deep teal there rather than near-black `#1c1c1e`.
+
+Three appearance masters ship: **Any**, **Dark** (a clone pinned to the Dark mode with
+`setExplicitVariableModeForCollection`, the same trick as `13`), and **Tinted**.
+
+**Tinted is the one deliberate exception to the token rule in this whole folder.** Apple's tinted
+appearance takes a *grayscale* asset and maps its luminance onto the user's chosen tint, so a
+token-coloured icon would be wrong by construction. That master is built from literal greys. Do
+not "fix" it to variables.
+
+The masters are full-bleed squares with no rounded corners and no alpha: iOS applies the
+superellipse itself, and baking it in produces a double-masked icon with dark fringing.
+
+### What these boards are not
+
+They are design sources, not shipped assets. Neither
+`androidApp/src/main/res/mipmap-anydpi-v26/` nor `iosApp/Assets.xcassets/` exists in the
+repository yet; creating them is `docs/BACKLOG.md` **E4-04** ("App icons and splash are
+present"). Each board carries its own export spec — file names, sizes and formats — so that
+story is a transcription job rather than a design one.
 
 ## Fixes carried over from the audit of the original boards
 
