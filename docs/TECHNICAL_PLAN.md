@@ -113,6 +113,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-96 | Fuel Entry calendar-day conversion | Inject the device zone for native selected-day conversion and formatting | Accepted | Keeps local calendar behavior deterministic without changing the ABI. |
 | D-97 | Fuel presentation iOS export | Refined `:feature:fuel` export with exact existing ABI names | Accepted | Moves presentation ownership without leaking non-allowlisted declarations. |
 | D-98 | Fuel form save completion | Kotlin-only holder completion flow | Accepted | Removes Android navigation races without changing exported UI state. |
+| D-99 | Fuel money mode-switch derivation | Preserve available values and re-derive the non-participating value through D-93 | Accepted | Keeps mode changes reversible while making accepted scale-rounding drift visible before save. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

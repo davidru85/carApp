@@ -574,6 +574,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-96 | Fuel Entry calendar-day conversion | Convert and format selected Fuel Entry days in an injected device time zone while preserving untouched `now`. | Accepted |
 | D-97 | Fuel presentation iOS export | Export refined `:feature:fuel` presentation declarations through the sole Shared framework with byte-identical names and signatures. | Accepted |
 | D-98 | Fuel form save completion | Navigate after an explicit Kotlin-only Fuel Entry save-completion event rather than inferring success from form state. | Accepted |
+| D-99 | Fuel money mode-switch derivation | Preserve available money values and immediately re-derive the value outside the selected mode through the D-93 resolver. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

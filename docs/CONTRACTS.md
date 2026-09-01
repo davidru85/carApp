@@ -2510,7 +2510,10 @@ first closes its cached state holders and then closes the wrapped `AppGraph`, so
 connection is released transitively. The D-55 staged Fuel, Session and Sync shells do not acquire
 additional database handles and remain safe to close.
 
-`FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
+`FuelEntryFormStateHolder.setMoneyInputMode(mode)` keeps the values already present and immediately
+re-derives the value that does not participate in the selected mode from the participating pair
+through the D-93 resolver. A value previously derived MAY therefore become an input of the next
+derivation. If the participating pair is present, switching modes MUST NOT clear any money value.
 
 `VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
 
