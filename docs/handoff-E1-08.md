@@ -46,7 +46,7 @@
 - Reused the promoted pure `MoneyInput` resolver for live form derivation, kept live range errors
   silent and nullable, and retained save-time validation and two-step odometer confirmation.
 - Implemented the Android Fuel Entry list, empty and summary states, accessible invalid-segment
-  explanations, row indicators, create/edit form, local-calendar date picker and delete flow.
+  explanations, row indicators, create/edit form and local-calendar date picker.
 - Exported refined Fuel Entry presentation declarations from the sole iOS framework, hid domain
   and data declarations, and regenerated the ordering-only Objective-C header golden.
 - Added the D-95 staged `SyncStatus.Idle` record and the D-96 cross-platform calendar-day rule
@@ -58,7 +58,8 @@
   `EndEntryNotFullTank` retains both independent row flags.
 - `FuelEntryStateHolderTest` proves exact-clock, Vehicle-odometer and supported-locale defaults,
   EUR fallback, live R-2 derivation, silent live range failure, two-step confirmation, both row
-  indicators, weighted summary, staged `Idle`, successful-save signaling and confirmed deletion.
+  indicators, weighted summary, staged `Idle`, successful-save signaling and the holder-level
+  confirmed-deletion contract.
 - `FuelEntryFlowTest` drives the API 36 Compose flow through vehicle creation, live money
   derivation, partial refuel, warning confirmation, accessible explanation and both visible row
   indicators. Its deterministic zone test proves Europe/Madrid local-day conversion across UTC
@@ -77,6 +78,8 @@
 - E3-03 synchronization behavior remains unimplemented; the Fuel list publishes the recorded
   D-95 constant `SyncStatus.Idle` only.
 - E1-09 owns the iOS screens and must apply D-96's identical device-local calendar-day rule.
+- `FuelEntryListStateHolder` exposes the contract-mandated `requestDelete` and `confirmDelete`
+  intents, but no Android screen consumes them and E1-08 delivers no Fuel Entry delete affordance.
 
 ## Files Changed
 
