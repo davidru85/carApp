@@ -220,6 +220,53 @@ class FuelEntryStateHoldersTest {
         }
 
     @Test
+    fun modeSwitchReDerivesWithTheAcceptedOneScaleUnitRoundingDrift() =
+        runTest {
+            val holder = createForm(backgroundScope, FakeFuelEntryRepository())
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            holder.setLitersScaled(40_001L)
+            holder.setPricePerLiterScaled(1_549L)
+            advanceUntilIdle()
+
+            assertEquals(6_196L, holder.state.value.totalCostMinor)
+
+            holder.setMoneyInputMode(MoneyInputMode.PRICE_AND_TOTAL)
+            advanceUntilIdle()
+
+            with(holder.state.value) {
+                assertEquals(40_000L, litersScaled)
+                assertEquals(1_549L, pricePerLiterScaled)
+                assertEquals(6_196L, totalCostMinor)
+            }
+        }
+
+    @Test
+    fun modeSwitchKeepsAllValuesWhenTheParticipatingPairIsPresent() =
+        runTest {
+            val holder = createForm(backgroundScope, FakeFuelEntryRepository())
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            holder.setLitersScaled(40_000L)
+            holder.setPricePerLiterScaled(1_500L)
+            advanceUntilIdle()
+
+            holder.setMoneyInputMode(MoneyInputMode.LITERS_AND_TOTAL)
+            advanceUntilIdle()
+            with(holder.state.value) {
+                assertEquals(40_000L, litersScaled)
+                assertEquals(1_500L, pricePerLiterScaled)
+                assertEquals(6_000L, totalCostMinor)
+            }
+
+            holder.setMoneyInputMode(MoneyInputMode.PRICE_AND_TOTAL)
+            advanceUntilIdle()
+            with(holder.state.value) {
+                assertEquals(40_000L, litersScaled)
+                assertEquals(1_500L, pricePerLiterScaled)
+                assertEquals(6_000L, totalCostMinor)
+            }
+        }
+
+    @Test
     fun createPublishesWarningThenCompletionOnlyAfterConfirmation() =
         runTest {
             val repository = FakeFuelEntryRepository()
