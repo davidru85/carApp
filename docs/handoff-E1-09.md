@@ -139,3 +139,31 @@
 ## Human Review Gate
 
 - Applies — Owner review is required before merge. The agent MUST NOT merge the PR.
+
+## Review Fixes Applied
+
+The following review findings were addressed after the initial PR submission, following the
+TDD protocol (RED → GREEN → REFACTOR commits):
+
+- **B1 (Blocker):** `VehicleListView` swipe-to-delete now calls `requestDelete` and presents a
+  confirmation alert before `confirmDelete`, matching Android's two-step protocol. Unit tests
+  verify `requestDelete` emits `INFO.CONFIRM_DELETE_VEHICLE` without deleting, and
+  `confirmDelete` removes the vehicle. A UITest verifies the confirmation dialog appears.
+- **B2 (Blocker):** Removed dead `DiagnosticsViewModel` class (never instantiated;
+  `DiagnosticsView` uses `WalkingSkeletonModel`).
+- **B3 (Blocker):** Removed the E1-11 commit from the PR branch via rebase; E1-11 backlog
+  content belongs in its own PR.
+- **M1:** Corrected handoff to list `FuelEntryListViewModel` instead of the non-existent
+  `VehicleDetailViewModel`.
+- **M2:** Removed unused localized strings (`consumption_value`, `money_value`,
+  `sync_status_local`, `sync_status_idle`) from both `en.lproj` and `es.lproj`.
+- **M3:** Removed `graph.close()` from `WalkingSkeletonModel.deinit` and the unused `graph`
+  reference; graph ownership stays in `carAppApp`. `VehicleListViewModel` no longer closes the
+  cached `VehicleListStateHolder` in `deinit`, preventing premature closure of shared holders.
+- **M4:** Removed redundant `onChange(of: isSaveComplete)` double-dismiss in
+  `VehicleFormView` and `FuelEntryFormView`; dismiss is handled by the save callback.
+- **M5:** Extracted `epochMillisFromDate` helper in `FuelEntryCalendarDay` to centralise the
+  `Double`-to-`Int64` epoch millis conversion.
+- **M6:** Resolved by M4 — the deprecated `onChange` single-parameter closure is removed.
+- **M7:** Fixed `formatScaled` to preserve the negative sign for negative scaled values;
+  `formatScaled(-1, scale: 2)` now returns `"-0.01"` instead of `"0.01"`.

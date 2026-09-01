@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-01 — E1-09 review fixes: B1 B2 B3 M1-M7
+
+- **Type:** correction
+- **Story / Decision:** `E1-09` / —
+- **Author:** opencode agent, on behalf of David Ruiz
+- **What changed:** applied 3 blocker and 7 minor review findings to PR #40. B1: `VehicleListView` swipe-to-delete now shows a confirmation alert before deleting (two-step protocol matching Android). B2: removed dead `DiagnosticsViewModel` class. B3: removed out-of-scope E1-11 commit from the PR branch via rebase. M1: corrected handoff `VehicleDetailViewModel` → `FuelEntryListViewModel`. M2: removed 4 unused localized strings. M3: removed `graph.close()` from `WalkingSkeletonModel.deinit` and `VehicleListStateHolder.close()` from `VehicleListViewModel.deinit` to prevent premature closure of shared graph holders. M4: removed redundant `onChange` double-dismiss in both form views. M5: extracted `epochMillisFromDate` helper in `FuelEntryCalendarDay`. M6: resolved by M4 (deprecated `onChange` signature removed). M7: fixed `formatScaled` negative sign handling.
+- **Why:** code review of PR #40 identified a data-loss risk (swipe-delete without confirmation), dead code, an out-of-scope commit, and several minor quality issues. TDD protocol followed: RED commit (`24bb51f`) with failing tests, GREEN commit (`47b6209`) with all fixes, REFACTOR commit for documentation.
+- **Documents touched:** `docs/handoff-E1-09.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** `xcodebuild test` on iOS Simulator: 18 unit tests passed, 2 UI tests passed (1 skipped for App Check). Full Gradle verification: `BUILD SUCCESSFUL` (ktlint, detekt, architecture, contract, kover, Android assemble, host tests, iOS Kotlin/Native tests).
+- **Follow-ups / risks:** E1-11 backlog content was removed from this PR and needs its own PR.
+
 ### 2026-09-01 — E1-09: iOS UI for Vehicles and Fuel Entries
 
 - **Type:** story
