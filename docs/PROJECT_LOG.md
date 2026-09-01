@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-01 — E1-11 registered: `:feature:vehicle` outbox payload `entityType` fix
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** added backlog story `E1-11` to `docs/BACKLOG.md` Phase 1, sized S, registering GitHub issue #36. The story restores `docs/CONTRACTS.md §8` compliance of every outbox payload produced by `VehicleOutboxMapper`. Issue #36 reports only `toFuelEntryTombstonePayload`; review of the same mapper found `toVehicleOutboxPayloadOrNull` also omits `entityType`, affecting the vehicle create, update and tombstone write paths of `SqlDelightVehicleRepository`, so the story covers both mappers. Also added the dependency-graph line, the execution-order rationale and the story-index row.
+- **Why:** the defect had no backlog owner: it existed only as a follow-up risk in `docs/handoff-E1-06.md` and the 2026-08-29 log entry. `docs/CONTRACTS.md §8` requires `entityType` in every outbox payload and coalesces on `(entityType, entityId)`, so a Vehicle cascade delete can replace a conformant Fuel Entry payload with an incomplete one. Both omissions were folded into one story because they share a root cause and a single fix surface; splitting them would have produced two PRs touching the same file.
+- **Documents touched:** `docs/BACKLOG.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** documentation-only change; no code, schema or contract change. The referenced test symbols were confirmed to exist: `VehicleRepositoryDeleteTest.permanentOwnerDeleteEnqueuesFuelTombstonesBeforeTheVehicleTombstone` and `VehicleRepositoryCreateTest.permanentOwnerCreateEnqueuesTheFullVehicleSnapshot`.
+- **Follow-ups / risks:** closes the follow-up of the 2026-09-01 E1-09 review-fixes entry, which recorded that the E1-11 backlog content was removed from PR #40 and needed its own PR. `E1-11` implementation remains open and MUST precede `E2-06` and `E3-03`. Adding `entityType` to the Vehicle payload will fail the exact key-set assertion in `VehicleRepositoryCreateTest`; the implementing agent must update it.
+
 ### 2026-09-01 — E1-09 review fixes: B1 B2 B3 M1-M7
 
 - **Type:** correction
