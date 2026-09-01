@@ -224,6 +224,12 @@ jobs:
         run: |
           xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator \
             -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build
+      - name: Run iOS tests
+        working-directory: iosApp
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available iPhone | grep -E -o '[0-9A-F]{8}-([0-9A-F]{4}-){3}[0-9A-F]{12}' | head -n 1)
+          xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator \
+            -destination "id=$DEVICE_ID" test
 
   objc-header-golden-check:
     name: objc-header-golden-check

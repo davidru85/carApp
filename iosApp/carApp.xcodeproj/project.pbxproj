@@ -10,21 +10,29 @@
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
 		1132B312C49E6B6844B3934B /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 8EB8A37AF599C28041EB55CA /* es.lproj */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
+		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
 		4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */; };
 		5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */; };
+		5DD3FA0766D149AEDEB1E011 /* VehicleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B896BC0A600D06C316462EF0 /* VehicleFormView.swift */; };
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
 		7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
+		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
 		C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */; };
+		C29BDB90C0C08E04E47A95FD /* ViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4DDF68481A819B505F8816 /* ViewModels.swift */; };
 		C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */; };
+		CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */; };
+		CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */; };
+		EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 90CED6835AA58C9424996B48 /* en.lproj */; };
 		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
+		F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,22 +53,30 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
+		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
 		2D997286223049D1A5F7AA30 /* carAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryCalendarDay.swift; sourceTree = "<group>"; };
 		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
 		33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMapping.swift; sourceTree = "<group>"; };
+		3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelLifecycleTests.swift; sourceTree = "<group>"; };
 		48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMappingTests.swift; sourceTree = "<group>"; };
 		4B75BD49AED901E7C93582F7 /* carAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAndFuelFlowUITests.swift; sourceTree = "<group>"; };
+		8B4DDF68481A819B505F8816 /* ViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels.swift; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
 		8EB8A37AF599C28041EB55CA /* es.lproj */ = {isa = PBXFileReference; path = es.lproj; sourceTree = "<group>"; };
+		8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryFormView.swift; sourceTree = "<group>"; };
 		90CED6835AA58C9424996B48 /* en.lproj */ = {isa = PBXFileReference; path = en.lproj; sourceTree = "<group>"; };
 		93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarAppKeychainPersistenceUITests.swift; sourceTree = "<group>"; };
 		96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayTests.swift; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -102,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */,
+				88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -112,6 +129,7 @@
 				96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */,
 				278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */,
 				48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */,
+				3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -122,11 +140,17 @@
 				15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */,
 				2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */,
 				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
+				76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */,
 				90CED6835AA58C9424996B48 /* en.lproj */,
 				8EB8A37AF599C28041EB55CA /* es.lproj */,
 				2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */,
+				8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */,
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
 				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
+				031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */,
+				B896BC0A600D06C316462EF0 /* VehicleFormView.swift */,
+				2AB807E6528E387D28949629 /* VehicleListView.swift */,
+				8B4DDF68481A819B505F8816 /* ViewModels.swift */,
 				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
 				2850FA255307524833517781 /* Debug */,
 				C9FE68B9523949AB829ECCA0 /* Tests */,
@@ -282,6 +306,7 @@
 				4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */,
 				1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */,
 				5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */,
+				CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -291,9 +316,15 @@
 			files = (
 				C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */,
 				8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */,
+				CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */,
 				0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */,
+				1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */,
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
 				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,
+				EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */,
+				5DD3FA0766D149AEDEB1E011 /* VehicleFormView.swift in Sources */,
+				A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */,
+				C29BDB90C0C08E04E47A95FD /* ViewModels.swift in Sources */,
 				3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */,
 				624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */,
 			);
@@ -304,6 +335,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */,
+				F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

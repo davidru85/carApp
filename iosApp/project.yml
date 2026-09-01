@@ -25,6 +25,12 @@ targets:
       - path: ScaledFormatting.swift
       - path: FuelEntryCalendarDay.swift
       - path: UiMessageMapping.swift
+      - path: ViewModels.swift
+      - path: VehicleListView.swift
+      - path: VehicleDetailView.swift
+      - path: VehicleFormView.swift
+      - path: FuelEntryFormView.swift
+      - path: DiagnosticsView.swift
       - path: en.lproj
         buildPhase: resources
       - path: es.lproj

@@ -8,16 +8,20 @@ final class CarAppKeychainPersistenceUITests: XCTestCase {
     }
 
     func testAnonymousSessionSurvivesARealProcessRestart() throws {
-        let debugToken = try XCTUnwrap(
-            ProcessInfo.processInfo.environment["CARAPP_IOS_APP_CHECK_DEBUG_TOKEN"],
-            "A registered simulator-only App Check debug token is required."
-        )
+        guard let debugToken = ProcessInfo.processInfo.environment["CARAPP_IOS_APP_CHECK_DEBUG_TOKEN"],
+              !debugToken.isEmpty else {
+            throw XCTSkip("A registered simulator-only App Check debug token is required.")
+        }
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launchEnvironment["AppCheckDebugToken"] = debugToken
 
         app.launch()
         addTeardownBlock { app.terminate() }
+
+        let diagnosticsButton = app.buttons["diagnostics_button"]
+        XCTAssertTrue(diagnosticsButton.waitForExistence(timeout: timeout))
+        diagnosticsButton.tap()
 
         let anonymousButton = app.buttons["Continue without an account"]
         XCTAssertTrue(anonymousButton.waitForExistence(timeout: timeout))
@@ -30,6 +34,10 @@ final class CarAppKeychainPersistenceUITests: XCTestCase {
         app.terminate()
         XCTAssertEqual(app.state, .notRunning)
         app.launch()
+
+        let diagnosticsButtonAfterRestart = app.buttons["diagnostics_button"]
+        XCTAssertTrue(diagnosticsButtonAfterRestart.waitForExistence(timeout: timeout))
+        diagnosticsButtonAfterRestart.tap()
 
         XCTAssertTrue(
             app.staticTexts["Session: Anonymous backup active"]

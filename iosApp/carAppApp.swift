@@ -6,17 +6,19 @@ import SwiftUI
 @main
 struct carAppApp: App {
     @StateObject private var model: WalkingSkeletonModel
+    private let graph: SwiftAppGraph
 
     init() {
         configureAppCheck()
         configureFirebase()
         let graph = createSwiftAppGraph(isDebugBuild: isDebugBuild)
+        self.graph = graph
         _model = StateObject(wrappedValue: WalkingSkeletonModel(graph: graph))
     }
 
     var body: some Scene {
         WindowGroup {
-            ContentView(model: model)
+            ContentView(model: model, graph: graph)
         }
     }
 }
