@@ -112,6 +112,7 @@ class VehicleFormStateHolderTest {
                 assertEquals(0L, outbox.nextAttemptAt)
                 assertEquals(
                     setOf(
+                        "entityType",
                         "id",
                         "ownerId",
                         "name",

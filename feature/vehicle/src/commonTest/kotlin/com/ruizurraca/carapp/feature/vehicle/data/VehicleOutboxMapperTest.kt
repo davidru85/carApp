@@ -11,8 +11,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.time.Instant
 
 class VehicleOutboxMapperTest {
@@ -38,7 +38,13 @@ class VehicleOutboxMapperTest {
 
         assertEquals(MAPPER_VEHICLE_ID, json.getValue("id").jsonPrimitive.content)
         assertEquals("owner-a", json.getValue("ownerId").jsonPrimitive.content)
-        assertEquals(false, json.getValue("deleted").jsonPrimitive.content.toBoolean())
+        assertEquals(
+            false,
+            json
+                .getValue("deleted")
+                .jsonPrimitive.content
+                .toBoolean(),
+        )
         listOf("syncState", "localRevision", "localMutationSeq", "serverUpdatedAt", "nameFold", "currentOdometerKm")
             .forEach { assertFalse(it in json) }
     }
@@ -56,7 +62,13 @@ class VehicleOutboxMapperTest {
         val payload = fuelEntryRow().toFuelEntryTombstonePayload(ownerId = "owner-a", timestamp = 2_000L)
         val json = Json.parseToJsonElement(payload).jsonObject
 
-        assertEquals(true, json.getValue("deleted").jsonPrimitive.content.toBoolean())
+        assertEquals(
+            true,
+            json
+                .getValue("deleted")
+                .jsonPrimitive.content
+                .toBoolean(),
+        )
         assertEquals("2000", json.getValue("deletedAt").jsonPrimitive.content)
         listOf("syncState", "localRevision", "localMutationSeq", "serverUpdatedAt")
             .forEach { assertFalse(it in json) }
