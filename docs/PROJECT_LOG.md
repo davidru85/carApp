@@ -38,6 +38,47 @@
 
 ## Entries
 
+### 2026-09-01 — Launcher icons designed in Figma for both platforms
+
+- **Type:** milestone
+- **Story / Decision:** —
+- **Author:** Claude (Claude Code session), on behalf of David Ruiz
+- **What changed:** added `design/figma/19-android-launcher-icon.figma.js` and
+  `20-ios-launcher-icon.figma.js`, and executed both against the live file. Each page gained a
+  `launcher-icon` section at `y=2300`. Android holds the three adaptive-icon source layers
+  (`ic_launcher_background`, `_foreground`, `_monochrome`) on a 108dp canvas drawn at 4x, the
+  safe-zone diagram, the four launcher masks, the themed-icon pair, a density legibility ladder
+  and the 512 Play Store render. iOS holds the three 1024 appearance masters (Any, Dark, Tinted),
+  the two Icon Composer layers, a superellipse size ladder from 180 to 40 px, and the export
+  spec. Both reuse the welcome screen's mark — the Expressive scalloped container on Android, the
+  raised glass disc on iOS, the lucide car glyph on both — and resolve every fill through the
+  existing token collections, with one deliberate exception recorded below.
+- **Why:** `E4-04` requires app icons to exist, and nothing in the repository or the Figma file
+  had ever designed one. Producing the design first turns that acceptance criterion into a
+  transcription job. The boards are sources, not shipped assets: neither
+  `androidApp/src/main/res/mipmap-anydpi-v26/` nor `iosApp/Assets.xcassets/` exists yet.
+- **Documents touched:** `design/figma/19-android-launcher-icon.figma.js` (new),
+  `design/figma/20-ios-launcher-icon.figma.js` (new), `design/figma/README.md`, and this log. No
+  normative document changed; `design/` is tooling and carries no authority (`AGENTS.md`,
+  `docs/DESIGN.md`).
+- **Verification:** all 21 scripts in `design/figma/` pass `node --check` when wrapped in an async
+  IIFE, matching how `use_figma` wraps them. Both scripts were executed against the live file and
+  the result inspected visually; each page was then re-read and confirmed to hold its original
+  twelve frames unchanged plus exactly one new section. Two defects were found by that inspection
+  and fixed by a second run: the Android scalloped container was drawn at the full 66dp safe zone,
+  where the circle mask sheared its points flat and left `primary` as corner slivers, and is now
+  52dp; the iOS ambient plate was based on the white `background/system` as the screens are, which
+  let the top-right corner resolve to near-white behind a white glass disc, and is now based on
+  `background/ambient-a`. No product code, build script or Gradle input changed, so no test, lint,
+  coverage, architecture or contract check is affected by this change.
+- **Follow-ups / risks:** the boards are sections rather than frames on purpose —
+  `13-dark-screen-row.figma.js` clones every top-level **frame** that is not already a dark twin,
+  so a frame here would be duplicated into the dark row at `y=1100` on its next run. Keep them
+  sections. The iOS Tinted master is built from literal greys rather than tokens, because Apple's
+  tinted appearance requires a grayscale asset; it is the only intentional token exception in the
+  folder and must not be "fixed". `docs/DESIGN.md` indexes `design/figma/` but does not yet
+  mention the launcher icons. `E4-04` still owns creating the actual asset catalogs.
+
 ### 2026-09-01 — E1-08 first-round review corrections completed
 
 - **Type:** correction
