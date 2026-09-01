@@ -106,5 +106,10 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-97 | [ADR-0098](0098-export-fuel-presentation-with-stable-abi.md) | Export Fuel presentation with a stable refined ABI. | Accepted |
 | D-98 | [ADR-0099](0099-publish-kotlin-only-fuel-save-completion.md) | Publish Kotlin-only Fuel save completion. | Accepted |
 | D-99 | [ADR-0100](0100-preserve-and-rederive-fuel-money-values-on-mode-switch.md) | Preserve and re-derive Fuel money values on mode switch. | Accepted |
+| D-100 | [ADR-0101](0101-walking-skeleton-debug-diagnostics-screen.md) | Walking-skeleton debug diagnostics screen. | Accepted |
+| D-101 | [ADR-0102](0102-ios-deployment-target-and-observableobject-lifecycle.md) | iOS deployment target and ObservableObject lifecycle. | Accepted |
+| D-102 | [ADR-0103](0103-ios-unit-and-ui-test-targets-in-ci.md) | iOS unit and UI test targets in CI. | Accepted |
+| D-103 | [ADR-0104](0104-ios-navigationstack-and-sheet-presentation.md) | iOS NavigationStack and sheet presentation. | Accepted |
+| D-104 | [ADR-0105](0105-scaled-value-formatting-parity-on-ios.md) | Scaled value formatting parity on iOS. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

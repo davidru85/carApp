@@ -114,6 +114,11 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-97 | Fuel presentation iOS export | Refined `:feature:fuel` export with exact existing ABI names | Accepted | Moves presentation ownership without leaking non-allowlisted declarations. |
 | D-98 | Fuel form save completion | Kotlin-only holder completion flow | Accepted | Removes Android navigation races without changing exported UI state. |
 | D-99 | Fuel money mode-switch derivation | Preserve available values and re-derive the non-participating value through D-93 | Accepted | Keeps mode changes reversible while making accepted scale-rounding drift visible before save. |
+| D-100 | Walking-skeleton debug diagnostics screen | Move anonymous session start and backup restore controls to a Debug diagnostics screen | Accepted | Retains automated E0-07 evidence and Keychain persistence verification while keeping production UI clean. |
+| D-101 | iOS deployment target and ObservableObject lifecycle | `IPHONEOS_DEPLOYMENT_TARGET = 16.0`, `@MainActor ObservableObject`, single observation task per holder, cancelled in `deinit` with keyed release | Accepted | Preserves iOS 16 compatibility and enforces strict holder lifecycle bounds without macro dependencies. |
+| D-102 | iOS test targets in CI | Dedicated `carAppTests` unit test target + extended `carAppUITests`, both run in protected `ios-simulator-build` CI job | Accepted | Separates Swift unit tests from UI tests while preserving branch protection status check names. |
+| D-103 | iOS NavigationStack and sheet presentation | Root `NavigationStack` with typed route for list -> detail; modal `.sheet` for Vehicle and Fuel forms | Accepted | Follows iOS HIG and provides modal isolation with explicit cancel/save semantics. |
+| D-104 | Scaled value formatting parity on iOS | Swift pure integer formatting with strict scale constants (1000, 1000, 100, 100) and comma/dot parsing | Accepted | Replicates Android arithmetic and prevents floating-point inaccuracies. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

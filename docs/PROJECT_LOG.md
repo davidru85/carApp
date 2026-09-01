@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-09-01 — E1-09 review fixes: B1 B2 B3 M1-M7
+
+- **Type:** correction
+- **Story / Decision:** `E1-09` / —
+- **Author:** opencode agent, on behalf of David Ruiz
+- **What changed:** applied 3 blocker and 7 minor review findings to PR #40. B1: `VehicleListView` swipe-to-delete now shows a confirmation alert before deleting (two-step protocol matching Android). B2: removed dead `DiagnosticsViewModel` class. B3: removed out-of-scope E1-11 commit from the PR branch via rebase. M1: corrected handoff `VehicleDetailViewModel` → `FuelEntryListViewModel`. M2: removed 4 unused localized strings. M3: removed `graph.close()` from `WalkingSkeletonModel.deinit` and `VehicleListStateHolder.close()` from `VehicleListViewModel.deinit` to prevent premature closure of shared graph holders. M4: removed redundant `onChange` double-dismiss in both form views. M5: extracted `epochMillisFromDate` helper in `FuelEntryCalendarDay`. M6: resolved by M4 (deprecated `onChange` signature removed). M7: fixed `formatScaled` negative sign handling.
+- **Why:** code review of PR #40 identified a data-loss risk (swipe-delete without confirmation), dead code, an out-of-scope commit, and several minor quality issues. TDD protocol followed: RED commit (`24bb51f`) with failing tests, GREEN commit (`47b6209`) with all fixes, REFACTOR commit for documentation.
+- **Documents touched:** `docs/handoff-E1-09.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** `xcodebuild test` on iOS Simulator: 18 unit tests passed, 2 UI tests passed (1 skipped for App Check). Full Gradle verification: `BUILD SUCCESSFUL` (ktlint, detekt, architecture, contract, kover, Android assemble, host tests, iOS Kotlin/Native tests).
+- **Follow-ups / risks:** E1-11 backlog content was removed from this PR and needs its own PR.
+
+### 2026-09-01 — E1-09: iOS UI for Vehicles and Fuel Entries
+
+- **Type:** story
+- **Story / Decision:** `E1-09` / `D-100`, `D-101`, `D-102`, `D-103`, `D-104`
+- **Author:** Gemini (Antigravity session), on behalf of David Ruiz
+- **What changed:** implemented native iOS SwiftUI views (`VehicleListView`, `VehicleFormView`, `VehicleDetailView`, `FuelEntryFormView`), `@MainActor ObservableObject` view models with bounded holder lifecycles, scaled value formatting parity with Android (scales 1000, 1000, 100, 100), device-local calendar day conversions, localized UI error mapping, walking-skeleton debug diagnostics view under `#if DEBUG`, dedicated unit test target `carAppTests` (15 tests), end-to-end UI automation in `carAppUITests`, and added iOS test execution to the protected `ios-simulator-build` CI job.
+- **Why:** Delivers Phase 1 story E1-09 providing native iOS user interfaces for Vehicle management (F-2) and Fuel Entry management (F-3) with functional parity with Android while strictly preserving the exported Swift ABI and avoiding business logic duplication in Swift.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0101-walking-skeleton-debug-diagnostics-screen.md`, `docs/adr/0102-ios-deployment-target-and-observableobject-lifecycle.md`, `docs/adr/0103-ios-unit-and-ui-test-targets-in-ci.md`, `docs/adr/0104-ios-navigationstack-and-sheet-presentation.md`, `docs/adr/0105-scaled-value-formatting-parity-on-ios.md`, `docs/handoff-E1-09.md`, `.github/workflows/ci.yml`.
+- **Verification:** `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -sdk iphonesimulator test` passed 15 unit tests and 1 UI test (1 skipped for AppCheck). Full repository checks pass.
+- **Follow-ups / risks:** E1-10 will deliver persisted user settings (including selected currency).
+
 ### 2026-09-01 — Launcher icons designed in Figma for both platforms
 
 - **Type:** milestone

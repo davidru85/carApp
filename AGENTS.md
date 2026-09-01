@@ -89,15 +89,15 @@ has made provider decoupling executable before any Firebase integration module e
 accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is merged and
 `E0-07`, the walking skeleton, `E1-02`, the Vehicle domain story, `E1-03`, the Vehicle data story,
 `E1-04`, the Fuel Entry domain story, and `E1-05`, the human-gated consumption calculation story,
-`E1-06`, Fuel Entry data, `E1-07`, Android Vehicle UI, and `E1-08`, Android Fuel Entry UI, are
-complete. `E1-09`, iOS UI, is the next planned Phase 1 story.
+`E1-06`, Fuel Entry data, `E1-07`, Android Vehicle UI, `E1-08`, Android Fuel Entry UI, and
+`E1-09`, iOS UI: Vehicles and Fuel Entries, are complete. `E1-10`, Settings, is the next planned Phase 1 story.
 
 ### Delivery status and remaining work
 
-- **Completed:** all Phase 0 stories; `E1-01` through `E1-08`; the pulled-forward `E3-06` and
+- **Completed:** all Phase 0 stories; `E1-01` through `E1-09`; the pulled-forward `E3-06` and
   `E3-01` prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
-- **Next:** `E1-09`, iOS UI.
-- **Remaining Phase 1:** `E1-09` and `E1-10`.
+- **Next:** `E1-10`, Settings.
+- **Remaining Phase 1:** `E1-10`.
 - **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07` and `E3-09`. `E3-01` and `E3-06` are already complete.

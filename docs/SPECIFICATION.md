@@ -575,6 +575,11 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-97 | Fuel presentation iOS export | Export refined `:feature:fuel` presentation declarations through the sole Shared framework with byte-identical names and signatures. | Accepted |
 | D-98 | Fuel form save completion | Navigate after an explicit Kotlin-only Fuel Entry save-completion event rather than inferring success from form state. | Accepted |
 | D-99 | Fuel money mode-switch derivation | Preserve available money values and immediately re-derive the value outside the selected mode through the D-93 resolver. | Accepted |
+| D-100 | Walking-skeleton debug diagnostics screen | Move anonymous session start and backup restore controls to a Debug-only diagnostics screen reachable from the navigation bar. | Accepted |
+| D-101 | iOS deployment target and ObservableObject lifecycle | Set `IPHONEOS_DEPLOYMENT_TARGET = 16.0`, `@MainActor ObservableObject` screen models, single observation task in `init`, cancellation in `deinit`, keyed release call. | Accepted |
+| D-102 | iOS test targets in CI | Dedicated `carAppTests` unit test target + extended `carAppUITests`, both run in protected `ios-simulator-build` CI job. | Accepted |
+| D-103 | iOS NavigationStack and sheet presentation | Root `NavigationStack` with typed route for list -> detail; modal `.sheet` presentation for Vehicle Form and Fuel Entry Form. | Accepted |
+| D-104 | Scaled value formatting parity on iOS | Swift pure integer formatting with strict scale constants (1000, 1000, 100, 100) and comma/dot parsing. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
