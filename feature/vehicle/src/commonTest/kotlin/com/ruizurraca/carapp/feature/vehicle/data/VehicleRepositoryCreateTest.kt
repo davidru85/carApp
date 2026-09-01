@@ -70,6 +70,7 @@ class VehicleRepositoryCreateTest {
                 val payload = Json.parseToJsonElement(queued.payload).jsonObject
                 assertEquals(
                     setOf(
+                        "entityType",
                         "id",
                         "ownerId",
                         "name",
@@ -85,6 +86,7 @@ class VehicleRepositoryCreateTest {
                     ),
                     payload.keys,
                 )
+                assertEquals("VEHICLE", payload.getValue("entityType").jsonPrimitive.content)
                 assertEquals("owner-a", payload.getValue("ownerId").jsonPrimitive.content)
                 assertEquals("false", payload.getValue("deleted").jsonPrimitive.content)
                 assertEquals(1, queued.localRevision)

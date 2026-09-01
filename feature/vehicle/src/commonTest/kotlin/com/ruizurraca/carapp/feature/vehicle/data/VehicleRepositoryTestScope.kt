@@ -111,6 +111,19 @@ internal class VehicleRepositoryTestScope(
         )
     }
 
+    suspend fun seedFuelEntryOutbox(
+        id: String,
+        payload: String,
+        localRevision: Long = 1L,
+    ) {
+        database.databaseQueries.coalesceOutbox(
+            entityType = "FUEL_ENTRY",
+            entityId = id,
+            payload = payload,
+            localRevision = localRevision,
+        )
+    }
+
     suspend fun vehicle(id: String = VEHICLE_ID): DatabaseVehicle? =
         database.databaseQueries.selectVehicleById(id).awaitAsOneOrNull()
 

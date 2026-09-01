@@ -81,6 +81,7 @@ class VehicleRepositoryUpdateTest {
                 val payload = Json.parseToJsonElement(queued.payload).jsonObject
                 assertEquals(original.seq, queued.seq)
                 assertEquals(2, queued.localRevision)
+                assertEquals("VEHICLE", payload.getValue("entityType").jsonPrimitive.content)
                 assertEquals("Roadster Updated", payload.getValue("name").jsonPrimitive.content)
                 assertEquals("false", payload.getValue("deleted").jsonPrimitive.content)
             }
