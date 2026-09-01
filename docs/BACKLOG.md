@@ -460,6 +460,49 @@ Acceptance criteria:
 - An update with both fields `null` returns `ValidationError.NoOp` and mutates nothing.
 - Settings are deleted by destructive local-data flows and recreated from locale defaults with `analyticsEnabled = false`.
 
+### E1-11 - `:feature:vehicle` Outbox Payload `entityType` Fix - S
+
+Status: open. Registered as GitHub issue #36. Tracked as a follow-up of `E1-06` in
+`docs/handoff-E1-06.md` and `docs/PROJECT_LOG.md` (2026-08-29 entry). Issue #36 reports the Fuel
+Entry cascade tombstone only; the `entityType` omission in the Vehicle payload of the same mapper
+is an additional finding folded into this story, because both defects share one root cause and one
+fix surface.
+
+Restore `docs/CONTRACTS.md §8` compliance of every outbox payload produced by `VehicleOutboxMapper`
+in `:feature:vehicle`: the Vehicle snapshot written by the create, update and tombstone paths, and
+the Fuel Entry tombstone written by the Vehicle cascade-delete path.
+
+Acceptance criteria:
+
+- `VehicleOutboxMapper.toFuelEntryTombstonePayload` emits `"entityType":"FUEL_ENTRY"` in the
+  payload, matching the shape of `FuelEntryOutboxMapper.toFuelEntryOutboxPayloadOrNull` in
+  `:feature:fuel` and the outbox payload format of `docs/CONTRACTS.md §8`.
+- `VehicleOutboxMapper.toVehicleOutboxPayloadOrNull` emits `"entityType":"VEHICLE"` in the payload,
+  which covers all three of its `SqlDelightVehicleRepository` call sites: vehicle create, vehicle
+  update and the vehicle tombstone of the delete path.
+- Every outbox payload writer reachable from `:feature:vehicle` and `:feature:fuel` emits
+  `entityType`; a test asserts its presence and value for each write path: Vehicle create, Vehicle
+  update, Vehicle tombstone and cascade Fuel Entry tombstone.
+- A coalesced `(FUEL_ENTRY, entityId)` outbox row has the same key set regardless of whether the
+  last write came from the direct Fuel Entry path or the Vehicle cascade-delete path; a test proves
+  that a Vehicle cascade delete followed by, or preceded by, a Fuel Entry write yields a payload
+  that contains `entityType`.
+- The existing `VehicleRepositoryDeleteTest.permanentOwnerDeleteEnqueuesFuelTombstonesBeforeTheVehicleTombstone`
+  test is extended to assert the presence of `entityType` in every coalesced Fuel Entry tombstone
+  payload produced by the cascade path, and in the vehicle tombstone payload of the same delete.
+- The exact key-set assertion in
+  `VehicleRepositoryCreateTest.permanentOwnerCreateEnqueuesTheFullVehicleSnapshot` is updated to
+  include `entityType`; the assertion stays exact so a future omission fails the build.
+- No outbox row is created while the owner is `LOCAL_OWNER`; the `LOCAL_OWNER + PENDING + no outbox`
+  invariant is preserved.
+- No schema or migration change is introduced; the fix is confined to
+  `:feature:vehicle` mapper and test code.
+- `docs/CONTRACTS.md §8` and `docs/TECHNICAL_PLAN.md` require no edit: the contract already
+  mandates `entityType`; this story makes the code conform to it. The handoff records the closure of
+  the `E1-06` follow-up, the GitHub issue and the additional Vehicle payload finding.
+
+Blocks: E2-06.
+
 ## Phase 2 - Authentication
 
 ### E2-01 - `:core:auth` - S
@@ -880,6 +923,7 @@ E0-00 owner decisions (completed)
               -> E3-01 Firestore rules (pulled forward by D-40)
                   -> E0-07 walking skeleton gate (moved here by D-30)
                       -> the rest of Phase 1
+                      -> E1-11 vehicle outbox entityType fix blocks E2-06
                       -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
                       -> Phase 3 sync wiring depends on Phases 1 and 2
                       -> Phase 4
@@ -893,6 +937,14 @@ E2-02 Firebase Auth integration + E3-04 repository sync wiring -> E3-12 cross-de
 `AnalyticsTracker`. `E0-07` is a Phase 1 story since `D-30`, because it needs the local database
 from `:core:database` (`E1-01`). `D-42` and `D-40` add the security prerequisite chain
 `E3-06 -> E3-01 -> E0-07` without moving E0-07 out of Phase 1.
+
+`E1-11` closes the GitHub issue #36 follow-up of `E1-06`, plus the same `entityType` omission in
+the Vehicle payload of `VehicleOutboxMapper`, and MUST precede `E2-06` because local owner adoption
+enqueues an outbox snapshot for every non-synced Vehicle and Fuel Entry row and coalesces those
+snapshots onto cascade tombstones, while the adoption acceptance criteria require deterministic
+outbox order; a Vehicle snapshot or a tombstone missing `entityType` makes the enqueued or coalesced
+payload non-conformant with `docs/CONTRACTS.md §8`. `E1-11` also MUST precede `E3-03` because the
+sync engine is the first consumer that assumes every outbox payload satisfies §8.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -924,6 +976,7 @@ proof after E3-04.
 | E1-08 Android UI fuel entries (completed) | 1 | L | — |
 | E1-09 iOS UI | 1 | L | — |
 | E1-10 Settings persistence | 1 | S | — |
+| E1-11 `:feature:vehicle` outbox payload entityType fix | 1 | S | — |
 | E2-01 `:core:auth` | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 | 2 | M | — |
