@@ -38,7 +38,26 @@
 
 ## Entries
 
-### 2026-09-01 — E1-10 second-review verification and lifecycle corrections
+### 2026-09-01 — E1-11 vehicle outbox payload entityType fix completed
+
+- **Type:** story
+- **Story / Decision:** `E1-11` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** restored `docs/CONTRACTS.md §8` compliance of every outbox payload
+  produced by `VehicleOutboxMapper` in `:feature:vehicle`. The Vehicle snapshot
+  written by create, update and tombstone paths now emits `"entityType":"VEHICLE"`,
+  and the cascade Fuel Entry tombstone now emits `"entityType":"FUEL_ENTRY"`.
+- **Why:** both defects shared one root cause and one fix surface; the contract
+  already mandated `entityType`, so this story made the code conform without any
+  contract, schema, migration or decision change.
+- **Documents touched:** `docs/handoff-E1-11.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** `:feature:vehicle:testAndroidHostTest` passes (76 tests); the
+  exact non-instrumented command from `AGENTS.md` passes with 627 actionable tasks
+  including ktlint, detekt, architecture, contract parity, coverage, Android
+  debug assembly and all required Android-host and Kotlin/Native tests.
+- **Follow-ups / risks:** closes the `E1-06` follow-up, GitHub issue #36 and the
+  additional Vehicle payload finding folded into this story. `E1-12` and `E1-13`
+  remain the other open Phase 1 stories.
 
 - **Type:** correction
 - **Story / Decision:** `E1-10` / `D-109`
