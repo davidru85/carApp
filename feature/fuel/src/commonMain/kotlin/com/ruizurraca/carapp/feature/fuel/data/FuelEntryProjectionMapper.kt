@@ -21,6 +21,8 @@ internal fun LocalFuelEntry.toFuelEntryListItem(segment: SegmentResult?): FuelEn
                 segment is SegmentResult.Invalid -> segment.reason
                 else -> null
             },
+        hasMissedEntries = hasMissedEntries,
+        odometerInconsistent = odometerInconsistent,
     )
 
 internal fun SegmentResult.toEntryId(): EntityId =

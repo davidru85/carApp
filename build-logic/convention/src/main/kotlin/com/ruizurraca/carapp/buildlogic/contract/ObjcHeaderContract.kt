@@ -74,5 +74,16 @@ private val FORBIDDEN_SWIFT_HEADER_SYMBOLS =
         "CurrencyCode" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?CurrencyCode\\b"),
         "VehicleRepository" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?VehicleRepository\\b"),
         "FuelEntryRepository" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?FuelEntryRepository\\b"),
+        "MoneyInput" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?MoneyInput\\b"),
+        "FuelEntryCommand" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?(?:Create|Update)FuelEntryCommand\\b"),
+        "FuelEntryValidation" to
+            Regex(
+                "\\b(?:Shared[A-Za-z0-9_]*)?(?:FuelEntryValidationContext|ValidatedFuelEntryValues|" +
+                    "ValidateCreateFuelEntry|ValidateUpdateFuelEntry|CanonicalMoneyValues)\\b",
+            ),
+        "FuelSaveCompletion" to Regex("\\bobserveSaveCompletions\\b"),
+        "FuelConsumptionUseCase" to
+            Regex("\\b(?:Shared[A-Za-z0-9_]*)?(?:CalculateConsumption|DefaultCalculateConsumption)\\b"),
+        "SqlDelightFuelEntryRepository" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?SqlDelightFuelEntryRepository\\b"),
         "Greeting" to Regex("\\b(?:Shared)?Greeting\\b"),
     )

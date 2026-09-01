@@ -51,6 +51,35 @@ class ObjcHeaderContractTest {
         assertTrue(result.forbidden.isEmpty())
     }
 
+    @Test
+    fun rejectsFuelDomainDataAndUseCaseDeclarations() {
+        val result =
+            validateObjcHeader(
+                completeAllowedHeader() +
+                    """
+                    @interface SharedMoneyInput
+                    @interface SharedCreateFuelEntryCommand
+                    @interface SharedFuelEntryValidationContext
+                    @interface SharedCalculateConsumption
+                    @interface SharedSqlDelightFuelEntryRepository
+                    - (void)observeSaveCompletions;
+                    """.trimIndent(),
+            )
+
+        assertEquals(
+            setOf(
+                "FuelConsumptionUseCase",
+                "FuelEntryCommand",
+                "FuelEntryRepository",
+                "FuelEntryValidation",
+                "FuelSaveCompletion",
+                "MoneyInput",
+                "SqlDelightFuelEntryRepository",
+            ),
+            result.forbidden,
+        )
+    }
+
     private fun completeAllowedHeader(): String =
         REQUIRED_SWIFT_HEADER_SYMBOLS.joinToString("\n") { symbol ->
             when (symbol) {

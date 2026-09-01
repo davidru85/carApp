@@ -922,8 +922,9 @@ Rules:
   bindings. `:wiring:firebase` is the only module that constructs Firebase implementations;
   integration modules MUST NOT reference `buildAppGraph`.
 - `:composition:ios` produces the single framework named `Shared`, declares
-  `api(project(":shared"))`, exports `:shared` plus the `:feature:vehicle` and `:core:common`
-  declarations moved by D-85, depends on `:wiring:firebase` with `implementation`, and owns the
+  `api(project(":shared"))`, exports `:shared` plus the `:feature:vehicle`, `:feature:fuel` and
+  `:core:common` declarations moved by D-85 and D-97, depends on `:wiring:firebase` with
+  `implementation`, and owns the
   only `createSwiftAppGraph(isDebugBuild)` declaration. It contains no product logic, wraps the
   `AppGraph` returned by `buildAppGraph` in `SwiftAppGraph`, and never exports an integration
   module (`D-58`, `D-86`).
@@ -1166,8 +1167,10 @@ Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `
 
 D-88 records the one temporary exception: E1-07 retains D-55 direct Vehicle restoration and
 publishes constant `SyncStatus.Idle` without constructing a provisional `SyncController`. E3-03
-MUST remove that exception, wire every exposing holder to the single controller and add the
-two-holder convergence test.
+MUST remove that exception. D-95 records the parallel Fuel Entry list exception: E1-08 publishes
+constant `SyncStatus.Idle` without constructing a provisional controller. E3-03 MUST remove both
+exceptions, wire every exposing holder to the single controller and add the two-holder convergence
+test.
 
 Platform adapters contain rendering and lifecycle glue only. Validation, formatting decisions, repository calls and business logic remain shared.
 
@@ -1206,7 +1209,8 @@ Koin KMP is the accepted dependency injection library for the MVP.
 
 The public Swift-facing ABI of the `Shared` framework is an allowlist, not "all public Kotlin
 declarations". `:composition:ios` produces the framework and exports the allowlisted declarations
-owned by `:shared`, `:feature:vehicle` and `:core:common`. It MUST NOT export `:integration:*`.
+owned by `:shared`, `:feature:vehicle`, `:feature:fuel` and `:core:common`. It MUST NOT export
+`:integration:*`.
 The allowlist is:
 
 - `SwiftAppGraph`.
@@ -1975,6 +1979,8 @@ data class FuelEntryListItem(
     val isFullTank: Boolean,
     val consumption: ConsumptionL100Km?,
     val invalidReason: ConsumptionInvalidReason?,
+    val hasMissedEntries: Boolean,
+    val odometerInconsistent: Boolean,
 )
 
 data class UserSettings(
@@ -2281,7 +2287,7 @@ No leaf carries a free-text `String`. Adding one is a contract violation. The le
 
 `CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
 
-### 20.10 Shared surface — `:shared`, exported by `:composition:ios`
+### 20.10 Shared surface — `:shared`, feature presentation modules and `:core:common`, exported by `:composition:ios`
 
 ```kotlin
 // Kotlin-facing construction API. Hidden from Objective-C/Swift export.
@@ -2476,6 +2482,11 @@ data class SyncUiState(
 
 Identifiers and currency codes cross the Swift-facing boundary as `String`, never as `EntityId`, `OwnerId` or `CurrencyCode`, per §15.3. Swift-facing `id` fields are lowercase canonical UUID v4 strings. Kotlin-to-Swift conversion is a contract: `EntityId.value` is exactly the field value, already lowercase. Dates cross as epoch milliseconds in UTC. The `litersScaled`, `totalCostMinor`, `odometerKm`, `dateEpochMillis`, `consumptionAverageScaled` and `consumptionScaled` suffixes are the Swift-facing scale documentation; `:shared` README material MUST document those factors for iOS consumers.
 
+`dateEpochMillis` remains an absolute instant. Fuel Entry presentation formats it as a calendar
+day in an injected device time zone. A user-selected day is converted with
+`LocalDate.atStartOfDay(deviceZone)`; the untouched creation default remains the exact `AppClock`
+`now` instant and is never normalised. E1-09 MUST apply the same rule on iOS (`D-96`).
+
 Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and are exposed on the Swift side. Each platform maps them to localized strings in its own resource catalogue.
 
 `UiMessage.code` is exactly one of:
@@ -2499,7 +2510,10 @@ first closes its cached state holders and then closes the wrapped `AppGraph`, so
 connection is released transitively. The D-55 staged Fuel, Session and Sync shells do not acquire
 additional database handles and remain safe to close.
 
-`FuelEntryFormStateHolder.setMoneyInputMode(mode)` clears the form fields that do not participate in the selected mode. `LITERS_AND_PRICE` clears `totalCostMinor`; `LITERS_AND_TOTAL` clears `pricePerLiterScaled`; `PRICE_AND_TOTAL` clears `litersScaled`.
+`FuelEntryFormStateHolder.setMoneyInputMode(mode)` keeps the values already present and immediately
+re-derives the value that does not participate in the selected mode from the participating pair
+through the D-93 resolver. A value previously derived MAY therefore become an input of the next
+derivation. If the participating pair is present, switching modes MUST NOT clear any money value.
 
 `VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
 
@@ -2532,6 +2546,23 @@ header: `SharedVehicleListStateHolder`, `SharedVehicleFormStateHolder`,
 `SharedUiMessage`, `SharedUiMessageKind`, `SharedSyncSyncStatus` and its four existing leaf names.
 Their existing Swift names MUST also remain unchanged. A module-derived rename is a contract
 failure, not an acceptable golden update.
+
+The Fuel Entry declarations moved by D-97 MUST likewise retain the exact names already present in
+the golden: `SharedFuelEntryListStateHolder`, `SharedFuelEntryFormStateHolder`,
+`SharedFuelEntryListUiState`, `SharedFuelEntryListItemUi`, `SharedFuelEntryFormUiState` and
+`SharedMoneyInputMode`, with their existing Swift names. `FuelEntryRepository`, Fuel Entry command
+and validation declarations, `MoneyInput`, the pure money resolver, consumption use cases and
+`SqlDelightFuelEntryRepository` MUST remain absent from the header. Kotlin/Native's package-grouped
+header ordering MAY relocate those six unchanged declaration blocks when their owning package
+moves. The reviewed E1-08 golden update contains only that ordering change; a module-derived rename
+or signature change is a contract failure.
+
+`FuelEntryFormStateHolder.observeSaveCompletions()` emits once after each successful create or
+update, including a confirmed odometer-warning save, and never emits for validation or persistence
+errors. Delivery is conflated: while no collector is attached, the holder retains at most one
+pending completion so multiple queued successes cannot trigger repeated navigation. It is
+Kotlin-only through `@HiddenFromObjC`; Android navigation consumes it, and it MUST remain absent
+from the Objective-C header.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
 

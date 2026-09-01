@@ -1053,100 +1053,6 @@ __attribute__((swift_name("Skie_SuspendResult.Success")))
 - (NSString *)description __attribute__((swift_name("description()")));
 @end
 
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("FuelEntryFormStateHolder")))
-@interface SharedFuelEntryFormStateHolder : SharedBase
-@property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
-- (void)clearMessage __attribute__((swift_name("clearMessage()")));
-- (void)close __attribute__((swift_name("close()")));
-- (void)confirmSaveConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmSave(confirmation:)")));
-- (void)save __attribute__((swift_name("save()")));
-- (void)setCurrencyCodeValue:(NSString *)value __attribute__((swift_name("setCurrencyCode(value:)")));
-- (void)setDateEpochMillisValue:(int64_t)value __attribute__((swift_name("setDateEpochMillis(value:)")));
-- (void)setFullTankValue:(BOOL)value __attribute__((swift_name("setFullTank(value:)")));
-- (void)setLitersScaledValue:(SharedLong * _Nullable)value __attribute__((swift_name("setLitersScaled(value:)")));
-- (void)setMissedEntriesValue:(BOOL)value __attribute__((swift_name("setMissedEntries(value:)")));
-- (void)setMoneyInputModeValue:(SharedMoneyInputMode *)value __attribute__((swift_name("setMoneyInputMode(value:)")));
-- (void)setNotesValue:(NSString * _Nullable)value __attribute__((swift_name("setNotes(value:)")));
-- (void)setOdometerKmValue:(int64_t)value __attribute__((swift_name("setOdometerKm(value:)")));
-- (void)setPricePerLiterScaledValue:(SharedLong * _Nullable)value __attribute__((swift_name("setPricePerLiterScaled(value:)")));
-- (void)setTotalCostMinorValue:(SharedLong * _Nullable)value __attribute__((swift_name("setTotalCostMinor(value:)")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("FuelEntryFormUiState")))
-@interface SharedFuelEntryFormUiState : SharedBase
-@property (readonly) NSString *currencyCode __attribute__((swift_name("currencyCode")));
-@property (readonly) int64_t dateEpochMillis __attribute__((swift_name("dateEpochMillis")));
-@property (readonly) NSString * _Nullable entryId __attribute__((swift_name("entryId")));
-@property (readonly) BOOL hasMissedEntries __attribute__((swift_name("hasMissedEntries")));
-@property (readonly) BOOL isFullTank __attribute__((swift_name("isFullTank")));
-@property (readonly) BOOL isSaving __attribute__((swift_name("isSaving")));
-@property (readonly) SharedLong * _Nullable litersScaled __attribute__((swift_name("litersScaled")));
-@property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
-@property (readonly) SharedMoneyInputMode *moneyInputMode __attribute__((swift_name("moneyInputMode")));
-@property (readonly) NSString * _Nullable notes __attribute__((swift_name("notes")));
-@property (readonly) int64_t odometerKm __attribute__((swift_name("odometerKm")));
-@property (readonly) SharedLong * _Nullable pricePerLiterScaled __attribute__((swift_name("pricePerLiterScaled")));
-@property (readonly) SharedLong * _Nullable totalCostMinor __attribute__((swift_name("totalCostMinor")));
-@property (readonly) NSString *vehicleId __attribute__((swift_name("vehicleId")));
-- (instancetype)initWithVehicleId:(NSString *)vehicleId entryId:(NSString * _Nullable)entryId dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm moneyInputMode:(SharedMoneyInputMode *)moneyInputMode litersScaled:(SharedLong * _Nullable)litersScaled pricePerLiterScaled:(SharedLong * _Nullable)pricePerLiterScaled totalCostMinor:(SharedLong * _Nullable)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank hasMissedEntries:(BOOL)hasMissedEntries notes:(NSString * _Nullable)notes isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(vehicleId:entryId:dateEpochMillis:odometerKm:moneyInputMode:litersScaled:pricePerLiterScaled:totalCostMinor:currencyCode:isFullTank:hasMissedEntries:notes:isSaving:message:)"))) __attribute__((objc_designated_initializer));
-- (SharedFuelEntryFormUiState *)doCopyVehicleId:(NSString *)vehicleId entryId:(NSString * _Nullable)entryId dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm moneyInputMode:(SharedMoneyInputMode *)moneyInputMode litersScaled:(SharedLong * _Nullable)litersScaled pricePerLiterScaled:(SharedLong * _Nullable)pricePerLiterScaled totalCostMinor:(SharedLong * _Nullable)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank hasMissedEntries:(BOOL)hasMissedEntries notes:(NSString * _Nullable)notes isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(vehicleId:entryId:dateEpochMillis:odometerKm:moneyInputMode:litersScaled:pricePerLiterScaled:totalCostMinor:currencyCode:isFullTank:hasMissedEntries:notes:isSaving:message:)")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("FuelEntryListItemUi")))
-@interface SharedFuelEntryListItemUi : SharedBase
-@property (readonly) SharedLong * _Nullable consumptionScaled __attribute__((swift_name("consumptionScaled")));
-@property (readonly) NSString *currencyCode __attribute__((swift_name("currencyCode")));
-@property (readonly) int64_t dateEpochMillis __attribute__((swift_name("dateEpochMillis")));
-@property (readonly) BOOL hasMissedEntries __attribute__((swift_name("hasMissedEntries")));
-@property (readonly) NSString *id __attribute__((swift_name("id")));
-@property (readonly) SharedModelConsumptionInvalidReason * _Nullable invalidReason __attribute__((swift_name("invalidReason")));
-@property (readonly) BOOL isFullTank __attribute__((swift_name("isFullTank")));
-@property (readonly) int64_t litersScaled __attribute__((swift_name("litersScaled")));
-@property (readonly) BOOL odometerInconsistent __attribute__((swift_name("odometerInconsistent")));
-@property (readonly) int64_t odometerKm __attribute__((swift_name("odometerKm")));
-@property (readonly) int64_t totalCostMinor __attribute__((swift_name("totalCostMinor")));
-- (instancetype)initWithId:(NSString *)id dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm litersScaled:(int64_t)litersScaled totalCostMinor:(int64_t)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank consumptionScaled:(SharedLong * _Nullable)consumptionScaled invalidReason:(SharedModelConsumptionInvalidReason * _Nullable)invalidReason hasMissedEntries:(BOOL)hasMissedEntries odometerInconsistent:(BOOL)odometerInconsistent __attribute__((swift_name("init(id:dateEpochMillis:odometerKm:litersScaled:totalCostMinor:currencyCode:isFullTank:consumptionScaled:invalidReason:hasMissedEntries:odometerInconsistent:)"))) __attribute__((objc_designated_initializer));
-- (SharedFuelEntryListItemUi *)doCopyId:(NSString *)id dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm litersScaled:(int64_t)litersScaled totalCostMinor:(int64_t)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank consumptionScaled:(SharedLong * _Nullable)consumptionScaled invalidReason:(SharedModelConsumptionInvalidReason * _Nullable)invalidReason hasMissedEntries:(BOOL)hasMissedEntries odometerInconsistent:(BOOL)odometerInconsistent __attribute__((swift_name("doCopy(id:dateEpochMillis:odometerKm:litersScaled:totalCostMinor:currencyCode:isFullTank:consumptionScaled:invalidReason:hasMissedEntries:odometerInconsistent:)")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("FuelEntryListStateHolder")))
-@interface SharedFuelEntryListStateHolder : SharedBase
-@property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
-- (void)clearMessage __attribute__((swift_name("clearMessage()")));
-- (void)close __attribute__((swift_name("close()")));
-- (void)confirmDeleteEntryId:(NSString *)entryId __attribute__((swift_name("confirmDelete(entryId:)")));
-- (void)refresh __attribute__((swift_name("refresh()")));
-- (void)requestDeleteEntryId:(NSString *)entryId __attribute__((swift_name("requestDelete(entryId:)")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("FuelEntryListUiState")))
-@interface SharedFuelEntryListUiState : SharedBase
-@property (readonly) SharedLong * _Nullable consumptionAverageScaled __attribute__((swift_name("consumptionAverageScaled")));
-@property (readonly) NSArray<SharedFuelEntryListItemUi *> *entries __attribute__((swift_name("entries")));
-@property (readonly) BOOL isConsumptionReliable __attribute__((swift_name("isConsumptionReliable")));
-@property (readonly) BOOL isLoading __attribute__((swift_name("isLoading")));
-@property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
-@property (readonly) SharedSyncSyncStatus *syncStatus __attribute__((swift_name("syncStatus")));
-@property (readonly) int32_t validConsumptionSegmentCount __attribute__((swift_name("validConsumptionSegmentCount")));
-@property (readonly) NSString *vehicleId __attribute__((swift_name("vehicleId")));
-- (instancetype)initWithVehicleId:(NSString *)vehicleId isLoading:(BOOL)isLoading entries:(NSArray<SharedFuelEntryListItemUi *> *)entries consumptionAverageScaled:(SharedLong * _Nullable)consumptionAverageScaled validConsumptionSegmentCount:(int32_t)validConsumptionSegmentCount isConsumptionReliable:(BOOL)isConsumptionReliable syncStatus:(SharedSyncSyncStatus *)syncStatus message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(vehicleId:isLoading:entries:consumptionAverageScaled:validConsumptionSegmentCount:isConsumptionReliable:syncStatus:message:)"))) __attribute__((objc_designated_initializer));
-- (SharedFuelEntryListUiState *)doCopyVehicleId:(NSString *)vehicleId isLoading:(BOOL)isLoading entries:(NSArray<SharedFuelEntryListItemUi *> *)entries consumptionAverageScaled:(SharedLong * _Nullable)consumptionAverageScaled validConsumptionSegmentCount:(int32_t)validConsumptionSegmentCount isConsumptionReliable:(BOOL)isConsumptionReliable syncStatus:(SharedSyncSyncStatus *)syncStatus message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(vehicleId:isLoading:entries:consumptionAverageScaled:validConsumptionSegmentCount:isConsumptionReliable:syncStatus:message:)")));
-- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
-- (NSUInteger)hash __attribute__((swift_name("hash()")));
-- (NSString *)description __attribute__((swift_name("description()")));
-@end
-
 __attribute__((swift_name("KotlinComparable")))
 @protocol SharedKotlinComparable
 @required
@@ -1163,19 +1069,6 @@ __attribute__((swift_name("KotlinEnum")))
 - (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
 - (NSUInteger)hash __attribute__((swift_name("hash()")));
 - (NSString *)description __attribute__((swift_name("description()")));
-@end
-
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("MoneyInputMode")))
-@interface SharedMoneyInputMode : SharedKotlinEnum<SharedMoneyInputMode *>
-@property (class, readonly) SharedMoneyInputMode *litersAndPrice __attribute__((swift_name("litersAndPrice")));
-@property (class, readonly) SharedMoneyInputMode *litersAndTotal __attribute__((swift_name("litersAndTotal")));
-@property (class, readonly) SharedMoneyInputMode *priceAndTotal __attribute__((swift_name("priceAndTotal")));
-@property (class, readonly) NSArray<SharedMoneyInputMode *> *entries __attribute__((swift_name("entries")));
-+ (instancetype)alloc __attribute__((unavailable));
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
-+ (SharedKotlinArray<SharedMoneyInputMode *> *)values __attribute__((swift_name("values()")));
 @end
 
 __attribute__((objc_subclassing_restricted))
@@ -1415,6 +1308,113 @@ __attribute__((swift_name("UiMessageKind")))
 @end
 
 __attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("FuelEntryFormStateHolder")))
+@interface SharedFuelEntryFormStateHolder : SharedBase
+@property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
+- (void)clearMessage __attribute__((swift_name("clearMessage()")));
+- (void)close __attribute__((swift_name("close()")));
+- (void)confirmSaveConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmSave(confirmation:)")));
+- (void)save __attribute__((swift_name("save()")));
+- (void)setCurrencyCodeValue:(NSString *)value __attribute__((swift_name("setCurrencyCode(value:)")));
+- (void)setDateEpochMillisValue:(int64_t)value __attribute__((swift_name("setDateEpochMillis(value:)")));
+- (void)setFullTankValue:(BOOL)value __attribute__((swift_name("setFullTank(value:)")));
+- (void)setLitersScaledValue:(SharedLong * _Nullable)value __attribute__((swift_name("setLitersScaled(value:)")));
+- (void)setMissedEntriesValue:(BOOL)value __attribute__((swift_name("setMissedEntries(value:)")));
+- (void)setMoneyInputModeValue:(SharedMoneyInputMode *)value __attribute__((swift_name("setMoneyInputMode(value:)")));
+- (void)setNotesValue:(NSString * _Nullable)value __attribute__((swift_name("setNotes(value:)")));
+- (void)setOdometerKmValue:(int64_t)value __attribute__((swift_name("setOdometerKm(value:)")));
+- (void)setPricePerLiterScaledValue:(SharedLong * _Nullable)value __attribute__((swift_name("setPricePerLiterScaled(value:)")));
+- (void)setTotalCostMinorValue:(SharedLong * _Nullable)value __attribute__((swift_name("setTotalCostMinor(value:)")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("FuelEntryFormUiState")))
+@interface SharedFuelEntryFormUiState : SharedBase
+@property (readonly) NSString *currencyCode __attribute__((swift_name("currencyCode")));
+@property (readonly) int64_t dateEpochMillis __attribute__((swift_name("dateEpochMillis")));
+@property (readonly) NSString * _Nullable entryId __attribute__((swift_name("entryId")));
+@property (readonly) BOOL hasMissedEntries __attribute__((swift_name("hasMissedEntries")));
+@property (readonly) BOOL isFullTank __attribute__((swift_name("isFullTank")));
+@property (readonly) BOOL isSaving __attribute__((swift_name("isSaving")));
+@property (readonly) SharedLong * _Nullable litersScaled __attribute__((swift_name("litersScaled")));
+@property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
+@property (readonly) SharedMoneyInputMode *moneyInputMode __attribute__((swift_name("moneyInputMode")));
+@property (readonly) NSString * _Nullable notes __attribute__((swift_name("notes")));
+@property (readonly) int64_t odometerKm __attribute__((swift_name("odometerKm")));
+@property (readonly) SharedLong * _Nullable pricePerLiterScaled __attribute__((swift_name("pricePerLiterScaled")));
+@property (readonly) SharedLong * _Nullable totalCostMinor __attribute__((swift_name("totalCostMinor")));
+@property (readonly) NSString *vehicleId __attribute__((swift_name("vehicleId")));
+- (instancetype)initWithVehicleId:(NSString *)vehicleId entryId:(NSString * _Nullable)entryId dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm moneyInputMode:(SharedMoneyInputMode *)moneyInputMode litersScaled:(SharedLong * _Nullable)litersScaled pricePerLiterScaled:(SharedLong * _Nullable)pricePerLiterScaled totalCostMinor:(SharedLong * _Nullable)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank hasMissedEntries:(BOOL)hasMissedEntries notes:(NSString * _Nullable)notes isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(vehicleId:entryId:dateEpochMillis:odometerKm:moneyInputMode:litersScaled:pricePerLiterScaled:totalCostMinor:currencyCode:isFullTank:hasMissedEntries:notes:isSaving:message:)"))) __attribute__((objc_designated_initializer));
+- (SharedFuelEntryFormUiState *)doCopyVehicleId:(NSString *)vehicleId entryId:(NSString * _Nullable)entryId dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm moneyInputMode:(SharedMoneyInputMode *)moneyInputMode litersScaled:(SharedLong * _Nullable)litersScaled pricePerLiterScaled:(SharedLong * _Nullable)pricePerLiterScaled totalCostMinor:(SharedLong * _Nullable)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank hasMissedEntries:(BOOL)hasMissedEntries notes:(NSString * _Nullable)notes isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(vehicleId:entryId:dateEpochMillis:odometerKm:moneyInputMode:litersScaled:pricePerLiterScaled:totalCostMinor:currencyCode:isFullTank:hasMissedEntries:notes:isSaving:message:)")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("FuelEntryListItemUi")))
+@interface SharedFuelEntryListItemUi : SharedBase
+@property (readonly) SharedLong * _Nullable consumptionScaled __attribute__((swift_name("consumptionScaled")));
+@property (readonly) NSString *currencyCode __attribute__((swift_name("currencyCode")));
+@property (readonly) int64_t dateEpochMillis __attribute__((swift_name("dateEpochMillis")));
+@property (readonly) BOOL hasMissedEntries __attribute__((swift_name("hasMissedEntries")));
+@property (readonly) NSString *id __attribute__((swift_name("id")));
+@property (readonly) SharedModelConsumptionInvalidReason * _Nullable invalidReason __attribute__((swift_name("invalidReason")));
+@property (readonly) BOOL isFullTank __attribute__((swift_name("isFullTank")));
+@property (readonly) int64_t litersScaled __attribute__((swift_name("litersScaled")));
+@property (readonly) BOOL odometerInconsistent __attribute__((swift_name("odometerInconsistent")));
+@property (readonly) int64_t odometerKm __attribute__((swift_name("odometerKm")));
+@property (readonly) int64_t totalCostMinor __attribute__((swift_name("totalCostMinor")));
+- (instancetype)initWithId:(NSString *)id dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm litersScaled:(int64_t)litersScaled totalCostMinor:(int64_t)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank consumptionScaled:(SharedLong * _Nullable)consumptionScaled invalidReason:(SharedModelConsumptionInvalidReason * _Nullable)invalidReason hasMissedEntries:(BOOL)hasMissedEntries odometerInconsistent:(BOOL)odometerInconsistent __attribute__((swift_name("init(id:dateEpochMillis:odometerKm:litersScaled:totalCostMinor:currencyCode:isFullTank:consumptionScaled:invalidReason:hasMissedEntries:odometerInconsistent:)"))) __attribute__((objc_designated_initializer));
+- (SharedFuelEntryListItemUi *)doCopyId:(NSString *)id dateEpochMillis:(int64_t)dateEpochMillis odometerKm:(int64_t)odometerKm litersScaled:(int64_t)litersScaled totalCostMinor:(int64_t)totalCostMinor currencyCode:(NSString *)currencyCode isFullTank:(BOOL)isFullTank consumptionScaled:(SharedLong * _Nullable)consumptionScaled invalidReason:(SharedModelConsumptionInvalidReason * _Nullable)invalidReason hasMissedEntries:(BOOL)hasMissedEntries odometerInconsistent:(BOOL)odometerInconsistent __attribute__((swift_name("doCopy(id:dateEpochMillis:odometerKm:litersScaled:totalCostMinor:currencyCode:isFullTank:consumptionScaled:invalidReason:hasMissedEntries:odometerInconsistent:)")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("FuelEntryListStateHolder")))
+@interface SharedFuelEntryListStateHolder : SharedBase
+@property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
+- (void)clearMessage __attribute__((swift_name("clearMessage()")));
+- (void)close __attribute__((swift_name("close()")));
+- (void)confirmDeleteEntryId:(NSString *)entryId __attribute__((swift_name("confirmDelete(entryId:)")));
+- (void)refresh __attribute__((swift_name("refresh()")));
+- (void)requestDeleteEntryId:(NSString *)entryId __attribute__((swift_name("requestDelete(entryId:)")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("FuelEntryListUiState")))
+@interface SharedFuelEntryListUiState : SharedBase
+@property (readonly) SharedLong * _Nullable consumptionAverageScaled __attribute__((swift_name("consumptionAverageScaled")));
+@property (readonly) NSArray<SharedFuelEntryListItemUi *> *entries __attribute__((swift_name("entries")));
+@property (readonly) BOOL isConsumptionReliable __attribute__((swift_name("isConsumptionReliable")));
+@property (readonly) BOOL isLoading __attribute__((swift_name("isLoading")));
+@property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
+@property (readonly) SharedSyncSyncStatus *syncStatus __attribute__((swift_name("syncStatus")));
+@property (readonly) int32_t validConsumptionSegmentCount __attribute__((swift_name("validConsumptionSegmentCount")));
+@property (readonly) NSString *vehicleId __attribute__((swift_name("vehicleId")));
+- (instancetype)initWithVehicleId:(NSString *)vehicleId isLoading:(BOOL)isLoading entries:(NSArray<SharedFuelEntryListItemUi *> *)entries consumptionAverageScaled:(SharedLong * _Nullable)consumptionAverageScaled validConsumptionSegmentCount:(int32_t)validConsumptionSegmentCount isConsumptionReliable:(BOOL)isConsumptionReliable syncStatus:(SharedSyncSyncStatus *)syncStatus message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(vehicleId:isLoading:entries:consumptionAverageScaled:validConsumptionSegmentCount:isConsumptionReliable:syncStatus:message:)"))) __attribute__((objc_designated_initializer));
+- (SharedFuelEntryListUiState *)doCopyVehicleId:(NSString *)vehicleId isLoading:(BOOL)isLoading entries:(NSArray<SharedFuelEntryListItemUi *> *)entries consumptionAverageScaled:(SharedLong * _Nullable)consumptionAverageScaled validConsumptionSegmentCount:(int32_t)validConsumptionSegmentCount isConsumptionReliable:(BOOL)isConsumptionReliable syncStatus:(SharedSyncSyncStatus *)syncStatus message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(vehicleId:isLoading:entries:consumptionAverageScaled:validConsumptionSegmentCount:isConsumptionReliable:syncStatus:message:)")));
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("MoneyInputMode")))
+@interface SharedMoneyInputMode : SharedKotlinEnum<SharedMoneyInputMode *>
+@property (class, readonly) SharedMoneyInputMode *litersAndPrice __attribute__((swift_name("litersAndPrice")));
+@property (class, readonly) SharedMoneyInputMode *litersAndTotal __attribute__((swift_name("litersAndTotal")));
+@property (class, readonly) SharedMoneyInputMode *priceAndTotal __attribute__((swift_name("priceAndTotal")));
+@property (class, readonly) NSArray<SharedMoneyInputMode *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedMoneyInputMode *> *)values __attribute__((swift_name("values()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("VehicleFormStateHolder")))
 @interface SharedVehicleFormStateHolder : SharedBase
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
@@ -1583,26 +1583,6 @@ __attribute__((swift_name("Kotlinx_coroutines_coreRunnable")))
 - (void)run __attribute__((swift_name("run()")));
 @end
 
-
-/** Canonical consumption result shapes from `docs/CONTRACTS.md §20.6`. */
-__attribute__((objc_subclassing_restricted))
-__attribute__((swift_name("ModelConsumptionInvalidReason")))
-@interface SharedModelConsumptionInvalidReason : SharedKotlinEnum<SharedModelConsumptionInvalidReason *>
-@property (class, readonly) SharedModelConsumptionInvalidReason *nopreviousfulltank __attribute__((swift_name("nopreviousfulltank")));
-@property (class, readonly) SharedModelConsumptionInvalidReason *endentrynotfulltank __attribute__((swift_name("endentrynotfulltank")));
-@property (class, readonly) SharedModelConsumptionInvalidReason *missedentriesinsegment __attribute__((swift_name("missedentriesinsegment")));
-@property (class, readonly) SharedModelConsumptionInvalidReason *inconsistentodometerinsegment __attribute__((swift_name("inconsistentodometerinsegment")));
-@property (class, readonly) SharedModelConsumptionInvalidReason *nonpositivedistance __attribute__((swift_name("nonpositivedistance")));
-@property (class, readonly) SharedModelConsumptionInvalidReason *duplicateodometerinsegment __attribute__((swift_name("duplicateodometerinsegment")));
-@property (class, readonly) NSArray<SharedModelConsumptionInvalidReason *> *entries __attribute__((swift_name("entries")));
-+ (instancetype)alloc __attribute__((unavailable));
-
-/** Canonical consumption result shapes from `docs/CONTRACTS.md §20.6`. */
-+ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
-- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
-+ (SharedKotlinArray<SharedModelConsumptionInvalidReason *> *)values __attribute__((swift_name("values()")));
-@end
-
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("KotlinEnumCompanion")))
 @interface SharedKotlinEnumCompanion : SharedBase
@@ -1622,6 +1602,26 @@ __attribute__((swift_name("KotlinArray")))
 - (T _Nullable)getIndex:(int32_t)index __attribute__((swift_name("get(index:)")));
 - (id<SharedKotlinIterator>)iterator __attribute__((swift_name("iterator()")));
 - (void)setIndex:(int32_t)index value:(T _Nullable)value __attribute__((swift_name("set(index:value:)")));
+@end
+
+
+/** Canonical consumption result shapes from `docs/CONTRACTS.md §20.6`. */
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("ModelConsumptionInvalidReason")))
+@interface SharedModelConsumptionInvalidReason : SharedKotlinEnum<SharedModelConsumptionInvalidReason *>
+@property (class, readonly) SharedModelConsumptionInvalidReason *nopreviousfulltank __attribute__((swift_name("nopreviousfulltank")));
+@property (class, readonly) SharedModelConsumptionInvalidReason *endentrynotfulltank __attribute__((swift_name("endentrynotfulltank")));
+@property (class, readonly) SharedModelConsumptionInvalidReason *missedentriesinsegment __attribute__((swift_name("missedentriesinsegment")));
+@property (class, readonly) SharedModelConsumptionInvalidReason *inconsistentodometerinsegment __attribute__((swift_name("inconsistentodometerinsegment")));
+@property (class, readonly) SharedModelConsumptionInvalidReason *nonpositivedistance __attribute__((swift_name("nonpositivedistance")));
+@property (class, readonly) SharedModelConsumptionInvalidReason *duplicateodometerinsegment __attribute__((swift_name("duplicateodometerinsegment")));
+@property (class, readonly) NSArray<SharedModelConsumptionInvalidReason *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
+
+/** Canonical consumption result shapes from `docs/CONTRACTS.md §20.6`. */
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedModelConsumptionInvalidReason *> *)values __attribute__((swift_name("values()")));
 @end
 
 

@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.fuel.domain
 
 import com.ruizurraca.carapp.core.common.AppError
@@ -7,7 +9,9 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelEntry
 import com.ruizurraca.carapp.core.model.FuelEntryListItem
 import kotlinx.coroutines.flow.Flow
+import kotlin.native.HiddenFromObjC
 
+@HiddenFromObjC
 interface FuelEntryRepository {
     fun observeFuelEntries(
         vehicleId: EntityId,

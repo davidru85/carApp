@@ -414,7 +414,7 @@ Acceptance criteria:
 - Compose Navigation and the instrumented UI stack are pinned by D-84, and the creation test runs
   in the protected `android-instrumented-tests` emulator job.
 
-### E1-08 - Android UI: Fuel Entries - L
+### E1-08 - Android UI: Fuel Entries - L (completed)
 
 Implement the fuel entry list, create/edit form, segment consumption display and average consumption display.
 
@@ -921,7 +921,7 @@ proof after E3-04.
 | E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data (completed) | 1 | M | — |
 | E1-07 Android UI vehicles (completed) | 1 | M | — |
-| E1-08 Android UI fuel entries | 1 | L | — |
+| E1-08 Android UI fuel entries (completed) | 1 | L | — |
 | E1-09 iOS UI | 1 | L | — |
 | E1-10 Settings persistence | 1 | S | — |
 | E2-01 `:core:auth` | 2 | S | — |

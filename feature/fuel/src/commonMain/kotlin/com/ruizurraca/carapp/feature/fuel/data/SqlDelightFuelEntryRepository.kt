@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.fuel.data
 
 import com.ruizurraca.carapp.core.common.AppClock
@@ -30,8 +32,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.SerializationException
+import kotlin.native.HiddenFromObjC
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@HiddenFromObjC
 class SqlDelightFuelEntryRepository internal constructor(
     private val localDataSource: FuelEntryLocalDataSource,
     private val ownerContext: OwnerContext,
