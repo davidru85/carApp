@@ -2,11 +2,17 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.LocaleInfo
+import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
 import com.ruizurraca.carapp.core.model.CurrencyCode
+import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.FuelType
+import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
@@ -16,6 +22,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -30,6 +38,34 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FuelEntryStateHolderTest {
+    @Test
+    fun odometerSuggestionsIgnoreRepositoryErrorsAndMissingVehicles() =
+        runTest {
+            val vehicle =
+                Vehicle(
+                    id = EntityId("00000000-0000-4000-8000-000000000091"),
+                    ownerId = OwnerId("owner-a"),
+                    name = "Roadster",
+                    initialOdometerKm = 100L,
+                    currentOdometerKm = 345L,
+                    brand = null,
+                    model = null,
+                    fuelType = FuelType.GASOLINE,
+                    createdAt = Instant.parse("2026-08-31T06:42:19.123Z"),
+                    updatedAt = Instant.parse("2026-08-31T06:42:19.123Z"),
+                    deletedAt = null,
+                )
+
+            val suggestions =
+                flowOf(
+                    Outcome.Ok(vehicle),
+                    Outcome.Err(PersistenceError.DatabaseUnavailable),
+                    Outcome.Ok(null),
+                ).fuelEntryOdometerSuggestions().toList()
+
+            assertEquals(listOf(345L), suggestions)
+        }
+
     @Test
     fun newFormUsesExactClockVehicleOdometerAndSupportedLocaleCurrency() =
         runTest {
