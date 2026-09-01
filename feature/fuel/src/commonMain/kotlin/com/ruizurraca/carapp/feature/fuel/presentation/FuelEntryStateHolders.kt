@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -167,11 +168,10 @@ class FuelEntryFormStateHolder internal constructor(
                 }
             }
             holderScope.launch(dispatchers.main) {
-                settingsCurrencyCode.flowOn(dispatchers.io).collect { currencyCode ->
-                    if (!currencyEdited) {
-                        inputs.value =
-                            inputs.value.copy(currencyCode = currencyCode).resolveLiveMoney()
-                    }
+                val currencyCode = settingsCurrencyCode.flowOn(dispatchers.io).firstOrNull()
+                if (currencyCode != null && !currencyEdited) {
+                    inputs.value =
+                        inputs.value.copy(currencyCode = currencyCode).resolveLiveMoney()
                 }
             }
         } else {

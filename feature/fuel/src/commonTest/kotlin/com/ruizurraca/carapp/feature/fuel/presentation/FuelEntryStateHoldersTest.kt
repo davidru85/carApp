@@ -24,6 +24,7 @@ import com.ruizurraca.carapp.feature.fuel.domain.UpdateFuelEntryCommand
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -217,6 +218,82 @@ class FuelEntryStateHoldersTest {
             holder.confirmSave(Confirmation.OdometerInconsistent)
             holder.clearMessage()
             assertEquals(beforeClose, holder.state.value)
+        }
+
+    @Test
+    fun persistedCurrencyReplacesLocaleFallbackOnANewForm() =
+        runTest {
+            val settingsCurrency = MutableSharedFlow<String>()
+            val holder =
+                createForm(
+                    scope = backgroundScope,
+                    repository = FakeFuelEntryRepository(),
+                    settingsCurrencyCode = settingsCurrency,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+
+            assertEquals("EUR", holder.state.value.currencyCode)
+
+            settingsCurrency.emit("GBP")
+            advanceUntilIdle()
+
+            assertEquals("GBP", holder.state.value.currencyCode)
+        }
+
+    @Test
+    fun explicitCurrencyEditBeforePersistedValueArrivesIsNotOverwritten() =
+        runTest {
+            val settingsCurrency = MutableSharedFlow<String>()
+            val holder =
+                createForm(
+                    scope = backgroundScope,
+                    repository = FakeFuelEntryRepository(),
+                    settingsCurrencyCode = settingsCurrency,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+
+            holder.setCurrencyCode("USD")
+            settingsCurrency.emit("GBP")
+            advanceUntilIdle()
+
+            assertEquals("USD", holder.state.value.currencyCode)
+        }
+
+    @Test
+    fun existingEntryCurrencyIsNeverReplacedBySettings() =
+        runTest {
+            val holder =
+                createForm(
+                    scope = backgroundScope,
+                    repository = FakeFuelEntryRepository(getResult = Outcome.Ok(fuelEntry())),
+                    entryId = ENTRY_ID.value,
+                    settingsCurrencyCode = flowOf("GBP"),
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+
+            advanceUntilIdle()
+
+            assertEquals("EUR", holder.state.value.currencyCode)
+        }
+
+    @Test
+    fun laterSettingsChangesDoNotMutateAnOpenCreationForm() =
+        runTest {
+            val settingsCurrency = MutableStateFlow("GBP")
+            val holder =
+                createForm(
+                    scope = backgroundScope,
+                    repository = FakeFuelEntryRepository(),
+                    settingsCurrencyCode = settingsCurrency,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            advanceUntilIdle()
+            assertEquals("GBP", holder.state.value.currencyCode)
+
+            settingsCurrency.value = "USD"
+            advanceUntilIdle()
+
+            assertEquals("GBP", holder.state.value.currencyCode)
         }
 
     @Test
@@ -561,6 +638,7 @@ class FuelEntryStateHoldersTest {
         repository: FuelEntryRepository,
         entryId: String? = null,
         odometer: Flow<Long> = flowOf(100L),
+        settingsCurrencyCode: Flow<String> = flowOf("EUR"),
     ): FuelEntryFormStateHolder =
         createFuelEntryFormStateHolder(
             scope = scope,
@@ -569,7 +647,7 @@ class FuelEntryStateHoldersTest {
             initialDateEpochMillis = NOW.toEpochMilliseconds(),
             initialOdometerKm = odometer,
             initialCurrencyCode = "EUR",
-            settingsCurrencyCode = flowOf("EUR"),
+            settingsCurrencyCode = settingsCurrencyCode,
             repository = repository,
             dispatchers = TestDispatcherProvider(),
         )

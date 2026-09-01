@@ -86,6 +86,15 @@ class IosCompositionContractTest {
     }
 
     @Test
+    fun androidHostLocaleProviderTestsRunInCanonicalVerification() {
+        val agents = repositoryRoot.resolve("AGENTS.md").readText()
+        val ci = repositoryRoot.resolve(".github/workflows/ci.yml").readText()
+
+        assertTrue(agents.contains(":androidApp:testDebugUnitTest"))
+        assertTrue(ci.contains(":androidApp:testDebugUnitTest testAndroidHostTest"))
+    }
+
+    @Test
     fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
         val expectedNames =
             listOf(

@@ -5,7 +5,7 @@ package com.ruizurraca.carapp
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
-import com.ruizurraca.carapp.core.common.SUPPORTED_CURRENCY_CODES
+import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
@@ -23,9 +23,15 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleListStateHolder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 import kotlin.native.HiddenFromObjC
 
 @HiddenFromObjC
@@ -58,6 +64,9 @@ interface AppGraph {
 internal class DefaultAppGraph(
     internal val dependencies: AppGraphDependencies,
 ) : AppGraph {
+    @Volatile
+    private var closed = false
+    private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
     private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database)
     private val fuelRepository =
@@ -71,8 +80,13 @@ internal class DefaultAppGraph(
         SqlDelightSettingsRepository(
             databaseAccess = SettingsDatabaseAccess(databaseHandle.database),
             localeProvider = dependencies.localeProvider,
+            canCreateDefaults = { !closed },
         )
-    private var closed = false
+
+    init {
+        // Keep this eager launch after every property touched by bootstrapSettings().
+        graphScope.launch { bootstrapSettings() }
+    }
 
     override fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder {
         checkOpen()
@@ -147,6 +161,7 @@ internal class DefaultAppGraph(
     override fun close() {
         if (closed) return
         closed = true
+        graphScope.cancel()
         databaseHandle.close()
     }
 
@@ -156,13 +171,20 @@ internal class DefaultAppGraph(
 
     private fun initialFuelEntryCurrency(): CurrencyCode {
         val suggested = dependencies.localeProvider.current().suggestedCurrency
-        return if (
-            suggested.value in SUPPORTED_CURRENCY_CODES &&
-            MinorUnits.factorFor(suggested) != null
-        ) {
-            suggested
-        } else {
-            CurrencyCode("EUR")
+        return resolveLocaleCurrency(
+            suggestedCurrency = suggested,
+            // This only re-checks the supported set; host adapters validate real runtime minor units.
+            runtimeMinorUnitFactor = MinorUnits.factorFor(suggested),
+        )
+    }
+
+    private suspend fun bootstrapSettings() {
+        try {
+            settingsRepository.settings.first { result -> result is Outcome.Ok }
+        } catch (_: CancellationException) {
+            // Closing the graph intentionally terminates this best-effort accelerator.
+        } catch (_: Throwable) {
+            // D-106 keeps bootstrap failure silent; repository access remains self-healing.
         }
     }
 }

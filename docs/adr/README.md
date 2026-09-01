@@ -111,5 +111,10 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-102 | [ADR-0103](0103-ios-unit-and-ui-test-targets-in-ci.md) | iOS unit and UI test targets in CI. | Accepted |
 | D-103 | [ADR-0104](0104-ios-navigationstack-and-sheet-presentation.md) | iOS NavigationStack and sheet presentation. | Accepted |
 | D-104 | [ADR-0105](0105-scaled-value-formatting-parity-on-ios.md) | Scaled value formatting parity on iOS. | Accepted |
+| D-105 | [ADR-0106](0106-continuous-agent-progress-handoff.md) | Continuous agent progress handoff. | Accepted |
+| D-106 | [ADR-0107](0107-bootstrap-device-local-settings-in-app-graph.md) | Bootstrap device-local settings in AppGraph. | Accepted |
+| D-107 | [ADR-0108](0108-apply-first-persisted-currency-to-new-fuel-form.md) | Apply the first persisted currency to a new Fuel Entry form. | Accepted |
+| D-108 | [ADR-0109](0109-inject-native-locale-providers-at-host-boundaries.md) | Inject native locale providers at host boundaries. | Accepted |
+| D-109 | [ADR-0110](0110-enforce-native-locale-provider-verification.md) | Enforce native locale-provider verification. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

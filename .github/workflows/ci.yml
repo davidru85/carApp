@@ -182,7 +182,7 @@ jobs:
       # would not catch a Kotlin/Native divergence. D-75 derives the current four exclusions from
       # the transitive Native-test project graph rooted at the two Firebase integrations.
       - run: >-
-          ./gradlew testAndroidHostTest iosSimulatorArm64Test
+          ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
           -x :integration:firebase-firestore:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test

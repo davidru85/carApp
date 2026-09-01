@@ -1,25 +1,73 @@
 package com.ruizurraca.carapp.feature.session.data
 
 import com.ruizurraca.carapp.core.common.LocaleInfo
+import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.ValidationError
+import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.DistanceUnit
 import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.VolumeUnit
 import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
+import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.feature.session.domain.UpdateSettingsCommand
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class SqlDelightSettingsRepositoryTest {
+    @Test
+    fun sqlDelightObservationCreatesLocaleDefaults() =
+        runTest {
+            val owningFactory = InMemoryDatabaseFactory()
+            val handle = owningFactory.create()
+            val repository =
+                SqlDelightSettingsRepository(
+                    SettingsDatabaseAccess(handle.database),
+                    localeProvider("USD"),
+                )
+
+            try {
+                assertEquals(
+                    UserSettings(CurrencyCode("USD"), DistanceUnit.KM, VolumeUnit.LITER, false),
+                    assertIs<Outcome.Ok<UserSettings>>(repository.settings.first()).value,
+                )
+            } finally {
+                handle.close()
+                owningFactory.close()
+            }
+        }
+
+    @Test
+    fun closedGraphGatePreventsBootstrapDefaultWrite() =
+        runTest {
+            val local = FiniteMissingSettingsLocalDataSource()
+            var localeReads = 0
+            val repository =
+                SqlDelightSettingsRepository(
+                    localDataSource = local,
+                    localeProvider =
+                        LocaleProvider {
+                            localeReads += 1
+                            error("The locale must not be read when default creation is disabled")
+                        },
+                    canCreateDefaults = { false },
+                )
+
+            assertEquals(emptyList(), repository.settings.toList())
+            assertEquals(0, local.writeCount)
+            assertEquals(0, localeReads)
+        }
+
     @Test
     fun firstObservationCreatesLocaleDefaultsWithAnalyticsDisabled() =
         runTest {
@@ -168,6 +216,17 @@ private object FailingSettingsLocalDataSource : SettingsLocalDataSource {
     override fun observeSettings(): Flow<LocalSettings?> = flow { throw SettingsTestFailure() }
 
     override suspend fun upsertSettings(settings: LocalSettings) = throw SettingsTestFailure()
+}
+
+private class FiniteMissingSettingsLocalDataSource : SettingsLocalDataSource {
+    var writeCount = 0
+        private set
+
+    override fun observeSettings(): Flow<LocalSettings?> = flowOf(null)
+
+    override suspend fun upsertSettings(settings: LocalSettings) {
+        writeCount += 1
+    }
 }
 
 private class WriteFailingSettingsLocalDataSource(

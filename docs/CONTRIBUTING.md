@@ -20,6 +20,14 @@ This repository is optimized for owner-led development with AI agents.
 - `:core:database` is a shared-write module. Only one story at a time may modify it, and the handoff must declare it.
 - Follow the design assets indexed by `docs/DESIGN.md` when implementing UI. They are non-normative: where a design asset and `docs/SPECIFICATION.md` or `docs/CONTRACTS.md` disagree, escalate instead of implementing the design.
 
+## Continuity Between Agents
+
+`AGENTS.md` §`Continuous Progress Documentation` is the canonical D-105 rule. Keep the current
+story handoff updated at every material checkpoint and before yielding unfinished work, so another
+agent can continue from the repository alone. Use the `In-Progress Checkpoint` fields in
+`docs/templates/agent-handoff.md`; do not use chat history or an uncommitted mental plan as the sole
+record of progress.
+
 ## Branches and Commits
 
 - Branch: `story/<STORY-ID>-<short-slug>`, for example `story/E1-04-fuel-entry-domain`.
@@ -34,7 +42,8 @@ costs seconds instead of a round trip:
 
 ```bash
 ./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
-          koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test \
+          koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest \
+          testAndroidHostTest iosSimulatorArm64Test \
           -x :integration:firebase-auth:iosSimulatorArm64Test \
           -x :integration:firebase-firestore:iosSimulatorArm64Test \
           -x :wiring:firebase:iosSimulatorArm64Test \

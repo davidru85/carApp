@@ -8,6 +8,7 @@ import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.ValidationError
+import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.DistanceUnit
@@ -26,19 +27,27 @@ import kotlin.native.HiddenFromObjC
 class SqlDelightSettingsRepository internal constructor(
     private val localDataSource: SettingsLocalDataSource,
     private val localeProvider: LocaleProvider,
+    private val canCreateDefaults: () -> Boolean = { true },
 ) : SettingsRepository {
+    /**
+     * Creates a database-backed repository. When [canCreateDefaults] returns false, a missing row
+     * is not created and that observation emits nothing.
+     */
     constructor(
         databaseAccess: SettingsDatabaseAccess,
         localeProvider: LocaleProvider,
-    ) : this(SqlDelightSettingsLocalDataSource(databaseAccess), localeProvider)
+        canCreateDefaults: () -> Boolean = { true },
+    ) : this(SqlDelightSettingsLocalDataSource(databaseAccess), localeProvider, canCreateDefaults)
 
     override val settings: Flow<Outcome<UserSettings, AppError>> =
         localDataSource
             .observeSettings()
             .transform<LocalSettings?, Outcome<UserSettings, AppError>> { localSettings ->
                 if (localSettings == null) {
+                    if (!canCreateDefaults()) return@transform
+                    val defaults = defaultSettings()
                     try {
-                        localDataSource.upsertSettings(defaultSettings())
+                        localDataSource.upsertSettings(defaults)
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (_: Throwable) {
@@ -57,18 +66,20 @@ class SqlDelightSettingsRepository internal constructor(
             return Outcome.Err(ValidationError.NoOp)
         }
         command.currency?.let { currency ->
-            if (MinorUnits.factorFor(currency) != TWO_DECIMAL_MINOR_UNIT_FACTOR) {
+            if (MinorUnits.factorFor(currency) == null) {
                 return Outcome.Err(ValidationError.InvalidUnit(currency.value))
             }
         }
 
-        val current = settings.first()
-        if (current is Outcome.Err) return current
-        current as Outcome.Ok
+        val currentSettings =
+            when (val current = settings.first()) {
+                is Outcome.Err -> return current
+                is Outcome.Ok -> current.value
+            }
         val updated =
-            current.value.copy(
-                currency = command.currency ?: current.value.currency,
-                analyticsEnabled = command.analyticsEnabled ?: current.value.analyticsEnabled,
+            currentSettings.copy(
+                currency = command.currency ?: currentSettings.currency,
+                analyticsEnabled = command.analyticsEnabled ?: currentSettings.analyticsEnabled,
             )
 
         return try {
@@ -84,19 +95,17 @@ class SqlDelightSettingsRepository internal constructor(
     private fun defaultSettings(): LocalSettings {
         val localeCurrency = localeProvider.current().suggestedCurrency
         val currency =
-            localeCurrency.takeIf { MinorUnits.factorFor(it) == TWO_DECIMAL_MINOR_UNIT_FACTOR }
-                ?: DEFAULT_CURRENCY
+            resolveLocaleCurrency(
+                suggestedCurrency = localeCurrency,
+                // This only re-checks the supported set; host adapters validate real runtime minor units.
+                runtimeMinorUnitFactor = MinorUnits.factorFor(localeCurrency),
+            )
         return LocalSettings(
             currency = currency.value,
             distanceUnit = DistanceUnit.KM.name,
             volumeUnit = VolumeUnit.LITER.name,
             analyticsEnabled = false,
         )
-    }
-
-    private companion object {
-        val DEFAULT_CURRENCY = CurrencyCode("EUR")
-        const val TWO_DECIMAL_MINOR_UNIT_FACTOR = 100
     }
 }
 

@@ -446,7 +446,7 @@ Acceptance criteria:
 - `hasMissedEntries` and `odometerInconsistent` flags are rendered on every row, including partial refuels.
 - Dynamic Type is usable for critical flows.
 
-### E1-10 - Settings Persistence - S
+### E1-10 - Settings Persistence - S (completed)
 
 Implement the local `user_settings` table, `SettingsRepository` and `UpdateSettingsCommand`.
 
@@ -539,6 +539,37 @@ is a production-code change that touches the D-89 handle-ownership contract and 
 its own story with its own human review gate. The handoff records this deferral explicitly.
 
 Human review required.
+
+### E1-13 - Executable iOS Locale-Provider Behavior Coverage - S
+
+Status: open. Registered as the D-109 follow-up of the E1-10 owner review. The current
+`:composition:ios` framework link proves compilation and composition but does not execute the
+Foundation `NSNumberFormatter.maximumFractionDigits` path used by `IosLocaleProvider`.
+
+Add executable iOS-host behavioral coverage for the production locale adapter without moving the
+adapter out of its D-108 host boundary or adding a second Firebase Apple dependency route that
+would violate D-75.
+
+Acceptance criteria:
+
+- An executable test invokes the production `IosLocaleProvider` behavior, or a production-delegated
+  host implementation with no duplicated currency rule, on an iOS simulator.
+- A supported two-decimal locale currency exercises `NSNumberFormatter.maximumFractionDigits` and
+  resolves to its supported currency code.
+- A currency whose runtime fraction digits are not two resolves to `EUR`.
+- Language tag and region extraction from Foundation are asserted behaviorally rather than by
+  reading source text.
+- The exact complete non-instrumented command in `AGENTS.md` executes the test. The test MUST NOT be
+  hidden behind the excluded `:composition:ios:iosSimulatorArm64Test` route unless a superseding
+  decision removes that module from the graph-derived D-75 set.
+- D-108 host ownership and explicit production injection remain unchanged. D-75 retains one
+  Firebase Apple dependency authority; CocoaPods, experimental direct SwiftPM import and committed
+  Firebase XCFrameworks are not introduced by this story without a superseding owner decision.
+- The E1-10 handoff, ADR-0109 and ADR-0110 are updated to replace the documented gap with exact
+  executable evidence.
+
+Human review required because the solution changes canonical verification and may touch gated
+decision documentation.
 
 ## Phase 2 - Authentication
 
@@ -962,6 +993,7 @@ E0-00 owner decisions (completed)
                       -> the rest of Phase 1
                       -> E1-11 vehicle outbox entityType fix blocks E2-06
                       -> E1-12 shared test graph-close race fix (issue #42, from E1-08)
+                      -> E1-13 executable iOS locale-provider behavior coverage (from E1-10)
                       -> Phase 2 auth can overlap with late Phase 1; E2-06 must precede E3-04
                       -> Phase 3 sync wiring depends on Phases 1 and 2
                       -> Phase 4
@@ -997,6 +1029,12 @@ production change touching D-89 and the gated path `core/database/**`, and is de
 out of E1-12 into its own gated story if pursued. E1-12 has no dependency on E1-11 and may run in
 parallel with it.
 
+`E1-13` closes the executable iOS locale-provider behavior gap recorded by E1-10 and D-109. The
+current `:composition:ios` standalone Native test binary is excluded by D-75 because it transitively
+links the Firebase integrations without an Xcode host. E1-13 must exercise the production
+Foundation behavior from a standard-command route while preserving that dependency rule and the
+D-108 host boundary. It has no dependency on E1-11 or E1-12 and may run in parallel with them.
+
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
 metadata; E2-07 owns notices; E3-10 owns the reusable deletion service; E3-11 owns cleanup entry
@@ -1019,16 +1057,17 @@ proof after E3-04.
 | E1-01 `:core:database` (completed) | 1 | M | — |
 | E0-07 Walking skeleton (completed) | 1 | L | Yes |
 | E1-02 Vehicle domain (completed) | 1 | S | — |
-| E1-03 Vehicle data | 1 | M | — |
+| E1-03 Vehicle data (completed) | 1 | M | — |
 | E1-04 Fuel entry domain (completed) | 1 | M | — |
 | E1-05 Consumption calculation (completed; D-80 device evidence open in E4-03) | 1 | M | Yes |
 | E1-06 Fuel entry data (completed) | 1 | M | — |
 | E1-07 Android UI vehicles (completed) | 1 | M | — |
 | E1-08 Android UI fuel entries (completed) | 1 | L | — |
-| E1-09 iOS UI | 1 | L | — |
-| E1-10 Settings persistence | 1 | S | — |
+| E1-09 iOS UI (completed) | 1 | L | — |
+| E1-10 Settings persistence (completed) | 1 | S | — |
 | E1-11 `:feature:vehicle` outbox payload entityType fix | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (issue #42) | 1 | S | Yes |
+| E1-13 Executable iOS locale-provider behavior coverage | 1 | S | Yes |
 | E2-01 `:core:auth` | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 | 2 | M | — |
