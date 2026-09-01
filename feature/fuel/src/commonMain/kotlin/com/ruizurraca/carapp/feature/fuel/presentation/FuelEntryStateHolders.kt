@@ -151,7 +151,7 @@ class FuelEntryFormStateHolder internal constructor(
         )
     private val saving = MutableStateFlow(false)
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
-    private val saveCompletions = Channel<Unit>(capacity = Channel.BUFFERED)
+    private val saveCompletions = Channel<Unit>(capacity = Channel.CONFLATED)
     private var pendingConfirmationInputs: FormInputs? = null
     private var odometerEdited = false
     private var closed = false

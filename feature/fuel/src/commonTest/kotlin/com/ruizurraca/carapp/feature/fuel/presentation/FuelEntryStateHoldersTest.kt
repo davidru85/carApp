@@ -347,6 +347,23 @@ class FuelEntryStateHoldersTest {
         }
 
     @Test
+    fun queuedSaveCompletionsConflateToOnePendingNavigation() =
+        runTest {
+            val repository = FakeFuelEntryRepository()
+            val holder = createForm(backgroundScope, repository)
+            holder.enterValidCreateValues()
+
+            holder.save()
+            advanceUntilIdle()
+            holder.save()
+            advanceUntilIdle()
+
+            assertEquals(2, repository.createdCommands.size)
+            assertEquals(Unit, withTimeoutOrNull(1_000L) { holder.observeSaveCompletions().first() })
+            assertNull(withTimeoutOrNull(1L) { holder.observeSaveCompletions().first() })
+        }
+
+    @Test
     fun editLoadsExistingEntryAndPublishesUpdateOutcomes() =
         runTest {
             val repository = FakeFuelEntryRepository(getResult = Outcome.Ok(fuelEntry()))

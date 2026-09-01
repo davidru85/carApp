@@ -27,8 +27,10 @@ signature.
 
 `FuelEntryFormStateHolder.observeSaveCompletions()` returns a Kotlin-only `Flow<Unit>`. The holder
 emits once after a successful repository create or update and does not emit for warnings or errors.
-The Android form collects this flow for navigation. `@HiddenFromObjC` keeps the method out of the
-Shared framework header.
+Delivery is conflated so the holder retains at most one completion while no collector is attached;
+multiple queued successes therefore cannot cause repeated navigation when collection resumes. The
+Android form collects this flow for navigation. `@HiddenFromObjC` keeps the method out of the Shared
+framework header.
 
 ## Consequences
 
@@ -36,23 +38,28 @@ Shared framework header.
 
 - Android navigation follows the actual persistence outcome without timing assumptions.
 - Confirmed odometer-warning saves use the same completion path as ordinary saves.
+- A temporarily detached collector can receive one pending navigation without replaying multiple
+  queued successes.
 - The exported Fuel form state and holder signatures remain unchanged.
 
 ### Negative
 
 - Kotlin hosts must collect a separate event flow alongside form state.
-- Future holder refactors must preserve exactly-once successful completion emission.
+- Conflation intentionally collapses multiple completions that occur while no collector is
+  attached; persistence still occurs for every accepted save.
 
 ### Constraints Introduced
 
 - Validation warnings and errors MUST NOT emit completion.
+- At most one completion may remain pending while no collector is attached.
 - The completion method MUST remain absent from the Objective-C header.
 - Native hosts continue to use the established state-based ABI; E1-09 MUST NOT duplicate Android
   business logic.
 
 ## Verification
 
-- Shared holder tests count one event after confirmed successful persistence.
+- Shared holder tests count one event after confirmed successful persistence and prove two queued
+  successes collapse to one pending navigation.
 - The API 36 instrumented flow navigates after confirmation and observes the saved list row.
 - Generated-versus-golden Objective-C header comparison remains empty.
 

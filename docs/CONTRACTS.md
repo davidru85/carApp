@@ -2559,8 +2559,10 @@ or signature change is a contract failure.
 
 `FuelEntryFormStateHolder.observeSaveCompletions()` emits once after each successful create or
 update, including a confirmed odometer-warning save, and never emits for validation or persistence
-errors. It is Kotlin-only through `@HiddenFromObjC`; Android navigation consumes it, and it MUST
-remain absent from the Objective-C header.
+errors. Delivery is conflated: while no collector is attached, the holder retains at most one
+pending completion so multiple queued successes cannot trigger repeated navigation. It is
+Kotlin-only through `@HiddenFromObjC`; Android navigation consumes it, and it MUST remain absent
+from the Objective-C header.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
 
