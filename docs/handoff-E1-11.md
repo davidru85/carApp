@@ -32,12 +32,12 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-01
 - Branch and base: `story/E1-11-outbox-entitytype-fix` from `main` (`68842a2`)
-- Current phase and latest commit: RED, about to commit
+- Current phase and latest commit: GREEN, about to commit
 - Push and pull-request status: not pushed, no PR
-- Completed since the previous checkpoint: ready check recorded; branch created; failing tests written for Vehicle create, update, tombstone, cascade Fuel Entry tombstone, coalesced outbox and mapper unit tests
-- Verification evidence and known failures: 7 tests fail in `:feature:vehicle:testAndroidHostTest` because `entityType` is absent from Vehicle and cascade Fuel Entry outbox payloads
+- Completed since the previous checkpoint: RED committed; added `entityType` to `toVehicleOutboxPayloadOrNull` and `toFuelEntryTombstonePayload`
+- Verification evidence and known failures: `:feature:vehicle:testAndroidHostTest` passes (77 tests)
 - Open decisions or blockers: none
-- Exact next step: commit RED, then add `entityType` to both mapper functions in the GREEN phase
+- Exact next step: commit GREEN, then REFACTOR if needed
 
 ## Scope Completed
 
