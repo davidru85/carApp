@@ -118,40 +118,24 @@ class VehicleRepositoryDeleteTest {
     @Test
     fun cascadeDeleteCoalescesWithAnExistingFuelEntryOutboxRowKeepingEntityType() =
         runTest {
-            withVehicleRepositoryTestScope(OwnerId("owner-a")) {
-                seedVehicle()
-                seedFuelEntry(FIRST_FUEL_ENTRY_ID, date = 1_100, odometerKm = 20)
-                seedFuelEntryOutbox(
-                    id = FIRST_FUEL_ENTRY_ID,
-                    payload = "{\"entityType\":\"FUEL_ENTRY\",\"stale\":true}",
+            val stalePayloads =
+                listOf(
+                    "{\"entityType\":\"FUEL_ENTRY\",\"stale\":true}",
+                    "{\"entityType\":\"FUEL_ENTRY\",\"deleted\":false}",
                 )
+            for (stalePayload in stalePayloads) {
+                withVehicleRepositoryTestScope(OwnerId("owner-a")) {
+                    seedVehicle()
+                    seedFuelEntry(FIRST_FUEL_ENTRY_ID, date = 1_100, odometerKm = 20)
+                    seedFuelEntryOutbox(id = FIRST_FUEL_ENTRY_ID, payload = stalePayload)
 
-                assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
+                    assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
 
-                val queued = requireNotNull(outbox("FUEL_ENTRY", FIRST_FUEL_ENTRY_ID))
-                val payload = Json.parseToJsonElement(queued.payload).jsonObject
-                assertEquals("FUEL_ENTRY", payload.getValue("entityType").jsonPrimitive.content)
-                assertEquals("true", payload.getValue("deleted").jsonPrimitive.content)
-            }
-        }
-
-    @Test
-    fun fuelEntryWriteFollowedByCascadeDeleteKeepsEntityTypeInTheCoalescedPayload() =
-        runTest {
-            withVehicleRepositoryTestScope(OwnerId("owner-a")) {
-                seedVehicle()
-                seedFuelEntry(FIRST_FUEL_ENTRY_ID, date = 1_100, odometerKm = 20)
-                seedFuelEntryOutbox(
-                    id = FIRST_FUEL_ENTRY_ID,
-                    payload = "{\"entityType\":\"FUEL_ENTRY\",\"deleted\":false}",
-                )
-
-                assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
-
-                val queued = requireNotNull(outbox("FUEL_ENTRY", FIRST_FUEL_ENTRY_ID))
-                val payload = Json.parseToJsonElement(queued.payload).jsonObject
-                assertEquals("FUEL_ENTRY", payload.getValue("entityType").jsonPrimitive.content)
-                assertEquals("true", payload.getValue("deleted").jsonPrimitive.content)
+                    val queued = requireNotNull(outbox("FUEL_ENTRY", FIRST_FUEL_ENTRY_ID))
+                    val payload = Json.parseToJsonElement(queued.payload).jsonObject
+                    assertEquals("FUEL_ENTRY", payload.getValue("entityType").jsonPrimitive.content)
+                    assertEquals("true", payload.getValue("deleted").jsonPrimitive.content)
+                }
             }
         }
 }

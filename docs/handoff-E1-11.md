@@ -32,12 +32,12 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-01
 - Branch and base: `story/E1-11-outbox-entitytype-fix` from `main` (`68842a2`)
-- Current phase and latest commit: GREEN, about to commit
+- Current phase and latest commit: REFACTOR, about to commit
 - Push and pull-request status: not pushed, no PR
-- Completed since the previous checkpoint: RED committed; added `entityType` to `toVehicleOutboxPayloadOrNull` and `toFuelEntryTombstonePayload`
-- Verification evidence and known failures: `:feature:vehicle:testAndroidHostTest` passes (77 tests)
+- Completed since the previous checkpoint: GREEN committed; consolidated the two coalescence tests into a single parameterized test
+- Verification evidence and known failures: `:feature:vehicle:testAndroidHostTest` passes (76 tests)
 - Open decisions or blockers: none
-- Exact next step: commit GREEN, then REFACTOR if needed
+- Exact next step: commit REFACTOR, run the full verification suite, update handoff/project log, push and open PR
 
 ## Scope Completed
 
