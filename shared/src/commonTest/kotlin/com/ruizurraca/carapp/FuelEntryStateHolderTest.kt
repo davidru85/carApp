@@ -7,6 +7,8 @@ import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
+import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
+import com.ruizurraca.carapp.core.database.SettingsDatabaseRow
 import com.ruizurraca.carapp.core.model.ConsumptionInvalidReason
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
@@ -20,6 +22,7 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -109,6 +112,44 @@ class FuelEntryStateHolderTest {
 
                 assertEquals("EUR", holder.state.value.currencyCode)
             } finally {
+                graph.close()
+            }
+        }
+
+    @Test
+    fun persistedSettingsCurrencyOverridesTheCurrentLocaleForNewEntries() =
+        runTest {
+            val dependencies =
+                testAppGraphDependencies(
+                    localeProvider =
+                        FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+                )
+            val databaseHandle = dependencies.databaseFactory.create()
+            SettingsDatabaseAccess(databaseHandle.database).upsertSettings(
+                SettingsDatabaseRow("GBP", "KM", "LITER", analyticsEnabled = false),
+            )
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+                        ),
+                )
+            val holder =
+                graph.fuelEntryFormStateHolder(
+                    backgroundScope,
+                    vehicleId = "00000000-0000-4000-8000-000000000099",
+                    entryId = null,
+                )
+            val collector =
+                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+
+            try {
+                assertEquals("GBP", holder.state.first { it.currencyCode == "GBP" }.currencyCode)
+            } finally {
+                holder.close()
+                collector.cancelAndJoin()
                 graph.close()
             }
         }
