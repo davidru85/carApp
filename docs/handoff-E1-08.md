@@ -53,8 +53,9 @@
   without implementing E1-10 or E3-03.
 - Applied the first owner-review corrections: Android preserves raw money text while typing,
   invalid Vehicle odometer suggestions no longer replace the last valid suggestion, save
-  completions survive a detached collector without queuing repeated navigation, and instrumented
-  tests wait for observable UI state rather than fixed delays.
+  completions survive a detached collector without queuing repeated navigation, and reactive plus
+  instrumented tests wait for complete observable UI state rather than fixed delays or partial
+  emissions.
 - Recorded D-99 and aligned `setMoneyInputMode` with the existing holder behavior: available money
   values remain present and the value outside the selected mode is immediately re-derived through
   D-93, including the accepted visible one-scale-unit rounding drift.
@@ -185,6 +186,13 @@
 - Final framework link and exact header comparison — successful; generated `Shared.h` and its
   golden are byte-identical with SHA-256
   `b746a480958913a98ba5135a4e69711193e76a371e8f9b0d4346d8267a7a6074`.
+- The first post-REFACTOR CI run exposed a shared-test race in
+  `listPublishesWeightedSummaryAndReliabilityAfterThreeFullTanks`: it waited for three rows but
+  asserted the independently emitted consumption summary immediately. The test-only correction
+  now waits for the complete row-and-summary state.
+- Exact local `provider-decoupling` command — successful with 222 actionable tasks on Android host
+  and iOS simulator. The complete 609-task repository command and all 8 API 36 tests were then
+  repeated successfully; the emulator was closed again.
 
 ## Contract Impact
 

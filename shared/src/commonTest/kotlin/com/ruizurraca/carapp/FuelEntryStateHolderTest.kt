@@ -237,7 +237,13 @@ class FuelEntryStateHolderTest {
                 saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 500L, expectedCount = 2)
                 saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 900L, expectedCount = 3)
 
-                val state = list.state.first { value -> value.entries.size == 3 }
+                val state =
+                    list.state.first { value ->
+                        value.entries.size == 3 &&
+                            value.consumptionAverageScaled == 1_000L &&
+                            value.validConsumptionSegmentCount == 2 &&
+                            value.isConsumptionReliable
+                    }
                 assertEquals(3, state.entries.size)
                 assertEquals(1_000L, state.consumptionAverageScaled)
                 assertEquals(2, state.validConsumptionSegmentCount)

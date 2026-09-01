@@ -45,9 +45,9 @@
 - **Author:** Codex, on behalf of David Ruiz
 - **What changed:** Android now retains raw money text while typing, invalid Vehicle odometer
   suggestions preserve the last valid value, save completion retains at most one pending
-  navigation, and UI tests wait for observable state. D-99 records that money mode switches
-  preserve available values and immediately re-derive the value outside the selected mode through
-  D-93, including the accepted visible one-scale-unit rounding drift.
+  navigation, and reactive plus UI tests wait for complete observable state. D-99 records that
+  money mode switches preserve available values and immediately re-derive the value outside the
+  selected mode through D-93, including the accepted visible one-scale-unit rounding drift.
 - **Why:** owner review found lossy incremental input, fabricated odometer fallback, navigation
   delivery and test-timing risks, plus an obsolete `CONTRACTS.md §20.10` clearing rule that
   contradicted the selected mode-switch behavior.
@@ -55,8 +55,9 @@
   ADR-0099, `docs/handoff-E1-08.md` and this log.
 - **Verification:** every behavioral correction has separate RED and GREEN commits; C-2 adds its
   own RED, GREEN and REFACTOR sequence. The complete repository command passes with 609 actionable
-  tasks, 99.13% Fuel line coverage, all 8 API 36 instrumented tests and a byte-identical Objective-C
-  header; detailed commands are recorded in the handoff.
+  tasks, the exact provider-decoupling command passes with 222 actionable tasks, Fuel line coverage
+  is 99.13%, all 8 API 36 instrumented tests pass and the Objective-C header is byte-identical;
+  detailed commands are recorded in the handoff.
 - **Follow-ups / risks:** E1-09 must reuse D-96, E1-10 replaces the temporary locale currency and
   E3-03 replaces D-95 constant `Idle`. PR #38 remains open and unmerged for owner review.
 
