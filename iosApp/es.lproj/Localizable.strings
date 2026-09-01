@@ -67,7 +67,6 @@
 "calculated_total" = "Total calculado";
 "calculated_price" = "Precio por litro calculado";
 "calculated_liters" = "Litros calculados";
-"money_value" = "%@ %@";
 "value_pending" = "Introduce ambos valores";
 "full_tank" = "Tanque lleno";
 "full_tank_help" = "Desactívalo para guardar un repostaje parcial.";
@@ -80,7 +79,6 @@
 
 "consumption_average_title" = "Consumo medio histórico";
 "consumption_empty" = "Se necesitan dos repostajes con tanque lleno para calcular el consumo.";
-"consumption_value" = "%@ L/100 km";
 "consumption_reliable" = "Media fiable de %d tramos válidos";
 "consumption_not_yet_reliable" = "Media de %d tramo válido; se necesitan dos para que sea fiable";
 "fuel_entry_facts" = "%d km · %@ L · %@ %@";
@@ -96,5 +94,3 @@
 
 "diagnostics_title" = "Diagnóstico";
 "diagnostics_button" = "Diagnóstico";
-"sync_status_local" = "Sincronizado localmente";
-"sync_status_idle" = "Sincronizado";

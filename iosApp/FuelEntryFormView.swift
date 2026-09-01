@@ -220,12 +220,6 @@ struct FuelEntryFormView: View {
             } message: {
                 Text("odometer_warning_body")
             }
-            .onChange(of: viewModel.isSaveComplete) { complete in
-                if complete {
-                    onDismiss?()
-                    dismiss()
-                }
-            }
         }
     }
 }

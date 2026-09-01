@@ -67,7 +67,6 @@
 "calculated_total" = "Calculated total";
 "calculated_price" = "Calculated price per litre";
 "calculated_liters" = "Calculated litres";
-"money_value" = "%@ %@";
 "value_pending" = "Enter both values";
 "full_tank" = "Full tank";
 "full_tank_help" = "Turn this off to record a partial refuel.";
@@ -80,7 +79,6 @@
 
 "consumption_average_title" = "Historical average consumption";
 "consumption_empty" = "Two full-tank entries are required to calculate consumption.";
-"consumption_value" = "%@ L/100 km";
 "consumption_reliable" = "Reliable average from %d valid segments";
 "consumption_not_yet_reliable" = "Average from %d valid segment; two are required for reliability";
 "fuel_entry_facts" = "%d km · %@ L · %@ %@";
@@ -96,5 +94,3 @@
 
 "diagnostics_title" = "Diagnostics";
 "diagnostics_button" = "Diagnostics";
-"sync_status_local" = "Locally synced";
-"sync_status_idle" = "Synced";

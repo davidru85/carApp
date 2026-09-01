@@ -11,11 +11,19 @@ struct VehicleListView: View {
     let skeletonModel: WalkingSkeletonModel
     @StateObject private var viewModel: VehicleListViewModel
     @State private var isCreatingVehicle = false
+    @State private var pendingDeleteVehicleId: String?
 
     init(graph: SwiftAppGraph, skeletonModel: WalkingSkeletonModel) {
         self.graph = graph
         self.skeletonModel = skeletonModel
         _viewModel = StateObject(wrappedValue: VehicleListViewModel(graph: graph))
+    }
+
+    private var isDeleteConfirmationPresented: Binding<Bool> {
+        Binding(
+            get: { pendingDeleteVehicleId != nil },
+            set: { if !$0 { pendingDeleteVehicleId = nil } }
+        )
     }
 
     var body: some View {
@@ -50,7 +58,8 @@ struct VehicleListView: View {
                         .accessibilityIdentifier("vehicle_row_\(vehicle.id)")
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
-                                viewModel.confirmDelete(vehicle.id)
+                                pendingDeleteVehicleId = vehicle.id
+                                viewModel.requestDelete(vehicle.id)
                             } label: {
                                 Label("delete", systemImage: "trash")
                             }
@@ -85,6 +94,21 @@ struct VehicleListView: View {
                 VehicleFormView(graph: graph, vehicleId: nil) {
                     isCreatingVehicle = false
                 }
+            }
+            .alert(String(localized: "delete_vehicle_title"), isPresented: isDeleteConfirmationPresented) {
+                Button(String(localized: "delete"), role: .destructive) {
+                    if let id = pendingDeleteVehicleId {
+                        viewModel.confirmDelete(id)
+                    }
+                    pendingDeleteVehicleId = nil
+                }
+                .accessibilityIdentifier("confirm_delete_vehicle")
+                Button(String(localized: "cancel"), role: .cancel) {
+                    viewModel.clearMessage()
+                    pendingDeleteVehicleId = nil
+                }
+            } message: {
+                Text("delete_vehicle_confirmation")
             }
         }
     }

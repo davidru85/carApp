@@ -86,12 +86,6 @@ struct VehicleFormView: View {
                     .disabled(viewModel.state.isSaving || viewModel.hasOdometerError)
                 }
             }
-            .onChange(of: viewModel.isSaveComplete) { complete in
-                if complete {
-                    onDismiss?()
-                    dismiss()
-                }
-            }
         }
     }
 }

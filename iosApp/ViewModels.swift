@@ -45,7 +45,6 @@ final class VehicleListViewModel: ObservableObject {
 
     deinit {
         observationTask?.cancel()
-        stateHolder.close()
     }
 }
 
@@ -400,61 +399,5 @@ final class FuelEntryFormViewModel: ObservableObject {
         observationTask?.cancel()
         stateHolder.close()
         graph.releaseFuelEntryFormStateHolder(vehicleId: vehicleId, entryId: entryId)
-    }
-}
-
-@MainActor
-final class DiagnosticsViewModel: ObservableObject {
-    @Published private(set) var sessionState: SessionUiState
-    private let graph: SwiftAppGraph
-    private let sessionStateHolder: SessionStateHolder
-    private let vehicleListStateHolder: VehicleListStateHolder
-    private var observationTask: Task<Void, Never>?
-
-    init(graph: SwiftAppGraph) {
-        self.graph = graph
-        self.sessionStateHolder = graph.sessionStateHolder()
-        self.vehicleListStateHolder = graph.vehicleListStateHolder()
-        self.sessionState = sessionStateHolder.state.value
-
-        self.observationTask = Task { [weak self, sessionStateHolder] in
-            for await s in sessionStateHolder.state {
-                self?.sessionState = s
-            }
-        }
-    }
-
-    var canStartAnonymousSession: Bool {
-        sessionState.phase == .signedOut || sessionState.phase == .local
-    }
-
-    var sessionLabel: String {
-        switch sessionState.phase {
-        case .unknown:
-            return String(localized: "session_unknown")
-        case .local:
-            return String(localized: "session_local")
-        case .anonymous:
-            return String(localized: "session_anonymous")
-        case .permanent:
-            return String(localized: "session_permanent")
-        case .signedOut:
-            return String(localized: "session_signed_out")
-        case .deleting:
-            return String(localized: "session_deleting")
-        }
-    }
-
-    func startAnonymousSession() {
-        sessionStateHolder.startAnonymousSignIn()
-    }
-
-    func restoreBackup() {
-        vehicleListStateHolder.refresh()
-    }
-
-    deinit {
-        observationTask?.cancel()
-        sessionStateHolder.close()
     }
 }

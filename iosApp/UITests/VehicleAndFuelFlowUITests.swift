@@ -44,7 +44,7 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         XCTAssertTrue(deleteButton.waitForExistence(timeout: timeout), "Swipe should reveal a delete action")
         deleteButton.tap()
 
-        let confirmDeleteButton = app.alerts.buttons["delete"].firstMatch
+        let confirmDeleteButton = app.alerts.buttons["Delete"].firstMatch
         XCTAssertTrue(confirmDeleteButton.waitForExistence(timeout: timeout), "A confirmation dialog should appear before the vehicle is deleted")
         confirmDeleteButton.tap()
 

@@ -30,12 +30,12 @@ final class FuelEntryCalendarDay {
     func startOfDay(for epochMillis: Int64) -> Int64 {
         let d = date(from: epochMillis)
         let start = calendar.startOfDay(for: d)
-        return Int64(start.timeIntervalSince1970 * 1000.0)
+        return epochMillisFromDate(start)
     }
 
     func startOfDay(for date: Date) -> Int64 {
         let start = calendar.startOfDay(for: date)
-        return Int64(start.timeIntervalSince1970 * 1000.0)
+        return epochMillisFromDate(start)
     }
 
     func date(from epochMillis: Int64) -> Date {
@@ -52,6 +52,10 @@ final class FuelEntryCalendarDay {
         components.second = 0
         guard let d = calendar.date(from: components) else { return 0 }
         let start = calendar.startOfDay(for: d)
-        return Int64(start.timeIntervalSince1970 * 1000.0)
+        return epochMillisFromDate(start)
+    }
+
+    private func epochMillisFromDate(_ date: Date) -> Int64 {
+        Int64(date.timeIntervalSince1970 * 1000.0)
     }
 }

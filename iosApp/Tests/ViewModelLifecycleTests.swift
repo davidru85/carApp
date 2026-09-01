@@ -54,7 +54,10 @@ final class ViewModelLifecycleTests: XCTestCase {
     }
 
     func testVehicleListRequestDeleteEmitsConfirmationMessageWithoutDeleting() async throws {
-        let vModel = VehicleFormViewModel(graph: graph, vehicleId: nil)
+        let localGraph = createSwiftAppGraph(isDebugBuild: false)
+        defer { localGraph.close() }
+
+        let vModel = VehicleFormViewModel(graph: localGraph, vehicleId: nil)
         vModel.setName("DeleteMe-\(UUID().uuidString.prefix(8))")
         vModel.setOdometerText("30000")
 
@@ -67,7 +70,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         XCTAssertTrue(saved, "Vehicle should save so it can be deleted")
         let vehicleId = try XCTUnwrap(vModel.state.savedVehicleId)
 
-        let list = VehicleListViewModel(graph: graph)
+        let list = VehicleListViewModel(graph: localGraph)
         list.refresh()
         for _ in 0..<30 {
             if !list.state.vehicles.isEmpty { break }
@@ -93,7 +96,10 @@ final class ViewModelLifecycleTests: XCTestCase {
     }
 
     func testVehicleListConfirmDeleteAfterRequestDeletesVehicle() async throws {
-        let vModel = VehicleFormViewModel(graph: graph, vehicleId: nil)
+        let localGraph = createSwiftAppGraph(isDebugBuild: false)
+        defer { localGraph.close() }
+
+        let vModel = VehicleFormViewModel(graph: localGraph, vehicleId: nil)
         vModel.setName("ConfirmMe-\(UUID().uuidString.prefix(8))")
         vModel.setOdometerText("20000")
 
@@ -105,7 +111,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         }
         let vehicleId = try XCTUnwrap(vModel.state.savedVehicleId)
 
-        let list = VehicleListViewModel(graph: graph)
+        let list = VehicleListViewModel(graph: localGraph)
         list.refresh()
         for _ in 0..<30 {
             if list.state.vehicles.contains(where: { $0.id == vehicleId }) { break }

@@ -7,14 +7,12 @@ final class WalkingSkeletonModel: ObservableObject {
     @Published private(set) var vehicleFormState: VehicleFormUiState
     @Published private(set) var vehicleListState: VehicleListUiState
 
-    private let graph: SwiftAppGraph
     private let sessionStateHolder: SessionStateHolder
     private let vehicleFormStateHolder: VehicleFormStateHolder
     private let vehicleListStateHolder: VehicleListStateHolder
     private var observationTasks: [Task<Void, Never>] = []
 
     init(graph: SwiftAppGraph) {
-        self.graph = graph
         sessionStateHolder = graph.sessionStateHolder()
         vehicleFormStateHolder = graph.vehicleFormStateHolder(vehicleId: nil)
         vehicleListStateHolder = graph.vehicleListStateHolder()
@@ -81,6 +79,5 @@ final class WalkingSkeletonModel: ObservableObject {
     deinit {
         observationTasks.forEach { $0.cancel() }
         vehicleFormStateHolder.close()
-        graph.close()
     }
 }

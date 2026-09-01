@@ -21,10 +21,13 @@ enum ScaledFormat {
 
 func formatScaled(_ value: Int64, scale: Int) -> String {
     guard let factor = ScaledFormat.powerOfTen(scale) else { return "" }
-    let whole = value / factor
-    let remainder = abs(value % factor)
+    let isNegative = value < 0
+    let absValue = abs(value)
+    let whole = absValue / factor
+    let remainder = absValue % factor
     let fraction = String(format: "%0*d", scale, remainder)
-    return "\(whole).\(fraction)"
+    let sign = isNegative ? "-" : ""
+    return "\(sign)\(whole).\(fraction)"
 }
 
 func parseScaled(_ input: String, scale: Int) -> Int64? {
