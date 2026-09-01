@@ -473,9 +473,18 @@ private fun ScaledMoneyInput(
     tag: String,
     onValue: (Long?) -> Unit,
 ) {
+    val input =
+        rememberSaveableFormText(
+            key = tag,
+            sharedValue = value?.let { formatScaled(it, scale) }.orEmpty(),
+            publish = { text -> onValue(parseScaled(text, scale)) },
+        )
     OutlinedTextField(
-        value = value?.let { formatScaled(it, scale) }.orEmpty(),
-        onValueChange = { input -> onValue(parseScaled(input, scale)) },
+        value = input.value,
+        onValueChange = { candidate ->
+            val accepted = acceptScaledInput(previous = input.value, candidate = candidate, scale = scale)
+            if (accepted != input.value) input.onValueChange(accepted)
+        },
         modifier = Modifier.fillMaxWidth().testTag(tag),
         label = { Text(stringResource(label)) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -584,6 +593,25 @@ internal fun parseScaled(
     if (whole == null || factor == null) return null
     val fraction = fractionText.padEnd(scale, '0').toLongOrNull() ?: 0L
     return runCatching { Math.addExact(Math.multiplyExact(whole, factor), fraction) }.getOrNull()
+}
+
+internal fun acceptScaledInput(
+    previous: String,
+    candidate: String,
+    scale: Int,
+): String = if (isValidScaledEditingText(candidate, scale)) candidate else previous
+
+private fun isValidScaledEditingText(
+    input: String,
+    scale: Int,
+): Boolean {
+    if (input.isEmpty()) return true
+    val separatorIndex = input.indexOfAny(charArrayOf('.', ','))
+    if (separatorIndex < 0) return input.all(Char::isDigit)
+    if (input.indexOfAny(charArrayOf('.', ','), startIndex = separatorIndex + 1) >= 0) return false
+    val whole = input.substring(0, separatorIndex)
+    val fraction = input.substring(separatorIndex + 1)
+    return whole.isNotEmpty() && whole.all(Char::isDigit) && fraction.all(Char::isDigit) && fraction.length <= scale
 }
 
 private fun isValidScaledInput(

@@ -479,13 +479,13 @@ internal fun VehicleFormScreen(
     }
 }
 
-private data class SaveableFormText(
+internal data class SaveableFormText(
     val value: String,
     val onValueChange: (String) -> Unit,
 )
 
 @Composable
-private fun rememberSaveableFormText(
+internal fun rememberSaveableFormText(
     key: Any,
     sharedValue: String,
     publish: (String) -> Unit,
