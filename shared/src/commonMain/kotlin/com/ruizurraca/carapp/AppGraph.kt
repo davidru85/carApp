@@ -7,8 +7,10 @@ import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SUPPORTED_CURRENCY_CODES
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
+import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.feature.fuel.data.SqlDelightFuelEntryRepository
@@ -16,6 +18,7 @@ import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryListStateHolder
+import com.ruizurraca.carapp.feature.session.data.SqlDelightSettingsRepository
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormStateHolder
@@ -63,6 +66,11 @@ internal class DefaultAppGraph(
             ownerContext = dependencies.ownerContext,
             clock = dependencies.clock,
             uuidGenerator = dependencies.uuidGenerator,
+        )
+    private val settingsRepository =
+        SqlDelightSettingsRepository(
+            databaseAccess = SettingsDatabaseAccess(databaseHandle.database),
+            localeProvider = dependencies.localeProvider,
         )
     private var closed = false
 
@@ -119,8 +127,8 @@ internal class DefaultAppGraph(
                 vehicleRuntime.repository
                     .observeVehicle(EntityId(vehicleId))
                     .fuelEntryOdometerSuggestions(),
-            // TODO(E1-10): Replace the locale-derived creation currency with persisted settings.
             initialCurrencyCode = initialFuelEntryCurrency().value,
+            settingsCurrencyCode = settingsRepository.settings.currencyCodes(),
             repository = fuelRepository,
             dispatchers = dependencies.dispatchers,
         )
@@ -162,4 +170,9 @@ internal class DefaultAppGraph(
 internal fun Flow<Outcome<Vehicle?, AppError>>.fuelEntryOdometerSuggestions(): Flow<Long> =
     transform { result ->
         if (result is Outcome.Ok) result.value?.let { vehicle -> emit(vehicle.currentOdometerKm) }
+    }
+
+internal fun Flow<Outcome<UserSettings, AppError>>.currencyCodes(): Flow<String> =
+    transform { result ->
+        if (result is Outcome.Ok) emit(result.value.currency.value)
     }

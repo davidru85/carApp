@@ -135,6 +135,7 @@ class FuelEntryFormStateHolder internal constructor(
     initialDateEpochMillis: Long,
     initialOdometerKm: Flow<Long>,
     initialCurrencyCode: String,
+    settingsCurrencyCode: Flow<String>,
     private val repository: FuelEntryRepository,
     private val dispatchers: DispatcherProvider,
 ) {
@@ -155,6 +156,7 @@ class FuelEntryFormStateHolder internal constructor(
     private val saveCompletions = Channel<Unit>(capacity = Channel.CONFLATED)
     private var pendingConfirmationInputs: FormInputs? = null
     private var odometerEdited = false
+    private var currencyEdited = false
     private var closed = false
 
     init {
@@ -162,6 +164,14 @@ class FuelEntryFormStateHolder internal constructor(
             holderScope.launch(dispatchers.main) {
                 initialOdometerKm.flowOn(dispatchers.io).collect { odometerKm ->
                     if (!odometerEdited) inputs.value = inputs.value.copy(odometerKm = odometerKm)
+                }
+            }
+            holderScope.launch(dispatchers.main) {
+                settingsCurrencyCode.flowOn(dispatchers.io).collect { currencyCode ->
+                    if (!currencyEdited) {
+                        inputs.value =
+                            inputs.value.copy(currencyCode = currencyCode).resolveLiveMoney()
+                    }
                 }
             }
         } else {
@@ -199,7 +209,10 @@ class FuelEntryFormStateHolder internal constructor(
 
     fun setTotalCostMinor(value: Long?) = editInputs { copy(totalCostMinor = value).resolveLiveMoney() }
 
-    fun setCurrencyCode(value: String) = editInputs { copy(currencyCode = value).resolveLiveMoney() }
+    fun setCurrencyCode(value: String) {
+        currencyEdited = true
+        editInputs { copy(currencyCode = value).resolveLiveMoney() }
+    }
 
     fun setFullTank(value: Boolean) = editInputs { copy(isFullTank = value) }
 
@@ -315,6 +328,7 @@ fun createFuelEntryFormStateHolder(
     initialDateEpochMillis: Long,
     initialOdometerKm: Flow<Long>,
     initialCurrencyCode: String,
+    settingsCurrencyCode: Flow<String>,
     repository: FuelEntryRepository,
     dispatchers: DispatcherProvider,
 ): FuelEntryFormStateHolder =
@@ -325,6 +339,7 @@ fun createFuelEntryFormStateHolder(
         initialDateEpochMillis = initialDateEpochMillis,
         initialOdometerKm = initialOdometerKm,
         initialCurrencyCode = initialCurrencyCode,
+        settingsCurrencyCode = settingsCurrencyCode,
         repository = repository,
         dispatchers = dispatchers,
     )

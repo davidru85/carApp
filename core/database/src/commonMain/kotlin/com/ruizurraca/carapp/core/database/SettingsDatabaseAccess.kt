@@ -1,6 +1,10 @@
 package com.ruizurraca.carapp.core.database
 
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlin.coroutines.EmptyCoroutineContext
 
 data class SettingsDatabaseRow(
     val currency: String,
@@ -14,13 +18,31 @@ class SettingsDatabaseAccess(
     private val database: AppDatabase,
 ) {
     fun observeSettings(): Flow<SettingsDatabaseRow?> =
-        error("E1-10 settings observation is not implemented for ${database.databaseQueries}")
+        database.databaseQueries
+            .selectSettings()
+            .asFlow()
+            .mapToOneOrNull(EmptyCoroutineContext)
+            .map { row ->
+                row?.let {
+                    SettingsDatabaseRow(
+                        currency = it.currency,
+                        distanceUnit = it.distanceUnit,
+                        volumeUnit = it.volumeUnit,
+                        analyticsEnabled = it.analyticsEnabled != 0L,
+                    )
+                }
+            }
 
     suspend fun upsertSettings(settings: SettingsDatabaseRow) {
-        error("E1-10 settings persistence is not implemented for ${settings.currency}")
+        database.databaseQueries.upsertSettings(
+            currency = settings.currency,
+            distanceUnit = settings.distanceUnit,
+            volumeUnit = settings.volumeUnit,
+            analyticsEnabled = if (settings.analyticsEnabled) 1L else 0L,
+        )
     }
 
     suspend fun deleteSettings() {
-        error("E1-10 settings deletion is not implemented for ${database.databaseQueries}")
+        database.databaseQueries.deleteSettings()
     }
 }

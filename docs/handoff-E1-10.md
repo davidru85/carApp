@@ -40,6 +40,40 @@
   one local REFACTOR commit followed by a single push, superseding the default push-after-each-phase
   workflow for this story. The deviation will be retained under Decisions Made.
 
+## In-Progress Checkpoint
+
+- Date: 2026-09-01.
+- Branch: `story/E1-10-settings-persistence`, based on merged PR #43 at `df37ec7`.
+- RED is complete in local commit `a399395` (`test(E1-10): define settings persistence behavior`).
+  It has deliberately not been pushed, per the owner's single-push instruction.
+- GREEN implementation is complete and remains uncommitted at this checkpoint. The working tree implements locale currency
+  resolution, SQLDelight settings queries and access, the settings repository, persisted currency
+  propagation into new Fuel Entry forms, and native Android/iOS locale-provider injection.
+- Verified during GREEN before the platform-provider integration:
+  - `./gradlew :core:common:testAndroidHostTest :core:database:testAndroidHostTest
+    :feature:session:testAndroidHostTest` — passed.
+  - `./gradlew :feature:fuel:testAndroidHostTest :shared:testAndroidHostTest` — passed.
+- Platform verification passed: `:androidApp:testDebugUnitTest`, `:build-logic:convention:test` and
+  `:composition:ios:linkDebugFrameworkIosSimulatorArm64`.
+- Focused Android tests, all focused style and static-analysis tasks, and the focused iOS tests for
+  `:core:common`, `:core:database`, `:feature:session` and `:feature:fuel` passed. The final
+  `:shared:iosSimulatorArm64Test` process aborted in the already-registered E1-12 / issue #42
+  graph-close race while running
+  `FuelEntryStateHolderTest.newFormUsesExactClockVehicleOdometerAndSupportedLocaleCurrency`.
+- `architectureCheck` and `contractCheck` passed; `contractCheck` reported all 105 decisions
+  aligned and no unresolved decisions.
+- Exact next step: create the local GREEN commit, then start REFACTOR with the owner-requested
+  continuous-handoff-documentation policy and final verification.
+- The first platform verification found two issues now being corrected: Foundation extension
+  properties needed explicit Kotlin imports, and `PlatformHostContractTest` retained a stale
+  `WalkingSkeletonModel.graph.close()` assertion after E1-09 moved graph ownership to `carAppApp`.
+  The latter is a pre-existing executable-documentation drift, not a product-scope expansion.
+- No branch push or pull request has occurred.
+- Open technical choices to present together before finalisation: settings-flow lifecycle,
+  platform locale-provider ownership and missing-row bootstrap ownership. The current working
+  implementation is provisional until that grouped review is resolved and recorded with any
+  required decision IDs and ADRs.
+
 ## Scope Completed
 
 - Pending E1-10 implementation.
@@ -64,10 +98,15 @@
   push before opening the pull request. This explicitly exempts E1-10 from the default per-phase
   push requirement in `docs/SPECIFICATION.md` §11; test-first ordering and commit separation remain
   mandatory.
+- The SQLDelight query definitions and native/Firebase provider integration use the explicit TDD
+  order exemptions in `docs/SPECIFICATION.md` §11. Their behavior is still covered by database,
+  resolver, Android provider, graph and iOS framework verification.
 
 ## Verification Run
 
-- Pending E1-10 verification.
+- Focused Android and iOS tests, module lint/static analysis, platform host build checks,
+  `architectureCheck` and `contractCheck` are recorded in the in-progress checkpoint above.
+- Full repository verification remains for REFACTOR.
 
 ## Contract Impact
 
@@ -87,7 +126,9 @@
 
 ## Risks or Follow-ups
 
-- Pending E1-10 implementation.
+- E1-12 / issue #42 remains open and can abort `:shared:iosSimulatorArm64Test` when a test closes an
+  app graph before its `backgroundScope` collectors are cancelled. E1-10 does not change that
+  test-infrastructure ownership or the deferred D-89 production-safety question.
 
 ## Human Review Gate
 

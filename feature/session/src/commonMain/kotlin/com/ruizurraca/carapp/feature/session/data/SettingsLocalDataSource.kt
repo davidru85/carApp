@@ -29,8 +29,6 @@ internal class SqlDelightSettingsLocalDataSource(
     }
 }
 
-private fun SettingsDatabaseRow.toLocalSettings() =
-    LocalSettings(currency, distanceUnit, volumeUnit, analyticsEnabled)
+private fun SettingsDatabaseRow.toLocalSettings() = LocalSettings(currency, distanceUnit, volumeUnit, analyticsEnabled)
 
-private fun LocalSettings.toDatabaseRow() =
-    SettingsDatabaseRow(currency, distanceUnit, volumeUnit, analyticsEnabled)
+private fun LocalSettings.toDatabaseRow() = SettingsDatabaseRow(currency, distanceUnit, volumeUnit, analyticsEnabled)

@@ -569,6 +569,7 @@ class FuelEntryStateHoldersTest {
             initialDateEpochMillis = NOW.toEpochMilliseconds(),
             initialOdometerKm = odometer,
             initialCurrencyCode = "EUR",
+            settingsCurrencyCode = flowOf("EUR"),
             repository = repository,
             dispatchers = TestDispatcherProvider(),
         )

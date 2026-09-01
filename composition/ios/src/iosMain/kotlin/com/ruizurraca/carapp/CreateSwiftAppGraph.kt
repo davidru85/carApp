@@ -8,7 +8,11 @@ import platform.Foundation.NSUserDomainMask
 
 /** Builds the exported graph with Firebase providers and non-purgeable iOS application storage. */
 fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph {
-    val providers = firebaseAppProviders(databaseFilePath = iosDatabaseFilePath())
+    val providers =
+        firebaseAppProviders(
+            databaseFilePath = iosDatabaseFilePath(),
+            localeProvider = IosLocaleProvider(),
+        )
     return wrapAppGraphForSwift(
         graph = buildAppGraph(isDebugBuild, providers),
         dispatchers = providers.dispatchers,

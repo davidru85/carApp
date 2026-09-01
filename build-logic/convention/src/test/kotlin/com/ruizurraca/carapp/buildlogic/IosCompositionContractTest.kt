@@ -56,7 +56,7 @@ class IosCompositionContractTest {
             ),
         )
         val factory = declarations.single().readText()
-        assertTrue(factory.contains("firebaseAppProviders(databaseFilePath = iosDatabaseFilePath())"))
+        assertTrue(factory.contains("localeProvider = IosLocaleProvider()"))
         assertTrue(factory.contains("buildAppGraph(isDebugBuild, providers)"))
         assertTrue(factory.contains("NSApplicationSupportDirectory"))
     }

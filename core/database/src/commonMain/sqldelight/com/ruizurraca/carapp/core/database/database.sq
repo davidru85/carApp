@@ -1,3 +1,21 @@
+selectSettings:
+SELECT currency, distanceUnit, volumeUnit, analyticsEnabled
+FROM user_settings
+WHERE id = 0;
+
+upsertSettings:
+INSERT INTO user_settings(id, currency, distanceUnit, volumeUnit, analyticsEnabled)
+VALUES (0, :currency, :distanceUnit, :volumeUnit, :analyticsEnabled)
+ON CONFLICT(id) DO UPDATE SET
+  currency = excluded.currency,
+  distanceUnit = excluded.distanceUnit,
+  volumeUnit = excluded.volumeUnit,
+  analyticsEnabled = excluded.analyticsEnabled;
+
+deleteSettings:
+DELETE FROM user_settings
+WHERE id = 0;
+
 selectAllVehicles:
 SELECT *
 FROM vehicle

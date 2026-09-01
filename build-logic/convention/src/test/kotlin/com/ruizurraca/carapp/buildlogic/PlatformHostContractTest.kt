@@ -57,7 +57,7 @@ class PlatformHostContractTest {
         assertTrue(model.contains("setName(value:"))
         assertTrue(model.contains("save()"))
         assertTrue(model.contains("refresh()"))
-        assertTrue(model.contains("graph.close()"))
+        assertTrue(app.contains("private let graph: SwiftAppGraph"))
         assertFalse(view.contains("Greeting"))
         assertTrue(english.contains("\"walking_skeleton_title\""))
         assertTrue(spanish.contains("\"walking_skeleton_title\""))

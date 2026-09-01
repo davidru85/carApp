@@ -11,7 +11,12 @@ fun resolveLocaleCurrency(
     suggestedCurrency: CurrencyCode?,
     runtimeMinorUnitFactor: Int?,
 ): CurrencyCode =
-    error(
-        "E1-10 locale currency resolution is not implemented: " +
-            "$suggestedCurrency/$runtimeMinorUnitFactor",
-    )
+    suggestedCurrency
+        ?.takeIf {
+            runtimeMinorUnitFactor == TWO_DECIMAL_MINOR_UNIT_FACTOR &&
+                MinorUnits.factorFor(it) == TWO_DECIMAL_MINOR_UNIT_FACTOR
+        }
+        ?: DEFAULT_CURRENCY
+
+private val DEFAULT_CURRENCY = CurrencyCode("EUR")
+private const val TWO_DECIMAL_MINOR_UNIT_FACTOR = 100
