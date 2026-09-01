@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -31,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -72,23 +72,26 @@ internal fun FuelEntryListContent(
         }
 
         else -> {
-            LazyColumn(
-                modifier = modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                item {
-                    ConsumptionSummary(state)
-                }
-                if (state.entries.isEmpty()) {
+            Column(modifier = modifier.fillMaxWidth()) {
+                state.message?.let { FuelEntryErrorText(it, Modifier.fillMaxWidth()) }
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     item {
-                        Text(
-                            text = stringResource(R.string.add_first_fuel_entry_invitation),
-                            modifier = Modifier.testTag(VehicleTestTags.FIRST_FUEL_INVITATION),
-                        )
+                        ConsumptionSummary(state)
                     }
-                } else {
-                    items(state.entries, key = FuelEntryListItemUi::id) { entry ->
-                        FuelEntryRow(entry, calendarDay, onEdit)
+                    if (state.entries.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.add_first_fuel_entry_invitation),
+                                modifier = Modifier.testTag(VehicleTestTags.FIRST_FUEL_INVITATION),
+                            )
+                        }
+                    } else {
+                        items(state.entries, key = FuelEntryListItemUi::id) { entry ->
+                            FuelEntryRow(entry, calendarDay, onEdit)
+                        }
                     }
                 }
             }
@@ -195,6 +198,7 @@ internal fun FuelEntryFormScreen(
     onSaved: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
+    val isLoading by stateHolder.isLoading.collectAsState()
     val calendarDay = rememberDeviceCalendarDay()
 
     LaunchedEffect(stateHolder) {
@@ -214,17 +218,28 @@ internal fun FuelEntryFormScreen(
         topBar = {
             FuelEntryFormTopBar(
                 state = state,
+                isLoading = isLoading,
                 onBack = onBack,
                 onSave = stateHolder::save,
             )
         },
     ) { padding ->
-        FuelEntryForm(
-            state = state,
-            stateHolder = stateHolder,
-            calendarDay = calendarDay,
-            modifier = Modifier.padding(padding),
-        )
+        if (isLoading && state.entryId != null) {
+            Column(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            FuelEntryForm(
+                state = state,
+                stateHolder = stateHolder,
+                calendarDay = calendarDay,
+                modifier = Modifier.padding(padding),
+            )
+        }
     }
 }
 
@@ -256,6 +271,7 @@ private fun FuelOdometerWarningDialog(
 @Composable
 private fun FuelEntryFormTopBar(
     state: FuelEntryFormUiState,
+    isLoading: Boolean,
     onBack: () -> Unit,
     onSave: () -> Unit,
 ) {
@@ -271,7 +287,7 @@ private fun FuelEntryFormTopBar(
         actions = {
             TextButton(
                 onClick = onSave,
-                enabled = !state.isSaving,
+                enabled = !state.isSaving && !isLoading,
                 modifier = Modifier.testTag(FuelEntryTestTags.SAVE),
             ) {
                 Text(stringResource(R.string.save_fuel_entry))
@@ -355,9 +371,17 @@ private fun FuelOdometerField(
     odometerKm: Long,
     onChanged: (Long) -> Unit,
 ) {
+    val input =
+        rememberSaveableFormText(
+            key = FuelEntryTestTags.ODOMETER,
+            sharedValue = if (odometerKm == 0L) "" else odometerKm.toString(),
+            publish = { text -> onChanged(text.toLongOrNull() ?: 0L) },
+        )
     OutlinedTextField(
-        value = odometerKm.toString(),
-        onValueChange = { value -> value.toLongOrNull()?.let(onChanged) },
+        value = input.value,
+        onValueChange = { candidate ->
+            if (isValidOdometerText(candidate)) input.onValueChange(candidate)
+        },
         modifier = Modifier.fillMaxWidth().testTag(FuelEntryTestTags.ODOMETER),
         label = { Text(stringResource(R.string.current_odometer)) },
         suffix = { Text(stringResource(R.string.kilometer_unit)) },
@@ -365,6 +389,11 @@ private fun FuelOdometerField(
         singleLine = true,
     )
 }
+
+internal fun isValidOdometerText(input: String): Boolean =
+    input.isEmpty() || (input.all(Char::isDigit) && input.length <= MAX_ODOMETER_DIGITS)
+
+private const val MAX_ODOMETER_DIGITS = 10
 
 @Composable
 private fun FuelToggle(

@@ -150,6 +150,7 @@ class FuelEntryFormStateHolder internal constructor(
             ),
         )
     private val saving = MutableStateFlow(false)
+    private val loading = MutableStateFlow(entryId != null)
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private val saveCompletions = Channel<Unit>(capacity = Channel.CONFLATED)
     private var pendingConfirmationInputs: FormInputs? = null
@@ -179,6 +180,9 @@ class FuelEntryFormStateHolder internal constructor(
             started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS),
             initialValue = inputs.value.toUiState(isSaving = false, message = null),
         )
+
+    @HiddenFromObjC
+    val isLoading: StateFlow<Boolean> = loading
 
     fun setDateEpochMillis(value: Long) = editInputs { copy(dateEpochMillis = value) }
 
@@ -277,6 +281,7 @@ class FuelEntryFormStateHolder internal constructor(
     }
 
     private fun applyLoadedEntry(result: Outcome<FuelEntry?, AppError>) {
+        loading.value = false
         when (result) {
             is Outcome.Err -> {
                 transientMessage.value = result.error.toUiMessage()
@@ -340,11 +345,11 @@ private data class FormInputs(
 )
 
 private fun FormInputs.resolveLiveMoney(): FormInputs {
-    val factor = MinorUnits.factorFor(CurrencyCode(currencyCode)) ?: return clearDerivedMoney()
-    val money = toMoneyInput() ?: return clearDerivedMoney()
+    val factor = MinorUnits.factorFor(CurrencyCode(currencyCode)) ?: return this
+    val money = toMoneyInput() ?: return this
     return when (val result = resolveMoney(money, factor)) {
         is Outcome.Err -> {
-            clearDerivedMoney()
+            this
         }
 
         is Outcome.Ok -> {
@@ -356,13 +361,6 @@ private fun FormInputs.resolveLiveMoney(): FormInputs {
         }
     }
 }
-
-private fun FormInputs.clearDerivedMoney(): FormInputs =
-    when (moneyInputMode) {
-        MoneyInputMode.LITERS_AND_PRICE -> copy(totalCostMinor = null)
-        MoneyInputMode.LITERS_AND_TOTAL -> copy(pricePerLiterScaled = null)
-        MoneyInputMode.PRICE_AND_TOTAL -> copy(litersScaled = null)
-    }
 
 private fun FormInputs.toMoneyInput(): MoneyInput? =
     when (moneyInputMode) {

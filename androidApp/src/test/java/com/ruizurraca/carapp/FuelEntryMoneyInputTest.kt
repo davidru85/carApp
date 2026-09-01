@@ -2,7 +2,9 @@ package com.ruizurraca.carapp
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class FuelEntryMoneyInputTest {
     @Test
@@ -27,5 +29,15 @@ class FuelEntryMoneyInputTest {
         assertEquals(1_000L, parseScaled("1,", scale = 3))
         assertEquals(1_549L, parseScaled("1.549", scale = 3))
         assertEquals("1.549", formatScaled(1_549L, scale = 3))
+    }
+
+    @Test
+    fun odometerTextAcceptsEmptyAndDigitsOnly() {
+        assertTrue(isValidOdometerText(""))
+        assertTrue(isValidOdometerText("123"))
+        assertTrue(isValidOdometerText("1234567890"))
+        assertFalse(isValidOdometerText("12a"))
+        assertFalse(isValidOdometerText("12.5"))
+        assertFalse(isValidOdometerText("12345678901"))
     }
 }

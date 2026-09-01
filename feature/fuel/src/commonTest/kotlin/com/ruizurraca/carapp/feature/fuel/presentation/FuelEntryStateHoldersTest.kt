@@ -187,7 +187,7 @@ class FuelEntryStateHoldersTest {
             assertEquals(25_000L, holder.state.value.litersScaled)
 
             holder.setCurrencyCode("JPY")
-            assertNull(holder.state.value.litersScaled)
+            assertEquals(25_000L, holder.state.value.litersScaled)
             holder.setCurrencyCode("EUR")
             holder.setMoneyInputMode(MoneyInputMode.LITERS_AND_PRICE)
             holder.setLitersScaled(null)
@@ -464,6 +464,71 @@ class FuelEntryStateHoldersTest {
             assertFalse(holder.state.value.isSaving)
         }
 
+    @Test
+    fun modeSwitchPreservesTypedValuesWhenTheNewModePairIsIncomplete() =
+        runTest {
+            val holder = createForm(backgroundScope, FakeFuelEntryRepository())
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            holder.setLitersScaled(40_000L)
+            advanceUntilIdle()
+
+            holder.setMoneyInputMode(MoneyInputMode.PRICE_AND_TOTAL)
+            advanceUntilIdle()
+
+            with(holder.state.value) {
+                assertEquals(40_000L, litersScaled)
+                assertNull(pricePerLiterScaled)
+                assertNull(totalCostMinor)
+            }
+        }
+
+    @Test
+    fun editModePublishesLoadingUntilTheEntryResolves() =
+        runTest {
+            val loadGate = CompletableDeferred<Unit>()
+            val gateRepository =
+                object : FuelEntryRepository {
+                    val entries = MutableStateFlow<Outcome<List<FuelEntryListItem>, AppError>>(Outcome.Ok(emptyList()))
+                    val consumption =
+                        MutableStateFlow<Outcome<ConsumptionReport, AppError>>(
+                            Outcome.Ok(ConsumptionReport(emptyList(), 0, null, false)),
+                        )
+
+                    override fun observeFuelEntries(
+                        vehicleId: EntityId,
+                        includeDeleted: Boolean,
+                    ): Flow<Outcome<List<FuelEntryListItem>, AppError>> = entries
+
+                    override suspend fun getFuelEntry(id: EntityId): Outcome<FuelEntry?, AppError> {
+                        loadGate.await()
+                        return Outcome.Ok(fuelEntry())
+                    }
+
+                    override suspend fun createFuelEntry(command: CreateFuelEntryCommand): Outcome<EntityId, AppError> =
+                        Outcome.Ok(ENTRY_ID)
+
+                    override suspend fun updateFuelEntry(command: UpdateFuelEntryCommand): Outcome<Unit, AppError> =
+                        Outcome.Ok(Unit)
+
+                    override suspend fun deleteFuelEntry(id: EntityId): Outcome<Unit, AppError> = Outcome.Ok(Unit)
+
+                    override fun observeConsumption(vehicleId: EntityId): Flow<Outcome<ConsumptionReport, AppError>> =
+                        consumption
+                }
+            val holder = createForm(backgroundScope, gateRepository, entryId = ENTRY_ID.value)
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.isLoading.collect {} }
+            advanceUntilIdle()
+
+            assertTrue(holder.isLoading.value)
+
+            loadGate.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse(holder.isLoading.value)
+            assertEquals(456L, holder.state.value.odometerKm)
+        }
+
     private fun TestScope.createCollectedListHolder(repository: FakeFuelEntryRepository): FuelEntryListStateHolder {
         val holder =
             createFuelEntryListStateHolder(
@@ -493,7 +558,7 @@ class FuelEntryStateHoldersTest {
 
     private fun createForm(
         scope: kotlinx.coroutines.CoroutineScope,
-        repository: FakeFuelEntryRepository,
+        repository: FuelEntryRepository,
         entryId: String? = null,
         odometer: Flow<Long> = flowOf(100L),
     ): FuelEntryFormStateHolder =

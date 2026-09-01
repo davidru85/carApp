@@ -128,4 +128,28 @@ class FuelEntryFlowTest {
             calendarDay.atStartOfDay(year = 2026, zeroBasedMonth = 9, dayOfMonth = 25),
         )
     }
+
+    @Test
+    fun odometerFieldCanBeClearedAndRetypedWithoutLosingFocus() {
+        val vehicleName = "Odometer vehicle ${System.currentTimeMillis()}"
+
+        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
+        composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
+        composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(FuelEntryTestTags.ADD_FUEL_ENTRY).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(FuelEntryTestTags.ADD_FUEL_ENTRY).performClick()
+
+        val odometer = composeRule.onNodeWithTag(FuelEntryTestTags.ODOMETER)
+        odometer.performTextReplacement("50")
+        odometer.performTextReplacement("")
+        odometer.assertTextContains("")
+        odometer.performTextInput("1")
+        odometer.assertTextContains("1")
+        odometer.performTextInput("2")
+        odometer.performTextInput("3")
+        odometer.assertTextContains("123")
+    }
 }
