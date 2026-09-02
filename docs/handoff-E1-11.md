@@ -25,8 +25,11 @@
 
 - Date: 2026-09-02
 - Branch and base: `story/E1-11-outbox-entitytype-fix-v2` from `main` (`76883c2`)
-- Current phase and latest commit: REFACTOR complete, verification green, about to commit and push
-- Push and pull-request status: not pushed, PR not yet created
+- Current phase and latest commit: complete; `882f610` plus this checkpoint update
+- Push and pull-request status: pushed to `origin/story/E1-11-outbox-entitytype-fix-v2`; pull
+  request #48 (`https://github.com/davidru85/carApp/pull/48`) is open and awaiting owner review.
+  The ten required checks run on the pushed head; their live result is the authority. The agent
+  MUST NOT merge.
 - Completed since the previous checkpoint: all E1-11 work re-applied after revert with 6 review
   findings fixed; production code (mapper + Firestore boundary), test code (all tests including
   rewritten parity test with real repositories and both coalescence orders), documentation (D-110,
@@ -39,8 +42,7 @@
   111 ADRs, no unresolved decisions and no `PENDING` assertions. `git diff --check` is clean.
   No known failures.
 - Open decisions or blockers: none
-- Exact next step: commit, push, create the pull request, verify CI green, leave it for owner
-  review without merging
+- Exact next step: owner review and merge decision on pull request #48
 
 ## Scope Completed
 
