@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -113,7 +112,6 @@ class VehicleFormStateHolderTest {
                 assertEquals(0L, outbox.nextAttemptAt)
                 assertEquals(
                     setOf(
-                        "entityType",
                         "id",
                         "ownerId",
                         "name",
@@ -174,45 +172,6 @@ class VehicleFormStateHolderTest {
                 assertEquals(EntityType.VEHICLE, call.second.entityType)
                 assertEquals("00000000-0000-4000-8000-000000000001", call.second.entityId.value)
                 assertEquals(1, call.second.schemaVersion)
-            } finally {
-                graph.close()
-            }
-        }
-
-    @Test
-    fun vehicleOutboxPayloadWithEntityTypeReachesRemoteSyncSourceAsAValidSnapshot() =
-        runTest {
-            val defaultDependencies = testAppGraphDependencies()
-            val databaseHandle = defaultDependencies.databaseFactory.create()
-            val remote =
-                RecordingRemoteSyncSource { _, snapshot ->
-                    val json = Json.parseToJsonElement(snapshot.json).jsonObject
-                    assertEquals("VEHICLE", json.getValue("entityType").jsonPrimitive.content)
-                    assertEquals(EntityType.VEHICLE, snapshot.entityType)
-                }
-            val graph =
-                buildAppGraph(
-                    isDebugBuild = true,
-                    providers =
-                        testAppProviders(
-                            defaultDependencies.copy(
-                                databaseFactory = fixedDatabaseFactory(databaseHandle),
-                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
-                                remoteSyncSource = remote,
-                            ),
-                        ),
-                )
-
-            try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
-                holder.setName("Roadster")
-                holder.save()
-                holder.state.first { state -> !state.isSaving }
-
-                val snapshot = remote.pushCalls.single().second
-                val json = Json.parseToJsonElement(snapshot.json).jsonObject
-                assertEquals("VEHICLE", json.getValue("entityType").jsonPrimitive.content)
-                assertEquals(EntityType.VEHICLE, snapshot.entityType)
             } finally {
                 graph.close()
             }

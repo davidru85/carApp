@@ -206,16 +206,12 @@ private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): FirestoreWrite {
     require(jsonObject.getValue(ID_FIELD).jsonPrimitive.content == entityId.value)
     require(jsonObject.getValue(OWNER_ID_FIELD).jsonPrimitive.content == ownerId.value)
     require(jsonObject.getValue(SCHEMA_VERSION_FIELD).jsonPrimitive.longOrNull == schemaVersion.toLong())
-    val payloadEntityType = jsonObject["entityType"]?.jsonPrimitive?.content
-    require(payloadEntityType == entityType.name)
     return FirestoreWrite(
         path = "users/${ownerId.value}/${entityType.collection}/${entityId.value}",
         fields =
-            jsonObject
-                .filterKeys { it != "entityType" }
-                .mapValues { (field, value) ->
-                    value.toFirestoreValue(field)
-                },
+            jsonObject.mapValues { (field, value) ->
+                value.toFirestoreValue(field)
+            },
     )
 }
 

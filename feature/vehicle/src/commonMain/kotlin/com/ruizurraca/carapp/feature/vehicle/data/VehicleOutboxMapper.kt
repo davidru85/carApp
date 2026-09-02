@@ -12,7 +12,6 @@ internal fun LocalVehicle.toVehicleOutboxPayloadOrNull(): String? =
         null
     } else {
         buildJsonObject {
-            put("entityType", "VEHICLE")
             put("id", id.value)
             put("ownerId", ownerId.value)
             put("name", name)
@@ -33,7 +32,6 @@ internal fun FuelEntryDatabaseRow.toFuelEntryTombstonePayload(
     timestamp: Long,
 ): String =
     buildJsonObject {
-        put("entityType", "FUEL_ENTRY")
         put("id", id)
         put("ownerId", ownerId)
         put("vehicleId", vehicleId)
