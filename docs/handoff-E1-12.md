@@ -48,9 +48,9 @@
   `eb8755f`, and the second review round RED `5b9cb46`, GREEN `92bc607` and REFACTOR
   `4d86f82` are complete. All phases are finished; only the final documentation checkpoint
   remains in flight.
-- Push and pull-request status: all commits through `eb8755f` are pushed; PR #49 is open at
-  `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by the agent. The
-  second review-round commits will be pushed with the final documentation checkpoint.
+- Push and pull-request status: all commits through the final documentation checkpoint are
+  pushed; PR #49 is open at `https://github.com/davidru85/carApp/pull/49` and MUST NOT be
+  merged by the agent.
 - Completed since the previous checkpoint: resolved the second review round of PR #49.
   Extended `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler` to retain the parent
   `Job` explicitly and assert that a failed construction leaves no orphaned child attached
@@ -79,9 +79,14 @@
   and the final CI run on the pushed HEAD remain. Production hardening of `AppGraph.close()`
   remains explicitly deferred outside E1-12 because it would change D-89 and touch gated
   `core/database/**`.
-- Exact next step: commit this documentation checkpoint, push the branch, wait for the ten
-  required checks on the final HEAD, record the final run evidence, refresh the PR #49
+- Exact next step: commit this final CI-evidence checkpoint, push it, refresh the PR #49
   description to match this handoff, and leave PR #49 for owner review and merge.
+- Final CI evidence: GitHub Actions run
+  `https://github.com/davidru85/carApp/actions/runs/33667021311` on the final HEAD `9258821`
+  passed all ten required jobs: `ktlint`, `detekt`, `architecture-check`, `contract-check`,
+  `android-assemble`, `android-instrumented-tests`, `shared-tests`, `ios-simulator-build`,
+  `objc-header-golden-check` and `provider-decoupling`. The macOS `shared-tests` job
+  `100371177265` passed in 2m26s with no process signal.
 
 ## Scope Completed
 
