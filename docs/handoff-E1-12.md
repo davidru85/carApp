@@ -163,13 +163,46 @@
   :integration:firebase-auth:iosSimulatorArm64Test -x
   :integration:firebase-firestore:iosSimulatorArm64Test -x
   :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` — BUILD
-  SUCCESSFUL in 4s with 627 actionable tasks; `contractCheck` output inspected: every assertion
-  PASS, 111 decisions, 111 ADRs, no unresolved decisions and no `PENDING` assertions.
+  SUCCESSFUL in 6s with 627 actionable tasks (41 executed, 586 up-to-date); `contractCheck`
+  output inspected: every assertion PASS, 111 decisions, 111 ADRs, no unresolved decisions and no
+  `PENDING` assertions.
+- Focused rerun verification: `./gradlew :shared:testAndroidHostTest --rerun-tasks` — BUILD
+  SUCCESSFUL in 5s with all 74 actionable tasks executed; 32 tests passed, 0 failures, 0 skipped,
+  test execution duration 1.440s.
 - CI: `https://github.com/davidru85/carApp/actions/runs/33625103198` — attempt 1 passed all 10
   required jobs. macOS `shared-tests` job `100230981301` passed in 4m03s; isolated rerun job
   `100234505110` passed in 4m06s; isolated rerun job `100235772541` passed in 3m32s. Result: 3/3
   CI executions of the shared Android-host, Kotlin/Native and coverage suite passed with no
   process signal.
+
+## Review Findings Resolution (PR #49)
+
+### Blocking Finding: Collector Dispatcher Regression
+- Root cause: `AppGraphTestHarness.collect()` launched directly into `scope`, which inherited
+  `StandardTestDispatcher` from the enclosing `runTest` scope. Tests migrated to the harness
+  previously collected on `UnconfinedTestDispatcher(testScheduler)`. `CoroutineStart.UNDISPATCHED`
+  made only the initial flow collection synchronous; subsequent emissions queued on the scheduler.
+- Fix: `AppGraphTestHarness` now resolves `TestCoroutineScheduler` from
+  `parentScope.coroutineContext` via `requireNotNull(...)` (failing loudly with
+  `IllegalArgumentException` if missing), instantiates `UnconfinedTestDispatcher(scheduler)` and
+  passes `context = collectorDispatcher` to `scope.launch(..., start = CoroutineStart.UNDISPATCHED)`.
+  The collector jobs remain children of `scopeJob`, preserving `cancelAndJoin()` guarantees.
+- Verification:
+  - Step 1 (before fix): temporary assertion placed immediately after `form.confirmSave(...)`
+    read `saveCompletionCount` as `0`.
+  - Step 2 (after fix): eager collector execution verified; emission observed eagerly as `1`
+    (and reinforced by unit test `collectorsRunEagerlyOnUnconfinedTestDispatcher`).
+  - Step 3 (cleanup): temporary instrumentation removed; working tree clean.
+
+### Non-blocking Cleanups
+- Deduplicated test doubles: collapsed `CloseRecordingDatabaseFactory` in
+  `AppGraphTestHarnessTest.kt` and `RecordingDatabaseFactory` in `AppGraphCloseTest.kt` into a single
+  shared `RecordingDatabaseFactory.kt` with an optional `onClose: () -> Unit = {}` callback.
+- Hardened teardown: wrapped `harness.close()` in a nested `finally` block in
+  `AppGraphTestHarnessTest.kt` so the graph is closed even if assertions fail.
+- Added explicit unit tests in `AppGraphTestHarnessTest.kt`:
+  - `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler`: proves missing scheduler throws.
+  - `collectorsRunEagerlyOnUnconfinedTestDispatcher`: proves emissions are observed eagerly.
 
 ## Contract Impact
 
