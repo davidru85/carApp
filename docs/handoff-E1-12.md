@@ -42,17 +42,18 @@
 - Date: 2026-09-02.
 - Branch and base: `story/E1-12-shared-test-graph-close-race`, based on `main` / `origin/main` at
   `64c91d6` (merged PR #48).
-- Current phase and latest commit: REFACTOR complete and awaiting its commit; RED is committed at
-  `ed698e0` and GREEN is committed at `55f075c`.
-- Push and pull-request status: the remote branch exists at the same base commit; no E1-12 work has
-  been pushed and no pull request has been created.
+- Current phase and latest commit: RED `ed698e0`, GREEN `55f075c` and REFACTOR `a7fb619` are
+  complete.
+- Push and pull-request status: all three TDD phase commits are pushed; PR #49 is open at
+  `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by the agent.
 - Completed since the previous checkpoint: committed GREEN; retained its passing behavior while
   collapsing the duplicate collector-launch overloads into one typed helper with an optional
   collector callback. Earlier GREEN work made `AppGraphTestHarness.close()` cancel and join its
   child scope before closing the graph, moved Fuel Entry collectors and all Kotlin caller-owned
   graph holder scopes under the harness, removed every direct `backgroundScope.launch` state-
   holder collector from `:shared` tests and completed the graph-mounting test audit. Updated the
-  repository state, README and backlog to mark E1-12 complete and E1-13 next.
+  repository state, README and backlog to mark E1-12 complete and E1-13 next. Committed REFACTOR,
+  pushed the branch and created PR #49.
 - Verification evidence and known failures: the focused Android-host RED test compiled, executed
   and failed for the intended missing behavior before GREEN: expected
   `[collectors-cancelled, graph-closed]` but observed `[graph-closed]`. In GREEN, all 30 `:shared`
@@ -67,8 +68,9 @@
   mandatory human review can begin only after the requested push and pull-request creation.
   Production hardening of `AppGraph.close()` remains explicitly deferred outside E1-12 because it
   would change D-89 and touch gated `core/database/**`.
-- Exact next step: create the REFACTOR commit, push all three TDD commits, create the pull request,
-  then monitor and repeat the macOS CI test run to complete external acceptance evidence.
+- Exact next step: push this continuity checkpoint, monitor PR #49, repeat the macOS shared-test CI
+  run to complete external acceptance evidence, record the results and leave the PR for owner
+  review.
 
 ## Scope Completed
 
