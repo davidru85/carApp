@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.locale.IosLocaleProvider
 import com.ruizurraca.carapp.wiring.firebase.firebaseAppProviders
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSApplicationSupportDirectory

@@ -41,22 +41,32 @@
 
 - Date: 2026-09-03.
 - Branch and base: `story/E1-13-ios-locale-coverage`, based on up-to-date `main`.
-- Current phase and latest commit: RED complete and not yet committed; no story commit yet.
-- Push and pull-request status: branch is local only; no pull request exists.
+- Current phase and latest commit: GREEN complete and not yet committed; RED is committed at
+  `4860163`.
+- Push and pull-request status: branch and RED commit are local only; no pull request exists.
 - Completed since the previous checkpoint: selected the in-scope extension of D-109: compile the
   composition-owned provider source into `:shared` `iosTest` without a project dependency, module
   move, second framework or second Firebase route. Added one focused build-logic guard that requires
   this source reuse, the behavior-test file and the existing canonical root Native test task.
+  GREEN moved the internal adapter into a dedicated composition-owned package, added an internal
+  `NSLocale` factory with the unchanged `NSLocale.currentLocale` production default, reused that
+  exact source only in `:shared` `iosTest`, and added four behavior-specific Foundation tests.
 - Verification evidence and known failures: the focused RED command
   `./gradlew :build-logic:convention:test --tests
   com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
   --rerun-tasks` compiled and executed one test, which failed at the source-reuse assertion because
   `shared/build.gradle.kts` does not yet include the composition-owned adapter source. This is the
   intended missing E1-13 behavior.
+  The first GREEN style/framework check linked the production `Shared` simulator framework but
+  found one ktlint import-order violation in `IosLocaleProviderTest.kt`; the local test owns the
+  failure and it was corrected before commit.
+  The corrected focused GREEN command passed 117 executed tasks. The `Shared` simulator framework
+  linked, both affected ktlint tasks passed, the canonical-route guard passed, and
+  `IosLocaleProviderTest` executed four tests with zero failures, errors or skips.
 - Open decisions or blockers: no owner-only decision or implementation blocker. D-109 will be
   refined in REFACTOR documentation with the exact route and its rejected alternatives.
-- Exact next step: commit RED, then add the minimum production test seam, source reuse and four
-  focused Foundation behavior tests in GREEN.
+- Exact next step: commit GREEN, then complete the D-109 decision mirrors, E1-10 gap closure,
+  story completion records and full verification in REFACTOR.
 
 ## Scope Completed
 
@@ -64,7 +74,16 @@
 
 ## Acceptance Evidence
 
-- Pending RED, GREEN and REFACTOR evidence.
+- `IosLocaleProviderTest.supportedTwoDecimalLocaleResolvesItsCurrencyCode` constructs Foundation
+  locale `en_US`; the production adapter's `NSNumberFormatter.maximumFractionDigits` path accepts
+  its two digits and returns supported code `USD`.
+- `IosLocaleProviderTest.currencyWithoutTwoFractionDigitsFallsBackToEur` constructs Foundation
+  locale `ja_JP`; its runtime `JPY` zero-fraction-digits path returns `EUR`.
+- `languageTagComesFromTheFoundationLocaleIdentifier` and
+  `regionComesFromTheFoundationCountryCode` execute the production extraction against concrete
+  `NSLocale` values and assert `es-ES` and `US` respectively.
+- The focused `:shared:iosSimulatorArm64Test` result records four tests, zero failures, zero errors
+  and zero skips in the generated XML report.
 
 ## Out of Scope / Not Done
 
@@ -75,7 +94,13 @@
 
 - `build-logic/convention/src/test/kotlin/com/ruizurraca/carapp/buildlogic/IosCompositionContractTest.kt`
   (RED canonical-route guard).
+- `composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/CreateSwiftAppGraph.kt` and the moved
+  `composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/locale/IosLocaleProvider.kt` (unchanged
+  production injection plus internal deterministic locale factory).
 - `docs/handoff-E1-13.md` (story intake and live checkpoint).
+- `shared/build.gradle.kts` and
+  `shared/src/iosTest/kotlin/com/ruizurraca/carapp/locale/IosLocaleProviderTest.kt` (test-only exact
+  source reuse and executable simulator behavior tests).
 
 ## Decisions Made
 
@@ -88,6 +113,10 @@
 - The D-109 route will reuse the exact composition-owned `IosLocaleProvider` source in `:shared`
   `iosTest`. This is test-only source reuse rather than a production dependency: it preserves the
   D-108 host owner, the D-75 exclusion set, the one-framework runtime and the closed Swift ABI.
+- The internal `NSLocale` factory is a testability seam with `NSLocale.currentLocale` as its
+  default; production construction and behavior remain unchanged. Native host/provider integration
+  code is explicitly exempt from TDD order under `docs/SPECIFICATION.md` section 11. The executable
+  canonical-route guard was still committed RED before this seam and the behavior tests.
 
 ## Verification Run
 
@@ -95,6 +124,11 @@
   com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
   --rerun-tasks` — failed as intended: one executed test, one failure at the missing source-reuse
   assertion.
+- GREEN: `./gradlew :shared:iosSimulatorArm64Test :build-logic:convention:test --tests
+  com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
+  :shared:ktlintCheck :composition:ios:ktlintCheck
+  :composition:ios:linkDebugFrameworkIosSimulatorArm64 --rerun-tasks` — passed, 117 executed tasks;
+  four provider behavior tests passed and the production simulator framework linked.
 
 ## Contract Impact
 
