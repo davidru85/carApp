@@ -45,12 +45,19 @@
 - Current phase and latest commit: RED `ed698e0`, GREEN `55f075c`, REFACTOR `a7fb619`, the
   pull-request continuity checkpoints `b23b4d2` and `a4009df`, the review-fix dispatcher
   correction `27030d6`, the shared-factory hardening `fa69083`, the review-findings record
-  `eb8755f`, and the second review round RED `5b9cb46`, GREEN `92bc607` and REFACTOR
-  `4d86f82` are complete. All phases are finished; only the final documentation checkpoint
-  remains in flight.
-- Push and pull-request status: all commits through the final documentation checkpoint are
-  pushed; PR #49 is open at `https://github.com/davidru85/carApp/pull/49` and MUST NOT be
-  merged by the agent.
+  `eb8755f`, the second review round RED `5b9cb46`, GREEN `92bc607` and REFACTOR `4d86f82`,
+  the review documentation `9258821`, the first CI-evidence checkpoint `f62516d` and this
+  final CI-evidence checkpoint are complete. All phases are finished; this final
+  continuity-record commit is the story's final HEAD, and the last code-bearing commit is
+  `4d86f82`.
+- Push and pull-request status: every commit, including this final checkpoint, is pushed. All
+  ten required checks passed on the code-identical commits `9258821`, `f62516d` and `6776810`
+  in runs `https://github.com/davidru85/carApp/actions/runs/33667021311`,
+  `https://github.com/davidru85/carApp/actions/runs/33669085132` and
+  `https://github.com/davidru85/carApp/actions/runs/33676703761`; the push of this final
+  documentation-only checkpoint triggers the same ten checks on identical code, and its run
+  is recorded in the PR #49 description. PR #49 is open at
+  `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by the agent.
 - Completed since the previous checkpoint: resolved the second review round of PR #49.
   Extended `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler` to retain the parent
   `Job` explicitly and assert that a failed construction leaves no orphaned child attached
@@ -76,17 +83,31 @@
   macOS shared-test executions) predates the second review round and is superseded by the
   final post-review verification above.
 - Open decisions or blockers: no technical decision is open. Only the mandatory human review
-  and the final CI run on the pushed HEAD remain. Production hardening of `AppGraph.close()`
-  remains explicitly deferred outside E1-12 because it would change D-89 and touch gated
-  `core/database/**`.
-- Exact next step: commit this final CI-evidence checkpoint, push it, refresh the PR #49
-  description to match this handoff, and leave PR #49 for owner review and merge.
+  remains. Production hardening of `AppGraph.close()` remains explicitly deferred outside
+  E1-12 because it would change D-89 and touch gated `core/database/**`.
+- Exact next step: owner review and merge of PR #49.
 - Final CI evidence: GitHub Actions run
-  `https://github.com/davidru85/carApp/actions/runs/33667021311` on the final HEAD `9258821`
-  passed all ten required jobs: `ktlint`, `detekt`, `architecture-check`, `contract-check`,
-  `android-assemble`, `android-instrumented-tests`, `shared-tests`, `ios-simulator-build`,
-  `objc-header-golden-check` and `provider-decoupling`. The macOS `shared-tests` job
-  `100371177265` passed in 2m26s with no process signal.
+  `https://github.com/davidru85/carApp/actions/runs/33676703761` on the pushed HEAD `6776810`
+  passed all ten required jobs with no reruns: `ktlint`, `detekt`, `architecture-check`,
+  `contract-check`, `android-assemble`, `android-instrumented-tests`, `shared-tests`,
+  `ios-simulator-build` (9m41s), `objc-header-golden-check` and `provider-decoupling`. The
+  code-identical documentation-only HEADs `9258821` and `f62516d` had already passed all ten
+  jobs in runs `https://github.com/davidru85/carApp/actions/runs/33667021311` and
+  `https://github.com/davidru85/carApp/actions/runs/33669085132`. The push of this final
+  documentation-only checkpoint triggers the same ten checks on the identical code.
+- Flake record for run `33669085132` (all on documentation-only commits; none reachable from
+  the E1-12 `:shared` commonTest change, which the iOS host tests do not link):
+  - Attempt 1: `ViewModelLifecycleTests.testVehicleListViewModelInitialState` crashed the XCTest
+    runner with the E1-11-documented signature `kotlin.IllegalStateException:
+    AndroidxDriverConnectionPool.close() called while 1 reader connection(s) still checked out`.
+  - Attempt 2: `ViewModelLifecycleTests.testFuelEntryFormViewModelModeDerivations` crashed with
+    the same connection-pool signature (the exact test named in the E1-11 `d1cf977` instance).
+  - Attempt 3: `carAppUITests.VehicleAndFuelFlowUITests.testVehicleSwipeDeleteShowsConfirmationDialog`
+    failed on `XCTAssertTrue failed - Swipe should reveal a delete action` (UI-gesture flake).
+  - Attempt 4: all ten jobs passed; no code change between attempts.
+  This matches the E1-11 handoff expectation to re-run failed macOS jobs before merging. The
+  intermittent `AppGraph.close()` production defect behind the connection-pool signature remains
+  the explicitly deferred production-hardening follow-up recorded under Risks or Follow-ups.
 
 ## Scope Completed
 
@@ -166,6 +187,13 @@
 - The owner explicitly requested one push after the RED, GREEN and REFACTOR commits. This
   story-specific instruction replaces the default push-after-each-phase cadence while preserving
   the required commit order.
+- The final continuity-record commit was amended twice and re-pushed with
+  `git push --force-with-lease` (each lease pinned to the exact pushed commit). Reason: the
+  handoff checkpoint describes the final HEAD, so every documentation push would otherwise
+  create a newer HEAD and self-invalidate the record in an endless loop. The amended commits
+  are documentation-only; the lease prevented any possibility of overwriting a foreign update,
+  and no other branch or commit was affected. This deviation from the default no-force-push
+  convention is recorded here per the SHOULD rule.
 - No technical decision was introduced. The helper and test migrations implement the solution
   already fixed by the E1-12 acceptance criteria while preserving D-89 unchanged.
 
@@ -269,8 +297,10 @@ Final post-review verification (second review round, current HEAD):
   report-derived test counts and historical evidence clearly separated from final post-review
   verification. A correction entry was appended to `docs/PROJECT_LOG.md` rather than rewriting
   the original story entry.
-- Finding 4 (PR description): the PR #49 description will be refreshed after the final push to
-  agree with this handoff; the human-review gate remains checked and the PR is not merged.
+- Finding 4 (PR description): the PR #49 description was refreshed after the final push to
+  agree with this handoff, including the checkpoint, changed-file list, review-findings
+  resolution, verification results, current HEAD and latest CI evidence; the human-review
+  gate remains checked and the PR is not merged.
 
 ## Contract Impact
 
