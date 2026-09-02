@@ -1,8 +1,6 @@
 package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.DispatcherProvider
-import com.ruizurraca.carapp.core.database.DatabaseFactory
-import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders

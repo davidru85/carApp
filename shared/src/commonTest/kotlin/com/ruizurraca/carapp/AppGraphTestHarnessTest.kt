@@ -48,13 +48,15 @@ class AppGraphTestHarnessTest {
                         },
                     )
                 } finally {
-                    harness.close()
+                    try {
+                        harness.close()
+                    } finally {
+                        assertEquals(
+                            listOf("collectors-cancelled", "graph-closed"),
+                            events,
+                        )
+                    }
                 }
-
-                assertEquals(
-                    listOf("collectors-cancelled", "graph-closed"),
-                    events,
-                )
             } finally {
                 owningFactory.close()
             }
@@ -82,9 +84,12 @@ class AppGraphTestHarnessTest {
                 "a failed harness construction must not leave an orphaned child job on the parent",
             )
         } finally {
-            parentJob.cancel()
-            graph.close()
-            owningFactory.close()
+            try {
+                parentJob.cancel()
+                graph.close()
+            } finally {
+                owningFactory.close()
+            }
         }
     }
 
@@ -111,8 +116,11 @@ class AppGraphTestHarnessTest {
                 flow.tryEmit(42)
                 assertEquals(42, received)
             } finally {
-                harness.close()
-                owningFactory.close()
+                try {
+                    harness.close()
+                } finally {
+                    owningFactory.close()
+                }
             }
         }
 }
