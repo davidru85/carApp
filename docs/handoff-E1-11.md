@@ -30,14 +30,14 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-01
+- Date: 2026-09-02
 - Branch and base: `story/E1-11-outbox-entitytype-fix` from `main` (`68842a2`)
-- Current phase and latest commit: complete, latest commit `2d5522e`
-- Push and pull-request status: about to push and open PR
-- Completed since the previous checkpoint: RED, GREEN and REFACTOR committed; full verification suite passes
-- Verification evidence and known failures: the exact non-instrumented command from `AGENTS.md` passes with 627 actionable tasks
+- Current phase and latest commit: owner-review hardening, about to commit
+- Push and pull-request status: PR #45 open, about to push
+- Completed since the previous checkpoint: RED, GREEN and REFACTOR committed; full verification suite passed; owner reviewed the three options and chose Option C plus a bounded test-only hardening; D-110 recorded with ADR-0111 and all four mirrors
+- Verification evidence and known failures: the exact non-instrumented command from `AGENTS.md` passes; `contractCheck` and `architectureCheck` pass
 - Open decisions or blockers: none
-- Exact next step: push, open PR, append project log entry
+- Exact next step: commit test and docs, push, update PR #45 description; do NOT merge
 
 ## Scope Completed
 
@@ -69,7 +69,7 @@ Update this section at every material state change and before yielding unfinishe
 
 ## Out of Scope / Not Done
 
-- Nothing. The story is complete.
+- `DatabaseMutations` (`core/database/src/commonMain/.../DatabaseMutations.kt:53,112,152,176,312,428,475`), the `:feature:fuel` outbox mapper literals, the `:shared` literals and the `.sq` `CHECK`/SQL literals keep their string literals because `:core:database` cannot depend on `:core:sync` (`docs/TECHNICAL_PLAN.md §4`) and unification requires a gated relocation of `EntityType`. Any centralization is deferred to a separate, explicit, Ready Phase 3 story that must jointly resolve where `EntityType` lives, module dependencies, SQL representation and contract assertions. It is not automatically assigned to E3-03.
 
 ## Files Changed
 
@@ -82,12 +82,20 @@ Update this section at every material state change and before yielding unfinishe
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/VehicleFormStateHolderTest.kt`
 - `docs/handoff-E1-11.md` (new)
 - `docs/PROJECT_LOG.md`
+- `docs/DECISION_BOARD.md`
+- `docs/SPECIFICATION.md`
+- `docs/TECHNICAL_PLAN.md`
+- `docs/adr/README.md`
+- `docs/adr/0111-outbox-entity-type-token-ownership.md` (new)
+- `docs/BACKLOG.md`
+- `AGENTS.md`
+- `README.md`
 
 ## Decisions Made
 
 Include any `SHOULD` you deviated from, and why.
 
-- No decisions. The fix is a contract-compliance bug fix. No new decision ID, ADR, or mirroring rows are required.
+- D-110 "Outbox entity-type token ownership" (ADR-0111): E1-11 keeps the explicit contract tokens (`"VEHICLE"`, `"FUEL_ENTRY"`) in production code. The rejected alternatives are (A) extracting shared constants now and (B) deriving all values from the `:core:sync` `EntityType` — B is impossible for `:core:database` without a gated module-boundary change, and unification must also resolve SQL representation and independent contract assertions. The `:feature:vehicle` commonTest files derive their outbox lookup keys and seeds from `EntityType.*.name` (the enum is already on their classpath at zero new module cost), while the payload value assertions stay as exact string literals — the contract wire-value anchor. One new test, `entityTypeEnumNamesMatchTheOutboxWireValues`, pins the `EntityType` enum names to the wire values mandated by `docs/CONTRACTS.md §8` and `§20`; it has no RED phase because it is a characterization pin of an existing invariant. No refactorization is assigned to E3-03. The deliberate asymmetry (feature tests derive lookup keys from the enum; `:core:database` keeps literals) is safe: repository tests read outbox rows written by `DatabaseMutations` using `EntityType.*.name`, so divergence there fails the build.
 
 ## Verification Run
 
@@ -102,7 +110,7 @@ Exact commands, and their result.
 
 ## Decision Board Impact
 
-- No decision changes / Updated `docs/DECISION_BOARD.md` (`D-n`) and ADR: none.
+- D-110 "Outbox entity-type token ownership" (ADR-0111) recorded as Accepted. All four mirrors updated: `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`.
 
 ## Shared-Write Modules Touched
 

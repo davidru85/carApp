@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -68,8 +69,8 @@ class VehicleRepositoryDeleteTest {
 
                 assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
 
-                assertNull(outbox("FUEL_ENTRY", FIRST_FUEL_ENTRY_ID))
-                assertNull(outbox("VEHICLE", VEHICLE_ID))
+                assertNull(outbox(EntityType.FUEL_ENTRY.name, FIRST_FUEL_ENTRY_ID))
+                assertNull(outbox(EntityType.VEHICLE.name, VEHICLE_ID))
             }
         }
 
@@ -83,9 +84,9 @@ class VehicleRepositoryDeleteTest {
 
                 assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
 
-                val first = requireNotNull(outbox("FUEL_ENTRY", FIRST_FUEL_ENTRY_ID))
-                val second = requireNotNull(outbox("FUEL_ENTRY", SECOND_FUEL_ENTRY_ID))
-                val vehicle = requireNotNull(outbox("VEHICLE", VEHICLE_ID))
+                val first = requireNotNull(outbox(EntityType.FUEL_ENTRY.name, FIRST_FUEL_ENTRY_ID))
+                val second = requireNotNull(outbox(EntityType.FUEL_ENTRY.name, SECOND_FUEL_ENTRY_ID))
+                val vehicle = requireNotNull(outbox(EntityType.VEHICLE.name, VEHICLE_ID))
                 assertTrue(first.seq < vehicle.seq)
                 assertTrue(second.seq < vehicle.seq)
                 listOf(first, second).forEach { queued ->
@@ -131,7 +132,7 @@ class VehicleRepositoryDeleteTest {
 
                     assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
 
-                    val queued = requireNotNull(outbox("FUEL_ENTRY", FIRST_FUEL_ENTRY_ID))
+                    val queued = requireNotNull(outbox(EntityType.FUEL_ENTRY.name, FIRST_FUEL_ENTRY_ID))
                     val payload = Json.parseToJsonElement(queued.payload).jsonObject
                     assertEquals("FUEL_ENTRY", payload.getValue("entityType").jsonPrimitive.content)
                     assertEquals("true", payload.getValue("deleted").jsonPrimitive.content)

@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-02 — D-110 outbox entity-type token ownership accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-11` / `D-110`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner reviewed three options for the duplicated `"VEHICLE"` / `"FUEL_ENTRY"`
+  outbox tokens and chose Option C: keep explicit contract tokens in production code, plus a bounded
+  test-only hardening. The `:feature:vehicle` commonTest files derive their outbox lookup keys and
+  seeds from `EntityType.*.name` (`:core:sync`, already on their classpath), while the payload value
+  assertions stay as exact string literals. One new test, `entityTypeEnumNamesMatchTheOutboxWireValues`,
+  pins the `EntityType` enum names to the outbox wire values mandated by `docs/CONTRACTS.md §8` and
+  `§20`. D-110 and ADR-0111 are recorded with all four mirrors.
+- **Why:** Option B (derive all values from `:core:sync` `EntityType`) is impossible for
+  `:core:database` without a gated module-boundary change (`docs/TECHNICAL_PLAN.md §4` forbids
+  `:core:database -> :core:sync` and the edge would be a cycle), and unification must also resolve
+  SQL representation (`CHECK` constraints, embedded SQL literals) and independent contract assertions.
+  Any centralization is deferred to a separate, explicit, Ready Phase 3 story — not automatically
+  assigned to E3-03.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0111-outbox-entity-type-token-ownership.md`,
+  `docs/handoff-E1-11.md`, `docs/PROJECT_LOG.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `feature/vehicle/src/commonTest/.../VehicleOutboxMapperTest.kt`, `VehicleRepositoryCreateTest.kt`,
+  `VehicleRepositoryUpdateTest.kt`, `VehicleRepositoryDeleteTest.kt`, `VehicleRepositoryTestScope.kt`.
+- **Verification:** the exact non-instrumented command from `AGENTS.md` passes; `contractCheck`
+  proves D-110 and ADR status parity across all four mirrors; `architectureCheck` passes.
+- **Follow-ups / risks:** `DatabaseMutations`, the `:feature:fuel` and `:shared` literals, and the
+  `.sq` `CHECK`/SQL literals remain independent string literals until a future centralization story.
+
 ### 2026-09-01 — E1-11 vehicle outbox payload entityType fix completed
 
 - **Type:** story

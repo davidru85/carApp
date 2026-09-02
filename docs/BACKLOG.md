@@ -462,11 +462,8 @@ Acceptance criteria:
 
 ### E1-11 - `:feature:vehicle` Outbox Payload `entityType` Fix - S
 
-Status: open. Registered as GitHub issue #36. Tracked as a follow-up of `E1-06` in
-`docs/handoff-E1-06.md` and `docs/PROJECT_LOG.md` (2026-08-29 entry). Issue #36 reports the Fuel
-Entry cascade tombstone only; the `entityType` omission in the Vehicle payload of the same mapper
-is an additional finding folded into this story, because both defects share one root cause and one
-fix surface.
+Status: completed on 2026-09-02. See `docs/handoff-E1-11.md`. D-110 records the owner decision on
+outbox entity-type token ownership.
 
 Restore `docs/CONTRACTS.md §8` compliance of every outbox payload produced by `VehicleOutboxMapper`
 in `:feature:vehicle`: the Vehicle snapshot written by the create, update and tombstone paths, and

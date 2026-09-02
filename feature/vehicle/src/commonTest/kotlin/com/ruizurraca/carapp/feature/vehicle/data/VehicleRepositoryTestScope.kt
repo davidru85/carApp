@@ -10,6 +10,7 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import com.ruizurraca.carapp.core.testing.FakeUuidGenerator
@@ -117,7 +118,7 @@ internal class VehicleRepositoryTestScope(
         localRevision: Long = 1L,
     ) {
         database.databaseQueries.coalesceOutbox(
-            entityType = "FUEL_ENTRY",
+            entityType = EntityType.FUEL_ENTRY.name,
             entityId = id,
             payload = payload,
             localRevision = localRevision,

@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.feature.vehicle.data
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -73,11 +74,11 @@ class VehicleRepositoryUpdateTest {
         runTest {
             withVehicleRepositoryTestScope(OwnerId("owner-a")) {
                 seedVehicle(outboxPayload = "{\"stale\":true}")
-                val original = requireNotNull(outbox("VEHICLE", VEHICLE_ID))
+                val original = requireNotNull(outbox(EntityType.VEHICLE.name, VEHICLE_ID))
 
                 assertIs<Outcome.Ok<Unit>>(repository.updateVehicle(updateVehicleCommand()))
 
-                val queued = requireNotNull(outbox("VEHICLE", VEHICLE_ID))
+                val queued = requireNotNull(outbox(EntityType.VEHICLE.name, VEHICLE_ID))
                 val payload = Json.parseToJsonElement(queued.payload).jsonObject
                 assertEquals(original.seq, queued.seq)
                 assertEquals(2, queued.localRevision)

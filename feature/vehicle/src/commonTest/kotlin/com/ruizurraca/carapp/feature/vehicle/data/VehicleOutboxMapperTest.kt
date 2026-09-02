@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -72,6 +73,18 @@ class VehicleOutboxMapperTest {
         assertEquals("2000", json.getValue("deletedAt").jsonPrimitive.content)
         listOf("syncState", "localRevision", "localMutationSeq", "serverUpdatedAt")
             .forEach { assertFalse(it in json) }
+    }
+
+    /**
+     * Characterization pin: the [EntityType] enum names are the exact outbox wire values mandated by
+     * docs/CONTRACTS.md §8 and §20. An enum rename fails the build here instead of silently changing
+     * what is persisted in the outbox and pushed to the remote. This test has no RED phase because it
+     * pins an existing invariant, not new behavior.
+     */
+    @Test
+    fun entityTypeEnumNamesMatchTheOutboxWireValues() {
+        assertEquals("VEHICLE", EntityType.VEHICLE.name)
+        assertEquals("FUEL_ENTRY", EntityType.FUEL_ENTRY.name)
     }
 }
 
