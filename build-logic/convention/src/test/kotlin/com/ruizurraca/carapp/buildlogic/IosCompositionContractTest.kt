@@ -95,6 +95,22 @@ class IosCompositionContractTest {
     }
 
     @Test
+    fun iosHostLocaleProviderTestsRunInCanonicalVerification() {
+        val sharedBuild = repositoryRoot.resolve("shared/build.gradle.kts").readText()
+        val providerTest = repositoryRoot.resolve(IOS_LOCALE_PROVIDER_TEST_PATH)
+        val agents = repositoryRoot.resolve("AGENTS.md").readText()
+        val ci = repositoryRoot.resolve(".github/workflows/ci.yml").readText()
+
+        assertTrue(
+            sharedBuild.contains("composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/locale"),
+            "The shared iosTest compilation must reuse the composition-owned provider source",
+        )
+        assertTrue(providerTest.isFile, "The production iOS locale provider needs host behavior tests")
+        assertTrue(agents.contains("testAndroidHostTest iosSimulatorArm64Test"))
+        assertTrue(ci.contains("testAndroidHostTest iosSimulatorArm64Test"))
+    }
+
+    @Test
     fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
         val expectedNames =
             listOf(
@@ -124,5 +140,7 @@ class IosCompositionContractTest {
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt"
         const val PLATFORM_ABSTRACTIONS_PATH =
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
+        const val IOS_LOCALE_PROVIDER_TEST_PATH =
+            "shared/src/iosTest/kotlin/com/ruizurraca/carapp/locale/IosLocaleProviderTest.kt"
     }
 }
