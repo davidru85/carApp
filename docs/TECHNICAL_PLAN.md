@@ -124,6 +124,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-107 | Fuel Entry form settings snapshot | Holder-owned first persisted currency with locale fallback and edit protection | Accepted | Terminates settings collection after one value and prevents later settings changes from mutating an open or existing-entry form. |
 | D-108 | Native locale-provider ownership | Native host adapters injected through an explicit production Firebase provider parameter | Accepted | Keeps native APIs at platform edges and any provider default confined to internal staged/test wiring. |
 | D-109 | Native locale-provider verification topology | Run Android host unit tests canonically and assign the D-75 iOS behavior gap to E1-13 | Accepted | Enforces the Android native currency path without moving iOS logic out of its D-108 host boundary or adding a second Firebase Apple link route. |
+| D-110 | Outbox entity-type token ownership | Keep explicit contract tokens in production code; add a test-only anchor pinning `EntityType` enum names to the outbox wire values | Accepted | Avoids a gated module-boundary change in E1-11; the enum-to-contract anchor makes a future enum rename fail the build; any centralization is deferred to a separate Ready Phase 3 story. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
