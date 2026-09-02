@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-09-02 — E1-11 owner-review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** fixed five owner-review findings on PR #45: (1) restored the accidentally
+  deleted `### 2026-09-01 — E1-10 second-review verification and lifecycle corrections` header in
+  `docs/PROJECT_LOG.md`; (2) corrected the Human Review Gate record in `docs/handoff-E1-11.md` to
+  declare the four gated paths touched (AGENTS.md, SPECIFICATION.md, DECISION_BOARD.md,
+  docs/adr/**); (3) updated the In-Progress Checkpoint to the post-fix state; (4) added missing
+  trailing newlines to ADR-0111 and the handoff; (5) added `Closes #36` and checked the Gated path
+  line in the PR #45 body.
+- **Why:** the header deletion was an accidental edit during the D-110 entry insertion; the gate
+  record was stale because the PR touches gated paths via the D-110 mirrors.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E1-11.md`,
+  `docs/adr/0111-outbox-entity-type-token-ownership.md`, PR #45 body.
+- **Verification:** `./gradlew contractCheck` passes; `git diff --check` clean. No Kotlin source
+  changed, so the full non-instrumented suite is not required for this fix.
+- **Follow-ups / risks:** none. PR #45 awaits owner merge.
+
 ### 2026-09-02 — D-110 outbox entity-type token ownership accepted
 
 - **Type:** decision
@@ -86,6 +106,8 @@
 - **Follow-ups / risks:** closes the `E1-06` follow-up, GitHub issue #36 and the
   additional Vehicle payload finding folded into this story. `E1-12` and `E1-13`
   remain the other open Phase 1 stories.
+
+### 2026-09-01 — E1-10 second-review verification and lifecycle corrections
 
 - **Type:** correction
 - **Story / Decision:** `E1-10` / `D-109`
