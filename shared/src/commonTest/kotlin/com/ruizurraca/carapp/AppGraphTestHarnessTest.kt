@@ -62,7 +62,8 @@ class AppGraphTestHarnessTest {
 
     @Test
     fun constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler() {
-        val nonTestScope = CoroutineScope(Job())
+        val parentJob = Job()
+        val nonTestScope = CoroutineScope(parentJob)
         val owningFactory = InMemoryDatabaseFactory()
         val dependencies = testAppGraphDependencies(databaseFactory = owningFactory)
         val graph =
@@ -75,7 +76,13 @@ class AppGraphTestHarnessTest {
             assertFailsWith<IllegalArgumentException> {
                 AppGraphTestHarness(graph, nonTestScope)
             }
+            assertEquals(
+                emptyList(),
+                parentJob.children.toList(),
+                "a failed harness construction must not leave an orphaned child job on the parent",
+            )
         } finally {
+            parentJob.cancel()
             graph.close()
             owningFactory.close()
         }
