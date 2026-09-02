@@ -42,11 +42,13 @@
 - Date: 2026-09-03.
 - Branch and base: `story/E1-13-ios-locale-coverage`, based on up-to-date `main`.
 - Current phase and latest commit: TDD delivery complete — RED `4860163`, GREEN `77737b2` and
-  REFACTOR `c8ee7ad`; this is the post-delivery continuity checkpoint.
+  REFACTOR `c8ee7ad`; post-delivery checkpoint `41182b7` is published, and required CI run
+  `33693596513` is green.
 - Push and pull-request status: all three TDD phase commits are published. The remote branch was
   observed at RED `4860163` after the local RED commit, recorded by Git's remote-ref log as an
   update by push even though the agent issued no push command; the agent explicitly pushed GREEN
-  and REFACTOR together after final verification. PR #50 is open for mandatory owner review.
+  and REFACTOR together after final verification. All commits through `41182b7` are published,
+  and PR #50 is open for mandatory owner review.
 - Completed since the previous checkpoint: selected the in-scope extension of D-109: compile the
   composition-owned provider source into `:shared` `iosTest` without a project dependency, module
   move, second framework or second Firebase route. Added one focused build-logic guard that requires
@@ -71,12 +73,15 @@
   no `PENDING` assertions, the unchanged four-module D-75 set and the unchanged Swift allowlist.
   The exact complete non-instrumented command passed with 629 actionable tasks. The forced
   provider-decoupling command then passed 229 executed tasks and re-executed all four iOS locale
-  tests without including the Firebase provider or composition projects.
+  tests without including the Firebase provider or composition projects. GitHub Actions run
+  `33693596513` then passed all ten required checks, including shared Native tests, provider
+  decoupling, the Objective-C header golden check, Android instrumentation and the iOS app/XCUITest
+  job.
 - Open decisions or blockers: no owner-only decision or implementation blocker. The D-109 route is
   documented with three options and remains subject to the mandatory human review of this pull
   request.
-- Exact next step: observe PR #50's required checks, address any concrete failure or review finding,
-  and leave merge approval to the owner.
+- Exact next step: owner review of PR #50, including confirmation of the selected D-109 option;
+  address any review finding and leave merge approval to the owner.
 
 ## Scope Completed
 
@@ -163,6 +168,8 @@
   --rerun-tasks` — passed, 229 executed tasks; the provider-free graph re-executed all four
   `IosLocaleProviderTest` cases with zero failures, errors or skips.
 - `git diff --check` — passed.
+- GitHub Actions run `33693596513` — passed all ten required checks on post-delivery checkpoint
+  `41182b7`; only existing Node.js 20 and `setup-java@v4` deprecation annotations were reported.
 
 ## Contract Impact
 
