@@ -123,7 +123,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-106 | Settings default bootstrap ownership | Repository self-healing plus one-shot best-effort AppGraph bootstrap | Accepted | Creates defaults on first launch while retaining access-time recovery and ordered graph-scope cancellation before database close. |
 | D-107 | Fuel Entry form settings snapshot | Holder-owned first persisted currency with locale fallback and edit protection | Accepted | Terminates settings collection after one value and prevents later settings changes from mutating an open or existing-entry form. |
 | D-108 | Native locale-provider ownership | Native host adapters injected through an explicit production Firebase provider parameter | Accepted | Keeps native APIs at platform edges and any provider default confined to internal staged/test wiring. |
-| D-109 | Native locale-provider verification topology | Run Android host unit tests canonically and assign the D-75 iOS behavior gap to E1-13 | Accepted | Enforces the Android native currency path without moving iOS logic out of its D-108 host boundary or adding a second Firebase Apple link route. |
+| D-109 | Native locale-provider verification topology | Run Android application unit tests canonically and compile the exact composition-owned iOS adapter source into `:shared` `iosTest` | Accepted | Executes both native currency paths while preserving D-108 ownership, D-75 exclusions, the closed Swift ABI and one Firebase Apple dependency route. |
 | D-110 | Outbox entity-type token ownership | Keep explicit contract tokens in production code; add a test-only anchor pinning `EntityType` enum names to the outbox wire values | Accepted | Avoids a gated module-boundary change in E1-11; the enum-to-contract anchor makes a future enum rename fail the build; any centralization is deferred to a separate Ready Phase 3 story. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
@@ -459,14 +459,14 @@ credential between devices; permanent-account Android-to-iOS recovery is owned b
 
 ### Phase 1 - Local Persistence
 
-Status: active. E1-08 is complete; E1-09 is next and E1-09 through E1-10 remain. D-80 leaves the
-manual optimized real-iPhone consumption measurement explicit for E4-03.
+Status: complete through E1-13. D-80 leaves the manual optimized real-iPhone consumption
+measurement explicit for E4-03.
 
 Local database, vehicle and fuel domains, repositories, consumption calculation, settings persistence, Android UI, iOS UI.
 
 ### Phase 2 - Authentication
 
-Status: planned; all Phase 2 stories remain.
+Status: open; all Phase 2 stories remain and E2-01 is next.
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
 anonymous retention notices, sign-out and account deletion.

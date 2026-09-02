@@ -41,8 +41,8 @@ factory used by tests and incomplete provider wiring.
 - Android and Foundation APIs remain at their native host edges.
 - The shared graph and product layers remain provider-free and easy to test.
 - Production composition cannot accidentally use the staged locale fallback.
-- Each platform adapter has a separate native minor-unit behavior boundary that can be verified
-  independently once its host has an executable standard-command route.
+- Each platform adapter has a separate native minor-unit behavior boundary verified by the
+  canonical command.
 
 ### Negative
 
@@ -61,8 +61,10 @@ factory used by tests and incomplete provider wiring.
 
 - `:androidApp:testDebugUnitTest` validates Android native currency code and minor-unit extraction
   under the D-109 canonical local and CI route.
-- The iOS framework link verifies compilation and composition only; it does not behaviorally test
-  `NSNumberFormatter.maximumFractionDigits`. E1-13 owns that executable D-75 coverage gap.
+- `:shared:iosSimulatorArm64Test` compiles the exact composition-owned `IosLocaleProvider` source
+  into its test compilation and executes Foundation `NSNumberFormatter.maximumFractionDigits`,
+  non-two-decimal fallback, language-tag and region behavior. The provider remains internal to
+  `:composition:ios`; the test adds no production project dependency or Swift export.
 - `FirebaseAppProvidersTest` and provider-decoupling verification prove common/provider graph
   construction remains explicit and Firebase types stay isolated.
 

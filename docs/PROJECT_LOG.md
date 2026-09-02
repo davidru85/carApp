@@ -38,6 +38,30 @@
 
 ## Entries
 
+### 2026-09-03 — E1-13 executable iOS locale-provider behavior coverage completed
+
+- **Type:** story
+- **Story / Decision:** `E1-13` / `D-109`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the exact composition-owned `IosLocaleProvider` source is now compiled only for
+  tests into `:shared` `iosTest`, where four iOS-simulator tests execute Foundation currency
+  fraction digits, non-two-decimal fallback, language-tag and region behavior. An internal
+  `NSLocale` factory keeps the production default unchanged while making locale inputs
+  deterministic, and a build-logic guard pins source ownership and canonical command reachability.
+- **Why:** `:composition:ios:iosSimulatorArm64Test` remains correctly excluded by D-75, while an
+  XCTest facade would expand the closed Swift ABI and a dedicated module would move D-108
+  ownership. Exact test-only source reuse executes production behavior under the existing root
+  Native task without adding a Firebase Apple dependency route, framework runtime or module edge.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, all four D-109 mirrors,
+  ADR-0109, ADR-0110, `docs/handoff-E1-10.md`, `docs/handoff-E1-13.md` and this log.
+- **Verification:** behavior-specific RED guard failure; focused GREEN passed four provider tests
+  and the production framework link; the exact complete non-instrumented command passed with 629
+  actionable tasks; the forced provider-decoupling graph passed 229 executed tasks and the same
+  four locale tests; `contractCheck` reports 111 aligned decisions/ADRs, none unresolved, no
+  pending assertions, unchanged D-75 exclusions and an unchanged Swift allowlist.
+- **Follow-ups / risks:** no open implementation follow-up. The pull request touches gated decision
+  paths and requires owner review; it must not be merged by an agent.
+
 ### 2026-09-02 — E1-12 review corrections: orphaned harness Job and exception-safe teardown
 
 - **Type:** correction

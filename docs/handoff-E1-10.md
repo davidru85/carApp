@@ -1,5 +1,12 @@
 # Agent Handoff - E1-10
 
+> **Closure update (2026-09-03, E1-13):** The executable iOS locale-provider coverage gap recorded
+> by this handoff is closed. `:shared:iosSimulatorArm64Test` compiles the exact
+> composition-owned `IosLocaleProvider` source and executes four Foundation behavior tests for a
+> supported two-decimal currency, non-two-decimal fallback, language tag and region. D-75's
+> exclusion set, D-108 production ownership/injection and the closed Swift ABI are unchanged. The
+> historical checkpoint, decisions and follow-up text below preserve E1-10's state at completion.
+
 ## Story
 
 `E1-10 - Settings Persistence - S` (`docs/BACKLOG.md`).

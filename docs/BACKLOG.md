@@ -542,9 +542,10 @@ Human review required.
 
 ### E1-13 - Executable iOS Locale-Provider Behavior Coverage - S
 
-Status: open. Registered as the D-109 follow-up of the E1-10 owner review. The current
-`:composition:ios` framework link proves compilation and composition but does not execute the
-Foundation `NSNumberFormatter.maximumFractionDigits` path used by `IosLocaleProvider`.
+Status: completed on 2026-09-03. See `docs/handoff-E1-13.md`. Registered as the D-109 follow-up of
+the E1-10 owner review. The exact composition-owned provider source now runs under `:shared`
+`iosSimulatorArm64Test`, outside the D-75 exclusion, and executes Foundation
+`NSNumberFormatter.maximumFractionDigits` behavior.
 
 Add executable iOS-host behavioral coverage for the production locale adapter without moving the
 adapter out of its D-108 host boundary or adding a second Firebase Apple dependency route that
@@ -1093,7 +1094,7 @@ proof after E3-04.
 | E1-10 Settings persistence (completed) | 1 | S | — |
 | E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
-| E1-13 Executable iOS locale-provider behavior coverage | 1 | S | Yes |
+| E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
 | E2-01 `:core:auth` | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 | 2 | M | — |

@@ -20,8 +20,8 @@
 - Decisions checked: `docs/DECISION_BOARD.md` contains no `Proposed` or `Pending` decision. D-75
   keeps the graph-derived standalone Native-test exclusion; D-108 keeps the adapter at the iOS
   host composition boundary; D-109 requires an executable canonical route. The exact host-test
-  topology must be recorded as a new decision because it is a build-model choice; no owner-only
-  identifier, Firebase topology, library, service or MVP-scope decision is required.
+  topology must refine D-109 because it is the build-model choice that decision left to E1-13; no
+  owner-only identifier, Firebase topology, library, service or MVP-scope decision is required.
 - Normative sections reviewed: `docs/SPECIFICATION.md` section 11 (TDD and CI),
   `docs/CONTRACTS.md` sections 11.6, 13, 18 and 20.0.1, `docs/TECHNICAL_PLAN.md` sections 4 and 5,
   ADR-0076 / D-75, ADR-0109 / D-108 and ADR-0110 / D-109.
@@ -41,9 +41,11 @@
 
 - Date: 2026-09-03.
 - Branch and base: `story/E1-13-ios-locale-coverage`, based on up-to-date `main`.
-- Current phase and latest commit: GREEN complete and not yet committed; RED is committed at
-  `4860163`.
-- Push and pull-request status: branch and RED commit are local only; no pull request exists.
+- Current phase and latest commit: REFACTOR complete and not yet committed; RED is `4860163` and
+  GREEN is `77737b2`.
+- Push and pull-request status: the remote branch was observed at RED `4860163` after the local RED
+  commit, recorded by Git's remote-ref log as an update by push even though the agent issued no
+  push command. GREEN and REFACTOR remain local; no pull request exists.
 - Completed since the previous checkpoint: selected the in-scope extension of D-109: compile the
   composition-owned provider source into `:shared` `iosTest` without a project dependency, module
   move, second framework or second Firebase route. Added one focused build-logic guard that requires
@@ -63,14 +65,27 @@
   The corrected focused GREEN command passed 117 executed tasks. The `Shared` simulator framework
   linked, both affected ktlint tasks passed, the canonical-route guard passed, and
   `IosLocaleProviderTest` executed four tests with zero failures, errors or skips.
-- Open decisions or blockers: no owner-only decision or implementation blocker. D-109 will be
-  refined in REFACTOR documentation with the exact route and its rejected alternatives.
-- Exact next step: commit GREEN, then complete the D-109 decision mirrors, E1-10 gap closure,
-  story completion records and full verification in REFACTOR.
+  REFACTOR decision and state documentation passes `contractCheck` and the complete build-logic
+  convention test suite. `contractCheck` reports 111 aligned decisions and ADRs, none unresolved,
+  no `PENDING` assertions, the unchanged four-module D-75 set and the unchanged Swift allowlist.
+  The exact complete non-instrumented command passed with 629 actionable tasks. The forced
+  provider-decoupling command then passed 229 executed tasks and re-executed all four iOS locale
+  tests without including the Firebase provider or composition projects.
+- Open decisions or blockers: no owner-only decision or implementation blocker. The D-109 route is
+  documented with three options and remains subject to the mandatory human review of this pull
+  request.
+- Exact next step: commit REFACTOR, explicitly push GREEN and REFACTOR, create the pull request from
+  the repository template, and leave it open for owner review.
 
 ## Scope Completed
 
-- In progress.
+- Added deterministic executable iOS-simulator coverage for every E1-13 Foundation behavior.
+- Kept the adapter internal and composition-owned while reusing its exact source in the existing
+  standard-command `:shared` Native test binary.
+- Added an executable build-logic guard for source ownership, behavior-test presence and canonical
+  command reachability.
+- Refined D-109, closed the E1-10/ADR gap records, marked Phase 1 complete and recorded the story
+  completion evidence.
 
 ## Acceptance Evidence
 
@@ -89,6 +104,8 @@
 
 - No Firebase Apple dependency route, product behavior, locale support set or module boundary has
   been changed.
+- No Swift-facing declaration, Objective-C golden header, schema, migration or remote behavior was
+  changed.
 
 ## Files Changed
 
@@ -101,6 +118,12 @@
 - `shared/build.gradle.kts` and
   `shared/src/iosTest/kotlin/com/ruizurraca/carapp/locale/IosLocaleProviderTest.kt` (test-only exact
   source reuse and executable simulator behavior tests).
+- `AGENTS.md`, `README.md`, `docs/BACKLOG.md` and `docs/TECHNICAL_PLAN.md` (Phase 1 completion and
+  canonical verification state).
+- `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, ADR-0109 and ADR-0110 (D-109 route and exact
+  executable evidence).
+- `docs/handoff-E1-10.md` (dated closure update preserving the historical E1-10 record).
+- `docs/PROJECT_LOG.md` (append-only E1-13 completion entry).
 
 ## Decisions Made
 
@@ -129,15 +152,25 @@
   :shared:ktlintCheck :composition:ios:ktlintCheck
   :composition:ios:linkDebugFrameworkIosSimulatorArm64 --rerun-tasks` — passed, 117 executed tasks;
   four provider behavior tests passed and the production simulator framework linked.
+- REFACTOR focused documentation: `./gradlew contractCheck :build-logic:convention:test
+  --rerun-tasks` — passed; `contractCheck` reports 111 aligned decisions/ADRs, none unresolved, no
+  pending assertion, the exact D-75 exclusion set and an unchanged Swift allowlist.
+- Exact complete non-instrumented command from `AGENTS.md` — passed with 629 actionable tasks (40
+  executed, 5 from cache, 584 up-to-date), including ktlint, detekt, architecture, contract,
+  convention tests, Kover, Android assembly/unit tests and required Android-host/Native tests.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test
+  --rerun-tasks` — passed, 229 executed tasks; the provider-free graph re-executed all four
+  `IosLocaleProviderTest` cases with zero failures, errors or skips.
+- `git diff --check` — passed.
 
 ## Contract Impact
 
-- No contract changes expected.
+- No contract changes.
 
 ## Decision Board Impact
 
-- D-109 will be refined in REFACTOR with the exact E1-13 test-only source-reuse topology. D-75 and
-  D-108 remain unchanged.
+- D-109 is refined in all four mirrors and ADR-0110 with the exact E1-13 test-only source-reuse
+  topology. D-75 and D-108 remain unchanged; ADR-0109 now cites the executable evidence.
 
 ## Shared-Write Modules Touched
 
@@ -145,14 +178,17 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended
+- [x] Entry appended
 
 ## Risks or Follow-ups
 
-- The test must exercise Foundation behavior and cannot be replaced by source-text assertions or a
-  framework-link-only check.
+- No open implementation follow-up. The explicit test-only source path is intentional coupling;
+  `IosCompositionContractTest` and the behavior test make a stale path or copied implementation
+  fail verification.
 
 ## Human Review Gate
 
-Applies: E1-13 changes canonical verification and must update gated decision documentation. Any
-Swift-facing API or module-boundary change would add its corresponding gated topic.
+Applies: gated paths `AGENTS.md`, `docs/SPECIFICATION.md`, `docs/DECISION_BOARD.md` and
+`docs/adr/**`, plus E1-13's explicit canonical-verification review requirement. The implementation
+does not change the gated Swift-facing API or module-boundary topics. The agent MUST NOT merge the
+pull request.
