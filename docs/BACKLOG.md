@@ -504,7 +504,8 @@ Blocks: E2-06.
 
 ### E1-12 - `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on Graph Close - S
 
-Status: open. Registered as GitHub issue #42. Tracked as a follow-up of `E1-08` introduced by
+Status: completed on 2026-09-02. See `docs/handoff-E1-12.md`. Registered as GitHub issue #42.
+Tracked as a follow-up of `E1-08` introduced by
 commits `a5150d4`, `87abdd0`, `ba8823a`. This story is a test-infrastructure defect, not a
 production defect: no production code path closes an `AppGraph` while its state holders are still
 collecting.
@@ -1090,8 +1091,8 @@ proof after E3-04.
 | E1-08 Android UI fuel entries (completed) | 1 | L | — |
 | E1-09 iOS UI (completed) | 1 | L | — |
 | E1-10 Settings persistence (completed) | 1 | S | — |
-| E1-11 `:feature:vehicle` outbox payload entityType fix | 1 | S | — |
-| E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (issue #42) | 1 | S | Yes |
+| E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
+| E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
 | E1-13 Executable iOS locale-provider behavior coverage | 1 | S | Yes |
 | E2-01 `:core:auth` | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |

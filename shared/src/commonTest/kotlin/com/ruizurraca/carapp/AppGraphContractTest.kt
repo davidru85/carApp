@@ -18,9 +18,13 @@ class AppGraphContractTest {
                     isDebugBuild = true,
                     providers = testAppProviders(dependencies),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
-            assertIs<VehicleListStateHolder>(graph.vehicleListStateHolder(backgroundScope))
-            assertIs<VehicleFormStateHolder>(graph.vehicleFormStateHolder(backgroundScope, null))
-            graph.close()
+            try {
+                assertIs<VehicleListStateHolder>(graph.vehicleListStateHolder(harness.scope))
+                assertIs<VehicleFormStateHolder>(graph.vehicleFormStateHolder(harness.scope, null))
+            } finally {
+                harness.close()
+            }
         }
 }

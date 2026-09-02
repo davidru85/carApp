@@ -21,17 +21,11 @@ import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -53,13 +47,17 @@ class FuelEntryStateHolderTest {
                         FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
                 )
             val databaseHandle = dependencies.databaseFactory.create()
-            val graph =
-                buildAppGraph(
-                    isDebugBuild = true,
-                    providers =
-                        testAppProviders(
-                            dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+            val harness =
+                AppGraphTestHarness(
+                    graph =
+                        buildAppGraph(
+                            isDebugBuild = true,
+                            providers =
+                                testAppProviders(
+                                    dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+                                ),
                         ),
+                    parentScope = backgroundScope,
                 )
 
             try {
@@ -73,7 +71,7 @@ class FuelEntryStateHolderTest {
                     persisted,
                 )
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -109,16 +107,21 @@ class FuelEntryStateHolderTest {
     fun newFormUsesExactClockVehicleOdometerAndSupportedLocaleCurrency() =
         runTest {
             val now = Instant.parse("2026-08-31T06:42:19.123Z")
-            val graph =
-                buildFuelGraph(
-                    clock = FakeAppClock(now),
-                    localeProvider = FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+            val harness =
+                AppGraphTestHarness(
+                    graph =
+                        buildFuelGraph(
+                            clock = FakeAppClock(now),
+                            localeProvider = FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+                        ),
+                    parentScope = backgroundScope,
                 )
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 12_345L)
-                val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+                val vehicleId = createVehicle(harness, initialOdometerKm = 12_345L)
+                val holder = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
+                harness.collect(holder.state)
 
                 val state = holder.state.first { value -> value.odometerKm == 12_345L }
                 assertEquals(now.toEpochMilliseconds(), state.dateEpochMillis)
@@ -128,27 +131,32 @@ class FuelEntryStateHolderTest {
                 assertFalse(state.hasMissedEntries)
                 assertNull(state.message)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
     @Test
     fun unsupportedLocaleCurrencyFallsBackToEur() =
         runTest {
-            val graph =
-                buildFuelGraph(
-                    localeProvider = FakeLocaleProvider(LocaleInfo("ja-JP", "JP", CurrencyCode("JPY"))),
+            val harness =
+                AppGraphTestHarness(
+                    graph =
+                        buildFuelGraph(
+                            localeProvider = FakeLocaleProvider(LocaleInfo("ja-JP", "JP", CurrencyCode("JPY"))),
+                        ),
+                    parentScope = backgroundScope,
                 )
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 1L)
-                val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+                val vehicleId = createVehicle(harness, initialOdometerKm = 1L)
+                val holder = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
+                harness.collect(holder.state)
                 advanceUntilIdle()
 
                 assertEquals("EUR", holder.state.value.currencyCode)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -164,41 +172,44 @@ class FuelEntryStateHolderTest {
             SettingsDatabaseAccess(databaseHandle.database).upsertSettings(
                 SettingsDatabaseRow("GBP", "KM", "LITER", analyticsEnabled = false),
             )
-            val graph =
-                buildAppGraph(
-                    isDebugBuild = true,
-                    providers =
-                        testAppProviders(
-                            dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+            val harness =
+                AppGraphTestHarness(
+                    graph =
+                        buildAppGraph(
+                            isDebugBuild = true,
+                            providers =
+                                testAppProviders(
+                                    dependencies.copy(databaseFactory = fixedDatabaseFactory(databaseHandle)),
+                                ),
                         ),
+                    parentScope = backgroundScope,
                 )
+            val graph = harness.graph
             val holder =
                 graph.fuelEntryFormStateHolder(
-                    backgroundScope,
+                    harness.scope,
                     vehicleId = "00000000-0000-4000-8000-000000000099",
                     entryId = null,
                 )
-            val collector =
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            harness.collect(holder.state)
 
             try {
                 assertEquals("GBP", holder.state.first { it.currencyCode == "GBP" }.currencyCode)
             } finally {
-                holder.close()
-                collector.cancelAndJoin()
-                graph.close()
+                harness.close()
             }
         }
 
     @Test
     fun litersAndPriceDeriveTotalCostWhileTyping() =
         runTest {
-            val graph = buildFuelGraph()
+            val harness = AppGraphTestHarness(buildFuelGraph(), backgroundScope)
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
-                val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+                val vehicleId = createVehicle(harness, initialOdometerKm = 100L)
+                val holder = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
+                harness.collect(holder.state)
 
                 holder.setLitersScaled(45_123L)
                 holder.setPricePerLiterScaled(1_789L)
@@ -207,19 +218,20 @@ class FuelEntryStateHolderTest {
                 assertEquals(8_073L, derivedState.totalCostMinor)
                 assertNull(derivedState.message)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
     @Test
     fun invalidLiveMoneyClearsDerivedValueAndWaitsUntilSaveToPublishError() =
         runTest {
-            val graph = buildFuelGraph()
+            val harness = AppGraphTestHarness(buildFuelGraph(), backgroundScope)
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
-                val holder = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+                val vehicleId = createVehicle(harness, initialOdometerKm = 100L)
+                val holder = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
+                harness.collect(holder.state)
 
                 holder.setLitersScaled(40_000L)
                 holder.setPricePerLiterScaled(1_000_000L)
@@ -242,24 +254,25 @@ class FuelEntryStateHolderTest {
                         ?.code,
                 )
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
     @Test
     fun inconsistentPartialEntryRequiresConfirmationThenPublishesBothIndicators() =
         runTest {
-            val graph = buildFuelGraph()
+            val harness = AppGraphTestHarness(buildFuelGraph(), backgroundScope)
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
-                val list = graph.fuelEntryListStateHolder(backgroundScope, vehicleId)
-                val form = graph.fuelEntryFormStateHolder(backgroundScope, vehicleId, entryId = null)
+                val vehicleId = createVehicle(harness, initialOdometerKm = 100L)
+                val list = graph.fuelEntryListStateHolder(harness.scope, vehicleId)
+                val form = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
                 var saveCompletionCount = 0
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect() }
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { form.state.collect() }
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-                    form.observeSaveCompletions().collect { saveCompletionCount += 1 }
+                harness.collect(list.state)
+                harness.collect(form.state)
+                harness.collect(form.observeSaveCompletions()) {
+                    saveCompletionCount += 1
                 }
 
                 form.setOdometerKm(50L)
@@ -296,23 +309,24 @@ class FuelEntryStateHolderTest {
                 assertEquals(SyncStatus.Idle, publishedState.syncStatus)
                 assertEquals(1, saveCompletionCount)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
     @Test
     fun listPublishesWeightedSummaryAndReliabilityAfterThreeFullTanks() =
         runTest {
-            val graph = buildFuelGraph()
+            val harness = AppGraphTestHarness(buildFuelGraph(), backgroundScope)
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
-                val list = graph.fuelEntryListStateHolder(backgroundScope, vehicleId)
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect() }
+                val vehicleId = createVehicle(harness, initialOdometerKm = 100L)
+                val list = graph.fuelEntryListStateHolder(harness.scope, vehicleId)
+                harness.collect(list.state)
 
-                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 100L, expectedCount = 1)
-                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 500L, expectedCount = 2)
-                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 900L, expectedCount = 3)
+                saveFullEntry(harness, list, vehicleId, odometerKm = 100L, expectedCount = 1)
+                saveFullEntry(harness, list, vehicleId, odometerKm = 500L, expectedCount = 2)
+                saveFullEntry(harness, list, vehicleId, odometerKm = 900L, expectedCount = 3)
 
                 val state =
                     list.state.first { value ->
@@ -327,20 +341,21 @@ class FuelEntryStateHolderTest {
                 assertTrue(state.isConsumptionReliable)
                 assertEquals(SyncStatus.Idle, state.syncStatus)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
     @Test
     fun deleteRequiresConfirmationAndRemovesTheEntryFromTheReactiveList() =
         runTest {
-            val graph = buildFuelGraph()
+            val harness = AppGraphTestHarness(buildFuelGraph(), backgroundScope)
+            val graph = harness.graph
 
             try {
-                val vehicleId = createVehicle(graph, backgroundScope, initialOdometerKm = 100L)
-                val list = graph.fuelEntryListStateHolder(backgroundScope, vehicleId)
-                backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { list.state.collect() }
-                saveFullEntry(graph, backgroundScope, list, vehicleId, odometerKm = 100L, expectedCount = 1)
+                val vehicleId = createVehicle(harness, initialOdometerKm = 100L)
+                val list = graph.fuelEntryListStateHolder(harness.scope, vehicleId)
+                harness.collect(list.state)
+                saveFullEntry(harness, list, vehicleId, odometerKm = 100L, expectedCount = 1)
                 val populatedState = list.state.first { state -> state.entries.isNotEmpty() }
                 val entryId = populatedState.entries.single().id
 
@@ -359,17 +374,16 @@ class FuelEntryStateHolderTest {
 
                 assertTrue(deletedState.entries.isEmpty())
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
-    private suspend fun TestScope.createVehicle(
-        graph: AppGraph,
-        scope: CoroutineScope,
+    private suspend fun createVehicle(
+        harness: AppGraphTestHarness,
         initialOdometerKm: Long,
     ): String {
-        val holder = graph.vehicleFormStateHolder(scope, vehicleId = null)
-        scope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+        val holder = harness.graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
+        harness.collect(holder.state)
         holder.setName("Roadster")
         holder.setInitialOdometerKm(initialOdometerKm)
         holder.save()
@@ -378,16 +392,15 @@ class FuelEntryStateHolderTest {
         return requireNotNull(state.savedVehicleId)
     }
 
-    private suspend fun TestScope.saveFullEntry(
-        graph: AppGraph,
-        scope: CoroutineScope,
+    private suspend fun saveFullEntry(
+        harness: AppGraphTestHarness,
         list: FuelEntryListStateHolder,
         vehicleId: String,
         odometerKm: Long,
         expectedCount: Int,
     ) {
-        val holder = graph.fuelEntryFormStateHolder(scope, vehicleId, entryId = null)
-        scope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+        val holder = harness.graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
+        harness.collect(holder.state)
         holder.setOdometerKm(odometerKm)
         holder.setLitersScaled(40_000L)
         holder.setPricePerLiterScaled(1_500L)

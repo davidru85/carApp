@@ -38,6 +38,59 @@
 
 ## Entries
 
+### 2026-09-02 — E1-12 review corrections: orphaned harness Job and exception-safe teardown
+
+- **Type:** correction
+- **Story / Decision:** `E1-12` / —
+- **Author:** opencode (GLM), on behalf of David Ruiz
+- **What changed:** corrects the E1-12 story entry above on two points. First, `AppGraphTestHarness`
+  created `scopeJob` before validating that `parentScope` contained a `TestCoroutineScheduler`, so a
+  failed construction left an orphaned child `Job` on the parent; the scheduler is now resolved and
+  validated first, and the constructor test proves no child remains attached. Second, the harness
+  test teardowns now use nested `try/finally` so `owningFactory.close()` always runs, and the
+  obsolete `DatabaseFactory` / `DatabaseHandle` imports were removed from `AppGraphCloseTest.kt`.
+- **Why:** the PR #49 review round found that a failed harness construction leaked a `Job` into the
+  parent scope and that a throwing `harness.close()` or `graph.close()` could skip the owning
+  factory close. Both are test-infrastructure defects inside E1-12 scope; production D-89 behavior
+  is untouched.
+- **Correction of record:** the original E1-12 entry reports 30 `:shared` tests per target, which
+  was accurate at its time. The two harness tests added by the review rounds raise the final count
+  to 32 tests, 0 failures, 0 skipped on each of `:shared:testAndroidHostTest` and
+  `:shared:iosSimulatorArm64Test`. The original entry is otherwise unchanged.
+- **Documents touched:** `docs/handoff-E1-12.md`, this log, and the E1-12 `:shared` common-test
+  files listed in the handoff.
+- **Verification:** extended constructor test RED against the old implementation
+  (`[SupervisorJobImpl{Active}]` attached to the parent), GREEN after the fix; focused shared
+  verification passed 32 tests per target; the complete non-instrumented command passed;
+  `contractCheck` reports no unresolved decisions and no `PENDING` assertions; `git diff --check`
+  clean; the `backgroundScope` source audit still finds no direct state-holder collector launch.
+- **Follow-ups / risks:** none new. PR #49 still requires human review and must not be merged by
+  an agent.
+
+### 2026-09-02 — E1-12 shared graph-test teardown made deterministic
+
+- **Type:** story
+- **Story / Decision:** `E1-12` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added a reusable `AppGraphTestHarness` that owns a child coroutine scope,
+  launches state-holder collectors eagerly and cancels and joins the complete scope before closing
+  its graph. Migrated every Kotlin caller-owned graph holder scope in `:shared` tests, removed all
+  direct `backgroundScope.launch` state-holder collectors and audited every test class that mounts
+  an `AppGraph`.
+- **Why:** `runTest` cancels `backgroundScope` after the test body returns, so closing the graph in a
+  `finally` block could release the native SQLite driver while test-owned collectors were still
+  subscribed. Kotlin/Native could then abort with signal 11 instead of reporting a test result.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
+  `docs/handoff-E1-12.md`, this log, and the E1-12 `:shared` common-test files listed in the handoff.
+- **Verification:** deterministic RED proved the missing ordering; all 30 `:shared` tests pass on
+  Android host and `iosSimulatorArm64`; the Native suite passed 10/10 consecutive forced local runs
+  on Apple silicon; the complete non-instrumented command from `AGENTS.md` passed with 627
+  actionable tasks; `contractCheck` reports 111 aligned decisions and ADRs with no unresolved or
+  pending assertions.
+- **Follow-ups / risks:** the PR requires human review and repeated macOS CI evidence before merge.
+  Production hardening of `AppGraph.close()` against live external subscribers remains explicitly
+  deferred to a separate story because it would change D-89 and touch gated `core/database/**`.
+
 ### 2026-09-02 — E1-11 parity test corrected: it proved cascade-then-cascade, not cascade-then-direct
 
 - **Type:** correction

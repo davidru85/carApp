@@ -1,8 +1,6 @@
 package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.DispatcherProvider
-import com.ruizurraca.carapp.core.database.DatabaseFactory
-import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
@@ -75,25 +73,6 @@ class AppGraphCloseTest {
             assertEquals(1, recordingFactory.closeCalls)
         } finally {
             owningFactory.close()
-        }
-    }
-}
-
-private class RecordingDatabaseFactory(
-    private val delegate: DatabaseFactory,
-) : DatabaseFactory {
-    var closeCalls: Int = 0
-        private set
-
-    override fun create(): DatabaseHandle {
-        val handle = delegate.create()
-        return object : DatabaseHandle {
-            override val database = handle.database
-
-            override fun close() {
-                closeCalls += 1
-                handle.close()
-            }
         }
     }
 }
