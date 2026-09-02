@@ -42,10 +42,11 @@
 - Date: 2026-09-02.
 - Branch and base: `story/E1-12-shared-test-graph-close-race`, based on `main` / `origin/main` at
   `64c91d6` (merged PR #48).
-- Current phase and latest commit: RED `ed698e0`, GREEN `55f075c` and REFACTOR `a7fb619` are
-  complete.
-- Push and pull-request status: all three TDD phase commits are pushed; PR #49 is open at
-  `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by the agent.
+- Current phase and latest commit: RED `ed698e0`, GREEN `55f075c`, REFACTOR `a7fb619` and the
+  pull-request continuity checkpoint `b23b4d2` are complete.
+- Push and pull-request status: all three TDD phase commits and the first continuity checkpoint are
+  pushed; PR #49 is open at `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by
+  the agent.
 - Completed since the previous checkpoint: committed GREEN; retained its passing behavior while
   collapsing the duplicate collector-launch overloads into one typed helper with an optional
   collector callback. Earlier GREEN work made `AppGraphTestHarness.close()` cancel and join its
@@ -64,13 +65,13 @@
   execution on the local Apple-silicon host; all 10 runs passed without a process signal. The
   complete non-instrumented repository command passed with 627 actionable tasks, and
   `contractCheck` reported 111 aligned decisions and ADRs with no unresolved or pending assertions.
-- Open decisions or blockers: no technical decision is open. Repeated macOS CI evidence and the
-  mandatory human review can begin only after the requested push and pull-request creation.
-  Production hardening of `AppGraph.close()` remains explicitly deferred outside E1-12 because it
-  would change D-89 and touch gated `core/database/**`.
-- Exact next step: push this continuity checkpoint, monitor PR #49, repeat the macOS shared-test CI
-  run to complete external acceptance evidence, record the results and leave the PR for owner
-  review.
+  PR CI run `33625103198` passed all 10 jobs on its first attempt. Its macOS `shared-tests` job then
+  passed two isolated reruns, for 3/3 successful CI executions across attempts 1-3 and no SIGSEGV.
+- Open decisions or blockers: no technical decision is open. Only the mandatory human review
+  remains. Production hardening of `AppGraph.close()` remains explicitly deferred outside E1-12
+  because it would change D-89 and touch gated `core/database/**`.
+- Exact next step: push this final CI-evidence checkpoint, allow the required checks triggered by
+  that documentation-only commit to complete, and leave PR #49 for owner review and merge.
 
 ## Scope Completed
 
@@ -92,8 +93,9 @@
   harness for every Kotlin caller-owned state-holder scope and graph teardown.
 - Source audit finds no direct `backgroundScope.launch` and no state-holder factory receiving
   `backgroundScope` anywhere under `shared/src/commonTest`.
-- `:shared:iosSimulatorArm64Test` passed 10 consecutive forced runs on the local Apple-silicon host;
-  repeated CI evidence remains pending pull-request creation.
+- `:shared:iosSimulatorArm64Test` passed 10 consecutive forced runs on the local Apple-silicon host.
+- GitHub Actions run `33625103198` passed all 10 required jobs. The macOS `shared-tests` job passed
+  in the original run and in two isolated reruns: 3/3 successful executions with no SIGSEGV.
 - Graph-mounting audit:
   - `AppGraphCloseTest.kt`: no caller-owned state holder or external collector; directly verifies
     idempotent direct and Swift-transitive graph close plus bootstrap cancellation.
@@ -163,6 +165,11 @@
   :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` — BUILD
   SUCCESSFUL in 4s with 627 actionable tasks; `contractCheck` output inspected: every assertion
   PASS, 111 decisions, 111 ADRs, no unresolved decisions and no `PENDING` assertions.
+- CI: `https://github.com/davidru85/carApp/actions/runs/33625103198` — attempt 1 passed all 10
+  required jobs. macOS `shared-tests` job `100230981301` passed in 4m03s; isolated rerun job
+  `100234505110` passed in 4m06s; isolated rerun job `100235772541` passed in 3m32s. Result: 3/3
+  CI executions of the shared Android-host, Kotlin/Native and coverage suite passed with no
+  process signal.
 
 ## Contract Impact
 
