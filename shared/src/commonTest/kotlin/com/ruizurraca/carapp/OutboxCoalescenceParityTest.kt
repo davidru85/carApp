@@ -23,6 +23,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.time.Instant
 
@@ -60,12 +61,19 @@ class OutboxCoalescenceParityTest {
         }
 
     @Test
-    fun cascadeDeleteThenSubsequentFuelEntryCoalescenceRetainsCanonicalKeySet() =
+    fun cascadeDeleteThenDirectFuelEntryCoalescenceRetainsCanonicalKeySet() =
         runTest {
             val fixture = CoalescenceFixture()
             try {
                 val vehicleId = fixture.createVehicle()
                 val fuelEntryId = fixture.createFuelEntry(vehicleId)
+
+                // The direct writer's payload comes from the real SqlDelightFuelEntryRepository
+                // create path and is captured before the cascade: the cascade tombstones the Fuel
+                // Entry, after which the repository refuses further writes with EntityDeleted.
+                val directPayload = fixture.fuelEntryOutboxPayload(fuelEntryId)
+                val directJson = Json.parseToJsonElement(directPayload).jsonObject
+                assertEquals(CANONICAL_FUEL_ENTRY_PAYLOAD_KEYS, directJson.keys)
 
                 fixture.deleteVehicle(vehicleId)
 
@@ -74,10 +82,19 @@ class OutboxCoalescenceParityTest {
                 assertEquals(CANONICAL_FUEL_ENTRY_PAYLOAD_KEYS, cascadeJson.keys)
                 assertEquals("FUEL_ENTRY", cascadeJson.getValue("entityType").toString().trim('"'))
 
-                fixture.reapplyDirectFuelEntryOutbox(fuelEntryId, cascadePayload)
+                // The cascade tombstones the row, so the two writers produce genuinely different
+                // payloads. Without this the re-application below would be indistinguishable from
+                // repeating the cascade write and the test would prove nothing about write order.
+                assertNotEquals(directPayload, cascadePayload)
+
+                // Cascade first, direct writer last. Coalescing the direct payload onto the
+                // cascade-written row makes the direct writer the last writer of that row, which
+                // is the opposite order to the test above.
+                fixture.coalesceFuelEntryOutboxPayload(fuelEntryId, directPayload)
 
                 val coalescedPayload = fixture.fuelEntryOutboxPayload(fuelEntryId)
                 val coalescedJson = Json.parseToJsonElement(coalescedPayload).jsonObject
+                assertEquals(directPayload, coalescedPayload)
                 assertEquals(CANONICAL_FUEL_ENTRY_PAYLOAD_KEYS, coalescedJson.keys)
                 assertEquals("FUEL_ENTRY", coalescedJson.getValue("entityType").toString().trim('"'))
             } finally {
@@ -154,12 +171,13 @@ private class CoalescenceFixture {
         )
 
     /**
-     * After a cascade delete, the Fuel Entry is tombstoned and cannot be written through
-     * `FuelEntryRepository` (it would return `EntityDeleted`). This re-applies a previously
-     * produced conformant payload through the lowest applicable coalescence API to prove the
-     * coalesced row retains a canonical key set regardless of the last writer.
+     * Coalesces [payload] onto the `(FUEL_ENTRY, fuelEntryId)` outbox row, making its caller the
+     * last writer of that row. `coalesceOutbox` is the lowest applicable coalescence API and is
+     * used directly because a cascade delete tombstones the Fuel Entry, after which
+     * `FuelEntryRepository` refuses further writes with `EntityDeleted` and cannot be the last
+     * writer through its own public surface.
      */
-    suspend fun reapplyDirectFuelEntryOutbox(
+    suspend fun coalesceFuelEntryOutboxPayload(
         fuelEntryId: String,
         payload: String,
     ) {

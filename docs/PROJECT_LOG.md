@@ -38,6 +38,38 @@
 
 ## Entries
 
+### 2026-09-02 — E1-11 parity test corrected: it proved cascade-then-cascade, not cascade-then-direct
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / `D-110`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** corrects claim (2) of the entry
+  "2026-09-02 — E1-11 re-applied after revert with all review findings fixed" below, which stated
+  that both coalescence orders were tested. They were not.
+  `OutboxCoalescenceParityTest.cascadeDeleteThenSubsequentFuelEntryCoalescenceRetainsCanonicalKeySet`
+  re-applied the payload produced by the cascade itself, so it exercised cascade-then-cascade while
+  its name, the E1-11 acceptance criterion and `docs/handoff-E1-11.md` all claimed
+  cascade-then-direct. The test now captures the direct payload from the real
+  `SqlDelightFuelEntryRepository` create path before the cascade delete and re-applies that direct
+  payload, making the direct writer the last writer of the coalesced row. It additionally asserts
+  that the direct and cascade payloads differ, so the re-application cannot silently degenerate
+  into a repeat of the cascade write. The test is renamed
+  `cascadeDeleteThenDirectFuelEntryCoalescenceRetainsCanonicalKeySet` and the fixture helper
+  `reapplyDirectFuelEntryOutbox` is renamed `coalesceFuelEntryOutboxPayload`, with a comment that
+  describes what it actually does. The direct-then-cascade test is unchanged and still proves the
+  opposite order.
+- **Why:** an acceptance-criterion test that does not exercise the behaviour it names is worse than
+  no test, because it makes a gap look covered. This was raised as a blocking finding in the PR #48
+  review.
+- **Documents touched:** `shared/src/commonTest/kotlin/com/ruizurraca/carapp/OutboxCoalescenceParityTest.kt`,
+  `docs/handoff-E1-11.md` (acceptance evidence, scope, checkpoint, missing trailing newline).
+- **Verification:** `./gradlew :feature:vehicle:testAndroidHostTest :shared:testAndroidHostTest
+  :integration:firebase-firestore:testAndroidHostTest --rerun-tasks` and the full non-instrumented
+  command of `AGENTS.md`; `contractCheck` output inspected; `git diff --check` clean.
+- **Follow-ups / risks:** no contract, schema, migration, architecture or decision change. D-110 and
+  ADR-0111 are unaffected: the correction is confined to test coverage and its documentation.
+  E3-13 (issue #46) remains the Phase 3 follow-up.
+
 ### 2026-09-02 — E1-11 re-applied after revert with all review findings fixed
 
 - **Type:** correction
