@@ -32,12 +32,12 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-02
 - Branch and base: `story/E1-11-outbox-entitytype-fix` from `main` (`68842a2`)
-- Current phase and latest commit: complete after owner-review corrections, this review-fix docs commit
-- Push and pull-request status: pushed, PR #45 open awaiting owner merge
-- Completed since the previous checkpoint: RED, GREEN, REFACTOR committed; full verification suite passed; owner reviewed the three options and chose Option C plus a bounded test-only hardening; D-110 recorded with ADR-0111 and all four mirrors; E3-13 follow-up registered (issue #46); owner-review corrections applied (five findings fixed)
-- Verification evidence and known failures: `contractCheck` passes; `git diff --check` clean; no Kotlin source changed so the full non-instrumented suite is not required for this fix
-- Open decisions or blockers: none
-- Exact next step: owner review and merge of PR #45
+- Current phase and latest commit: reopened for owner-review findings (P1+P2), about to start RED
+- Push and pull-request status: pushed, PR #45 open awaiting fixes
+- Completed since the previous checkpoint: owner review identified three findings: (1) `entityType` breaks remote Firestore writes because `toFirestoreWrite` passes it through as a field; (2) coalescence evidence is incomplete; (3) ADR-0111 incorrectly denies the human gate
+- Verification evidence and known failures: previous full suite passed; new findings are untested
+- Open decisions or blockers: none — the boundary behavior follows existing §8 and §16 contracts
+- Exact next step: RED phase for Finding 1 — failing integration tests proving entityType is excluded from FirestoreWrite and mismatched entityType returns InvalidArgument
 
 ## Scope Completed
 

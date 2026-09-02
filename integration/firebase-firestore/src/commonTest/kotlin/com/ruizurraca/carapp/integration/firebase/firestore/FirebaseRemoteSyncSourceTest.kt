@@ -101,7 +101,7 @@ class FirebaseRemoteSyncSourceTest {
         }
 }
 
-private class RecordingFirestoreGateway(
+internal class RecordingFirestoreGateway(
     private val serverUpdatedAt: Instant = Instant.fromEpochMilliseconds(0),
     private val documents: List<FirestoreDocument> = emptyList(),
 ) : FirestoreGateway {
