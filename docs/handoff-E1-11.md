@@ -57,8 +57,13 @@
   runner restarted and every other test in the suite passed. Re-running the job made it pass in
   12m11s with no code change. The commit range `971f31e..d1cf977` touches only `docs/` and
   `shared/src/commonTest/`, neither of which reaches the `Shared` framework the iOS host tests
-  link against, so E1-11 cannot be the cause. This is the same graph-close defect family that
-  `E1-12` already owns.
+  link against, so E1-11 cannot be the cause. A second instance appeared on `83292e8`, a
+  documentation-only commit: `provider-decoupling` failed with
+  `com.ruizurraca.carapp.FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur[iosSimulatorArm64]
+  FAILED` and `Test running process exited unexpectedly`. That is the exact test class this
+  document's Repository State already names as the open `E1-12` defect, "`FuelEntryStateHolderTest`
+  Kotlin/Native SIGSEGV on graph close". Both instances are the same Kotlin/Native graph-close
+  crash surfacing nondeterministically in different jobs, and `E1-12` owns it.
 - Open decisions or blockers: none
 - Exact next step: owner re-review of pull request #48 after the parity-test correction, and the
   merge decision. The agent MUST NOT merge.
@@ -191,10 +196,15 @@
 ## Risks or Follow-ups
 
 - Closes the `E1-06` follow-up and GitHub issue #36.
-- `ios-simulator-build` is flaky on graph close: `AndroidxDriverConnectionPool.close()` can throw
-  `IllegalStateException` from `AppGraph.close()` in the iOS host `tearDown` when a reader
-  connection is still checked out, crashing the XCTest runner. Observed once on `d1cf977` and not
-  reproduced on re-run. It is unrelated to E1-11 and belongs to the `E1-12` graph-close work.
+- The Kotlin/Native graph-close defect owned by `E1-12` makes CI flaky on this branch, in two
+  different jobs and with two signatures: `ios-simulator-build` crashed the XCTest runner in
+  `tearDown` with `AndroidxDriverConnectionPool.close() called while 1 reader connection(s) still
+  checked out` thrown from `AppGraph.close()` (observed on `d1cf977`), and `provider-decoupling`
+  crashed the Kotlin/Native test process on
+  `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur[iosSimulatorArm64]` (observed
+  on `83292e8`, a documentation-only commit). Neither reproduces on re-run and neither is caused by
+  E1-11. Expect to re-run failed jobs before merging. Fixing it is `E1-12` work, deliberately not
+  attempted here.
 - E3-13 (GitHub issue #46) remains the Phase 3 follow-up for single source of truth.
 - `DatabaseMutations`, `:feature:fuel`, `:shared` and `.sq` literals remain independent until E3-13.
 
