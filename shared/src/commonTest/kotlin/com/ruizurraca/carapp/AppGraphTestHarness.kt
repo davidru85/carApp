@@ -17,14 +17,9 @@ internal class AppGraphTestHarness(
 
     val scope = CoroutineScope(parentScope.coroutineContext + scopeJob)
 
-    fun collect(flow: Flow<*>): Job =
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            flow.collect()
-        }
-
     fun <T> collect(
         flow: Flow<T>,
-        collector: suspend (T) -> Unit,
+        collector: suspend (T) -> Unit = {},
     ): Job =
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             flow.collect(collector)

@@ -42,26 +42,33 @@
 - Date: 2026-09-02.
 - Branch and base: `story/E1-12-shared-test-graph-close-race`, based on `main` / `origin/main` at
   `64c91d6` (merged PR #48).
-- Current phase and latest commit: GREEN complete and awaiting its commit; RED is committed at
-  `ed698e0`.
+- Current phase and latest commit: REFACTOR complete and awaiting its commit; RED is committed at
+  `ed698e0` and GREEN is committed at `55f075c`.
 - Push and pull-request status: the remote branch exists at the same base commit; no E1-12 work has
   been pushed and no pull request has been created.
-- Completed since the previous checkpoint: committed RED; made `AppGraphTestHarness.close()` cancel
-  and join its child scope before closing the graph; moved Fuel Entry collectors and all Kotlin
-  caller-owned graph holder scopes under the harness; removed every direct `backgroundScope.launch`
-  state-holder collector from `:shared` tests; completed the graph-mounting test audit.
+- Completed since the previous checkpoint: committed GREEN; retained its passing behavior while
+  collapsing the duplicate collector-launch overloads into one typed helper with an optional
+  collector callback. Earlier GREEN work made `AppGraphTestHarness.close()` cancel and join its
+  child scope before closing the graph, moved Fuel Entry collectors and all Kotlin caller-owned
+  graph holder scopes under the harness, removed every direct `backgroundScope.launch` state-
+  holder collector from `:shared` tests and completed the graph-mounting test audit. Updated the
+  repository state, README and backlog to mark E1-12 complete and E1-13 next.
 - Verification evidence and known failures: the focused Android-host RED test compiled, executed
   and failed for the intended missing behavior before GREEN: expected
   `[collectors-cancelled, graph-closed]` but observed `[graph-closed]`. In GREEN, all 30 `:shared`
   tests passed on both Android host and `iosSimulatorArm64`; focused ktlint and detekt passed. No
   direct `backgroundScope.launch` or state-holder factory call with `backgroundScope` remains under
   `shared/src/commonTest`. The historical intermittent signal 11 has not occurred in this GREEN
-  run.
-- Open decisions or blockers: none. Production hardening of `AppGraph.close()` remains explicitly
-  deferred outside E1-12 because it would change D-89 and touch gated `core/database/**`.
-- Exact next step: create the GREEN commit, then perform the REFACTOR review, complete final
-  documentation, run repeated Native and full repository verification, and create the REFACTOR
-  commit.
+  run. REFACTOR repeated `:shared:iosSimulatorArm64Test` 10 consecutive times with forced task
+  execution on the local Apple-silicon host; all 10 runs passed without a process signal. The
+  complete non-instrumented repository command passed with 627 actionable tasks, and
+  `contractCheck` reported 111 aligned decisions and ADRs with no unresolved or pending assertions.
+- Open decisions or blockers: no technical decision is open. Repeated macOS CI evidence and the
+  mandatory human review can begin only after the requested push and pull-request creation.
+  Production hardening of `AppGraph.close()` remains explicitly deferred outside E1-12 because it
+  would change D-89 and touch gated `core/database/**`.
+- Exact next step: create the REFACTOR commit, push all three TDD commits, create the pull request,
+  then monitor and repeat the macOS CI test run to complete external acceptance evidence.
 
 ## Scope Completed
 
@@ -83,6 +90,8 @@
   harness for every Kotlin caller-owned state-holder scope and graph teardown.
 - Source audit finds no direct `backgroundScope.launch` and no state-holder factory receiving
   `backgroundScope` anywhere under `shared/src/commonTest`.
+- `:shared:iosSimulatorArm64Test` passed 10 consecutive forced runs on the local Apple-silicon host;
+  repeated CI evidence remains pending pull-request creation.
 - Graph-mounting audit:
   - `AppGraphCloseTest.kt`: no caller-owned state holder or external collector; directly verifies
     idempotent direct and Swift-transitive graph close plus bootstrap cancellation.
@@ -107,6 +116,10 @@
 
 ## Files Changed
 
+- `AGENTS.md`.
+- `README.md`.
+- `docs/BACKLOG.md`.
+- `docs/PROJECT_LOG.md`.
 - `docs/handoff-E1-12.md` (new; live continuity record).
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphTestHarness.kt` (new; reusable child-
   scope and ordered-teardown helper).
@@ -124,6 +137,8 @@
 - The owner explicitly requested one push after the RED, GREEN and REFACTOR commits. This
   story-specific instruction replaces the default push-after-each-phase cadence while preserving
   the required commit order.
+- No technical decision was introduced. The helper and test migrations implement the solution
+  already fixed by the E1-12 acceptance criteria while preserving D-89 unchanged.
 
 ## Verification Run
 
@@ -135,6 +150,17 @@
   SUCCESSFUL; 30 tests passed on each target, including 10 `FuelEntryStateHolderTest` cases and the
   deterministic harness regression test.
 - GREEN: `./gradlew :shared:ktlintCheck :shared:detekt` — BUILD SUCCESSFUL.
+- REFACTOR stability: `for run_index in {1..10}; do ./gradlew
+  :shared:iosSimulatorArm64Test --rerun-tasks --quiet || exit 1; done` — 10/10 consecutive BUILD
+  SUCCESSFUL runs on the local Apple-silicon host; no signal or assertion failure.
+- REFACTOR full repository verification: `./gradlew ktlintCheck detekt architectureCheck
+  contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug
+  :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x
+  :integration:firebase-auth:iosSimulatorArm64Test -x
+  :integration:firebase-firestore:iosSimulatorArm64Test -x
+  :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` — BUILD
+  SUCCESSFUL in 4s with 627 actionable tasks; `contractCheck` output inspected: every assertion
+  PASS, 111 decisions, 111 ADRs, no unresolved decisions and no `PENDING` assertions.
 
 ## Contract Impact
 
@@ -151,7 +177,7 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended
+- [x] Entry appended
 
 ## Risks or Follow-ups
 

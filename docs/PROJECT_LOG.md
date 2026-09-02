@@ -38,6 +38,30 @@
 
 ## Entries
 
+### 2026-09-02 — E1-12 shared graph-test teardown made deterministic
+
+- **Type:** story
+- **Story / Decision:** `E1-12` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added a reusable `AppGraphTestHarness` that owns a child coroutine scope,
+  launches state-holder collectors eagerly and cancels and joins the complete scope before closing
+  its graph. Migrated every Kotlin caller-owned graph holder scope in `:shared` tests, removed all
+  direct `backgroundScope.launch` state-holder collectors and audited every test class that mounts
+  an `AppGraph`.
+- **Why:** `runTest` cancels `backgroundScope` after the test body returns, so closing the graph in a
+  `finally` block could release the native SQLite driver while test-owned collectors were still
+  subscribed. Kotlin/Native could then abort with signal 11 instead of reporting a test result.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
+  `docs/handoff-E1-12.md`, this log, and the E1-12 `:shared` common-test files listed in the handoff.
+- **Verification:** deterministic RED proved the missing ordering; all 30 `:shared` tests pass on
+  Android host and `iosSimulatorArm64`; the Native suite passed 10/10 consecutive forced local runs
+  on Apple silicon; the complete non-instrumented command from `AGENTS.md` passed with 627
+  actionable tasks; `contractCheck` reports 111 aligned decisions and ADRs with no unresolved or
+  pending assertions.
+- **Follow-ups / risks:** the PR requires human review and repeated macOS CI evidence before merge.
+  Production hardening of `AppGraph.close()` against live external subscribers remains explicitly
+  deferred to a separate story because it would change D-89 and touch gated `core/database/**`.
+
 ### 2026-09-02 — E1-11 parity test corrected: it proved cascade-then-cascade, not cascade-then-direct
 
 - **Type:** correction
