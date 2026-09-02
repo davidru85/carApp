@@ -116,5 +116,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-107 | [ADR-0108](0108-apply-first-persisted-currency-to-new-fuel-form.md) | Apply the first persisted currency to a new Fuel Entry form. | Accepted |
 | D-108 | [ADR-0109](0109-inject-native-locale-providers-at-host-boundaries.md) | Inject native locale providers at host boundaries. | Accepted |
 | D-109 | [ADR-0110](0110-enforce-native-locale-provider-verification.md) | Enforce native locale-provider verification. | Accepted |
+| D-110 | [ADR-0111](0111-outbox-entity-type-token-ownership.md) | Outbox entity-type token ownership. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -38,6 +38,155 @@
 
 ## Entries
 
+### 2026-09-02 — E1-11 parity test corrected: it proved cascade-then-cascade, not cascade-then-direct
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / `D-110`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** corrects claim (2) of the entry
+  "2026-09-02 — E1-11 re-applied after revert with all review findings fixed" below, which stated
+  that both coalescence orders were tested. They were not.
+  `OutboxCoalescenceParityTest.cascadeDeleteThenSubsequentFuelEntryCoalescenceRetainsCanonicalKeySet`
+  re-applied the payload produced by the cascade itself, so it exercised cascade-then-cascade while
+  its name, the E1-11 acceptance criterion and `docs/handoff-E1-11.md` all claimed
+  cascade-then-direct. The test now captures the direct payload from the real
+  `SqlDelightFuelEntryRepository` create path before the cascade delete and re-applies that direct
+  payload, making the direct writer the last writer of the coalesced row. It additionally asserts
+  that the direct and cascade payloads differ, so the re-application cannot silently degenerate
+  into a repeat of the cascade write. The test is renamed
+  `cascadeDeleteThenDirectFuelEntryCoalescenceRetainsCanonicalKeySet` and the fixture helper
+  `reapplyDirectFuelEntryOutbox` is renamed `coalesceFuelEntryOutboxPayload`, with a comment that
+  describes what it actually does. The direct-then-cascade test is unchanged and still proves the
+  opposite order.
+- **Why:** an acceptance-criterion test that does not exercise the behaviour it names is worse than
+  no test, because it makes a gap look covered. This was raised as a blocking finding in the PR #48
+  review.
+- **Documents touched:** `shared/src/commonTest/kotlin/com/ruizurraca/carapp/OutboxCoalescenceParityTest.kt`,
+  `docs/handoff-E1-11.md` (acceptance evidence, scope, checkpoint, missing trailing newline).
+- **Verification:** `./gradlew :feature:vehicle:testAndroidHostTest :shared:testAndroidHostTest
+  :integration:firebase-firestore:testAndroidHostTest --rerun-tasks` and the full non-instrumented
+  command of `AGENTS.md`; `contractCheck` output inspected; `git diff --check` clean.
+- **Follow-ups / risks:** no contract, schema, migration, architecture or decision change. D-110 and
+  ADR-0111 are unaffected: the correction is confined to test coverage and its documentation.
+  E3-13 (issue #46) remains the Phase 3 follow-up.
+
+### 2026-09-02 — E1-11 re-applied after revert with all review findings fixed
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / `D-110`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** PR #45 was merged in error and reverted by PR #47. This entry records the
+  re-application of all E1-11 work on branch `story/E1-11-outbox-entitytype-fix-v2` with six
+  owner-review findings fixed: (1) `OutboxCoalescenceParityTest` now uses the real
+  `SqlDelightFuelEntryRepository` instead of a handcrafted payload builder; (2) both coalescence
+  orders are tested (direct-then-cascade and cascade-then-reapply); (3) backlog acceptance criteria
+  updated to include the `:integration:firebase-firestore` boundary adaptation; (4) handoff Files
+  Changed list matches `git diff --name-status`; (5) ADR-0111 selected-option row corrected to
+  declare gated paths; (6) checkpoint and PR description refreshed. The Firestore boundary fix
+  (`toFirestoreWrite` excludes `entityType` and validates it against `EntitySnapshot.entityType`)
+  is included.
+- **Why:** the revert restored the original `main` state; the re-application preserves all
+  completed work while incorporating every review finding.
+- **Documents touched:** all files listed in `git diff --name-status main...HEAD` on the v2 branch.
+- **Verification:** see handoff.
+- **Follow-ups / risks:** E3-13 (issue #46) remains the Phase 3 follow-up for single source of
+  truth.
+
+### 2026-09-02 — E1-11 owner-review findings: Firestore boundary, coalescence parity, ADR gate
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** fixed three owner-review findings on PR #45: (1) the Firestore boundary
+  `toFirestoreWrite` now requires the outbox payload `entityType` to match `EntitySnapshot.entityType`,
+  excludes `entityType` from `FirestoreWrite.fields`, and returns `RemoteError.InvalidArgument` for
+  missing, unknown, or mismatched values; (2) strengthened coalescence evidence with exact canonical
+  key-set assertions and a cross-feature parity test in `:shared`; (3) corrected ADR-0111 to declare
+  the gated paths touched by E1-11.
+- **Why:** adding `entityType` to the outbox payload (required by `docs/CONTRACTS.md §8`) broke
+  connected Firestore writes because the closed remote schema (`docs/CONTRACTS.md §16`) does not
+  permit `entityType`; the boundary fix follows the existing contracts without adding `entityType`
+  to the remote schema or weakening the rules.
+- **Documents touched:** `integration/firebase-firestore/.../FirebaseRemoteSyncSource.kt`,
+  `FirebaseRemoteSyncSourceTest.kt`, `FirebaseRemoteSyncSourceEntityTypeBoundaryTest.kt` (new),
+  `shared/.../VehicleFormStateHolderTest.kt`, `shared/.../OutboxCoalescenceParityTest.kt` (new),
+  `feature/vehicle/.../VehicleRepositoryDeleteTest.kt`, `docs/handoff-E1-11.md`,
+  `docs/adr/0111-outbox-entity-type-token-ownership.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** `./gradlew :feature:vehicle:testAndroidHostTest :feature:fuel:testAndroidHostTest
+  :shared:testAndroidHostTest :integration:firebase-firestore:testAndroidHostTest` passes; the full
+  non-instrumented command from `AGENTS.md` passes with 627 actionable tasks; `contractCheck` and
+  `architectureCheck` pass; `git diff --check` clean.
+- **Follow-ups / risks:** none. PR #45 awaits owner merge.
+
+### 2026-09-02 — E1-11 owner-review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** fixed five owner-review findings on PR #45: (1) restored the accidentally
+  deleted `### 2026-09-01 — E1-10 second-review verification and lifecycle corrections` header in
+  `docs/PROJECT_LOG.md`; (2) corrected the Human Review Gate record in `docs/handoff-E1-11.md` to
+  declare the four gated paths touched (AGENTS.md, SPECIFICATION.md, DECISION_BOARD.md,
+  docs/adr/**); (3) updated the In-Progress Checkpoint to the post-fix state; (4) added missing
+  trailing newlines to ADR-0111 and the handoff; (5) added `Closes #36` and checked the Gated path
+  line in the PR #45 body.
+- **Why:** the header deletion was an accidental edit during the D-110 entry insertion; the gate
+  record was stale because the PR touches gated paths via the D-110 mirrors.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E1-11.md`,
+  `docs/adr/0111-outbox-entity-type-token-ownership.md`, PR #45 body.
+- **Verification:** `./gradlew contractCheck` passes; `git diff --check` clean. No Kotlin source
+  changed, so the full non-instrumented suite is not required for this fix.
+- **Follow-ups / risks:** none. PR #45 awaits owner merge.
+
+### 2026-09-02 — D-110 outbox entity-type token ownership accepted
+
+- **Type:** decision
+- **Story / Decision:** `E1-11` / `D-110`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner reviewed three options for the duplicated `"VEHICLE"` / `"FUEL_ENTRY"`
+  outbox tokens and chose Option C: keep explicit contract tokens in production code, plus a bounded
+  test-only hardening. The `:feature:vehicle` commonTest files derive their outbox lookup keys and
+  seeds from `EntityType.*.name` (`:core:sync`, already on their classpath), while the payload value
+  assertions stay as exact string literals. One new test, `entityTypeEnumNamesMatchTheOutboxWireValues`,
+  pins the `EntityType` enum names to the outbox wire values mandated by `docs/CONTRACTS.md §8` and
+  `§20`. D-110 and ADR-0111 are recorded with all four mirrors.
+- **Why:** Option B (derive all values from `:core:sync` `EntityType`) is impossible for
+  `:core:database` without a gated module-boundary change (`docs/TECHNICAL_PLAN.md §4` forbids
+  `:core:database -> :core:sync` and the edge would be a cycle), and unification must also resolve
+  SQL representation (`CHECK` constraints, embedded SQL literals) and independent contract assertions.
+  Any centralization is deferred to a separate, explicit, Ready Phase 3 story — not automatically
+  assigned to E3-03.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0111-outbox-entity-type-token-ownership.md`,
+  `docs/handoff-E1-11.md`, `docs/PROJECT_LOG.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `feature/vehicle/src/commonTest/.../VehicleOutboxMapperTest.kt`, `VehicleRepositoryCreateTest.kt`,
+  `VehicleRepositoryUpdateTest.kt`, `VehicleRepositoryDeleteTest.kt`, `VehicleRepositoryTestScope.kt`.
+- **Verification:** the exact non-instrumented command from `AGENTS.md` passes; `contractCheck`
+  proves D-110 and ADR status parity across all four mirrors; `architectureCheck` passes.
+- **Follow-ups / risks:** `DatabaseMutations`, the `:feature:fuel` and `:shared` literals, and the
+  `.sq` `CHECK`/SQL literals remain independent string literals until a future centralization story.
+
+### 2026-09-01 — E1-11 vehicle outbox payload entityType fix completed
+
+- **Type:** story
+- **Story / Decision:** `E1-11` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** restored `docs/CONTRACTS.md §8` compliance of every outbox payload
+  produced by `VehicleOutboxMapper` in `:feature:vehicle`. The Vehicle snapshot
+  written by create, update and tombstone paths now emits `"entityType":"VEHICLE"`,
+  and the cascade Fuel Entry tombstone now emits `"entityType":"FUEL_ENTRY"`.
+- **Why:** both defects shared one root cause and one fix surface; the contract
+  already mandated `entityType`, so this story made the code conform without any
+  contract, schema, migration or decision change.
+- **Documents touched:** `docs/handoff-E1-11.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** `:feature:vehicle:testAndroidHostTest` passes (76 tests); the
+  exact non-instrumented command from `AGENTS.md` passes with 627 actionable tasks
+  including ktlint, detekt, architecture, contract parity, coverage, Android
+  debug assembly and all required Android-host and Kotlin/Native tests.
+- **Follow-ups / risks:** closes the `E1-06` follow-up, GitHub issue #36 and the
+  additional Vehicle payload finding folded into this story. `E1-12` and `E1-13`
+  remain the other open Phase 1 stories.
+
 ### 2026-09-01 — E1-10 second-review verification and lifecycle corrections
 
 - **Type:** correction
