@@ -78,22 +78,3 @@ class AppGraphCloseTest {
         }
     }
 }
-
-private class RecordingDatabaseFactory(
-    private val delegate: DatabaseFactory,
-) : DatabaseFactory {
-    var closeCalls: Int = 0
-        private set
-
-    override fun create(): DatabaseHandle {
-        val handle = delegate.create()
-        return object : DatabaseHandle {
-            override val database = handle.database
-
-            override fun close() {
-                closeCalls += 1
-                handle.close()
-            }
-        }
-    }
-}
