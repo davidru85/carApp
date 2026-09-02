@@ -41,11 +41,12 @@
 
 - Date: 2026-09-03.
 - Branch and base: `story/E1-13-ios-locale-coverage`, based on up-to-date `main`.
-- Current phase and latest commit: REFACTOR complete and not yet committed; RED is `4860163` and
-  GREEN is `77737b2`.
-- Push and pull-request status: the remote branch was observed at RED `4860163` after the local RED
-  commit, recorded by Git's remote-ref log as an update by push even though the agent issued no
-  push command. GREEN and REFACTOR remain local; no pull request exists.
+- Current phase and latest commit: TDD delivery complete — RED `4860163`, GREEN `77737b2` and
+  REFACTOR `c8ee7ad`; this is the post-delivery continuity checkpoint.
+- Push and pull-request status: all three TDD phase commits are published. The remote branch was
+  observed at RED `4860163` after the local RED commit, recorded by Git's remote-ref log as an
+  update by push even though the agent issued no push command; the agent explicitly pushed GREEN
+  and REFACTOR together after final verification. PR #50 is open for mandatory owner review.
 - Completed since the previous checkpoint: selected the in-scope extension of D-109: compile the
   composition-owned provider source into `:shared` `iosTest` without a project dependency, module
   move, second framework or second Firebase route. Added one focused build-logic guard that requires
@@ -74,8 +75,8 @@
 - Open decisions or blockers: no owner-only decision or implementation blocker. The D-109 route is
   documented with three options and remains subject to the mandatory human review of this pull
   request.
-- Exact next step: commit REFACTOR, explicitly push GREEN and REFACTOR, create the pull request from
-  the repository template, and leave it open for owner review.
+- Exact next step: observe PR #50's required checks, address any concrete failure or review finding,
+  and leave merge approval to the owner.
 
 ## Scope Completed
 
