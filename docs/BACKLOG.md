@@ -919,6 +919,32 @@ Acceptance criteria:
   macOS (`D-45`).
 - The check runs in CI under the name `provider-decoupling`.
 
+### E3-13 - Single source of truth for the outbox entityType wire value - M
+
+Status: open. Registered as GitHub issue #46. Tracked as a follow-up of D-110 in
+`docs/handoff-E1-11.md` and `docs/PROJECT_LOG.md` (2026-09-02 entry).
+
+Centralize the outbox `entityType` token (`"VEHICLE"`, `"FUEL_ENTRY"`) so that a single source of
+truth covers the Kotlin mapper call sites, `DatabaseMutations`, the SQL `CHECK` constraints and
+embedded SQL literals, and the contract test assertions.
+
+Acceptance criteria:
+
+- The story decides where `EntityType` lives: `:core:sync` today; `:core:model` would make it
+  reachable from `:core:database` and every feature. The decision needs a new `D-` id, its own
+  ADR and the `docs/SPECIFICATION.md §12` / `docs/TECHNICAL_PLAN.md §2` mirrors.
+- The story jointly resolves: module dependencies (the `docs/TECHNICAL_PLAN.md §4` forbidden
+  `:core:database -> :core:sync` edge and cycle), SQL representation (`CHECK` constraints in
+  `schema.sq`, embedded SQL literals in `database.sq`) and contract assertions.
+- Every outbox payload writer reachable from `:feature:vehicle`, `:feature:fuel` and
+  `:core:database` emits `entityType` from the single source; no independent string literal
+  remains in production code.
+- The `entityTypeEnumNamesMatchTheOutboxWireValues` anchor test continues to pass.
+- This story is naturally taken by the sync-engine story that first consumes `entityType` — not
+  automatically assigned to E3-03.
+
+Depends on: E3-02 or later (whichever sync-engine story first consumes `entityType`).
+
 ## Phase 4 - MVP Hardening
 
 ### E4-01 - Settings UI - S
@@ -1084,6 +1110,7 @@ proof after E3-04.
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
+| E3-13 Outbox entityType single source of truth | 3 | M | — |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

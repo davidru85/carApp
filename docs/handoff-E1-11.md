@@ -127,6 +127,7 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 ## Risks or Follow-ups
 
 - Closes the `E1-06` follow-up, GitHub issue #36 and the additional Vehicle payload finding folded into this story.
+- Phase 3 follow-up registered: E3-13 (GitHub issue #46) "Single source of truth for the outbox entityType wire value" in `docs/BACKLOG.md`. It is naturally taken by the sync-engine story that first consumes `entityType` — not automatically assigned to E3-03.
 
 ## Human Review Gate
 
