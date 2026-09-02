@@ -17,12 +17,12 @@ internal class AppGraphTestHarness(
     val graph: AppGraph,
     parentScope: CoroutineScope,
 ) {
-    private val scopeJob = SupervisorJob(parentScope.coroutineContext[Job])
-
     private val scheduler =
         requireNotNull(parentScope.coroutineContext[TestCoroutineScheduler]) {
             "AppGraphTestHarness requires parentScope to provide a TestCoroutineScheduler"
         }
+
+    private val scopeJob = SupervisorJob(parentScope.coroutineContext[Job])
 
     private val collectorDispatcher = UnconfinedTestDispatcher(scheduler)
 
