@@ -42,31 +42,63 @@
 - Date: 2026-09-02.
 - Branch and base: `story/E1-12-shared-test-graph-close-race`, based on `main` / `origin/main` at
   `64c91d6` (merged PR #48).
-- Current phase and latest commit: RED complete and awaiting its commit; latest commit is the base
-  `64c91d6`.
+- Current phase and latest commit: GREEN complete and awaiting its commit; RED is committed at
+  `ed698e0`.
 - Push and pull-request status: the remote branch exists at the same base commit; no E1-12 work has
   been pushed and no pull request has been created.
-- Completed since the previous checkpoint: completed intake and the initial graph-mounting audit;
-  added `AppGraphTestHarness` as deliberately incomplete RED scaffolding and a focused test that
-  observes collector cancellation and database-handle close order.
+- Completed since the previous checkpoint: committed RED; made `AppGraphTestHarness.close()` cancel
+  and join its child scope before closing the graph; moved Fuel Entry collectors and all Kotlin
+  caller-owned graph holder scopes under the harness; removed every direct `backgroundScope.launch`
+  state-holder collector from `:shared` tests; completed the graph-mounting test audit.
 - Verification evidence and known failures: the focused Android-host RED test compiled, executed
-  and failed for the intended missing behavior: expected `[collectors-cancelled, graph-closed]` but
-  observed `[graph-closed]`. Issue #42 records the intermittent Kotlin/Native signal 11; E1-11
-  records a second graph-close failure signature where the AndroidX driver reported one checked-
-  out reader during teardown. GitHub issue #42 is currently closed even though the backlog
-  implementation story remains open.
+  and failed for the intended missing behavior before GREEN: expected
+  `[collectors-cancelled, graph-closed]` but observed `[graph-closed]`. In GREEN, all 30 `:shared`
+  tests passed on both Android host and `iosSimulatorArm64`; focused ktlint and detekt passed. No
+  direct `backgroundScope.launch` or state-holder factory call with `backgroundScope` remains under
+  `shared/src/commonTest`. The historical intermittent signal 11 has not occurred in this GREEN
+  run.
 - Open decisions or blockers: none. Production hardening of `AppGraph.close()` remains explicitly
   deferred outside E1-12 because it would change D-89 and touch gated `core/database/**`.
-- Exact next step: create the RED commit, then implement cancellation-before-close and migrate all
-  audited graph-mounting tests to the helper in GREEN.
+- Exact next step: create the GREEN commit, then perform the REFACTOR review, complete final
+  documentation, run repeated Native and full repository verification, and create the REFACTOR
+  commit.
 
 ## Scope Completed
 
-- In progress.
+- Added one reusable test harness that owns a child scope, launches state-holder collectors and
+  cancels and joins that scope before closing its graph.
+- Migrated every Kotlin caller-owned `AppGraph` state-holder scope in `:shared` tests to the
+  harness.
+- Removed all direct state-holder collector launches on `runTest.backgroundScope`.
+- Audited every `:shared` test class that mounts an `AppGraph`.
 
 ## Acceptance Evidence
 
-- Pending.
+- `AppGraphTestHarnessTest.closeCancelsCollectorsBeforeClosingTheGraph` deterministically observes
+  `collectors-cancelled` before `graph-closed` on Android host and Kotlin/Native.
+- `FuelEntryStateHolderTest` uses `AppGraphTestHarness.scope` for every state holder and
+  `AppGraphTestHarness.collect(...)` for every long-lived state or save-completion collector; its
+  `finally` blocks call only `harness.close()`.
+- `AppGraphContractTest`, `VehicleFormStateHolderTest` and `VehicleListStateHolderTest` use the
+  harness for every Kotlin caller-owned state-holder scope and graph teardown.
+- Source audit finds no direct `backgroundScope.launch` and no state-holder factory receiving
+  `backgroundScope` anywhere under `shared/src/commonTest`.
+- Graph-mounting audit:
+  - `AppGraphCloseTest.kt`: no caller-owned state holder or external collector; directly verifies
+    idempotent direct and Swift-transitive graph close plus bootstrap cancellation.
+  - `AppGraphContractTest.kt`: Kotlin caller-owned holder scopes migrated to the harness.
+  - `AppGraphTestHarnessTest.kt`: uses the harness and observes its cancellation-before-close
+    contract.
+  - `BuildAppGraphTest.kt`: no state holder or external collector; only inspects dependency mapping
+    before direct graph close.
+  - `FuelEntryStateHolderTest.kt`: every holder scope and collector migrated to the harness.
+  - `SessionStateHolderTest.kt`: uses `SwiftAppGraph`, which owns and closes its holder child scope
+    before closing the wrapped graph under the existing D-89 contract.
+  - `SwiftAppGraphLifecycleTest.kt`: uses the same Swift-owned lifecycle and explicitly verifies a
+    released holder scope is inactive before final graph close.
+  - `VehicleFormStateHolderTest.kt`: every Kotlin caller-owned holder scope migrated to the harness.
+  - `VehicleListStateHolderTest.kt`: every Kotlin caller-owned holder scope migrated to the
+    harness.
 
 ## Out of Scope / Not Done
 
@@ -76,10 +108,14 @@
 ## Files Changed
 
 - `docs/handoff-E1-12.md` (new; live continuity record).
-- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphTestHarness.kt` (new; deliberately
-  incomplete RED scaffolding).
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphTestHarness.kt` (new; reusable child-
+  scope and ordered-teardown helper).
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphTestHarnessTest.kt` (new; deterministic
   teardown-order regression test).
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphContractTest.kt`.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FuelEntryStateHolderTest.kt`.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/VehicleFormStateHolderTest.kt`.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/VehicleListStateHolderTest.kt`.
 
 ## Decisions Made
 
@@ -95,6 +131,10 @@
   "com.ruizurraca.carapp.AppGraphTestHarnessTest.closeCancelsCollectorsBeforeClosingTheGraph"
   --rerun-tasks` — expected BUILD FAILED; the test compiled and executed, expecting
   `[collectors-cancelled, graph-closed]` but observing `[graph-closed]`.
+- GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --rerun-tasks` — BUILD
+  SUCCESSFUL; 30 tests passed on each target, including 10 `FuelEntryStateHolderTest` cases and the
+  deterministic harness regression test.
+- GREEN: `./gradlew :shared:ktlintCheck :shared:detekt` — BUILD SUCCESSFUL.
 
 ## Contract Impact
 

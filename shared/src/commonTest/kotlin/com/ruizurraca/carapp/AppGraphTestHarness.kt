@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -30,6 +31,10 @@ internal class AppGraphTestHarness(
         }
 
     suspend fun close() {
-        graph.close()
+        try {
+            scopeJob.cancelAndJoin()
+        } finally {
+            graph.close()
+        }
     }
 }

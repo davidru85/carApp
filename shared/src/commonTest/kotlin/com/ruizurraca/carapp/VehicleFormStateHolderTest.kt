@@ -46,9 +46,10 @@ class VehicleFormStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -72,7 +73,7 @@ class VehicleFormStateHolderTest {
                 assertEquals(0L, vehicle.deleted)
                 assertEquals(null, vehicle.deletedAt)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -93,9 +94,10 @@ class VehicleFormStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -130,7 +132,7 @@ class VehicleFormStateHolderTest {
                     Json.parseToJsonElement(outbox.payload).jsonObject.keys,
                 )
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -161,9 +163,10 @@ class VehicleFormStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -175,7 +178,7 @@ class VehicleFormStateHolderTest {
                 assertEquals("00000000-0000-4000-8000-000000000001", call.second.entityId.value)
                 assertEquals(1, call.second.schemaVersion)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -202,9 +205,10 @@ class VehicleFormStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
                 holder.save()
                 holder.state.first { state -> !state.isSaving }
@@ -214,7 +218,7 @@ class VehicleFormStateHolderTest {
                 assertEquals("VEHICLE", json.getValue("entityType").jsonPrimitive.content)
                 assertEquals(EntityType.VEHICLE, snapshot.entityType)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -237,9 +241,10 @@ class VehicleFormStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
 
                 holder.save()
@@ -261,7 +266,7 @@ class VehicleFormStateHolderTest {
                         ).awaitAsOneOrNull(),
                 )
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -284,9 +289,10 @@ class VehicleFormStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val holder = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Offline Roadster")
 
                 holder.save()
@@ -309,7 +315,7 @@ class VehicleFormStateHolderTest {
                 )
                 assertEquals(emptyList(), remote.pushCalls)
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 

@@ -47,10 +47,11 @@ class VehicleListStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val list = graph.vehicleListStateHolder(backgroundScope)
-                val form = graph.vehicleFormStateHolder(backgroundScope, vehicleId = null)
+                val list = graph.vehicleListStateHolder(harness.scope)
+                val form = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 form.setName("Roadster")
 
                 form.save()
@@ -70,7 +71,7 @@ class VehicleListStateHolderTest {
                     publishedState.vehicles,
                 )
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
@@ -93,9 +94,10 @@ class VehicleListStateHolderTest {
                             ),
                         ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                val list = graph.vehicleListStateHolder(backgroundScope)
+                val list = graph.vehicleListStateHolder(harness.scope)
 
                 list.refresh()
                 list.state.first { state -> !state.isLoading }
@@ -125,7 +127,7 @@ class VehicleListStateHolderTest {
                     remote.pullCalls.single(),
                 )
             } finally {
-                graph.close()
+                harness.close()
             }
         }
 
