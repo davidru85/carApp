@@ -38,6 +38,35 @@
 
 ## Entries
 
+### 2026-09-02 — E1-12 review corrections: orphaned harness Job and exception-safe teardown
+
+- **Type:** correction
+- **Story / Decision:** `E1-12` / —
+- **Author:** opencode (GLM), on behalf of David Ruiz
+- **What changed:** corrects the E1-12 story entry above on two points. First, `AppGraphTestHarness`
+  created `scopeJob` before validating that `parentScope` contained a `TestCoroutineScheduler`, so a
+  failed construction left an orphaned child `Job` on the parent; the scheduler is now resolved and
+  validated first, and the constructor test proves no child remains attached. Second, the harness
+  test teardowns now use nested `try/finally` so `owningFactory.close()` always runs, and the
+  obsolete `DatabaseFactory` / `DatabaseHandle` imports were removed from `AppGraphCloseTest.kt`.
+- **Why:** the PR #49 review round found that a failed harness construction leaked a `Job` into the
+  parent scope and that a throwing `harness.close()` or `graph.close()` could skip the owning
+  factory close. Both are test-infrastructure defects inside E1-12 scope; production D-89 behavior
+  is untouched.
+- **Correction of record:** the original E1-12 entry reports 30 `:shared` tests per target, which
+  was accurate at its time. The two harness tests added by the review rounds raise the final count
+  to 32 tests, 0 failures, 0 skipped on each of `:shared:testAndroidHostTest` and
+  `:shared:iosSimulatorArm64Test`. The original entry is otherwise unchanged.
+- **Documents touched:** `docs/handoff-E1-12.md`, this log, and the E1-12 `:shared` common-test
+  files listed in the handoff.
+- **Verification:** extended constructor test RED against the old implementation
+  (`[SupervisorJobImpl{Active}]` attached to the parent), GREEN after the fix; focused shared
+  verification passed 32 tests per target; the complete non-instrumented command passed;
+  `contractCheck` reports no unresolved decisions and no `PENDING` assertions; `git diff --check`
+  clean; the `backgroundScope` source audit still finds no direct state-holder collector launch.
+- **Follow-ups / risks:** none new. PR #49 still requires human review and must not be merged by
+  an agent.
+
 ### 2026-09-02 — E1-12 shared graph-test teardown made deterministic
 
 - **Type:** story

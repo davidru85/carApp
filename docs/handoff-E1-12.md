@@ -42,36 +42,46 @@
 - Date: 2026-09-02.
 - Branch and base: `story/E1-12-shared-test-graph-close-race`, based on `main` / `origin/main` at
   `64c91d6` (merged PR #48).
-- Current phase and latest commit: RED `ed698e0`, GREEN `55f075c`, REFACTOR `a7fb619` and the
-  pull-request continuity checkpoint `b23b4d2` are complete.
-- Push and pull-request status: all three TDD phase commits and the first continuity checkpoint are
-  pushed; PR #49 is open at `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by
-  the agent.
-- Completed since the previous checkpoint: committed GREEN; retained its passing behavior while
-  collapsing the duplicate collector-launch overloads into one typed helper with an optional
-  collector callback. Earlier GREEN work made `AppGraphTestHarness.close()` cancel and join its
-  child scope before closing the graph, moved Fuel Entry collectors and all Kotlin caller-owned
-  graph holder scopes under the harness, removed every direct `backgroundScope.launch` state-
-  holder collector from `:shared` tests and completed the graph-mounting test audit. Updated the
-  repository state, README and backlog to mark E1-12 complete and E1-13 next. Committed REFACTOR,
-  pushed the branch and created PR #49.
-- Verification evidence and known failures: the focused Android-host RED test compiled, executed
-  and failed for the intended missing behavior before GREEN: expected
-  `[collectors-cancelled, graph-closed]` but observed `[graph-closed]`. In GREEN, all 30 `:shared`
-  tests passed on both Android host and `iosSimulatorArm64`; focused ktlint and detekt passed. No
-  direct `backgroundScope.launch` or state-holder factory call with `backgroundScope` remains under
-  `shared/src/commonTest`. The historical intermittent signal 11 has not occurred in this GREEN
-  run. REFACTOR repeated `:shared:iosSimulatorArm64Test` 10 consecutive times with forced task
-  execution on the local Apple-silicon host; all 10 runs passed without a process signal. The
-  complete non-instrumented repository command passed with 627 actionable tasks, and
-  `contractCheck` reported 111 aligned decisions and ADRs with no unresolved or pending assertions.
-  PR CI run `33625103198` passed all 10 jobs on its first attempt. Its macOS `shared-tests` job then
-  passed two isolated reruns, for 3/3 successful CI executions across attempts 1-3 and no SIGSEGV.
+- Current phase and latest commit: RED `ed698e0`, GREEN `55f075c`, REFACTOR `a7fb619`, the
+  pull-request continuity checkpoints `b23b4d2` and `a4009df`, the review-fix dispatcher
+  correction `27030d6`, the shared-factory hardening `fa69083`, the review-findings record
+  `eb8755f`, and the second review round RED `5b9cb46`, GREEN `92bc607` and REFACTOR
+  `4d86f82` are complete. All phases are finished; only the final documentation checkpoint
+  remains in flight.
+- Push and pull-request status: all commits through `eb8755f` are pushed; PR #49 is open at
+  `https://github.com/davidru85/carApp/pull/49` and MUST NOT be merged by the agent. The
+  second review-round commits will be pushed with the final documentation checkpoint.
+- Completed since the previous checkpoint: resolved the second review round of PR #49.
+  Extended `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler` to retain the parent
+  `Job` explicitly and assert that a failed construction leaves no orphaned child attached
+  (confirmed RED: `SupervisorJobImpl{Active}` remained attached). Moved the scheduler
+  resolution and validation in `AppGraphTestHarness` before the `scopeJob` creation so a
+  missing `TestCoroutineScheduler` fails before any `Job` is created. Made every teardown in the
+  harness tests exception-safe with nested `try/finally` so `owningFactory.close()` always
+  runs, and removed the obsolete `DatabaseFactory` and `DatabaseHandle` imports from
+  `AppGraphCloseTest.kt`. Valid harness behavior is unchanged: collectors remain children of
+  `scopeJob`, run eagerly through `UnconfinedTestDispatcher` and are cancelled and joined
+  before `graph.close()`.
+- Verification evidence and known failures: the extended constructor test failed as expected
+  before the fix (BUILD FAILED; expected `[]` children but observed
+  `[SupervisorJobImpl{Active}]`). After the fix, focused `:shared:testAndroidHostTest`
+  harness tests passed (3/3), and `./gradlew :shared:testAndroidHostTest
+  :shared:iosSimulatorArm64Test :shared:ktlintCheck :shared:detekt --rerun-tasks` passed with
+  32 tests and 0 failures/skips on each target. The complete non-instrumented repository
+  command passed with 627 actionable tasks; `contractCheck` reported no unresolved decisions
+  and no `PENDING` assertions; `git diff --check` is clean; the source audit still finds no
+  direct `backgroundScope.launch` state-holder collector and no state-holder factory receiving
+  `backgroundScope` under `shared/src/commonTest`. Historical GREEN/REFACTOR evidence (30
+  tests per target, 10/10 forced Native runs, CI run `33625103198` with 3/3 successful
+  macOS shared-test executions) predates the second review round and is superseded by the
+  final post-review verification above.
 - Open decisions or blockers: no technical decision is open. Only the mandatory human review
-  remains. Production hardening of `AppGraph.close()` remains explicitly deferred outside E1-12
-  because it would change D-89 and touch gated `core/database/**`.
-- Exact next step: push this final CI-evidence checkpoint, allow the required checks triggered by
-  that documentation-only commit to complete, and leave PR #49 for owner review and merge.
+  and the final CI run on the pushed HEAD remain. Production hardening of `AppGraph.close()`
+  remains explicitly deferred outside E1-12 because it would change D-89 and touch gated
+  `core/database/**`.
+- Exact next step: commit this documentation checkpoint, push the branch, wait for the ten
+  required checks on the final HEAD, record the final run evidence, refresh the PR #49
+  description to match this handoff, and leave PR #49 for owner review and merge.
 
 ## Scope Completed
 
@@ -93,9 +103,16 @@
   harness for every Kotlin caller-owned state-holder scope and graph teardown.
 - Source audit finds no direct `backgroundScope.launch` and no state-holder factory receiving
   `backgroundScope` anywhere under `shared/src/commonTest`.
-- `:shared:iosSimulatorArm64Test` passed 10 consecutive forced runs on the local Apple-silicon host.
-- GitHub Actions run `33625103198` passed all 10 required jobs. The macOS `shared-tests` job passed
-  in the original run and in two isolated reruns: 3/3 successful executions with no SIGSEGV.
+- `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler` proves a failed harness
+  construction leaves no orphaned child `Job` on the parent, and its teardown cancels the parent
+  `Job` even if an assertion fails.
+- Final post-review counts (generated reports): 32 tests, 0 failures, 0 skipped on
+  `:shared:testAndroidHostTest`; 32 tests, 0 failures, 0 skipped on
+  `:shared:iosSimulatorArm64Test`. Historical evidence below records the pre-review 30-test
+  baseline and the pre-review CI executions.
+- Historical (pre-review): `:shared:iosSimulatorArm64Test` passed 10 consecutive forced runs on
+  the local Apple-silicon host, and GitHub Actions run `33625103198` passed all 10 required jobs
+  with 3/3 successful macOS `shared-tests` executions and no SIGSEGV.
 - Graph-mounting audit:
   - `AppGraphCloseTest.kt`: no caller-owned state holder or external collector; directly verifies
     idempotent direct and Swift-transitive graph close plus bootstrap cancellation.
@@ -125,12 +142,15 @@
 - `docs/BACKLOG.md`.
 - `docs/PROJECT_LOG.md`.
 - `docs/handoff-E1-12.md` (new; live continuity record).
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphCloseTest.kt`.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphContractTest.kt`.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphTestHarness.kt` (new; reusable child-
   scope and ordered-teardown helper).
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphTestHarnessTest.kt` (new; deterministic
   teardown-order regression test).
-- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphContractTest.kt`.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FuelEntryStateHolderTest.kt`.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/RecordingDatabaseFactory.kt` (new; shared
+  recording test double for graph-close assertions).
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/VehicleFormStateHolderTest.kt`.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/VehicleListStateHolderTest.kt`.
 
@@ -145,6 +165,9 @@
   already fixed by the E1-12 acceptance criteria while preserving D-89 unchanged.
 
 ## Verification Run
+
+Historical RED/GREEN/REFACTOR evidence (first implementation round, pre-review; retained for the
+TDD record and superseded by the final post-review verification below):
 
 - RED: `./gradlew :shared:testAndroidHostTest --tests
   "com.ruizurraca.carapp.AppGraphTestHarnessTest.closeCancelsCollectorsBeforeClosingTheGraph"
@@ -166,14 +189,31 @@
   SUCCESSFUL in 6s with 627 actionable tasks (41 executed, 586 up-to-date); `contractCheck`
   output inspected: every assertion PASS, 111 decisions, 111 ADRs, no unresolved decisions and no
   `PENDING` assertions.
-- Focused rerun verification: `./gradlew :shared:testAndroidHostTest --rerun-tasks` — BUILD
-  SUCCESSFUL in 5s with all 74 actionable tasks executed; 32 tests passed, 0 failures, 0 skipped,
-  test execution duration 1.440s.
-- CI: `https://github.com/davidru85/carApp/actions/runs/33625103198` — attempt 1 passed all 10
-  required jobs. macOS `shared-tests` job `100230981301` passed in 4m03s; isolated rerun job
-  `100234505110` passed in 4m06s; isolated rerun job `100235772541` passed in 3m32s. Result: 3/3
-  CI executions of the shared Android-host, Kotlin/Native and coverage suite passed with no
-  process signal.
+- Historical CI: `https://github.com/davidru85/carApp/actions/runs/33625103198` — attempt 1 passed
+  all 10 required jobs; the macOS `shared-tests` job passed in the original run and two isolated
+  reruns (3/3 successful executions, no SIGSEGV).
+
+Final post-review verification (second review round, current HEAD):
+
+- RED (orphaned child job): `./gradlew :shared:testAndroidHostTest --tests
+  "com.ruizurraca.carapp.AppGraphTestHarnessTest.constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler"
+  --rerun-tasks` — expected BUILD FAILED before the harness fix: the test observed
+  `[SupervisorJobImpl{Active}]` attached to the retained parent `Job` instead of `[]`, proving the
+  constructor orphaned `scopeJob` when scheduler validation failed.
+- GREEN: `./gradlew :shared:testAndroidHostTest --tests
+  "com.ruizurraca.carapp.AppGraphTestHarnessTest" --rerun-tasks` — BUILD SUCCESSFUL; 3/3 harness
+  tests passed after moving scheduler validation before `scopeJob` creation.
+- REFACTOR (exception-safe teardown): `./gradlew :shared:testAndroidHostTest
+  :shared:iosSimulatorArm64Test :shared:ktlintCheck :shared:detekt --rerun-tasks` — BUILD
+  SUCCESSFUL in 16s with all 143 actionable tasks executed; 32 tests, 0 failures, 0 skipped on
+  each target (generated-report counts).
+- Full repository verification: the complete non-instrumented command from `AGENTS.md` — BUILD
+  SUCCESSFUL in 1s with 627 actionable tasks (38 executed, 589 up-to-date).
+- `./gradlew contractCheck` output inspected: no unresolved decisions, no `PENDING` assertions.
+- `git diff --check` — clean.
+- Source audit repeated: no `backgroundScope.launch` state-holder collector and no state-holder
+  factory call receiving `backgroundScope` under `shared/src/commonTest`; `backgroundScope` appears
+  only as the harness `parentScope` argument.
 
 ## Review Findings Resolution (PR #49)
 
@@ -203,6 +243,29 @@
 - Added explicit unit tests in `AppGraphTestHarnessTest.kt`:
   - `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler`: proves missing scheduler throws.
   - `collectorsRunEagerlyOnUnconfinedTestDispatcher`: proves emissions are observed eagerly.
+
+### Second Review Round (PR #49, current)
+
+- Finding 1 (orphaned child `Job` on failed construction): confirmed RED by extending
+  `constructorThrowsWhenParentScopeHasNoTestCoroutineScheduler` to retain the parent `Job`
+  explicitly and assert no children remain attached after the failed constructor; the assertion
+  observed `[SupervisorJobImpl{Active}]` against the then-current implementation. Fixed by moving
+  the `TestCoroutineScheduler` resolution and validation in `AppGraphTestHarness` before the
+  `SupervisorJob` creation, so a missing scheduler fails before any `Job` is constructed. The
+  test teardown now cancels the parent `Job` in its `finally` even if an assertion fails. Valid
+  harness behavior is unchanged: collectors remain children of `scopeJob`, run eagerly through
+  `UnconfinedTestDispatcher` and are cancelled and joined before `graph.close()`.
+- Finding 2 (exception-safe teardown): every teardown in `AppGraphTestHarnessTest.kt` now uses
+  nested `try/finally` blocks so `owningFactory.close()` still runs when `harness.close()` or
+  `graph.close()` throws, and the obsolete `DatabaseFactory` and `DatabaseHandle` imports were
+  removed from `AppGraphCloseTest.kt`.
+- Finding 3 (continuity record): this handoff's `In-Progress Checkpoint`, `Files Changed`,
+  acceptance evidence and verification sections were refreshed to the final HEAD, with final
+  report-derived test counts and historical evidence clearly separated from final post-review
+  verification. A correction entry was appended to `docs/PROJECT_LOG.md` rather than rewriting
+  the original story entry.
+- Finding 4 (PR description): the PR #49 description will be refreshed after the final push to
+  agree with this handoff; the human-review gate remains checked and the PR is not merged.
 
 ## Contract Impact
 
