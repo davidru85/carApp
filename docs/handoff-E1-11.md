@@ -48,7 +48,17 @@
   `:integration:firebase-firestore:testAndroidHostTest`, `ktlintCheck`, `detekt`,
   `architectureCheck` and `contractCheck` all pass. `contractCheck` reports 111 decisions,
   111 ADRs, no unresolved decisions and no `PENDING` assertions. `git diff --check` is clean.
-  No known failures.
+  Known failure, established owner E1-12, not E1-11: the first `ios-simulator-build` run on
+  `d1cf977` failed because `ViewModelLifecycleTests.testFuelEntryFormViewModelModeDerivations`
+  crashed the XCTest runner during `tearDown`, with
+  `kotlin.IllegalStateException: AndroidxDriverConnectionPool.close() called while 1 reader
+  connection(s) still checked out` thrown from `SwiftAppGraph.close()` ->
+  `DefaultAppGraph.close()` -> `DatabaseHandle.close()` -> `AndroidxSqliteDriver.close()`. The
+  runner restarted and every other test in the suite passed. Re-running the job made it pass in
+  12m11s with no code change. The commit range `971f31e..d1cf977` touches only `docs/` and
+  `shared/src/commonTest/`, neither of which reaches the `Shared` framework the iOS host tests
+  link against, so E1-11 cannot be the cause. This is the same graph-close defect family that
+  `E1-12` already owns.
 - Open decisions or blockers: none
 - Exact next step: owner re-review of pull request #48 after the parity-test correction, and the
   merge decision. The agent MUST NOT merge.
@@ -181,6 +191,10 @@
 ## Risks or Follow-ups
 
 - Closes the `E1-06` follow-up and GitHub issue #36.
+- `ios-simulator-build` is flaky on graph close: `AndroidxDriverConnectionPool.close()` can throw
+  `IllegalStateException` from `AppGraph.close()` in the iOS host `tearDown` when a reader
+  connection is still checked out, crashing the XCTest runner. Observed once on `d1cf977` and not
+  reproduced on re-run. It is unrelated to E1-11 and belongs to the `E1-12` graph-close work.
 - E3-13 (GitHub issue #46) remains the Phase 3 follow-up for single source of truth.
 - `DatabaseMutations`, `:feature:fuel`, `:shared` and `.sq` literals remain independent until E3-13.
 
