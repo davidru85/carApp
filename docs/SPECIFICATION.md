@@ -585,7 +585,6 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-107 | Fuel Entry form settings snapshot | Apply only the first persisted currency to a new form, preserving its locale fallback, explicit edits and all existing-entry currency values. | Accepted |
 | D-108 | Native locale-provider ownership | Inject native Android and iOS locale providers at host composition boundaries; keep the production provider factory parameter explicit. | Accepted |
 | D-109 | Native locale-provider verification topology | Require Android host unit tests in standard local and CI verification; retain the D-75 iOS behavior gap under E1-13. | Accepted |
-| D-110 | Outbox entity-type token ownership | Keep explicit contract tokens in production code; add a test-only anchor pinning the `EntityType` enum names to the outbox wire values. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

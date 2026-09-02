@@ -83,7 +83,7 @@ class FirebaseRemoteSyncSourceTest {
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
             assertEquals(false, item.deleted)
             assertEquals(
-                Json.parseToJsonElement(vehicleRemoteJson(entityId.value, serverUpdatedAt.toEpochMilliseconds())),
+                Json.parseToJsonElement(vehicleJson(entityId.value, serverUpdatedAt.toEpochMilliseconds())),
                 Json.parseToJsonElement(item.json),
             )
             assertEquals(RemoteCursor(serverUpdatedAt, entityId), page.nextCursor)
@@ -101,7 +101,7 @@ class FirebaseRemoteSyncSourceTest {
         }
 }
 
-internal class RecordingFirestoreGateway(
+private class RecordingFirestoreGateway(
     private val serverUpdatedAt: Instant = Instant.fromEpochMilliseconds(0),
     private val documents: List<FirestoreDocument> = emptyList(),
 ) : FirestoreGateway {
@@ -148,28 +148,6 @@ private fun vehicleDocument(
     )
 
 private fun vehicleJson(
-    id: String,
-    updatedAt: Long = 1_700_000_000_000L,
-): String =
-    """
-    {
-      "entityType":"VEHICLE",
-      "id":"$id",
-      "ownerId":"anonymous-owner",
-      "name":"Roadster",
-      "initialOdometerKm":0,
-      "brand":null,
-      "model":null,
-      "fuelType":"GASOLINE",
-      "createdAt":1700000000000,
-      "updatedAt":$updatedAt,
-      "deleted":false,
-      "deletedAt":null,
-      "schemaVersion":1
-    }
-    """.trimIndent()
-
-private fun vehicleRemoteJson(
     id: String,
     updatedAt: Long = 1_700_000_000_000L,
 ): String =
