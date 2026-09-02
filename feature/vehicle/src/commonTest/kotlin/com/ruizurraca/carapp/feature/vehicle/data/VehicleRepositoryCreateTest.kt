@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -56,7 +57,7 @@ class VehicleRepositoryCreateTest {
                 val id = assertIs<Outcome.Ok<EntityId>>(repository.createVehicle(createVehicleCommand())).value
 
                 assertEquals("PENDING", requireNotNull(vehicle(id.value)).syncState)
-                assertNull(outbox("VEHICLE", id.value))
+                assertNull(outbox(EntityType.VEHICLE.name, id.value))
             }
         }
 
@@ -66,10 +67,11 @@ class VehicleRepositoryCreateTest {
             withVehicleRepositoryTestScope(OwnerId("owner-a")) {
                 val id = assertIs<Outcome.Ok<EntityId>>(repository.createVehicle(createVehicleCommand())).value
 
-                val queued = requireNotNull(outbox("VEHICLE", id.value))
+                val queued = requireNotNull(outbox(EntityType.VEHICLE.name, id.value))
                 val payload = Json.parseToJsonElement(queued.payload).jsonObject
                 assertEquals(
                     setOf(
+                        "entityType",
                         "id",
                         "ownerId",
                         "name",
@@ -85,6 +87,7 @@ class VehicleRepositoryCreateTest {
                     ),
                     payload.keys,
                 )
+                assertEquals("VEHICLE", payload.getValue("entityType").jsonPrimitive.content)
                 assertEquals("owner-a", payload.getValue("ownerId").jsonPrimitive.content)
                 assertEquals("false", payload.getValue("deleted").jsonPrimitive.content)
                 assertEquals(1, queued.localRevision)

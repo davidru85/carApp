@@ -177,7 +177,7 @@ document wins and the discrepancy is escalated.
 | Phase | Goal | Main gate |
 |-------|------|-----------|
 | 0 - Foundations **(complete)** | Owner decisions closed, KMP skeleton, convention plugins, core modules, quality tooling, CI, ADRs | Android and iOS build in CI; architecture rules fail correctly |
-| 1 - Local persistence **(active)** | `E1-01` through `E1-10` and the `E0-07` gate are complete; `E1-11`, `E1-12` and `E1-13` remain | The walking skeleton proves the native local/remote path, both native Vehicle and Fuel Entry flows are executable, and device-local settings are persistent |
+| 1 - Local persistence **(active)** | `E1-01` through `E1-11` and the `E0-07` gate are complete; `E1-12` and `E1-13` remain | The walking skeleton proves the native local/remote path, both native Vehicle and Fuel Entry flows are executable, device-local settings are persistent, and the Vehicle outbox payload `entityType` contract compliance is restored |
 | 2 - Authentication **(planned)** | E2-01 through E2-07 remain | Adoption and normal linking preserve data; confirmed collisions preserve the current anonymous snapshot |
 | 3 - Backend and backup **(partially complete)** | E3-06 and E3-01 are complete; the remaining backend, cleanup, sync and recovery stories are open | Recovery and provider decoupling are executable checks |
 | 4 - MVP hardening **(planned)** | E4-01 through E4-04 remain | Store-readiness checklist complete |
