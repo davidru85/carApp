@@ -32,12 +32,12 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-02
 - Branch and base: `story/E1-11-outbox-entitytype-fix` from `main` (`68842a2`)
-- Current phase and latest commit: reopened for owner-review findings (P1+P2), about to start RED
-- Push and pull-request status: pushed, PR #45 open awaiting fixes
-- Completed since the previous checkpoint: owner review identified three findings: (1) `entityType` breaks remote Firestore writes because `toFirestoreWrite` passes it through as a field; (2) coalescence evidence is incomplete; (3) ADR-0111 incorrectly denies the human gate
-- Verification evidence and known failures: previous full suite passed; new findings are untested
-- Open decisions or blockers: none — the boundary behavior follows existing §8 and §16 contracts
-- Exact next step: RED phase for Finding 1 — failing integration tests proving entityType is excluded from FirestoreWrite and mismatched entityType returns InvalidArgument
+- Current phase and latest commit: complete after owner-review findings, this fix commit
+- Push and pull-request status: pushed, PR #45 open awaiting owner merge
+- Completed since the previous checkpoint: owner review identified three findings: (1) `entityType` breaks remote Firestore writes; (2) coalescence evidence incomplete; (3) ADR-0111 denies the human gate. All three fixed: Firestore boundary excludes `entityType` and validates it; coalescence parity test added in `:shared`; ADR-0111 corrected.
+- Verification evidence and known failures: full non-instrumented suite passes (627 tasks); `git diff --check` clean
+- Open decisions or blockers: none
+- Exact next step: owner review and merge of PR #45
 
 ## Scope Completed
 
@@ -128,6 +128,9 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
 - Closes the `E1-06` follow-up, GitHub issue #36 and the additional Vehicle payload finding folded into this story.
 - Phase 3 follow-up registered: E3-13 (GitHub issue #46) "Single source of truth for the outbox entityType wire value" in `docs/BACKLOG.md`. It is naturally taken by the sync-engine story that first consumes `entityType` — not automatically assigned to E3-03.
+- Finding 1 (Firestore boundary): `FirebaseRemoteSyncSource.toFirestoreWrite` now requires the payload `entityType` to match `EntitySnapshot.entityType`, excludes `entityType` from `FirestoreWrite.fields`, and returns `RemoteError.InvalidArgument` for missing, unknown, or mismatched values. Tests: `FirebaseRemoteSyncSourceEntityTypeBoundaryTest` (5 tests for Vehicle and Fuel Entry). End-to-end regression: `VehicleFormStateHolderTest.vehicleOutboxPayloadWithEntityTypeReachesRemoteSyncSourceAsAValidSnapshot`.
+- Finding 2 (coalescence parity): `VehicleRepositoryDeleteTest.cascadeDeleteCoalescesWithAnExistingFuelEntryOutboxRowKeepingEntityType` now asserts the exact canonical Fuel Entry payload key set. `VehicleRepositoryDeleteTest.cascadeDeleteIsIdempotentWhenItIsTheLastWriterOfAFuelEntryOutboxRow` proves the cascade is idempotent when it is the last writer. `OutboxCoalescenceParityTest` in `:shared` proves the direct Fuel Entry writer and the Vehicle cascade-delete writer produce the same canonical key set, using real production write paths.
+- Finding 3 (ADR-0111): corrected to declare the gated paths touched by E1-11.
 
 ## Human Review Gate
 

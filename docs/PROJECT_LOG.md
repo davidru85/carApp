@@ -38,6 +38,32 @@
 
 ## Entries
 
+### 2026-09-02 — E1-11 owner-review findings: Firestore boundary, coalescence parity, ADR gate
+
+- **Type:** correction
+- **Story / Decision:** `E1-11` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** fixed three owner-review findings on PR #45: (1) the Firestore boundary
+  `toFirestoreWrite` now requires the outbox payload `entityType` to match `EntitySnapshot.entityType`,
+  excludes `entityType` from `FirestoreWrite.fields`, and returns `RemoteError.InvalidArgument` for
+  missing, unknown, or mismatched values; (2) strengthened coalescence evidence with exact canonical
+  key-set assertions and a cross-feature parity test in `:shared`; (3) corrected ADR-0111 to declare
+  the gated paths touched by E1-11.
+- **Why:** adding `entityType` to the outbox payload (required by `docs/CONTRACTS.md §8`) broke
+  connected Firestore writes because the closed remote schema (`docs/CONTRACTS.md §16`) does not
+  permit `entityType`; the boundary fix follows the existing contracts without adding `entityType`
+  to the remote schema or weakening the rules.
+- **Documents touched:** `integration/firebase-firestore/.../FirebaseRemoteSyncSource.kt`,
+  `FirebaseRemoteSyncSourceTest.kt`, `FirebaseRemoteSyncSourceEntityTypeBoundaryTest.kt` (new),
+  `shared/.../VehicleFormStateHolderTest.kt`, `shared/.../OutboxCoalescenceParityTest.kt` (new),
+  `feature/vehicle/.../VehicleRepositoryDeleteTest.kt`, `docs/handoff-E1-11.md`,
+  `docs/adr/0111-outbox-entity-type-token-ownership.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** `./gradlew :feature:vehicle:testAndroidHostTest :feature:fuel:testAndroidHostTest
+  :shared:testAndroidHostTest :integration:firebase-firestore:testAndroidHostTest` passes; the full
+  non-instrumented command from `AGENTS.md` passes with 627 actionable tasks; `contractCheck` and
+  `architectureCheck` pass; `git diff --check` clean.
+- **Follow-ups / risks:** none. PR #45 awaits owner merge.
+
 ### 2026-09-02 — E1-11 owner-review corrections
 
 - **Type:** correction

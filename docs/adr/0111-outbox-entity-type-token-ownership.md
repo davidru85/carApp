@@ -52,8 +52,11 @@ values mandated by `docs/CONTRACTS.md §8` and `§20`, so an enum rename fails t
 silently changing what would be persisted and pushed.
 
 No production code, no contract change and no module-boundary change are introduced by this
-decision. Any future unification is a separate, explicit, Ready Phase 3 story that must jointly
-resolve where `EntityType` lives, module dependencies, SQL representation and contract assertions.
+decision. The PR touches gated paths (`AGENTS.md`, `docs/SPECIFICATION.md`,
+`docs/DECISION_BOARD.md`, `docs/adr/**`) via the D-110 mirrors and ADR-0111; the human review
+gate is the owner's review and merge of PR #45. Any future unification is a separate, explicit,
+Ready Phase 3 story that must jointly resolve where `EntityType` lives, module dependencies, SQL
+representation and contract assertions.
 
 ## Consequences
 
@@ -61,7 +64,9 @@ resolve where `EntityType` lives, module dependencies, SQL representation and co
 
 - The `EntityType` enum names are pinned to the outbox wire values by a single test anchor.
 - An enum rename fails the build instead of silently changing persisted and pushed payloads.
-- No gated path or gated topic is touched by E1-11.
+- The PR touches gated paths (`AGENTS.md`, `docs/SPECIFICATION.md`, `docs/DECISION_BOARD.md`,
+  `docs/adr/**`) via the D-110 mirrors and ADR-0111; the human review gate is the owner's review
+  and merge of PR #45.
 - The deliberate asymmetry is safe: repository tests read outbox rows written by
   `DatabaseMutations` using `EntityType.*.name`, so divergence between the enum and the
   `DatabaseMutations` literals fails the build.

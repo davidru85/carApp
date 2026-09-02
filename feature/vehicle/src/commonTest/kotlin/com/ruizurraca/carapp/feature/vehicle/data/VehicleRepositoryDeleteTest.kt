@@ -134,9 +134,51 @@ class VehicleRepositoryDeleteTest {
 
                     val queued = requireNotNull(outbox(EntityType.FUEL_ENTRY.name, FIRST_FUEL_ENTRY_ID))
                     val payload = Json.parseToJsonElement(queued.payload).jsonObject
+                    assertEquals(CANONICAL_FUEL_ENTRY_PAYLOAD_KEYS, payload.keys)
                     assertEquals("FUEL_ENTRY", payload.getValue("entityType").jsonPrimitive.content)
                     assertEquals("true", payload.getValue("deleted").jsonPrimitive.content)
                 }
             }
         }
+
+    @Test
+    fun cascadeDeleteIsIdempotentWhenItIsTheLastWriterOfAFuelEntryOutboxRow() =
+        runTest {
+            withVehicleRepositoryTestScope(OwnerId("owner-a")) {
+                seedVehicle()
+                seedFuelEntry(FIRST_FUEL_ENTRY_ID, date = 1_100, odometerKm = 20)
+
+                assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
+
+                val firstPayload = requireNotNull(outbox(EntityType.FUEL_ENTRY.name, FIRST_FUEL_ENTRY_ID)).payload
+
+                assertIs<Outcome.Ok<Unit>>(repository.deleteVehicle(EntityId(VEHICLE_ID)))
+
+                val secondPayload = requireNotNull(outbox(EntityType.FUEL_ENTRY.name, FIRST_FUEL_ENTRY_ID)).payload
+                assertEquals(firstPayload, secondPayload)
+            }
+        }
 }
+
+private val CANONICAL_FUEL_ENTRY_PAYLOAD_KEYS =
+    setOf(
+        "entityType",
+        "id",
+        "ownerId",
+        "vehicleId",
+        "date",
+        "odometerKm",
+        "litersScaled",
+        "pricePerLiterScaled",
+        "totalCostMinor",
+        "currency",
+        "isFullTank",
+        "hasMissedEntries",
+        "odometerInconsistent",
+        "notes",
+        "createdAt",
+        "updatedAt",
+        "deleted",
+        "deletedAt",
+        "schemaVersion",
+    )
