@@ -46,27 +46,33 @@
 - Date: 2026-09-03.
 - Branch and base: `story/E2-01-core-auth-contracts`, recreated after a second explicit
   synchronization and based on identical `main` / `origin/main` at `91b2a78`.
-- Current phase and latest commit: RED committed at `7bd723e`; GREEN is complete and not yet
-  committed.
+- Current phase and latest commit: RED `7bd723e`, GREEN `d9b421e` and the current REFACTOR HEAD are
+  committed; final local verification is complete.
 - Push and pull-request status: no story commit is pushed and no pull request exists.
-- Completed since the previous checkpoint: RED was committed. GREEN stores the injected auth state
-  in `AuthOwnerContext`, maps `Unknown` and `SignedOut` to `LOCAL_OWNER`, maps `SignedIn` to its
-  session UID for both snapshot and Flow access, and replaces the private wiring implementation
-  with the `:core:auth` class.
-- Verification evidence and known failures: the focused GREEN command passed 113 executed tasks.
-  `:core:auth` ran 12 tests with zero failures on Android host and 12 with zero failures on the iOS
-  simulator; the Firebase-wiring Android-host suite ran two tests with zero failures. Historical RED
-  evidence remains below. No current failure is known.
-- Open decisions or blockers: none currently identified. The implementation will preserve the
-  existing auth-state-to-owner mapping while relocating its ownership to `:core:auth`; this is the
-  behavior already staged by E0-07 rather than a new product or architecture choice.
-- Exact next step: create the GREEN commit, then perform bounded refactoring and complete the story
-  documentation, status mirrors and project log before full verification.
+- Completed since the previous checkpoint: GREEN was committed. REFACTOR removed the unused
+  serialization dependency from `:core:auth`, documented the owner adapter, updated all current-
+  state mirrors to make E2-02 next, completed this handoff and added the required project-log entry.
+- Verification evidence and known failures: the exact complete non-instrumented command passed 636
+  actionable tasks; provider decoupling passed 234 forced tasks; the simulator framework linked,
+  its generated Objective-C header matches the golden file and the native iOS app build succeeded.
+  Contract checking reports 111 aligned decisions/ADRs, none unresolved and no pending assertion.
+  A first sandboxed `xcodebuild` attempt could not access Xcode/Swift caches or CoreSimulator; the
+  permitted rerun reached the toolchain and succeeded, so this is an environment restriction rather
+  than a product failure. Historical RED evidence remains below.
+- Open decisions or blockers: no technical or owner decision is open and no implementation blocker
+  remains. The implementation preserves the mapping staged by E0-07 and changes no contract,
+  architecture rule, dependency version, service or MVP scope.
+- Exact next step: create the REFACTOR commit, push the three ordered phase commits once, create the
+  pull request, wait for required checks and leave it open for mandatory owner review.
 
 ## Scope Completed
 
-- Auth contracts are executable and the auth-backed owner context is implemented and bound in
-  wiring; REFACTOR documentation and final verification remain.
+- Completed the existing provider-free auth model and interface surface with executable
+  cross-platform contract coverage.
+- Implemented the auth-backed repository owner adapter in `:core:auth` and bound it in Firebase
+  wiring without changing feature dependencies.
+- Removed the redundant staged wiring implementation and the unused auth serialization dependency.
+- Updated Phase 2 status, continuity evidence and the append-only project log.
 
 ## Acceptance Evidence
 
@@ -78,6 +84,12 @@
 - `AuthContractsTest` compiles and exercises the exact model fields, distinct auth states, both
   native credential forms, token validity instants and every typed `AuthClient` / `TokenProvider`
   outcome.
+- Existing `AppErrorCodesTest` continues to verify every exact `AuthError` code through the complete
+  repository command.
+- `architectureCheck` and direct source audits prove that `:core:auth` contains no Firebase,
+  GitLive or platform API, and that no feature module references `AuthClient` or `:core:auth`.
+- Provider decoupling executes the new owner-context tests on Android host and iOS simulator with
+  every Firebase provider/composition module excluded.
 
 ## Out of Scope / Not Done
 
@@ -86,16 +98,20 @@
 
 ## Files Changed
 
-- `core/auth/build.gradle.kts` (coroutines test support).
-- `core/auth/src/commonMain/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContext.kt` (compiling
-  incomplete RED seam).
+- `AGENTS.md`, `README.md`, `docs/BACKLOG.md` and `docs/TECHNICAL_PLAN.md` (current Phase 2 status).
+- `core/auth/build.gradle.kts` (coroutines test support and unused serialization removal).
+- `core/auth/src/commonMain/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContext.kt` (auth-backed
+  owner implementation).
 - `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthContractsTest.kt` (contract
   surface coverage).
 - `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContextTest.kt`
   (behavior-specific RED coverage).
 - `wiring/firebase/src/commonTest/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProvidersTest.kt`
   (binding assertion).
+- `wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt`
+  (core-auth owner binding and duplicate implementation removal).
 - `docs/handoff-E2-01.md` (new live continuity record).
+- `docs/PROJECT_LOG.md` (append-only completion entry).
 
 ## Decisions Made
 
@@ -103,6 +119,13 @@
   TDD workflow.
 - The owner's single-push instruction replaces the default per-phase push cadence for E2-01. The
   RED, GREEN and REFACTOR commits remain separate and ordered.
+- The owner subsequently reiterated that continuity state must remain fully documented for a
+  replacement agent. A documentation-only delivery checkpoint may therefore follow pull-request
+  creation if required to record the remote branch, PR and CI state; it does not alter or combine
+  the three TDD phase commits.
+- No new technical decision was introduced. `AuthOwnerContext` relocates the exact E0-07 mapping to
+  the owner module fixed by the E2-01 acceptance criteria; the public contracts, dependency graph,
+  provider stack and product behavior are unchanged.
 
 ## Verification Run
 
@@ -121,14 +144,35 @@
 - GREEN: `./gradlew :core:auth:testAndroidHostTest :core:auth:iosSimulatorArm64Test
   :wiring:firebase:testAndroidHostTest --rerun-tasks` — passed, 113 executed tasks; 12 core-auth
   tests passed on each platform and two Firebase-wiring Android-host tests passed.
+- REFACTOR full repository: the exact complete non-instrumented command from `AGENTS.md` — passed,
+  636 actionable tasks (106 executed, 530 up-to-date), including lint, detekt, architecture,
+  contracts, convention tests, coverage, Android assembly/unit tests and required Android-host /
+  iOS-simulator tests.
+- REFACTOR provider decoupling: `./gradlew -Pcarapp.excludeFirebaseProviders=true
+  testAndroidHostTest iosSimulatorArm64Test --rerun-tasks` — passed, 234 executed tasks.
+- REFACTOR framework and ABI: `./gradlew
+  :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace` — passed, 70 actionable tasks;
+  `diff -u shared/build/generated/objc-header/Shared.h.golden
+  composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework/Headers/Shared.h`
+  returned no difference.
+- REFACTOR iOS host: `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator
+  -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — the first sandboxed attempt failed
+  before compilation on denied cache/CoreSimulator access; the permitted rerun succeeded with
+  `** BUILD SUCCEEDED **`.
+- REFACTOR contract/convention evidence: `./gradlew contractCheck architectureCheck
+  :build-logic:convention:test` — passed; 111 decisions and ADRs aligned, none unresolved, no
+  pending assertion, 16 architecture rules over 23 modules.
+- Source and patch audit: `git diff --check` passed; searches found no Firebase/GitLive/platform
+  reference in auth common production sources, no feature reference to `AuthClient` / `:core:auth`,
+  and no old wiring-local owner implementation.
 
 ## Contract Impact
 
-- No contract changes are expected; E2-01 implements and verifies the existing auth contracts.
+- No contract changes. E2-01 implements and verifies the existing auth contracts.
 
 ## Decision Board Impact
 
-- No decision change is currently expected.
+- No decision changes.
 
 ## Shared-Write Modules Touched
 
@@ -136,7 +180,7 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Entry appended.
 
 ## Risks or Follow-ups
 

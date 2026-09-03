@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlin.native.HiddenFromObjC
 
+/** Exposes the owner implied by provider-free authentication state to local repositories. */
 @HiddenFromObjC
 class AuthOwnerContext(
     private val authState: StateFlow<AuthState>,

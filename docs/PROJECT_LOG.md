@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-09-03 — E2-01 provider-free auth contracts completed
+
+- **Type:** story
+- **Story / Decision:** `E2-01` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** completed executable coverage for the staged `AuthClient`, `TokenProvider`,
+  `AuthSession`, `AuthState`, `NativeAuthCredential`, `AuthToken` and typed `AuthError` surface;
+  moved the auth-backed `OwnerContext` implementation from Firebase wiring into `:core:auth`; and
+  bound that implementation from wiring without exposing `AuthClient` to feature modules.
+- **Why:** E0-07 staged the final auth shapes to construct the walking-skeleton graph, while E2-01
+  owns their complete provider-free module boundary and the repository-facing owner adapter.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/handoff-E2-01.md` and this log.
+- **Verification:** behavior-specific RED failures preceded the minimum GREEN implementation on
+  separate commits; focused auth tests pass on Android host and iOS simulator; Firebase wiring,
+  architecture, contracts, lint, static analysis, coverage and the complete non-instrumented
+  repository command pass as recorded in the handoff.
+- **Follow-ups / risks:** provider operations remain staged for E2-02. The pull request changes the
+  gated `core/auth/**` path and authentication topic, so owner review is required before merge.
+
 ### 2026-09-03 — Phase 3 current-state mirrors restored E3-13
 
 - **Type:** correction
