@@ -66,11 +66,14 @@ class FirebaseAuthClient internal constructor(
         coroutineScope = coroutineScope,
     )
 
+    private val observationJob = SupervisorJob(coroutineScope.coroutineContext[Job])
+    private val scope = CoroutineScope(coroutineScope.coroutineContext + observationJob)
+
     private val mutableAuthState = MutableStateFlow<AuthState>(AuthState.Unknown)
     override val authState: StateFlow<AuthState> = mutableAuthState
 
     init {
-        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             gateway.authStateChanged.collect { firebaseUser ->
                 mutableAuthState.value = firebaseUser.toAuthState()
             }
@@ -78,7 +81,7 @@ class FirebaseAuthClient internal constructor(
     }
 
     override fun close() {
-        // RED phase stub: not yet cancelling
+        observationJob.cancel()
     }
 
     fun dispose() = close()
@@ -452,8 +455,12 @@ internal fun classifyAuthFailure(
                     FirebaseAuthGatewayException.Network(cause)
                 }
 
-                FIREBASE_PERMISSION_DENIED_CODE, ERROR_PERMISSION_DENIED -> {
-                    // In RED phase: still mapped to PermissionDenied so appNotAuthorized test fails!
+                FIREBASE_APP_NOT_AUTHORIZED_CODE -> {
+                    // 17028: appNotAuthorized (configuration failure)
+                    FirebaseAuthGatewayException.Provider(cause)
+                }
+
+                ERROR_PERMISSION_DENIED -> {
                     FirebaseAuthGatewayException.PermissionDenied(cause)
                 }
 
@@ -534,7 +541,11 @@ internal fun parseTokenTimestamps(
     claims: Map<String, Any>,
     now: Instant,
 ): Pair<Instant, Instant> {
-    val iat = parseClaimTimestamp(claims["iat"]) ?: now
+    val iat =
+        parseClaimTimestamp(claims["iat"])
+            ?: throw FirebaseAuthGatewayException.Provider(
+                IllegalStateException("ID token is missing a valid 'iat' claim"),
+            )
     val exp = parseClaimTimestamp(claims["exp"]) ?: (iat + 1.hours)
     return iat to exp
 }
@@ -626,5 +637,5 @@ internal const val FIREBASE_NETWORK_CODE = "17020"
 internal const val ERROR_NETWORK_REQUEST_FAILED = "ERROR_NETWORK_REQUEST_FAILED"
 internal const val FIREBASE_WEB_CANCEL_CODE = "17058"
 internal const val ERROR_WEB_CONTEXT_CANCELLED = "ERROR_WEB_CONTEXT_CANCELLED"
-internal const val FIREBASE_PERMISSION_DENIED_CODE = "17028"
+internal const val FIREBASE_APP_NOT_AUTHORIZED_CODE = "17028"
 internal const val ERROR_PERMISSION_DENIED = "ERROR_PERMISSION_DENIED"
