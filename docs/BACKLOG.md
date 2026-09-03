@@ -579,6 +579,8 @@ decision documentation.
 
 ### E2-01 - `:core:auth` - S
 
+Status: implementation completed on 2026-09-03.
+
 Implement the auth interfaces and models.
 
 Acceptance criteria:
@@ -1098,7 +1100,7 @@ proof after E3-04.
 | E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
-| E2-01 `:core:auth` | 2 | S | — |
+| E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 | 2 | M | — |
 | E2-06 Local owner adoption | 2 | M | Yes |

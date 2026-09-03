@@ -466,7 +466,7 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 ### Phase 2 - Authentication
 
-Status: open; all Phase 2 stories remain and E2-01 is next.
+Status: open; E2-01 is complete and E2-02 is next.
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
 anonymous retention notices, sign-out and account deletion.

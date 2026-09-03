@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
 import com.ruizurraca.carapp.core.auth.AuthClient
+import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.AuthToken
@@ -19,7 +20,6 @@ import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.Logger
 import com.ruizurraca.carapp.core.common.Outcome
-import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.SyncTriggerAdapter
@@ -29,7 +29,6 @@ import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.createPersistentDatabaseFactory
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.CurrencyCode
-import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
@@ -41,10 +40,8 @@ import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlin.random.Random
 import kotlin.time.Clock
 
@@ -87,7 +84,7 @@ internal fun firebaseAppProviders(
         override val databaseFactory = databaseFactory
         override val authClient = authClient
         override val tokenProvider = stagedTokenProvider()
-        override val ownerContext = authBackedOwnerContext(authClient.authState)
+        override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = stagedAnalyticsTracker()
         override val crashReporter = NoOpCrashReporter
@@ -124,22 +121,6 @@ private fun stagedAuthClient(authState: StateFlow<AuthState>): AuthClient =
 private fun stagedTokenProvider(): TokenProvider =
     object : TokenProvider {
         override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = providerUnavailable()
-    }
-
-private fun authBackedOwnerContext(authState: StateFlow<AuthState>): OwnerContext =
-    object : OwnerContext {
-        override val current: OwnerId get() = authState.value.toOwnerId()
-
-        override fun observe(): Flow<OwnerId> = authState.map(AuthState::toOwnerId)
-    }
-
-private fun AuthState.toOwnerId(): OwnerId =
-    when (this) {
-        AuthState.Unknown,
-        AuthState.SignedOut,
-        -> LOCAL_OWNER
-
-        is AuthState.SignedIn -> OwnerId(session.uid)
     }
 
 private fun stagedRemoteSyncSource(): RemoteSyncSource =

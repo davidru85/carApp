@@ -224,6 +224,20 @@ class ArchitectureCheckerTest {
     }
 
     @Test
+    fun featureModulesMayNotDependOnCoreAuth() {
+        assertRejected(
+            module(":feature:session", projectDependencies = setOf(":core:auth")),
+            "feature-to-auth-dependency",
+        )
+        assertAccepted(
+            module(
+                ":feature:session",
+                projectDependencies = setOf(":core:model", ":core:common", ":core:database"),
+            ),
+        )
+    }
+
+    @Test
     fun aFeatureMayNotDependOnAnotherFeature() {
         assertRejected(
             module(":feature:fuel", projectDependencies = setOf(":feature:vehicle")),

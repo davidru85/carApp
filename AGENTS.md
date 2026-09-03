@@ -92,15 +92,17 @@ accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is 
 `E1-06`, Fuel Entry data, `E1-07`, Android Vehicle UI, `E1-08`, Android Fuel Entry UI, and
 `E1-09`, iOS UI: Vehicles and Fuel Entries, `E1-10`, Settings, `E1-11`, the Vehicle outbox
 payload `entityType` fix, `E1-12`, the shared-test graph-close race fix, and `E1-13`, executable iOS
-locale-provider behavior coverage, are complete.
+locale-provider behavior coverage, and `E2-01`, the complete auth contracts and owner context, are
+complete.
 
 ### Delivery status and remaining work
 
 - **Completed:** all Phase 0 and Phase 1 stories; the pulled-forward `E3-06` and
-  `E3-01` prerequisites; and the `E0-07` walking-skeleton gate, including D-73 cleanup evidence.
-- **Next:** `E2-01`, the complete `:core:auth` contracts and models.
+  `E3-01` prerequisites; the `E0-07` walking-skeleton gate, including D-73 cleanup evidence; and
+  `E2-01`.
+- **Next:** `E2-02`, the complete Firebase Auth integration.
 - **Remaining Phase 1:** none.
-- **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
+- **Remaining Phase 2:** `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
@@ -117,7 +119,7 @@ build-logic/       convention plugins, an included build
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
 :core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
-:core:auth         staged auth contracts for the E0-07 application graph
+:core:auth         complete provider-free auth contracts, models and auth-backed owner context
 :core:sync         staged sync contracts for the E0-07 application graph
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice

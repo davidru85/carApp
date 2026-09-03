@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.wiring.firebase
 import com.ruizurraca.carapp.AppGraph
 import com.ruizurraca.carapp.buildAppGraph
 import com.ruizurraca.carapp.core.auth.AuthClient
+import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
@@ -50,6 +51,7 @@ class FirebaseAppProvidersTest {
         assertSame(databaseFactory, providers.databaseFactory)
         assertSame(authClient, providers.authClient)
         assertSame(remoteSyncSource, providers.remoteSyncSource)
+        assertIs<AuthOwnerContext>(providers.ownerContext)
         assertEquals(LOCAL_OWNER, providers.ownerContext.current)
 
         authClient.state.value =
