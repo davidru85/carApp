@@ -6,9 +6,11 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -59,6 +61,29 @@ class AuthOwnerContextTest {
             authState.value = signedIn("owner-1")
 
             assertEquals(listOf(LOCAL_OWNER, OwnerId("owner-1")), observed.await())
+        }
+
+    @Test
+    fun ownerObservationDeduplicatesConsecutiveIdenticalOwnersAcrossStateTransitions() =
+        runTest {
+            val authState = MutableStateFlow<AuthState>(AuthState.Unknown)
+            val context = AuthOwnerContext(authState)
+            val observed = mutableListOf<OwnerId>()
+            val job =
+                launch(UnconfinedTestDispatcher(testScheduler)) {
+                    context.observe().collect { owner ->
+                        observed += owner
+                        if (owner == OwnerId("owner-1")) {
+                            this.cancel()
+                        }
+                    }
+                }
+
+            authState.value = AuthState.SignedOut
+            authState.value = signedIn("owner-1")
+            job.join()
+
+            assertEquals(listOf(LOCAL_OWNER, OwnerId("owner-1")), observed)
         }
 }
 

@@ -44,29 +44,16 @@
 ## In-Progress Checkpoint
 
 - Date: 2026-09-03.
-- Branch and base: `story/E2-01-core-auth-contracts`, recreated after a second explicit
-  synchronization and based on identical `main` / `origin/main` at `91b2a78`.
-- Current phase and latest commit: RED `7bd723e`, GREEN `d9b421e` and REFACTOR `1a582fe` are
-  committed; final local verification is complete.
-- Push and pull-request status: the three ordered phase commits and the documentation-only delivery
-  checkpoint were pushed to `origin/story/E2-01-core-auth-contracts`. Pull request #52 is open at
-  `https://github.com/davidru85/carApp/pull/52`; all ten required checks are queued or in progress.
-- Completed since the previous checkpoint: the REFACTOR phase was committed and the exact three
-  TDD commits were pushed once, as requested. The remote compare page publicly confirms all three
-  commits and 12 changed files.
-- Verification evidence and known failures: the exact complete non-instrumented command passed 636
-  actionable tasks; provider decoupling passed 234 forced tasks; the simulator framework linked,
-  its generated Objective-C header matches the golden file and the native iOS app build succeeded.
-  Contract checking reports 111 aligned decisions/ADRs, none unresolved and no pending assertion.
-  A first sandboxed `xcodebuild` attempt could not access Xcode/Swift caches or CoreSimulator; the
-  permitted rerun reached the toolchain and succeeded, so this is an environment restriction rather
-  than a product failure. Historical RED evidence remains below.
-- Open decisions or blockers: no technical or owner decision is open and no implementation blocker
-  remains. GitHub CLI authentication was refreshed and pull-request creation is no longer blocked.
-  The implementation preserves the mapping staged by E0-07 and changes no contract, architecture
-  rule, dependency version, service or MVP scope.
-- Exact next step: commit and push this PR checkpoint, wait for all required checks on the resulting
-  HEAD and leave pull request #52 open for mandatory owner review.
+- Branch and base: `story/E2-01-core-auth-contracts`, based on synchronized `main` / `origin/main` at `91b2a78`.
+- Current phase and latest commit: RED phase of PR #52 review remediation; latest commit on branch is `e16d1e4`.
+- Push and pull-request status: pull request #52 is open at `https://github.com/davidru85/carApp/pull/52`. Remediation commits are being created locally in RED/GREEN/REFACTOR order.
+- Completed since the previous checkpoint: entered RED phase for review findings 1-4. Added failing architecture fixture `featureModulesMayNotDependOnCoreAuth` in `ArchitectureCheckerTest.kt`, discriminating deduplication test `ownerObservationDeduplicatesConsecutiveIdenticalOwnersAcrossStateTransitions` in `AuthOwnerContextTest.kt`, and refined contract signature conformance test in `AuthContractsTest.kt`.
+- Verification evidence and known failures:
+  - `./gradlew :build-logic:convention:test` failed as intended with `ArchitectureCheckerTest > featureModulesMayNotDependOnCoreAuth FAILED` (rule `feature-to-auth-dependency` not yet implemented in `ArchitectureChecker`).
+  - `./gradlew :core:auth:testAndroidHostTest` failed as intended with `AuthOwnerContextTest > ownerObservationDeduplicatesConsecutiveIdenticalOwnersAcrossStateTransitions FAILED` (`distinctUntilChanged()` not yet applied in `AuthOwnerContext`).
+  - Audited `feature/session/build.gradle.kts` confirming the pre-fix leak of `"commonMainImplementation"(projects.core.auth)`.
+- Open decisions or blockers: none.
+- Exact next step: proceed to GREEN phase: implement `checkNoFeatureToAuthDependency` in `ArchitectureChecker.kt`, remove the `:core:auth` dependency declaration from `feature/session/build.gradle.kts`, and apply `distinctUntilChanged()` in `AuthOwnerContext.kt`.
 
 ## Scope Completed
 

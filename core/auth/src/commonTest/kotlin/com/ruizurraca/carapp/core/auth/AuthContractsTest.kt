@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.time.Instant
 
@@ -66,19 +65,48 @@ class AuthContractsTest {
         assertEquals(expiresAt, token.expiresAt)
     }
 
+    /**
+     * Pins the [AuthClient] and [TokenProvider] method signatures at compile time per
+     * `docs/CONTRACTS.md §11.1` and `§20.8`.
+     *
+     * The force of this test is compile-time signature conformance, ensuring method return types
+     * and parameters conform to the contract specifications. The runtime assertions inspect the
+     * concrete [AuthError] leaf rather than relying on erased generic type checks.
+     */
     @Test
-    fun authClientAndTokenProviderExposeTypedOutcomes() =
+    fun authClientAndTokenProviderMatchContractSignaturesAtCompileTime() =
         runTest {
             val client = ContractAuthClient()
             val credential = NativeAuthCredential.Google(idToken = "id-token", accessToken = null)
 
-            assertIs<Outcome.Err<AuthError>>(client.signInAnonymously())
-            assertIs<Outcome.Err<AuthError>>(client.signInWithCredential(credential))
-            assertIs<Outcome.Err<AuthError>>(client.linkCredential(credential))
-            assertIs<Outcome.Err<AuthError>>(client.reauthenticate(credential))
-            assertIs<Outcome.Err<AuthError>>(client.signOut())
-            assertIs<Outcome.Err<AuthError>>(client.deleteAccount())
-            assertIs<Outcome.Err<AuthError>>(client.getIdToken(forceRefresh = true))
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.signInAnonymously() as Outcome.Err).error,
+            )
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.signInWithCredential(credential) as Outcome.Err).error,
+            )
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.linkCredential(credential) as Outcome.Err).error,
+            )
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.reauthenticate(credential) as Outcome.Err).error,
+            )
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.signOut() as Outcome.Err).error,
+            )
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.deleteAccount() as Outcome.Err).error,
+            )
+            assertEquals(
+                AuthError.ProviderUnavailable,
+                (client.getIdToken(forceRefresh = true) as Outcome.Err).error,
+            )
         }
 }
 
