@@ -1,8 +1,12 @@
 package com.ruizurraca.carapp.locale
 
 import platform.Foundation.NSLocale
+import platform.Foundation.NSNumberFormatter
+import platform.Foundation.NSNumberFormatterCurrencyStyle
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 
 class IosLocaleProviderTest {
     @Test
@@ -13,10 +17,18 @@ class IosLocaleProviderTest {
     }
 
     @Test
-    fun currencyWithoutTwoFractionDigitsFallsBackToEur() {
+    fun localeCurrencyOutsideTheMvpSetFallsBackToEur() {
         val localeInfo = IosLocaleProvider { NSLocale(localeIdentifier = "ja_JP") }.current()
 
+        assertEquals("ja-JP", localeInfo.languageTag)
+        assertEquals("JP", localeInfo.region)
         assertEquals("EUR", localeInfo.suggestedCurrency.value)
+    }
+
+    @Test
+    fun foundationCurrencyFractionDigitsMatchTheMvpPremise() {
+        assertEquals(2, maximumFractionDigits("USD"))
+        assertNotEquals(2, maximumFractionDigits("JPY"))
     }
 
     @Test
@@ -32,4 +44,21 @@ class IosLocaleProviderTest {
 
         assertEquals("US", localeInfo.region)
     }
+
+    @Test
+    fun languageOnlyLocaleProvidesNullRegionAndFallsBackToEur() {
+        val localeInfo = IosLocaleProvider { NSLocale(localeIdentifier = "es") }.current()
+
+        assertEquals("es", localeInfo.languageTag)
+        assertNull(localeInfo.region)
+        assertEquals("EUR", localeInfo.suggestedCurrency.value)
+    }
+
+    private fun maximumFractionDigits(currencyCode: String): Int =
+        NSNumberFormatter()
+            .apply {
+                numberStyle = NSNumberFormatterCurrencyStyle
+                this.currencyCode = currencyCode
+            }.maximumFractionDigits
+            .toInt()
 }

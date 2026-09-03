@@ -51,9 +51,10 @@
   the new D-109 assertion because `localeCurrencyOutsideTheMvpSetFallsBackToEur` does not exist yet.
   The preceding exact-source-file and single-Kotlin-file directory assertions passed, isolating the
   failure to the missing review coverage rather than test setup.
-- Planned GREEN: rename and align the unsupported-currency test with Android, add the direct
-  Foundation fraction-digit premise anchor, and add the language-only locale case. The production
-  provider and its testability seam remain unchanged.
+- GREEN complete: renamed and aligned the unsupported-currency test with Android, added the direct
+  Foundation fraction-digit premise anchor, and added the language-only locale case. The focused
+  command passed 117 executed tasks; `IosLocaleProviderTest` now reports six tests, zero failures,
+  zero errors and zero skips. The production provider and its testability seam remain unchanged.
 - Planned REFACTOR: correct ADR-0109, ADR-0110, this handoff, the append-only project log and PR
   evidence; record the unreachable supported-code/non-two-digits branch as a residual limitation.
 - Required verification: the focused RED and GREEN routes, the exact complete non-instrumented
