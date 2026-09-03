@@ -4,23 +4,22 @@
 
 `E2-02 - Firebase Auth Integration - L`
 
-### Closure Update: Review Remediation (PR #53) - 2026-09-03
+### Closure Update: Second Review Remediation (PR #53) - 2026-09-04
 
-Addressed all owner review findings for PR #53:
-- **A1 / Minor f**: Applied a timing workaround for the pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests.testVehicleListViewModelInitialState` by adding a short delay (`Task.sleep(200ms)`) widening the timing window to match the existing pattern in that file. A permanent architectural fix belongs in its own story.
-- **B1 / D-111 / ADR-0112**: Added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption. Documented parity in `DECISION_BOARD.md`, `SPECIFICATION.md §12`, `TECHNICAL_PLAN.md §2`, `adr/README.md`, and `CONTRACTS.md §11.1/§11.3`.
-- **Blocking 1**: Reverted repo-wide test-infrastructure flag in `KmpLibraryConventionPlugin.kt`, restoring `androidLibrary.withHostTestBuilder {}` so unmocked Android SDK calls fail loudly as intended. Extracted a pure platform-free seam `internal fun classifyAuthFailure(code: String?, message: String?, kind: AuthFailureKind, cause: Throwable? = null): FirebaseAuthGatewayException` and tested it with plain code/message pairs without instantiating Firebase Android SDK exception types.
-- **Blocking 2 & D-75 Apple test exclusion**: Explicit note on Apple test exclusion under D-75: `:integration:firebase-auth` commonTest never runs on Apple targets (`-x :integration:firebase-auth:iosSimulatorArm64Test`), as Apple GitLive framework dependencies require CocoaPods/SPM integration tested via host apps. Consequently, the iOS numeric-code mapping (e.g. 17025, 17014, 17020, 17028, 17058) is covered by the platform-free classifier tests.
-- **Finding 3**: Remapped numeric code 17028 (`FIREBASE_APP_NOT_AUTHORIZED_CODE`) to `FirebaseAuthGatewayException.Provider` with a comment naming it `appNotAuthorized` (configuration failure). Widened `AccountDeletionInvoker` contract: implementations (such as E3-10 Cloud Functions callable) MUST throw `FirebaseAuthGatewayException.PermissionDenied` for caller rejection (e.g. caller mismatch where authenticated UID != target UID, or IAM permission denied), which maps to `AuthError.PermissionDenied`; and `FirebaseAuthGatewayException.AccountDeletionRemoteFailed` for other failures. Added KDoc and tests verifying that `PermissionDenied` propagates unchanged through `executeServerAccountDeletion` and `safeAuthCall` to `AuthError.PermissionDenied`.
-- **Finding 4**: Fixed the §11.5 freshness gate fail-closed behavior: `parseTokenTimestamps` now throws `FirebaseAuthGatewayException.Provider` when `iat` is missing or unparseable instead of silently substituting `now` (which would have treated missing `iat` as freshly authenticated). Replaced direct `Clock.System.now()` calls in `GitLiveFirebaseAuthGateway` with an injected `AppClock = AppClock { Clock.System.now() }` for deterministic testing. Added test proving `deleteAccount` does not call the server operation when token has no usable `iat`.
-- **Finding 5**: Raised an open question for the owner below regarding token freshness (`auth_time` vs `iat`).
-- **Minor a**: `FirebaseAuthClient` now accepts `coroutineScope: CoroutineScope` from the composition boundary instead of hardcoding `Dispatchers.Default`, implements `AutoCloseable`, and exposes `close()` and `dispose()` which cancel the internal `observationJob`. Updated `FirebaseAppProviders.kt` accordingly. Added unit test verifying `close()` cancels auth state observation.
-- **Minor b**: In `FirebaseAuthClientTest`, passed `coroutineScope = backgroundScope` consistently across all test cases.
-- **Minor c**: Cleaned up imports in `FirebaseAuthClient.kt` to eliminate inline fully-qualified `kotlinx.coroutines` names.
-- **Minor d**: In `reauthenticate()`, added a comment explicitly naming the coupling where `gateway.getIdToken(forceRefresh = true)` re-mints fresh `iat` for subsequent `deleteAccount` reads.
-- **Minor e**: Corrected test counts: `FirebaseAuthClientTest = 32 tests` and `GitLiveFirebaseAuthGatewayTest = 12 tests` (total 44 tests in `:integration:firebase-auth`).
+Addressed all findings from the second owner review pass:
+- **Finding 1 (Graph lifecycle ownership of auth client)**: `DefaultAppGraph.close()` now calls `(dependencies.authClient as? AutoCloseable)?.close()`, giving the auth client real lifecycle ownership tied to `AppGraph.close()`. Added tests `graphCloseStopsAuthStateObservationOnAutoCloseableAuthClient` in `AppGraphCloseTest` and `closingAppGraphClosesAutoCloseableAuthClient` in `FirebaseAppProvidersTest`, proving that closing the graph cancels the `authStateChanged` observation coroutine. Corrected previous handoff Minor a note to accurately describe the scope and ownership.
+- **Finding 2 (Non-vacuous error assertions)**: Replaced erased generic `assertIs<Outcome.Err<Specific>>` assertions with explicit non-vacuous assertions: `val error = assertIs<Outcome.Err<AuthError>>(outcome).error` followed by `assertEquals(expectedError, error)`. Confirmed via mutation testing that this strictly catches any mismatch. Audited all test files in the PR to ensure no other vacuous generic assertions remain.
+- **Finding 3 (Removed dead clock parameter)**: Removed the unused `clock` parameter from `GitLiveFirebaseAuthGateway` constructor and test call sites. Corrected the handoff: the `Clock.System.now()` fallback was eliminated by making `parseTokenTimestamps` fail closed on missing/unparseable `iat`, so no clock injection is needed by the gateway.
+- **Finding 4 (Claims-driven fail-closed test)**: Updated `deleteAccountDoesNotCallServerWhenTokenHasNoUsableIat` in `FirebaseAuthClientTest` to drive the fake gateway with `tokenClaims = emptyMap()`, executing `parseTokenTimestamps` end-to-end rather than injecting a synthetic `throwOnGetIdToken` exception.
+- **Finding 5 (Production blast radius & Apple claims bridging & E2-05 guidance)**:
+  - *Sync blast radius*: `parseTokenTimestamps` now throws `FirebaseAuthGatewayException.Provider` on every token read if `iat` is missing or unparseable. Because `TokenProvider.getIdToken` feeds the sync engine, an ID token without a valid `iat` claim fails sync entirely with `AuthError.ProviderUnavailable`.
+  - *Apple claims-bridging assumption*: Firebase backend always mints `iat`, but under D-75 `:integration:firebase-auth` tests never run against Apple runtimes; the conversion of `AuthTokenResult.claims` on Apple remains an untested runtime assumption verified only when running host app suites.
+  - *E2-05 contract guidance*: For account deletion in `E2-05`, `deleteAccount()` surfaces two notable errors: `AuthError.RequiresRecentLogin` (which MUST trigger the re-authentication UI flow), and `AuthError.ProviderUnavailable` (resulting from missing/malformed `iat` or gateway provider failure, which represents an infrastructure fault and should NOT trigger the re-authentication flow).
+- **Finding 6 (Removed unused dispose alias)**: Removed `fun dispose() = close()` from `FirebaseAuthClient` since it had no consumer and is not exported to Swift.
+- **Finding 7 (Shared dispatchers and clean imports)**: In `FirebaseAppProviders.kt`, cleaned up inline fully-qualified coroutines references with direct imports (`CoroutineScope`, `SupervisorJob`), and instantiated `stagedDispatcherProvider()` once, sharing it with both `authScope` and the returned `AppProviders.dispatchers`.
+- **Finding 8 (Accepted risk: subclass dispatch order)**: Documented below that the subclass dispatch order in `mapAuthException` (`when (failure) { is FirebaseAuthWebException -> ...; is FirebaseAuthException -> ... }`) is verified by code review only, as unmocked Android SDK exception classes cannot be instantiated in unit tests without violating repository test safety rules. Any modification to that block must be treated as a review-gated change.
 
-### Open Question for the Owner: Token Freshness (`auth_time` vs `iat`)
+### Open Question 1 for the Owner: Token Freshness (`auth_time` vs `iat`)
 
 `CONTRACTS.md §11.5` Step 1 currently defines token freshness for account deletion as:
 `AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS` (5 minutes).
@@ -31,7 +30,40 @@ The Firebase Auth JWT claim that encodes the real time of last interactive user 
 Because changing `CONTRACTS.md` or `AuthToken` is an owner decision that outranks an implementation story, no contract changes were made in E2-02.
 Options for the owner:
 1. **Add `authTime: Instant?` to `AuthToken`**: update `CONTRACTS.md §11.5` and `§20.8` to define freshness against `authTime` instead of `issuedAt`.
-2. **Keep `iat` in `AuthToken`**: keep client-side check on `issuedAt` as a fast pre-check and rely on the server callable (`D-23`, `E3-10`) to perform the authoritative `auth_time` validation using the Firebase Admin SDK (`decodedToken.auth_time`).
+   - *Pros*: Aligns client contract explicitly with Firebase authentication semantics; both client and server evaluate identical concepts.
+   - *Cons*: Modifies `CONTRACTS.md §20.8` and touches provider-free models.
+2. **Evaluate `auth_time` internally in `FirebaseAuthClient` without changing `AuthToken`**: `FirebaseAuthClient` reads `auth_time` from raw claims for freshness pre-check, while `AuthToken` keeps only `issuedAt`.
+   - *Pros*: Preserves the current `AuthToken` public contract while preventing stale token deletion requests.
+   - *Cons*: Diverges slightly from the literal letter of `CONTRACTS.md §11.5` Step 1 which references `token.issuedAt`.
+3. **Keep `iat` in `AuthToken` and client-side pre-check, delegating authoritative `auth_time` to the backend**: keep client check on `issuedAt` as a fast coarse filter and rely on the server callable (`D-23`, `E3-10`) to perform authoritative `decodedToken.auth_time` check.
+   - *Pros*: Zero changes to existing contracts; server remains single source of truth for security-sensitive deletion authorization.
+   - *Cons*: A user who logged in days ago could pass the client-side pre-check if Firebase recently refreshed their token, only to be rejected with `RequiresRecentLogin` by the backend Cloud Function.
+
+### Open Question 2 for the Owner: `AuthClient` Lifecycle Ownership and `AutoCloseable` Contract
+
+`CONTRACTS.md §11.1` defines `interface AuthClient` without extending `AutoCloseable`.
+In `DefaultAppGraph.close()`, the auth client is closed using a safe runtime type check:
+```kotlin
+(dependencies.authClient as? AutoCloseable)?.close()
+```
+This cleanly cancels the background `authStateChanged` observation coroutine in production without breaking existing provider-free fakes that do not implement `AutoCloseable`.
+
+Options for the owner:
+1. **Formalize `interface AuthClient : AutoCloseable` in `CONTRACTS.md §11.1`**: makes lifecycle termination an explicit compile-time contract for all `AuthClient` implementations.
+   - *Pros*: Clear compile-time contract; guarantees any client implementation has a standardized cleanup hook.
+   - *Cons*: Modifies normative `CONTRACTS.md §11.1` and requires all test fakes to implement `close()`.
+2. **Keep `(dependencies.authClient as? AutoCloseable)?.close()` in `DefaultAppGraph`**: safe runtime downcast in the graph cleanup.
+   - *Pros*: Leaves provider-free contracts untouched; existing fakes remain minimal; cleans up production client without breaking anything.
+   - *Cons*: Cleanup contract is implicit (runtime duck typing) rather than enforced at compile time on `AuthClient`.
+3. **Pass graph `CoroutineScope` to `AuthClient` instead of internal scope**: supply an external lifecycle scope to `AuthClient` via its factory/constructor, tied directly to the application graph lifetime.
+   - *Pros*: Eliminates the need for `close()` on `AuthClient` altogether; cancellation naturally follows parent scope cancellation.
+   - *Cons*: Requires `AppProviders` / factory to coordinate coroutine scope lifecycle before client construction, and changes factory signatures.
+
+### Accepted Risk: Exception Subclass Dispatch Order in `mapAuthException`
+
+The `when (failure)` block in `mapAuthException` relies on class hierarchy order (`FirebaseAuthWebException` before `FirebaseAuthInvalidCredentialsException` before `FirebaseAuthException`).
+Because the repository test infrastructure deliberately disallows mocking or stubbing Android SDK classes via `isReturnDefaultValues = true` (`Blocking 1`), real Firebase Android SDK exception instances cannot be created in unit tests without failing on `android.text.TextUtils.isEmpty`.
+Therefore, the `when (failure)` subclass branch order in `mapAuthException` is verified by code review only. Any future change to that dispatch block must be treated as review-gated.
 
 ## Ready Check
 
@@ -138,7 +170,12 @@ Options for the owner:
   10. `classifyAuthFailure` maps web and invalid credentials to `Provider` or `Cancelled`.
   11. `classifyAuthFailure` maps generic FirebaseException to `Unknown` or `Cancelled`.
   12. `AccountDeletionInvoker` `PermissionDenied` propagates through gateway unchanged.
-- `FirebaseAppProvidersTest.providerFactoryBindsAuthClientImplementingTokenProviderAsTokenProvider` verifies that `:wiring:firebase` binds `authClient` as `tokenProvider`.
+- `FirebaseAppProvidersTest` (4 tests) verifies:
+  1. `providerFactoryBuildsTheKotlinGraphWithoutGlobalRegistration`.
+  2. `providerFactoryKeepsRealBoundariesAndDerivesTheCurrentOwner`.
+  3. `providerFactoryBindsAuthClientImplementingTokenProviderAsTokenProvider`.
+  4. `closingAppGraphClosesAutoCloseableAuthClient` verifies that graph closure closes an `AutoCloseable` `authClient`.
+- `AppGraphCloseTest.graphCloseStopsAuthStateObservationOnAutoCloseableAuthClient` in `:shared` verifies that `DefaultAppGraph.close()` stops the `authStateChanged` observation coroutine on an `AutoCloseable` `authClient`.
 
 ## Out of Scope / Not Done
 
@@ -165,6 +202,8 @@ Options for the owner:
 - `integration/firebase-auth/src/commonTest/kotlin/com/ruizurraca/carapp/integration/firebase/auth/FirebaseAuthClientTest.kt`
 - `integration/firebase-auth/src/commonTest/kotlin/com/ruizurraca/carapp/integration/firebase/auth/GitLiveFirebaseAuthGatewayTest.kt`
 - `iosApp/Tests/ViewModelLifecycleTests.swift`
+- `shared/src/commonMain/kotlin/com/ruizurraca/carapp/AppGraph.kt`
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AppGraphCloseTest.kt`
 - `wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt`
 - `wiring/firebase/src/commonTest/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProvidersTest.kt`
 - `AGENTS.md`

@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-04 — E2-02 second review remediation: AppGraph auth closure and test assertions
+
+- **Type:** correction
+- **Story / Decision:** `E2-02` / —
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** bound `FirebaseAuthClient` lifecycle cancellation to `AppGraph.close()` via `(dependencies.authClient as? AutoCloseable)?.close()`, verified in `:shared` (`AppGraphCloseTest`) and `:wiring:firebase` (`FirebaseAppProvidersTest`); eliminated vacuous erased generic `assertIs<Outcome.Err<Specific>>` assertions in `FirebaseAuthClientTest` by asserting concrete errors; removed dead `clock` parameter from `GitLiveFirebaseAuthGateway`; drove token freshness missing-`iat` test end-to-end through empty gateway `tokenClaims`; removed unused `dispose()` alias; unified `stagedDispatcherProvider()` instantiation in `FirebaseAppProviders.kt`; documented blast radius, untested Apple claims bridging under D-75, and E2-05 error guidance; documented accepted risk on exception subclass dispatch order in `mapAuthException`; and raised open questions for the owner on `auth_time` vs `iat` and `AuthClient : AutoCloseable` lifecycle formalization.
+- **Why:** addresses all 8 findings from the second review pass on PR #53 without breaking provider decoupling or violating repository testing rules.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E2-02.md`. Code: `shared/.../AppGraph.kt`, `shared/.../AppGraphCloseTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Verification:** verified failing tests during RED phase (`da75eea`), passing tests during GREEN phase (`f4d162e`), full CI command, provider decoupling check, and Objective-C golden-header check passed with 0 failures.
+- **Follow-ups / risks:** human review gate applies on `integration/firebase-auth/**` and authentication topic. PR #53 remains open for mandatory owner review.
+
 ### 2026-09-03 — E2-02 review remediation: gateway mapping, authState observation, and D-111
 
 - **Type:** correction
