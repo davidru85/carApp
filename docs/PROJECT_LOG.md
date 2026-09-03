@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-03 — E2-02 review remediation: gateway mapping, authState observation, and D-111
+
+- **Type:** correction
+- **Story / Decision:** `E2-02` / `D-111`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** fixed pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests`; added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption; recorded decision `D-111` and `ADR-0112`; added `PermissionDenied` mapping to `FirebaseAuthGatewayException` and `AuthError.PermissionDenied`; enforced token re-minting in `reauthenticate()` via `gateway.getIdToken(forceRefresh = true)`; initialized `FirebaseAuthClient.authState` to `AuthState.Unknown` and observed `gateway.authStateChanged` in coroutine scope; added direct unit tests in `GitLiveFirebaseAuthGatewayTest.kt` for exception mapping, error codes, timestamps, and cancellation heuristics; removed unused `FakeFirebaseAuthGateway.clientSdkDeleteCalled`; passed `tokenProvider` explicitly in `firebaseAppProviders`; narrowed catch in `GitLiveFirebaseAuthGateway.currentUser`; removed undocumented `ageMillis < 0` rejection from `deleteAccount`; removed public `FirebaseAuthClient(clock)` constructor; added KDoc to `parseCreationTime` naming GitLive 2.6.0; and updated `docs/BACKLOG.md` and `docs/handoff-E2-02.md`.
+- **Why:** resolves all blocking CI issues and code review findings from PR #53 review while preserving contract safety invariants and architecture decoupling.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E2-02.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0112-explicit-uid-change-opt-in-for-account-adoption.md`. Code: `build-logic/convention/src/main/kotlin/.../KmpLibraryConventionPlugin.kt`, `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `iosApp/Tests/ViewModelLifecycleTests.swift`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Verification:** full CI command, provider decoupling check, and Objective-C golden-header check passed with 0 failures.
+- **Follow-ups / risks:** none. Human review gate applies on `integration/firebase-auth/**` and authentication topic.
+
 ### 2026-09-03 — E2-02 Firebase Auth integration complete
 
 - **Type:** story

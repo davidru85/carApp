@@ -9,6 +9,7 @@ import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.FRESH_LOGIN_THRESHOLD_MS
 import com.ruizurraca.carapp.core.common.Outcome
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -17,7 +18,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Instant
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseAuthClientTest {
@@ -43,7 +43,15 @@ class FirebaseAuthClientTest {
     fun authStateStartsAtUnknownBeforeInitialGatewayEmission() =
         runTest {
             val gateway = FakeFirebaseAuthGateway(autoEmitAuthState = false)
-            val client = FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) }, coroutineScope = backgroundScope)
+            val client =
+                FirebaseAuthClient(
+                    gateway = gateway,
+                    clock =
+                        AppClock {
+                            Instant.fromEpochMilliseconds(1_000L)
+                        },
+                    coroutineScope = backgroundScope,
+                )
 
             assertEquals(AuthState.Unknown, client.authState.value)
 
@@ -58,7 +66,15 @@ class FirebaseAuthClientTest {
         runTest {
             val user = anonymousUser("retained-user")
             val gateway = FakeFirebaseAuthGateway(currentUser = user)
-            val client = FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) }, coroutineScope = backgroundScope)
+            val client =
+                FirebaseAuthClient(
+                    gateway = gateway,
+                    clock =
+                        AppClock {
+                            Instant.fromEpochMilliseconds(1_000L)
+                        },
+                    coroutineScope = backgroundScope,
+                )
 
             assertEquals(AuthState.SignedIn(user.toSession()), client.authState.value)
 
@@ -479,7 +495,8 @@ class FirebaseAuthClientTest {
                     currentUser = user,
                     throwOnGetIdToken = FirebaseAuthGatewayException.Network(RuntimeException("Network down")),
                 )
-            val client = FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) })
+            val client =
+                FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) })
 
             val result = client.deleteAccount()
 
@@ -601,18 +618,18 @@ private class FakeFirebaseAuthGateway(
     var throwOnDeleteServer: FirebaseAuthGatewayException? = null,
     autoEmitAuthState: Boolean = true,
 ) : FirebaseAuthGateway {
-    private val _authStateFlow = kotlinx.coroutines.flow.MutableSharedFlow<FirebaseAuthUser?>(replay = 1)
-    override val authStateChanged: kotlinx.coroutines.flow.Flow<FirebaseAuthUser?> = _authStateFlow
+    private val _authStateChanged = kotlinx.coroutines.flow.MutableSharedFlow<FirebaseAuthUser?>(replay = 1)
+    override val authStateChanged: kotlinx.coroutines.flow.Flow<FirebaseAuthUser?> = _authStateChanged
 
     init {
         if (autoEmitAuthState) {
-            _authStateFlow.tryEmit(currentUser)
+            _authStateChanged.tryEmit(currentUser)
         }
     }
 
     fun emitAuthState(user: FirebaseAuthUser?) {
         currentUser = user
-        _authStateFlow.tryEmit(user)
+        _authStateChanged.tryEmit(user)
     }
 
     var signOutCalled: Boolean = false
@@ -623,7 +640,7 @@ private class FakeFirebaseAuthGateway(
         throwOnSignIn?.let { throw it }
         return checkNotNull(signedInUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
@@ -634,7 +651,7 @@ private class FakeFirebaseAuthGateway(
         throwOnSignIn?.let { throw it }
         return checkNotNull(googleUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
@@ -645,7 +662,7 @@ private class FakeFirebaseAuthGateway(
         throwOnSignIn?.let { throw it }
         return checkNotNull(appleUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
@@ -656,7 +673,7 @@ private class FakeFirebaseAuthGateway(
         throwOnLink?.let { throw it }
         return checkNotNull(linkedUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
@@ -667,7 +684,7 @@ private class FakeFirebaseAuthGateway(
         throwOnLink?.let { throw it }
         return checkNotNull(linkedUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
@@ -678,7 +695,7 @@ private class FakeFirebaseAuthGateway(
         throwOnReauth?.let { throw it }
         return checkNotNull(reauthenticatedUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
@@ -689,14 +706,14 @@ private class FakeFirebaseAuthGateway(
         throwOnReauth?.let { throw it }
         return checkNotNull(reauthenticatedUser).also {
             currentUser = it
-            _authStateFlow.tryEmit(it)
+            _authStateChanged.tryEmit(it)
         }
     }
 
     override suspend fun signOut() {
         signOutCalled = true
         currentUser = null
-        _authStateFlow.tryEmit(null)
+        _authStateChanged.tryEmit(null)
     }
 
     override suspend fun getIdToken(forceRefresh: Boolean): AuthToken {

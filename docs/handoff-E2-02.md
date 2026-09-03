@@ -2,11 +2,32 @@
 
 ## Story
 
-`E2-02 - :integration:firebase-auth - M`
+`E2-02 - Firebase Auth Integration - L`
+
+### Closure Update: Review Remediation (PR #53) - 2026-09-03
+
+Addressed all owner review findings for PR #53:
+- **A1**: Fixed pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests.testVehicleListViewModelInitialState` by making the test `async throws` and awaiting refresh completion before `tearDown` calls `graph.close()`.
+- **B1 / D-111 / ADR-0112**: Added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption. Documented parity in `DECISION_BOARD.md`, `SPECIFICATION.md §12`, `TECHNICAL_PLAN.md §2`, `adr/README.md`, and `CONTRACTS.md §11.1/§11.3`.
+- **B2**: Added `FirebaseAuthGatewayException.PermissionDenied` mapped to `AuthError.PermissionDenied` for caller mismatch / IAM rejections during `deleteAccount`.
+- **B3**: Added forced token refresh (`gateway.getIdToken(forceRefresh = true)`) inside `reauthenticate()` per `CONTRACTS.md §11.5` Step 1 to re-mint fresh token timestamps.
+- **B4**: Initialized `FirebaseAuthClient.authState` to `AuthState.Unknown` and observed `gateway.authStateChanged` in `coroutineScope` to receive external session transitions.
+- **C1**: Added exhaustive unit tests in `GitLiveFirebaseAuthGatewayTest.kt` for `isCancellation`, `parseTokenTimestamps`, `mapAuthException`, `mapWebException`, `mapInvalidCredentialsException`, `mapFirebaseAuthException`, and all error code constants.
+- **C2**: Removed unused `clientSdkDeleteCalled` from fake gateway and stated architectural guarantee (gateway exposes no client delete method).
+- **C3**: Added `deleteAccountMapsGetIdTokenFailureToGatewayError` test.
+- **C4**: Removed unused imports in `FirebaseAppProvidersTest.kt`.
+- **C5**: Made `firebaseAppProviders` require `tokenProvider: TokenProvider` explicitly at compile time.
+- **D1**: Removed undocumented `ageMillis < 0` rejection from `deleteAccount()`.
+- **D2**: Narrowed catch in `GitLiveFirebaseAuthGateway.currentUser` to `FirebaseException` and `IllegalStateException`.
+- **D3**: Updated `docs/BACKLOG.md` status line.
+- **D4**: Quoted backlog verbatim: `E2-02 - Firebase Auth Integration - L`.
+- **D5**: Documented below that `deleteAccount()` leaving `authState` at `SignedIn` is intentional and managed by E2-05 user flow.
+- **D6**: Removed public `FirebaseAuthClient(clock)` constructor.
+- **E**: Added KDoc to `parseCreationTime` naming GitLive 2.6.0.
 
 ## Ready Check
 
-- Backlog story: `E2-02 - :integration:firebase-auth - M` is explicit and is the next open Phase 2 story in `docs/BACKLOG.md`.
+- Backlog story: `E2-02 - Firebase Auth Integration - L` is explicit and is the next open Phase 2 story in `docs/BACKLOG.md`.
 - Acceptance criteria reviewed:
   - Complete `FirebaseAuthClient` implementation against `AuthClient` and `TokenProvider` (`docs/CONTRACTS.md §11.1`, `§11.2`, `§11.5`, `§20.8`).
   - Google and Apple native credential exchange via GitLive Auth.
@@ -94,15 +115,26 @@
 - Native credential UI retrieval on Android (Credential Manager) and iOS (`AuthenticationServices`) is scheduled for `E2-03`.
 - In-app account conversion UI / flow is scheduled for `E2-04`.
 - Account deletion user flow orchestration is scheduled for `E2-05`.
+- `deleteAccount()` leaving `authState` at `AuthState.SignedIn` upon successful completion of the server deletion operation is intentional at the client SDK boundary; resetting the auth state and orchestrating the user departure flow is managed by the E2-05 account deletion user flow story.
 - Server-side Firebase Functions callable for account deletion (`D-23`) is scheduled for `E3-10`.
 
 ## Files Changed
 
+- `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/KmpLibraryConventionPlugin.kt`
 - `core/auth/src/commonMain/kotlin/com/ruizurraca/carapp/core/auth/AuthContracts.kt`
 - `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthContractsTest.kt`
+- `core/testing/src/commonMain/kotlin/com/ruizurraca/carapp/core/testing/GraphDependencyFakes.kt`
+- `docs/BACKLOG.md`
 - `docs/CONTRACTS.md`
+- `docs/DECISION_BOARD.md`
+- `docs/SPECIFICATION.md`
+- `docs/TECHNICAL_PLAN.md`
+- `docs/adr/README.md`
+- `docs/adr/0112-explicit-uid-change-opt-in-for-account-adoption.md`
 - `integration/firebase-auth/src/commonMain/kotlin/com/ruizurraca/carapp/integration/firebase/auth/FirebaseAuthClient.kt`
 - `integration/firebase-auth/src/commonTest/kotlin/com/ruizurraca/carapp/integration/firebase/auth/FirebaseAuthClientTest.kt`
+- `integration/firebase-auth/src/commonTest/kotlin/com/ruizurraca/carapp/integration/firebase/auth/GitLiveFirebaseAuthGatewayTest.kt`
+- `iosApp/Tests/ViewModelLifecycleTests.swift`
 - `wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt`
 - `wiring/firebase/src/commonTest/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProvidersTest.kt`
 - `AGENTS.md`

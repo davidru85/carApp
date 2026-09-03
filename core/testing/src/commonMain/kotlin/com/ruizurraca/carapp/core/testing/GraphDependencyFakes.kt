@@ -44,8 +44,10 @@ class FakeAuthClient(
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = sessionResult
 
-    override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-        sessionResult
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> = sessionResult
 
     override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         sessionResult
