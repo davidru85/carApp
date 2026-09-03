@@ -28,5 +28,12 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
+        iosTest {
+            kotlin.srcDir(
+                rootProject.file(
+                    "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/locale",
+                ),
+            )
+        }
     }
 }

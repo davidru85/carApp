@@ -1,4 +1,4 @@
-package com.ruizurraca.carapp
+package com.ruizurraca.carapp.locale
 
 import com.ruizurraca.carapp.core.common.LocaleInfo
 import com.ruizurraca.carapp.core.common.LocaleProvider
@@ -12,8 +12,10 @@ import platform.Foundation.NSNumberFormatterCurrencyStyle
 import platform.Foundation.currentLocale
 import platform.Foundation.localeIdentifier
 
-internal class IosLocaleProvider : LocaleProvider {
-    override fun current(): LocaleInfo = NSLocale.currentLocale.toLocaleInfo()
+internal class IosLocaleProvider(
+    private val currentLocale: () -> NSLocale = { NSLocale.currentLocale },
+) : LocaleProvider {
+    override fun current(): LocaleInfo = currentLocale().toLocaleInfo()
 }
 
 private fun NSLocale.toLocaleInfo(): LocaleInfo {

@@ -95,6 +95,63 @@ class IosCompositionContractTest {
     }
 
     @Test
+    fun iosHostLocaleProviderTestsRunInCanonicalVerification() {
+        val sharedBuild = repositoryRoot.resolve("shared/build.gradle.kts").readText()
+        val providerSourceDirectory = repositoryRoot.resolve(IOS_LOCALE_PROVIDER_SOURCE_DIRECTORY)
+        val providerSource = repositoryRoot.resolve(IOS_LOCALE_PROVIDER_SOURCE_PATH)
+        val providerTest = repositoryRoot.resolve(IOS_LOCALE_PROVIDER_TEST_PATH)
+        val agents = repositoryRoot.resolve("AGENTS.md").readText()
+        val ci = repositoryRoot.resolve(".github/workflows/ci.yml").readText()
+
+        assertTrue(
+            sharedBuild.contains("composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/locale"),
+            "D-109 requires shared iosTest to reuse the composition-owned provider source; " +
+                "update the test route and D-109 together if the source moves",
+        )
+        assertTrue(
+            providerSource.isFile,
+            "D-109 requires the composition-owned provider at $IOS_LOCALE_PROVIDER_SOURCE_PATH; " +
+                "restore it or update the source-reuse route and D-109 together",
+        )
+        val reusedKotlinSources =
+            providerSourceDirectory
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .map { it.relativeTo(providerSourceDirectory).invariantSeparatorsPath }
+                .sorted()
+                .toList()
+        assertEquals(
+            listOf(IOS_LOCALE_PROVIDER_SOURCE_NAME),
+            reusedKotlinSources,
+            "D-109 permits only $IOS_LOCALE_PROVIDER_SOURCE_NAME in the reused source directory; " +
+                "move additional Kotlin sources outside it or revise D-109 and its test topology",
+        )
+        assertTrue(
+            providerTest.isFile,
+            "D-109 requires iOS host behavior tests at $IOS_LOCALE_PROVIDER_TEST_PATH; " +
+                "restore the tests or update D-109 and the canonical route together",
+        )
+        val providerTestSource = providerTest.readText()
+        REQUIRED_IOS_LOCALE_PROVIDER_TESTS.forEach { testName ->
+            assertTrue(
+                providerTestSource.contains("fun $testName()"),
+                "D-109 requires $testName in the canonical iOS host suite; " +
+                    "add the missing review coverage or revise D-109",
+            )
+        }
+        assertTrue(
+            agents.contains("testAndroidHostTest iosSimulatorArm64Test"),
+            "D-109 requires the root Native test task in the AGENTS.md canonical command; " +
+                "restore it or update D-109 and every command mirror",
+        )
+        assertTrue(
+            ci.contains("testAndroidHostTest iosSimulatorArm64Test"),
+            "D-109 requires the root Native test task in CI; restore it or update D-109 and every " +
+                "command mirror",
+        )
+    }
+
+    @Test
     fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
         val expectedNames =
             listOf(
@@ -124,5 +181,18 @@ class IosCompositionContractTest {
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt"
         const val PLATFORM_ABSTRACTIONS_PATH =
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
+        const val IOS_LOCALE_PROVIDER_TEST_PATH =
+            "shared/src/iosTest/kotlin/com/ruizurraca/carapp/locale/IosLocaleProviderTest.kt"
+        const val IOS_LOCALE_PROVIDER_SOURCE_DIRECTORY =
+            "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/locale"
+        const val IOS_LOCALE_PROVIDER_SOURCE_NAME = "IosLocaleProvider.kt"
+        const val IOS_LOCALE_PROVIDER_SOURCE_PATH =
+            "$IOS_LOCALE_PROVIDER_SOURCE_DIRECTORY/$IOS_LOCALE_PROVIDER_SOURCE_NAME"
+        val REQUIRED_IOS_LOCALE_PROVIDER_TESTS =
+            listOf(
+                "localeCurrencyOutsideTheMvpSetFallsBackToEur",
+                "foundationCurrencyFractionDigitsMatchTheMvpPremise",
+                "languageOnlyLocaleProvidesNullRegionAndFallsBackToEur",
+            )
     }
 }
