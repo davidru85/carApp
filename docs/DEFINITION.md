@@ -94,7 +94,7 @@ Accepted limitation: active multi-device editing is not a supported MVP workflow
 | 1 (opening) | Complete | `:core:database` and the walking skeleton across native UI, shared state holder, SQLDelight, Firestore and real anonymous auth | The local/remote Vehicle path works under the same retained anonymous session on both native hosts; the Swift-facing surface constraints hold. Permanent-account cross-device recovery moves to E3-12 |
 | 1 | Active; E1-09 next | Vehicles, fuel entries, consumption, settings persistence, native UI, all offline | Local repositories and the Android Vehicle and Fuel Entry flows are complete; real-iPhone performance evidence remains explicit for E4-03 under D-80 |
 | 2 | Planned | Auth abstractions, Firebase Auth, onboarding, local owner adoption, conversion, sign-out, account deletion | Adoption and conversion preserve data; collision never destroys data without explicit confirmation |
-| 3 | Partial; E3-01 and E3-06 complete | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
+| 3 | Partial; E3-01 and E3-06 complete | Firestore rules, integration, backup engine, app graph wiring, backup status, purge, decoupling proof, E3-13 outbox `entityType` single-source centralization | Recovery tests and the emulator tests pass; provider decoupling is an executable check |
 | 4 | Planned | Settings UI, accessibility, i18n, performance, release builds, store readiness | Release builds installable; store requirements complete |
 
 ## 10. Risks

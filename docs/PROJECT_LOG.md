@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-09-03 — Phase 3 current-state mirrors restored E3-13
+
+- **Type:** correction
+- **Story / Decision:** `E3-13` / `D-110`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** corrected the Phase 3 current-state mirrors to include the open E3-13 outbox
+  `entityType` single-source story. The canonical `AGENTS.md` remaining-work list now places E3-13
+  after E3-09, preserving the relative order of the `docs/BACKLOG.md` story index.
+- **Why:** E3-13 remained open as GitHub issue #46, but its omission from the current-state mirrors
+  made the follow-up undiscoverable from the repository entry point and phase summaries.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/DEFINITION.md`, and this log.
+- **Verification:** `./gradlew contractCheck :build-logic:convention:test` completed with
+  `BUILD SUCCESSFUL` in 1s; `contractCheck` reported 111 aligned decisions and ADRs, no unresolved
+  decisions and no `PENDING` assertion, while the convention test was restored from cache. Gradle
+  reported 8 actionable tasks: 1 executed, 1 from cache and 6 up-to-date.
+- **Follow-ups / risks:** E3-13 remains open. Its scope, acceptance criteria, dependency clause and
+  story-index position are unchanged. `AGENTS.md` is a gated path and requires owner review.
+
 ### 2026-09-03 — E1-13 review correction: discriminating locale evidence
 
 - **Type:** correction

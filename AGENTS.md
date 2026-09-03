@@ -102,7 +102,7 @@ locale-provider behavior coverage, are complete.
 - **Remaining Phase 1:** none.
 - **Remaining Phase 2:** `E2-01`, `E2-02`, `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07` and `E3-09`. `E3-01` and `E3-06` are already complete.
+  `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 
 `docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.

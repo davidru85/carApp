@@ -478,7 +478,7 @@ Status: partially complete. E3-06 and E3-01 are complete; every other Phase 3 st
 Firestore rules and emulator tests, Firestore integration for the development project, backup and
 recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account
 deletion and anonymous cleanup operations, permanent-account cross-device recovery proof, and
-provider decoupling proof.
+provider decoupling proof, plus E3-13 outbox `entityType` single-source centralization.
 
 ### Phase 4 - MVP Hardening
 
