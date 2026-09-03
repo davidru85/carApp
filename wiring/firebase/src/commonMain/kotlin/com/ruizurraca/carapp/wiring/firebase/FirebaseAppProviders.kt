@@ -83,7 +83,7 @@ internal fun firebaseAppProviders(
     return object : AppProviders {
         override val databaseFactory = databaseFactory
         override val authClient = authClient
-        override val tokenProvider = stagedTokenProvider()
+        override val tokenProvider = (authClient as? TokenProvider) ?: stagedTokenProvider()
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = stagedAnalyticsTracker()

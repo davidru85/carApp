@@ -6,6 +6,7 @@ import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
+import com.ruizurraca.carapp.core.auth.AuthToken
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
@@ -16,7 +17,6 @@ import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.CurrencyCode
-import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -25,6 +25,7 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,20 +73,26 @@ class FirebaseAppProvidersTest {
     }
 
     @Test
-    fun productionFirebaseProvidersExposesRealAuthClientAndTokenProvider() {
+    fun providerFactoryBindsAuthClientImplementingTokenProviderAsTokenProvider() {
+        val authClient = MutableAuthClient()
+        val remoteSyncSource = RecordingRemoteSyncSource()
+        val databaseFactory = createStagedDatabaseFactory()
+
         val providers =
             firebaseAppProviders(
-                databaseFilePath = "test.db",
-                localeProvider = LocaleProvider { LocaleInfo("en", null, CurrencyCode("EUR")) },
+                databaseFactory = databaseFactory,
+                authClient = authClient,
+                remoteSyncSource = remoteSyncSource,
             )
 
-        assertIs<FirebaseAuthClient>(providers.authClient)
-        assertIs<TokenProvider>(providers.tokenProvider)
-        assertSame<Any>(providers.authClient, providers.tokenProvider)
+        assertSame(authClient, providers.authClient)
+        assertSame<Any>(authClient, providers.tokenProvider)
     }
 }
 
-private class MutableAuthClient : AuthClient {
+private class MutableAuthClient :
+    AuthClient,
+    TokenProvider {
     val state = MutableStateFlow<AuthState>(AuthState.SignedOut)
     override val authState = state
 
@@ -103,6 +110,8 @@ private class MutableAuthClient : AuthClient {
     override suspend fun signOut(): Outcome<Unit, AuthError> = unavailable()
 
     override suspend fun deleteAccount(): Outcome<Unit, AuthError> = unavailable()
+
+    override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = unavailable()
 }
 
 private class RecordingRemoteSyncSource : RemoteSyncSource {

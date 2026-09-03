@@ -436,6 +436,32 @@ class FirebaseAuthClientTest {
             assertIs<Outcome.Ok<AuthToken>>(result)
             assertEquals(true, gateway.lastForceRefreshToken)
         }
+
+    @Test
+    fun parseCreationTimeParsesAndroidMilliseconds() {
+        val androidMillis = 1_700_000_000_000.0
+        val parsed = parseCreationTime(androidMillis)
+        assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), parsed)
+    }
+
+    @Test
+    fun parseCreationTimeParsesAppleReferenceDateSeconds() {
+        val appleZero = 0.1
+        val parsed = parseCreationTime(appleZero)
+        assertEquals(Instant.fromEpochMilliseconds(978_307_200_100L), parsed)
+    }
+
+    @Test
+    fun parseClaimTimestampParsesSecondsAndMilliseconds() {
+        val seconds = parseClaimTimestamp(1_700_000_000L)
+        assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), seconds)
+
+        val millis = parseClaimTimestamp(1_700_000_000_000L)
+        assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), millis)
+
+        val strSeconds = parseClaimTimestamp("1700000000")
+        assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), strSeconds)
+    }
 }
 
 private class FakeFirebaseAuthGateway(
@@ -467,32 +493,50 @@ private class FakeFirebaseAuthGateway(
         return checkNotNull(signedInUser).also { currentUser = it }
     }
 
-    override suspend fun signInWithGoogle(idToken: String, accessToken: String?): FirebaseAuthUser {
+    override suspend fun signInWithGoogle(
+        idToken: String,
+        accessToken: String?,
+    ): FirebaseAuthUser {
         throwOnSignIn?.let { throw it }
         return checkNotNull(googleUser).also { currentUser = it }
     }
 
-    override suspend fun signInWithApple(idToken: String, rawNonce: String): FirebaseAuthUser {
+    override suspend fun signInWithApple(
+        idToken: String,
+        rawNonce: String,
+    ): FirebaseAuthUser {
         throwOnSignIn?.let { throw it }
         return checkNotNull(appleUser).also { currentUser = it }
     }
 
-    override suspend fun linkGoogle(idToken: String, accessToken: String?): FirebaseAuthUser {
+    override suspend fun linkGoogle(
+        idToken: String,
+        accessToken: String?,
+    ): FirebaseAuthUser {
         throwOnLink?.let { throw it }
         return checkNotNull(linkedUser).also { currentUser = it }
     }
 
-    override suspend fun linkApple(idToken: String, rawNonce: String): FirebaseAuthUser {
+    override suspend fun linkApple(
+        idToken: String,
+        rawNonce: String,
+    ): FirebaseAuthUser {
         throwOnLink?.let { throw it }
         return checkNotNull(linkedUser).also { currentUser = it }
     }
 
-    override suspend fun reauthenticateWithGoogle(idToken: String, accessToken: String?): FirebaseAuthUser {
+    override suspend fun reauthenticateWithGoogle(
+        idToken: String,
+        accessToken: String?,
+    ): FirebaseAuthUser {
         throwOnReauth?.let { throw it }
         return checkNotNull(reauthenticatedUser).also { currentUser = it }
     }
 
-    override suspend fun reauthenticateWithApple(idToken: String, rawNonce: String): FirebaseAuthUser {
+    override suspend fun reauthenticateWithApple(
+        idToken: String,
+        rawNonce: String,
+    ): FirebaseAuthUser {
         throwOnReauth?.let { throw it }
         return checkNotNull(reauthenticatedUser).also { currentUser = it }
     }
