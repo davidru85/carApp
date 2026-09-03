@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-03 — E2-02 Firebase Auth integration complete
+
+- **Type:** story
+- **Story / Decision:** `E2-02` / `D-23`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** completed `FirebaseAuthClient` implementing `AuthClient` and `TokenProvider`; implemented Google, Apple, and anonymous flows, credential linking, reauthentication, and sign out with `GitLiveFirebaseAuthGateway`; mapped SDK errors to canonical `AuthError` hierarchy; enforced client token freshness verification (`FRESH_LOGIN_THRESHOLD_MS = 300_000L`) before calling server account deletion; normalized Android millisecond and iOS Apple reference date creation timestamps to `Instant`; and wired `FirebaseAuthClient` as `tokenProvider` in `:wiring:firebase`.
+- **Why:** `E2-02` delivers the production Firebase Auth provider implementation under provider-free contracts (`D-44`), enforces UID stability and link collision handling (`D-102`), strictly forbids client-side SDK deletion (`D-23`), and exposes JWT `AuthToken` retrieval for authenticated remote sync requests (`D-10`).
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §20.8`, `docs/handoff-E2-02.md`, and this log. Code: `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test`, `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test`, and Objective-C golden header parity all passed cleanly.
+- **Follow-ups / risks:** `E2-03` will implement the native Android Credential Manager and iOS `AuthenticationServices` credential providers and attach them to `NativeAuthCredential`.
+
 ### 2026-09-03 — E2-01 review correction: feature boundary and architecture guard
 
 - **Type:** correction
