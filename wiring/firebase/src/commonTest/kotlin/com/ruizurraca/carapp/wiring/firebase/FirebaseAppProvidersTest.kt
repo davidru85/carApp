@@ -6,7 +6,9 @@ import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
+import com.ruizurraca.carapp.core.auth.AuthToken
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Outcome
@@ -45,6 +47,7 @@ class FirebaseAppProvidersTest {
             firebaseAppProviders(
                 databaseFactory = databaseFactory,
                 authClient = authClient,
+                tokenProvider = authClient,
                 remoteSyncSource = remoteSyncSource,
             )
 
@@ -65,16 +68,64 @@ class FirebaseAppProvidersTest {
 
         assertEquals(OwnerId("anonymous-owner"), providers.ownerContext.current)
     }
+
+    @Test
+    fun providerFactoryBindsAuthClientImplementingTokenProviderAsTokenProvider() {
+        val authClient = MutableAuthClient()
+        val remoteSyncSource = RecordingRemoteSyncSource()
+        val databaseFactory = createStagedDatabaseFactory()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = databaseFactory,
+                authClient = authClient,
+                tokenProvider = authClient,
+                remoteSyncSource = remoteSyncSource,
+            )
+
+        assertSame(authClient, providers.authClient)
+        assertSame<Any>(authClient, providers.tokenProvider)
+    }
+
+    @Test
+    fun closingAppGraphClosesAutoCloseableAuthClient() {
+        val authClient = MutableAuthClient()
+        val remoteSyncSource = RecordingRemoteSyncSource()
+        val databaseFactory = createStagedDatabaseFactory()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = databaseFactory,
+                authClient = authClient,
+                tokenProvider = authClient,
+                remoteSyncSource = remoteSyncSource,
+            )
+        val graph = buildAppGraph(isDebugBuild = true, providers = providers)
+
+        assertEquals(false, authClient.closed)
+        graph.close()
+        assertEquals(true, authClient.closed)
+    }
 }
 
-private class MutableAuthClient : AuthClient {
+private class MutableAuthClient :
+    AuthClient,
+    TokenProvider,
+    AutoCloseable {
+    var closed: Boolean = false
     val state = MutableStateFlow<AuthState>(AuthState.SignedOut)
     override val authState = state
 
+    override fun close() {
+        closed = true
+    }
+
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = unavailable()
 
-    override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-        unavailable()
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> = unavailable()
 
     override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         unavailable()
@@ -85,6 +136,8 @@ private class MutableAuthClient : AuthClient {
     override suspend fun signOut(): Outcome<Unit, AuthError> = unavailable()
 
     override suspend fun deleteAccount(): Outcome<Unit, AuthError> = unavailable()
+
+    override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = unavailable()
 }
 
 private class RecordingRemoteSyncSource : RemoteSyncSource {

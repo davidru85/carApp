@@ -38,6 +38,39 @@
 
 ## Entries
 
+### 2026-09-04 — E2-02 second review remediation: AppGraph auth closure and test assertions
+
+- **Type:** correction
+- **Story / Decision:** `E2-02` / —
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** bound `FirebaseAuthClient` lifecycle cancellation to `AppGraph.close()` via `(dependencies.authClient as? AutoCloseable)?.close()`, verified in `:shared` (`AppGraphCloseTest`) and `:wiring:firebase` (`FirebaseAppProvidersTest`); eliminated vacuous erased generic `assertIs<Outcome.Err<Specific>>` assertions in `FirebaseAuthClientTest` by asserting concrete errors; removed dead `clock` parameter from `GitLiveFirebaseAuthGateway`; drove token freshness missing-`iat` test end-to-end through empty gateway `tokenClaims`; removed unused `dispose()` alias; unified `stagedDispatcherProvider()` instantiation in `FirebaseAppProviders.kt`; documented blast radius, untested Apple claims bridging under D-75, and E2-05 error guidance; documented accepted risk on exception subclass dispatch order in `mapAuthException`; and raised open questions for the owner on `auth_time` vs `iat` and `AuthClient : AutoCloseable` lifecycle formalization.
+- **Why:** addresses all 8 findings from the second review pass on PR #53 without breaking provider decoupling or violating repository testing rules.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E2-02.md`. Code: `shared/.../AppGraph.kt`, `shared/.../AppGraphCloseTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Verification:** verified failing tests during RED phase (`da75eea`), passing tests during GREEN phase (`f4d162e`), full CI command, provider decoupling check, and Objective-C golden-header check passed with 0 failures.
+- **Follow-ups / risks:** human review gate applies on `integration/firebase-auth/**` and authentication topic. PR #53 remains open for mandatory owner review.
+
+### 2026-09-03 — E2-02 review remediation: gateway mapping, authState observation, and D-111
+
+- **Type:** correction
+- **Story / Decision:** `E2-02` / `D-111`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** applied a timing workaround for the pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests` (widening the timing window to match the existing pattern in that file; a permanent fix belongs in its own story); reverted repo-wide test-infrastructure flag in `KmpLibraryConventionPlugin.kt` restoring `withHostTestBuilder {}`; extracted pure platform-free auth failure classification (`classifyAuthFailure`) and tested without SDK exception instantiations; injected `AppClock` and made freshness gate fail closed on missing/unparseable `iat`; remapped 17028 (`appNotAuthorized`) to `Provider`; documented `AccountDeletionInvoker` contract requiring `PermissionDenied` on caller rejection and `AccountDeletionRemoteFailed` otherwise; injected `coroutineScope` into `FirebaseAuthClient` and added `close()`/`dispose()` lifecycle cancellation; updated `FirebaseAppProviders.kt`; added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption; recorded decision `D-111` and `ADR-0112`; enforced token re-minting in `reauthenticate()` via `gateway.getIdToken(forceRefresh = true)`; initialized `FirebaseAuthClient.authState` to `AuthState.Unknown` and observed `gateway.authStateChanged` in coroutine scope; passed `coroutineScope = backgroundScope` across all `FirebaseAuthClientTest` cases; raised open question for the owner on token freshness (`auth_time` vs `iat`); and updated `docs/BACKLOG.md` and `docs/handoff-E2-02.md`.
+- **Why:** resolves all blocking CI issues and code review findings from PR #53 review while preserving contract safety invariants and architecture decoupling.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E2-02.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0112-explicit-uid-change-opt-in-for-account-adoption.md`. Code: `build-logic/convention/src/main/kotlin/.../KmpLibraryConventionPlugin.kt`, `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `iosApp/Tests/ViewModelLifecycleTests.swift`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Verification:** full CI command, provider decoupling check, and Objective-C golden-header check passed with 0 failures.
+- **Follow-ups / risks:** none. Human review gate applies on `integration/firebase-auth/**` and authentication topic.
+
+### 2026-09-03 — E2-02 Firebase Auth integration complete
+
+- **Type:** story
+- **Story / Decision:** `E2-02` / `D-23`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** completed `FirebaseAuthClient` implementing `AuthClient` and `TokenProvider`; implemented Google, Apple, and anonymous flows, credential linking, reauthentication, and sign out with `GitLiveFirebaseAuthGateway`; mapped SDK errors to canonical `AuthError` hierarchy; enforced client token freshness verification (`FRESH_LOGIN_THRESHOLD_MS = 300_000L`) before calling server account deletion; normalized Android millisecond and iOS Apple reference date creation timestamps to `Instant`; and wired `FirebaseAuthClient` as `tokenProvider` in `:wiring:firebase`.
+- **Why:** `E2-02` delivers the production Firebase Auth provider implementation under provider-free contracts (`D-44`), enforces UID stability and link collision handling (`D-102`), strictly forbids client-side SDK deletion (`D-23`), and exposes JWT `AuthToken` retrieval for authenticated remote sync requests (`D-10`).
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §20.8`, `docs/handoff-E2-02.md`, and this log. Code: `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test`, `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test`, and Objective-C golden header parity all passed cleanly.
+- **Follow-ups / risks:** `E2-03` will implement the native Android Credential Manager and iOS `AuthenticationServices` credential providers and attach them to `NativeAuthCredential`.
+
 ### 2026-09-03 — E2-01 review correction: feature boundary and architecture guard
 
 - **Type:** correction

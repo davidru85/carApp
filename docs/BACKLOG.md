@@ -592,6 +592,8 @@ Acceptance criteria:
 
 ### E2-02 - Firebase Auth Integration - L
 
+Status: completed on 2026-09-03, PR #53. See `docs/handoff-E2-02.md`.
+
 Implement anonymous, Google, Apple, credential linking, re-authentication, sign-out, account deletion and token refresh.
 
 Acceptance criteria:

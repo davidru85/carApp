@@ -39,7 +39,9 @@ import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
@@ -54,6 +56,7 @@ fun firebaseAppProviders(): AppProviders {
     return firebaseAppProviders(
         databaseFactory = createStagedDatabaseFactory(),
         authClient = stagedAuthClient(authState),
+        tokenProvider = stagedTokenProvider(),
         remoteSyncSource = stagedRemoteSyncSource(),
     )
 }
@@ -63,33 +66,39 @@ fun firebaseAppProviders(
     databaseFilePath: String,
     localeProvider: LocaleProvider,
 ): AppProviders {
-    val authClient = FirebaseAuthClient()
+    val dispatchers = stagedDispatcherProvider()
+    val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
+    val authClient = FirebaseAuthClient(coroutineScope = authScope)
     return firebaseAppProviders(
         databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
         authClient = authClient,
+        tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
         localeProvider = localeProvider,
+        dispatchers = dispatchers,
     )
 }
 
 internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
     authClient: AuthClient,
+    tokenProvider: TokenProvider,
     remoteSyncSource: RemoteSyncSource,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
+    dispatchers: DispatcherProvider = stagedDispatcherProvider(),
 ): AppProviders {
     val connectivityState = MutableStateFlow(true)
 
     return object : AppProviders {
         override val databaseFactory = databaseFactory
         override val authClient = authClient
-        override val tokenProvider = stagedTokenProvider()
+        override val tokenProvider = tokenProvider
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = stagedAnalyticsTracker()
         override val crashReporter = NoOpCrashReporter
         override val clock = AppClock { Clock.System.now() }
-        override val dispatchers = stagedDispatcherProvider()
+        override val dispatchers = dispatchers
         override val uuidGenerator = stagedUuidGenerator()
         override val logger = stagedLogger()
         override val localeProvider = localeProvider
@@ -104,8 +113,10 @@ private fun stagedAuthClient(authState: StateFlow<AuthState>): AuthClient =
 
         override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = providerUnavailable()
 
-        override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-            providerUnavailable()
+        override suspend fun signInWithCredential(
+            credential: NativeAuthCredential,
+            allowUidChange: Boolean,
+        ): Outcome<AuthSession, AuthError> = providerUnavailable()
 
         override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
             providerUnavailable()

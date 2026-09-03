@@ -586,6 +586,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-108 | Native locale-provider ownership | Inject native Android and iOS locale providers at host composition boundaries; keep the production provider factory parameter explicit. | Accepted |
 | D-109 | Native locale-provider verification topology | Require Android application unit tests and composition-owned iOS adapter behavior through `:shared` `iosTest` in standard local and CI verification. | Accepted |
 | D-110 | Outbox entity-type token ownership | Keep explicit contract tokens in production code; add a test-only anchor pinning the `EntityType` enum names to the outbox wire values. | Accepted |
+| D-111 | Explicit UID change opt-in for account adoption | Add optional parameter `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential`; reject unexpected anonymous UID change by default, permit explicit adoption. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

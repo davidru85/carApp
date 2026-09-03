@@ -17,10 +17,11 @@ final class ViewModelLifecycleTests: XCTestCase {
         super.tearDown()
     }
 
-    func testVehicleListViewModelInitialState() {
+    func testVehicleListViewModelInitialState() async throws {
         let viewModel = VehicleListViewModel(graph: graph)
         XCTAssertNotNil(viewModel.state)
         viewModel.refresh()
+        try await Task.sleep(nanoseconds: 200_000_000)
     }
 
     func testVehicleFormViewModelEditingAndValidation() {

@@ -14,16 +14,19 @@ import kotlin.time.Instant
 class AuthContractsTest {
     @Test
     fun authSessionRetainsItsIdentityAndProviders() {
+        val createdAt = Instant.fromEpochMilliseconds(1_700_000_000_000L)
         val session =
             AuthSession(
                 uid = "owner-1",
                 isAnonymous = false,
                 providers = setOf(AuthProvider.GOOGLE, AuthProvider.APPLE),
+                createdAt = createdAt,
             )
 
         assertEquals("owner-1", session.uid)
         assertEquals(false, session.isAnonymous)
         assertEquals(setOf(AuthProvider.GOOGLE, AuthProvider.APPLE), session.providers)
+        assertEquals(createdAt, session.createdAt)
     }
 
     @Test
@@ -85,7 +88,7 @@ class AuthContractsTest {
             )
             assertEquals(
                 AuthError.ProviderUnavailable,
-                (client.signInWithCredential(credential) as Outcome.Err).error,
+                (client.signInWithCredential(credential, allowUidChange = true) as Outcome.Err).error,
             )
             assertEquals(
                 AuthError.ProviderUnavailable,
@@ -117,8 +120,10 @@ private class ContractAuthClient :
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = unavailable()
 
-    override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-        unavailable()
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> = unavailable()
 
     override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         unavailable()
