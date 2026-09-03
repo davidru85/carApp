@@ -9,6 +9,7 @@ import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.FRESH_LOGIN_THRESHOLD_MS
 import com.ruizurraca.carapp.core.common.Outcome
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +17,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseAuthClientTest {
     @Test
     fun retainedAnonymousUserIsAvailableWhenTheClientIsCreated() {
@@ -45,6 +48,7 @@ class FirebaseAuthClientTest {
             assertEquals(AuthState.Unknown, client.authState.value)
 
             gateway.emitAuthState(anonymousUser("newly-emitted-user"))
+            runCurrent()
             val session = assertIs<AuthState.SignedIn>(client.authState.value).session
             assertEquals("newly-emitted-user", session.uid)
         }
@@ -60,6 +64,7 @@ class FirebaseAuthClientTest {
 
             // External event: session cleaned up or deleted remotely
             gateway.emitAuthState(null)
+            runCurrent()
             assertEquals(AuthState.SignedOut, client.authState.value)
         }
 

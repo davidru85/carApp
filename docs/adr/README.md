@@ -117,5 +117,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-108 | [ADR-0109](0109-inject-native-locale-providers-at-host-boundaries.md) | Inject native locale providers at host boundaries. | Accepted |
 | D-109 | [ADR-0110](0110-enforce-native-locale-provider-verification.md) | Enforce native locale-provider verification. | Accepted |
 | D-110 | [ADR-0111](0111-outbox-entity-type-token-ownership.md) | Outbox entity-type token ownership. | Accepted |
+| D-111 | [ADR-0112](0112-explicit-uid-change-opt-in-for-account-adoption.md) | Explicit UID change opt-in for account adoption. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

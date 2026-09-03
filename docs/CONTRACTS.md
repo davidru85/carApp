@@ -702,7 +702,10 @@ Side effects:
 interface AuthClient {
     val authState: StateFlow<AuthState>
     suspend fun signInAnonymously(): Outcome<AuthSession, AuthError>
-    suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError>
+    suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean = false,
+    ): Outcome<AuthSession, AuthError>
     suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError>
     suspend fun reauthenticate(credential: NativeAuthCredential): Outcome<AuthSession, AuthError>
     suspend fun signOut(): Outcome<Unit, AuthError>
@@ -748,7 +751,7 @@ After confirmation, the operation is ordered as follows:
 1. Persist a complete, durable local snapshot of the current anonymous owner's synchronized
    `Vehicle` and `FuelEntry` rows, including tombstones, and capture a fresh Firebase ID token for
    that anonymous UID.
-2. Sign into the permanent account that owns the colliding provider credential.
+2. Sign into the permanent account that owns the colliding provider credential via `signInWithCredential(credential, allowUidChange = true)` (`D-111`).
 3. Replace that permanent account's remote `vehicles` and `fuelEntries` data with the captured
    snapshot. Replacement is idempotent and resumable; an interrupted attempt resumes from the
    durable snapshot rather than pulling and overwriting it.

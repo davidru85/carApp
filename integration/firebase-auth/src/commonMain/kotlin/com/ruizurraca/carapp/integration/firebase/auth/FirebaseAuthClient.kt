@@ -26,8 +26,11 @@ import dev.gitlive.firebase.auth.OAuthProvider
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.auth.code
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
@@ -44,8 +47,16 @@ class FirebaseAuthClient internal constructor(
     TokenProvider {
     constructor() : this(GitLiveFirebaseAuthGateway())
 
-    private val mutableAuthState = MutableStateFlow(gateway.currentUser.toAuthState())
+    private val mutableAuthState = MutableStateFlow<AuthState>(AuthState.Unknown)
     override val authState: StateFlow<AuthState> = mutableAuthState
+
+    init {
+        coroutineScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+            gateway.authStateChanged.collect { firebaseUser ->
+                mutableAuthState.value = firebaseUser.toAuthState()
+            }
+        }
+    }
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> =
         try {
@@ -120,6 +131,7 @@ class FirebaseAuthClient internal constructor(
                         gateway.reauthenticateWithApple(credential.idToken, credential.rawNonce)
                     }
                 }
+            gateway.getIdToken(forceRefresh = true)
             val session = user.toSession()
             mutableAuthState.value = AuthState.SignedIn(session)
             Outcome.Ok(session)
@@ -146,7 +158,7 @@ class FirebaseAuthClient internal constructor(
                     return Outcome.Err(failure.toAuthError())
                 }
             val ageMillis = (clock.now() - token.issuedAt).inWholeMilliseconds
-            if (ageMillis < 0 || ageMillis > FRESH_LOGIN_THRESHOLD_MS) {
+            if (ageMillis > FRESH_LOGIN_THRESHOLD_MS) {
                 return Outcome.Err(AuthError.RequiresRecentLogin)
             }
             gateway.executeServerAccountDeletion(token.value)
@@ -228,11 +240,16 @@ internal class GitLiveFirebaseAuthGateway(
             )
         },
 ) : FirebaseAuthGateway {
+    override val authStateChanged: Flow<FirebaseAuthUser?> =
+        Firebase.auth.authStateChanged.map { it?.toIntegrationUser() }
+
     override val currentUser: FirebaseAuthUser?
         get() =
             try {
                 Firebase.auth.currentUser?.toIntegrationUser()
-            } catch (_: Throwable) {
+            } catch (_: FirebaseException) {
+                null
+            } catch (_: IllegalStateException) {
                 null
             }
 
@@ -361,14 +378,14 @@ internal fun mapAuthException(failure: FirebaseException): FirebaseAuthGatewayEx
         else -> mapGenericFirebaseException(failure)
     }
 
-private fun mapWebException(failure: FirebaseAuthWebException): FirebaseAuthGatewayException =
+internal fun mapWebException(failure: FirebaseAuthWebException): FirebaseAuthGatewayException =
     if (isCancellation(failure.code, failure.message)) {
         FirebaseAuthGatewayException.Cancelled(failure)
     } else {
         FirebaseAuthGatewayException.Provider(failure)
     }
 
-private fun mapInvalidCredentialsException(
+internal fun mapInvalidCredentialsException(
     failure: FirebaseAuthInvalidCredentialsException,
 ): FirebaseAuthGatewayException =
     if (isCancellation(failure.code, failure.message)) {
@@ -394,13 +411,17 @@ internal fun mapFirebaseAuthException(failure: FirebaseAuthException): FirebaseA
             FirebaseAuthGatewayException.Network(failure)
         }
 
+        FIREBASE_PERMISSION_DENIED_CODE, ERROR_PERMISSION_DENIED -> {
+            FirebaseAuthGatewayException.PermissionDenied(failure)
+        }
+
         else -> {
             FirebaseAuthGatewayException.Provider(failure)
         }
     }
 }
 
-private fun mapGenericFirebaseException(failure: FirebaseException): FirebaseAuthGatewayException =
+internal fun mapGenericFirebaseException(failure: FirebaseException): FirebaseAuthGatewayException =
     if (isCancellation(null, failure.message)) {
         FirebaseAuthGatewayException.Cancelled(failure)
     } else {
@@ -416,6 +437,13 @@ internal fun isCancellation(
     return "cancel" in msg || "dismiss" in msg || FIREBASE_WEB_CANCEL_CODE in msg
 }
 
+/**
+ * Normalizes Firebase user metadata creation time across platforms.
+ *
+ * In GitLive 2.6.0, `FirebaseUserMetadata.creationTime` returns a Double representing epoch milliseconds
+ * on Android, but seconds since Apple reference date (2001-01-01 00:00:00 UTC) on Apple targets (iOS).
+ * This function detects the platform representation by range check and converts it to a standard UTC [Instant].
+ */
 internal fun parseCreationTime(creationTime: Double?): Instant? {
     if (creationTime == null || creationTime <= 0.0) return null
     val epochMillis =
@@ -492,7 +520,7 @@ internal sealed class FirebaseAuthGatewayException(
     ) : FirebaseAuthGatewayException(cause)
 }
 
-private fun FirebaseUser.toIntegrationUser(): FirebaseAuthUser =
+internal fun FirebaseUser.toIntegrationUser(): FirebaseAuthUser =
     FirebaseAuthUser(
         uid = uid,
         isAnonymous = isAnonymous,
@@ -535,11 +563,13 @@ private const val EPOCH_SECONDS_CUTOFF = 10_000_000_000L
 private const val EPOCH_SECONDS_CUTOFF_DOUBLE = 10_000_000_000.0
 private const val MILLIS_PER_SECOND = 1000L
 private const val MILLIS_PER_SECOND_DOUBLE = 1000.0
-private const val FIREBASE_COLLISION_CODE = "17025"
-private const val ERROR_CREDENTIAL_ALREADY_IN_USE = "ERROR_CREDENTIAL_ALREADY_IN_USE"
-private const val FIREBASE_RECENT_LOGIN_CODE = "17014"
-private const val ERROR_REQUIRES_RECENT_LOGIN = "ERROR_REQUIRES_RECENT_LOGIN"
-private const val FIREBASE_NETWORK_CODE = "17020"
-private const val ERROR_NETWORK_REQUEST_FAILED = "ERROR_NETWORK_REQUEST_FAILED"
-private const val FIREBASE_WEB_CANCEL_CODE = "17058"
-private const val ERROR_WEB_CONTEXT_CANCELLED = "ERROR_WEB_CONTEXT_CANCELLED"
+internal const val FIREBASE_COLLISION_CODE = "17025"
+internal const val ERROR_CREDENTIAL_ALREADY_IN_USE = "ERROR_CREDENTIAL_ALREADY_IN_USE"
+internal const val FIREBASE_RECENT_LOGIN_CODE = "17014"
+internal const val ERROR_REQUIRES_RECENT_LOGIN = "ERROR_REQUIRES_RECENT_LOGIN"
+internal const val FIREBASE_NETWORK_CODE = "17020"
+internal const val ERROR_NETWORK_REQUEST_FAILED = "ERROR_NETWORK_REQUEST_FAILED"
+internal const val FIREBASE_WEB_CANCEL_CODE = "17058"
+internal const val ERROR_WEB_CONTEXT_CANCELLED = "ERROR_WEB_CONTEXT_CANCELLED"
+internal const val FIREBASE_PERMISSION_DENIED_CODE = "17028"
+internal const val ERROR_PERMISSION_DENIED = "ERROR_PERMISSION_DENIED"
