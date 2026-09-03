@@ -7,6 +7,7 @@ import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlin.native.HiddenFromObjC
 
@@ -17,7 +18,10 @@ class AuthOwnerContext(
 ) : OwnerContext {
     override val current: OwnerId get() = authState.value.toOwnerId()
 
-    override fun observe(): Flow<OwnerId> = authState.map(AuthState::toOwnerId)
+    override fun observe(): Flow<OwnerId> =
+        authState
+            .map(AuthState::toOwnerId)
+            .distinctUntilChanged()
 }
 
 private fun AuthState.toOwnerId(): OwnerId =

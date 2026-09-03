@@ -62,6 +62,7 @@ object ArchitectureChecker {
         violations += checkCoreDoesNotDependOnShared(module)
         violations += checkSharedTestingIsTestOnly(module)
         violations += checkNoFeatureToFeatureDependency(module)
+        violations += checkNoFeatureToAuthDependency(module)
         violations += checkCrashHasNoExpectActual(module)
         violations += checkDatabaseTypesStayInTheirModule(module)
         violations += checkNoFloatingPointArithmetic(module)
@@ -282,6 +283,20 @@ object ArchitectureChecker {
                     module.path,
                     "feature-to-feature-dependency",
                     "depends on $it. Features never depend on each other (docs/TECHNICAL_PLAN.md §4).",
+                )
+            }
+    }
+
+    /** Features MUST NOT depend on :core:auth (docs/TECHNICAL_PLAN.md §4, docs/CONTRACTS.md §12). */
+    private fun checkNoFeatureToAuthDependency(module: ModuleUnderCheck): List<Violation> {
+        if (!module.path.startsWith(":feature:")) return emptyList()
+        return module.projectDependencies
+            .filter { it == ":core:auth" }
+            .map {
+                Violation(
+                    module.path,
+                    "feature-to-auth-dependency",
+                    "depends on $it. Feature modules MUST NOT depend on :core:auth (docs/TECHNICAL_PLAN.md §4, docs/CONTRACTS.md §12).",
                 )
             }
     }

@@ -45,15 +45,16 @@
 
 - Date: 2026-09-03.
 - Branch and base: `story/E2-01-core-auth-contracts`, based on synchronized `main` / `origin/main` at `91b2a78`.
-- Current phase and latest commit: RED phase of PR #52 review remediation; latest commit on branch is `e16d1e4`.
+- Current phase and latest commit: GREEN phase of PR #52 review remediation; latest commit on branch is RED `3412b9d`.
 - Push and pull-request status: pull request #52 is open at `https://github.com/davidru85/carApp/pull/52`. Remediation commits are being created locally in RED/GREEN/REFACTOR order.
-- Completed since the previous checkpoint: entered RED phase for review findings 1-4. Added failing architecture fixture `featureModulesMayNotDependOnCoreAuth` in `ArchitectureCheckerTest.kt`, discriminating deduplication test `ownerObservationDeduplicatesConsecutiveIdenticalOwnersAcrossStateTransitions` in `AuthOwnerContextTest.kt`, and refined contract signature conformance test in `AuthContractsTest.kt`.
+- Completed since the previous checkpoint: entered GREEN phase. Implemented `checkNoFeatureToAuthDependency` in `ArchitectureChecker.kt`, removed `:core:auth` dependency declaration from `feature/session/build.gradle.kts`, and applied `distinctUntilChanged()` to `AuthOwnerContext.observe()`.
 - Verification evidence and known failures:
-  - `./gradlew :build-logic:convention:test` failed as intended with `ArchitectureCheckerTest > featureModulesMayNotDependOnCoreAuth FAILED` (rule `feature-to-auth-dependency` not yet implemented in `ArchitectureChecker`).
-  - `./gradlew :core:auth:testAndroidHostTest` failed as intended with `AuthOwnerContextTest > ownerObservationDeduplicatesConsecutiveIdenticalOwnersAcrossStateTransitions FAILED` (`distinctUntilChanged()` not yet applied in `AuthOwnerContext`).
-  - Audited `feature/session/build.gradle.kts` confirming the pre-fix leak of `"commonMainImplementation"(projects.core.auth)`.
+  - `./gradlew architectureCheck` verified to fail against the pre-fix state of `:feature:session` with `feature-to-auth-dependency`, and verified to pass after removing the dependency.
+  - `./gradlew :build-logic:convention:test` passed all 58 tests including the new `featureModulesMayNotDependOnCoreAuth` fixture.
+  - `./gradlew :feature:session:testAndroidHostTest` compiled and passed without `:core:auth`.
+  - `./gradlew :core:auth:testAndroidHostTest` and `:core:auth:iosSimulatorArm64Test` passed, including the discriminating deduplication test and contract signature tests.
 - Open decisions or blockers: none.
-- Exact next step: proceed to GREEN phase: implement `checkNoFeatureToAuthDependency` in `ArchitectureChecker.kt`, remove the `:core:auth` dependency declaration from `feature/session/build.gradle.kts`, and apply `distinctUntilChanged()` in `AuthOwnerContext.kt`.
+- Exact next step: proceed to REFACTOR phase: full repository verification across all checks, code cleanup, documentation updates, and PR body refresh.
 
 ## Scope Completed
 
