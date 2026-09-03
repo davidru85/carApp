@@ -41,8 +41,9 @@ factory used by tests and incomplete provider wiring.
 - Android and Foundation APIs remain at their native host edges.
 - The shared graph and product layers remain provider-free and easy to test.
 - Production composition cannot accidentally use the staged locale fallback.
-- Each platform adapter has a separate native minor-unit behavior boundary verified by the
-  canonical command.
+- Each platform adapter has its reachable native locale and currency-code behavior verified by the
+  canonical command. Runtime fraction-digit guards remain defensive boundaries whose unsupported
+  side is not independently reachable for an MVP-supported currency.
 
 ### Negative
 
@@ -59,12 +60,18 @@ factory used by tests and incomplete provider wiring.
 
 ## Verification
 
-- `:androidApp:testDebugUnitTest` validates Android native currency code and minor-unit extraction
-  under the D-109 canonical local and CI route.
+- `:androidApp:testDebugUnitTest` validates Android language, region, supported `USD` resolution and
+  unsupported `JPY` fallback under the D-109 canonical local and CI route. Because every code in
+  `SUPPORTED_CURRENCY_CODES` has two minor-unit digits, these cases do not independently
+  discriminate the Android runtime fraction-digit guard.
 - `:shared:iosSimulatorArm64Test` compiles the exact composition-owned `IosLocaleProvider` source
-  into its test compilation and executes Foundation `NSNumberFormatter.maximumFractionDigits`,
-  non-two-decimal fallback, language-tag and region behavior. The provider remains internal to
-  `:composition:ios`; the test adds no production project dependency or Swift export.
+  into its test compilation and executes real Foundation currency-code, language-tag and region
+  extraction, supported `USD` resolution, unsupported `JPY` fallback and a language-only locale's
+  null region/currency handling. A direct `NSNumberFormatter` premise test pins `USD` at two
+  fraction digits and `JPY` away from two. The defensive "supported code with non-two fraction
+  digits" branch cannot be reached with real Foundation data because the supported set is
+  two-decimal by contract. The provider remains internal to `:composition:ios`; the test adds no
+  production project dependency or Swift export.
 - `FirebaseAppProvidersTest` and provider-decoupling verification prove common/provider graph
   construction remains explicit and Firebase types stay isolated.
 

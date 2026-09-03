@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.locale
 
 import platform.Foundation.NSLocale
+import platform.Foundation.NSLocaleCurrencyCode
 import platform.Foundation.NSNumberFormatter
 import platform.Foundation.NSNumberFormatterCurrencyStyle
 import kotlin.test.Test
@@ -47,7 +48,11 @@ class IosLocaleProviderTest {
 
     @Test
     fun languageOnlyLocaleProvidesNullRegionAndFallsBackToEur() {
-        val localeInfo = IosLocaleProvider { NSLocale(localeIdentifier = "es") }.current()
+        val locale = NSLocale(localeIdentifier = "es")
+
+        assertNull(locale.objectForKey(NSLocaleCurrencyCode))
+
+        val localeInfo = IosLocaleProvider { locale }.current()
 
         assertEquals("es", localeInfo.languageTag)
         assertNull(localeInfo.region)

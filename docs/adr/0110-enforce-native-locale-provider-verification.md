@@ -48,17 +48,27 @@ instances. The provider accepts an internal locale factory whose production defa
 construction.
 
 `IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification` guards the
-source reuse, behavior-test file and root Native task mirrors. The unchanged canonical
-`iosSimulatorArm64Test` invocation therefore executes the behavior outside the excluded
-`:composition:ios:iosSimulatorArm64Test` binary.
+exact provider source file, the reused directory's one-Kotlin-file boundary, the required behavior
+test declarations and the root Native task mirrors. The unchanged canonical
+`iosSimulatorArm64Test` invocation therefore executes the reachable provider behavior outside the
+excluded `:composition:ios:iosSimulatorArm64Test` binary.
+
+Every code in `SUPPORTED_CURRENCY_CODES` is two-decimal by contract. Real Foundation data therefore
+cannot present a supported code with non-two fraction digits, so the provider's defensive rejection
+branch is not independently discriminable through `LocaleProvider.current()`. The suite does not
+invent a supported currency or widen the production seam. Instead, a direct platform-premise anchor
+asserts that Foundation reports two digits for `USD` and a value other than two for `JPY`.
 
 ## Consequences
 
 ### Positive
 
-- Android native currency code and fraction-digit behavior now fail canonical local and CI runs.
-- iOS Foundation currency, fraction-digit, language-tag and region behavior now fail canonical
-  local and CI runs.
+- Android supported and unsupported currency-code resolution, language and region behavior now fail
+  canonical local and CI runs.
+- iOS Foundation currency-code, language-tag, nullable-region and supported/unsupported-code
+  resolution behavior now fail canonical local and CI runs.
+- The Foundation two-decimal premise is pinned directly without claiming that the provider's
+  unreachable defensive branch is covered.
 - Production ownership, explicit injection and the closed Swift ABI are unchanged.
 - D-75 and D-108 remain intact instead of being weakened for convenience.
 
@@ -80,12 +90,21 @@ source reuse, behavior-test file and root Native task mirrors. The unchanged can
   MUST remain `NSLocale.currentLocale`.
 - D-75's graph-derived exclusion and sole Firebase Apple dependency authority remain unchanged.
 
+### Residual Limitation
+
+- Neither native provider suite can independently exercise "MVP-supported currency code with
+  runtime fraction digits other than two" using real platform locale data, because all 21 supported
+  codes are two-decimal by contract. The Foundation premise anchor detects platform/toolchain drift;
+  the production guard remains defensive and undiscriminated. A fake supported currency or wider
+  production seam is explicitly rejected.
+
 ## Verification
 
 - `AndroidLocaleProviderTest` runs under `:androidApp:testDebugUnitTest`.
-- `IosLocaleProviderTest` runs four behavior tests under `:shared:iosSimulatorArm64Test`: supported
-  `USD`, non-two-decimal `JPY` fallback to `EUR`, `es_ES` to `es-ES` language-tag conversion and
-  `en_US` to `US` region extraction.
+- `IosLocaleProviderTest` runs six tests under `:shared:iosSimulatorArm64Test`: supported `USD`;
+  unsupported `JPY` fallback to `EUR` with `ja-JP` / `JP` extraction; direct Foundation `USD == 2`
+  and `JPY != 2` fraction-digit premises; `es_ES` to `es-ES`; `en_US` to `US`; and language-only
+  `es` with null region and `EUR` fallback.
 - `IosCompositionContractTest.androidHostLocaleProviderTestsRunInCanonicalVerification` and
   `iosHostLocaleProviderTestsRunInCanonicalVerification` keep both native routes and command
   mirrors aligned.

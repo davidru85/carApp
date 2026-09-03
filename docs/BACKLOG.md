@@ -544,8 +544,8 @@ Human review required.
 
 Status: completed on 2026-09-03. See `docs/handoff-E1-13.md`. Registered as the D-109 follow-up of
 the E1-10 owner review. The exact composition-owned provider source now runs under `:shared`
-`iosSimulatorArm64Test`, outside the D-75 exclusion, and executes Foundation
-`NSNumberFormatter.maximumFractionDigits` behavior.
+`iosSimulatorArm64Test`, outside the D-75 exclusion, and executes reachable Foundation locale and
+currency-code behavior plus a direct `NSNumberFormatter.maximumFractionDigits` premise anchor.
 
 Add executable iOS-host behavioral coverage for the production locale adapter without moving the
 adapter out of its D-108 host boundary or adding a second Firebase Apple dependency route that
@@ -557,7 +557,10 @@ Acceptance criteria:
   host implementation with no duplicated currency rule, on an iOS simulator.
 - A supported two-decimal locale currency exercises `NSNumberFormatter.maximumFractionDigits` and
   resolves to its supported currency code.
-- A currency whose runtime fraction digits are not two resolves to `EUR`.
+- A direct Foundation premise anchor proves that `USD` reports two fraction digits and `JPY` does
+  not. The defensive "supported code with non-two fraction digits" branch is recorded as
+  unreachable with real Foundation data because every supported currency is two-decimal by
+  contract; tests MUST NOT invent a supported currency or widen the production seam to reach it.
 - Language tag and region extraction from Foundation are asserted behaviorally rather than by
   reading source text.
 - The exact complete non-instrumented command in `AGENTS.md` executes the test. The test MUST NOT be

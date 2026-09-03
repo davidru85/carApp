@@ -1,11 +1,20 @@
 # Agent Handoff - E1-10
 
+> **Review correction (2026-09-03, E1-13):** The E1-13 review found that the `ja_JP` case below
+> falls back because `JPY` is outside `SUPPORTED_CURRENCY_CODES`; it does not discriminate the
+> fraction-digit guard. The final six-test suite executes reachable currency-code, language-tag and
+> nullable-region behavior and directly anchors Foundation's `USD == 2` / `JPY != 2` premise. A
+> supported-code/non-two-digits case is unreachable with real platform data because the supported
+> set is two-decimal by contract. This note corrects the later closure wording without rewriting
+> E1-10's historical completion state.
+>
 > **Closure update (2026-09-03, E1-13):** The executable iOS locale-provider coverage gap recorded
 > by this handoff is closed. `:shared:iosSimulatorArm64Test` compiles the exact
-> composition-owned `IosLocaleProvider` source and executes four Foundation behavior tests for a
-> supported two-decimal currency, non-two-decimal fallback, language tag and region. D-75's
-> exclusion set, D-108 production ownership/injection and the closed Swift ABI are unchanged. The
-> historical checkpoint, decisions and follow-up text below preserve E1-10's state at completion.
+> composition-owned `IosLocaleProvider` source and executes reachable supported/unsupported
+> currency-code resolution, language-tag and nullable-region behavior plus a direct Foundation
+> fraction-digit premise anchor. D-75's exclusion set, D-108 production ownership/injection and the
+> closed Swift ABI are unchanged. The historical checkpoint, decisions and follow-up text below
+> preserve E1-10's state at completion.
 
 ## Story
 

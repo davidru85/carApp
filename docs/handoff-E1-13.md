@@ -9,12 +9,12 @@
 - Backlog story: `E1-13 - Executable iOS Locale-Provider Behavior Coverage` (`S`, open).
 - Acceptance criteria reviewed: execute the production `IosLocaleProvider` behavior, or one
   production-delegated implementation with no duplicated currency rule, on an iOS simulator;
-  prove a supported two-decimal currency through `NSNumberFormatter.maximumFractionDigits`;
-  prove fallback to `EUR` when the runtime fraction digits are not two; assert Foundation language
-  tag and region extraction behaviorally; make the exact complete non-instrumented command execute
-  the test outside the excluded `:composition:ios:iosSimulatorArm64Test` route; preserve D-108
-  ownership, explicit production injection and D-75's single Firebase Apple dependency authority;
-  replace the E1-10, ADR-0109 and ADR-0110 coverage-gap records with executable evidence.
+  resolve a real supported two-decimal locale currency; anchor Foundation's two/non-two-decimal
+  premise directly; assert reachable fallback, language-tag and nullable-region behavior; make the
+  exact complete non-instrumented command execute the tests outside the excluded
+  `:composition:ios:iosSimulatorArm64Test` route; preserve D-108 ownership, explicit production
+  injection and D-75's single Firebase Apple dependency authority; replace the E1-10, ADR-0109 and
+  ADR-0110 coverage-gap records with precise executable evidence and a named residual limitation.
 - Dependencies checked: E1-10 is complete; D-75, D-108 and D-109 are `Accepted`; the E1-12 shared
   graph-close race is complete and introduces no blocker for this host-focused story.
 - Decisions checked: `docs/DECISION_BOARD.md` contains no `Proposed` or `Pending` decision. D-75
@@ -25,10 +25,11 @@
 - Normative sections reviewed: `docs/SPECIFICATION.md` section 11 (TDD and CI),
   `docs/CONTRACTS.md` sections 11.6, 13, 18 and 20.0.1, `docs/TECHNICAL_PLAN.md` sections 4 and 5,
   ADR-0076 / D-75, ADR-0109 / D-108 and ADR-0110 / D-109.
-- Expected verification: a focused iOS-simulator execution proving every locale-provider behavior;
-  the exact complete non-instrumented command in `AGENTS.md`; `git diff --check`; inspection of
-  `contractCheck` output for decision/ADR parity, unresolved decisions and pending assertions; and
-  the iOS host build/test route if it is not already covered by the focused command.
+- Expected verification: a focused iOS-simulator execution proving the reachable provider paths and
+  direct Foundation premise; the exact complete non-instrumented command in `AGENTS.md`; `git diff
+  --check`; inspection of `contractCheck` output for decision/ADR parity, unresolved decisions and
+  pending assertions; and the iOS host build/test route if it is not already covered by the focused
+  command.
 - Human review gates identified before work: gated paths `docs/SPECIFICATION.md`,
   `docs/DECISION_BOARD.md` and `docs/adr/**`; gated topics Swift-facing API surface if changed and
   module boundaries if changed. E1-13 also requires human review because it changes canonical
@@ -55,8 +56,12 @@
   Foundation fraction-digit premise anchor, and added the language-only locale case. The focused
   command passed 117 executed tasks; `IosLocaleProviderTest` now reports six tests, zero failures,
   zero errors and zero skips. The production provider and its testability seam remain unchanged.
-- Planned REFACTOR: correct ADR-0109, ADR-0110, this handoff, the append-only project log and PR
-  evidence; record the unreachable supported-code/non-two-digits branch as a residual limitation.
+- REFACTOR complete: corrected ADR-0109, ADR-0110, D-109 mirrors, E1-10's dated closure update and
+  this handoff; recorded the unreachable supported-code/non-two-digits branch as a residual
+  limitation. The focused refactor command passed 97 executed tasks, including six Native tests,
+  affected lint, the full convention suite and `contractCheck` with 111 aligned decisions/ADRs,
+  none unresolved and no pending assertion. The append-only project log and PR evidence will be
+  updated with the final complete-command results.
 - Required verification: the focused RED and GREEN routes, the exact complete non-instrumented
   command from `AGENTS.md`, `./gradlew contractCheck :build-logic:convention:test`, forced
   provider-decoupling, `git diff --check` and all PR checks.
@@ -83,7 +88,8 @@
   this source reuse, the behavior-test file and the existing canonical root Native test task.
   GREEN moved the internal adapter into a dedicated composition-owned package, added an internal
   `NSLocale` factory with the unchanged `NSLocale.currentLocale` production default, reused that
-  exact source only in `:shared` `iosTest`, and added four behavior-specific Foundation tests.
+  exact source only in `:shared` `iosTest`, and added an initial four-test Foundation suite that the
+  review round later made discriminating and extended to six tests.
 - Verification evidence and known failures: the focused RED command
   `./gradlew :build-logic:convention:test --tests
   com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
@@ -113,7 +119,8 @@
 
 ## Scope Completed
 
-- Added deterministic executable iOS-simulator coverage for every E1-13 Foundation behavior.
+- Added deterministic executable iOS-simulator coverage for the reachable E1-13 Foundation
+  behavior and a direct platform-premise anchor for fraction digits.
 - Kept the adapter internal and composition-owned while reusing its exact source in the existing
   standard-command `:shared` Native test binary.
 - Added an executable build-logic guard for source ownership, behavior-test presence and canonical
@@ -124,15 +131,23 @@
 ## Acceptance Evidence
 
 - `IosLocaleProviderTest.supportedTwoDecimalLocaleResolvesItsCurrencyCode` constructs Foundation
-  locale `en_US`; the production adapter's `NSNumberFormatter.maximumFractionDigits` path accepts
-  its two digits and returns supported code `USD`.
-- `IosLocaleProviderTest.currencyWithoutTwoFractionDigitsFallsBackToEur` constructs Foundation
-  locale `ja_JP`; its runtime `JPY` zero-fraction-digits path returns `EUR`.
+  locale `en_US` and proves that the production adapter resolves real supported code `USD`.
+- `IosLocaleProviderTest.localeCurrencyOutsideTheMvpSetFallsBackToEur` constructs Foundation locale
+  `ja_JP` and proves `ja-JP`, `JP` and `EUR`; the fallback is attributable to `JPY` being outside
+  `SUPPORTED_CURRENCY_CODES`, not independently to its fraction digits.
+- `foundationCurrencyFractionDigitsMatchTheMvpPremise` directly proves that Foundation reports two
+  fraction digits for `USD` and a value other than two for `JPY`.
 - `languageTagComesFromTheFoundationLocaleIdentifier` and
   `regionComesFromTheFoundationCountryCode` execute the production extraction against concrete
   `NSLocale` values and assert `es-ES` and `US` respectively.
-- The focused `:shared:iosSimulatorArm64Test` result records four tests, zero failures, zero errors
-  and zero skips in the generated XML report.
+- `languageOnlyLocaleProvidesNullRegionAndFallsBackToEur` proves that `NSLocale("es")` produces
+  language tag `es`, null region and `EUR` when Foundation supplies no currency code.
+- The reviewed focused `:shared:iosSimulatorArm64Test` result records six tests, zero failures, zero
+  errors and zero skips in the generated XML report.
+- Residual limitation: all 21 MVP-supported currency codes are two-decimal by contract, so no real
+  Foundation locale can reach "supported code with non-two fraction digits". The direct premise
+  anchor protects against platform/toolchain drift; no fake supported currency or wider production
+  seam was introduced.
 
 ## Out of Scope / Not Done
 
@@ -174,6 +189,10 @@
   default; production construction and behavior remain unchanged. Native host/provider integration
   code is explicitly exempt from TDD order under `docs/SPECIFICATION.md` section 11. The executable
   canonical-route guard was still committed RED before this seam and the behavior tests.
+- Review round 1 retains the production seam and behavior. Its RED commit makes the guard fail on
+  absent reviewed tests; GREEN adds only tests. The optional Android language-only case is not added
+  because E1-13 is the iOS host coverage story and Android null-locale behavior was not a required
+  review finding.
 
 ## Verification Run
 
@@ -185,7 +204,7 @@
   com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
   :shared:ktlintCheck :composition:ios:ktlintCheck
   :composition:ios:linkDebugFrameworkIosSimulatorArm64 --rerun-tasks` — passed, 117 executed tasks;
-  four provider behavior tests passed and the production simulator framework linked.
+  the original pre-review four-test suite passed and the production simulator framework linked.
 - REFACTOR focused documentation: `./gradlew contractCheck :build-logic:convention:test
   --rerun-tasks` — passed; `contractCheck` reports 111 aligned decisions/ADRs, none unresolved, no
   pending assertion, the exact D-75 exclusion set and an unchanged Swift allowlist.
@@ -218,9 +237,12 @@
 
 ## Risks or Follow-ups
 
-- No open implementation follow-up. The explicit test-only source path is intentional coupling;
-  `IosCompositionContractTest` and the behavior test make a stale path or copied implementation
-  fail verification.
+- The explicit test-only source path is intentional coupling; `IosCompositionContractTest` now
+  requires the exact provider file, exactly one Kotlin file in its recursively compiled directory,
+  the reviewed test declarations and canonical command reachability.
+- The defensive supported-code/non-two-digits branch remains undiscriminated because real platform
+  data cannot reach it under the two-decimal MVP supported set. The Foundation premise anchor is the
+  executable protection for this limitation.
 
 ## Human Review Gate
 
