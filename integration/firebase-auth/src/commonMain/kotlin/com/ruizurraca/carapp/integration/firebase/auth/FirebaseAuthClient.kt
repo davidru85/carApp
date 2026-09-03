@@ -36,10 +36,13 @@ import kotlin.time.Instant
 class FirebaseAuthClient internal constructor(
     private val gateway: FirebaseAuthGateway,
     private val clock: AppClock = AppClock { Clock.System.now() },
+    coroutineScope: kotlinx.coroutines.CoroutineScope =
+        kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default,
+        ),
 ) : AuthClient,
     TokenProvider {
     constructor() : this(GitLiveFirebaseAuthGateway())
-    constructor(clock: AppClock) : this(GitLiveFirebaseAuthGateway(), clock)
 
     private val mutableAuthState = MutableStateFlow(gateway.currentUser.toAuthState())
     override val authState: StateFlow<AuthState> = mutableAuthState
@@ -53,10 +56,13 @@ class FirebaseAuthClient internal constructor(
             Outcome.Err(failure.toAuthError())
         }
 
-    override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> =
         try {
             val current = gateway.currentUser
-            if (current != null && current.isAnonymous) {
+            if (current != null && current.isAnonymous && !allowUidChange) {
                 Outcome.Err(AuthError.UidWouldChange)
             } else {
                 val user =
@@ -161,6 +167,8 @@ class FirebaseAuthClient internal constructor(
 
 internal interface FirebaseAuthGateway {
     val currentUser: FirebaseAuthUser?
+
+    val authStateChanged: kotlinx.coroutines.flow.Flow<FirebaseAuthUser?> get() = kotlinx.coroutines.flow.emptyFlow()
 
     suspend fun signInAnonymously(): FirebaseAuthUser
 
@@ -341,7 +349,7 @@ private suspend inline fun <T> safeAuthCall(block: () -> T): T =
         throw FirebaseAuthGatewayException.Unknown(failure)
     }
 
-private fun mapAuthException(failure: FirebaseException): FirebaseAuthGatewayException =
+internal fun mapAuthException(failure: FirebaseException): FirebaseAuthGatewayException =
     when (failure) {
         is FirebaseAuthUserCollisionException -> FirebaseAuthGatewayException.UserCollision(failure)
         is FirebaseAuthRecentLoginRequiredException -> FirebaseAuthGatewayException.RequiresRecentLogin(failure)
@@ -369,7 +377,7 @@ private fun mapInvalidCredentialsException(
         FirebaseAuthGatewayException.Provider(failure)
     }
 
-private fun mapFirebaseAuthException(failure: FirebaseAuthException): FirebaseAuthGatewayException {
+internal fun mapFirebaseAuthException(failure: FirebaseAuthException): FirebaseAuthGatewayException {
     if (isCancellation(failure.code, failure.message)) {
         return FirebaseAuthGatewayException.Cancelled(failure)
     }
@@ -399,7 +407,7 @@ private fun mapGenericFirebaseException(failure: FirebaseException): FirebaseAut
         FirebaseAuthGatewayException.Unknown(failure)
     }
 
-private fun isCancellation(
+internal fun isCancellation(
     code: String?,
     message: String?,
 ): Boolean {
@@ -475,6 +483,10 @@ internal sealed class FirebaseAuthGatewayException(
         cause: Throwable,
     ) : FirebaseAuthGatewayException(cause)
 
+    class PermissionDenied(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
     class Unknown(
         cause: Throwable,
     ) : FirebaseAuthGatewayException(cause)
@@ -510,6 +522,7 @@ private fun FirebaseAuthGatewayException.toAuthError(): AuthError =
         is FirebaseAuthGatewayException.UserCollision -> AuthError.CredentialAlreadyInUse
         is FirebaseAuthGatewayException.RequiresRecentLogin -> AuthError.RequiresRecentLogin
         is FirebaseAuthGatewayException.AccountDeletionRemoteFailed -> AuthError.AccountDeletionRemoteFailed
+        is FirebaseAuthGatewayException.PermissionDenied -> AuthError.PermissionDenied
         is FirebaseAuthGatewayException.Network -> AuthError.NetworkUnavailable
         is FirebaseAuthGatewayException.Provider -> AuthError.ProviderUnavailable
         is FirebaseAuthGatewayException.Unknown -> AuthError.Unknown

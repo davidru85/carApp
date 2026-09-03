@@ -50,7 +50,10 @@ interface AuthClient {
 
     suspend fun signInAnonymously(): Outcome<AuthSession, AuthError>
 
-    suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError>
+    suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean = false,
+    ): Outcome<AuthSession, AuthError>
 
     suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError>
 

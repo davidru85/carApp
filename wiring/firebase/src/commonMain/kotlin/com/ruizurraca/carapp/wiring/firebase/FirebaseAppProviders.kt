@@ -54,6 +54,7 @@ fun firebaseAppProviders(): AppProviders {
     return firebaseAppProviders(
         databaseFactory = createStagedDatabaseFactory(),
         authClient = stagedAuthClient(authState),
+        tokenProvider = stagedTokenProvider(),
         remoteSyncSource = stagedRemoteSyncSource(),
     )
 }
@@ -67,6 +68,7 @@ fun firebaseAppProviders(
     return firebaseAppProviders(
         databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
         authClient = authClient,
+        tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
         localeProvider = localeProvider,
     )
@@ -75,6 +77,7 @@ fun firebaseAppProviders(
 internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
     authClient: AuthClient,
+    tokenProvider: TokenProvider,
     remoteSyncSource: RemoteSyncSource,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
 ): AppProviders {
@@ -83,7 +86,7 @@ internal fun firebaseAppProviders(
     return object : AppProviders {
         override val databaseFactory = databaseFactory
         override val authClient = authClient
-        override val tokenProvider = (authClient as? TokenProvider) ?: stagedTokenProvider()
+        override val tokenProvider = tokenProvider
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
         override val analyticsTracker = stagedAnalyticsTracker()
@@ -104,8 +107,10 @@ private fun stagedAuthClient(authState: StateFlow<AuthState>): AuthClient =
 
         override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = providerUnavailable()
 
-        override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-            providerUnavailable()
+        override suspend fun signInWithCredential(
+            credential: NativeAuthCredential,
+            allowUidChange: Boolean,
+        ): Outcome<AuthSession, AuthError> = providerUnavailable()
 
         override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
             providerUnavailable()

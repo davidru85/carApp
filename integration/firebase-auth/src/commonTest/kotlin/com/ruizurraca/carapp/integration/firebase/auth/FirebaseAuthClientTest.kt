@@ -37,6 +37,33 @@ class FirebaseAuthClientTest {
     }
 
     @Test
+    fun authStateStartsAtUnknownBeforeInitialGatewayEmission() =
+        runTest {
+            val gateway = FakeFirebaseAuthGateway(autoEmitAuthState = false)
+            val client = FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) }, coroutineScope = backgroundScope)
+
+            assertEquals(AuthState.Unknown, client.authState.value)
+
+            gateway.emitAuthState(anonymousUser("newly-emitted-user"))
+            val session = assertIs<AuthState.SignedIn>(client.authState.value).session
+            assertEquals("newly-emitted-user", session.uid)
+        }
+
+    @Test
+    fun authStateObservesExternalTransitionsFromGateway() =
+        runTest {
+            val user = anonymousUser("retained-user")
+            val gateway = FakeFirebaseAuthGateway(currentUser = user)
+            val client = FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) }, coroutineScope = backgroundScope)
+
+            assertEquals(AuthState.SignedIn(user.toSession()), client.authState.value)
+
+            // External event: session cleaned up or deleted remotely
+            gateway.emitAuthState(null)
+            assertEquals(AuthState.SignedOut, client.authState.value)
+        }
+
+    @Test
     fun anonymousSignInReturnsAndPublishesTheFirebaseSession() =
         runTest {
             val gateway =
@@ -269,6 +296,31 @@ class FirebaseAuthClientTest {
         }
 
     @Test
+    fun signInWithCredentialWhenAnonymousAllowsUidChangeWhenExplicitlyRequested() =
+        runTest {
+            val initialAnonymous = anonymousUser("user-123")
+            val permanentUser =
+                FirebaseAuthUser(
+                    uid = "different-permanent-uid",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = initialAnonymous, googleUser = permanentUser)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Google(idToken = "google-id-token", accessToken = null),
+                    allowUidChange = true,
+                )
+
+            val session = assertIs<Outcome.Ok<AuthSession>>(result).value
+            assertEquals("different-permanent-uid", session.uid)
+            assertEquals(false, session.isAnonymous)
+            assertEquals(AuthState.SignedIn(session), client.authState.value)
+        }
+
+    @Test
     fun reauthenticateWithCredentialSucceedsAndUpdatesSession() =
         runTest {
             val user =
@@ -288,6 +340,27 @@ class FirebaseAuthClientTest {
             val session = assertIs<Outcome.Ok<AuthSession>>(result).value
             assertEquals("user-123", session.uid)
             assertEquals(AuthState.SignedIn(session), client.authState.value)
+        }
+
+    @Test
+    fun reauthenticateForcesTokenRefreshAndReMintsToken() =
+        runTest {
+            val user =
+                FirebaseAuthUser(
+                    uid = "user-123",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = user, reauthenticatedUser = user)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.reauthenticate(
+                    NativeAuthCredential.Google(idToken = "fresh-id-token", accessToken = null),
+                )
+
+            assertIs<Outcome.Ok<AuthSession>>(result)
+            assertEquals(true, gateway.lastForceRefreshToken)
         }
 
     @Test
@@ -320,7 +393,6 @@ class FirebaseAuthClientTest {
 
             assertIs<Outcome.Ok<Unit>>(result)
             assertEquals("fresh-id-token", gateway.lastServerDeleteToken)
-            assertFalse(gateway.clientSdkDeleteCalled)
         }
 
     @Test
@@ -341,7 +413,6 @@ class FirebaseAuthClientTest {
             val error = assertIs<Outcome.Err<AuthError>>(result).error
             assertEquals(AuthError.RequiresRecentLogin, error)
             assertEquals(null, gateway.lastServerDeleteToken)
-            assertFalse(gateway.clientSdkDeleteCalled)
         }
 
     @Test
@@ -367,7 +438,48 @@ class FirebaseAuthClientTest {
 
             val error = assertIs<Outcome.Err<AuthError>>(result).error
             assertEquals(AuthError.AccountDeletionRemoteFailed, error)
-            assertFalse(gateway.clientSdkDeleteCalled)
+        }
+
+    @Test
+    fun deleteAccountMapsPermissionDeniedToPermissionDenied() =
+        runTest {
+            val user = anonymousUser("perm-denied-user")
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            val token = AuthToken("token", issuedAt, issuedAt.plus(kotlin.time.Duration.parse("1h")))
+
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = user,
+                    idTokenResult = token,
+                    throwOnDeleteServer =
+                        FirebaseAuthGatewayException.PermissionDenied(
+                            RuntimeException("Caller UID mismatch / IAM rejected"),
+                        ),
+                )
+            val clock = AppClock { issuedAt }
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+
+            val result = client.deleteAccount()
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.PermissionDenied, error)
+        }
+
+    @Test
+    fun deleteAccountMapsGetIdTokenFailureToGatewayError() =
+        runTest {
+            val user = anonymousUser("id-token-fail-user")
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = user,
+                    throwOnGetIdToken = FirebaseAuthGatewayException.Network(RuntimeException("Network down")),
+                )
+            val client = FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) })
+
+            val result = client.deleteAccount()
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.NetworkUnavailable, error)
         }
 
     @Test
@@ -482,15 +594,32 @@ private class FakeFirebaseAuthGateway(
     var throwOnReauth: FirebaseAuthGatewayException? = null,
     var throwOnGetIdToken: FirebaseAuthGatewayException? = null,
     var throwOnDeleteServer: FirebaseAuthGatewayException? = null,
+    autoEmitAuthState: Boolean = true,
 ) : FirebaseAuthGateway {
+    private val _authStateFlow = kotlinx.coroutines.flow.MutableSharedFlow<FirebaseAuthUser?>(replay = 1)
+    override val authStateChanged: kotlinx.coroutines.flow.Flow<FirebaseAuthUser?> = _authStateFlow
+
+    init {
+        if (autoEmitAuthState) {
+            _authStateFlow.tryEmit(currentUser)
+        }
+    }
+
+    fun emitAuthState(user: FirebaseAuthUser?) {
+        currentUser = user
+        _authStateFlow.tryEmit(user)
+    }
+
     var signOutCalled: Boolean = false
     var lastServerDeleteToken: String? = null
-    var clientSdkDeleteCalled: Boolean = false
     var lastForceRefreshToken: Boolean? = null
 
     override suspend fun signInAnonymously(): FirebaseAuthUser {
         throwOnSignIn?.let { throw it }
-        return checkNotNull(signedInUser).also { currentUser = it }
+        return checkNotNull(signedInUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun signInWithGoogle(
@@ -498,7 +627,10 @@ private class FakeFirebaseAuthGateway(
         accessToken: String?,
     ): FirebaseAuthUser {
         throwOnSignIn?.let { throw it }
-        return checkNotNull(googleUser).also { currentUser = it }
+        return checkNotNull(googleUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun signInWithApple(
@@ -506,7 +638,10 @@ private class FakeFirebaseAuthGateway(
         rawNonce: String,
     ): FirebaseAuthUser {
         throwOnSignIn?.let { throw it }
-        return checkNotNull(appleUser).also { currentUser = it }
+        return checkNotNull(appleUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun linkGoogle(
@@ -514,7 +649,10 @@ private class FakeFirebaseAuthGateway(
         accessToken: String?,
     ): FirebaseAuthUser {
         throwOnLink?.let { throw it }
-        return checkNotNull(linkedUser).also { currentUser = it }
+        return checkNotNull(linkedUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun linkApple(
@@ -522,7 +660,10 @@ private class FakeFirebaseAuthGateway(
         rawNonce: String,
     ): FirebaseAuthUser {
         throwOnLink?.let { throw it }
-        return checkNotNull(linkedUser).also { currentUser = it }
+        return checkNotNull(linkedUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun reauthenticateWithGoogle(
@@ -530,7 +671,10 @@ private class FakeFirebaseAuthGateway(
         accessToken: String?,
     ): FirebaseAuthUser {
         throwOnReauth?.let { throw it }
-        return checkNotNull(reauthenticatedUser).also { currentUser = it }
+        return checkNotNull(reauthenticatedUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun reauthenticateWithApple(
@@ -538,12 +682,16 @@ private class FakeFirebaseAuthGateway(
         rawNonce: String,
     ): FirebaseAuthUser {
         throwOnReauth?.let { throw it }
-        return checkNotNull(reauthenticatedUser).also { currentUser = it }
+        return checkNotNull(reauthenticatedUser).also {
+            currentUser = it
+            _authStateFlow.tryEmit(it)
+        }
     }
 
     override suspend fun signOut() {
         signOutCalled = true
         currentUser = null
+        _authStateFlow.tryEmit(null)
     }
 
     override suspend fun getIdToken(forceRefresh: Boolean): AuthToken {

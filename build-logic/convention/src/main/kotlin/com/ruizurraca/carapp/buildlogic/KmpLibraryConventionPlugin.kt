@@ -31,7 +31,9 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
             androidLibrary.minSdk = libs.intVersion("minSdk")
             // The AGP KMP library plugin creates no host test runner by default; without this the
             // common tests would only ever execute on the Kotlin/Native targets.
-            androidLibrary.withHostTestBuilder {}
+            androidLibrary.withHostTest {
+                isReturnDefaultValues = true
+            }
 
             iosArm64()
             iosSimulatorArm64()

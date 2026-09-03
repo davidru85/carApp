@@ -88,7 +88,7 @@ class AuthContractsTest {
             )
             assertEquals(
                 AuthError.ProviderUnavailable,
-                (client.signInWithCredential(credential) as Outcome.Err).error,
+                (client.signInWithCredential(credential, allowUidChange = true) as Outcome.Err).error,
             )
             assertEquals(
                 AuthError.ProviderUnavailable,
@@ -120,8 +120,10 @@ private class ContractAuthClient :
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = unavailable()
 
-    override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-        unavailable()
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> = unavailable()
 
     override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         unavailable()

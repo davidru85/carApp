@@ -11,12 +11,9 @@ import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
-import com.ruizurraca.carapp.core.common.LocaleInfo
-import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
-import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -25,7 +22,6 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
-import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -51,6 +47,7 @@ class FirebaseAppProvidersTest {
             firebaseAppProviders(
                 databaseFactory = databaseFactory,
                 authClient = authClient,
+                tokenProvider = authClient,
                 remoteSyncSource = remoteSyncSource,
             )
 
@@ -82,6 +79,7 @@ class FirebaseAppProvidersTest {
             firebaseAppProviders(
                 databaseFactory = databaseFactory,
                 authClient = authClient,
+                tokenProvider = authClient,
                 remoteSyncSource = remoteSyncSource,
             )
 
@@ -98,8 +96,10 @@ private class MutableAuthClient :
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = unavailable()
 
-    override suspend fun signInWithCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-        unavailable()
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> = unavailable()
 
     override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         unavailable()
