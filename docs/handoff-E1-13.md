@@ -60,8 +60,16 @@
   this handoff; recorded the unreachable supported-code/non-two-digits branch as a residual
   limitation. The focused refactor command passed 97 executed tasks, including six Native tests,
   affected lint, the full convention suite and `contractCheck` with 111 aligned decisions/ADRs,
-  none unresolved and no pending assertion. The append-only project log and PR evidence will be
-  updated with the final complete-command results.
+  none unresolved and no pending assertion.
+- Final local verification complete: the exact contract/convention command passed; the exact
+  complete non-instrumented command passed with 629 actionable tasks (123 executed, 55 from cache,
+  451 up-to-date); forced provider decoupling passed 229 executed tasks and re-executed the six
+  Native tests. The append-only project log now corrects the original completion entry.
+- Review commits: RED `6bf31fb`, GREEN `278d0e3`, REFACTOR `afbf54a`; production behavior, D-75,
+  D-108, the Swift ABI and Firebase Apple dependency authority are unchanged.
+- Exact next step: commit this final evidence checkpoint, push the review round to the existing
+  branch, replace the overclaimed PR description, wait for every required check and leave PR #50
+  open for owner review.
 - Required verification: the focused RED and GREEN routes, the exact complete non-instrumented
   command from `AGENTS.md`, `./gradlew contractCheck :build-logic:convention:test`, forced
   provider-decoupling, `git diff --check` and all PR checks.
@@ -195,6 +203,35 @@
   review finding.
 
 ## Verification Run
+
+### Review round 1
+
+- RED `6bf31fb`: `./gradlew :build-logic:convention:test --tests
+  com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
+  --rerun-tasks` — failed as intended after compiling and executing one test. The exact-source and
+  single-source-directory assertions passed first; the failure named the missing
+  `localeCurrencyOutsideTheMvpSetFallsBackToEur` declaration.
+- GREEN `278d0e3`: `./gradlew :shared:iosSimulatorArm64Test
+  :build-logic:convention:test --tests
+  com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification
+  :shared:ktlintCheck :composition:ios:ktlintCheck
+  :composition:ios:linkDebugFrameworkIosSimulatorArm64 --rerun-tasks` — passed, 117 executed tasks;
+  six Native provider/premise tests passed and the production simulator framework linked.
+- REFACTOR `afbf54a`: `./gradlew :shared:iosSimulatorArm64Test :shared:ktlintCheck
+  :composition:ios:ktlintCheck contractCheck :build-logic:convention:test --rerun-tasks` — passed,
+  97 executed tasks; six Native tests, affected lint, every convention test and contract parity
+  passed.
+- `./gradlew contractCheck :build-logic:convention:test` — passed, 8 actionable tasks (1 executed,
+  7 up-to-date); `contractCheck` reported 111 aligned decisions/ADRs, none unresolved, no pending
+  assertion, the exact D-75 exclusion set and unchanged Swift allowlist.
+- Exact complete non-instrumented command from `AGENTS.md` — passed, 629 actionable tasks (123
+  executed, 55 from cache, 451 up-to-date), including lint, detekt, architecture, contracts,
+  convention tests, coverage, Android assembly/unit tests and required Android-host/Native tests.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test
+  --rerun-tasks` — passed, 229 executed tasks; the provider-free graph re-executed all six
+  `IosLocaleProviderTest` cases with zero failures, errors or skips.
+
+### Original delivery
 
 - RED: `./gradlew :build-logic:convention:test --tests
   com.ruizurraca.carapp.buildlogic.IosCompositionContractTest.iosHostLocaleProviderTestsRunInCanonicalVerification

@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-03 — E1-13 review correction: discriminating locale evidence
+
+- **Type:** correction
+- **Story / Decision:** `E1-13` / `D-109`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** corrects the E1-13 completion entry below: the `ja_JP` provider case falls back
+  because `JPY` is outside `SUPPORTED_CURRENCY_CODES`, not independently because Foundation reports
+  non-two fraction digits. The Native suite now has six tests covering reachable currency-code,
+  language-tag and nullable-region behavior plus a direct Foundation fraction-digit premise anchor;
+  the build guard now requires the exact provider file and exactly one recursively compiled Kotlin
+  source in the reused directory.
+- **Why:** all 21 MVP-supported currencies are two-decimal by contract, so real Foundation data
+  cannot discriminate the defensive "supported code with non-two fraction digits" branch. The
+  review rejected a fake supported currency and a wider production seam, retained the production
+  guard unchanged and named the residual limitation explicitly. Android evidence was corrected for
+  the same limitation.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, D-109 decision mirrors, ADR-0109,
+  ADR-0110, `docs/handoff-E1-10.md`, `docs/handoff-E1-13.md`, the iOS provider tests, the D-109
+  build-logic guard and this log.
+- **Verification:** review RED `6bf31fb` failed on the missing renamed JPY test; GREEN `278d0e3`
+  passed six Native tests in 117 executed tasks; REFACTOR `afbf54a` passed the focused 97-task
+  route. The exact contract/convention command passed with 111 decisions/ADRs aligned, none
+  unresolved and no pending assertion; the complete non-instrumented command passed with 629
+  actionable tasks; forced provider decoupling passed 229 executed tasks.
+- **Follow-ups / risks:** the defensive supported-code/non-two-digits branch remains unreachable
+  with real platform data and is protected only by the direct Foundation premise anchor. PR #50
+  remains under mandatory owner review and must not be merged by an agent.
+
 ### 2026-09-03 — E1-13 executable iOS locale-provider behavior coverage completed
 
 - **Type:** story
