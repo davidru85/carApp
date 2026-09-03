@@ -39,6 +39,33 @@
 
 ## In-Progress Checkpoint
 
+### Review round 1 — 2026-09-03
+
+- Branch and pull request: `story/E1-13-ios-locale-coverage`, PR #50; the agent will not merge it.
+- Review scope accepted: correct the non-discriminating JPY test and overclaimed evidence, enforce
+  the exact D-109 reused source and directory contents, and cover Foundation's nullable region and
+  currency-code branches without changing production behavior.
+- Constraints rechecked: D-75, D-108, the closed Swift ABI and the single Firebase Apple dependency
+  authority remain unchanged. No owner-only decision, new dependency or scope change is required.
+- Current phase: RED complete. The focused convention test compiled and executed, then failed at
+  the new D-109 assertion because `localeCurrencyOutsideTheMvpSetFallsBackToEur` does not exist yet.
+  The preceding exact-source-file and single-Kotlin-file directory assertions passed, isolating the
+  failure to the missing review coverage rather than test setup.
+- Planned GREEN: rename and align the unsupported-currency test with Android, add the direct
+  Foundation fraction-digit premise anchor, and add the language-only locale case. The production
+  provider and its testability seam remain unchanged.
+- Planned REFACTOR: correct ADR-0109, ADR-0110, this handoff, the append-only project log and PR
+  evidence; record the unreachable supported-code/non-two-digits branch as a residual limitation.
+- Required verification: the focused RED and GREEN routes, the exact complete non-instrumented
+  command from `AGENTS.md`, `./gradlew contractCheck :build-logic:convention:test`, forced
+  provider-decoupling, `git diff --check` and all PR checks.
+- Verification note: an auxiliary attempt to run
+  `:build-logic:convention:ktlintCheck` failed at task selection because that included-build project
+  exposes no such task. It tested no artifact; the required root `ktlintCheck` remains part of the
+  final exact command.
+
+### Original delivery checkpoint
+
 - Date: 2026-09-03.
 - Branch and base: `story/E1-13-ios-locale-coverage`, based on up-to-date `main`.
 - Current phase and latest commit: TDD delivery complete — RED `4860163`, GREEN `77737b2` and
