@@ -17,6 +17,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -582,32 +583,42 @@ class FirebaseAuthClientTest {
             val gateway =
                 FakeFirebaseAuthGateway(
                     currentUser = FirebaseAuthUser(uid = "user-1", isAnonymous = false, providerIds = emptySet()),
-                    throwOnGetIdToken = FirebaseAuthGatewayException.Provider(IllegalStateException("Missing iat")),
+                    tokenClaims = emptyMap(),
                 )
             val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val outcome = client.deleteAccount()
 
-            assertIs<Outcome.Err<AuthError.ProviderUnavailable>>(outcome)
+            val error = assertIs<Outcome.Err<AuthError>>(outcome).error
+            assertEquals(AuthError.ProviderUnavailable, error)
             assertEquals(null, gateway.lastServerDeleteToken)
         }
 
     @Test
     fun deleteAccountPropagatesPermissionDeniedFromDeletionInvoker() =
         runTest {
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            val token = AuthToken("token", issuedAt, issuedAt + 1.hours)
             val gateway =
                 FakeFirebaseAuthGateway(
                     currentUser = FirebaseAuthUser(uid = "user-1", isAnonymous = false, providerIds = emptySet()),
+                    idTokenResult = token,
                     throwOnDeleteServer =
                         FirebaseAuthGatewayException.PermissionDenied(
                             IllegalStateException("Caller UID mismatch"),
                         ),
                 )
-            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
+            val client =
+                FirebaseAuthClient(
+                    gateway = gateway,
+                    clock = AppClock { issuedAt },
+                    coroutineScope = backgroundScope,
+                )
 
             val outcome = client.deleteAccount()
 
-            assertIs<Outcome.Err<AuthError.PermissionDenied>>(outcome)
+            val error = assertIs<Outcome.Err<AuthError>>(outcome).error
+            assertEquals(AuthError.PermissionDenied, error)
         }
 
     @Test
@@ -675,6 +686,7 @@ private class FakeFirebaseAuthGateway(
     var throwOnReauth: FirebaseAuthGatewayException? = null,
     var throwOnGetIdToken: FirebaseAuthGatewayException? = null,
     var throwOnDeleteServer: FirebaseAuthGatewayException? = null,
+    var tokenClaims: Map<String, Any>? = null,
     autoEmitAuthState: Boolean = true,
 ) : FirebaseAuthGateway {
     private val _authStateChanged = kotlinx.coroutines.flow.MutableSharedFlow<FirebaseAuthUser?>(replay = 1)
@@ -777,6 +789,10 @@ private class FakeFirebaseAuthGateway(
 
     override suspend fun getIdToken(forceRefresh: Boolean): AuthToken {
         throwOnGetIdToken?.let { throw it }
+        tokenClaims?.let { claims ->
+            val (issuedAt, expiresAt) = parseTokenTimestamps(claims)
+            return AuthToken(value = "token-from-claims", issuedAt = issuedAt, expiresAt = expiresAt)
+        }
         lastForceRefreshToken = forceRefresh
         return idTokenResult
     }
