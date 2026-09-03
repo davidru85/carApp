@@ -3,7 +3,10 @@ package com.ruizurraca.carapp.integration.firebase.auth
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
+import com.ruizurraca.carapp.core.auth.AuthToken
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.auth.TokenProvider
+import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Outcome
@@ -15,12 +18,17 @@ import dev.gitlive.firebase.auth.FirebaseUser
 import dev.gitlive.firebase.auth.auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /** Firebase-backed authentication boundary. Later auth stories complete the non-anonymous flows. */
 class FirebaseAuthClient internal constructor(
     private val gateway: FirebaseAuthGateway,
-) : AuthClient {
+    private val clock: AppClock = AppClock { Clock.System.now() },
+) : AuthClient,
+    TokenProvider {
     constructor() : this(GitLiveFirebaseAuthGateway())
+    constructor(clock: AppClock) : this(GitLiveFirebaseAuthGateway(), clock)
 
     private val mutableAuthState = MutableStateFlow(gateway.currentUser.toAuthState())
     override val authState: StateFlow<AuthState> = mutableAuthState
@@ -46,18 +54,30 @@ class FirebaseAuthClient internal constructor(
     override suspend fun signOut(): Outcome<Unit, AuthError> = providerUnavailable()
 
     override suspend fun deleteAccount(): Outcome<Unit, AuthError> = providerUnavailable()
+
+    override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = providerUnavailable()
 }
 
 internal interface FirebaseAuthGateway {
     val currentUser: FirebaseAuthUser?
 
     suspend fun signInAnonymously(): FirebaseAuthUser
+    suspend fun signInWithGoogle(idToken: String, accessToken: String?): FirebaseAuthUser = throw UnsupportedOperationException()
+    suspend fun signInWithApple(idToken: String, rawNonce: String): FirebaseAuthUser = throw UnsupportedOperationException()
+    suspend fun linkGoogle(idToken: String, accessToken: String?): FirebaseAuthUser = throw UnsupportedOperationException()
+    suspend fun linkApple(idToken: String, rawNonce: String): FirebaseAuthUser = throw UnsupportedOperationException()
+    suspend fun reauthenticateWithGoogle(idToken: String, accessToken: String?): FirebaseAuthUser = throw UnsupportedOperationException()
+    suspend fun reauthenticateWithApple(idToken: String, rawNonce: String): FirebaseAuthUser = throw UnsupportedOperationException()
+    suspend fun signOut(): Unit = throw UnsupportedOperationException()
+    suspend fun getIdToken(forceRefresh: Boolean): AuthToken = throw UnsupportedOperationException()
+    suspend fun executeServerAccountDeletion(idToken: String): Unit = throw UnsupportedOperationException()
 }
 
 internal data class FirebaseAuthUser(
     val uid: String,
     val isAnonymous: Boolean,
     val providerIds: Set<String>,
+    val createdAt: Instant? = null,
 )
 
 private class GitLiveFirebaseAuthGateway : FirebaseAuthGateway {
@@ -79,6 +99,22 @@ private class GitLiveFirebaseAuthGateway : FirebaseAuthGateway {
 internal sealed class FirebaseAuthGatewayException(
     cause: Throwable,
 ) : Exception(cause) {
+    class Cancelled(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
+    class UserCollision(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
+    class RequiresRecentLogin(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
+    class AccountDeletionRemoteFailed(
+        cause: Throwable,
+    ) : FirebaseAuthGatewayException(cause)
+
     class Network(
         cause: Throwable,
     ) : FirebaseAuthGatewayException(cause)
@@ -102,7 +138,7 @@ private fun FirebaseUser.toIntegrationUser(): FirebaseAuthUser =
 private fun FirebaseAuthUser?.toAuthState(): AuthState =
     this?.let { user -> AuthState.SignedIn(user.toSession()) } ?: AuthState.SignedOut
 
-private fun FirebaseAuthUser.toSession(): AuthSession =
+internal fun FirebaseAuthUser.toSession(): AuthSession =
     AuthSession(
         uid = uid,
         isAnonymous = isAnonymous,
@@ -112,10 +148,15 @@ private fun FirebaseAuthUser.toSession(): AuthSession =
                 if (GOOGLE_PROVIDER_ID in providerIds) add(AuthProvider.GOOGLE)
                 if (APPLE_PROVIDER_ID in providerIds) add(AuthProvider.APPLE)
             },
+        createdAt = createdAt,
     )
 
 private fun FirebaseAuthGatewayException.toAuthError(): AuthError =
     when (this) {
+        is FirebaseAuthGatewayException.Cancelled -> AuthError.Cancelled
+        is FirebaseAuthGatewayException.UserCollision -> AuthError.CredentialAlreadyInUse
+        is FirebaseAuthGatewayException.RequiresRecentLogin -> AuthError.RequiresRecentLogin
+        is FirebaseAuthGatewayException.AccountDeletionRemoteFailed -> AuthError.AccountDeletionRemoteFailed
         is FirebaseAuthGatewayException.Network -> AuthError.NetworkUnavailable
         is FirebaseAuthGatewayException.Provider -> AuthError.ProviderUnavailable
         is FirebaseAuthGatewayException.Unknown -> AuthError.Unknown

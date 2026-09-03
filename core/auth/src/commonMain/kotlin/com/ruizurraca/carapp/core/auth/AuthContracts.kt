@@ -10,6 +10,7 @@ data class AuthSession(
     val uid: String,
     val isAnonymous: Boolean,
     val providers: Set<AuthProvider>,
+    val createdAt: Instant? = null,
 )
 
 sealed interface AuthState {

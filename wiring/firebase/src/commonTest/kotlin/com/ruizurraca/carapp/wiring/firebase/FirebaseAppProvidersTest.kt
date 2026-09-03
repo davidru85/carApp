@@ -7,11 +7,16 @@ import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.LocaleInfo
+import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
+import com.ruizurraca.carapp.core.model.CurrencyCode
+import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -64,6 +69,19 @@ class FirebaseAppProvidersTest {
             )
 
         assertEquals(OwnerId("anonymous-owner"), providers.ownerContext.current)
+    }
+
+    @Test
+    fun productionFirebaseProvidersExposesRealAuthClientAndTokenProvider() {
+        val providers =
+            firebaseAppProviders(
+                databaseFilePath = "test.db",
+                localeProvider = LocaleProvider { LocaleInfo("en", null, CurrencyCode("EUR")) },
+            )
+
+        assertIs<FirebaseAuthClient>(providers.authClient)
+        assertIs<TokenProvider>(providers.tokenProvider)
+        assertSame<Any>(providers.authClient, providers.tokenProvider)
     }
 }
 

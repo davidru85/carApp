@@ -14,16 +14,19 @@ import kotlin.time.Instant
 class AuthContractsTest {
     @Test
     fun authSessionRetainsItsIdentityAndProviders() {
+        val createdAt = Instant.fromEpochMilliseconds(1_700_000_000_000L)
         val session =
             AuthSession(
                 uid = "owner-1",
                 isAnonymous = false,
                 providers = setOf(AuthProvider.GOOGLE, AuthProvider.APPLE),
+                createdAt = createdAt,
             )
 
         assertEquals("owner-1", session.uid)
         assertEquals(false, session.isAnonymous)
         assertEquals(setOf(AuthProvider.GOOGLE, AuthProvider.APPLE), session.providers)
+        assertEquals(createdAt, session.createdAt)
     }
 
     @Test

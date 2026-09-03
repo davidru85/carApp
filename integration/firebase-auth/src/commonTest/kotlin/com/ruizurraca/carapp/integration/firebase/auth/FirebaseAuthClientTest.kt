@@ -2,12 +2,20 @@ package com.ruizurraca.carapp.integration.firebase.auth
 
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
+import com.ruizurraca.carapp.core.auth.AuthToken
+import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.FRESH_LOGIN_THRESHOLD_MS
 import com.ruizurraca.carapp.core.common.Outcome
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class FirebaseAuthClientTest {
     @Test
@@ -46,18 +54,473 @@ class FirebaseAuthClientTest {
             assertEquals(setOf(AuthProvider.ANONYMOUS), session.providers)
             assertEquals(AuthState.SignedIn(session), client.authState.value)
         }
+
+    @Test
+    fun anonymousSignInRetainsCreationTimestampFromMetadata() =
+        runTest {
+            val createdAt = Instant.fromEpochMilliseconds(1_700_000_000_000L)
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = null,
+                    signedInUser = anonymousUser("meta-uid", createdAt = createdAt),
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result = client.signInAnonymously()
+
+            val session = assertIs<Outcome.Ok<AuthSession>>(result).value
+            assertEquals(createdAt, session.createdAt)
+        }
+
+    @Test
+    fun googleSignInExchangesNativeCredentialAndUpdatesSession() =
+        runTest {
+            val googleUser =
+                FirebaseAuthUser(
+                    uid = "google-uid",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = null, googleUser = googleUser)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Google(idToken = "google-id-token", accessToken = "google-access-token"),
+                )
+
+            val session = assertIs<Outcome.Ok<AuthSession>>(result).value
+            assertEquals("google-uid", session.uid)
+            assertEquals(false, session.isAnonymous)
+            assertEquals(setOf(AuthProvider.GOOGLE), session.providers)
+            assertEquals(AuthState.SignedIn(session), client.authState.value)
+        }
+
+    @Test
+    fun appleSignInExchangesNativeCredentialAndUpdatesSession() =
+        runTest {
+            val appleUser =
+                FirebaseAuthUser(
+                    uid = "apple-uid",
+                    isAnonymous = false,
+                    providerIds = setOf("apple.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = null, appleUser = appleUser)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Apple(idToken = "apple-id-token", rawNonce = "apple-raw-nonce"),
+                )
+
+            val session = assertIs<Outcome.Ok<AuthSession>>(result).value
+            assertEquals("apple-uid", session.uid)
+            assertEquals(false, session.isAnonymous)
+            assertEquals(setOf(AuthProvider.APPLE), session.providers)
+            assertEquals(AuthState.SignedIn(session), client.authState.value)
+        }
+
+    @Test
+    fun cancelledGoogleSignInProducesAuthErrorCancelled() =
+        runTest {
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = null,
+                    throwOnSignIn = FirebaseAuthGatewayException.Cancelled(RuntimeException("Dialog dismissed")),
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Google(idToken = "id-token", accessToken = null),
+                )
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.Cancelled, error)
+        }
+
+    @Test
+    fun cancelledAppleSignInProducesAuthErrorCancelled() =
+        runTest {
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = null,
+                    throwOnSignIn = FirebaseAuthGatewayException.Cancelled(RuntimeException("webContextCancelled")),
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Apple(idToken = "id-token", rawNonce = "nonce"),
+                )
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.Cancelled, error)
+        }
+
+    @Test
+    fun networkFailureDuringSignInProducesAuthErrorNetworkUnavailable() =
+        runTest {
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = null,
+                    throwOnSignIn = FirebaseAuthGatewayException.Network(RuntimeException("No connection")),
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Google(idToken = "id-token", accessToken = null),
+                )
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.NetworkUnavailable, error)
+        }
+
+    @Test
+    fun linkCredentialPreservesUidAndAddsProvider() =
+        runTest {
+            val initialUser = anonymousUser("user-123")
+            val linkedUser =
+                FirebaseAuthUser(
+                    uid = "user-123",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = initialUser, linkedUser = linkedUser)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.linkCredential(
+                    NativeAuthCredential.Google(idToken = "google-id-token", accessToken = null),
+                )
+
+            val session = assertIs<Outcome.Ok<AuthSession>>(result).value
+            assertEquals("user-123", session.uid)
+            assertEquals(false, session.isAnonymous)
+            assertEquals(setOf(AuthProvider.GOOGLE), session.providers)
+            assertEquals(AuthState.SignedIn(session), client.authState.value)
+        }
+
+    @Test
+    fun linkCredentialCollisionProducesCredentialAlreadyInUse() =
+        runTest {
+            val initialUser = anonymousUser("user-123")
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = initialUser,
+                    throwOnLink = FirebaseAuthGatewayException.UserCollision(RuntimeException("Credential collision")),
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.linkCredential(
+                    NativeAuthCredential.Google(idToken = "google-id-token", accessToken = null),
+                )
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.CredentialAlreadyInUse, error)
+            assertEquals(AuthState.SignedIn(initialUser.toSession()), client.authState.value)
+        }
+
+    @Test
+    fun linkCredentialWithMismatchedUidAbortsWithUidWouldChange() =
+        runTest {
+            val initialUser = anonymousUser("user-123")
+            val unexpectedUser =
+                FirebaseAuthUser(
+                    uid = "different-uid-456",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = initialUser, linkedUser = unexpectedUser)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.linkCredential(
+                    NativeAuthCredential.Google(idToken = "google-id-token", accessToken = null),
+                )
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.UidWouldChange, error)
+        }
+
+    @Test
+    fun signInWithCredentialWhileAnonymousSessionActiveAbortsWithUidWouldChange() =
+        runTest {
+            val initialAnonymous = anonymousUser("user-123")
+            val permanentUser =
+                FirebaseAuthUser(
+                    uid = "different-permanent-uid",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = initialAnonymous, googleUser = permanentUser)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.signInWithCredential(
+                    NativeAuthCredential.Google(idToken = "google-id-token", accessToken = null),
+                )
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.UidWouldChange, error)
+            assertEquals(AuthState.SignedIn(initialAnonymous.toSession()), client.authState.value)
+        }
+
+    @Test
+    fun reauthenticateWithCredentialSucceedsAndUpdatesSession() =
+        runTest {
+            val user =
+                FirebaseAuthUser(
+                    uid = "user-123",
+                    isAnonymous = false,
+                    providerIds = setOf("google.com"),
+                )
+            val gateway = FakeFirebaseAuthGateway(currentUser = user, reauthenticatedUser = user)
+            val client = FirebaseAuthClient(gateway)
+
+            val result =
+                client.reauthenticate(
+                    NativeAuthCredential.Google(idToken = "fresh-id-token", accessToken = null),
+                )
+
+            val session = assertIs<Outcome.Ok<AuthSession>>(result).value
+            assertEquals("user-123", session.uid)
+            assertEquals(AuthState.SignedIn(session), client.authState.value)
+        }
+
+    @Test
+    fun signOutSignsOutFromGatewayAndPublishesSignedOutState() =
+        runTest {
+            val user = anonymousUser("active-user")
+            val gateway = FakeFirebaseAuthGateway(currentUser = user)
+            val client = FirebaseAuthClient(gateway)
+
+            val result = client.signOut()
+
+            assertIs<Outcome.Ok<Unit>>(result)
+            assertTrue(gateway.signOutCalled)
+            assertEquals(AuthState.SignedOut, client.authState.value)
+        }
+
+    @Test
+    fun deleteAccountWithFreshTokenCallsServerOperationAndSucceeds() =
+        runTest {
+            val user = anonymousUser("to-delete-user")
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            val nowInstant = issuedAt.plus(kotlin.time.Duration.parse("60s")) // 60s < 300s (FRESH_LOGIN_THRESHOLD_MS)
+            val token = AuthToken("fresh-id-token", issuedAt, issuedAt.plus(kotlin.time.Duration.parse("1h")))
+
+            val gateway = FakeFirebaseAuthGateway(currentUser = user, idTokenResult = token)
+            val clock = AppClock { nowInstant }
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+
+            val result = client.deleteAccount()
+
+            assertIs<Outcome.Ok<Unit>>(result)
+            assertEquals("fresh-id-token", gateway.lastServerDeleteToken)
+            assertFalse(gateway.clientSdkDeleteCalled)
+        }
+
+    @Test
+    fun deleteAccountWithStaleTokenProducesRequiresRecentLoginWithoutCallingServer() =
+        runTest {
+            val user = anonymousUser("stale-user")
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            // Stale: elapsed is 301 seconds (> FRESH_LOGIN_THRESHOLD_MS = 300_000 ms)
+            val nowInstant = Instant.fromEpochMilliseconds(1_000_000L + FRESH_LOGIN_THRESHOLD_MS + 1_000L)
+            val token = AuthToken("stale-id-token", issuedAt, issuedAt.plus(kotlin.time.Duration.parse("1h")))
+
+            val gateway = FakeFirebaseAuthGateway(currentUser = user, idTokenResult = token)
+            val clock = AppClock { nowInstant }
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+
+            val result = client.deleteAccount()
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.RequiresRecentLogin, error)
+            assertEquals(null, gateway.lastServerDeleteToken)
+            assertFalse(gateway.clientSdkDeleteCalled)
+        }
+
+    @Test
+    fun deleteAccountMapsServerFailureToAccountDeletionRemoteFailed() =
+        runTest {
+            val user = anonymousUser("failing-delete-user")
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            val token = AuthToken("token", issuedAt, issuedAt.plus(kotlin.time.Duration.parse("1h")))
+
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = user,
+                    idTokenResult = token,
+                    throwOnDeleteServer =
+                        FirebaseAuthGatewayException.AccountDeletionRemoteFailed(
+                            RuntimeException("Server admin operation failed"),
+                        ),
+                )
+            val clock = AppClock { issuedAt }
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+
+            val result = client.deleteAccount()
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.AccountDeletionRemoteFailed, error)
+            assertFalse(gateway.clientSdkDeleteCalled)
+        }
+
+    @Test
+    fun deleteAccountMapsNetworkFailureToNetworkUnavailable() =
+        runTest {
+            val user = anonymousUser("net-fail-user")
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            val token = AuthToken("token", issuedAt, issuedAt.plus(kotlin.time.Duration.parse("1h")))
+
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = user,
+                    idTokenResult = token,
+                    throwOnDeleteServer = FirebaseAuthGatewayException.Network(RuntimeException("Timeout")),
+                )
+            val clock = AppClock { issuedAt }
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+
+            val result = client.deleteAccount()
+
+            val error = assertIs<Outcome.Err<AuthError>>(result).error
+            assertEquals(AuthError.NetworkUnavailable, error)
+        }
+
+    @Test
+    fun getIdTokenReturnsTokenWithIssuedAtAndExpiresAtTimestamps() =
+        runTest {
+            val issuedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L)
+            val expiresAt = Instant.fromEpochMilliseconds(1_700_003_600_000L)
+            val token = AuthToken("valid-jwt-token", issuedAt, expiresAt)
+
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = anonymousUser("uid"),
+                    idTokenResult = token,
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result = client.getIdToken(forceRefresh = false)
+
+            val tokenResult = assertIs<Outcome.Ok<AuthToken>>(result).value
+            assertEquals("valid-jwt-token", tokenResult.value)
+            assertEquals(issuedAt, tokenResult.issuedAt)
+            assertEquals(expiresAt, tokenResult.expiresAt)
+            assertEquals(false, gateway.lastForceRefreshToken)
+        }
+
+    @Test
+    fun getIdTokenForwardsForceRefreshFlag() =
+        runTest {
+            val token =
+                AuthToken(
+                    "refreshed-token",
+                    Instant.fromEpochMilliseconds(1_000),
+                    Instant.fromEpochMilliseconds(3_600_000),
+                )
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = anonymousUser("uid"),
+                    idTokenResult = token,
+                )
+            val client = FirebaseAuthClient(gateway)
+
+            val result = client.getIdToken(forceRefresh = true)
+
+            assertIs<Outcome.Ok<AuthToken>>(result)
+            assertEquals(true, gateway.lastForceRefreshToken)
+        }
 }
 
 private class FakeFirebaseAuthGateway(
-    override val currentUser: FirebaseAuthUser?,
+    override var currentUser: FirebaseAuthUser? = null,
     private val signedInUser: FirebaseAuthUser? = currentUser,
+    var googleUser: FirebaseAuthUser? = null,
+    var appleUser: FirebaseAuthUser? = null,
+    var linkedUser: FirebaseAuthUser? = null,
+    var reauthenticatedUser: FirebaseAuthUser? = null,
+    var idTokenResult: AuthToken =
+        AuthToken(
+            "fake-token",
+            Instant.fromEpochMilliseconds(1_000),
+            Instant.fromEpochMilliseconds(3_600_000),
+        ),
+    var throwOnSignIn: FirebaseAuthGatewayException? = null,
+    var throwOnLink: FirebaseAuthGatewayException? = null,
+    var throwOnReauth: FirebaseAuthGatewayException? = null,
+    var throwOnGetIdToken: FirebaseAuthGatewayException? = null,
+    var throwOnDeleteServer: FirebaseAuthGatewayException? = null,
 ) : FirebaseAuthGateway {
-    override suspend fun signInAnonymously(): FirebaseAuthUser = checkNotNull(signedInUser)
+    var signOutCalled: Boolean = false
+    var lastServerDeleteToken: String? = null
+    var clientSdkDeleteCalled: Boolean = false
+    var lastForceRefreshToken: Boolean? = null
+
+    override suspend fun signInAnonymously(): FirebaseAuthUser {
+        throwOnSignIn?.let { throw it }
+        return checkNotNull(signedInUser).also { currentUser = it }
+    }
+
+    override suspend fun signInWithGoogle(idToken: String, accessToken: String?): FirebaseAuthUser {
+        throwOnSignIn?.let { throw it }
+        return checkNotNull(googleUser).also { currentUser = it }
+    }
+
+    override suspend fun signInWithApple(idToken: String, rawNonce: String): FirebaseAuthUser {
+        throwOnSignIn?.let { throw it }
+        return checkNotNull(appleUser).also { currentUser = it }
+    }
+
+    override suspend fun linkGoogle(idToken: String, accessToken: String?): FirebaseAuthUser {
+        throwOnLink?.let { throw it }
+        return checkNotNull(linkedUser).also { currentUser = it }
+    }
+
+    override suspend fun linkApple(idToken: String, rawNonce: String): FirebaseAuthUser {
+        throwOnLink?.let { throw it }
+        return checkNotNull(linkedUser).also { currentUser = it }
+    }
+
+    override suspend fun reauthenticateWithGoogle(idToken: String, accessToken: String?): FirebaseAuthUser {
+        throwOnReauth?.let { throw it }
+        return checkNotNull(reauthenticatedUser).also { currentUser = it }
+    }
+
+    override suspend fun reauthenticateWithApple(idToken: String, rawNonce: String): FirebaseAuthUser {
+        throwOnReauth?.let { throw it }
+        return checkNotNull(reauthenticatedUser).also { currentUser = it }
+    }
+
+    override suspend fun signOut() {
+        signOutCalled = true
+        currentUser = null
+    }
+
+    override suspend fun getIdToken(forceRefresh: Boolean): AuthToken {
+        throwOnGetIdToken?.let { throw it }
+        lastForceRefreshToken = forceRefresh
+        return idTokenResult
+    }
+
+    override suspend fun executeServerAccountDeletion(idToken: String) {
+        throwOnDeleteServer?.let { throw it }
+        lastServerDeleteToken = idToken
+    }
 }
 
-private fun anonymousUser(uid: String): FirebaseAuthUser =
+private fun anonymousUser(
+    uid: String,
+    createdAt: Instant? = null,
+): FirebaseAuthUser =
     FirebaseAuthUser(
         uid = uid,
         isAnonymous = true,
         providerIds = emptySet(),
+        createdAt = createdAt,
     )
