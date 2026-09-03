@@ -26,9 +26,14 @@ import dev.gitlive.firebase.auth.OAuthProvider
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.auth.code
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -39,24 +44,44 @@ import kotlin.time.Instant
 class FirebaseAuthClient internal constructor(
     private val gateway: FirebaseAuthGateway,
     private val clock: AppClock = AppClock { Clock.System.now() },
-    coroutineScope: kotlinx.coroutines.CoroutineScope =
-        kotlinx.coroutines.CoroutineScope(
-            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default,
-        ),
+    coroutineScope: CoroutineScope,
 ) : AuthClient,
-    TokenProvider {
-    constructor() : this(GitLiveFirebaseAuthGateway())
+    TokenProvider,
+    AutoCloseable {
+
+    constructor(
+        coroutineScope: CoroutineScope,
+    ) : this(
+        gateway = GitLiveFirebaseAuthGateway(),
+        clock = AppClock { Clock.System.now() },
+        coroutineScope = coroutineScope,
+    )
+
+    internal constructor(
+        gateway: FirebaseAuthGateway,
+        coroutineScope: CoroutineScope,
+    ) : this(
+        gateway = gateway,
+        clock = AppClock { Clock.System.now() },
+        coroutineScope = coroutineScope,
+    )
 
     private val mutableAuthState = MutableStateFlow<AuthState>(AuthState.Unknown)
     override val authState: StateFlow<AuthState> = mutableAuthState
 
     init {
-        coroutineScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             gateway.authStateChanged.collect { firebaseUser ->
                 mutableAuthState.value = firebaseUser.toAuthState()
             }
         }
     }
+
+    override fun close() {
+        // RED phase stub: not yet cancelling
+    }
+
+    fun dispose() = close()
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> =
         try {
@@ -131,6 +156,10 @@ class FirebaseAuthClient internal constructor(
                         gateway.reauthenticateWithApple(credential.idToken, credential.rawNonce)
                     }
                 }
+            // Force-refresh the ID token purely for its side effect in Firebase Auth: re-minting a fresh
+            // ID token with an updated `iat` claim and caching it in the SDK. Subsequent calls such as
+            // deleteAccount() (which reads the token with forceRefresh = false) rely on this fresh token
+            // to pass the FRESH_LOGIN_THRESHOLD_MS freshness gate (CONTRACTS.md §11.5 Step 1).
             gateway.getIdToken(forceRefresh = true)
             val session = user.toSession()
             mutableAuthState.value = AuthState.SignedIn(session)
@@ -180,7 +209,7 @@ class FirebaseAuthClient internal constructor(
 internal interface FirebaseAuthGateway {
     val currentUser: FirebaseAuthUser?
 
-    val authStateChanged: kotlinx.coroutines.flow.Flow<FirebaseAuthUser?> get() = kotlinx.coroutines.flow.emptyFlow()
+    val authStateChanged: Flow<FirebaseAuthUser?> get() = emptyFlow()
 
     suspend fun signInAnonymously(): FirebaseAuthUser
 
@@ -228,11 +257,21 @@ internal data class FirebaseAuthUser(
     val createdAt: Instant? = null,
 )
 
+/**
+ * Invoker contract for the server-side account deletion operation (D-23).
+ *
+ * Implementations (such as the Cloud Functions callable in E3-10) MUST throw:
+ * - [FirebaseAuthGatewayException.PermissionDenied] if the server operation rejects the caller
+ *   (e.g., caller mismatch where authenticated UID != target UID, or IAM permission denied).
+ * - [FirebaseAuthGatewayException.Network] on transport/connectivity failure.
+ * - [FirebaseAuthGatewayException.AccountDeletionRemoteFailed] on any other server-side failure.
+ */
 internal fun interface AccountDeletionInvoker {
     suspend fun invokeDeletion(idToken: String)
 }
 
 internal class GitLiveFirebaseAuthGateway(
+    private val clock: AppClock = AppClock { Clock.System.now() },
     private val deletionInvoker: AccountDeletionInvoker =
         AccountDeletionInvoker {
             throw FirebaseAuthGatewayException.AccountDeletionRemoteFailed(
@@ -240,8 +279,8 @@ internal class GitLiveFirebaseAuthGateway(
             )
         },
 ) : FirebaseAuthGateway {
-    override val authStateChanged: Flow<FirebaseAuthUser?> =
-        Firebase.auth.authStateChanged.map { it?.toIntegrationUser() }
+    override val authStateChanged: Flow<FirebaseAuthUser?>
+        get() = Firebase.auth.authStateChanged.map { it?.toIntegrationUser() }
 
     override val currentUser: FirebaseAuthUser?
         get() =
@@ -343,7 +382,7 @@ internal class GitLiveFirebaseAuthGateway(
             val user = checkNotNull(Firebase.auth.currentUser)
             val tokenResult = user.getIdTokenResult(forceRefresh)
             val tokenString = checkNotNull(tokenResult.token)
-            val (issuedAt, expiresAt) = parseTokenTimestamps(tokenResult.claims, Clock.System.now())
+            val (issuedAt, expiresAt) = parseTokenTimestamps(tokenResult.claims, clock.now())
             AuthToken(value = tokenString, issuedAt = issuedAt, expiresAt = expiresAt)
         }
 
@@ -378,55 +417,71 @@ internal fun mapAuthException(failure: FirebaseException): FirebaseAuthGatewayEx
         else -> mapGenericFirebaseException(failure)
     }
 
-internal fun mapWebException(failure: FirebaseAuthWebException): FirebaseAuthGatewayException =
-    if (isCancellation(failure.code, failure.message)) {
-        FirebaseAuthGatewayException.Cancelled(failure)
-    } else {
-        FirebaseAuthGatewayException.Provider(failure)
+internal enum class AuthFailureKind {
+    Web,
+    InvalidCredentials,
+    Auth,
+    Generic,
+}
+
+internal fun classifyAuthFailure(
+    code: String?,
+    message: String?,
+    kind: AuthFailureKind,
+    cause: Throwable? = null,
+): FirebaseAuthGatewayException {
+    if (isCancellation(code, message)) {
+        return FirebaseAuthGatewayException.Cancelled(cause)
     }
-
-internal fun mapInvalidCredentialsException(
-    failure: FirebaseAuthInvalidCredentialsException,
-): FirebaseAuthGatewayException =
-    if (isCancellation(failure.code, failure.message)) {
-        FirebaseAuthGatewayException.Cancelled(failure)
-    } else {
-        FirebaseAuthGatewayException.Provider(failure)
-    }
-
-internal fun mapFirebaseAuthException(failure: FirebaseAuthException): FirebaseAuthGatewayException {
-    if (isCancellation(failure.code, failure.message)) {
-        return FirebaseAuthGatewayException.Cancelled(failure)
-    }
-    return when (failure.code) {
-        FIREBASE_COLLISION_CODE, ERROR_CREDENTIAL_ALREADY_IN_USE -> {
-            FirebaseAuthGatewayException.UserCollision(failure)
+    return when (kind) {
+        AuthFailureKind.Web, AuthFailureKind.InvalidCredentials -> {
+            FirebaseAuthGatewayException.Provider(cause)
         }
 
-        FIREBASE_RECENT_LOGIN_CODE, ERROR_REQUIRES_RECENT_LOGIN -> {
-            FirebaseAuthGatewayException.RequiresRecentLogin(failure)
+        AuthFailureKind.Auth -> {
+            when (code) {
+                FIREBASE_COLLISION_CODE, ERROR_CREDENTIAL_ALREADY_IN_USE -> {
+                    FirebaseAuthGatewayException.UserCollision(cause)
+                }
+
+                FIREBASE_RECENT_LOGIN_CODE, ERROR_REQUIRES_RECENT_LOGIN -> {
+                    FirebaseAuthGatewayException.RequiresRecentLogin(cause)
+                }
+
+                FIREBASE_NETWORK_CODE, ERROR_NETWORK_REQUEST_FAILED -> {
+                    FirebaseAuthGatewayException.Network(cause)
+                }
+
+                FIREBASE_PERMISSION_DENIED_CODE, ERROR_PERMISSION_DENIED -> {
+                    // In RED phase: still mapped to PermissionDenied so appNotAuthorized test fails!
+                    FirebaseAuthGatewayException.PermissionDenied(cause)
+                }
+
+                else -> {
+                    FirebaseAuthGatewayException.Provider(cause)
+                }
+            }
         }
 
-        FIREBASE_NETWORK_CODE, ERROR_NETWORK_REQUEST_FAILED -> {
-            FirebaseAuthGatewayException.Network(failure)
-        }
-
-        FIREBASE_PERMISSION_DENIED_CODE, ERROR_PERMISSION_DENIED -> {
-            FirebaseAuthGatewayException.PermissionDenied(failure)
-        }
-
-        else -> {
-            FirebaseAuthGatewayException.Provider(failure)
+        AuthFailureKind.Generic -> {
+            FirebaseAuthGatewayException.Unknown(cause)
         }
     }
 }
 
+internal fun mapWebException(failure: FirebaseAuthWebException): FirebaseAuthGatewayException =
+    classifyAuthFailure(failure.code, failure.message, AuthFailureKind.Web, failure)
+
+internal fun mapInvalidCredentialsException(
+    failure: FirebaseAuthInvalidCredentialsException,
+): FirebaseAuthGatewayException =
+    classifyAuthFailure(failure.code, failure.message, AuthFailureKind.InvalidCredentials, failure)
+
+internal fun mapFirebaseAuthException(failure: FirebaseAuthException): FirebaseAuthGatewayException =
+    classifyAuthFailure(failure.code, failure.message, AuthFailureKind.Auth, failure)
+
 internal fun mapGenericFirebaseException(failure: FirebaseException): FirebaseAuthGatewayException =
-    if (isCancellation(null, failure.message)) {
-        FirebaseAuthGatewayException.Cancelled(failure)
-    } else {
-        FirebaseAuthGatewayException.Unknown(failure)
-    }
+    classifyAuthFailure(null, failure.message, AuthFailureKind.Generic, failure)
 
 internal fun isCancellation(
     code: String?,
@@ -485,38 +540,38 @@ internal fun parseTokenTimestamps(
 }
 
 internal sealed class FirebaseAuthGatewayException(
-    cause: Throwable,
+    cause: Throwable? = null,
 ) : Exception(cause) {
     class Cancelled(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class UserCollision(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class RequiresRecentLogin(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class AccountDeletionRemoteFailed(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class Network(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class Provider(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class PermissionDenied(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 
     class Unknown(
-        cause: Throwable,
+        cause: Throwable? = null,
     ) : FirebaseAuthGatewayException(cause)
 }
 

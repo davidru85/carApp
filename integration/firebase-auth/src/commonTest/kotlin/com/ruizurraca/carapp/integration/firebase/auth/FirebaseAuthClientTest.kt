@@ -22,22 +22,23 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseAuthClientTest {
     @Test
-    fun retainedAnonymousUserIsAvailableWhenTheClientIsCreated() {
-        val gateway = FakeFirebaseAuthGateway(currentUser = anonymousUser("retained-uid"))
+    fun retainedAnonymousUserIsAvailableWhenTheClientIsCreated() =
+        runTest {
+            val gateway = FakeFirebaseAuthGateway(currentUser = anonymousUser("retained-uid"))
 
-        val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
-        assertEquals(
-            AuthState.SignedIn(
-                AuthSession(
-                    uid = "retained-uid",
-                    isAnonymous = true,
-                    providers = setOf(AuthProvider.ANONYMOUS),
+            assertEquals(
+                AuthState.SignedIn(
+                    AuthSession(
+                        uid = "retained-uid",
+                        isAnonymous = true,
+                        providers = setOf(AuthProvider.ANONYMOUS),
+                    ),
                 ),
-            ),
-            client.authState.value,
-        )
-    }
+                client.authState.value,
+            )
+        }
 
     @Test
     fun authStateStartsAtUnknownBeforeInitialGatewayEmission() =
@@ -92,7 +93,7 @@ class FirebaseAuthClientTest {
                     currentUser = null,
                     signedInUser = anonymousUser("new-uid"),
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result = client.signInAnonymously()
 
@@ -112,7 +113,7 @@ class FirebaseAuthClientTest {
                     currentUser = null,
                     signedInUser = anonymousUser("meta-uid", createdAt = createdAt),
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result = client.signInAnonymously()
 
@@ -130,7 +131,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = null, googleUser = googleUser)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -154,7 +155,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("apple.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = null, appleUser = appleUser)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -176,7 +177,7 @@ class FirebaseAuthClientTest {
                     currentUser = null,
                     throwOnSignIn = FirebaseAuthGatewayException.Cancelled(RuntimeException("Dialog dismissed")),
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -195,7 +196,7 @@ class FirebaseAuthClientTest {
                     currentUser = null,
                     throwOnSignIn = FirebaseAuthGatewayException.Cancelled(RuntimeException("webContextCancelled")),
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -214,7 +215,7 @@ class FirebaseAuthClientTest {
                     currentUser = null,
                     throwOnSignIn = FirebaseAuthGatewayException.Network(RuntimeException("No connection")),
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -236,7 +237,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = initialUser, linkedUser = linkedUser)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.linkCredential(
@@ -259,7 +260,7 @@ class FirebaseAuthClientTest {
                     currentUser = initialUser,
                     throwOnLink = FirebaseAuthGatewayException.UserCollision(RuntimeException("Credential collision")),
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.linkCredential(
@@ -282,7 +283,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = initialUser, linkedUser = unexpectedUser)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.linkCredential(
@@ -304,7 +305,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = initialAnonymous, googleUser = permanentUser)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -327,7 +328,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = initialAnonymous, googleUser = permanentUser)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.signInWithCredential(
@@ -351,7 +352,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = user, reauthenticatedUser = user)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.reauthenticate(
@@ -373,7 +374,7 @@ class FirebaseAuthClientTest {
                     providerIds = setOf("google.com"),
                 )
             val gateway = FakeFirebaseAuthGateway(currentUser = user, reauthenticatedUser = user)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result =
                 client.reauthenticate(
@@ -389,7 +390,7 @@ class FirebaseAuthClientTest {
         runTest {
             val user = anonymousUser("active-user")
             val gateway = FakeFirebaseAuthGateway(currentUser = user)
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result = client.signOut()
 
@@ -408,7 +409,7 @@ class FirebaseAuthClientTest {
 
             val gateway = FakeFirebaseAuthGateway(currentUser = user, idTokenResult = token)
             val clock = AppClock { nowInstant }
-            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock, coroutineScope = backgroundScope)
 
             val result = client.deleteAccount()
 
@@ -427,7 +428,7 @@ class FirebaseAuthClientTest {
 
             val gateway = FakeFirebaseAuthGateway(currentUser = user, idTokenResult = token)
             val clock = AppClock { nowInstant }
-            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock, coroutineScope = backgroundScope)
 
             val result = client.deleteAccount()
 
@@ -453,7 +454,7 @@ class FirebaseAuthClientTest {
                         ),
                 )
             val clock = AppClock { issuedAt }
-            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock, coroutineScope = backgroundScope)
 
             val result = client.deleteAccount()
 
@@ -478,7 +479,7 @@ class FirebaseAuthClientTest {
                         ),
                 )
             val clock = AppClock { issuedAt }
-            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock, coroutineScope = backgroundScope)
 
             val result = client.deleteAccount()
 
@@ -496,7 +497,7 @@ class FirebaseAuthClientTest {
                     throwOnGetIdToken = FirebaseAuthGatewayException.Network(RuntimeException("Network down")),
                 )
             val client =
-                FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) })
+                FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) }, coroutineScope = backgroundScope)
 
             val result = client.deleteAccount()
 
@@ -518,7 +519,7 @@ class FirebaseAuthClientTest {
                     throwOnDeleteServer = FirebaseAuthGatewayException.Network(RuntimeException("Timeout")),
                 )
             val clock = AppClock { issuedAt }
-            val client = FirebaseAuthClient(gateway = gateway, clock = clock)
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock, coroutineScope = backgroundScope)
 
             val result = client.deleteAccount()
 
@@ -538,7 +539,7 @@ class FirebaseAuthClientTest {
                     currentUser = anonymousUser("uid"),
                     idTokenResult = token,
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result = client.getIdToken(forceRefresh = false)
 
@@ -563,12 +564,66 @@ class FirebaseAuthClientTest {
                     currentUser = anonymousUser("uid"),
                     idTokenResult = token,
                 )
-            val client = FirebaseAuthClient(gateway)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
 
             val result = client.getIdToken(forceRefresh = true)
 
             assertIs<Outcome.Ok<AuthToken>>(result)
             assertEquals(true, gateway.lastForceRefreshToken)
+        }
+
+    @Test
+    fun deleteAccountDoesNotCallServerWhenTokenHasNoUsableIat() =
+        runTest {
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = FirebaseAuthUser(uid = "user-1", isAnonymous = false, providerIds = emptySet()),
+                    throwOnGetIdToken = FirebaseAuthGatewayException.Provider(IllegalStateException("Missing iat")),
+                )
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
+
+            val outcome = client.deleteAccount()
+
+            assertIs<Outcome.Err<AuthError.ProviderUnavailable>>(outcome)
+            assertEquals(null, gateway.lastServerDeleteToken)
+        }
+
+    @Test
+    fun deleteAccountPropagatesPermissionDeniedFromDeletionInvoker() =
+        runTest {
+            val gateway =
+                FakeFirebaseAuthGateway(
+                    currentUser = FirebaseAuthUser(uid = "user-1", isAnonymous = false, providerIds = emptySet()),
+                    throwOnDeleteServer =
+                        FirebaseAuthGatewayException.PermissionDenied(
+                            IllegalStateException("Caller UID mismatch"),
+                        ),
+                )
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
+
+            val outcome = client.deleteAccount()
+
+            assertIs<Outcome.Err<AuthError.PermissionDenied>>(outcome)
+        }
+
+    @Test
+    fun closeCancelsAuthStateObservation() =
+        runTest {
+            val gateway = FakeFirebaseAuthGateway(currentUser = null, autoEmitAuthState = false)
+            val client = FirebaseAuthClient(gateway = gateway, coroutineScope = backgroundScope)
+            assertEquals(AuthState.Unknown, client.authState.value)
+
+            val user1 = FirebaseAuthUser(uid = "uid-1", isAnonymous = true, providerIds = emptySet())
+            gateway.emitAuthState(user1)
+            runCurrent()
+            assertEquals(AuthState.SignedIn(user1.toSession()), client.authState.value)
+
+            client.close()
+
+            val user2 = FirebaseAuthUser(uid = "uid-2", isAnonymous = false, providerIds = setOf("google.com"))
+            gateway.emitAuthState(user2)
+            runCurrent()
+            assertEquals(AuthState.SignedIn(user1.toSession()), client.authState.value)
         }
 
     @Test

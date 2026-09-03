@@ -64,7 +64,9 @@ fun firebaseAppProviders(
     databaseFilePath: String,
     localeProvider: LocaleProvider,
 ): AppProviders {
-    val authClient = FirebaseAuthClient()
+    val dispatchers = stagedDispatcherProvider()
+    val authScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + dispatchers.default)
+    val authClient = FirebaseAuthClient(coroutineScope = authScope)
     return firebaseAppProviders(
         databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
         authClient = authClient,

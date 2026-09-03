@@ -1,14 +1,10 @@
 package com.ruizurraca.carapp.integration.firebase.auth
 
-import dev.gitlive.firebase.FirebaseApiNotAvailableException
-import dev.gitlive.firebase.FirebaseNetworkException
-import dev.gitlive.firebase.auth.FirebaseAuthException
-import dev.gitlive.firebase.auth.FirebaseAuthInvalidCredentialsException
-import dev.gitlive.firebase.auth.FirebaseAuthRecentLoginRequiredException
-import dev.gitlive.firebase.auth.FirebaseAuthUserCollisionException
-import dev.gitlive.firebase.auth.FirebaseAuthWebException
+import com.ruizurraca.carapp.core.common.AppClock
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
@@ -16,10 +12,11 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 class GitLiveFirebaseAuthGatewayTest {
+
     @Test
     fun isCancellationRecognizesCancellationMessagesAndCodes() {
         assertTrue(isCancellation(code = "17058", message = null))
-        assertTrue(isCancellation(code = "ERROR_WEB_CONTEXT_CANCELLED", message = null))
+        assertTrue(isCancellation(code = ERROR_WEB_CONTEXT_CANCELLED, message = null))
         assertTrue(isCancellation(code = null, message = "The user cancelled the sign-in flow."))
         assertTrue(isCancellation(code = null, message = "The dialog was dismissed."))
         assertTrue(isCancellation(code = null, message = "Error 17058 occurred during operation"))
@@ -66,74 +63,105 @@ class GitLiveFirebaseAuthGatewayTest {
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), iatStr)
         assertEquals(Instant.fromEpochMilliseconds(1_700_003_600_000L), expStr)
 
-        val (iatFallback, expFallback) = parseTokenTimestamps(emptyMap(), now)
-        assertEquals(now, iatFallback)
-        assertEquals(now + 1.hours, expFallback)
+        // Missing exp falls back to iat + 1.hours
+        val claimsOnlyIat = mapOf<String, Any>("iat" to 1_700_000_000L)
+        val (iatOnly, expFallback) = parseTokenTimestamps(claimsOnlyIat, now)
+        assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), iatOnly)
+        assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L) + 1.hours, expFallback)
     }
 
     @Test
-    fun mapAuthExceptionMapsSubclassesDirectly() {
-        val collision = FirebaseAuthUserCollisionException("17025", "Collision")
-        assertIs<FirebaseAuthGatewayException.UserCollision>(mapAuthException(collision))
-
-        val recentLogin = FirebaseAuthRecentLoginRequiredException("17014", "Recent login")
-        assertIs<FirebaseAuthGatewayException.RequiresRecentLogin>(mapAuthException(recentLogin))
-
-        val network = FirebaseNetworkException("Network error")
-        assertIs<FirebaseAuthGatewayException.Network>(mapAuthException(network))
-
-        val apiUnavailable = FirebaseApiNotAvailableException("API unavailable")
-        assertIs<FirebaseAuthGatewayException.Provider>(mapAuthException(apiUnavailable))
+    fun parseTokenTimestampsThrowsWhenIatIsMissing() {
+        val now = Instant.fromEpochMilliseconds(1_700_000_000_000L)
+        assertFailsWith<FirebaseAuthGatewayException.Provider> {
+            parseTokenTimestamps(emptyMap(), now)
+        }
     }
 
     @Test
-    fun mapWebExceptionAndInvalidCredentialsRecognizeCancellation() {
-        val webCancelled = FirebaseAuthWebException("17058", "User dismissed")
-        assertIs<FirebaseAuthGatewayException.Cancelled>(mapAuthException(webCancelled))
-
-        val webOther = FirebaseAuthWebException("99999", "Internal browser crash")
-        assertIs<FirebaseAuthGatewayException.Provider>(mapAuthException(webOther))
-
-        val credCancelled = FirebaseAuthInvalidCredentialsException("17058", "User cancelled")
-        assertIs<FirebaseAuthGatewayException.Cancelled>(mapAuthException(credCancelled))
-
-        val credOther = FirebaseAuthInvalidCredentialsException("17009", "Bad credential")
-        assertIs<FirebaseAuthGatewayException.Provider>(mapAuthException(credOther))
+    fun parseTokenTimestampsThrowsWhenIatIsMalformed() {
+        val now = Instant.fromEpochMilliseconds(1_700_000_000_000L)
+        assertFailsWith<FirebaseAuthGatewayException.Provider> {
+            parseTokenTimestamps(mapOf("iat" to "not-a-number"), now)
+        }
     }
 
     @Test
-    fun mapFirebaseAuthExceptionMapsAllKnownCodes() {
-        val collisionNumeric = FirebaseAuthException("17025", "User collision")
-        assertIs<FirebaseAuthGatewayException.UserCollision>(mapFirebaseAuthException(collisionNumeric))
+    fun classifyAuthFailureMapsCollisionCodes() {
+        assertIs<FirebaseAuthGatewayException.UserCollision>(
+            classifyAuthFailure(code = "17025", message = "Collision", kind = AuthFailureKind.Auth),
+        )
+        assertIs<FirebaseAuthGatewayException.UserCollision>(
+            classifyAuthFailure(code = ERROR_CREDENTIAL_ALREADY_IN_USE, message = "Collision", kind = AuthFailureKind.Auth),
+        )
+    }
 
-        val collisionString = FirebaseAuthException(ERROR_CREDENTIAL_ALREADY_IN_USE, "Collision")
-        assertIs<FirebaseAuthGatewayException.UserCollision>(mapFirebaseAuthException(collisionString))
+    @Test
+    fun classifyAuthFailureMapsRecentLoginCodes() {
+        assertIs<FirebaseAuthGatewayException.RequiresRecentLogin>(
+            classifyAuthFailure(code = "17014", message = "Recent login", kind = AuthFailureKind.Auth),
+        )
+        assertIs<FirebaseAuthGatewayException.RequiresRecentLogin>(
+            classifyAuthFailure(code = ERROR_REQUIRES_RECENT_LOGIN, message = "Recent login", kind = AuthFailureKind.Auth),
+        )
+    }
 
-        val recentNumeric = FirebaseAuthException("17014", "Recent login required")
-        assertIs<FirebaseAuthGatewayException.RequiresRecentLogin>(mapFirebaseAuthException(recentNumeric))
+    @Test
+    fun classifyAuthFailureMapsNetworkCodes() {
+        assertIs<FirebaseAuthGatewayException.Network>(
+            classifyAuthFailure(code = "17020", message = "Network error", kind = AuthFailureKind.Auth),
+        )
+        assertIs<FirebaseAuthGatewayException.Network>(
+            classifyAuthFailure(code = ERROR_NETWORK_REQUEST_FAILED, message = "Network error", kind = AuthFailureKind.Auth),
+        )
+    }
 
-        val recentString = FirebaseAuthException(ERROR_REQUIRES_RECENT_LOGIN, "Recent login")
-        assertIs<FirebaseAuthGatewayException.RequiresRecentLogin>(mapFirebaseAuthException(recentString))
+    @Test
+    fun classifyAuthFailureMapsAppNotAuthorizedToProvider() {
+        // 17028 is FIRAuthErrorCodeAppNotAuthorized (configuration failure), NOT PermissionDenied
+        assertIs<FirebaseAuthGatewayException.Provider>(
+            classifyAuthFailure(code = "17028", message = "App not authorized", kind = AuthFailureKind.Auth),
+        )
+    }
 
-        val networkNumeric = FirebaseAuthException("17020", "Network failed")
-        assertIs<FirebaseAuthGatewayException.Network>(mapFirebaseAuthException(networkNumeric))
+    @Test
+    fun classifyAuthFailureMapsWebAndInvalidCredentialsToProviderOrCancelled() {
+        assertIs<FirebaseAuthGatewayException.Cancelled>(
+            classifyAuthFailure(code = "17058", message = "User dismissed", kind = AuthFailureKind.Web),
+        )
+        assertIs<FirebaseAuthGatewayException.Provider>(
+            classifyAuthFailure(code = "99999", message = "Browser crash", kind = AuthFailureKind.Web),
+        )
+        assertIs<FirebaseAuthGatewayException.Cancelled>(
+            classifyAuthFailure(code = "17058", message = "Cancelled", kind = AuthFailureKind.InvalidCredentials),
+        )
+        assertIs<FirebaseAuthGatewayException.Provider>(
+            classifyAuthFailure(code = "17009", message = "Bad credential", kind = AuthFailureKind.InvalidCredentials),
+        )
+    }
 
-        val networkString = FirebaseAuthException(ERROR_NETWORK_REQUEST_FAILED, "Network error")
-        assertIs<FirebaseAuthGatewayException.Network>(mapFirebaseAuthException(networkString))
+    @Test
+    fun classifyAuthFailureMapsGenericFirebaseException() {
+        assertIs<FirebaseAuthGatewayException.Cancelled>(
+            classifyAuthFailure(code = null, message = "Dialog was cancelled", kind = AuthFailureKind.Generic),
+        )
+        assertIs<FirebaseAuthGatewayException.Unknown>(
+            classifyAuthFailure(code = null, message = "Some unknown internal error", kind = AuthFailureKind.Generic),
+        )
+    }
 
-        val webCancelNumeric = FirebaseAuthException("17058", "User cancelled")
-        assertIs<FirebaseAuthGatewayException.Cancelled>(mapFirebaseAuthException(webCancelNumeric))
-
-        val webCancelString = FirebaseAuthException(ERROR_WEB_CONTEXT_CANCELLED, "Cancelled")
-        assertIs<FirebaseAuthGatewayException.Cancelled>(mapFirebaseAuthException(webCancelString))
-
-        val permissionDeniedNumeric = FirebaseAuthException("17028", "Permission denied")
-        assertIs<FirebaseAuthGatewayException.PermissionDenied>(mapFirebaseAuthException(permissionDeniedNumeric))
-
-        val permissionDeniedString = FirebaseAuthException(ERROR_PERMISSION_DENIED, "Caller rejected")
-        assertIs<FirebaseAuthGatewayException.PermissionDenied>(mapFirebaseAuthException(permissionDeniedString))
-
-        val unknownCode = FirebaseAuthException("99999", "Unrecognized auth code")
-        assertIs<FirebaseAuthGatewayException.Provider>(mapFirebaseAuthException(unknownCode))
+    @Test
+    fun accountDeletionInvokerPermissionDeniedPropagatesThroughGateway() = runTest {
+        val invoker = AccountDeletionInvoker {
+            throw FirebaseAuthGatewayException.PermissionDenied(IllegalStateException("Caller UID mismatch"))
+        }
+        val gateway = GitLiveFirebaseAuthGateway(
+            clock = AppClock { Instant.fromEpochMilliseconds(1_000L) },
+            deletionInvoker = invoker,
+        )
+        val thrown = assertFailsWith<FirebaseAuthGatewayException.PermissionDenied> {
+            gateway.executeServerAccountDeletion("token-123")
+        }
+        assertEquals("Caller UID mismatch", thrown.cause?.message)
     }
 }
