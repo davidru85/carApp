@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -73,40 +74,38 @@ class AppGraphCloseTest {
     @Test
     fun graphCloseStopsAuthStateObservationOnAutoCloseableAuthClient() =
         runTest {
-            val observationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val authFlow = MutableSharedFlow<AuthState>(replay = 1)
-            var observationActive = true
-
             val client =
                 object : AuthClient, AutoCloseable {
+                    private val observationJob = SupervisorJob()
+                    private val scope = CoroutineScope(coroutineContext + observationJob)
                     private val state = MutableStateFlow<AuthState>(AuthState.Unknown)
                     override val authState: StateFlow<AuthState> = state
-                    private val job =
-                        observationScope.launch {
-                            try {
-                                authFlow.collect { state.value = it }
-                            } finally {
-                                observationActive = false
-                            }
-                        }
 
-                    override fun close() {
-                        job.cancel()
+                    init {
+                        scope.launch {
+                            authFlow.collect { state.value = it }
+                        }
                     }
 
-                    override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> =
-                        error("unused")
+                    override fun close() {
+                        observationJob.cancel()
+                    }
+
+                    override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = error("unused")
 
                     override suspend fun signInWithCredential(
                         credential: NativeAuthCredential,
                         allowUidChange: Boolean,
                     ): Outcome<AuthSession, AuthError> = error("unused")
 
-                    override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-                        error("unused")
+                    override suspend fun linkCredential(
+                        credential: NativeAuthCredential,
+                    ): Outcome<AuthSession, AuthError> = error("unused")
 
-                    override suspend fun reauthenticate(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-                        error("unused")
+                    override suspend fun reauthenticate(
+                        credential: NativeAuthCredential,
+                    ): Outcome<AuthSession, AuthError> = error("unused")
 
                     override suspend fun signOut(): Outcome<Unit, AuthError> = error("unused")
 
@@ -116,11 +115,18 @@ class AppGraphCloseTest {
             val dependencies = testAppGraphDependencies(authClient = client)
             val graph = buildAppGraph(isDebugBuild = true, providers = testAppProviders(dependencies))
 
-            assertTrue(observationActive)
-            graph.close()
-            advanceUntilIdle()
+            val session1 = AuthSession(uid = "user-1", isAnonymous = false, providers = emptySet())
+            authFlow.emit(AuthState.SignedIn(session1))
+            runCurrent()
+            assertEquals(AuthState.SignedIn(session1), client.authState.value)
 
-            assertFalse(observationActive)
+            graph.close()
+
+            val session2 = AuthSession(uid = "user-2", isAnonymous = false, providers = emptySet())
+            authFlow.emit(AuthState.SignedIn(session2))
+            runCurrent()
+
+            assertEquals(AuthState.SignedIn(session1), client.authState.value)
         }
 
     private fun assertGraphCloseReleasesDatabase(closeGraph: (AppGraph, DispatcherProvider) -> Unit) {

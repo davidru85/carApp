@@ -83,8 +83,6 @@ class FirebaseAuthClient internal constructor(
         observationJob.cancel()
     }
 
-    fun dispose() = close()
-
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> =
         try {
             val session = gateway.signInAnonymously().toSession()
@@ -273,7 +271,6 @@ internal fun interface AccountDeletionInvoker {
 }
 
 internal class GitLiveFirebaseAuthGateway(
-    private val clock: AppClock = AppClock { Clock.System.now() },
     private val deletionInvoker: AccountDeletionInvoker =
         AccountDeletionInvoker {
             throw FirebaseAuthGatewayException.AccountDeletionRemoteFailed(

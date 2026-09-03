@@ -1,6 +1,5 @@
 package com.ruizurraca.carapp.integration.firebase.auth
 
-import com.ruizurraca.carapp.core.common.AppClock
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -166,7 +165,6 @@ class GitLiveFirebaseAuthGatewayTest {
                 }
             val gateway =
                 GitLiveFirebaseAuthGateway(
-                    clock = AppClock { Instant.fromEpochMilliseconds(1_000L) },
                     deletionInvoker = invoker,
                 )
             val thrown =

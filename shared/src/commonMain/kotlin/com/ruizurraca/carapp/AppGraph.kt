@@ -162,7 +162,11 @@ internal class DefaultAppGraph(
         if (closed) return
         closed = true
         graphScope.cancel()
-        databaseHandle.close()
+        try {
+            (dependencies.authClient as? AutoCloseable)?.close()
+        } finally {
+            databaseHandle.close()
+        }
     }
 
     private fun checkOpen() {

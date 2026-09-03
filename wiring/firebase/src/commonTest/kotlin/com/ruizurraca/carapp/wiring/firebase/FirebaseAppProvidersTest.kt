@@ -86,13 +86,39 @@ class FirebaseAppProvidersTest {
         assertSame(authClient, providers.authClient)
         assertSame<Any>(authClient, providers.tokenProvider)
     }
+
+    @Test
+    fun closingAppGraphClosesAutoCloseableAuthClient() {
+        val authClient = MutableAuthClient()
+        val remoteSyncSource = RecordingRemoteSyncSource()
+        val databaseFactory = createStagedDatabaseFactory()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = databaseFactory,
+                authClient = authClient,
+                tokenProvider = authClient,
+                remoteSyncSource = remoteSyncSource,
+            )
+        val graph = buildAppGraph(isDebugBuild = true, providers = providers)
+
+        assertEquals(false, authClient.closed)
+        graph.close()
+        assertEquals(true, authClient.closed)
+    }
 }
 
 private class MutableAuthClient :
     AuthClient,
-    TokenProvider {
+    TokenProvider,
+    AutoCloseable {
+    var closed: Boolean = false
     val state = MutableStateFlow<AuthState>(AuthState.SignedOut)
     override val authState = state
+
+    override fun close() {
+        closed = true
+    }
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = unavailable()
 

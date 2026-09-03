@@ -39,7 +39,9 @@ import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
@@ -65,7 +67,7 @@ fun firebaseAppProviders(
     localeProvider: LocaleProvider,
 ): AppProviders {
     val dispatchers = stagedDispatcherProvider()
-    val authScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + dispatchers.default)
+    val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
     val authClient = FirebaseAuthClient(coroutineScope = authScope)
     return firebaseAppProviders(
         databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
@@ -73,6 +75,7 @@ fun firebaseAppProviders(
         tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
         localeProvider = localeProvider,
+        dispatchers = dispatchers,
     )
 }
 
@@ -82,6 +85,7 @@ internal fun firebaseAppProviders(
     tokenProvider: TokenProvider,
     remoteSyncSource: RemoteSyncSource,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
+    dispatchers: DispatcherProvider = stagedDispatcherProvider(),
 ): AppProviders {
     val connectivityState = MutableStateFlow(true)
 
@@ -94,7 +98,7 @@ internal fun firebaseAppProviders(
         override val analyticsTracker = stagedAnalyticsTracker()
         override val crashReporter = NoOpCrashReporter
         override val clock = AppClock { Clock.System.now() }
-        override val dispatchers = stagedDispatcherProvider()
+        override val dispatchers = dispatchers
         override val uuidGenerator = stagedUuidGenerator()
         override val logger = stagedLogger()
         override val localeProvider = localeProvider
