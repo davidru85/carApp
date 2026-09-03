@@ -45,41 +45,54 @@
 
 - Date: 2026-09-03.
 - Branch and base: `story/E2-01-core-auth-contracts`, based on synchronized `main` / `origin/main` at `91b2a78`.
-- Current phase and latest commit: REFACTOR phase of PR #52 review remediation; latest commit on branch is GREEN `f07927a`.
-- Push and pull-request status: pull request #52 is open at `https://github.com/davidru85/carApp/pull/52`. Ordered remediation commits (RED `3412b9d`, GREEN `f07927a`) are committed locally.
-- Completed since the previous checkpoint: entered REFACTOR phase. Executed comprehensive verification across all project suites: ktlint, detekt, architectureCheck, contractCheck, convention tests, Kover coverage, Android unit tests, common tests on JVM and iOS simulator, provider decoupling without Firebase modules, iOS framework linking against golden header, and Xcode iOS simulator application build.
+- Current phase and latest commit: REFACTOR phase of PR #52 review remediation complete; latest commit on branch is `9f20f16`.
+- Push and pull-request status: pull request #52 is open at `https://github.com/davidru85/carApp/pull/52`. Remediation commits follow strict RED (`3412b9d`), GREEN (`f07927a`), REFACTOR (`9f20f16`) order and are pushed to `origin`.
+- Completed since the previous checkpoint: completed all PR #52 review fixes (Findings 1-4). Enforced feature auth boundary with executable architecture check; removed `:core:auth` from `:feature:session`; deduplicated `AuthOwnerContext.observe()`; clarified `AuthContractsTest` compile-time signature conformance; updated project log and handoff continuity documentation.
 - Verification evidence and known failures:
-  - Complete non-instrumented CI command passed 636 actionable tasks.
+  - Complete non-instrumented repository command passed 636 actionable tasks.
   - Provider decoupling (`-Pcarapp.excludeFirebaseProviders=true`) passed 234 actionable tasks.
-  - `:composition:ios:linkDebugFrameworkIosSimulatorArm64` passed and `diff -u` against golden header produced 0 differences.
-  - Native iOS application build via `xcodebuild` succeeded with `** BUILD SUCCEEDED **`.
+  - `:composition:ios:linkDebugFrameworkIosSimulatorArm64` passed and `diff -u` against golden header confirmed 0 differences.
+  - `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -sdk iphonesimulator -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` succeeded with `** BUILD SUCCEEDED **`.
   - `contractCheck` passed all 17 active assertions with 0 pending and 0 unresolved decisions.
 - Open decisions or blockers: none.
-- Exact next step: commit REFACTOR phase, update project documentation (`docs/handoff-E2-01.md` acceptance evidence, `docs/PROJECT_LOG.md` append-only correction entry), update PR #52 body on GitHub, and push all commits to `origin/story/E2-01-core-auth-contracts`.
+- Exact next step: push branch to `origin/story/E2-01-core-auth-contracts`, update pull request #52 body on GitHub, and leave PR #52 open for mandatory owner review.
 
 ## Scope Completed
 
 - Completed the existing provider-free auth model and interface surface with executable
   cross-platform contract coverage.
 - Implemented the auth-backed repository owner adapter in `:core:auth` and bound it in Firebase
-  wiring without changing feature dependencies.
+  wiring without exposing `AuthClient` to feature modules.
 - Removed the redundant staged wiring implementation and the unused auth serialization dependency.
+- Corrected feature boundary leak in `:feature:session` and added an executable architecture rule
+  in `ArchitectureChecker` preventing `:feature:* -> :core:auth` project dependencies.
+- Added deduplication to `AuthOwnerContext.observe()` via `distinctUntilChanged()`.
+- Clarified `AuthContractsTest` as compile-time signature conformance with concrete error assertions.
 - Updated Phase 2 status, continuity evidence and the append-only project log.
 
 ## Acceptance Evidence
 
 - `AuthOwnerContextTest` proves `Unknown` and `SignedOut` use `LOCAL_OWNER`, `SignedIn` uses the
-  session UID, `current` follows state changes and `observe()` emits owner changes on both Android
-  host and iOS simulator.
+  session UID, `current` follows state changes, and `observe()` emits owner changes on both Android
+  host and iOS simulator with deduplication across consecutive identical owners
+  (`Unknown -> SignedOut -> SignedIn`) via `distinctUntilChanged()` to prevent redundant SQLDelight
+  query restarts.
 - `FirebaseAppProvidersTest.providerFactoryKeepsRealBoundariesAndDerivesTheCurrentOwner` proves the
   provider factory binds `AuthOwnerContext` from `:core:auth` and derives the signed-in owner.
-- `AuthContractsTest` compiles and exercises the exact model fields, distinct auth states, both
-  native credential forms, token validity instants and every typed `AuthClient` / `TokenProvider`
-  outcome.
+- `AuthContractsTest` compiles and verifies the exact model fields, distinct auth states, both
+  native credential forms, token validity instants, and pins the compile-time method signatures
+  of `AuthClient` and `TokenProvider` (`§11.1`, `§20.8`) with concrete `AuthError` assertions rather
+  than erased type checks.
 - Existing `AppErrorCodesTest` continues to verify every exact `AuthError` code through the complete
   repository command.
 - `architectureCheck` and direct source audits prove that `:core:auth` contains no Firebase,
   GitLive or platform API, and that no feature module references `AuthClient` or `:core:auth`.
+  Specifically, PR #52 review identified that `feature/session` originally declared an unused
+  compile dependency on `:core:auth` which bypassed `architectureCheck` because `TECHNICAL_PLAN.md §4`
+  feature rows are keyed by layer (`feature domain`, `feature data`, `feature presentation`); this was
+  corrected by removing the dependency from `feature/session/build.gradle.kts` and introducing an
+  executable `feature-to-auth-dependency` rule in `ArchitectureChecker` with a firing test fixture in
+  `ArchitectureCheckerTest` (verified to fail against pre-fix `feature/session` and pass after removal).
 - Provider decoupling executes the new owner-context tests on Android host and iOS simulator with
   every Firebase provider/composition module excluded.
 
@@ -93,17 +106,22 @@
 - `AGENTS.md`, `README.md`, `docs/BACKLOG.md` and `docs/TECHNICAL_PLAN.md` (current Phase 2 status).
 - `core/auth/build.gradle.kts` (coroutines test support and unused serialization removal).
 - `core/auth/src/commonMain/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContext.kt` (auth-backed
-  owner implementation).
+  owner implementation with `distinctUntilChanged()`).
 - `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthContractsTest.kt` (contract
-  surface coverage).
+  surface coverage and compile-time signature pin).
 - `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContextTest.kt`
-  (behavior-specific RED coverage).
+  (behavior-specific RED coverage and discriminating deduplication test).
+- `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/architecture/ArchitectureChecker.kt`
+  (executable `feature-to-auth-dependency` rule).
+- `build-logic/convention/src/test/kotlin/com/ruizurraca/carapp/buildlogic/architecture/ArchitectureCheckerTest.kt`
+  (firing fixture for `feature-to-auth-dependency`).
+- `feature/session/build.gradle.kts` (removed unused `:core:auth` compile dependency).
 - `wiring/firebase/src/commonTest/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProvidersTest.kt`
   (binding assertion).
 - `wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt`
   (core-auth owner binding and duplicate implementation removal).
-- `docs/handoff-E2-01.md` (new live continuity record).
-- `docs/PROJECT_LOG.md` (append-only completion entry).
+- `docs/handoff-E2-01.md` (live continuity record and review remediation evidence).
+- `docs/PROJECT_LOG.md` (append-only completion entry and review correction entry).
 
 ## Decisions Made
 
@@ -115,6 +133,15 @@
   replacement agent. A documentation-only delivery checkpoint may therefore follow pull-request
   creation if required to record the remote branch, PR and CI state; it does not alter or combine
   the three TDD phase commits.
+- PR #52 review remediation:
+  - Finding 1: Removed unused compile dependency on `:core:auth` from `feature/session/build.gradle.kts`.
+  - Finding 2: Added executable `feature-to-auth-dependency` rule to `ArchitectureChecker.kt` and
+    firing fixture `featureModulesMayNotDependOnCoreAuth` to `ArchitectureCheckerTest.kt`.
+  - Finding 3: Applied `distinctUntilChanged()` to `AuthOwnerContext.observe()` to prevent duplicate
+    `LOCAL_OWNER` emissions across `Unknown -> SignedOut` transitions.
+  - Finding 4: Refined `AuthContractsTest.authClientAndTokenProviderMatchContractSignaturesAtCompileTime`
+    to clarify that its force is compile-time signature conformance and asserted concrete `AuthError`
+    leaves instead of erased `assertIs`.
 - No new technical decision was introduced. `AuthOwnerContext` relocates the exact E0-07 mapping to
   the owner module fixed by the E2-01 acceptance criteria; the public contracts, dependency graph,
   provider stack and product behavior are unchanged.
@@ -136,10 +163,21 @@
 - GREEN: `./gradlew :core:auth:testAndroidHostTest :core:auth:iosSimulatorArm64Test
   :wiring:firebase:testAndroidHostTest --rerun-tasks` — passed, 113 executed tasks; 12 core-auth
   tests passed on each platform and two Firebase-wiring Android-host tests passed.
+- Review Fix RED:
+  - `./gradlew :build-logic:convention:test` failed as intended on
+    `ArchitectureCheckerTest.featureModulesMayNotDependOnCoreAuth`.
+  - `./gradlew :core:auth:testAndroidHostTest` failed as intended on
+    `AuthOwnerContextTest.ownerObservationDeduplicatesConsecutiveIdenticalOwnersAcrossStateTransitions`.
+  - Verified pre-fix `feature/session/build.gradle.kts` had `"commonMainImplementation"(projects.core.auth)`.
+- Review Fix GREEN:
+  - `./gradlew architectureCheck` failed against pre-fix `feature/session` with `feature-to-auth-dependency`,
+    then passed after removing the dependency.
+  - `./gradlew :build-logic:convention:test` passed all 58 tests.
+  - `./gradlew :feature:session:testAndroidHostTest` compiled and passed without `:core:auth`.
+  - `./gradlew :core:auth:testAndroidHostTest :core:auth:iosSimulatorArm64Test` passed including deduplicated owner flow.
 - REFACTOR full repository: the exact complete non-instrumented command from `AGENTS.md` — passed,
-  636 actionable tasks (106 executed, 530 up-to-date), including lint, detekt, architecture,
-  contracts, convention tests, coverage, Android assembly/unit tests and required Android-host /
-  iOS-simulator tests.
+  636 actionable tasks, including lint, detekt, architecture, contracts, convention tests, coverage,
+  Android assembly/unit tests and required Android-host / iOS-simulator tests.
 - REFACTOR provider decoupling: `./gradlew -Pcarapp.excludeFirebaseProviders=true
   testAndroidHostTest iosSimulatorArm64Test --rerun-tasks` — passed, 234 executed tasks.
 - REFACTOR framework and ABI: `./gradlew
@@ -147,10 +185,8 @@
   `diff -u shared/build/generated/objc-header/Shared.h.golden
   composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework/Headers/Shared.h`
   returned no difference.
-- REFACTOR iOS host: `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator
-  -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — the first sandboxed attempt failed
-  before compilation on denied cache/CoreSimulator access; the permitted rerun succeeded with
-  `** BUILD SUCCEEDED **`.
+- REFACTOR iOS host: `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -sdk iphonesimulator
+  -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — passed with `** BUILD SUCCEEDED **`.
 - REFACTOR contract/convention evidence: `./gradlew contractCheck architectureCheck
   :build-logic:convention:test` — passed; 111 decisions and ADRs aligned, none unresolved, no
   pending assertion, 16 architecture rules over 23 modules.

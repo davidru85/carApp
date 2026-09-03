@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-03 — E2-01 review correction: feature boundary and architecture guard
+
+- **Type:** correction
+- **Story / Decision:** `E2-01` / —
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** removed an unused compile dependency on `projects.core.auth` from
+  `:feature:session`; added an executable `feature-to-auth-dependency` rule to `ArchitectureChecker`
+  with a failing fixture in `ArchitectureCheckerTest`; deduplicated `AuthOwnerContext.observe()`
+  emissions across consecutive identical owners with `distinctUntilChanged()`; and clarified
+  `AuthContractsTest` as compile-time signature conformance with concrete error assertions.
+- **Why:** PR #52 review identified that `:feature:session` leaked `:core:auth` onto its compile
+  classpath unnoticed because layer-keyed rows in `docs/TECHNICAL_PLAN.md §4` bypassed the checker's
+  Gradle-edge validation; `AuthOwnerContext` emitted redundant `LOCAL_OWNER` values on
+  `Unknown -> SignedOut` transitions restarting active repository SQLDelight flows; and
+  `AuthContractsTest` overstated outcome coverage over a hard-coded fake.
+- **Documents touched:** `docs/handoff-E2-01.md` and this log. Code:
+  `build-logic/convention/src/main/kotlin/.../ArchitectureChecker.kt`,
+  `build-logic/convention/src/test/kotlin/.../ArchitectureCheckerTest.kt`,
+  `feature/session/build.gradle.kts`,
+  `core/auth/src/commonMain/kotlin/.../AuthOwnerContext.kt`,
+  `core/auth/src/commonTest/kotlin/.../AuthOwnerContextTest.kt`,
+  `core/auth/src/commonTest/kotlin/.../AuthContractsTest.kt`.
+- **Verification:** verified the new architecture rule fails on the pre-fix state of `:feature:session`
+  and passes after removal; verified the deduplication test fails before `distinctUntilChanged()`;
+  full non-instrumented CI command, provider decoupling, golden Objective-C header and Xcode iOS
+  build pass cleanly.
+- **Follow-ups / risks:** none. PR #52 remains open for mandatory owner review.
+
 ### 2026-09-03 — E2-01 provider-free auth contracts completed
 
 - **Type:** story
