@@ -45,16 +45,17 @@
 
 - Date: 2026-09-03.
 - Branch and base: `story/E2-01-core-auth-contracts`, based on synchronized `main` / `origin/main` at `91b2a78`.
-- Current phase and latest commit: GREEN phase of PR #52 review remediation; latest commit on branch is RED `3412b9d`.
-- Push and pull-request status: pull request #52 is open at `https://github.com/davidru85/carApp/pull/52`. Remediation commits are being created locally in RED/GREEN/REFACTOR order.
-- Completed since the previous checkpoint: entered GREEN phase. Implemented `checkNoFeatureToAuthDependency` in `ArchitectureChecker.kt`, removed `:core:auth` dependency declaration from `feature/session/build.gradle.kts`, and applied `distinctUntilChanged()` to `AuthOwnerContext.observe()`.
+- Current phase and latest commit: REFACTOR phase of PR #52 review remediation; latest commit on branch is GREEN `f07927a`.
+- Push and pull-request status: pull request #52 is open at `https://github.com/davidru85/carApp/pull/52`. Ordered remediation commits (RED `3412b9d`, GREEN `f07927a`) are committed locally.
+- Completed since the previous checkpoint: entered REFACTOR phase. Executed comprehensive verification across all project suites: ktlint, detekt, architectureCheck, contractCheck, convention tests, Kover coverage, Android unit tests, common tests on JVM and iOS simulator, provider decoupling without Firebase modules, iOS framework linking against golden header, and Xcode iOS simulator application build.
 - Verification evidence and known failures:
-  - `./gradlew architectureCheck` verified to fail against the pre-fix state of `:feature:session` with `feature-to-auth-dependency`, and verified to pass after removing the dependency.
-  - `./gradlew :build-logic:convention:test` passed all 58 tests including the new `featureModulesMayNotDependOnCoreAuth` fixture.
-  - `./gradlew :feature:session:testAndroidHostTest` compiled and passed without `:core:auth`.
-  - `./gradlew :core:auth:testAndroidHostTest` and `:core:auth:iosSimulatorArm64Test` passed, including the discriminating deduplication test and contract signature tests.
+  - Complete non-instrumented CI command passed 636 actionable tasks.
+  - Provider decoupling (`-Pcarapp.excludeFirebaseProviders=true`) passed 234 actionable tasks.
+  - `:composition:ios:linkDebugFrameworkIosSimulatorArm64` passed and `diff -u` against golden header produced 0 differences.
+  - Native iOS application build via `xcodebuild` succeeded with `** BUILD SUCCEEDED **`.
+  - `contractCheck` passed all 17 active assertions with 0 pending and 0 unresolved decisions.
 - Open decisions or blockers: none.
-- Exact next step: proceed to REFACTOR phase: full repository verification across all checks, code cleanup, documentation updates, and PR body refresh.
+- Exact next step: commit REFACTOR phase, update project documentation (`docs/handoff-E2-01.md` acceptance evidence, `docs/PROJECT_LOG.md` append-only correction entry), update PR #52 body on GitHub, and push all commits to `origin/story/E2-01-core-auth-contracts`.
 
 ## Scope Completed
 
