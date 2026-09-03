@@ -46,34 +46,38 @@
 - Date: 2026-09-03.
 - Branch and base: `story/E2-01-core-auth-contracts`, recreated after a second explicit
   synchronization and based on identical `main` / `origin/main` at `91b2a78`.
-- Current phase and latest commit: RED complete and not yet committed; no story commit exists yet.
+- Current phase and latest commit: RED committed at `7bd723e`; GREEN is complete and not yet
+  committed.
 - Push and pull-request status: no story commit is pushed and no pull request exists.
-- Completed since the previous checkpoint: added compile-checked coverage for every staged auth
-  model and interface, behavior-specific tests for each auth-state owner mapping and reactive owner
-  observation, a deliberately incomplete `AuthOwnerContext` skeleton, and a wiring assertion that
-  requires the core-auth implementation. The branch was recreated after the owner's repeated sync
-  request, with the RED work safely restored afterwards.
-- Verification evidence and known failures: focused `:core:auth:testAndroidHostTest` compiled and
-  executed 12 tests; exactly three owner-context behaviors failed because signed-in mapping,
-  dynamic `current` and observation are not implemented. A separate focused wiring run compiled and
-  executed one test and failed because wiring still binds its private anonymous implementation
-  instead of `AuthOwnerContext`. Both failures are intentional RED evidence. `main`, `origin/main`
-  and the story merge base all resolve to `91b2a78`.
+- Completed since the previous checkpoint: RED was committed. GREEN stores the injected auth state
+  in `AuthOwnerContext`, maps `Unknown` and `SignedOut` to `LOCAL_OWNER`, maps `SignedIn` to its
+  session UID for both snapshot and Flow access, and replaces the private wiring implementation
+  with the `:core:auth` class.
+- Verification evidence and known failures: the focused GREEN command passed 113 executed tasks.
+  `:core:auth` ran 12 tests with zero failures on Android host and 12 with zero failures on the iOS
+  simulator; the Firebase-wiring Android-host suite ran two tests with zero failures. Historical RED
+  evidence remains below. No current failure is known.
 - Open decisions or blockers: none currently identified. The implementation will preserve the
   existing auth-state-to-owner mapping while relocating its ownership to `:core:auth`; this is the
   behavior already staged by E0-07 rather than a new product or architecture choice.
-- Exact next step: create the RED commit, then implement the minimum auth-state mapping in
-  `AuthOwnerContext` and replace the private wiring implementation in GREEN.
+- Exact next step: create the GREEN commit, then perform bounded refactoring and complete the story
+  documentation, status mirrors and project log before full verification.
 
 ## Scope Completed
 
-- RED tests and the compiling incomplete implementation seam are complete; production behavior is
-  pending GREEN.
+- Auth contracts are executable and the auth-backed owner context is implemented and bound in
+  wiring; REFACTOR documentation and final verification remain.
 
 ## Acceptance Evidence
 
-- RED proves the missing signed-in owner mapping, dynamic current owner, owner observation and
-  wiring binding through executing failures.
+- `AuthOwnerContextTest` proves `Unknown` and `SignedOut` use `LOCAL_OWNER`, `SignedIn` uses the
+  session UID, `current` follows state changes and `observe()` emits owner changes on both Android
+  host and iOS simulator.
+- `FirebaseAppProvidersTest.providerFactoryKeepsRealBoundariesAndDerivesTheCurrentOwner` proves the
+  provider factory binds `AuthOwnerContext` from `:core:auth` and derives the signed-in owner.
+- `AuthContractsTest` compiles and exercises the exact model fields, distinct auth states, both
+  native credential forms, token validity instants and every typed `AuthClient` / `TokenProvider`
+  outcome.
 
 ## Out of Scope / Not Done
 
@@ -114,6 +118,9 @@
   "com.ruizurraca.carapp.wiring.firebase.FirebaseAppProvidersTest.providerFactoryKeepsRealBoundariesAndDerivesTheCurrentOwner"
   --rerun-tasks` — failed as intended after executing one test because the bound owner context is
   not the new `AuthOwnerContext`.
+- GREEN: `./gradlew :core:auth:testAndroidHostTest :core:auth:iosSimulatorArm64Test
+  :wiring:firebase:testAndroidHostTest --rerun-tasks` — passed, 113 executed tasks; 12 core-auth
+  tests passed on each platform and two Firebase-wiring Android-host tests passed.
 
 ## Contract Impact
 

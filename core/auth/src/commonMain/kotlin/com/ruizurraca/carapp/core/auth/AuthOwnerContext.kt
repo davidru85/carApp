@@ -7,17 +7,23 @@ import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlin.native.HiddenFromObjC
 
 @HiddenFromObjC
 class AuthOwnerContext(
-    @Suppress("UNUSED_PARAMETER") authState: StateFlow<AuthState>,
+    private val authState: StateFlow<AuthState>,
 ) : OwnerContext {
-    override val current: OwnerId get() = LOCAL_OWNER
+    override val current: OwnerId get() = authState.value.toOwnerId()
 
-    override fun observe(): Flow<OwnerId> =
-        flow {
-            error("Auth-backed owner observation is not implemented")
-        }
+    override fun observe(): Flow<OwnerId> = authState.map(AuthState::toOwnerId)
 }
+
+private fun AuthState.toOwnerId(): OwnerId =
+    when (this) {
+        AuthState.Unknown,
+        AuthState.SignedOut,
+        -> LOCAL_OWNER
+
+        is AuthState.SignedIn -> OwnerId(session.uid)
+    }
