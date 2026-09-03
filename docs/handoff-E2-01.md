@@ -48,10 +48,9 @@
   synchronization and based on identical `main` / `origin/main` at `91b2a78`.
 - Current phase and latest commit: RED `7bd723e`, GREEN `d9b421e` and REFACTOR `1a582fe` are
   committed; final local verification is complete.
-- Push and pull-request status: the three ordered phase commits were pushed to
-  `origin/story/E2-01-core-auth-contracts`. Pull-request creation is temporarily blocked because
-  the GitHub CLI credential for `davidru85` is invalid, the in-app browser has no GitHub session,
-  and operating-system approval for the existing Chrome session was not granted.
+- Push and pull-request status: the three ordered phase commits and the documentation-only delivery
+  checkpoint were pushed to `origin/story/E2-01-core-auth-contracts`. Pull request #52 is open at
+  `https://github.com/davidru85/carApp/pull/52`; all ten required checks are queued or in progress.
 - Completed since the previous checkpoint: the REFACTOR phase was committed and the exact three
   TDD commits were pushed once, as requested. The remote compare page publicly confirms all three
   commits and 12 changed files.
@@ -63,12 +62,11 @@
   permitted rerun reached the toolchain and succeeded, so this is an environment restriction rather
   than a product failure. Historical RED evidence remains below.
 - Open decisions or blockers: no technical or owner decision is open and no implementation blocker
-  remains. Delivery is blocked only by GitHub authentication needed to create the pull request.
+  remains. GitHub CLI authentication was refreshed and pull-request creation is no longer blocked.
   The implementation preserves the mapping staged by E0-07 and changes no contract, architecture
   rule, dependency version, service or MVP scope.
-- Exact next step: authenticate `gh` for `davidru85` or authorize computer access to an already
-  authenticated browser, create the pull request, wait for required checks and leave it open for
-  mandatory owner review.
+- Exact next step: commit and push this PR checkpoint, wait for all required checks on the resulting
+  HEAD and leave pull request #52 open for mandatory owner review.
 
 ## Scope Completed
 
