@@ -12,7 +12,6 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 class GitLiveFirebaseAuthGatewayTest {
-
     @Test
     fun isCancellationRecognizesCancellationMessagesAndCodes() {
         assertTrue(isCancellation(code = "17058", message = null))
@@ -34,14 +33,12 @@ class GitLiveFirebaseAuthGatewayTest {
 
     @Test
     fun parseTokenTimestampsHandlesSecondsAndMillisecondsAndFallbacks() {
-        val now = Instant.fromEpochMilliseconds(1_700_000_000_000L)
-
         val claimsSeconds =
             mapOf<String, Any>(
                 "iat" to 1_700_000_000L,
                 "exp" to 1_700_003_600L,
             )
-        val (iatSec, expSec) = parseTokenTimestamps(claimsSeconds, now)
+        val (iatSec, expSec) = parseTokenTimestamps(claimsSeconds)
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), iatSec)
         assertEquals(Instant.fromEpochMilliseconds(1_700_003_600_000L), expSec)
 
@@ -50,7 +47,7 @@ class GitLiveFirebaseAuthGatewayTest {
                 "iat" to 1_700_000_000_000L,
                 "exp" to 1_700_003_600_000L,
             )
-        val (iatMs, expMs) = parseTokenTimestamps(claimsMillis, now)
+        val (iatMs, expMs) = parseTokenTimestamps(claimsMillis)
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), iatMs)
         assertEquals(Instant.fromEpochMilliseconds(1_700_003_600_000L), expMs)
 
@@ -59,30 +56,28 @@ class GitLiveFirebaseAuthGatewayTest {
                 "iat" to "1700000000",
                 "exp" to "1700003600",
             )
-        val (iatStr, expStr) = parseTokenTimestamps(claimsString, now)
+        val (iatStr, expStr) = parseTokenTimestamps(claimsString)
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), iatStr)
         assertEquals(Instant.fromEpochMilliseconds(1_700_003_600_000L), expStr)
 
         // Missing exp falls back to iat + 1.hours
         val claimsOnlyIat = mapOf<String, Any>("iat" to 1_700_000_000L)
-        val (iatOnly, expFallback) = parseTokenTimestamps(claimsOnlyIat, now)
+        val (iatOnly, expFallback) = parseTokenTimestamps(claimsOnlyIat)
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L), iatOnly)
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_000_000L) + 1.hours, expFallback)
     }
 
     @Test
     fun parseTokenTimestampsThrowsWhenIatIsMissing() {
-        val now = Instant.fromEpochMilliseconds(1_700_000_000_000L)
         assertFailsWith<FirebaseAuthGatewayException.Provider> {
-            parseTokenTimestamps(emptyMap(), now)
+            parseTokenTimestamps(emptyMap())
         }
     }
 
     @Test
     fun parseTokenTimestampsThrowsWhenIatIsMalformed() {
-        val now = Instant.fromEpochMilliseconds(1_700_000_000_000L)
         assertFailsWith<FirebaseAuthGatewayException.Provider> {
-            parseTokenTimestamps(mapOf("iat" to "not-a-number"), now)
+            parseTokenTimestamps(mapOf("iat" to "not-a-number"))
         }
     }
 
@@ -92,7 +87,11 @@ class GitLiveFirebaseAuthGatewayTest {
             classifyAuthFailure(code = "17025", message = "Collision", kind = AuthFailureKind.Auth),
         )
         assertIs<FirebaseAuthGatewayException.UserCollision>(
-            classifyAuthFailure(code = ERROR_CREDENTIAL_ALREADY_IN_USE, message = "Collision", kind = AuthFailureKind.Auth),
+            classifyAuthFailure(
+                code = ERROR_CREDENTIAL_ALREADY_IN_USE,
+                message = "Collision",
+                kind = AuthFailureKind.Auth,
+            ),
         )
     }
 
@@ -102,7 +101,11 @@ class GitLiveFirebaseAuthGatewayTest {
             classifyAuthFailure(code = "17014", message = "Recent login", kind = AuthFailureKind.Auth),
         )
         assertIs<FirebaseAuthGatewayException.RequiresRecentLogin>(
-            classifyAuthFailure(code = ERROR_REQUIRES_RECENT_LOGIN, message = "Recent login", kind = AuthFailureKind.Auth),
+            classifyAuthFailure(
+                code = ERROR_REQUIRES_RECENT_LOGIN,
+                message = "Recent login",
+                kind = AuthFailureKind.Auth,
+            ),
         )
     }
 
@@ -112,7 +115,11 @@ class GitLiveFirebaseAuthGatewayTest {
             classifyAuthFailure(code = "17020", message = "Network error", kind = AuthFailureKind.Auth),
         )
         assertIs<FirebaseAuthGatewayException.Network>(
-            classifyAuthFailure(code = ERROR_NETWORK_REQUEST_FAILED, message = "Network error", kind = AuthFailureKind.Auth),
+            classifyAuthFailure(
+                code = ERROR_NETWORK_REQUEST_FAILED,
+                message = "Network error",
+                kind = AuthFailureKind.Auth,
+            ),
         )
     }
 
@@ -151,17 +158,21 @@ class GitLiveFirebaseAuthGatewayTest {
     }
 
     @Test
-    fun accountDeletionInvokerPermissionDeniedPropagatesThroughGateway() = runTest {
-        val invoker = AccountDeletionInvoker {
-            throw FirebaseAuthGatewayException.PermissionDenied(IllegalStateException("Caller UID mismatch"))
+    fun accountDeletionInvokerPermissionDeniedPropagatesThroughGateway() =
+        runTest {
+            val invoker =
+                AccountDeletionInvoker {
+                    throw FirebaseAuthGatewayException.PermissionDenied(IllegalStateException("Caller UID mismatch"))
+                }
+            val gateway =
+                GitLiveFirebaseAuthGateway(
+                    clock = AppClock { Instant.fromEpochMilliseconds(1_000L) },
+                    deletionInvoker = invoker,
+                )
+            val thrown =
+                assertFailsWith<FirebaseAuthGatewayException.PermissionDenied> {
+                    gateway.executeServerAccountDeletion("token-123")
+                }
+            assertEquals("Caller UID mismatch", thrown.cause?.message)
         }
-        val gateway = GitLiveFirebaseAuthGateway(
-            clock = AppClock { Instant.fromEpochMilliseconds(1_000L) },
-            deletionInvoker = invoker,
-        )
-        val thrown = assertFailsWith<FirebaseAuthGatewayException.PermissionDenied> {
-            gateway.executeServerAccountDeletion("token-123")
-        }
-        assertEquals("Caller UID mismatch", thrown.cause?.message)
-    }
 }

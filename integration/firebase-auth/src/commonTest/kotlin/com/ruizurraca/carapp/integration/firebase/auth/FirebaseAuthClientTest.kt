@@ -497,7 +497,11 @@ class FirebaseAuthClientTest {
                     throwOnGetIdToken = FirebaseAuthGatewayException.Network(RuntimeException("Network down")),
                 )
             val client =
-                FirebaseAuthClient(gateway = gateway, clock = AppClock { Instant.fromEpochMilliseconds(1_000L) }, coroutineScope = backgroundScope)
+                FirebaseAuthClient(
+                    gateway = gateway,
+                    clock = AppClock { Instant.fromEpochMilliseconds(1_000L) },
+                    coroutineScope = backgroundScope,
+                )
 
             val result = client.deleteAccount()
 

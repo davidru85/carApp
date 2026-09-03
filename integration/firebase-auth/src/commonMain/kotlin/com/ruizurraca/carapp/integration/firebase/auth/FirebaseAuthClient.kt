@@ -48,7 +48,6 @@ class FirebaseAuthClient internal constructor(
 ) : AuthClient,
     TokenProvider,
     AutoCloseable {
-
     constructor(
         coroutineScope: CoroutineScope,
     ) : this(
@@ -385,7 +384,7 @@ internal class GitLiveFirebaseAuthGateway(
             val user = checkNotNull(Firebase.auth.currentUser)
             val tokenResult = user.getIdTokenResult(forceRefresh)
             val tokenString = checkNotNull(tokenResult.token)
-            val (issuedAt, expiresAt) = parseTokenTimestamps(tokenResult.claims, clock.now())
+            val (issuedAt, expiresAt) = parseTokenTimestamps(tokenResult.claims)
             AuthToken(value = tokenString, issuedAt = issuedAt, expiresAt = expiresAt)
         }
 
@@ -537,10 +536,7 @@ internal fun parseClaimTimestamp(value: Any?): Instant? =
         }
     }
 
-internal fun parseTokenTimestamps(
-    claims: Map<String, Any>,
-    now: Instant,
-): Pair<Instant, Instant> {
+internal fun parseTokenTimestamps(claims: Map<String, Any>): Pair<Instant, Instant> {
     val iat =
         parseClaimTimestamp(claims["iat"])
             ?: throw FirebaseAuthGatewayException.Provider(

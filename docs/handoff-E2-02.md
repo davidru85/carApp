@@ -7,23 +7,31 @@
 ### Closure Update: Review Remediation (PR #53) - 2026-09-03
 
 Addressed all owner review findings for PR #53:
-- **A1**: Fixed pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests.testVehicleListViewModelInitialState` by making the test `async throws` and awaiting refresh completion before `tearDown` calls `graph.close()`.
+- **A1 / Minor f**: Applied a timing workaround for the pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests.testVehicleListViewModelInitialState` by adding a short delay (`Task.sleep(200ms)`) widening the timing window to match the existing pattern in that file. A permanent architectural fix belongs in its own story.
 - **B1 / D-111 / ADR-0112**: Added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption. Documented parity in `DECISION_BOARD.md`, `SPECIFICATION.md §12`, `TECHNICAL_PLAN.md §2`, `adr/README.md`, and `CONTRACTS.md §11.1/§11.3`.
-- **B2**: Added `FirebaseAuthGatewayException.PermissionDenied` mapped to `AuthError.PermissionDenied` for caller mismatch / IAM rejections during `deleteAccount`.
-- **B3**: Added forced token refresh (`gateway.getIdToken(forceRefresh = true)`) inside `reauthenticate()` per `CONTRACTS.md §11.5` Step 1 to re-mint fresh token timestamps.
-- **B4**: Initialized `FirebaseAuthClient.authState` to `AuthState.Unknown` and observed `gateway.authStateChanged` in `coroutineScope` to receive external session transitions.
-- **C1**: Added exhaustive unit tests in `GitLiveFirebaseAuthGatewayTest.kt` for `isCancellation`, `parseTokenTimestamps`, `mapAuthException`, `mapWebException`, `mapInvalidCredentialsException`, `mapFirebaseAuthException`, and all error code constants.
-- **C2**: Removed unused `clientSdkDeleteCalled` from fake gateway and stated architectural guarantee (gateway exposes no client delete method).
-- **C3**: Added `deleteAccountMapsGetIdTokenFailureToGatewayError` test.
-- **C4**: Removed unused imports in `FirebaseAppProvidersTest.kt`.
-- **C5**: Made `firebaseAppProviders` require `tokenProvider: TokenProvider` explicitly at compile time.
-- **D1**: Removed undocumented `ageMillis < 0` rejection from `deleteAccount()`.
-- **D2**: Narrowed catch in `GitLiveFirebaseAuthGateway.currentUser` to `FirebaseException` and `IllegalStateException`.
-- **D3**: Updated `docs/BACKLOG.md` status line.
-- **D4**: Quoted backlog verbatim: `E2-02 - Firebase Auth Integration - L`.
-- **D5**: Documented below that `deleteAccount()` leaving `authState` at `SignedIn` is intentional and managed by E2-05 user flow.
-- **D6**: Removed public `FirebaseAuthClient(clock)` constructor.
-- **E**: Added KDoc to `parseCreationTime` naming GitLive 2.6.0.
+- **Blocking 1**: Reverted repo-wide test-infrastructure flag in `KmpLibraryConventionPlugin.kt`, restoring `androidLibrary.withHostTestBuilder {}` so unmocked Android SDK calls fail loudly as intended. Extracted a pure platform-free seam `internal fun classifyAuthFailure(code: String?, message: String?, kind: AuthFailureKind, cause: Throwable? = null): FirebaseAuthGatewayException` and tested it with plain code/message pairs without instantiating Firebase Android SDK exception types.
+- **Blocking 2 & D-75 Apple test exclusion**: Explicit note on Apple test exclusion under D-75: `:integration:firebase-auth` commonTest never runs on Apple targets (`-x :integration:firebase-auth:iosSimulatorArm64Test`), as Apple GitLive framework dependencies require CocoaPods/SPM integration tested via host apps. Consequently, the iOS numeric-code mapping (e.g. 17025, 17014, 17020, 17028, 17058) is covered by the platform-free classifier tests.
+- **Finding 3**: Remapped numeric code 17028 (`FIREBASE_APP_NOT_AUTHORIZED_CODE`) to `FirebaseAuthGatewayException.Provider` with a comment naming it `appNotAuthorized` (configuration failure). Widened `AccountDeletionInvoker` contract: implementations (such as E3-10 Cloud Functions callable) MUST throw `FirebaseAuthGatewayException.PermissionDenied` for caller rejection (e.g. caller mismatch where authenticated UID != target UID, or IAM permission denied), which maps to `AuthError.PermissionDenied`; and `FirebaseAuthGatewayException.AccountDeletionRemoteFailed` for other failures. Added KDoc and tests verifying that `PermissionDenied` propagates unchanged through `executeServerAccountDeletion` and `safeAuthCall` to `AuthError.PermissionDenied`.
+- **Finding 4**: Fixed the §11.5 freshness gate fail-closed behavior: `parseTokenTimestamps` now throws `FirebaseAuthGatewayException.Provider` when `iat` is missing or unparseable instead of silently substituting `now` (which would have treated missing `iat` as freshly authenticated). Replaced direct `Clock.System.now()` calls in `GitLiveFirebaseAuthGateway` with an injected `AppClock = AppClock { Clock.System.now() }` for deterministic testing. Added test proving `deleteAccount` does not call the server operation when token has no usable `iat`.
+- **Finding 5**: Raised an open question for the owner below regarding token freshness (`auth_time` vs `iat`).
+- **Minor a**: `FirebaseAuthClient` now accepts `coroutineScope: CoroutineScope` from the composition boundary instead of hardcoding `Dispatchers.Default`, implements `AutoCloseable`, and exposes `close()` and `dispose()` which cancel the internal `observationJob`. Updated `FirebaseAppProviders.kt` accordingly. Added unit test verifying `close()` cancels auth state observation.
+- **Minor b**: In `FirebaseAuthClientTest`, passed `coroutineScope = backgroundScope` consistently across all test cases.
+- **Minor c**: Cleaned up imports in `FirebaseAuthClient.kt` to eliminate inline fully-qualified `kotlinx.coroutines` names.
+- **Minor d**: In `reauthenticate()`, added a comment explicitly naming the coupling where `gateway.getIdToken(forceRefresh = true)` re-mints fresh `iat` for subsequent `deleteAccount` reads.
+- **Minor e**: Corrected test counts: `FirebaseAuthClientTest = 32 tests` and `GitLiveFirebaseAuthGatewayTest = 12 tests` (total 44 tests in `:integration:firebase-auth`).
+
+### Open Question for the Owner: Token Freshness (`auth_time` vs `iat`)
+
+`CONTRACTS.md §11.5` Step 1 currently defines token freshness for account deletion as:
+`AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS` (5 minutes).
+
+However, Firebase silently and automatically refreshes ID tokens every hour in the background. Consequently, the `iat` (issued at) claim reflects when the token was minted by Firebase Auth, which is typically at most 60 minutes old even if the user logged in days or weeks ago.
+The Firebase Auth JWT claim that encodes the real time of last interactive user authentication is `auth_time` (Unix seconds).
+
+Because changing `CONTRACTS.md` or `AuthToken` is an owner decision that outranks an implementation story, no contract changes were made in E2-02.
+Options for the owner:
+1. **Add `authTime: Instant?` to `AuthToken`**: update `CONTRACTS.md §11.5` and `§20.8` to define freshness against `authTime` instead of `issuedAt`.
+2. **Keep `iat` in `AuthToken`**: keep client-side check on `issuedAt` as a fast pre-check and rely on the server callable (`D-23`, `E3-10`) to perform the authoritative `auth_time` validation using the Firebase Admin SDK (`decodedToken.auth_time`).
 
 ## Ready Check
 
@@ -80,34 +88,56 @@ Addressed all owner review findings for PR #53:
 - Implemented `parseCreationTime` normalizing Android milliseconds and iOS Apple reference date seconds (`NSTimeIntervalSinceReferenceDate`) to Unix `Instant`.
 - Implemented `GitLiveFirebaseAuthGateway` with comprehensive exception mapping covering cancellations, network, provider errors, and collision codes.
 - Wired `tokenProvider = authClient` in `:wiring:firebase` `firebaseAppProviders`.
-- Added 23 unit tests in `FirebaseAuthClientTest` and verified token provider binding in `FirebaseAppProvidersTest`.
+- Added 32 unit tests in `FirebaseAuthClientTest`, 12 unit tests in `GitLiveFirebaseAuthGatewayTest` (44 total in `:integration:firebase-auth`), and verified token provider binding in `FirebaseAppProvidersTest`.
 
 ## Acceptance Evidence
 
-- `FirebaseAuthClientTest` verifies:
+- `FirebaseAuthClientTest` (32 tests) verifies:
   1. Retained anonymous session on start.
-  2. Anonymous sign-in session publishing.
-  3. Anonymous creation timestamp propagation from metadata (`createdAt`).
-  4. Google sign-in credential exchange.
-  5. Apple sign-in credential exchange.
-  6. Google sign-in cancellation -> `AuthError.Cancelled`.
-  7. Apple sign-in cancellation -> `AuthError.Cancelled`.
-  8. Network failure -> `AuthError.NetworkUnavailable`.
-  9. Link credential success (preserves UID, adds provider).
-  10. Link credential collision -> `AuthError.CredentialAlreadyInUse`.
-  11. Link credential with unexpected UID shift -> `AuthError.UidWouldChange`.
-  12. Active anonymous session non-link sign-in -> `AuthError.UidWouldChange`.
-  13. Reauthentication with credentials.
-  14. Sign out -> sets `AuthState.SignedOut`.
-  15. Account deletion with fresh token (`<= FRESH_LOGIN_THRESHOLD_MS`) -> calls server operation, never calls client SDK delete.
-  16. Account deletion with stale token (`> FRESH_LOGIN_THRESHOLD_MS`) -> `AuthError.RequiresRecentLogin`, does not call server.
-  17. Account deletion server failure -> `AuthError.AccountDeletionRemoteFailed`.
-  18. Account deletion network failure -> `AuthError.NetworkUnavailable`.
-  19. `getIdToken(forceRefresh)` -> returns `AuthToken(value, issuedAt, expiresAt)`.
-  20. `getIdToken` forwards `forceRefresh` boolean flag.
-  21. `parseCreationTime` parses Android millisecond timestamps.
-  22. `parseCreationTime` parses Apple reference date second timestamps.
-  23. `parseClaimTimestamp` parses numeric and string seconds and milliseconds.
+  2. Initial authState starts at Unknown before gateway emission.
+  3. authState observes external transitions from gateway.
+  4. Anonymous sign-in session publishing.
+  5. Anonymous creation timestamp propagation from metadata (`createdAt`).
+  6. Google sign-in credential exchange.
+  7. Apple sign-in credential exchange.
+  8. Google sign-in cancellation -> `AuthError.Cancelled`.
+  9. Apple sign-in cancellation -> `AuthError.Cancelled`.
+  10. Network failure -> `AuthError.NetworkUnavailable`.
+  11. Link credential success (preserves UID, adds provider).
+  12. Link credential collision -> `AuthError.CredentialAlreadyInUse`.
+  13. Link credential with unexpected UID shift -> `AuthError.UidWouldChange`.
+  14. Active anonymous session non-link sign-in -> `AuthError.UidWouldChange`.
+  15. Active anonymous session sign-in with allowUidChange = true succeeds and updates session.
+  16. Reauthentication with credentials.
+  17. Reauthentication force-refreshes token to update `iat`.
+  18. Sign out -> sets `AuthState.SignedOut`.
+  19. Account deletion with fresh token (`<= FRESH_LOGIN_THRESHOLD_MS`) -> calls server operation, never calls client SDK delete.
+  20. Account deletion with stale token (`> FRESH_LOGIN_THRESHOLD_MS`) -> `AuthError.RequiresRecentLogin`, does not call server.
+  21. Account deletion fails closed when token has no usable `iat` (missing/malformed) -> `AuthError.ProviderUnavailable`, does not call server.
+  22. Account deletion server failure -> `AuthError.AccountDeletionRemoteFailed`.
+  23. Account deletion network failure -> `AuthError.NetworkUnavailable`.
+  24. Account deletion server caller rejection propagates `PermissionDenied` from `AccountDeletionInvoker` -> `AuthError.PermissionDenied`.
+  25. `getIdToken(forceRefresh)` -> returns `AuthToken(value, issuedAt, expiresAt)`.
+  26. `getIdToken` forwards `forceRefresh` boolean flag.
+  27. `deleteAccount` maps `getIdToken` failure to gateway error.
+  28. `close()` cancels auth state observation.
+  29. `parseCreationTime` parses Android millisecond timestamps.
+  30. `parseCreationTime` parses Apple reference date second timestamps.
+  31. `parseClaimTimestamp` parses numeric and string seconds and milliseconds.
+  32. `parseClaimTimestamp` handles unparseable values gracefully.
+- `GitLiveFirebaseAuthGatewayTest` (12 tests) verifies:
+  1. `isCancellation` recognizes cancellation error messages and codes.
+  2. `isCancellation` does not classify non-cancellation errors as cancelled.
+  3. `parseTokenTimestamps` handles seconds, milliseconds, and `exp` fallback.
+  4. `parseTokenTimestamps` throws `Provider` when `iat` is missing (fails closed).
+  5. `parseTokenTimestamps` throws `Provider` when `iat` is malformed (fails closed).
+  6. `classifyAuthFailure` maps collision codes (17025, `ERROR_CREDENTIAL_ALREADY_IN_USE`).
+  7. `classifyAuthFailure` maps recent login required codes (17014, `ERROR_REQUIRES_RECENT_LOGIN`).
+  8. `classifyAuthFailure` maps network codes (17020, `ERROR_NETWORK_REQUEST_FAILED`).
+  9. `classifyAuthFailure` maps 17028 (`appNotAuthorized`) to `Provider` (configuration failure).
+  10. `classifyAuthFailure` maps web and invalid credentials to `Provider` or `Cancelled`.
+  11. `classifyAuthFailure` maps generic FirebaseException to `Unknown` or `Cancelled`.
+  12. `AccountDeletionInvoker` `PermissionDenied` propagates through gateway unchanged.
 - `FirebaseAppProvidersTest.providerFactoryBindsAuthClientImplementingTokenProviderAsTokenProvider` verifies that `:wiring:firebase` binds `authClient` as `tokenProvider`.
 
 ## Out of Scope / Not Done
