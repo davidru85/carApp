@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SessionStateHolderTest {
@@ -149,7 +150,6 @@ class SessionStateHolderTest {
     fun nativeFailuresAreClosedMappedAndEveryAttemptCanRetry() {
         val cases =
             mapOf(
-                NativeSignInFailure.CANCELLED to AuthError.Cancelled,
                 NativeSignInFailure.NETWORK to AuthError.NetworkUnavailable,
                 NativeSignInFailure.CONFIGURATION to AuthError.ProviderUnavailable,
                 NativeSignInFailure.UNKNOWN to AuthError.Unknown,
@@ -171,6 +171,32 @@ class SessionStateHolderTest {
             )
         }
 
+        stateHolder.close()
+    }
+
+    @Test
+    fun cancellationLeavesARetryableStateWithoutAUserVisibleError() {
+        val stateHolder = SessionStateHolder()
+
+        stateHolder.startPermanentSignIn(AuthProvider.GOOGLE)
+        stateHolder.failSignIn(NativeSignInFailure.NETWORK)
+        assertEquals(
+            AuthError.NetworkUnavailable.code,
+            stateHolder.state.value
+                .message
+                ?.code,
+        )
+
+        stateHolder.startPermanentSignIn(AuthProvider.GOOGLE)
+        assertTrue(stateHolder.state.value.isBusy)
+
+        stateHolder.failSignIn(NativeSignInFailure.CANCELLED)
+
+        assertFalse(stateHolder.state.value.isBusy)
+        assertNull(stateHolder.state.value.message)
+
+        stateHolder.startPermanentSignIn(AuthProvider.APPLE)
+        assertTrue(stateHolder.state.value.isBusy)
         stateHolder.close()
     }
 

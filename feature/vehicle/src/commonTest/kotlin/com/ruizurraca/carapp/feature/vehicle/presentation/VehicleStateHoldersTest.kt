@@ -14,8 +14,10 @@ import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -225,16 +227,56 @@ class VehicleStateHoldersTest {
             assertEquals("Edited model", requireNotNull(captured).model)
             holder.close()
         }
+
+    @Test
+    fun listLoadingMeansTheVehicleListIsUnknownAndARefreshNeverReopensIt() =
+        runTest {
+            val observedVehicles = MutableSharedFlow<Outcome<List<Vehicle>, AppError>>(replay = 1)
+            val repository = FakeVehicleRepository(observedVehicles = observedVehicles)
+            val refreshGate = CompletableDeferred<Unit>()
+            val holder =
+                VehicleListStateHolder(
+                    scope = backgroundScope,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = {
+                        refreshGate.await()
+                        Outcome.Ok(Unit)
+                    },
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+
+            assertTrue(holder.state.value.isLoading)
+
+            observedVehicles.emit(Outcome.Ok(listOf(vehicle())))
+            advanceUntilIdle()
+
+            assertFalse(holder.state.value.isLoading)
+
+            holder.refresh()
+            advanceUntilIdle()
+
+            assertFalse(holder.state.value.isLoading)
+
+            refreshGate.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse(holder.state.value.isLoading)
+            holder.close()
+        }
 }
 
-private class FakeVehicleRepository : VehicleRepository {
+private class FakeVehicleRepository(
+    private val observedVehicles: Flow<Outcome<List<Vehicle>, AppError>>? = null,
+) : VehicleRepository {
     val vehicles = MutableStateFlow<Outcome<List<Vehicle>, AppError>>(Outcome.Ok(emptyList()))
     val editFacts = MutableStateFlow<Outcome<VehicleEditFacts?, AppError>>(Outcome.Ok(null))
     val includeDeletedArguments = mutableListOf<Boolean>()
 
     override fun observeVehicles(includeDeleted: Boolean): Flow<Outcome<List<Vehicle>, AppError>> {
         includeDeletedArguments += includeDeleted
-        return vehicles
+        return observedVehicles ?: vehicles
     }
 
     override fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>> = MutableStateFlow(Outcome.Ok(null))

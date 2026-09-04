@@ -18,12 +18,13 @@ class AndroidGoogleSignInCoordinatorTest {
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
                     completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
                     failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
                 )
 
             coordinator.signIn()
 
             assertEquals(
-                listOf("start:${AuthProvider.GOOGLE}", "complete:id-token:null"),
+                listOf("start:${AuthProvider.GOOGLE}", "inFlight:true", "inFlight:false", "complete:id-token:null"),
                 calls,
             )
         }
@@ -40,13 +41,42 @@ class AndroidGoogleSignInCoordinatorTest {
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
                     completeGoogleSignIn = { _, _ -> calls += "complete" },
                     failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
                 )
 
             coordinator.signIn()
 
             assertEquals(
-                listOf("start:${AuthProvider.GOOGLE}", "fail:${NativeSignInFailure.NETWORK}"),
+                listOf(
+                    "start:${AuthProvider.GOOGLE}",
+                    "inFlight:true",
+                    "inFlight:false",
+                    "fail:${NativeSignInFailure.NETWORK}",
+                ),
                 calls,
             )
         }
+
+    @Test
+    fun abandoningAnInterruptedAcquisitionCancelsItAndClearsTheMarker() {
+        val calls = mutableListOf<String>()
+        val coordinator =
+            AndroidGoogleSignInCoordinator(
+                acquireCredential = {
+                    calls += "acquire"
+                    GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
+                },
+                startPermanentSignIn = { provider -> calls += "start:$provider" },
+                completeGoogleSignIn = { _, _ -> calls += "complete" },
+                failSignIn = { failure -> calls += "fail:$failure" },
+                setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+            )
+
+        coordinator.abandonInterruptedAcquisition()
+
+        assertEquals(
+            listOf("inFlight:false", "fail:${NativeSignInFailure.CANCELLED}"),
+            calls,
+        )
+    }
 }

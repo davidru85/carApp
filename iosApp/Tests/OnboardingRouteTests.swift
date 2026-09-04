@@ -29,4 +29,43 @@ final class OnboardingRouteTests: XCTestCase {
             )
         }
     }
+
+    func testFirstVehicleCreationWaitsUntilTheVehicleListIsKnown() {
+        XCTAssertFalse(
+            shouldPresentFirstVehicleCreation(
+                isVehicleListKnown: false,
+                vehicleCount: 0,
+                alreadyPresented: false
+            )
+        )
+        XCTAssertTrue(
+            shouldPresentFirstVehicleCreation(
+                isVehicleListKnown: true,
+                vehicleCount: 0,
+                alreadyPresented: false
+            )
+        )
+    }
+
+    func testFirstVehicleCreationIsPresentedOnceAndNeverForAnOwnerThatHasVehicles() {
+        XCTAssertFalse(
+            shouldPresentFirstVehicleCreation(
+                isVehicleListKnown: true,
+                vehicleCount: 1,
+                alreadyPresented: false
+            )
+        )
+        XCTAssertFalse(
+            shouldPresentFirstVehicleCreation(
+                isVehicleListKnown: true,
+                vehicleCount: 0,
+                alreadyPresented: true
+            )
+        )
+    }
+
+    func testFirstRunVehicleCreationOffersNoCancellation() {
+        XCTAssertFalse(VehicleCreationPresentation(isFirstRun: true).offersCancellation)
+        XCTAssertTrue(VehicleCreationPresentation(isFirstRun: false).offersCancellation)
+    }
 }
