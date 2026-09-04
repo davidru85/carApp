@@ -51,17 +51,21 @@ class VehicleListStateHolder internal constructor(
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var closed = false
 
+    /**
+     * `isLoading` means the vehicle list is not known yet, which is true only until the repository
+     * emits for the first time. A refresh over an already known list MUST NOT reopen it, because
+     * hosts gate first-run routing on this value.
+     */
     val state: StateFlow<VehicleListUiState> =
         combine(
             repository.observeVehicles(includeDeleted = false).flowOn(dispatchers.io),
-            refreshing,
             selectedVehicleId,
             transientMessage,
-        ) { result, isRefreshing, selectedId, message ->
+        ) { result, selectedId, message ->
             when (result) {
                 is Outcome.Ok -> {
                     VehicleListUiState(
-                        isLoading = isRefreshing,
+                        isLoading = false,
                         vehicles =
                             result.value
                                 .filter { vehicle -> vehicle.deletedAt == null }
@@ -82,7 +86,7 @@ class VehicleListStateHolder internal constructor(
 
                 is Outcome.Err -> {
                     VehicleListUiState(
-                        isLoading = isRefreshing,
+                        isLoading = false,
                         vehicles = emptyList(),
                         selectedVehicleId = selectedId,
                         syncStatus = SyncStatus.Idle,

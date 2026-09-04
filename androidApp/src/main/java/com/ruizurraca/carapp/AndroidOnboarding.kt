@@ -56,6 +56,17 @@ internal fun resolveOnboardingDestination(
         }
     }
 
+/**
+ * F-1 routes an authenticated owner without vehicles to first-vehicle creation. The decision waits
+ * for the vehicle list to be known, so an unresolved list never presents the form, and it is taken
+ * once, so saving the first vehicle does not re-present it.
+ */
+internal fun shouldPresentFirstVehicleCreation(
+    isVehicleListKnown: Boolean,
+    vehicleCount: Int,
+    alreadyPresented: Boolean,
+): Boolean = isVehicleListKnown && vehicleCount == 0 && !alreadyPresented
+
 internal sealed interface GoogleCredentialAcquisition {
     data class Success(
         val idToken: String,
@@ -72,18 +83,33 @@ internal class AndroidGoogleSignInCoordinator(
     private val startPermanentSignIn: (AuthProvider) -> Unit,
     private val completeGoogleSignIn: (String, String?) -> Unit,
     private val failSignIn: (NativeSignInFailure) -> Unit,
+    private val setAcquisitionInFlight: (Boolean) -> Unit,
 ) {
     suspend fun signIn() {
         startPermanentSignIn(AuthProvider.GOOGLE)
+        setAcquisitionInFlight(true)
         when (val acquisition = acquireCredential()) {
             is GoogleCredentialAcquisition.Success -> {
+                setAcquisitionInFlight(false)
                 completeGoogleSignIn(acquisition.idToken, acquisition.accessToken)
             }
 
             is GoogleCredentialAcquisition.Failure -> {
+                setAcquisitionInFlight(false)
                 failSignIn(acquisition.reason)
             }
         }
+    }
+
+    /**
+     * The Credential Manager call is bound to the host it renders over. When that host is rebuilt
+     * before the call returns, no completion can arrive, so an acquisition that is still marked as
+     * in flight is cancelled through the closed failure intent instead of leaving the session busy
+     * forever.
+     */
+    fun abandonInterruptedAcquisition() {
+        setAcquisitionInFlight(false)
+        failSignIn(NativeSignInFailure.CANCELLED)
     }
 }
 

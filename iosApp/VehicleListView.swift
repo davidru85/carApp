@@ -10,7 +10,9 @@ struct VehicleListView: View {
     let graph: SwiftAppGraph
     let skeletonModel: WalkingSkeletonModel
     @StateObject private var viewModel: VehicleListViewModel
-    @State private var isCreatingVehicle = false
+    @State private var path: [VehicleDetailRoute] = []
+    @State private var creation: VehicleCreationPresentation?
+    @State private var firstVehicleCreationPresented = false
     @State private var pendingDeleteVehicleId: String?
 
     init(graph: SwiftAppGraph, skeletonModel: WalkingSkeletonModel) {
@@ -27,7 +29,7 @@ struct VehicleListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 if viewModel.state.vehicles.isEmpty {
                     VStack(spacing: 12) {
@@ -80,7 +82,7 @@ struct VehicleListView: View {
 
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
-                        isCreatingVehicle = true
+                        creation = VehicleCreationPresentation(isFirstRun: false)
                     }) {
                         Image(systemName: "plus")
                     }
@@ -90,11 +92,17 @@ struct VehicleListView: View {
             .navigationDestination(for: VehicleDetailRoute.self) { route in
                 VehicleDetailView(graph: graph, vehicleId: route.vehicleId, vehicleName: route.vehicleName)
             }
-            .sheet(isPresented: $isCreatingVehicle) {
-                VehicleFormView(graph: graph, vehicleId: nil) {
-                    isCreatingVehicle = false
-                }
+            .sheet(item: $creation) { presentation in
+                VehicleFormView(
+                    graph: graph,
+                    vehicleId: nil,
+                    onSaved: presentation.isFirstRun ? routeToCreatedVehicle : nil,
+                    onDismiss: presentation.offersCancellation ? { creation = nil } : nil
+                )
             }
+            .onAppear { presentFirstVehicleCreationIfNeeded() }
+            .onChange(of: viewModel.state.isLoading) { _ in presentFirstVehicleCreationIfNeeded() }
+            .onChange(of: viewModel.state.vehicles.count) { _ in presentFirstVehicleCreationIfNeeded() }
             .alert(String(localized: "delete_vehicle_title"), isPresented: isDeleteConfirmationPresented) {
                 Button(String(localized: "delete"), role: .destructive) {
                     if let id = pendingDeleteVehicleId {
@@ -111,5 +119,26 @@ struct VehicleListView: View {
                 Text("delete_vehicle_confirmation")
             }
         }
+    }
+
+    /// F-1 presents first-vehicle creation over the list once the list is known to be empty, so the
+    /// list stays mounted underneath and the saved vehicle can be pushed onto the same stack.
+    private func presentFirstVehicleCreationIfNeeded() {
+        guard shouldPresentFirstVehicleCreation(
+            isVehicleListKnown: !viewModel.state.isLoading,
+            vehicleCount: viewModel.state.vehicles.count,
+            alreadyPresented: firstVehicleCreationPresented
+        ) else {
+            return
+        }
+        firstVehicleCreationPresented = true
+        creation = VehicleCreationPresentation(isFirstRun: true)
+    }
+
+    /// `SPECIFICATION.md` F-2 routes to the created vehicle detail after saving, including the very
+    /// first vehicle.
+    private func routeToCreatedVehicle(vehicleId: String, vehicleName: String) {
+        creation = nil
+        path.append(VehicleDetailRoute(vehicleId: vehicleId, vehicleName: vehicleName))
     }
 }

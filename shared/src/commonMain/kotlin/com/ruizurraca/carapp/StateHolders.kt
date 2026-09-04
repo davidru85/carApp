@@ -111,7 +111,11 @@ class SessionStateHolder internal constructor(
         operationJob?.cancel()
         operationJob = null
         activePermanentProvider = null
-        publishError(reason.toAuthError())
+        mutableState.value =
+            mutableState.value.copy(
+                isBusy = false,
+                message = reason.toReportableAuthError()?.toUiMessage(),
+            )
     }
 
     fun startAccountConversion(provider: AuthProvider) = provider.let { Unit }
@@ -185,9 +189,13 @@ class SessionStateHolder internal constructor(
     }
 }
 
-private fun NativeSignInFailure.toAuthError(): AuthError =
+/**
+ * A user-driven cancellation is a recoverable retry state, not a failure to report, so it maps to no
+ * message. Every other closed native failure maps to the error the owner must see.
+ */
+private fun NativeSignInFailure.toReportableAuthError(): AuthError? =
     when (this) {
-        NativeSignInFailure.CANCELLED -> AuthError.Cancelled
+        NativeSignInFailure.CANCELLED -> null
         NativeSignInFailure.NETWORK -> AuthError.NetworkUnavailable
         NativeSignInFailure.CONFIGURATION -> AuthError.ProviderUnavailable
         NativeSignInFailure.UNKNOWN -> AuthError.Unknown

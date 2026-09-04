@@ -4,9 +4,16 @@ import Shared
 struct VehicleFormView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: VehicleFormViewModel
+    var onSaved: ((String, String) -> Void)? = nil
     var onDismiss: (() -> Void)? = nil
 
-    init(graph: SwiftAppGraph, vehicleId: String?, onDismiss: (() -> Void)? = nil) {
+    init(
+        graph: SwiftAppGraph,
+        vehicleId: String?,
+        onSaved: ((String, String) -> Void)? = nil,
+        onDismiss: (() -> Void)? = nil
+    ) {
+        self.onSaved = onSaved
         self.onDismiss = onDismiss
         _viewModel = StateObject(wrappedValue: VehicleFormViewModel(graph: graph, vehicleId: vehicleId))
     }
@@ -60,17 +67,24 @@ struct VehicleFormView: View {
             }
             .navigationTitle(viewModel.vehicleId == nil ? Text("create_vehicle_title") : Text("edit_vehicle_title"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("cancel") {
-                        onDismiss?()
-                        dismiss()
+                // First-run creation is presented without a dismiss target, so it offers no
+                // cancellation control instead of a control that cannot do anything.
+                if onDismiss != nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("cancel") {
+                            onDismiss?()
+                            dismiss()
+                        }
+                        .accessibilityIdentifier("cancel_vehicle")
                     }
-                    .accessibilityIdentifier("cancel_vehicle")
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
                         viewModel.save {
+                            if let savedVehicleId = viewModel.state.savedVehicleId {
+                                onSaved?(savedVehicleId, viewModel.state.name)
+                            }
                             onDismiss?()
                             dismiss()
                         }

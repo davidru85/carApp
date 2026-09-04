@@ -39,9 +39,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,7 +56,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -87,22 +86,14 @@ class MainActivity : ComponentActivity() {
                 owner = this,
                 factory = VehicleAppViewModel.factory(application),
             )[VehicleAppViewModel::class.java]
-        val googleSignInCoordinator =
-            AndroidGoogleSignInCoordinator(
-                acquireCredential = AndroidGoogleCredentialSource(this)::acquire,
-                startPermanentSignIn = viewModel.sessionStateHolder::startPermanentSignIn,
-                completeGoogleSignIn = viewModel.sessionStateHolder::completeGoogleSignIn,
-                failSignIn = viewModel.sessionStateHolder::failSignIn,
-            )
+        val credentialSource = AndroidGoogleCredentialSource(this)
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     VehicleApp(
                         viewModel = viewModel,
-                        onGoogle = {
-                            lifecycleScope.launch { googleSignInCoordinator.signIn() }
-                        },
+                        acquireGoogleCredential = credentialSource::acquire,
                     )
                 }
             }
@@ -183,26 +174,15 @@ internal class VehicleAppViewModel(
 @Composable
 private fun VehicleApp(
     viewModel: VehicleAppViewModel,
-    onGoogle: () -> Unit,
+    acquireGoogleCredential: suspend () -> GoogleCredentialAcquisition,
 ) {
     val sessionState by viewModel.sessionStateHolder.state.collectAsState()
     val vehicleState by viewModel.vehicleListStateHolder.state.collectAsState()
-    val authenticated =
-        sessionState.phase == SessionPhase.LOCAL ||
-            sessionState.phase == SessionPhase.ANONYMOUS ||
-            sessionState.phase == SessionPhase.PERMANENT
-    val destination =
-        if (authenticated && vehicleState.isLoading) {
-            OnboardingDestination.WAITING
-        } else {
-            resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)
-        }
+    val onGoogle = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
 
-    when (destination) {
+    when (resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)) {
         OnboardingDestination.WAITING -> {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            WaitingIndicator()
         }
 
         OnboardingDestination.WELCOME -> {
@@ -216,21 +196,85 @@ private fun VehicleApp(
         OnboardingDestination.FIRST_VEHICLE,
         OnboardingDestination.VEHICLE_LIST,
         -> {
-            key(destination) {
-                val navController = rememberNavController()
-                NavHost(
-                    navController = navController,
-                    startDestination =
-                        if (destination == OnboardingDestination.FIRST_VEHICLE) {
-                            VehicleRoutes.CREATE
-                        } else {
-                            VehicleRoutes.LIST
-                        },
-                ) {
-                    vehicleRoutes(navController, viewModel)
-                    fuelEntryRoutes(navController, viewModel)
-                }
-            }
+            AuthenticatedApp(viewModel = viewModel, vehicleState = vehicleState)
+        }
+    }
+}
+
+/**
+ * The authenticated graph is mounted once and is never rebuilt from owner state, so navigation
+ * survives the vehicle list becoming known, empty or non-empty. `VehicleRoutes.LIST` is always the
+ * start destination and first-run creation is pushed over it, which keeps every back stack exit and
+ * the post-save route to the vehicle detail valid for the first vehicle as well as for later ones.
+ */
+@Composable
+private fun AuthenticatedApp(
+    viewModel: VehicleAppViewModel,
+    vehicleState: VehicleListUiState,
+) {
+    val navController = rememberNavController()
+    var firstVehicleCreationPresented by rememberSaveable { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = VehicleRoutes.LIST,
+        ) {
+            vehicleRoutes(navController, viewModel)
+            fuelEntryRoutes(navController, viewModel)
+        }
+        if (vehicleState.isLoading) WaitingIndicator()
+    }
+
+    LaunchedEffect(vehicleState.isLoading, vehicleState.vehicles.size) {
+        val presentFirstVehicleCreation =
+            shouldPresentFirstVehicleCreation(
+                isVehicleListKnown = !vehicleState.isLoading,
+                vehicleCount = vehicleState.vehicles.size,
+                alreadyPresented = firstVehicleCreationPresented,
+            )
+        if (presentFirstVehicleCreation) {
+            firstVehicleCreationPresented = true
+            navController.navigate(VehicleRoutes.CREATE_FIRST)
+        }
+    }
+}
+
+/**
+ * Native credential acquisition is bound to the host that renders it, so a configuration change can
+ * cancel it before any completion intent runs. The in-flight marker survives that recreation and
+ * abandons the orphaned attempt, which is what keeps the welcome screen usable.
+ */
+@Composable
+private fun rememberGoogleSignIn(
+    sessionStateHolder: SessionStateHolder,
+    acquireGoogleCredential: suspend () -> GoogleCredentialAcquisition,
+): () -> Unit {
+    val scope = rememberCoroutineScope()
+    var acquisitionInFlight by rememberSaveable { mutableStateOf(false) }
+    val coordinator =
+        remember(sessionStateHolder, acquireGoogleCredential) {
+            AndroidGoogleSignInCoordinator(
+                acquireCredential = acquireGoogleCredential,
+                startPermanentSignIn = sessionStateHolder::startPermanentSignIn,
+                completeGoogleSignIn = sessionStateHolder::completeGoogleSignIn,
+                failSignIn = sessionStateHolder::failSignIn,
+                setAcquisitionInFlight = { inFlight -> acquisitionInFlight = inFlight },
+            )
+        }
+
+    LaunchedEffect(coordinator) {
+        if (acquisitionInFlight) coordinator.abandonInterruptedAcquisition()
+    }
+
+    return { scope.launch { coordinator.signIn() } }
+}
+
+@Composable
+private fun WaitingIndicator() {
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
     }
 }
@@ -246,25 +290,18 @@ private fun NavGraphBuilder.vehicleRoutes(
             onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
         )
     }
-    composable(VehicleRoutes.CREATE) { entry ->
-        val stateHolder =
-            remember(entry) {
-                viewModel.vehicleFormStateHolder(vehicleId = null)
-            }
-        ReleaseHolderOnBackStackExit(entry) {
-            viewModel.closeVehicleForm(vehicleId = null)
-        }
-        VehicleFormScreen(
-            stateHolder = stateHolder,
-            originalVehicleId = null,
-            onBack = navController::popBackStack,
-            onSaved = { vehicleId ->
-                navController.navigate(VehicleRoutes.detail(vehicleId)) {
-                    popUpTo(VehicleRoutes.CREATE) { inclusive = true }
-                }
-            },
-        )
-    }
+    vehicleCreationRoute(
+        route = VehicleRoutes.CREATE,
+        offersBackAffordance = true,
+        navController = navController,
+        viewModel = viewModel,
+    )
+    vehicleCreationRoute(
+        route = VehicleRoutes.CREATE_FIRST,
+        offersBackAffordance = false,
+        navController = navController,
+        viewModel = viewModel,
+    )
     composable(
         route = VehicleRoutes.EDIT,
         arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
@@ -289,6 +326,38 @@ private fun NavGraphBuilder.vehicleRoutes(
         arguments = listOf(navArgument(VehicleRoutes.VEHICLE_ID) { type = NavType.StringType }),
     ) { entry ->
         VehicleDetailRoute(entry, navController, viewModel)
+    }
+}
+
+/**
+ * F-1 first-run creation is the same form without a way back: the owner is already signed in, so the
+ * only forward step is creating the vehicle. The route identifies that context explicitly instead of
+ * reading the live vehicle count, which stops being zero the moment the vehicle is saved.
+ */
+private fun NavGraphBuilder.vehicleCreationRoute(
+    route: String,
+    offersBackAffordance: Boolean,
+    navController: NavHostController,
+    viewModel: VehicleAppViewModel,
+) {
+    composable(route) { entry ->
+        val stateHolder =
+            remember(entry) {
+                viewModel.vehicleFormStateHolder(vehicleId = null)
+            }
+        ReleaseHolderOnBackStackExit(entry) {
+            viewModel.closeVehicleForm(vehicleId = null)
+        }
+        VehicleFormScreen(
+            stateHolder = stateHolder,
+            originalVehicleId = null,
+            onBack = if (offersBackAffordance) ({ navController.popBackStack() }) else null,
+            onSaved = { vehicleId ->
+                navController.navigate(VehicleRoutes.detail(vehicleId)) {
+                    popUpTo(route) { inclusive = true }
+                }
+            },
+        )
     }
 }
 
@@ -481,10 +550,30 @@ private fun VehicleListContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+internal fun VehicleFormTopBar(
+    titleResource: Int,
+    onBack: (() -> Unit)?,
+) {
+    TopAppBar(
+        title = { Text(stringResource(titleResource)) },
+        navigationIcon = {
+            if (onBack != null) {
+                TextButton(
+                    onClick = onBack,
+                    modifier = Modifier.testTag(VehicleTestTags.BACK),
+                ) {
+                    Text(stringResource(R.string.back))
+                }
+            }
+        },
+    )
+}
+
+@Composable
 internal fun VehicleFormScreen(
     stateHolder: VehicleFormStateHolder,
     originalVehicleId: String?,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onSaved: (String) -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
@@ -510,16 +599,7 @@ internal fun VehicleFormScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(titleResource))
-                },
-                navigationIcon = {
-                    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
-                },
-            )
-        },
+        topBar = { VehicleFormTopBar(titleResource = titleResource, onBack = onBack) },
     ) { padding ->
         VehicleForm(
             state =
@@ -855,6 +935,7 @@ internal object VehicleRoutes {
     const val ENTRY_ID = "entryId"
     const val LIST = "vehicles"
     const val CREATE = "vehicles/create"
+    const val CREATE_FIRST = "vehicles/create/first"
     const val EDIT = "vehicles/edit/{$VEHICLE_ID}"
     const val DETAIL = "vehicles/detail/{$VEHICLE_ID}"
     const val FUEL_CREATE = "vehicles/{$VEHICLE_ID}/fuel/create"
@@ -877,6 +958,7 @@ object VehicleTestTags {
     const val NAME = "vehicle_name"
     const val ODOMETER = "vehicle_odometer"
     const val SAVE = "save_vehicle"
+    const val BACK = "vehicle_form_back"
     const val DETAIL_NAME = "vehicle_detail_name"
     const val FIRST_FUEL_INVITATION = "first_fuel_invitation"
     const val ERROR = "vehicle_error"
@@ -885,6 +967,6 @@ object VehicleTestTags {
     fun vehicleRow(vehicleId: String): String = "vehicle_row_$vehicleId"
 }
 
-private const val DATABASE_FILE_NAME = "carapp.db"
+internal const val DATABASE_FILE_NAME = "carapp.db"
 private const val CREATE_FORM_CACHE_KEY = "__create__"
 private const val DELETE_CONFIRMATION_CODE = "INFO.CONFIRM_DELETE_VEHICLE"
