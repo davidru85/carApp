@@ -13,6 +13,9 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
     exactVersion: ${FIREBASE_APPLE_VERSION}
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    exactVersion: ${GOOGLE_SIGN_IN_IOS_VERSION}
 targets:
   carApp:
     type: application
@@ -45,6 +48,8 @@ targets:
         product: FirebaseCore
       - package: Firebase
         product: FirebaseFirestore
+      - package: GoogleSignIn
+        product: GoogleSignIn
     preBuildScripts:
       - name: Build Shared framework
         basedOnDependencyAnalysis: false
@@ -70,6 +75,8 @@ targets:
       - path: Tests
     dependencies:
       - target: carApp
+      - package: GoogleSignIn
+        product: GoogleSignIn
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.tests
