@@ -614,6 +614,8 @@ Acceptance criteria:
 
 ### E2-03 - Onboarding Flow F-1 - M
 
+Status: completed on 2026-09-04. See `docs/handoff-E2-03.md`.
+
 Implement the welcome screen, with an offline-capable local start. Provider selection happens on
 the welcome screen itself; there is no separate provider-selection screen.
 
@@ -1104,7 +1106,7 @@ proof after E3-04.
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
-| E2-03 Onboarding F-1 | 2 | M | — |
+| E2-03 Onboarding F-1 (completed) | 2 | M | — |
 | E2-06 Local owner adoption | 2 | M | Yes |
 | E2-04 Account conversion F-4 | 2 | M | Yes |
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |

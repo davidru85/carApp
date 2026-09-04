@@ -45,9 +45,13 @@
 - Date: 2026-09-04.
 - Branch and base: `story/E2-03-onboarding-flow`, based on synchronized `main` / `origin/main` at
   `f7639dc`.
-- Current phase and latest commit: GREEN verification is complete and ready to commit. The RED
-  phase is committed as `0472e11` (`test(E2-03): define native onboarding behavior`).
-- Push and pull-request status: branch is local only; no push and no pull request.
+- Current phase and latest commit: REFACTOR is complete and ready to commit. RED is `0472e11`
+  (`test(E2-03): define native onboarding behavior`) and GREEN is `2651b5c`
+  (`feat(E2-03): implement native onboarding providers`). The containing commit is the REFACTOR
+  phase.
+- Push and pull-request status at this repository checkpoint: branch is local only; the required
+  single push and subsequent pull-request creation occur after the immutable REFACTOR commit. Their
+  resulting external status is recorded in the pull-request metadata and owner handoff.
 - Completed since the previous checkpoint: the owner accepted all three previously blocked
   decisions with binding amendments and confirmed Account Holder / Admin access on a paid Apple
   Developer team. A clean temporary SwiftPM resolution combined exact Firebase Apple SDK 11.8.0
@@ -107,9 +111,8 @@
 - Open decisions or blockers: none. Real Google/Apple account selection cannot be automated without
   user credentials and remains an explicit manual owner acceptance item; the owner explicitly
   instructed the agent not to request credentials.
-- Exact next step: commit the verified GREEN phase, then perform the bounded REFACTOR phase,
-  finalize completion records, rerun the affected gates, close every emulator and simulator used
-  for E2-03, push once and create the pull request.
+- Exact next step: commit the verified REFACTOR phase, push the branch once, create the pull request
+  and report its CI status without merging it.
 
 ## Scope Completed
 
@@ -144,6 +147,9 @@
 - iOS Apple/Google acquisition, nonce hashing, onboarding routing/UI/resources, URL callback,
   entitlement/signing/project configuration, Firebase configuration and onboarding-aware UI tests.
 - Declarative Firebase Auth provider configuration and this continuously maintained handoff.
+- Final repository state, backlog and project-log completion mirrors. The REFACTOR phase also
+  consolidates duplicated Android onboarding test setup into one instrumented test driver and
+  clarifies the Kotlin-only credential boundary wording without changing behavior.
 
 ## Decisions Made
 
@@ -158,7 +164,8 @@
 
 The owner also requested that every Android emulator and iOS simulator used for this story be shut
 down when verification finishes to release laptop resources. This is an execution constraint, not a
-product or architecture decision.
+product or architecture decision. `E1_07_API_36` and the iPhone 17 Pro simulator were shut down
+after the final device suite; the connected owner phone was neither targeted nor altered.
 
 ## Verification Run
 
@@ -216,6 +223,14 @@ product or architecture decision.
   ADRs, a complete Swift allowlist and no pending assertion.
 - Provider decoupling: `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest
   iosSimulatorArm64Test` — passed 234 actionable tasks with the Firebase provider graph removed.
+- REFACTOR verification: the extracted Android onboarding test driver first exposed two trailing
+  blank-line style findings, which were removed. Android test assembly, Android ktlint/detekt and
+  `contractCheck` then passed together; the complete D-84 emulator suite passed 10/10 again after
+  the extraction. The exact complete non-instrumented command passed again with 636 actionable
+  tasks on the final source and documentation state.
+- Resource cleanup: `android emulator stop E1_07_API_36` and `xcrun simctl shutdown` for the used
+  iPhone 17 Pro simulator completed successfully. Follow-up device listings show no Android
+  emulator and no booted iOS simulator.
 
 ## Contract Impact
 
@@ -234,7 +249,7 @@ product or architecture decision.
 
 ## Project Log Entry
 
-- [ ] Entry appended
+- [x] Entry appended
 
 ## Risks or Follow-ups
 

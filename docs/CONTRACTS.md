@@ -719,7 +719,8 @@ Platform UI obtains Google and Apple credentials; common code exchanges or links
 permanent sign-in, `SessionStateHolder.startPermanentSignIn(provider)` records the selected provider
 and busy state before the host starts native acquisition. The host returns only the primitive
 provider values through the completion intents declared in §20.10, or a closed
-`NativeSignInFailure`; `NativeAuthCredential` remains internal to the Kotlin-facing auth boundary.
+`NativeSignInFailure`; `NativeAuthCredential` remains Kotlin-facing only and is hidden from the
+Objective-C / Swift boundary.
 Provider tokens, credentials and Apple raw nonces MUST NOT enter `UiState`, analytics, `Logger` /
 Kermit or crash reporting.
 

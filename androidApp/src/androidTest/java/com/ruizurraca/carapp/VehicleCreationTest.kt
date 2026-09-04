@@ -31,7 +31,7 @@ class VehicleCreationTest {
     fun createsVehicleAndRoutesToEmptyDetailWithoutFuelTypeInput() {
         val vehicleName = "Instrumented vehicle ${System.currentTimeMillis()}"
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).assertDoesNotExist()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(vehicleName)
@@ -56,7 +56,7 @@ class VehicleCreationTest {
     fun configurationChangePreservesTheDraftAndBackStackExitReleasesIt() {
         val draftName = "Rotating draft ${System.currentTimeMillis()}"
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(draftName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("321")
         composeRule.waitForIdle()
@@ -71,7 +71,7 @@ class VehicleCreationTest {
             activity.onBackPressedDispatcher.onBackPressed()
         }
         composeRule.waitForIdle()
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
 
         composeRule
             .onNodeWithTag(VehicleTestTags.NAME)
@@ -88,7 +88,7 @@ class VehicleCreationTest {
     fun odometerPreservesInvalidRawInputAndShowsLocalizedError() {
         val overflowingOdometer = "999999999999999999999"
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("")
         composeRule
             .onNodeWithTag(VehicleTestTags.ODOMETER)
@@ -123,7 +123,7 @@ class VehicleCreationTest {
         val hostFields = Class.forName("com.ruizurraca.carapp.MainActivityKt").declaredFields
         assertFalse(hostFields.any { field -> field.name == "ODOMETER_RANGE_KM" })
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
 
         composeRule
             .onNodeWithTag(VehicleTestTags.ODOMETER)
@@ -148,34 +148,5 @@ class VehicleCreationTest {
             .performTextReplacement((INITIAL_ODOMETER_RANGE_KM.last + 1).toString())
         composeRule.onNodeWithTag(VehicleTestTags.ERROR).assertIsDisplayed()
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).assertIsNotEnabled()
-    }
-
-    private fun openVehicleCreation() {
-        composeRule.waitUntil(timeoutMillis = 30_000) {
-            composeRule.onAllNodesWithTag(OnboardingTestTags.GUEST).fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag(VehicleTestTags.ADD_VEHICLE).fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
-        }
-        if (composeRule.onAllNodesWithTag(OnboardingTestTags.GUEST).fetchSemanticsNodes().isNotEmpty()) {
-            composeRule.onNodeWithTag(OnboardingTestTags.GUEST).performClick()
-        }
-        composeRule.waitUntil(timeoutMillis = 30_000) {
-            composeRule.onAllNodesWithTag(VehicleTestTags.ADD_VEHICLE).fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
-        }
-        if (composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()) {
-            composeRule
-                .onNodeWithTag(VehicleTestTags.NAME)
-                .performTextInput("Test setup vehicle ${System.nanoTime()}")
-            composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
-            composeRule.waitUntil(timeoutMillis = 30_000) {
-                composeRule.onAllNodesWithTag(VehicleTestTags.ADD_VEHICLE).fetchSemanticsNodes().isNotEmpty()
-            }
-        }
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertIsDisplayed()
     }
 }

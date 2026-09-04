@@ -38,6 +38,32 @@
 
 ## Entries
 
+### 2026-09-04 — E2-03 native onboarding providers completed
+
+- **Type:** story
+- **Story / Decision:** `E2-03` / `D-112`, `D-113`, `D-114`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented F-1 routing and the exact welcome action sets on Android and iOS;
+  added stable Android Credential Manager acquisition, native Apple nonce acquisition and exact
+  GoogleSignIn-iOS 9.2.0; exposed only primitive provider completion intents plus the closed
+  `NativeSignInFailure` enum to Swift; and provisioned the development Firebase Google/Apple
+  providers, OAuth identifiers, iOS URL scheme and Apple App ID capability without committing
+  credentials or certificate fingerprints.
+- **Why:** the owner selected the three stable, native and primitive-only options. They keep
+  provider tokens out of UI state and telemetry, avoid deprecated or alpha authentication paths,
+  preserve the D-65 Firebase Apple SDK pin and keep `NativeAuthCredential` outside the Swift ABI.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, all four decision
+  mirrors for D-112 through D-114, ADR-0113 through ADR-0115, `docs/versions-matrix.md`,
+  `docs/handoff-E2-03.md` and this log.
+- **Verification:** behavior-specific RED failures preceded GREEN on shared, Android and iOS; the
+  complete non-instrumented gate passed 636 actionable tasks; forced provider decoupling passed
+  234 tasks; the D-84 API 36 Android suite, iOS onboarding and vehicle/fuel UI suites, Android
+  assemblies, Objective-C golden-header contract and signed iOS device build passed. The resolved
+  application graph is GTMSessionFetcher 3.5.0, GTMAppAuth 5.0.0, AppAuth 2.1.0,
+  GoogleUtilities 8.1.2 and app-check 11.2.0, all within Firebase 11.8.0 constraints.
+- **Follow-ups / risks:** real Google/Apple account selection remains an owner-run human acceptance
+  item because credentials were explicitly withheld. E2-06 owns automatic `LOCAL_OWNER` adoption.
+
 ### 2026-09-04 — E2-02 second review remediation: AppGraph auth closure and test assertions
 
 - **Type:** correction

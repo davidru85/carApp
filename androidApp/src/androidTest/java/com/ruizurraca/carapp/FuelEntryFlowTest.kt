@@ -33,7 +33,7 @@ class FuelEntryFlowTest {
     fun moneyFieldsPreserveIncrementalEditingAndLiveDerivationAcrossRecreation() {
         val vehicleName = "Money typing vehicle ${System.currentTimeMillis()}"
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
@@ -82,7 +82,7 @@ class FuelEntryFlowTest {
     fun confirmedPartialRefuelRendersExplanationAndBothIndicators() {
         val vehicleName = "Fuel test vehicle ${System.currentTimeMillis()}"
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
@@ -133,7 +133,7 @@ class FuelEntryFlowTest {
     fun odometerFieldCanBeClearedAndRetypedWithoutLosingFocus() {
         val vehicleName = "Odometer vehicle ${System.currentTimeMillis()}"
 
-        openVehicleCreation()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
@@ -151,34 +151,5 @@ class FuelEntryFlowTest {
         odometer.performTextInput("2")
         odometer.performTextInput("3")
         odometer.assertTextContains("123")
-    }
-
-    private fun openVehicleCreation() {
-        composeRule.waitUntil(timeoutMillis = 30_000) {
-            composeRule.onAllNodesWithTag(OnboardingTestTags.GUEST).fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag(VehicleTestTags.ADD_VEHICLE).fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
-        }
-        if (composeRule.onAllNodesWithTag(OnboardingTestTags.GUEST).fetchSemanticsNodes().isNotEmpty()) {
-            composeRule.onNodeWithTag(OnboardingTestTags.GUEST).performClick()
-        }
-        composeRule.waitUntil(timeoutMillis = 30_000) {
-            composeRule.onAllNodesWithTag(VehicleTestTags.ADD_VEHICLE).fetchSemanticsNodes().isNotEmpty() ||
-                composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
-        }
-        if (composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()) {
-            composeRule
-                .onNodeWithTag(VehicleTestTags.NAME)
-                .performTextInput("Test setup vehicle ${System.nanoTime()}")
-            composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
-            composeRule.waitUntil(timeoutMillis = 30_000) {
-                composeRule.onAllNodesWithTag(VehicleTestTags.ADD_VEHICLE).fetchSemanticsNodes().isNotEmpty()
-            }
-        }
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeRule.onNodeWithTag(VehicleTestTags.NAME).assertIsDisplayed()
     }
 }
