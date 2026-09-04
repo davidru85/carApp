@@ -273,7 +273,6 @@
 						TestTargetID = 61D239EC09A12F8A35BAA5D5;
 					};
 					61D239EC09A12F8A35BAA5D5 = {
-						DevelopmentTeam = QGPVH5G7ST;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -573,7 +572,6 @@
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = QGPVH5G7ST;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -634,7 +632,6 @@
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = QGPVH5G7ST;
 				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Debug.plist";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -65,7 +65,6 @@ targets:
         INFOPLIST_FILE: Info.plist
         CODE_SIGN_ENTITLEMENTS: carApp.entitlements
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: QGPVH5G7ST
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug

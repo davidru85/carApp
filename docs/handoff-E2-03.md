@@ -42,6 +42,36 @@
 
 ## In-Progress Checkpoint
 
+### D-71 signing remediation checkpoint (2026-09-05, pull request #54)
+
+- Branch and base: `story/E2-03-onboarding-flow`, based on `main` / `origin/main` at `f7639dc`;
+  local `HEAD` and `origin/story/E2-03-onboarding-flow` are both `cde2570` before this remediation.
+- Current phase and latest commit: targeted CI repair is verified and ready to commit after the
+  completed E2-03 review remediation. The latest existing commit is `cde2570`; the configuration
+  guard supplied the RED evidence for the containing fix commit.
+- Push and pull-request status: pull request #54 is open. Nine required checks pass and only
+  `architecture-check` fails in run `33911001702`, job `101147129831`.
+- Completed since the previous checkpoint: the owner explicitly requested that the failing check be
+  fixed, bringing the previously deferred D-71 violation into scope. The CI log and a forced local
+  rerun both identify
+  `FirebaseConfigurationTest.iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity` at line
+  130. `iosApp/project.yml` commits `DEVELOPMENT_TEAM`, and the generated project carries the same
+  team in both build settings and target attributes. Removing those values restores the already
+  accepted D-71 / ADR-0072 constraint and requires no new decision. The team setting was removed
+  from the XcodeGen source and regeneration removed all three generated occurrences without any
+  unrelated project change.
+- Verification evidence and known failures: the RED command `./gradlew :build-logic:convention:test --tests
+  'com.ruizurraca.carapp.buildlogic.FirebaseConfigurationTest.iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity'
+  --rerun-tasks` failed on the expected `project.yml` assertion. After regeneration,
+  `./gradlew architectureCheck :build-logic:convention:test --rerun-tasks --stacktrace` passes all
+  16 architecture rules and 58 build-logic tests. The exact CI iOS simulator build also passes and
+  signs the app with `Sign to Run Locally`. The complete 636-task non-instrumented repository gate
+  passes. The Gradle task was forced because its repository-file inputs remain undeclared and an
+  ordinary local invocation can be stale.
+- Open decisions or blockers: none for this repair. Pull request #54 remains human-gated and will
+  not be merged by the agent.
+- Exact next step: commit the verified repair, push once and observe the replacement CI run.
+
 ### Review remediation checkpoint (2026-09-04, after pull request #54)
 
 - Branch and base: `story/E2-03-onboarding-flow`; the delivery commits `0472e11`, `2651b5c` and
@@ -158,8 +188,9 @@
   two instrumented additions could not run in RED because the route, tag and presentation they drive
   did not exist; their non-vacuous assertion is the post-save vehicle detail, and the back-affordance
   tag is proved to exist by the paired positive case in `VehicleFormBackAffordanceTest`.
-- Remediation GREEN evidence is recorded under `Verification Run`. The one known red check is the
-  pre-existing `D-71` signing violation, which this round deliberately does not touch.
+- Remediation GREEN evidence is recorded under `Verification Run`. The review-remediation round
+  deliberately left the pre-existing `D-71` signing violation untouched; the subsequent 2026-09-05
+  CI repair removes the committed team and makes the forced architecture job command pass.
 - RED evidence is recorded under `Verification Run`; each platform fails for the intended missing
   E2-03 behavior rather than an unrelated baseline regression.
 - Focused shared, Android and iOS GREEN suites pass. The complete non-instrumented repository gate,
@@ -202,8 +233,11 @@
   marker (`D-117`). The owner also decided that cancellation, including an automatic abandonment,
   MUST NOT show a user-visible error, and accepted that the Android system back gesture on the
   first-run form reaches the empty vehicle list rather than leaving the application.
-- The owner deferred the `D-71` `DEVELOPMENT_TEAM` violation to a separate decision and instructed
-  that the guard test and the committed team identifier stay untouched in this round.
+- During the 2026-09-04 review-remediation round, the owner deferred the `D-71` `DEVELOPMENT_TEAM`
+  violation and instructed that the guard and committed team remain untouched. On 2026-09-05 the
+  owner explicitly requested that pull request #54's failing check be fixed. The repair removes the
+  committed team exactly as already required by D-71 / ADR-0072 and does not weaken the guard or
+  create a new decision.
 - The owner selected the stable Android Credential Manager stack as D-112, native Apple plus exact
   GoogleSignIn-iOS 9.2.0 as D-113, and primitive provider-named completion intents with a closed
   failure enum as D-114. Their ADRs contain the alternatives and trade-offs.
@@ -219,6 +253,23 @@ product or architecture decision. `E1_07_API_36` and the iPhone 17 Pro simulator
 after the final device suite; the connected owner phone was neither targeted nor altered.
 
 ## Verification Run
+
+### D-71 signing remediation (2026-09-05)
+
+- RED: the focused forced rerun of
+  `FirebaseConfigurationTest.iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity` failed at
+  line 130 because `iosApp/project.yml` contained `DEVELOPMENT_TEAM`.
+- `iosApp/generate-project.sh` regenerated the committed project after the team was removed from
+  its source of truth. `rg 'DEVELOPMENT_TEAM|DevelopmentTeam' iosApp` returns no match, and the
+  project diff contains only the one source setting plus its three generated occurrences.
+- `./gradlew architectureCheck :build-logic:convention:test --rerun-tasks --stacktrace` — passed;
+  all 16 architecture rules and all 58 build-logic tests pass on fresh inputs.
+- The exact CI iOS build command, `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk
+  iphonesimulator -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build`, passed. Xcode used
+  its normal simulator identity, `Sign to Run Locally`, with no committed developer team.
+- The exact complete non-instrumented command from `AGENTS.md` passed all 636 actionable tasks (109
+  executed, 41 restored from cache and 486 up-to-date), including lint, static analysis, coverage,
+  contracts, Android assembly, Android host tests and every eligible iOS simulator KMP test.
 
 ### Review remediation (2026-09-04)
 
@@ -356,9 +407,10 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Risks or Follow-ups
 
-- `architecture-check` stays red until the `D-71` `DEVELOPMENT_TEAM` decision is taken. The
-  underlying reason the local gate disagreed with CI is that `:build-logic:convention:test` does not
-  declare the repository files it reads as task inputs.
+- The D-71 `DEVELOPMENT_TEAM` violation that kept `architecture-check` red was removed on
+  2026-09-05. The separate process risk remains: `:build-logic:convention:test` does not declare the
+  repository files it reads as task inputs, so any signing-guard claim must continue to use
+  `--rerun-tasks` until that build-logic issue is addressed in its own scoped change.
 - The iOS unresolved-list indicator MUST stay inside `VehicleListView`. Gating it from an outer view
   reintroduces a second observer of the same state holder and with it the intermittent cover that
   failed `ios-simulator-build`.
@@ -376,8 +428,9 @@ after the final device suite; the connected owner phone was neither targeted nor
 - Sign in with Apple is enabled for the development App ID and a matching development profile has
   been regenerated. The Apple profile, signing credentials and Android debug certificate
   fingerprint remain uncommitted. D-53 permits the restricted Firebase API keys, Firebase app IDs,
-  OAuth client IDs, reversed client identifier, fixed bundle/package identifier and Apple team ID
-  committed by this story; none is a credential or user token. The changed configuration files are
+  OAuth client IDs, reversed client identifier and fixed bundle/package identifiers committed by
+  this story; none is a credential or user token. No developer team remains in the committed Xcode
+  configuration. The changed configuration files are
   `firebase.json`, `androidApp/src/debug/google-services.json`,
   `iosApp/Config/Debug/GoogleService-Info-Debug.plist`, `iosApp/Info.plist`,
   `iosApp/carApp.entitlements`, `iosApp/project.yml` and the generated

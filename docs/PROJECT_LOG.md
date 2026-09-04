@@ -38,6 +38,29 @@
 
 ## Entries
 
+### 2026-09-05 — PR #54 restored D-71 signing compliance
+
+- **Type:** correction
+- **Story / Decision:** `E2-03` / `D-71`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** removed the account-specific `DEVELOPMENT_TEAM` setting from the XcodeGen
+  source and regenerated Xcode project, which also removed the generated build settings and target
+  attribute. Automatic simulator signing remains enabled.
+- **Why:** pull request #54's only failing required check detected that the E2-03 device-provisioning
+  work had committed a team in direct conflict with accepted D-71 / ADR-0072. The owner instructed
+  the agent to fix the check; restoring the existing constraint required no new decision.
+- **Documents touched:** `iosApp/project.yml`, `iosApp/carApp.xcodeproj/project.pbxproj` and
+  `docs/handoff-E2-03.md`.
+- **Verification:** the focused guard failed before the repair at
+  `FirebaseConfigurationTest.kt:130`; the forced `architectureCheck` plus build-logic command now
+  passes all 16 architecture rules and 58 build-logic tests; the complete 636-task non-instrumented
+  gate passes; and the exact CI iOS simulator build succeeds with `Sign to Run Locally` and no
+  committed team.
+- **Follow-ups / risks:** `:build-logic:convention:test` still does not declare the repository files
+  it reads as task inputs, so signing-guard verification must use `--rerun-tasks` until that separate
+  build-logic issue is scoped. Pull request #54 remains subject to its authentication human-review
+  gate and must not be agent-merged.
+
 ### 2026-09-04 — E2-03 review remediation: onboarding navigation, list loading and sign-in recovery
 
 - **Type:** story
