@@ -39,6 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,6 +56,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -75,6 +77,7 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListUiState
 import com.ruizurraca.carapp.wiring.firebase.firebaseAppProviders
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,11 +87,23 @@ class MainActivity : ComponentActivity() {
                 owner = this,
                 factory = VehicleAppViewModel.factory(application),
             )[VehicleAppViewModel::class.java]
+        val googleSignInCoordinator =
+            AndroidGoogleSignInCoordinator(
+                acquireCredential = AndroidGoogleCredentialSource(this)::acquire,
+                startPermanentSignIn = viewModel.sessionStateHolder::startPermanentSignIn,
+                completeGoogleSignIn = viewModel.sessionStateHolder::completeGoogleSignIn,
+                failSignIn = viewModel.sessionStateHolder::failSignIn,
+            )
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    VehicleApp(viewModel = viewModel)
+                    VehicleApp(
+                        viewModel = viewModel,
+                        onGoogle = {
+                            lifecycleScope.launch { googleSignInCoordinator.signIn() }
+                        },
+                    )
                 }
             }
         }
@@ -105,6 +120,7 @@ internal class VehicleAppViewModel(
         )
     private val isDebugBuild = application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     private val graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)
+    val sessionStateHolder: SessionStateHolder = graph.sessionStateHolder(scope = viewModelScope)
     val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
     private val formStateHolders = mutableMapOf<String, VehicleFormStateHolder>()
     private val fuelEntryListStateHolders = mutableMapOf<String, FuelEntryListStateHolder>()
@@ -150,6 +166,7 @@ internal class VehicleAppViewModel(
         formStateHolders.clear()
         fuelEntryListStateHolders.clear()
         fuelEntryFormStateHolders.clear()
+        sessionStateHolder.close()
         vehicleListStateHolder.close()
         graph.close()
     }
@@ -164,14 +181,57 @@ internal class VehicleAppViewModel(
 }
 
 @Composable
-private fun VehicleApp(viewModel: VehicleAppViewModel) {
-    val navController = rememberNavController()
-    NavHost(
-        navController = navController,
-        startDestination = VehicleRoutes.LIST,
-    ) {
-        vehicleRoutes(navController, viewModel)
-        fuelEntryRoutes(navController, viewModel)
+private fun VehicleApp(
+    viewModel: VehicleAppViewModel,
+    onGoogle: () -> Unit,
+) {
+    val sessionState by viewModel.sessionStateHolder.state.collectAsState()
+    val vehicleState by viewModel.vehicleListStateHolder.state.collectAsState()
+    val authenticated =
+        sessionState.phase == SessionPhase.LOCAL ||
+            sessionState.phase == SessionPhase.ANONYMOUS ||
+            sessionState.phase == SessionPhase.PERMANENT
+    val destination =
+        if (authenticated && vehicleState.isLoading) {
+            OnboardingDestination.WAITING
+        } else {
+            resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)
+        }
+
+    when (destination) {
+        OnboardingDestination.WAITING -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+
+        OnboardingDestination.WELCOME -> {
+            WelcomeScreen(
+                state = sessionState,
+                onGoogle = onGoogle,
+                onContinueWithoutAccount = viewModel.sessionStateHolder::startAnonymousSignIn,
+            )
+        }
+
+        OnboardingDestination.FIRST_VEHICLE,
+        OnboardingDestination.VEHICLE_LIST,
+        -> {
+            key(destination) {
+                val navController = rememberNavController()
+                NavHost(
+                    navController = navController,
+                    startDestination =
+                        if (destination == OnboardingDestination.FIRST_VEHICLE) {
+                            VehicleRoutes.CREATE
+                        } else {
+                            VehicleRoutes.LIST
+                        },
+                ) {
+                    vehicleRoutes(navController, viewModel)
+                    fuelEntryRoutes(navController, viewModel)
+                }
+            }
+        }
     }
 }
 
@@ -735,6 +795,13 @@ internal fun ErrorText(message: UiMessage?) {
 }
 
 internal fun UiMessage.stringResource(): Int =
+    if (code.startsWith(AUTH_ERROR_PREFIX)) {
+        authStringResource(code)
+    } else {
+        nonAuthStringResource(code)
+    }
+
+private fun nonAuthStringResource(code: String): Int =
     when (code) {
         "VALIDATION.REQUIRED_FIELD" -> R.string.error_required_field
 
@@ -770,6 +837,16 @@ internal fun UiMessage.stringResource(): Int =
 
         else -> R.string.error_unexpected
     }
+
+private fun authStringResource(code: String): Int =
+    when (code) {
+        "AUTH.CANCELLED" -> R.string.error_auth_cancelled
+        "AUTH.NETWORK_UNAVAILABLE" -> R.string.error_auth_network
+        "AUTH.PROVIDER_UNAVAILABLE" -> R.string.error_auth_provider
+        else -> R.string.error_unexpected
+    }
+
+private const val AUTH_ERROR_PREFIX = "AUTH."
 
 private fun String?.cacheKey(): String = this ?: CREATE_FORM_CACHE_KEY
 

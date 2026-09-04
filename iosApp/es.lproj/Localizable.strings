@@ -7,6 +7,9 @@
 "session_signed_out" = "Sin conexión";
 "session_deleting" = "Eliminando";
 "continue_without_account" = "Continuar sin cuenta";
+"welcome_title" = "Te damos la bienvenida a carApp";
+"welcome_body" = "Guarda los datos localmente o inicia sesión para disponer de una copia recuperable.";
+"continue_with_google" = "Continuar con Google";
 "vehicle_section" = "Vehículo";
 "vehicle_name" = "Nombre del vehículo";
 "save_vehicle" = "Guardar vehículo";
@@ -44,6 +47,9 @@
 "error_persistence" = "No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo.";
 "error_restore" = "No se ha podido recuperar la copia. Tus datos locales siguen disponibles.";
 "error_unexpected" = "Algo ha salido mal. Inténtalo de nuevo.";
+"error_auth_cancelled" = "Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo.";
+"error_auth_network" = "Necesitas conexión para iniciar sesión. Inténtalo cuando vuelvas a tener red.";
+"error_auth_provider" = "Este proveedor de inicio de sesión aún no está configurado.";
 "error_future_date" = "La fecha no puede estar en el futuro.";
 "error_money_input" = "Introduce los dos valores monetarios obligatorios.";
 "error_currency" = "Selecciona una moneda compatible.";

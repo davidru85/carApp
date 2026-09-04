@@ -23,6 +23,9 @@ targets:
     sources:
       - path: ContentView.swift
       - path: WalkingSkeletonModel.swift
+      - path: Onboarding.swift
+      - path: NativeSignIn.swift
+      - path: WelcomeView.swift
       - path: AppCheckProviderFactory.swift
       - path: carAppApp.swift
       - path: ScaledFormatting.swift
@@ -61,6 +64,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
         INFOPLIST_FILE: Info.plist
         CODE_SIGN_ENTITLEMENTS: carApp.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: QGPVH5G7ST
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug

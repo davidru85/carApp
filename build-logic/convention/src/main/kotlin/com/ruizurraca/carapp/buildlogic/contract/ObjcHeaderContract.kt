@@ -27,6 +27,7 @@ internal val REQUIRED_SWIFT_HEADER_SYMBOLS =
         "ConsumptionInvalidReason",
         "MoneyInputMode",
         "SessionPhase",
+        "NativeSignInFailure",
         "SyncTrigger",
     )
 
@@ -75,6 +76,7 @@ private val FORBIDDEN_SWIFT_HEADER_SYMBOLS =
         "VehicleRepository" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?VehicleRepository\\b"),
         "FuelEntryRepository" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?FuelEntryRepository\\b"),
         "MoneyInput" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?MoneyInput\\b"),
+        "NativeAuthCredential" to Regex("\\b(?:Shared)?NativeAuthCredential\\b"),
         "FuelEntryCommand" to Regex("\\b(?:Shared[A-Za-z0-9_]*)?(?:Create|Update)FuelEntryCommand\\b"),
         "FuelEntryValidation" to
             Regex(

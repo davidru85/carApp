@@ -15,9 +15,7 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
 
         let vehicleName = "AAA-Swipe-\(Int(Date().timeIntervalSince1970))"
 
-        let addVehicleButton = app.buttons["add_vehicle"]
-        XCTAssertTrue(addVehicleButton.waitForExistence(timeout: timeout))
-        addVehicleButton.tap()
+        openVehicleCreation(in: app)
 
         let vehicleNameField = app.textFields["vehicle_name"]
         XCTAssertTrue(vehicleNameField.waitForExistence(timeout: timeout))
@@ -60,9 +58,7 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         let vehicleName = "AAA-Golf-\(Int(Date().timeIntervalSince1970))"
 
         // 1. Create a vehicle
-        let addVehicleButton = app.buttons["add_vehicle"]
-        XCTAssertTrue(addVehicleButton.waitForExistence(timeout: timeout))
-        addVehicleButton.tap()
+        openVehicleCreation(in: app)
 
         let vehicleNameField = app.textFields["vehicle_name"]
         XCTAssertTrue(vehicleNameField.waitForExistence(timeout: timeout))
@@ -171,5 +167,29 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         // Verify inconsistent odometer badge is displayed
         let inconsistentBadge = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'fuel_indicator_' AND identifier ENDSWITH '_odometer'")).firstMatch
         XCTAssertTrue(inconsistentBadge.waitForExistence(timeout: timeout))
+    }
+
+    private func openVehicleCreation(in app: XCUIApplication) {
+        let guestButton = app.buttons["welcome_guest"]
+        let addVehicleButton = app.buttons["add_vehicle"]
+        let vehicleNameField = app.textFields["vehicle_name"]
+        let deadline = Date().addingTimeInterval(30)
+        var startedGuestSession = false
+        var requestedVehicleCreation = false
+
+        while Date() < deadline {
+            if vehicleNameField.exists {
+                return
+            }
+            if !startedGuestSession, guestButton.exists, guestButton.isHittable {
+                guestButton.tap()
+                startedGuestSession = true
+            } else if !requestedVehicleCreation, addVehicleButton.exists, addVehicleButton.isHittable {
+                addVehicleButton.tap()
+                requestedVehicleCreation = true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTFail("Onboarding did not reach vehicle creation before the timeout")
     }
 }

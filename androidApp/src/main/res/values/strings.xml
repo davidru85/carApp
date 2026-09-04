@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">carApp</string>
+    <string name="welcome_title">Welcome to carApp</string>
+    <string name="welcome_body">Save locally now, or sign in to keep a recoverable backup.</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="continue_without_account">Continue without an account</string>
     <string name="vehicle_list_title">Vehicles</string>
     <string name="add_vehicle">Add vehicle</string>
     <string name="create_vehicle_title">Create vehicle</string>
@@ -33,6 +37,9 @@
     <string name="error_persistence">The change could not be saved on this device. Try again.</string>
     <string name="error_restore">The backup could not be restored. Your local data is still available.</string>
     <string name="error_unexpected">Something went wrong. Try again.</string>
+    <string name="error_auth_cancelled">Sign-in was cancelled. You can try again.</string>
+    <string name="error_auth_network">Sign-in needs a network connection. Try again when you are online.</string>
+    <string name="error_auth_provider">This sign-in provider is not configured yet.</string>
     <string name="add_fuel_entry">New refuel</string>
     <string name="create_fuel_entry_title">New refuel</string>
     <string name="edit_fuel_entry_title">Edit refuel</string>

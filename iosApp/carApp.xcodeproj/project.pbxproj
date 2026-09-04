@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0114D2546E157F273C216787 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33485CD8468B0FE42AC9A0DE /* Onboarding.swift */; };
 		03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */; };
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
 		1132B312C49E6B6844B3934B /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 8EB8A37AF599C28041EB55CA /* es.lproj */; };
@@ -29,10 +30,12 @@
 		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
 		C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */; };
 		C29BDB90C0C08E04E47A95FD /* ViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4DDF68481A819B505F8816 /* ViewModels.swift */; };
+		C49F85496B65345D1DE9DB27 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */; };
 		C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */; };
 		CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */; };
 		CF76E2866B20727B645FBF18 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D0012A49F50A57958DB6A615 /* GoogleSignIn */; };
 		CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */; };
+		DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386580F3F32E7C04067DEE4E /* NativeSignIn.swift */; };
 		E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */; };
 		EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
@@ -68,11 +71,14 @@
 		2D997286223049D1A5F7AA30 /* carAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryCalendarDay.swift; sourceTree = "<group>"; };
 		319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info-Debug.plist"; sourceTree = "<group>"; };
+		33485CD8468B0FE42AC9A0DE /* Onboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding.swift; sourceTree = "<group>"; };
 		33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMapping.swift; sourceTree = "<group>"; };
+		386580F3F32E7C04067DEE4E /* NativeSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignIn.swift; sourceTree = "<group>"; };
 		3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelLifecycleTests.swift; sourceTree = "<group>"; };
 		48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMappingTests.swift; sourceTree = "<group>"; };
 		4B75BD49AED901E7C93582F7 /* carAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingRouteTests.swift; sourceTree = "<group>"; };
+		586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInFailureMappingTests.swift; sourceTree = "<group>"; };
 		76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
 		8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowUITests.swift; sourceTree = "<group>"; };
@@ -168,6 +174,8 @@
 				8EB8A37AF599C28041EB55CA /* es.lproj */,
 				2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */,
 				8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */,
+				386580F3F32E7C04067DEE4E /* NativeSignIn.swift */,
+				33485CD8468B0FE42AC9A0DE /* Onboarding.swift */,
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
 				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
 				031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */,
@@ -175,6 +183,7 @@
 				2AB807E6528E387D28949629 /* VehicleListView.swift */,
 				8B4DDF68481A819B505F8816 /* ViewModels.swift */,
 				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
+				586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */,
 				2850FA255307524833517781 /* Debug */,
 				C9FE68B9523949AB829ECCA0 /* Tests */,
 				45E5C76700F0706EA075BF34 /* UITests */,
@@ -263,6 +272,10 @@
 					5694684097D198AE1BCA7DD4 = {
 						TestTargetID = 61D239EC09A12F8A35BAA5D5;
 					};
+					61D239EC09A12F8A35BAA5D5 = {
+						DevelopmentTeam = QGPVH5G7ST;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = AD83A9D78271D1C38CABC5E3 /* Build configuration list for PBXProject "carApp" */;
@@ -349,6 +362,8 @@
 				CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */,
 				0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */,
 				1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */,
+				DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */,
+				0114D2546E157F273C216787 /* Onboarding.swift in Sources */,
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
 				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,
 				EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */,
@@ -356,6 +371,7 @@
 				A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */,
 				C29BDB90C0C08E04E47A95FD /* ViewModels.swift in Sources */,
 				3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */,
+				C49F85496B65345D1DE9DB27 /* WelcomeView.swift in Sources */,
 				624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -556,6 +572,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = QGPVH5G7ST;
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -615,6 +633,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = QGPVH5G7ST;
 				EXCLUDED_SOURCE_FILE_NAMES = "GoogleService-Info-Debug.plist";
 				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
