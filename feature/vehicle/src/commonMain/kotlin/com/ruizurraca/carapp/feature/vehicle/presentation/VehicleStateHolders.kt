@@ -51,11 +51,11 @@ class VehicleListStateHolder internal constructor(
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var closed = false
 
-    /**
-     * `isLoading` means the vehicle list is not known yet, which is true only until the repository
-     * emits for the first time. A refresh over an already known list MUST NOT reopen it, because
-     * hosts gate first-run routing on this value.
-     */
+    // `isLoading` means the vehicle list is not known yet, which is true only until the repository
+    // emits for the first time. A refresh over an already known list MUST NOT reopen it, because
+    // hosts gate first-run routing on this value (D-116, CONTRACTS.md 20.10). This stays a plain
+    // comment: KDoc on an exported declaration is written into the Objective-C golden header, and a
+    // documentation-only diff there would be noise in a signal reserved for ABI changes.
     val state: StateFlow<VehicleListUiState> =
         combine(
             repository.observeVehicles(includeDeleted = false).flowOn(dispatchers.io),

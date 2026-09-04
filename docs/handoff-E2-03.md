@@ -235,6 +235,13 @@ after the final device suite; the connected owner phone was neither targeted nor
   the D-84 `E1_07_API_36` emulator, including the new cleared-data first-run test and the two
   back-affordance tests. The connected owner phone was excluded by pinning the serial and was never
   targeted.
+- `objc-header-golden-check` first failed on the pushed remediation: the KDoc added to the exported
+  `VehicleListStateHolder.state` property was written into the generated Objective-C header. The
+  diff was documentation only, with no type, field or signature change. The comment was converted to
+  a plain comment so the golden stays byte-identical, because that check is a review signal reserved
+  for ABI changes; the normative definition lives in `docs/CONTRACTS.md §20.10` and ADR-0117.
+  `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by the CI `diff -u` now
+  reports no difference.
 - iOS: `xcodebuild ... build-for-testing` passed; `-only-testing:carAppTests` executed 31 tests with
   0 failures, including the three new onboarding decisions; `-only-testing:carAppUITests` succeeded
   with one environment-gated skip. One `Application failed preflight checks` simulator-busy error
