@@ -722,7 +722,9 @@ provider values through the completion intents declared in §20.10, or a closed
 `NativeSignInFailure`; `NativeAuthCredential` remains Kotlin-facing only and is hidden from the
 Objective-C / Swift boundary.
 Provider tokens, credentials and Apple raw nonces MUST NOT enter `UiState`, analytics, `Logger` /
-Kermit or crash reporting.
+Kermit or crash reporting. A cancelled acquisition, including one abandoned because the native host
+was rebuilt before any completion arrived, returns the owner to a retryable state without a
+user-visible error (`D-117`).
 
 `deleteAccount()` is the client entry point for the `D-23` server/Admin account deletion operation. It MUST NOT call the mobile Firebase Auth account deletion API directly. It maps server operation failures to `AuthError.AccountDeletionRemoteFailed`, authentication freshness failures to `AuthError.RequiresRecentLogin`, caller mismatch or IAM rejection to `AuthError.PermissionDenied`, and connectivity failures to `AuthError.NetworkUnavailable`.
 
@@ -2516,6 +2518,12 @@ Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and a
 
 It is never display copy.
 
+`VehicleListUiState.isLoading` means the vehicle list is not known yet. It is `true` from the
+initial state until the vehicle repository emits for the first time, and an ordinary refresh MUST
+NOT set it (`D-116`). Hosts gate `SPECIFICATION.md` F-1 first-run routing on this value and, while
+it is `true`, MUST cover the mounted UI instead of replacing it, so navigation state is never
+destroyed by a refresh.
+
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
 
 `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
@@ -2530,10 +2538,14 @@ active attempt MUST NOT call `AuthClient` and MUST clear the busy state with
 the internal credential, publishes the resulting session phase or typed error code, and clears the
 active attempt so success, failure and subsequent retry cannot remain stuck.
 
-`failSignIn(reason)` clears the active attempt and busy state without calling `AuthClient`. The
-mapping is exhaustive and normative: `CANCELLED -> AuthError.Cancelled`,
-`NETWORK -> AuthError.NetworkUnavailable`, `CONFIGURATION -> AuthError.ProviderUnavailable`, and
-`UNKNOWN -> AuthError.Unknown`. Native provider text never crosses the boundary. Provider tokens,
+`failSignIn(reason)` clears the active attempt and busy state without calling `AuthClient`.
+Cancellation is a recoverable retry state and not a reported failure: `CANCELLED` publishes no
+`UiMessage` and clears the message of the previous attempt (`D-117`). The remaining mapping is
+exhaustive and normative: `NETWORK -> AuthError.NetworkUnavailable`,
+`CONFIGURATION -> AuthError.ProviderUnavailable`, and `UNKNOWN -> AuthError.Unknown`. A host whose
+native acquisition is interrupted before any completion MUST abandon that attempt through
+`failSignIn(CANCELLED)` and MUST NOT introduce a separate abandonment intent.
+Native provider text never crosses the boundary. Provider tokens,
 Apple raw nonces and `NativeAuthCredential` never enter `SessionUiState`, analytics, `Logger` /
 Kermit or crash reporting.
 

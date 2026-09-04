@@ -42,6 +42,27 @@
 
 ## In-Progress Checkpoint
 
+### Review remediation checkpoint (2026-09-04, after pull request #54)
+
+- Branch and base: `story/E2-03-onboarding-flow`; the delivery commits `0472e11`, `2651b5c` and
+  `2b61d06` were pushed and pull request #54 was opened for owner review.
+- The owner reviewed #54 and confirmed five defects, then selected a fix for each. `D-115`, `D-116`
+  and `D-117` record those choices with ADR-0116, ADR-0117 and ADR-0118.
+- Remediation phases: RED `cc89609`, GREEN `90de1bc`, REFACTOR is the commit containing this text.
+- Deliberately out of scope for this round: the committed `DEVELOPMENT_TEAM` in `iosApp/project.yml`
+  and `iosApp/carApp.xcodeproj/project.pbxproj`. It violates `D-71` / ADR-0072, it is what fails the
+  protected `architecture-check` job, and it is a separate pending owner decision. The guard test was
+  not touched.
+- Process finding: `:build-logic:convention:test` reads `iosApp/project.yml`, `project.pbxproj`, the
+  plists and the JSON configuration through a system property, but declares none of them as task
+  inputs. Gradle therefore reports the task UP-TO-DATE after those files change, which is why the
+  previous full-gate evidence was green locally while CI failed. Every claim about that gate now
+  states whether it was produced with `--rerun-tasks`.
+- Open decisions or blockers: only the `D-71` signing decision above.
+- Exact next step: owner decision on the `D-71` violation, then a single push and the #54 update.
+
+### Delivery checkpoint
+
 - Date: 2026-09-04.
 - Branch and base: `story/E2-03-onboarding-flow`, based on synchronized `main` / `origin/main` at
   `f7639dc`.
@@ -116,6 +137,14 @@
 
 ## Scope Completed
 
+- Review remediation for pull request #54: the authenticated navigation graph is mounted once with
+  `VehicleRoutes.LIST` as its root and first-run creation pushed over it; the first-run form exposes
+  no back or cancellation affordance on either platform; saving the first vehicle routes to the
+  created vehicle detail on Android and iOS; `VehicleListUiState.isLoading` means the vehicle list is
+  unknown and its indicator covers rather than replaces the mounted UI; `MainActivity` handles the
+  common configuration changes in place and an interrupted Google acquisition is abandoned through
+  `failSignIn(NativeSignInFailure.CANCELLED)`; and cancellation leaves a retryable state with no
+  user-visible error.
 - Intake and readiness closure, dependency-resolution evidence, accepted decision/ADR/contract
   records, exact dependency pins, the complete cross-platform RED test surface, shared/Android/iOS
   GREEN product implementation, Firebase provider configuration, Google OAuth provisioning, Apple
@@ -123,6 +152,14 @@
 
 ## Acceptance Evidence
 
+- Remediation RED evidence: `:shared:testAndroidHostTest` and `:feature:vehicle:testAndroidHostTest`
+  each failed on exactly one new behavior test, and `:androidApp:testDebugUnitTest` failed to compile
+  on the missing in-flight marker, abandonment entry point and first-run presentation decision. The
+  two instrumented additions could not run in RED because the route, tag and presentation they drive
+  did not exist; their non-vacuous assertion is the post-save vehicle detail, and the back-affordance
+  tag is proved to exist by the paired positive case in `VehicleFormBackAffordanceTest`.
+- Remediation GREEN evidence is recorded under `Verification Run`. The one known red check is the
+  pre-existing `D-71` signing violation, which this round deliberately does not touch.
 - RED evidence is recorded under `Verification Run`; each platform fails for the intended missing
   E2-03 behavior rather than an unrelated baseline regression.
 - Focused shared, Android and iOS GREEN suites pass. The complete non-instrumented repository gate,
@@ -139,6 +176,11 @@
 
 ## Files Changed
 
+- Review remediation: `shared/.../StateHolders.kt`, `feature/vehicle/.../VehicleStateHolders.kt`,
+  `androidApp/.../MainActivity.kt`, `androidApp/.../AndroidOnboarding.kt`,
+  `androidApp/src/main/AndroidManifest.xml`, `iosApp/Onboarding.swift`, `iosApp/ContentView.swift`,
+  `iosApp/VehicleListView.swift`, `iosApp/VehicleFormView.swift`, their tests, and the `D-115`,
+  `D-116` and `D-117` decision, ADR and contract records.
 - Decision, contract, ADR and compatibility documentation for D-112 through D-114.
 - Shared session behavior, primitive provider completion ABI, closed native failure enum, Objective-C
   golden header and behavior tests.
@@ -153,6 +195,15 @@
 
 ## Decisions Made
 
+- After reviewing pull request #54 the owner selected: mounting the authenticated navigation graph
+  once over the vehicle list (`D-115`); defining `VehicleListUiState.isLoading` as "the vehicle list
+  is not known yet" rather than adding a state field (`D-116`); and recovering from an interrupted
+  native sign-in with both in-place configuration handling and a recreation-surviving abandonment
+  marker (`D-117`). The owner also decided that cancellation, including an automatic abandonment,
+  MUST NOT show a user-visible error, and accepted that the Android system back gesture on the
+  first-run form reaches the empty vehicle list rather than leaving the application.
+- The owner deferred the `D-71` `DEVELOPMENT_TEAM` violation to a separate decision and instructed
+  that the guard test and the committed team identifier stay untouched in this round.
 - The owner selected the stable Android Credential Manager stack as D-112, native Apple plus exact
   GoogleSignIn-iOS 9.2.0 as D-113, and primitive provider-named completion intents with a closed
   failure enum as D-114. Their ADRs contain the alternatives and trade-offs.
@@ -168,6 +219,34 @@ product or architecture decision. `E1_07_API_36` and the iPhone 17 Pro simulator
 after the final device suite; the connected owner phone was neither targeted nor altered.
 
 ## Verification Run
+
+### Review remediation (2026-09-04)
+
+- RED: `./gradlew :feature:vehicle:testAndroidHostTest :shared:testAndroidHostTest
+  :androidApp:testDebugUnitTest` — `:androidApp` failed at test compilation on the missing marker,
+  abandonment and first-run decision; the two shared suites then failed on exactly one new test each,
+  the vehicle list one on the assertion that a refresh must not reopen an already known list.
+- GREEN: the exact `AGENTS.md` non-instrumented command passed with 636 actionable tasks.
+- `./gradlew :build-logic:convention:test --rerun-tasks` — 58 tests, 1 failed:
+  `FirebaseConfigurationTest.iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity`, the
+  pre-existing `D-71` violation that is out of scope for this round. Without `--rerun-tasks` the task
+  reports UP-TO-DATE and the gate looks green, which is the process finding recorded above.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` — 13 of 13 passed on
+  the D-84 `E1_07_API_36` emulator, including the new cleared-data first-run test and the two
+  back-affordance tests. The connected owner phone was excluded by pinning the serial and was never
+  targeted.
+- iOS: `xcodebuild ... build-for-testing` passed; `-only-testing:carAppTests` executed 31 tests with
+  0 failures, including the three new onboarding decisions; `-only-testing:carAppUITests` succeeded
+  with one environment-gated skip. One `Application failed preflight checks` simulator-busy error
+  required booting the simulator explicitly and retrying; it is infrastructure, not a test result.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` —
+  passed, 234 actionable tasks.
+- `./gradlew contractCheck` — passed; 118 aligned decisions and ADRs, complete Swift allowlist, the
+  committed Objective-C golden header unchanged, no pending assertion.
+- Resource cleanup: the `E1_07_API_36` emulator and the iPhone 17 Pro simulator were shut down after
+  verification.
+
+### Story delivery
 
 - Baseline: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test
   :androidApp:testDebugUnitTest architectureCheck contractCheck` — passed, 219 actionable tasks;
@@ -234,12 +313,19 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Contract Impact
 
+- `D-116` adds the normative meaning of `VehicleListUiState.isLoading` to `docs/CONTRACTS.md §20.10`.
+  `D-117` rewrites the `failSignIn` mapping in the same section so `CANCELLED` publishes no message,
+  and states in `§11.1` that an abandoned acquisition returns a retryable state without a
+  user-visible error. No type, field or signature changed, so the Swift-facing ABI and the committed
+  Objective-C golden header are unchanged.
 - D-114 is represented in `docs/CONTRACTS.md` sections 11.1, 15.1, 15.3 and 20.10. The exported
   boundary accepts primitive tokens only, exports the closed `NativeSignInFailure` enum, and does
   not export `NativeAuthCredential`.
 
 ## Decision Board Impact
 
+- `D-115`, `D-116` and `D-117` are owner-accepted and recorded with ADR-0116, ADR-0117 and ADR-0118
+  in the four required mirrors.
 - D-112, D-113 and D-114 are owner-accepted and recorded with ADR-0113, ADR-0114 and ADR-0115 in
   every required mirror before implementation.
 
@@ -253,6 +339,17 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Risks or Follow-ups
 
+- `architecture-check` stays red until the `D-71` `DEVELOPMENT_TEAM` decision is taken. The
+  underlying reason the local gate disagreed with CI is that `:build-logic:convention:test` does not
+  declare the repository files it reads as task inputs.
+- iOS still stays on the vehicle list after creating a *later* vehicle, while Android routes to the
+  detail. This divergence from `SPECIFICATION.md` F-2 predates E2-03 and is outside the agreed scope
+  of this remediation; it needs an owner decision of its own.
+- `NoCredentialException` on Android still maps to `NativeSignInFailure.CONFIGURATION`, so a device
+  with no Google account is told the provider is not configured. Reported in review as a minor
+  finding and not part of the agreed scope.
+- The real configuration-change path through the Credential Manager sheet cannot be automated and
+  remains a manual acceptance item.
 - Real provider-account selection is intentionally left to owner review because no user credentials
   may be supplied to the agent. The protected keychain/App Check UI path continues to require its
   registered debug-token environment in CI.

@@ -38,6 +38,44 @@
 
 ## Entries
 
+### 2026-09-04 — E2-03 review remediation: onboarding navigation, list loading and sign-in recovery
+
+- **Type:** story
+- **Story / Decision:** `E2-03` / `D-115`, `D-116`, `D-117`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the owner review of pull request #54 confirmed five defects in the E2-03
+  onboarding surface, and the owner selected a fix for each. The authenticated navigation graph is
+  now mounted once with the vehicle list as its root and first-run creation pushed over it, so
+  saving the first vehicle routes to its detail as `SPECIFICATION.md` F-2 requires and the first-run
+  form no longer offers a back or cancellation affordance that could empty the back stack or do
+  nothing. `VehicleListUiState.isLoading` now means the vehicle list is unknown rather than that a
+  refresh is running, and hosts cover rather than replace the mounted UI while it is true, so a
+  refresh can no longer destroy navigation. The Android host handles the common configuration
+  changes in place and carries a recreation-surviving in-flight marker that abandons an orphaned
+  Google acquisition through the existing closed cancellation intent, and cancellation now leaves a
+  retryable state with no user-visible error.
+- **Why:** three of the five defects were reachable on every fresh installation — a blank screen
+  from the first-run back control, the missed post-save routing to the vehicle detail, and a
+  permanently disabled welcome screen after rotating during Google sign-in. The instrumented suite
+  had been adapted around the empty-state path, so the test that asserts post-save detail routing no
+  longer exercised the first vehicle, which is the only case that was broken.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0116`, `docs/adr/0117`, `docs/adr/0118`,
+  `docs/handoff-E2-03.md` and this log.
+- **Verification:** the exact `AGENTS.md` non-instrumented command passed 636 actionable tasks; the
+  13-test D-84 API 36 instrumented suite passed, including the new cleared-data first-run test; the
+  iOS unit suite passed 31 tests and the iOS UI suite passed with one environment-gated skip; forced
+  provider decoupling passed 234 tasks; `contractCheck` reports 118 aligned decisions and ADRs with
+  an unchanged Objective-C golden header.
+- **Follow-ups / risks:** `:build-logic:convention:test` reads repository files that are not declared
+  as task inputs, so Gradle reports it UP-TO-DATE after those files change and the guard suite goes
+  stale locally. Re-run with `--rerun-tasks` before claiming that gate passed. Doing so still fails
+  `iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity`, because the branch commits
+  `DEVELOPMENT_TEAM` against `D-71`; that is a separate owner decision, deliberately untouched by
+  this round, and it keeps the `architecture-check` job red. iOS still does not route to the vehicle
+  detail after creating a *later* vehicle from the list, which is a pre-existing divergence from
+  Android and from F-2, outside the agreed scope of this remediation.
+
 ### 2026-09-04 — E2-03 native onboarding providers completed
 
 - **Type:** story
