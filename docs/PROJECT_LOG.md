@@ -55,7 +55,8 @@
   `FirebaseConfigurationTest.kt:130`; the forced `architectureCheck` plus build-logic command now
   passes all 16 architecture rules and 58 build-logic tests; the complete 636-task non-instrumented
   gate passes; and the exact CI iOS simulator build succeeds with `Sign to Run Locally` and no
-  committed team.
+  committed team. Replacement GitHub Actions run `33926132087`, job `101194939387`, confirms the
+  previously failing protected `architecture-check` passes on fix commit `8257d33`.
 - **Follow-ups / risks:** `:build-logic:convention:test` still does not declare the repository files
   it reads as task inputs, so signing-guard verification must use `--rerun-tasks` until that separate
   build-logic issue is scoped. Pull request #54 remains subject to its authentication human-review

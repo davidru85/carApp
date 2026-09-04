@@ -45,12 +45,13 @@
 ### D-71 signing remediation checkpoint (2026-09-05, pull request #54)
 
 - Branch and base: `story/E2-03-onboarding-flow`, based on `main` / `origin/main` at `f7639dc`;
-  local `HEAD` and `origin/story/E2-03-onboarding-flow` are both `cde2570` before this remediation.
-- Current phase and latest commit: targeted CI repair is verified and ready to commit after the
-  completed E2-03 review remediation. The latest existing commit is `cde2570`; the configuration
-  guard supplied the RED evidence for the containing fix commit.
-- Push and pull-request status: pull request #54 is open. Nine required checks pass and only
-  `architecture-check` fails in run `33911001702`, job `101147129831`.
+  the configuration repair is committed and pushed at `8257d33`.
+- Current phase and latest commit: targeted CI repair is complete after the E2-03 review
+  remediation. The existing configuration guard supplied the RED evidence, and `8257d33` is the
+  verified fix commit. This documentation-only checkpoint records its external result.
+- Push and pull-request status: pull request #54 is open and contains `8257d33`. Its replacement
+  run `33926132087` completed `architecture-check` successfully in job `101194939387`; the other
+  required checks were still running when this checkpoint was written.
 - Completed since the previous checkpoint: the owner explicitly requested that the failing check be
   fixed, bringing the previously deferred D-71 violation into scope. The CI log and a forced local
   rerun both identify
@@ -70,7 +71,8 @@
   ordinary local invocation can be stale.
 - Open decisions or blockers: none for this repair. Pull request #54 remains human-gated and will
   not be merged by the agent.
-- Exact next step: commit the verified repair, push once and observe the replacement CI run.
+- Exact next step: let the remaining required checks finish, then return pull request #54 to the
+  owner for its mandatory authentication review without merging it.
 
 ### Review remediation checkpoint (2026-09-04, after pull request #54)
 
@@ -270,6 +272,8 @@ after the final device suite; the connected owner phone was neither targeted nor
 - The exact complete non-instrumented command from `AGENTS.md` passed all 636 actionable tasks (109
   executed, 41 restored from cache and 486 up-to-date), including lint, static analysis, coverage,
   contracts, Android assembly, Android host tests and every eligible iOS simulator KMP test.
+- GitHub Actions run `33926132087`, job `101194939387`, passed the previously failing protected
+  `architecture-check` on fix commit `8257d33`.
 
 ### Review remediation (2026-09-04)
 
