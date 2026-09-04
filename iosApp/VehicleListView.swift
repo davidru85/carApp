@@ -1,5 +1,6 @@
 import SwiftUI
 import Shared
+import UIKit
 
 struct VehicleDetailRoute: Hashable {
     let vehicleId: String
@@ -29,6 +30,20 @@ struct VehicleListView: View {
     }
 
     var body: some View {
+        content
+            // The list is covered, never replaced, while it is unknown, so no navigation state is
+            // torn down while it resolves. The indicator and the first-run decision read the same
+            // observed state, so the cover cannot outlive the decision it is waiting for.
+            .overlay {
+                if viewModel.state.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(UIColor.systemBackground))
+                }
+            }
+    }
+
+    private var content: some View {
         NavigationStack(path: $path) {
             List {
                 if viewModel.state.vehicles.isEmpty {

@@ -60,6 +60,10 @@ separate refreshing signal is deferred to the story that introduces it.
 
 - `isLoading` MUST NOT be set by an ordinary refresh.
 - Hosts MUST cover, not replace, mounted UI while the list is unknown.
+- The cover and the first-run decision MUST read the same observed state. Gating the cover from an
+  outer view that observes the same state holder through a second task lets the cover outlive the
+  resolved state and block a ready UI, which is what intermittently failed `ios-simulator-build`
+  during this work.
 
 ## Verification
 

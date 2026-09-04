@@ -1,6 +1,5 @@
 import Shared
 import SwiftUI
-import UIKit
 
 struct ContentView: View {
     @ObservedObject var model: WalkingSkeletonModel
@@ -27,16 +26,10 @@ struct ContentView: View {
                 onContinueWithoutAccount: model.startAnonymousSession
             )
         case .firstVehicle, .vehicleList:
-            // The authenticated surface is mounted once. An unresolved vehicle list is covered
-            // rather than replaced, so no navigation state is torn down while it resolves.
+            // The authenticated surface is mounted once, and it owns its own unresolved-list
+            // indicator. Gating it from here would cover the list from a second observer of the
+            // same state holder, which can lag behind the one that decides what to present.
             VehicleListView(graph: graph, skeletonModel: model)
-                .overlay {
-                    if model.vehicleListState.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color(UIColor.systemBackground))
-                    }
-                }
         }
     }
 }

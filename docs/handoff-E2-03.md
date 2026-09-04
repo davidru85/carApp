@@ -242,6 +242,16 @@ after the final device suite; the connected owner phone was neither targeted nor
   for ABI changes; the normative definition lives in `docs/CONTRACTS.md §20.10` and ADR-0117.
   `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by the CI `diff -u` now
   reports no difference.
+- `ios-simulator-build` then failed on the pushed remediation: both `VehicleAndFuelFlowUITests`
+  timed out in `openVehicleCreation`, with `add_vehicle` present but not hittable. The same iOS code
+  had passed the same job on the previous commit, and it passed locally on an erased simulator, so
+  the defect was intermittent rather than deterministic. Root cause: the unresolved-list indicator
+  was gated in `ContentView` from `WalkingSkeletonModel.vehicleListState` while the first-run
+  presentation was decided in `VehicleListView` from its own `VehicleListViewModel.state`. Both
+  observe the same holder through independent tasks, so on a loaded runner the cover could outlive
+  the state that had already resolved for the decision, leaving an opaque overlay over a ready UI.
+  The indicator moved into `VehicleListView` so the cover and the decision read one observed state.
+  Re-verified on an erased simulator: `carAppUITests` passed with one environment-gated skip.
 - iOS: `xcodebuild ... build-for-testing` passed; `-only-testing:carAppTests` executed 31 tests with
   0 failures, including the three new onboarding decisions; `-only-testing:carAppUITests` succeeded
   with one environment-gated skip. One `Application failed preflight checks` simulator-busy error
@@ -349,6 +359,9 @@ after the final device suite; the connected owner phone was neither targeted nor
 - `architecture-check` stays red until the `D-71` `DEVELOPMENT_TEAM` decision is taken. The
   underlying reason the local gate disagreed with CI is that `:build-logic:convention:test` does not
   declare the repository files it reads as task inputs.
+- The iOS unresolved-list indicator MUST stay inside `VehicleListView`. Gating it from an outer view
+  reintroduces a second observer of the same state holder and with it the intermittent cover that
+  failed `ios-simulator-build`.
 - iOS still stays on the vehicle list after creating a *later* vehicle, while Android routes to the
   detail. This divergence from `SPECIFICATION.md` F-2 predates E2-03 and is outside the agreed scope
   of this remediation; it needs an owner decision of its own.
