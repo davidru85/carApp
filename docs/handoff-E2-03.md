@@ -42,6 +42,35 @@
 
 ## In-Progress Checkpoint
 
+### Second review remediation checkpoint (2026-09-05, intake)
+
+- Date: 2026-09-05. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
+- Current phase and latest commit: intake for a second owner review round. Latest commit is
+  `b429888`; local `HEAD` and `origin/story/E2-03-onboarding-flow` agree.
+- Push and pull-request status: pull request #54 is open with all ten required checks green. The
+  agent will not merge it.
+- Owner-confirmed findings entering this round:
+  1. First-vehicle creation is still escapable through the Android system/predictive back path and
+     through interactive dismissal of the iOS first-run sheet.
+  2. iOS post-save routing reads form state that common code has already reset, because
+     `VehicleFormViewModel.handleStateUpdate` invokes its completion callback before assigning the
+     incoming state.
+  3. First-run routing can act on a stale or failed vehicle list: `AuthState.Unknown` / `SignedOut`
+     expose `LOCAL_OWNER`, so an empty `LOCAL_OWNER` result marks the list known before the restored
+     owner's list arrives, and an initial `Outcome.Err` is currently published as a confirmed empty
+     list.
+  4. The `D-119` declared inputs miss reads made through constants, composed paths and directory
+     scans, including the composition-owned iOS locale provider, its directory listing, the shared
+     iOS test and the enum source files, and one guard walks the whole repository.
+  5. `NoCredentialException` still tells an owner with no Google account on the device that the
+     provider is not configured.
+- Verification evidence and known failures: none for this round yet; the previous round's evidence
+  stands and CI is green on `b429888`.
+- Open decisions or blockers: the truthful outcome for `NoCredentialException` will use the existing
+  closed `UNKNOWN` case. A dedicated case would widen `NativeSignInFailure`, the error taxonomy and
+  the Swift ABI, which is gated, so it is raised to the owner rather than taken by the agent.
+- Exact next step: write the failing tests for the five findings, then implement.
+
 ### D-118 / D-119 signing and guard-input checkpoint (2026-09-05)
 
 - The 2026-09-05 repair removed the committed `DEVELOPMENT_TEAM` and turned `architecture-check`
