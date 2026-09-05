@@ -24,6 +24,7 @@ DerivedData/
 *.xcuserstate
 
 # Secrets and local config
+iosApp/Local.xcconfig
 *.keystore
 *.jks
 *.p12

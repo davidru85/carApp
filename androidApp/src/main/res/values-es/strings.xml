@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">carApp</string>
+    <string name="welcome_title">Te damos la bienvenida a carApp</string>
+    <string name="welcome_body">Guarda los datos localmente o inicia sesión para disponer de una copia recuperable.</string>
+    <string name="continue_with_google">Continuar con Google</string>
+    <string name="continue_without_account">Continuar sin cuenta</string>
     <string name="vehicle_list_title">Vehículos</string>
     <string name="add_vehicle">Añadir vehículo</string>
     <string name="create_vehicle_title">Crear vehículo</string>
@@ -33,6 +37,9 @@
     <string name="error_persistence">No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo.</string>
     <string name="error_restore">No se ha podido recuperar la copia. Tus datos locales siguen disponibles.</string>
     <string name="error_unexpected">Algo ha salido mal. Inténtalo de nuevo.</string>
+    <string name="error_auth_cancelled">Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo.</string>
+    <string name="error_auth_network">Necesitas conexión para iniciar sesión. Inténtalo cuando vuelvas a tener red.</string>
+    <string name="error_auth_provider">Este proveedor de inicio de sesión aún no está configurado.</string>
     <string name="add_fuel_entry">Nueva recarga</string>
     <string name="create_fuel_entry_title">Nueva recarga</string>
     <string name="edit_fuel_entry_title">Editar recarga</string>

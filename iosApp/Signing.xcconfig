@@ -1,0 +1,10 @@
+// Device signing configuration for the carApp application target.
+//
+// D-71 / ADR-0072 forbid committing a developer team, certificate or provisioning profile. Simulator
+// builds and CI need none of them: Xcode signs the simulator application locally. Building for a
+// physical device does need a team, so it is supplied by an untracked file next to this one.
+//
+// The optional include below is a no-op when that file is absent, which is the state of a fresh
+// clone and of every CI runner. See docs/runbooks/ios-device-signing.md to create it.
+
+#include? "Local.xcconfig"

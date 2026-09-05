@@ -93,16 +93,17 @@ accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is 
 `E1-09`, iOS UI: Vehicles and Fuel Entries, `E1-10`, Settings, `E1-11`, the Vehicle outbox
 payload `entityType` fix, `E1-12`, the shared-test graph-close race fix, and `E1-13`, executable iOS
 locale-provider behavior coverage, `E2-01`, the complete auth contracts and owner context, and
-`E2-02`, the complete Firebase Auth integration, are complete.
+`E2-02`, the complete Firebase Auth integration, and `E2-03`, the native Android/iOS onboarding
+providers and F-1 routing, are complete.
 
 ### Delivery status and remaining work
 
 - **Completed:** all Phase 0 and Phase 1 stories; the pulled-forward `E3-06` and
   `E3-01` prerequisites; the `E0-07` walking-skeleton gate, including D-73 cleanup evidence;
-  `E2-01` and `E2-02`.
-- **Next:** `E2-03`, the Native Auth Providers (Android and iOS).
+  `E2-01`, `E2-02` and `E2-03`.
+- **Next:** `E2-06`, Local Owner Adoption.
 - **Remaining Phase 1:** none.
-- **Remaining Phase 2:** `E2-03`, `E2-06`, `E2-04`, `E2-07` and `E2-05`.
+- **Remaining Phase 2:** `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
@@ -268,6 +269,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/versions-matrix.md](docs/versions-matrix.md) | Pinned toolchain versions and their compatibility relation, plus the reference devices and measurement methods for every performance target. |
 | [docs/SECURITY_ADVISORY_REGISTER.md](docs/SECURITY_ADVISORY_REGISTER.md) | Dated, expiring accepted dependency advisories, executable evidence and current-state review history. |
 | [docs/runbooks/development-firebase-cost-controls.md](docs/runbooks/development-firebase-cost-controls.md) | Development billing-state history, alerts, budget cadence, destructive cutoff evidence and manual recovery. |
+| [docs/runbooks/ios-device-signing.md](docs/runbooks/ios-device-signing.md) | One-time local signing setup for physical-device builds, the build commands and the recovery path when the signing guard fires (`D-118`). |
 | [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md) | Closed record of the documentation audit of the definition package. **Non-normative and historical**: all 20 findings are applied. It is kept only so that the `AUDIT-NN` IDs cited by `docs/PROJECT_LOG.md` resolve. Do not treat it as a source of rules or as a list of open work. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |

@@ -43,7 +43,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         viewModel.setOdometerText("50000")
         
         var saved = false
-        viewModel.save {
+        viewModel.save { _ in
             saved = true
         }
 
@@ -52,6 +52,35 @@ final class ViewModelLifecycleTests: XCTestCase {
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         XCTAssertTrue(saved, "Vehicle save should complete, message: \(String(describing: viewModel.state.message?.code))")
+    }
+
+    func testSuccessfulCreationDeliversTheSavedIdAndTheEnteredName() async throws {
+        let viewModel = VehicleFormViewModel(graph: graph, vehicleId: nil)
+        let enteredName = "Saved-\(UUID().uuidString.prefix(8))"
+        viewModel.setName(enteredName)
+        viewModel.setOdometerText("50000")
+
+        var outcome: VehicleSaveOutcome?
+        viewModel.save { result in
+            outcome = result
+        }
+
+        for _ in 0..<30 {
+            if outcome != nil { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        let delivered = try XCTUnwrap(outcome, "Creation must deliver its outcome")
+        let createdVehicleId = try XCTUnwrap(
+            delivered.createdVehicleId,
+            "Creation must deliver the saved vehicle id from the emission that completed it"
+        )
+        XCTAssertFalse(createdVehicleId.isEmpty)
+        XCTAssertEqual(
+            delivered.vehicleName,
+            enteredName,
+            "The delivered name must be the entered one, not form state that common code may reset"
+        )
     }
 
     func testVehicleListRequestDeleteEmitsConfirmationMessageWithoutDeleting() async throws {
@@ -63,7 +92,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("30000")
 
         var saved = false
-        vModel.save { saved = true }
+        vModel.save { _ in saved = true }
         for _ in 0..<30 {
             if saved { break }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -105,7 +134,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("20000")
 
         var saved = false
-        vModel.save { saved = true }
+        vModel.save { _ in saved = true }
         for _ in 0..<30 {
             if saved { break }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -152,7 +181,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("10000")
         
         var vehicleSaved = false
-        vModel.save {
+        vModel.save { _ in
             vehicleSaved = true
         }
 

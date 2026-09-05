@@ -13,6 +13,9 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
     exactVersion: ${FIREBASE_APPLE_VERSION}
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    exactVersion: ${GOOGLE_SIGN_IN_IOS_VERSION}
 targets:
   carApp:
     type: application
@@ -20,6 +23,9 @@ targets:
     sources:
       - path: ContentView.swift
       - path: WalkingSkeletonModel.swift
+      - path: Onboarding.swift
+      - path: NativeSignIn.swift
+      - path: WelcomeView.swift
       - path: AppCheckProviderFactory.swift
       - path: carAppApp.swift
       - path: ScaledFormatting.swift
@@ -45,17 +51,23 @@ targets:
         product: FirebaseCore
       - package: Firebase
         product: FirebaseFirestore
+      - package: GoogleSignIn
+        product: GoogleSignIn
     preBuildScripts:
       - name: Build Shared framework
         basedOnDependencyAnalysis: false
         script: |
           cd "$SRCROOT/.."
           ./gradlew :composition:ios:embedAndSignAppleFrameworkForXcode
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
         INFOPLIST_FILE: Info.plist
         CODE_SIGN_ENTITLEMENTS: carApp.entitlements
+        CODE_SIGN_STYLE: Automatic
       configs:
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.debug
@@ -70,6 +82,8 @@ targets:
       - path: Tests
     dependencies:
       - target: carApp
+      - package: GoogleSignIn
+        product: GoogleSignIn
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp.tests

@@ -118,5 +118,15 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-109 | [ADR-0110](0110-enforce-native-locale-provider-verification.md) | Enforce native locale-provider verification. | Accepted |
 | D-110 | [ADR-0111](0111-outbox-entity-type-token-ownership.md) | Outbox entity-type token ownership. | Accepted |
 | D-111 | [ADR-0112](0112-explicit-uid-change-opt-in-for-account-adoption.md) | Explicit UID change opt-in for account adoption. | Accepted |
+| D-112 | [ADR-0113](0113-android-google-credential-acquisition.md) | Use the stable Credential Manager stack for Android Google sign-in. | Accepted |
+| D-113 | [ADR-0114](0114-ios-native-provider-acquisition.md) | Use native Apple sign-in and exact GoogleSignIn-iOS 9.2.0. | Accepted |
+| D-114 | [ADR-0115](0115-native-to-shared-sign-in-handoff.md) | Use primitive provider-named sign-in completion intents. | Accepted |
+| D-115 | [ADR-0116](0116-mount-onboarding-navigation-once.md) | Mount the authenticated navigation graph once. | Accepted |
+| D-116 | [ADR-0117](0117-vehicle-list-loading-means-unknown.md) | Publish list loading only while the vehicle list is unknown. | Accepted |
+| D-117 | [ADR-0118](0118-recover-from-interrupted-native-sign-in.md) | Recover from an interrupted native sign-in. | Accepted |
+| D-118 | [ADR-0119](0119-supply-ios-device-signing-locally.md) | Supply the iOS developer team from an untracked local configuration. | Accepted |
+| D-119 | [ADR-0120](0120-declare-guarded-repository-inputs.md) | Declare the repository files the guards read as task inputs. | Accepted |
+| D-120 | [ADR-0121](0121-resolve-the-vehicle-list-per-owner.md) | Resolve the vehicle list per owner. | Accepted |
+| D-121 | [ADR-0122](0122-make-first-run-vehicle-creation-mandatory.md) | Make first-run vehicle creation mandatory. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

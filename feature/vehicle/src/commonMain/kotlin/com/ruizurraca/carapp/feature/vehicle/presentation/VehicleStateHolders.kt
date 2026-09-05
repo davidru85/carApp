@@ -9,17 +9,20 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.DispatcherProvider
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.STATE_HOLDER_TIMEOUT_MS
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
+import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -28,8 +31,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -43,6 +49,7 @@ class VehicleListStateHolder internal constructor(
     private val repository: VehicleRepository,
     private val dispatchers: DispatcherProvider,
     private val refreshVehicles: suspend () -> Outcome<Unit, AppError>,
+    ownerContext: OwnerContext,
 ) {
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
@@ -51,45 +58,40 @@ class VehicleListStateHolder internal constructor(
     private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var closed = false
 
+    // `isLoading` means the vehicle list of the currently resolved owner is not known yet: it stays
+    // true until that owner publishes a successful result, and an owner transition reopens it
+    // (D-116, D-120, CONTRACTS.md 20.10). A refresh over an already known list MUST NOT reopen it,
+    // because hosts gate first-run routing on this value. These stay plain comments: KDoc on an
+    // exported declaration is written into the Objective-C golden header, and a documentation-only
+    // diff there would be noise in a signal reserved for ABI changes.
     val state: StateFlow<VehicleListUiState> =
         combine(
-            repository.observeVehicles(includeDeleted = false).flowOn(dispatchers.io),
-            refreshing,
+            ownerScopedVehicles(ownerContext),
             selectedVehicleId,
             transientMessage,
-        ) { result, isRefreshing, selectedId, message ->
-            when (result) {
-                is Outcome.Ok -> {
-                    VehicleListUiState(
-                        isLoading = isRefreshing,
-                        vehicles =
-                            result.value
-                                .filter { vehicle -> vehicle.deletedAt == null }
-                                .map { vehicle ->
-                                    VehicleListItemUi(
-                                        id = vehicle.id.value,
-                                        name = vehicle.name,
-                                        currentOdometerKm = vehicle.currentOdometerKm,
-                                        fuelType = vehicle.fuelType,
-                                        deleted = false,
-                                    )
-                                },
-                        selectedVehicleId = selectedId,
-                        syncStatus = SyncStatus.Idle,
-                        message = message,
-                    )
-                }
-
-                is Outcome.Err -> {
-                    VehicleListUiState(
-                        isLoading = isRefreshing,
-                        vehicles = emptyList(),
-                        selectedVehicleId = selectedId,
-                        syncStatus = SyncStatus.Idle,
-                        message = message ?: result.error.toErrorMessage(),
-                    )
-                }
-            }
+        ) { result: Outcome<List<Vehicle>, AppError>?, selectedId: String?, message: UiMessage? ->
+            val readError = (result as? Outcome.Err)?.error
+            VehicleListUiState(
+                // An unresolved owner and an unreadable list are both "not known", and neither is a
+                // confirmed empty list that may open first-vehicle creation.
+                isLoading = result == null || readError != null,
+                vehicles =
+                    (result as? Outcome.Ok)
+                        ?.value
+                        ?.filter { vehicle -> vehicle.deletedAt == null }
+                        ?.map { vehicle ->
+                            VehicleListItemUi(
+                                id = vehicle.id.value,
+                                name = vehicle.name,
+                                currentOdometerKm = vehicle.currentOdometerKm,
+                                fuelType = vehicle.fuelType,
+                                deleted = false,
+                            )
+                        }.orEmpty(),
+                selectedVehicleId = selectedId,
+                syncStatus = SyncStatus.Idle,
+                message = message ?: readError?.toErrorMessage(),
+            )
         }.stateIn(
             scope = holderScope + dispatchers.main,
             started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS),
@@ -102,6 +104,23 @@ class VehicleListStateHolder internal constructor(
                     message = null,
                 ),
         )
+
+    /**
+     * Re-subscribes the observation for every owner, so an emission always belongs to the owner that
+     * is current, and marks the new owner's list unresolved until it publishes. `null` means "not
+     * known yet" for the owner in scope.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun ownerScopedVehicles(ownerContext: OwnerContext): Flow<Outcome<List<Vehicle>, AppError>?> =
+        ownerContext
+            .observe()
+            .flatMapLatest {
+                repository
+                    .observeVehicles(includeDeleted = false)
+                    .flowOn(dispatchers.io)
+                    .map<Outcome<List<Vehicle>, AppError>, Outcome<List<Vehicle>, AppError>?> { result -> result }
+                    .onStart { emit(null) }
+            }
 
     fun refresh() {
         if (closed || refreshing.value) return
@@ -339,7 +358,8 @@ fun createVehicleListStateHolder(
     repository: VehicleRepository,
     dispatchers: DispatcherProvider,
     refreshVehicles: suspend () -> Outcome<Unit, AppError>,
-): VehicleListStateHolder = VehicleListStateHolder(scope, repository, dispatchers, refreshVehicles)
+    ownerContext: OwnerContext,
+): VehicleListStateHolder = VehicleListStateHolder(scope, repository, dispatchers, refreshVehicles, ownerContext)
 
 @HiddenFromObjC
 fun createVehicleFormStateHolder(

@@ -12,7 +12,12 @@
           "package_name": "com.ruizurraca.carapp.debug"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "330616809208-u5iljrf5k4frl5b6lmdak265l3brf2c3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCnkuKKrDeXTSgeAYES5lCu0MYO-zYdYaM"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "330616809208-u5iljrf5k4frl5b6lmdak265l3brf2c3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "330616809208-qfc7lcaqe6vb1g3tn0ok7jkkmn8slkr4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.ruizurraca.carapp.debug"
+              }
+            }
+          ]
         }
       }
     }

@@ -6,7 +6,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSValue.h>
 
-@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
+@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedNativeSignInFailure, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
 
 @protocol SharedSkie_DispatcherDelegate, SharedKotlinx_coroutines_coreStateFlow, SharedKotlinx_coroutines_coreSharedFlow, SharedKotlinx_coroutines_coreRunnable, SharedKotlinx_coroutines_coreMutableStateFlow, SharedKotlinx_coroutines_coreMutableSharedFlow, SharedKotlinx_coroutines_coreFlowCollector, SharedKotlinx_coroutines_coreFlow, SharedKotlinIterator, SharedKotlinComparable, NSCopying;
 
@@ -1072,6 +1072,20 @@ __attribute__((swift_name("KotlinEnum")))
 @end
 
 __attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("NativeSignInFailure")))
+@interface SharedNativeSignInFailure : SharedKotlinEnum<SharedNativeSignInFailure *>
+@property (class, readonly) SharedNativeSignInFailure *cancelled __attribute__((swift_name("cancelled")));
+@property (class, readonly) SharedNativeSignInFailure *network __attribute__((swift_name("network")));
+@property (class, readonly) SharedNativeSignInFailure *configuration __attribute__((swift_name("configuration")));
+@property (class, readonly) SharedNativeSignInFailure *unknown __attribute__((swift_name("unknown")));
+@property (class, readonly) NSArray<SharedNativeSignInFailure *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedNativeSignInFailure *> *)values __attribute__((swift_name("values()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("SessionPhase")))
 @interface SharedSessionPhase : SharedKotlinEnum<SharedSessionPhase *>
 @property (class, readonly) SharedSessionPhase *unknown __attribute__((swift_name("unknown")));
@@ -1093,9 +1107,12 @@ __attribute__((swift_name("SessionStateHolder")))
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
 - (void)clearMessage __attribute__((swift_name("clearMessage()")));
 - (void)close __attribute__((swift_name("close()")));
+- (void)completeAppleSignInIdToken:(NSString *)idToken rawNonce:(NSString *)rawNonce __attribute__((swift_name("completeAppleSignIn(idToken:rawNonce:)")));
+- (void)completeGoogleSignInIdToken:(NSString *)idToken accessToken:(NSString * _Nullable)accessToken __attribute__((swift_name("completeGoogleSignIn(idToken:accessToken:)")));
 - (void)confirmAccountConversionConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmAccountConversion(confirmation:)")));
 - (void)confirmDeleteAccountConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmDeleteAccount(confirmation:)")));
 - (void)confirmSignOutConfirmation:(SharedConfirmation *)confirmation __attribute__((swift_name("confirmSignOut(confirmation:)")));
+- (void)failSignInReason:(SharedNativeSignInFailure *)reason __attribute__((swift_name("failSignIn(reason:)")));
 - (void)requestDeleteAccount __attribute__((swift_name("requestDeleteAccount()")));
 - (void)requestSignOut __attribute__((swift_name("requestSignOut()")));
 - (void)startAccountConversionProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startAccountConversion(provider:)")));

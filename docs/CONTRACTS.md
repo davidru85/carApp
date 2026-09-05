@@ -715,7 +715,16 @@ interface AuthClient {
 
 `AuthState` distinguishes *not yet determined* from *signed out* (§20). Routing decisions in `F-1` MUST NOT be made while `AuthState.Unknown`.
 
-Platform UI obtains Google and Apple credentials; common code exchanges or links them.
+Platform UI obtains Google and Apple credentials; common code exchanges or links them. For an F-1
+permanent sign-in, `SessionStateHolder.startPermanentSignIn(provider)` records the selected provider
+and busy state before the host starts native acquisition. The host returns only the primitive
+provider values through the completion intents declared in §20.10, or a closed
+`NativeSignInFailure`; `NativeAuthCredential` remains Kotlin-facing only and is hidden from the
+Objective-C / Swift boundary.
+Provider tokens, credentials and Apple raw nonces MUST NOT enter `UiState`, analytics, `Logger` /
+Kermit or crash reporting. A cancelled acquisition, including one abandoned because the native host
+was rebuilt before any completion arrived, returns the owner to a retryable state without a
+user-visible error (`D-117`).
 
 `deleteAccount()` is the client entry point for the `D-23` server/Admin account deletion operation. It MUST NOT call the mobile Firebase Auth account deletion API directly. It maps server operation failures to `AuthError.AccountDeletionRemoteFailed`, authentication freshness failures to `AuthError.RequiresRecentLogin`, caller mismatch or IAM rejection to `AuthError.PermissionDenied`, and connectivity failures to `AuthError.NetworkUnavailable`.
 
@@ -1181,14 +1190,13 @@ Platform adapters contain rendering and lifecycle glue only. Validation, formatt
 
 ### 15.1 Mechanism
 
-Injection is the **only** mechanism for anything present in `AppGraphDependencies`. Any interface already injected through `AppGraphDependencies` MUST NOT also have an `expect`/`actual` form. `expect`/`actual` is reserved for provider-free platform factory functions and for native credential acquisition.
+Injection is the **only** mechanism for anything present in `AppGraphDependencies`. Any interface already injected through `AppGraphDependencies` MUST NOT also have an `expect`/`actual` form. `expect`/`actual` is reserved for provider-free platform factory functions.
 
 `expect`/`actual` declarations MUST be `internal` and MUST NOT appear in any public API surface.
 
 Allowed `expect`/`actual`:
 
 - Internal platform factories for the SQLDelight AndroidX driver and database file location.
-- Native Google and Apple credential acquisition.
 
 Forbidden `expect`/`actual`:
 
@@ -1196,6 +1204,8 @@ Forbidden `expect`/`actual`:
 - Repository interfaces, sync algorithm, conflict resolution, error taxonomy.
 - Anything already injected through `AppGraphDependencies`, including `UuidGenerator`, `ConnectivityObserver`, `LocaleProvider`, `Logger` and `AnalyticsTracker`.
 - Provider-specific analytics, logging or crash-reporting SDK bindings.
+- Native Google or Apple credential acquisition; it belongs to the native host UI and returns
+  primitives through the `SessionStateHolder` intents declared in §20.10.
 
 ### 15.2 Dependency Injection Contract
 
@@ -1220,7 +1230,8 @@ The allowlist is:
 - `createSwiftAppGraph(isDebugBuild: Boolean)`.
 - Concrete state-holder classes declared in §20.10.
 - `UiState` data classes and UI row data classes declared in §20.10.
-- `UiMessage`, `UiMessageKind`, `SyncStatus` and the typed enums referenced by those state classes.
+- `UiMessage`, `UiMessageKind`, `SyncStatus` and the typed enums referenced by those state classes,
+  including `NativeSignInFailure`.
 
 `SwiftAppGraph` exposes keyed release functions for cached Vehicle forms, Fuel Entry lists and
 Fuel Entry forms. Each release removes and closes one holder and cancels its graph-owned child
@@ -1228,7 +1239,8 @@ scope; a later factory call for the same key returns a fresh holder (`D-90`).
 
 Swift-facing signatures MUST use only `String`, `Long`, `Int`, `Boolean`, `Unit`, nullable variants of those, `data class`, `sealed class`, `enum class`, read-only `List<T>` where `T` is also Swift-facing, and `StateFlow<T>` where `T` is one declared `UiState` class. They MUST NOT expose `value class`, project-owned type parameters, default arguments, `CoroutineScope`, `Outcome`, `AppError`, repository or use-case interfaces, command models, `EntityId`, `OwnerId`, `CurrencyCode`, SQLDelight or SQLite types, Firebase types, GitLive types, Koin types, Ktor types, Android types or iOS types.
 
-`AppProviders`, `AppGraphDependencies`, `buildAppGraph(isDebugBuild, providers)`, the
+`NativeAuthCredential`, `AppProviders`, `AppGraphDependencies`,
+`buildAppGraph(isDebugBuild, providers)`, the
 Kotlin-facing `AppGraph`, `SyncController`, repository interfaces and use-case interfaces are
 Kotlin-facing contracts and MUST NOT be exported to Swift.
 
@@ -1238,7 +1250,7 @@ Kotlin-facing contracts and MUST NOT be exported to Swift.
 
 `SwiftAppGraph` MUST expose a no-argument constructor on the Swift-facing side. The `isDebugBuild` flag is consumed by `createSwiftAppGraph(isDebugBuild)` and applied during graph construction. State holders MUST NOT use Kotlin default arguments anywhere in public signatures.
 
-Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift boundary. Where SKIE or Kotlin/Native would otherwise alter names, the enum class or entries MUST use explicit Objective-C naming annotations so generated headers contain the contract names. The exact common-enum names are `SharedConfirmation` / `Confirmation`, `SharedAuthProvider` / `AuthProvider` and `SharedSyncTrigger` / `SyncTrigger` for Objective-C / Swift respectively (`D-91`).
+Exported enum cases MUST keep their Kotlin case names on the Objective-C/Swift boundary. Where SKIE or Kotlin/Native would otherwise alter names, the enum class or entries MUST use explicit Objective-C naming annotations so generated headers contain the contract names. The exact common-enum names are `SharedConfirmation` / `Confirmation`, `SharedAuthProvider` / `AuthProvider`, `SharedSyncTrigger` / `SyncTrigger` and `SharedNativeSignInFailure` / `NativeSignInFailure` for Objective-C / Swift respectively (`D-91`, `D-114`).
 
 Nullable primitives and `StateFlow<T>` / `List<T>` exports MUST use the SKIE and Kotlin/Native annotations required by the pinned SKIE version to produce stable Swift types. The generated header golden is the executable source of truth for those annotations.
 
@@ -2371,10 +2383,15 @@ class FuelEntryFormStateHolder {
     fun close()
 }
 
+enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, UNKNOWN }
+
 class SessionStateHolder {
     val state: StateFlow<SessionUiState>
     fun startAnonymousSignIn()
     fun startPermanentSignIn(provider: AuthProvider)
+    fun completeGoogleSignIn(idToken: String, accessToken: String?)
+    fun completeAppleSignIn(idToken: String, rawNonce: String)
+    fun failSignIn(reason: NativeSignInFailure)
     fun startAccountConversion(provider: AuthProvider)
     fun confirmAccountConversion(confirmation: Confirmation)
     fun requestSignOut()
@@ -2501,9 +2518,38 @@ Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and a
 
 It is never display copy.
 
+`VehicleListUiState.isLoading` means the vehicle list of the currently resolved owner is not known
+yet. It is `true` from the initial state until that owner's first successful repository result, and
+an ordinary refresh MUST NOT set it (`D-116`). An owner transition returns it to `true` until the new
+owner publishes a successful result, and a repository read failure keeps it `true` while publishing
+its error code, so an unreadable list is never presented as a confirmed empty list (`D-120`). Hosts
+gate `SPECIFICATION.md` F-1 first-run routing on this value and, while it is `true`, MUST cover the
+mounted UI instead of replacing it, so navigation state is never destroyed by a refresh.
+
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
 
 `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
+
+`SessionStateHolder.startPermanentSignIn(provider)` accepts `GOOGLE` or `APPLE`, retains only that
+provider as the active native attempt and sets `isBusy = true`; it stores no credential primitive.
+`completeGoogleSignIn` is valid only for an active Google attempt and constructs
+`NativeAuthCredential.Google` internally. `completeAppleSignIn` is valid only for an active Apple
+attempt and constructs `NativeAuthCredential.Apple` internally. A completion without the matching
+active attempt MUST NOT call `AuthClient` and MUST clear the busy state with
+`AuthError.ProviderUnavailable`. A valid completion calls `AuthClient.signInWithCredential` with
+the internal credential, publishes the resulting session phase or typed error code, and clears the
+active attempt so success, failure and subsequent retry cannot remain stuck.
+
+`failSignIn(reason)` clears the active attempt and busy state without calling `AuthClient`.
+Cancellation is a recoverable retry state and not a reported failure: `CANCELLED` publishes no
+`UiMessage` and clears the message of the previous attempt (`D-117`). The remaining mapping is
+exhaustive and normative: `NETWORK -> AuthError.NetworkUnavailable`,
+`CONFIGURATION -> AuthError.ProviderUnavailable`, and `UNKNOWN -> AuthError.Unknown`. A host whose
+native acquisition is interrupted before any completion MUST abandon that attempt through
+`failSignIn(CANCELLED)` and MUST NOT introduce a separate abandonment intent.
+Native provider text never crosses the boundary. Provider tokens,
+Apple raw nonces and `NativeAuthCredential` never enter `SessionUiState`, analytics, `Logger` /
+Kermit or crash reporting.
 
 The code block declares public members, not constructors. State-holder constructors are implementation details; callers obtain them only from `AppGraph` or `SwiftAppGraph`. Swift obtains the graph through `createSwiftAppGraph(isDebugBuild)`, whose signature MUST NOT grow provider SDK parameters. Every state holder owns exactly one `StateFlow` property named `state`, every intent function returns immediately, and expected success or failure is reported by a later state emission. `close()` is idempotent and cancels work owned by that state holder. After `close()`, intent functions MUST do nothing and MUST NOT throw.
 

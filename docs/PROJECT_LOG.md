@@ -38,6 +38,161 @@
 
 ## Entries
 
+### 2026-09-05 — E2-03 second review round: mandatory first run, owner-scoped list and honest guards
+
+- **Type:** correction
+- **Story / Decision:** `E2-03` / `D-120`, `D-121`, `D-119`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the owner reviewed pull request #54 again and confirmed five defects. First-run
+  vehicle creation was still escapable through the Android system and predictive back gestures and
+  through interactive dismissal of the iOS sheet, so both are now consumed for that route only
+  (`D-121`, superseding the `D-115` consequence that accepted the back gesture). iOS post-save
+  routing read form state that common code had already reset, because the view model ran its
+  completion before assigning the incoming state; creation now delivers the saved id from the
+  completing emission and the name captured when the save started. First-run routing could act on a
+  stale or failed list, because `AuthState.Unknown` and `SignedOut` expose `LOCAL_OWNER` and a read
+  failure was published as a confirmed empty list; the vehicle list is now resolved per owner and an
+  unreadable list stays unknown (`D-120`). The `D-119` guard inputs were an allowlist verified by
+  scanning call-site literals, which missed constants, composed paths, directory scans and a
+  whole-repository walk, so the declaration now covers the repository and excludes only generated
+  output, tooling state and machine-local files. `NoCredentialException` no longer tells an owner
+  with no Google account that the provider is unconfigured.
+- **Why:** three of the five let the product misbehave for a real owner — a trapped or escapable
+  mandatory step, a first vehicle whose detail never opened, and mandatory creation shown to a
+  returning owner who already had vehicles. The fourth meant the guard that exists to catch mistakes
+  could still miss most of what it reads.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0116`, `docs/adr/0120`, `docs/adr/0121`,
+  `docs/adr/0122`, `docs/handoff-E2-03.md` and this log.
+- **Verification:** the exact `AGENTS.md` command passed 636 actionable tasks; forced provider
+  decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14 including the new
+  system-back case, proved non-vacuous by disabling the handler; iOS ran 32 unit tests and 7 UI tests
+  on an erased simulator with one environment-gated skip and no failures; the guard suite reported
+  `UP-TO-DATE` and then executed after a content change to a file it reaches through a constant; the
+  Objective-C golden header is byte-identical; `contractCheck` reports 122 aligned decisions and ADRs.
+- **Follow-ups / risks:** an owner decision is requested for a dedicated `NativeSignInFailure` case
+  meaning "no account available on the device"; until then that condition shows the generic message.
+  The iOS first-run UI tests depend on a Debug-only environment seam, because UI tests cannot clear
+  the application container that the unit-test target also writes to. The pre-existing divergence
+  where iOS stays on the vehicle list after creating a later vehicle remains out of scope.
+
+### 2026-09-05 — PR #54 restored D-71 signing compliance
+
+- **Type:** correction
+- **Story / Decision:** `E2-03` / `D-71`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** removed the account-specific `DEVELOPMENT_TEAM` setting from the XcodeGen
+  source and regenerated Xcode project, which also removed the generated build settings and target
+  attribute. Automatic simulator signing remains enabled.
+- **Why:** pull request #54's only failing required check detected that the E2-03 device-provisioning
+  work had committed a team in direct conflict with accepted D-71 / ADR-0072. The owner instructed
+  the agent to fix the check; restoring the existing constraint required no new decision.
+- **Documents touched:** `iosApp/project.yml`, `iosApp/carApp.xcodeproj/project.pbxproj` and
+  `docs/handoff-E2-03.md`.
+- **Verification:** the focused guard failed before the repair at
+  `FirebaseConfigurationTest.kt:130`; the forced `architectureCheck` plus build-logic command now
+  passes all 16 architecture rules and 58 build-logic tests; the complete 636-task non-instrumented
+  gate passes; and the exact CI iOS simulator build succeeds with `Sign to Run Locally` and no
+  committed team. Replacement GitHub Actions run `33926132087`, job `101194939387`, confirms the
+  previously failing protected `architecture-check` passes on fix commit `8257d33`.
+- **Follow-ups / risks:** `:build-logic:convention:test` still does not declare the repository files
+  it reads as task inputs, so signing-guard verification must use `--rerun-tasks` until that separate
+  build-logic issue is scoped. Pull request #54 remains subject to its authentication human-review
+  gate and must not be agent-merged.
+
+### 2026-09-05 — Local iOS device signing and declared inputs for the repository guards
+
+- **Type:** decision
+- **Story / Decision:** `E2-03` / `D-118`, `D-119`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** removing the committed developer team restored `D-71` and turned CI green, but a
+  signed device build then failed for want of a team and nothing documented how to do it. The team is
+  now supplied by an untracked `iosApp/Local.xcconfig` that the committed `iosApp/Signing.xcconfig`
+  includes optionally, so the mechanism is a no-op on CI and on a fresh clone, and Xcode's Run button
+  no longer pushes anyone into the Signing editor that caused the original violation. Separately,
+  `:build-logic:convention:test` now declares the repository files its guards read as task inputs,
+  and `GuardedRepositoryInputsTest` fails when a guard starts reading a file the declaration does not
+  cover.
+- **Why:** the guard suite reported a stale pass because Gradle cannot observe reads made through the
+  `carapp.repoRoot` system property. That is how a violated decision reached CI while the local gate
+  reported 636 passing tasks. A check whose job is to catch mistakes cannot depend on nobody making
+  one, which is why the `--rerun-tasks` convention was not kept as the answer.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/adr/README.md`, `docs/adr/0119`, `docs/adr/0120`, `docs/runbooks/ios-device-signing.md`,
+  `AGENTS.md`, `docs/handoff-E2-03.md` and this log.
+- **Verification:** injecting `DEVELOPMENT_TEAM` into `iosApp/project.yml` now fails the guard on an
+  ordinary invocation, where the same command previously reported `UP-TO-DATE`; the simulator build
+  passes with no local configuration present; a signed device build passes without
+  `-allowProvisioningUpdates`; the exact `AGENTS.md` command passed 636 actionable tasks and
+  `contractCheck` reports 120 aligned decisions and ADRs.
+- **Follow-ups / risks:** every development machine needs the one-time local file before its first
+  device build. The declared input set is maintained configuration; the coverage test fails loudly if
+  it falls behind, including if the declaration itself is reformatted beyond what that test parses.
+
+### 2026-09-04 — E2-03 review remediation: onboarding navigation, list loading and sign-in recovery
+
+- **Type:** story
+- **Story / Decision:** `E2-03` / `D-115`, `D-116`, `D-117`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the owner review of pull request #54 confirmed five defects in the E2-03
+  onboarding surface, and the owner selected a fix for each. The authenticated navigation graph is
+  now mounted once with the vehicle list as its root and first-run creation pushed over it, so
+  saving the first vehicle routes to its detail as `SPECIFICATION.md` F-2 requires and the first-run
+  form no longer offers a back or cancellation affordance that could empty the back stack or do
+  nothing. `VehicleListUiState.isLoading` now means the vehicle list is unknown rather than that a
+  refresh is running, and hosts cover rather than replace the mounted UI while it is true, so a
+  refresh can no longer destroy navigation. The Android host handles the common configuration
+  changes in place and carries a recreation-surviving in-flight marker that abandons an orphaned
+  Google acquisition through the existing closed cancellation intent, and cancellation now leaves a
+  retryable state with no user-visible error.
+- **Why:** three of the five defects were reachable on every fresh installation — a blank screen
+  from the first-run back control, the missed post-save routing to the vehicle detail, and a
+  permanently disabled welcome screen after rotating during Google sign-in. The instrumented suite
+  had been adapted around the empty-state path, so the test that asserts post-save detail routing no
+  longer exercised the first vehicle, which is the only case that was broken.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0116`, `docs/adr/0117`, `docs/adr/0118`,
+  `docs/handoff-E2-03.md` and this log.
+- **Verification:** the exact `AGENTS.md` non-instrumented command passed 636 actionable tasks; the
+  13-test D-84 API 36 instrumented suite passed, including the new cleared-data first-run test; the
+  iOS unit suite passed 31 tests and the iOS UI suite passed with one environment-gated skip; forced
+  provider decoupling passed 234 tasks; `contractCheck` reports 118 aligned decisions and ADRs with
+  an unchanged Objective-C golden header.
+- **Follow-ups / risks:** `:build-logic:convention:test` reads repository files that are not declared
+  as task inputs, so Gradle reports it UP-TO-DATE after those files change and the guard suite goes
+  stale locally. Re-run with `--rerun-tasks` before claiming that gate passed. Doing so still fails
+  `iosSimulatorUsesNormalXcodeSigningWithoutACommittedIdentity`, because the branch commits
+  `DEVELOPMENT_TEAM` against `D-71`; that is a separate owner decision, deliberately untouched by
+  this round, and it keeps the `architecture-check` job red. iOS still does not route to the vehicle
+  detail after creating a *later* vehicle from the list, which is a pre-existing divergence from
+  Android and from F-2, outside the agreed scope of this remediation.
+
+### 2026-09-04 — E2-03 native onboarding providers completed
+
+- **Type:** story
+- **Story / Decision:** `E2-03` / `D-112`, `D-113`, `D-114`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented F-1 routing and the exact welcome action sets on Android and iOS;
+  added stable Android Credential Manager acquisition, native Apple nonce acquisition and exact
+  GoogleSignIn-iOS 9.2.0; exposed only primitive provider completion intents plus the closed
+  `NativeSignInFailure` enum to Swift; and provisioned the development Firebase Google/Apple
+  providers, OAuth identifiers, iOS URL scheme and Apple App ID capability without committing
+  credentials or certificate fingerprints.
+- **Why:** the owner selected the three stable, native and primitive-only options. They keep
+  provider tokens out of UI state and telemetry, avoid deprecated or alpha authentication paths,
+  preserve the D-65 Firebase Apple SDK pin and keep `NativeAuthCredential` outside the Swift ABI.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, all four decision
+  mirrors for D-112 through D-114, ADR-0113 through ADR-0115, `docs/versions-matrix.md`,
+  `docs/handoff-E2-03.md` and this log.
+- **Verification:** behavior-specific RED failures preceded GREEN on shared, Android and iOS; the
+  complete non-instrumented gate passed 636 actionable tasks; forced provider decoupling passed
+  234 tasks; the D-84 API 36 Android suite, iOS onboarding and vehicle/fuel UI suites, Android
+  assemblies, Objective-C golden-header contract and signed iOS device build passed. The resolved
+  application graph is GTMSessionFetcher 3.5.0, GTMAppAuth 5.0.0, AppAuth 2.1.0,
+  GoogleUtilities 8.1.2 and app-check 11.2.0, all within Firebase 11.8.0 constraints.
+- **Follow-ups / risks:** real Google/Apple account selection remains an owner-run human acceptance
+  item because credentials were explicitly withheld. E2-06 owns automatic `LOCAL_OWNER` adoption.
+
 ### 2026-09-04 — E2-02 second review remediation: AppGraph auth closure and test assertions
 
 - **Type:** correction

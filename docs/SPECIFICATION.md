@@ -587,6 +587,16 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-109 | Native locale-provider verification topology | Require Android application unit tests and composition-owned iOS adapter behavior through `:shared` `iosTest` in standard local and CI verification. | Accepted |
 | D-110 | Outbox entity-type token ownership | Keep explicit contract tokens in production code; add a test-only anchor pinning the `EntityType` enum names to the outbox wire values. | Accepted |
 | D-111 | Explicit UID change opt-in for account adoption | Add optional parameter `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential`; reject unexpected anonymous UID change by default, permit explicit adoption. | Accepted |
+| D-112 | Android Google credential acquisition | Use Credential Manager 1.6.0, its Play Services Auth bridge 1.6.0 and Google ID 1.2.0; keep native credentials and tokens outside shared UI state and telemetry. | Accepted |
+| D-113 | iOS native provider acquisition | Use native `AuthenticationServices` plus `CryptoKit` for Apple and exact GoogleSignIn-iOS 9.2.0 for Google; revalidate the Google pin whenever D-65 moves. | Accepted |
+| D-114 | Native-to-shared sign-in handoff | Record provider selection in shared state, then use provider-named primitive completion intents and a closed exported failure enum; do not export `NativeAuthCredential`. | Accepted |
+| D-115 | Onboarding navigation topology | Mount the authenticated navigation graph once with the vehicle list as its root and push first-run vehicle creation over it. | Accepted |
+| D-116 | Vehicle list loading semantics | `VehicleListUiState.isLoading` means the vehicle list is not known yet, not that a refresh is running. | Accepted |
+| D-117 | Native sign-in interruption recovery | Handle host configuration changes in place and abandon an interrupted native acquisition through the closed cancellation intent. | Accepted |
+| D-118 | iOS device signing supply | Supply the developer team from an untracked local xcconfig that the committed signing configuration optionally includes; never commit it. | Accepted |
+| D-119 | Declared inputs for the repository guards | Declare the repository files the build-logic guards read as task inputs so they cannot report a stale pass. | Accepted |
+| D-120 | Owner-scoped vehicle list resolution | Resolve the vehicle list per owner and keep it unknown until that owner publishes a successful result; a read failure is not a confirmed empty list. | Accepted |
+| D-121 | Mandatory first-run vehicle creation | First-run vehicle creation refuses the system back and interactive dismissal gestures; later creation keeps them. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

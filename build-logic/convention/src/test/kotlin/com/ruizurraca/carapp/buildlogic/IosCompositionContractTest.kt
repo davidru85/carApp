@@ -158,6 +158,7 @@ class IosCompositionContractTest {
                 ExactEnumName(APP_ERROR_PATH, "SharedConfirmation", "Confirmation"),
                 ExactEnumName(PLATFORM_ABSTRACTIONS_PATH, "SharedAuthProvider", "AuthProvider"),
                 ExactEnumName(PLATFORM_ABSTRACTIONS_PATH, "SharedSyncTrigger", "SyncTrigger"),
+                ExactEnumName(UI_MODELS_PATH, "SharedNativeSignInFailure", "NativeSignInFailure"),
             )
         val missing =
             expectedNames.filterNot { expected ->
@@ -181,6 +182,8 @@ class IosCompositionContractTest {
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt"
         const val PLATFORM_ABSTRACTIONS_PATH =
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
+        const val UI_MODELS_PATH =
+            "shared/src/commonMain/kotlin/com/ruizurraca/carapp/UiModels.kt"
         const val IOS_LOCALE_PROVIDER_TEST_PATH =
             "shared/src/iosTest/kotlin/com/ruizurraca/carapp/locale/IosLocaleProviderTest.kt"
         const val IOS_LOCALE_PROVIDER_SOURCE_DIRECTORY =

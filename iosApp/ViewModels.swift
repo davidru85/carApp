@@ -48,6 +48,14 @@ final class VehicleListViewModel: ObservableObject {
     }
 }
 
+/// What a successful save delivers. `createdVehicleId` is present only for a creation, and
+/// `vehicleName` is the name the owner entered, captured when the save started, so neither depends
+/// on a later `StateFlow` emission or on form state that common code resets after creation.
+struct VehicleSaveOutcome {
+    let createdVehicleId: String?
+    let vehicleName: String
+}
+
 @MainActor
 final class VehicleFormViewModel: ObservableObject {
     @Published private(set) var state: VehicleFormUiState
@@ -67,7 +75,8 @@ final class VehicleFormViewModel: ObservableObject {
     private var hasEditedOdometer: Bool = false
     private var hasEditedBrand: Bool = false
     private var hasEditedModel: Bool = false
-    private var onSaveCallback: (() -> Void)? = nil
+    private var onSaveCallback: ((VehicleSaveOutcome) -> Void)? = nil
+    private var pendingVehicleName: String = ""
 
     init(graph: SwiftAppGraph, vehicleId: String?) {
         self.graph = graph
@@ -102,26 +111,34 @@ final class VehicleFormViewModel: ObservableObject {
             model = s.model ?? ""
         }
 
+        // The incoming state is assigned before the completion runs, so a consumer that reads this
+        // view model inside the callback sees the emission that completed the save rather than the
+        // previous one.
+        state = s
+
         if vehicleId == nil {
-            if s.savedVehicleId != nil && !s.isSaving {
+            if let createdVehicleId = s.savedVehicleId, !s.isSaving {
                 isSaveComplete = true
                 wasSaving = false
-                onSaveCallback?()
+                let completed = onSaveCallback
                 onSaveCallback = nil
+                completed?(
+                    VehicleSaveOutcome(createdVehicleId: createdVehicleId, vehicleName: pendingVehicleName)
+                )
             }
         } else {
             if wasSaving && !s.isSaving {
                 if s.message == nil {
                     isSaveComplete = true
                     wasSaving = false
-                    onSaveCallback?()
+                    let completed = onSaveCallback
                     onSaveCallback = nil
+                    completed?(VehicleSaveOutcome(createdVehicleId: nil, vehicleName: pendingVehicleName))
                 } else {
                     wasSaving = false
                 }
             }
         }
-        state = s
     }
 
     func setName(_ val: String) {
@@ -154,9 +171,10 @@ final class VehicleFormViewModel: ObservableObject {
         stateHolder.setModel(value: val.isEmpty ? nil : val)
     }
 
-    func save(onSuccess: (() -> Void)? = nil) {
+    func save(onSuccess: ((VehicleSaveOutcome) -> Void)? = nil) {
         guard !state.isSaving, !hasOdometerError else { return }
         wasSaving = true
+        pendingVehicleName = name
         self.onSaveCallback = onSuccess
         stateHolder.save()
     }
