@@ -24,38 +24,40 @@ dependencies {
 // observe those reads, so they are declared as task inputs here (D-119). Without this the task
 // reports UP-TO-DATE after the very configuration it guards has changed, and a repository that
 // violates an accepted decision looks green locally while CI fails.
-// GuardedRepositoryInputsTest fails when a guard starts reading a file this list does not cover.
+//
+// The declaration is not an allowlist: guards resolve paths from constants, compose them from other
+// constants and walk directories, including one that walks the whole repository, so an enumerated
+// include list cannot see what they actually read. The repository is declared and only generated
+// output, tooling state and machine-local files are excluded.
 val guardedRepositoryInputs =
     fileTree(rootProject.projectDir.parentFile) {
-        include(
-            ".github/workflows/**",
-            ".gitignore",
-            "AGENTS.md",
-            "androidApp/build.gradle.kts",
-            "androidApp/src/**",
-            "build-logic/convention/build.gradle.kts",
-            "build.gradle.kts",
-            "composition/ios/build.gradle.kts",
-            "docs/**/*.md",
-            "firebase.json",
-            "functions/package.json",
-            "gradle/libs.versions.toml",
-            "iosApp/**",
-            "scripts/**",
-            "settings.gradle.kts",
-            "shared/build.gradle.kts",
-        )
         exclude(
             "**/build/**",
+            "**/.gradle/**",
+            "**/.git/**",
+            "**/.kotlin/**",
+            "**/node_modules/**",
+            "**/DerivedData/**",
             "**/xcuserdata/**",
             "**/*.xcuserstate",
+            "**/*.log",
+            "functions/lib/**",
+            "iosApp/Local.xcconfig",
+            "local.properties",
         )
     }
+
+// Committed files that live inside a generated directory are named individually instead of widening
+// the exclusions above. The Objective-C golden header is committed and is read by a guard.
+val committedGeneratedInputs =
+    files(
+        rootProject.projectDir.parentFile.resolve("shared/build/generated/objc-header/Shared.h.golden"),
+    )
 
 tasks.test {
     systemProperty("carapp.repoRoot", rootProject.projectDir.parentFile.absolutePath)
     inputs
-        .files(guardedRepositoryInputs)
+        .files(guardedRepositoryInputs, committedGeneratedInputs)
         .withPropertyName("guardedRepositoryInputs")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }

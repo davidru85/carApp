@@ -2,10 +2,10 @@ package com.ruizurraca.carapp.feature.vehicle.presentation
 
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
-import com.ruizurraca.carapp.core.common.SyncStatus
-import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.PersistenceError
+import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
@@ -21,14 +21,14 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,6 +50,7 @@ class VehicleStateHoldersTest {
                     repository = repository,
                     dispatchers = TestDispatcherProvider(),
                     refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
                 )
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
 
@@ -249,6 +250,7 @@ class VehicleStateHoldersTest {
                         refreshGate.await()
                         Outcome.Ok(Unit)
                     },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
                 )
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
             advanceUntilIdle()
@@ -317,7 +319,11 @@ class VehicleStateHoldersTest {
                 holder.state.value.isLoading,
                 "An unreadable list is not a confirmed empty list.",
             )
-            assertEquals(PersistenceError.DatabaseUnavailable.code, holder.state.value.message?.code)
+            assertEquals(
+                PersistenceError.DatabaseUnavailable.code,
+                holder.state.value.message
+                    ?.code,
+            )
             assertEquals(emptyList(), holder.state.value.vehicles)
             holder.close()
         }

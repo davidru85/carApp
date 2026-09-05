@@ -64,10 +64,13 @@ final class OnboardingFlowUITests: XCTestCase {
         )
     }
 
-    /// Fails rather than silently passing when the application is not in the first-run state.
+    /// The first-run state cannot be reproduced from data alone: UI tests cannot clear the
+    /// application container and the unit-test target writes into the same one. The Debug-only
+    /// `CARAPP_UI_TEST_FORCE_FIRST_VEHICLE` seam presents mandatory creation deterministically.
     private func launchOnFirstVehicleCreation() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launchEnvironment["CARAPP_UI_TEST_FORCE_FIRST_VEHICLE"] = "1"
         app.launch()
         addTeardownBlock { app.terminate() }
 
@@ -78,7 +81,7 @@ final class OnboardingFlowUITests: XCTestCase {
 
         XCTAssertTrue(
             app.textFields["vehicle_name"].waitForExistence(timeout: timeout),
-            "This test requires an application with no vehicles, which is the fresh-install state"
+            "Mandatory first-vehicle creation must be presented"
         )
         return app
     }

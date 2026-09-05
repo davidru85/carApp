@@ -152,13 +152,19 @@ internal class AndroidGoogleCredentialSource(
     }
 }
 
-private fun Throwable.toNativeSignInFailure(): NativeSignInFailure =
+internal fun Throwable.toNativeSignInFailure(): NativeSignInFailure =
     when (this) {
         is GetCredentialCancellationException -> {
             NativeSignInFailure.CANCELLED
         }
 
-        is NoCredentialException,
+        // Having no credential available says nothing about how the provider is configured: the
+        // device simply has no account to offer. Reporting CONFIGURATION would tell the owner
+        // something untrue, so the attempt stays unclassified until the closed set can say more.
+        is NoCredentialException -> {
+            NativeSignInFailure.UNKNOWN
+        }
+
         is GetCredentialProviderConfigurationException,
         is GoogleIdTokenParsingException,
         -> {

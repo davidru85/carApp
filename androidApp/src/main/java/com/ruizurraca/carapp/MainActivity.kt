@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -348,6 +349,9 @@ private fun NavGraphBuilder.vehicleCreationRoute(
         ReleaseHolderOnBackStackExit(entry) {
             viewModel.closeVehicleForm(vehicleId = null)
         }
+        // First-run creation is mandatory, so it also consumes the system and predictive back
+        // gestures. Every other creation and edit route keeps the platform behaviour.
+        BackHandler(enabled = !offersBackAffordance) {}
         VehicleFormScreen(
             stateHolder = stateHolder,
             originalVehicleId = null,
@@ -918,7 +922,7 @@ private fun nonAuthStringResource(code: String): Int =
         else -> R.string.error_unexpected
     }
 
-private fun authStringResource(code: String): Int =
+internal fun authStringResource(code: String): Int =
     when (code) {
         "AUTH.CANCELLED" -> R.string.error_auth_cancelled
         "AUTH.NETWORK_UNAVAILABLE" -> R.string.error_auth_network

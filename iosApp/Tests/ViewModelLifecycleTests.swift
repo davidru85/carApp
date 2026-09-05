@@ -43,7 +43,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         viewModel.setOdometerText("50000")
         
         var saved = false
-        viewModel.save {
+        viewModel.save { _ in
             saved = true
         }
 
@@ -92,7 +92,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("30000")
 
         var saved = false
-        vModel.save { saved = true }
+        vModel.save { _ in saved = true }
         for _ in 0..<30 {
             if saved { break }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -134,7 +134,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("20000")
 
         var saved = false
-        vModel.save { saved = true }
+        vModel.save { _ in saved = true }
         for _ in 0..<30 {
             if saved { break }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -181,7 +181,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("10000")
         
         var vehicleSaved = false
-        vModel.save {
+        vModel.save { _ in
             vehicleSaved = true
         }
 

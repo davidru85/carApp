@@ -42,6 +42,17 @@ class GuardedRepositoryInputsTest {
     }
 
     @Test
+    fun machineLocalFilesStayOutOfTheTaskInputs() {
+        val missing = MACHINE_LOCAL_EXCLUSIONS.filterNot { pattern -> pattern in excludedPatterns() }
+
+        assertTrue(
+            missing.isEmpty(),
+            "Machine-local files MUST NOT become cache inputs, because they differ per developer " +
+                "and can carry signing configuration: $missing",
+        )
+    }
+
+    @Test
     fun everyRepositoryFileAGuardReadsIsInsideTheDeclaredInputs() {
         val hidden = repositoryFilesReadByGuards().filter(::isHiddenFromInputs).sorted()
 
@@ -71,12 +82,16 @@ class GuardedRepositoryInputsTest {
     /**
      * A path is hidden when an exclusion matches it and no declaration names it back. Committed
      * files that live under a generated directory, such as the Objective-C golden header, are
-     * declared individually rather than by widening the exclusions.
+     * declared individually rather than by widening the exclusions. Machine-local exclusions are
+     * deliberate and never count as hiding: those files MUST NOT be cache inputs.
      */
     private fun isHiddenFromInputs(path: String): Boolean {
         val declaredIndividually = individuallyDeclaredInputs().any { declared -> declared == path }
         if (declaredIndividually) return false
-        return excludedPatterns().map(::antPatternToRegex).any { pattern -> pattern.matches(path) }
+        return excludedPatterns()
+            .filterNot { pattern -> pattern in MACHINE_LOCAL_EXCLUSIONS }
+            .map(::antPatternToRegex)
+            .any { pattern -> pattern.matches(path) }
     }
 
     private fun individuallyDeclaredInputs(): List<String> =
@@ -166,6 +181,13 @@ class GuardedRepositoryInputsTest {
                 "**/*.xcuserstate",
                 "**/*.log",
                 "functions/lib/**",
+                "iosApp/Local.xcconfig",
+                "local.properties",
+            )
+
+        /** Excluded on purpose: per-developer files that MUST NOT influence the task fingerprint. */
+        val MACHINE_LOCAL_EXCLUSIONS =
+            setOf(
                 "iosApp/Local.xcconfig",
                 "local.properties",
             )

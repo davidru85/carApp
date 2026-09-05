@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import Shared
 import UIKit
@@ -114,6 +115,7 @@ struct VehicleListView: View {
                     onSaved: presentation.isFirstRun ? routeToCreatedVehicle : nil,
                     onDismiss: presentation.offersCancellation ? { creation = nil } : nil
                 )
+                .interactiveDismissDisabled(presentation.isMandatory)
             }
             .onAppear { presentFirstVehicleCreationIfNeeded() }
             .onChange(of: viewModel.state.isLoading) { _ in presentFirstVehicleCreationIfNeeded() }
@@ -139,6 +141,19 @@ struct VehicleListView: View {
     /// F-1 presents first-vehicle creation over the list once the list is known to be empty, so the
     /// list stays mounted underneath and the saved vehicle can be pushed onto the same stack.
     private func presentFirstVehicleCreationIfNeeded() {
+        #if DEBUG
+        // UI tests cannot clear the application container, and the unit-test target writes into the
+        // same container, so the first-run state is not reproducible from data alone. This Debug-only
+        // seam forces it, mirroring CARAPP_UI_TEST_FORCE_WELCOME. It cannot exist in a Release build.
+        if ProcessInfo.processInfo.environment["CARAPP_UI_TEST_FORCE_FIRST_VEHICLE"] == "1" {
+            if !firstVehicleCreationPresented {
+                firstVehicleCreationPresented = true
+                creation = VehicleCreationPresentation(isFirstRun: true)
+            }
+            return
+        }
+        #endif
+
         guard shouldPresentFirstVehicleCreation(
             isVehicleListKnown: !viewModel.state.isLoading,
             vehicleCount: viewModel.state.vehicles.count,

@@ -81,9 +81,9 @@ struct VehicleFormView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
-                        viewModel.save {
-                            if let savedVehicleId = viewModel.state.savedVehicleId {
-                                onSaved?(savedVehicleId, viewModel.state.name)
+                        viewModel.save { outcome in
+                            if let createdVehicleId = outcome.createdVehicleId {
+                                onSaved?(createdVehicleId, outcome.vehicleName)
                             }
                             onDismiss?()
                             dismiss()

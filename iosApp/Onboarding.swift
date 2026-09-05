@@ -40,4 +40,8 @@ struct VehicleCreationPresentation: Identifiable {
     let isFirstRun: Bool
 
     var offersCancellation: Bool { !isFirstRun }
+
+    /// F-1 first-vehicle creation is the only forward step, so it also refuses the interactive
+    /// dismissal gesture. Later creation stays dismissible.
+    var isMandatory: Bool { isFirstRun }
 }
