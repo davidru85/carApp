@@ -42,6 +42,32 @@
 
 ## In-Progress Checkpoint
 
+### Third review remediation checkpoint (2026-09-06, intake)
+
+- Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
+- Current phase and latest commit: intake for a third owner review round. Latest commit is `090919d`,
+  on which all ten required checks passed.
+- Push and pull-request status: pull request #54 is open. The agent does not merge it.
+- Owner-confirmed findings entering this round:
+  1. Vehicle-list routing is not owner-consistent across an authentication transition. The holder
+     publishes its unresolved marker only after its collector is scheduled, so between the owner
+     change and that emission `state.value` still holds the previous owner's successful result while
+     `SessionStateHolder` may already expose the new session. A previous owner's empty list can open
+     mandatory first-vehicle creation for a returning owner who has vehicles, and the one-shot
+     presentation marker then prevents correction.
+  2. An initial vehicle-list read failure is invisible and unrecoverable. The production repository
+     flow emits the error and completes, and the hosts cover it with an indefinite spinner; Android
+     additionally disables the refresh action that would be the retry path.
+  3. `VehicleSaveOutcome.vehicleName` carries the raw Swift input, but `canonicalVehicleName` trims
+     and collapses whitespace before persistence, so the routed iOS detail title can disagree with
+     the stored name.
+- Verification evidence and known failures: none for this round yet.
+- Open decisions or blockers: none identified so far. The owner-consistency mechanism of finding 1
+  is being designed to publish synchronously with the authentication mutation and to use only the
+  fields `VehicleListUiState` already declares. If it turns out to require a public contract, Swift
+  ABI or accepted-decision change, the agent stops and requests the owner decision instead.
+- Exact next step: write the failing tests for the three findings, then implement.
+
 ### Second review remediation checkpoint (2026-09-05, complete)
 
 - Date: 2026-09-05. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
