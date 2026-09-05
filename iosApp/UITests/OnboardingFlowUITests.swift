@@ -40,13 +40,17 @@ final class OnboardingFlowUITests: XCTestCase {
         XCTAssertFalse(app.buttons["add_vehicle"].isHittable, "The vehicle list must stay covered by the form")
     }
 
-    func testSavingTheFirstVehicleOpensItsDetail() {
+    func testSavingTheFirstVehicleOpensItsDetailWithTheCanonicalName() {
         let app = launchOnFirstVehicleCreation()
-        let vehicleName = "AAA-First-\(Int(Date().timeIntervalSince1970))"
+        let stamp = Int(Date().timeIntervalSince1970)
+        // The domain trims and collapses whitespace before persisting, so the routed title must show
+        // the canonical name rather than what was typed.
+        let typedName = "  AAA   First-\(stamp)  "
+        let vehicleName = "AAA First-\(stamp)"
 
         let vehicleNameField = app.textFields["vehicle_name"]
         vehicleNameField.tap()
-        vehicleNameField.typeText(vehicleName)
+        vehicleNameField.typeText(typedName)
 
         let odometerField = app.textFields["vehicle_odometer"]
         odometerField.tap()

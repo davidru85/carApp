@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.feature.vehicle.presentation
 
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.DispatcherProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.PersistenceError
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -345,14 +347,137 @@ class VehicleStateHoldersTest {
             holder.close()
         }
 
+
+    @Test
+    fun anOwnerTransitionIsVisibleBeforeTheListCollectorIsScheduled() =
+        runTest {
+            val ownerContext = FakeOwnerContext(LOCAL_OWNER)
+            val repository = OwnerScopedVehicleRepository(ownerContext)
+            val holder =
+                ownerScopedListHolder(
+                    ownerContext = ownerContext,
+                    repository = repository,
+                    // Queued, like production: the collector is scheduled but has not run.
+                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
+                )
+            backgroundScope.launch { holder.state.collect() }
+            repository.resultsFor(LOCAL_OWNER).emit(Outcome.Ok(emptyList()))
+            advanceUntilIdle()
+            assertFalse(holder.state.value.isLoading)
+
+            ownerContext.owners.value = SIGNED_IN_OWNER
+
+            // Deliberately observed before the scheduler runs anything: a host reading the session
+            // through its own observer must never see the previous owner's resolved list.
+            assertTrue(
+                holder.state.value.isLoading,
+                "The list must be unknown the moment the owner changes, not once a collector runs.",
+            )
+            holder.close()
+        }
+
+    @Test
+    fun anOwnerTransitionDoesNotExposeThePreviousOwnersVehicles() =
+        runTest {
+            val ownerContext = FakeOwnerContext(LOCAL_OWNER)
+            val repository = OwnerScopedVehicleRepository(ownerContext)
+            val holder =
+                ownerScopedListHolder(
+                    ownerContext = ownerContext,
+                    repository = repository,
+                    // Queued, like production: the collector is scheduled but has not run.
+                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
+                )
+            backgroundScope.launch { holder.state.collect() }
+            repository.resultsFor(LOCAL_OWNER).emit(Outcome.Ok(listOf(vehicle())))
+            advanceUntilIdle()
+            assertEquals(1, holder.state.value.vehicles.size)
+
+            ownerContext.owners.value = SIGNED_IN_OWNER
+
+            assertEquals(
+                emptyList(),
+                holder.state.value.vehicles,
+                "A new session must not read the previous owner's vehicles.",
+            )
+            holder.close()
+        }
+
+    @Test
+    fun anOwnerTransitionClearsTheSelectionAndMessageOfThePreviousOwner() =
+        runTest {
+            val ownerContext = FakeOwnerContext(LOCAL_OWNER)
+            val repository = OwnerScopedVehicleRepository(ownerContext)
+            val holder =
+                ownerScopedListHolder(
+                    ownerContext = ownerContext,
+                    repository = repository,
+                    // Queued, like production: the collector is scheduled but has not run.
+                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
+                )
+            backgroundScope.launch { holder.state.collect() }
+            repository.resultsFor(LOCAL_OWNER).emit(Outcome.Ok(listOf(vehicle())))
+            advanceUntilIdle()
+            holder.requestDelete(VEHICLE_ID)
+            advanceUntilIdle()
+            assertEquals(VEHICLE_ID, holder.state.value.selectedVehicleId)
+
+            ownerContext.owners.value = SIGNED_IN_OWNER
+
+            assertEquals(null, holder.state.value.selectedVehicleId)
+            assertEquals(null, holder.state.value.message)
+            holder.close()
+        }
+
+    @Test
+    fun anObservationThatFailsAndCompletesLeavesTheListUnknownWithItsError() =
+        runTest {
+            val ownerContext = FakeOwnerContext(LOCAL_OWNER)
+            val repository = FailingThenRecoveringVehicleRepository()
+            val holder = ownerScopedListHolder(ownerContext, repository)
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+
+            assertTrue(holder.state.value.isLoading, "An unreadable list is never a confirmed empty list.")
+            assertEquals(
+                PersistenceError.DatabaseUnavailable.code,
+                holder.state.value.message
+                    ?.code,
+            )
+            assertEquals(1, repository.observationCount, "The failed observation completed.")
+            holder.close()
+        }
+
+    @Test
+    fun retryingAfterAReadFailureCreatesANewObservationThatCanResolve() =
+        runTest {
+            val ownerContext = FakeOwnerContext(LOCAL_OWNER)
+            val repository = FailingThenRecoveringVehicleRepository()
+            val holder = ownerScopedListHolder(ownerContext, repository)
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+            assertTrue(holder.state.value.isLoading)
+
+            repository.recovered = true
+            holder.refresh()
+            advanceUntilIdle()
+
+            assertEquals(2, repository.observationCount, "Retry must create a new local observation.")
+            assertFalse(holder.state.value.isLoading, "A successful retry resolves the list.")
+            assertEquals(1, holder.state.value.vehicles.size)
+            assertEquals(null, holder.state.value.message)
+            holder.close()
+        }
+
     private fun TestScope.ownerScopedListHolder(
         ownerContext: OwnerContext,
         repository: VehicleRepository,
+        dispatchers: DispatcherProvider = TestDispatcherProvider(),
     ): VehicleListStateHolder =
         VehicleListStateHolder(
             scope = backgroundScope,
             repository = repository,
-            dispatchers = TestDispatcherProvider(),
+            dispatchers = dispatchers,
             refreshVehicles = { Outcome.Ok(Unit) },
             ownerContext = ownerContext,
         )
@@ -382,6 +507,37 @@ private class OwnerScopedVehicleRepository(
 
     override fun observeVehicles(includeDeleted: Boolean): Flow<Outcome<List<Vehicle>, AppError>> =
         flow { emitAll(resultsFor(ownerContext.current)) }
+
+    override fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>> = MutableStateFlow(Outcome.Ok(null))
+
+    override fun observeVehicleEditFacts(id: EntityId): Flow<Outcome<VehicleEditFacts?, AppError>> =
+        MutableStateFlow(Outcome.Ok(null))
+
+    override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =
+        Outcome.Ok(EntityId(VEHICLE_ID))
+
+    override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> = Outcome.Ok(Unit)
+
+    override suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError> = Outcome.Ok(Unit)
+}
+
+/**
+ * Mirrors the production `SqlDelightVehicleRepository`, whose `observeVehicles()` maps a read failure
+ * through `catch` and then completes, so the observation ends rather than staying open.
+ */
+private class FailingThenRecoveringVehicleRepository : VehicleRepository {
+    var recovered: Boolean = false
+    var observationCount: Int = 0
+
+    override fun observeVehicles(includeDeleted: Boolean): Flow<Outcome<List<Vehicle>, AppError>> =
+        flow {
+            observationCount += 1
+            if (recovered) {
+                emit(Outcome.Ok(listOf(vehicle())))
+            } else {
+                emit(Outcome.Err(PersistenceError.DatabaseUnavailable))
+            }
+        }
 
     override fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>> = MutableStateFlow(Outcome.Ok(null))
 

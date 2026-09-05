@@ -65,6 +65,50 @@ class OnboardingRouteTest {
     }
 
     @Test
+    fun anUnreadableListIsDistinguishedFromAListThatIsStillArriving() {
+        assertEquals(VehicleListGate.WAITING, vehicleListGate(isLoading = true, hasMessage = false))
+        assertEquals(VehicleListGate.UNREADABLE, vehicleListGate(isLoading = true, hasMessage = true))
+    }
+
+    @Test
+    fun aKnownListIsResolvedEvenWhileItCarriesATransientMessage() {
+        assertEquals(VehicleListGate.RESOLVED, vehicleListGate(isLoading = false, hasMessage = false))
+        assertEquals(VehicleListGate.RESOLVED, vehicleListGate(isLoading = false, hasMessage = true))
+    }
+
+    @Test
+    fun ownerScopedNavigationIsResetWhenAKnownListBecomesUnknownWithoutAnError() {
+        assertTrue(
+            shouldResetOwnerScopedNavigation(
+                gate = VehicleListGate.WAITING,
+                previousGate = VehicleListGate.RESOLVED,
+            ),
+        )
+    }
+
+    @Test
+    fun ownerScopedNavigationSurvivesAReadFailureAndAnUnchangedGate() {
+        assertFalse(
+            shouldResetOwnerScopedNavigation(
+                gate = VehicleListGate.UNREADABLE,
+                previousGate = VehicleListGate.RESOLVED,
+            ),
+        )
+        assertFalse(
+            shouldResetOwnerScopedNavigation(
+                gate = VehicleListGate.RESOLVED,
+                previousGate = VehicleListGate.RESOLVED,
+            ),
+        )
+        assertFalse(
+            shouldResetOwnerScopedNavigation(
+                gate = VehicleListGate.WAITING,
+                previousGate = VehicleListGate.WAITING,
+            ),
+        )
+    }
+
+    @Test
     fun firstVehicleCreationIsPresentedOnceAndNeverForAnOwnerThatHasVehicles() {
         assertFalse(
             shouldPresentFirstVehicleCreation(

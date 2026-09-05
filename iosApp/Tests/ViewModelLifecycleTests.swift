@@ -54,9 +54,11 @@ final class ViewModelLifecycleTests: XCTestCase {
         XCTAssertTrue(saved, "Vehicle save should complete, message: \(String(describing: viewModel.state.message?.code))")
     }
 
-    func testSuccessfulCreationDeliversTheSavedIdAndTheEnteredName() async throws {
+    func testSuccessfulCreationDeliversTheSavedIdAndThePersistedNameIsCanonical() async throws {
         let viewModel = VehicleFormViewModel(graph: graph, vehicleId: nil)
-        let enteredName = "Saved-\(UUID().uuidString.prefix(8))"
+        let suffix = UUID().uuidString.prefix(8)
+        let enteredName = "  My   Car-\(suffix)  "
+        let canonicalName = "My Car-\(suffix)"
         viewModel.setName(enteredName)
         viewModel.setOdometerText("50000")
 
@@ -76,11 +78,17 @@ final class ViewModelLifecycleTests: XCTestCase {
             "Creation must deliver the saved vehicle id from the emission that completed it"
         )
         XCTAssertFalse(createdVehicleId.isEmpty)
-        XCTAssertEqual(
-            delivered.vehicleName,
-            enteredName,
-            "The delivered name must be the entered one, not form state that common code may reset"
-        )
+
+        // The routed title must come from persisted state, which carries the canonical name that
+        // ValidateCreateVehicle produced. Nothing on the Swift side may reproduce that rule.
+        let listViewModel = VehicleListViewModel(graph: graph)
+        var persistedName: String?
+        for _ in 0..<30 {
+            persistedName = listViewModel.state.vehicles.first { $0.id == createdVehicleId }?.name
+            if persistedName != nil { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertEqual(persistedName, canonicalName)
     }
 
     func testVehicleListRequestDeleteEmitsConfirmationMessageWithoutDeleting() async throws {

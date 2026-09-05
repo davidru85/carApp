@@ -64,6 +64,26 @@ final class OnboardingRouteTests: XCTestCase {
         )
     }
 
+    func testAnUnreadableListIsDistinguishedFromAListThatIsStillArriving() {
+        XCTAssertEqual(vehicleListGate(isLoading: true, hasMessage: false), .waiting)
+        XCTAssertEqual(vehicleListGate(isLoading: true, hasMessage: true), .unreadable)
+    }
+
+    func testAKnownListIsResolvedEvenWhileItCarriesATransientMessage() {
+        XCTAssertEqual(vehicleListGate(isLoading: false, hasMessage: false), .resolved)
+        XCTAssertEqual(vehicleListGate(isLoading: false, hasMessage: true), .resolved)
+    }
+
+    func testOwnerScopedNavigationIsResetWhenAKnownListBecomesUnknownWithoutAnError() {
+        XCTAssertTrue(shouldResetOwnerScopedNavigation(gate: .waiting, previousGate: .resolved))
+    }
+
+    func testOwnerScopedNavigationSurvivesAReadFailureAndAnUnchangedGate() {
+        XCTAssertFalse(shouldResetOwnerScopedNavigation(gate: .unreadable, previousGate: .resolved))
+        XCTAssertFalse(shouldResetOwnerScopedNavigation(gate: .resolved, previousGate: .resolved))
+        XCTAssertFalse(shouldResetOwnerScopedNavigation(gate: .waiting, previousGate: .waiting))
+    }
+
     func testFirstRunVehicleCreationOffersNoCancellation() {
         XCTAssertFalse(VehicleCreationPresentation(isFirstRun: true).offersCancellation)
         XCTAssertTrue(VehicleCreationPresentation(isFirstRun: false).offersCancellation)
