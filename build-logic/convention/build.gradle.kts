@@ -20,8 +20,44 @@ dependencies {
     testImplementation(gradleTestKit())
 }
 
+// The guards in src/test read committed repository files through carapp.repoRoot. Gradle cannot
+// observe those reads, so they are declared as task inputs here (D-119). Without this the task
+// reports UP-TO-DATE after the very configuration it guards has changed, and a repository that
+// violates an accepted decision looks green locally while CI fails.
+// GuardedRepositoryInputsTest fails when a guard starts reading a file this list does not cover.
+val guardedRepositoryInputs =
+    fileTree(rootProject.projectDir.parentFile) {
+        include(
+            ".github/workflows/**",
+            ".gitignore",
+            "AGENTS.md",
+            "androidApp/build.gradle.kts",
+            "androidApp/src/**",
+            "build-logic/convention/build.gradle.kts",
+            "build.gradle.kts",
+            "composition/ios/build.gradle.kts",
+            "docs/**/*.md",
+            "firebase.json",
+            "functions/package.json",
+            "gradle/libs.versions.toml",
+            "iosApp/**",
+            "scripts/**",
+            "settings.gradle.kts",
+            "shared/build.gradle.kts",
+        )
+        exclude(
+            "**/build/**",
+            "**/xcuserdata/**",
+            "**/*.xcuserstate",
+        )
+    }
+
 tasks.test {
     systemProperty("carapp.repoRoot", rootProject.projectDir.parentFile.absolutePath)
+    inputs
+        .files(guardedRepositoryInputs)
+        .withPropertyName("guardedRepositoryInputs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 kotlin {

@@ -64,6 +64,7 @@
 /* Begin PBXFileReference section */
 		031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
+		13677EB163BA55FAE43164CE /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
 		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
@@ -120,6 +121,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		22A277641E77C9E7433CBE1E /* iosApp */ = {
+			isa = PBXGroup;
+			children = (
+				13677EB163BA55FAE43164CE /* Signing.xcconfig */,
+			);
+			name = iosApp;
+			path = .;
+			sourceTree = "<group>";
+		};
 		2850FA255307524833517781 /* Debug */ = {
 			isa = PBXGroup;
 			children = (
@@ -185,6 +195,7 @@
 				8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */,
 				586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */,
 				2850FA255307524833517781 /* Debug */,
+				22A277641E77C9E7433CBE1E /* iosApp */,
 				C9FE68B9523949AB829ECCA0 /* Tests */,
 				45E5C76700F0706EA075BF34 /* UITests */,
 				39881192AFE2CF4DD842531A /* Products */,
@@ -567,6 +578,7 @@
 		};
 		40B51EC700B19C4FCB697F92 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;
@@ -627,6 +639,7 @@
 		};
 		FB442A824F2183F823E95EE9 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 13677EB163BA55FAE43164CE /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = carApp.entitlements;

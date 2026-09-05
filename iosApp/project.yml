@@ -59,6 +59,9 @@ targets:
         script: |
           cd "$SRCROOT/.."
           ./gradlew :composition:ios:embedAndSignAppleFrameworkForXcode
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ruizurraca.carapp
