@@ -42,6 +42,22 @@
 
 ## In-Progress Checkpoint
 
+### D-118 / D-119 signing and guard-input checkpoint (2026-09-05)
+
+- The 2026-09-05 repair removed the committed `DEVELOPMENT_TEAM` and turned `architecture-check`
+  green, but left two items open: a signed device build then failed with `Signing for "carApp"
+  requires a development team`, and `:build-logic:convention:test` still declared none of the
+  repository files it reads, so it could report a stale pass.
+- The owner selected an untracked local signing configuration (`D-118`) and declared task inputs
+  (`D-119`). ADR-0119 and ADR-0120 record both, and `docs/runbooks/ios-device-signing.md` documents
+  the one-time setup and the recovery path.
+- Verification: the guard suite now re-runs on a guarded content change without `--rerun-tasks`, and
+  injecting `DEVELOPMENT_TEAM` into `iosApp/project.yml` makes it fail on an ordinary invocation
+  where it previously reported `UP-TO-DATE`. The simulator build passes with no local configuration
+  present, which is the CI and fresh-clone condition. A signed device build passes without
+  `-allowProvisioningUpdates`, so it registers no new provisioning state on the Apple account.
+- Open decisions or blockers: none.
+
 ### D-71 signing remediation checkpoint (2026-09-05, pull request #54)
 
 - Branch and base: `story/E2-03-onboarding-flow`, based on `main` / `origin/main` at `f7639dc`;

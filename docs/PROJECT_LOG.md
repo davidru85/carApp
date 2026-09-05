@@ -62,6 +62,35 @@
   build-logic issue is scoped. Pull request #54 remains subject to its authentication human-review
   gate and must not be agent-merged.
 
+### 2026-09-05 — Local iOS device signing and declared inputs for the repository guards
+
+- **Type:** decision
+- **Story / Decision:** `E2-03` / `D-118`, `D-119`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** removing the committed developer team restored `D-71` and turned CI green, but a
+  signed device build then failed for want of a team and nothing documented how to do it. The team is
+  now supplied by an untracked `iosApp/Local.xcconfig` that the committed `iosApp/Signing.xcconfig`
+  includes optionally, so the mechanism is a no-op on CI and on a fresh clone, and Xcode's Run button
+  no longer pushes anyone into the Signing editor that caused the original violation. Separately,
+  `:build-logic:convention:test` now declares the repository files its guards read as task inputs,
+  and `GuardedRepositoryInputsTest` fails when a guard starts reading a file the declaration does not
+  cover.
+- **Why:** the guard suite reported a stale pass because Gradle cannot observe reads made through the
+  `carapp.repoRoot` system property. That is how a violated decision reached CI while the local gate
+  reported 636 passing tasks. A check whose job is to catch mistakes cannot depend on nobody making
+  one, which is why the `--rerun-tasks` convention was not kept as the answer.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/adr/README.md`, `docs/adr/0119`, `docs/adr/0120`, `docs/runbooks/ios-device-signing.md`,
+  `AGENTS.md`, `docs/handoff-E2-03.md` and this log.
+- **Verification:** injecting `DEVELOPMENT_TEAM` into `iosApp/project.yml` now fails the guard on an
+  ordinary invocation, where the same command previously reported `UP-TO-DATE`; the simulator build
+  passes with no local configuration present; a signed device build passes without
+  `-allowProvisioningUpdates`; the exact `AGENTS.md` command passed 636 actionable tasks and
+  `contractCheck` reports 120 aligned decisions and ADRs.
+- **Follow-ups / risks:** every development machine needs the one-time local file before its first
+  device build. The declared input set is maintained configuration; the coverage test fails loudly if
+  it falls behind, including if the declaration itself is reformatted beyond what that test parses.
+
 ### 2026-09-04 — E2-03 review remediation: onboarding navigation, list loading and sign-in recovery
 
 - **Type:** story

@@ -124,5 +124,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-115 | [ADR-0116](0116-mount-onboarding-navigation-once.md) | Mount the authenticated navigation graph once. | Accepted |
 | D-116 | [ADR-0117](0117-vehicle-list-loading-means-unknown.md) | Publish list loading only while the vehicle list is unknown. | Accepted |
 | D-117 | [ADR-0118](0118-recover-from-interrupted-native-sign-in.md) | Recover from an interrupted native sign-in. | Accepted |
+| D-118 | [ADR-0119](0119-supply-ios-device-signing-locally.md) | Supply the iOS developer team from an untracked local configuration. | Accepted |
+| D-119 | [ADR-0120](0120-declare-guarded-repository-inputs.md) | Declare the repository files the guards read as task inputs. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

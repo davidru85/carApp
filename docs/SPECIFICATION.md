@@ -593,6 +593,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-115 | Onboarding navigation topology | Mount the authenticated navigation graph once with the vehicle list as its root and push first-run vehicle creation over it. | Accepted |
 | D-116 | Vehicle list loading semantics | `VehicleListUiState.isLoading` means the vehicle list is not known yet, not that a refresh is running. | Accepted |
 | D-117 | Native sign-in interruption recovery | Handle host configuration changes in place and abandon an interrupted native acquisition through the closed cancellation intent. | Accepted |
+| D-118 | iOS device signing supply | Supply the developer team from an untracked local xcconfig that the committed signing configuration optionally includes; never commit it. | Accepted |
+| D-119 | Declared inputs for the repository guards | Declare the repository files the build-logic guards read as task inputs so they cannot report a stale pass. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
