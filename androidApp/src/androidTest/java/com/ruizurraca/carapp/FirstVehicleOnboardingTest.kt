@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -47,6 +48,30 @@ class FirstVehicleOnboardingTest {
             }
             composeRule.onNodeWithTag(VehicleTestTags.DETAIL_NAME).assertTextContains(vehicleName)
             composeRule.onNodeWithTag(VehicleTestTags.FIRST_FUEL_INVITATION).assertExists()
+        }
+    }
+
+    @Test
+    fun theSystemBackActionDoesNotLeaveFirstVehicleCreation() {
+        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(DATABASE_FILE_NAME)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            composeRule.waitUntil(timeoutMillis = 30_000) {
+                composeRule.onAllNodesWithTag(OnboardingTestTags.GUEST).fetchSemanticsNodes().isNotEmpty() ||
+                    composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
+            }
+            if (composeRule.onAllNodesWithTag(OnboardingTestTags.GUEST).fetchSemanticsNodes().isNotEmpty()) {
+                composeRule.onNodeWithTag(OnboardingTestTags.GUEST).performClick()
+            }
+            composeRule.waitUntil(timeoutMillis = 30_000) {
+                composeRule.onAllNodesWithTag(VehicleTestTags.NAME).fetchSemanticsNodes().isNotEmpty()
+            }
+
+            scenario.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag(VehicleTestTags.NAME).assertIsDisplayed()
+            composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).assertDoesNotExist()
         }
     }
 }

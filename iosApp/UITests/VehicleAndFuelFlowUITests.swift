@@ -169,6 +169,27 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         XCTAssertTrue(inconsistentBadge.waitForExistence(timeout: timeout))
     }
 
+    /// Only first-run creation is mandatory. Creating a later vehicle from the list stays
+    /// dismissible, including through the interactive gesture.
+    func testLaterVehicleCreationRemainsInteractivelyDismissible() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        addTeardownBlock { app.terminate() }
+
+        openVehicleCreation(in: app)
+        let vehicleNameField = app.textFields["vehicle_name"]
+        XCTAssertTrue(vehicleNameField.waitForExistence(timeout: timeout))
+        XCTAssertTrue(app.buttons["cancel_vehicle"].exists, "Later creation keeps its cancellation control")
+
+        app.swipeDown(velocity: .fast)
+
+        XCTAssertTrue(
+            vehicleNameField.waitForNonExistence(timeout: timeout),
+            "A later creation sheet must still be dismissible with the interactive gesture"
+        )
+    }
+
     private func openVehicleCreation(in app: XCUIApplication) {
         let guestButton = app.buttons["welcome_guest"]
         let addVehicleButton = app.buttons["add_vehicle"]

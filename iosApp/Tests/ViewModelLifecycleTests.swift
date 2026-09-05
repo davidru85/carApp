@@ -54,6 +54,35 @@ final class ViewModelLifecycleTests: XCTestCase {
         XCTAssertTrue(saved, "Vehicle save should complete, message: \(String(describing: viewModel.state.message?.code))")
     }
 
+    func testSuccessfulCreationDeliversTheSavedIdAndTheEnteredName() async throws {
+        let viewModel = VehicleFormViewModel(graph: graph, vehicleId: nil)
+        let enteredName = "Saved-\(UUID().uuidString.prefix(8))"
+        viewModel.setName(enteredName)
+        viewModel.setOdometerText("50000")
+
+        var outcome: VehicleSaveOutcome?
+        viewModel.save { result in
+            outcome = result
+        }
+
+        for _ in 0..<30 {
+            if outcome != nil { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        let delivered = try XCTUnwrap(outcome, "Creation must deliver its outcome")
+        let createdVehicleId = try XCTUnwrap(
+            delivered.createdVehicleId,
+            "Creation must deliver the saved vehicle id from the emission that completed it"
+        )
+        XCTAssertFalse(createdVehicleId.isEmpty)
+        XCTAssertEqual(
+            delivered.vehicleName,
+            enteredName,
+            "The delivered name must be the entered one, not form state that common code may reset"
+        )
+    }
+
     func testVehicleListRequestDeleteEmitsConfirmationMessageWithoutDeleting() async throws {
         let localGraph = createSwiftAppGraph(isDebugBuild: false)
         defer { localGraph.close() }
