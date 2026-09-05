@@ -42,34 +42,36 @@
 
 ## In-Progress Checkpoint
 
-### Second review remediation checkpoint (2026-09-05, intake)
+### Second review remediation checkpoint (2026-09-05, complete)
 
 - Date: 2026-09-05. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
-- Current phase and latest commit: intake for a second owner review round. Latest commit is
-  `b429888`; local `HEAD` and `origin/story/E2-03-onboarding-flow` agree.
-- Push and pull-request status: pull request #54 is open with all ten required checks green. The
-  agent will not merge it.
-- Owner-confirmed findings entering this round:
-  1. First-vehicle creation is still escapable through the Android system/predictive back path and
-     through interactive dismissal of the iOS first-run sheet.
-  2. iOS post-save routing reads form state that common code has already reset, because
-     `VehicleFormViewModel.handleStateUpdate` invokes its completion callback before assigning the
-     incoming state.
-  3. First-run routing can act on a stale or failed vehicle list: `AuthState.Unknown` / `SignedOut`
-     expose `LOCAL_OWNER`, so an empty `LOCAL_OWNER` result marks the list known before the restored
-     owner's list arrives, and an initial `Outcome.Err` is currently published as a confirmed empty
-     list.
-  4. The `D-119` declared inputs miss reads made through constants, composed paths and directory
-     scans, including the composition-owned iOS locale provider, its directory listing, the shared
-     iOS test and the enum source files, and one guard walks the whole repository.
-  5. `NoCredentialException` still tells an owner with no Google account on the device that the
-     provider is not configured.
-- Verification evidence and known failures: none for this round yet; the previous round's evidence
-  stands and CI is green on `b429888`.
-- Open decisions or blockers: the truthful outcome for `NoCredentialException` will use the existing
-  closed `UNKNOWN` case. A dedicated case would widen `NativeSignInFailure`, the error taxonomy and
-  the Swift ABI, which is gated, so it is raised to the owner rather than taken by the agent.
-- Exact next step: write the failing tests for the five findings, then implement.
+- Current phase and latest commit: REFACTOR, in the commit that contains this text. RED is
+  `baa5627`, GREEN is `6cfe232`, and the intake checkpoint was `fcc426e`.
+- Push and pull-request status: every phase is pushed. Pull request #54 is open and its description
+  is updated to this branch state. The agent does not merge it.
+- Completed since the previous checkpoint: the five owner-confirmed findings of the second review
+  round are fixed, each specified by a failing test first.
+  1. First-run creation is mandatory on both hosts: Android consumes the system and predictive back
+     gestures on `VehicleRoutes.CREATE_FIRST` only, and iOS disables interactive dismissal for the
+     first-run presentation only (`D-121`, ADR-0122, superseding that consequence of `D-115`).
+  2. `VehicleFormViewModel` assigns the incoming state before completing a save and delivers a
+     `VehicleSaveOutcome` carrying the created id from that emission plus the name captured when the
+     save started, so iOS post-save routing no longer reads reset form state.
+  3. `VehicleListStateHolder` resolves the list per owner and keeps an unreadable list unknown
+     (`D-120`, ADR-0121). `CONTRACTS.md §20.10` states the owner scope and the failure case.
+  4. The guard inputs declare the repository instead of an allowlist, because guards resolve paths
+     from constants and walk directories; only generated output, tooling state and machine-local
+     files are excluded, and the committed golden header is declared individually (`ADR-0120`
+     update).
+  5. `NoCredentialException` maps to `UNKNOWN` instead of `CONFIGURATION`, so an owner with no Google
+     account on the device is no longer told the provider is unconfigured.
+- Verification evidence and known failures: recorded under `Verification Run`, section
+  `Second review remediation`. No known failure remains on this branch.
+- Open decisions or blockers: one owner decision is requested, not taken. A dedicated
+  `NativeSignInFailure` case would let the host say "no Google account on this device" instead of the
+  generic unclassified message. That would widen the closed enum, the error taxonomy and the Swift
+  ABI, which is gated, so the truthful existing outcome was used instead.
+- Exact next step: owner review of pull request #54, and the manual provider acceptance below.
 
 ### D-118 / D-119 signing and guard-input checkpoint (2026-09-05)
 
@@ -112,8 +114,9 @@
   `./gradlew architectureCheck :build-logic:convention:test --rerun-tasks --stacktrace` passes all
   16 architecture rules and 58 build-logic tests. The exact CI iOS simulator build also passes and
   signs the app with `Sign to Run Locally`. The complete 636-task non-instrumented repository gate
-  passes. The Gradle task was forced because its repository-file inputs remain undeclared and an
-  ordinary local invocation can be stale.
+  passes. The Gradle task was forced because, at that time, its repository-file inputs were still
+  undeclared and an ordinary local invocation could be stale. `D-119` and the 2026-09-05 update of
+  `ADR-0120` closed that gap.
 - Open decisions or blockers: none for this repair. Pull request #54 remains human-gated and will
   not be merged by the agent.
 - Exact next step: let the remaining required checks finish, then return pull request #54 to the
@@ -134,7 +137,8 @@
   plists and the JSON configuration through a system property, but declares none of them as task
   inputs. Gradle therefore reports the task UP-TO-DATE after those files change, which is why the
   previous full-gate evidence was green locally while CI failed. Every claim about that gate now
-  states whether it was produced with `--rerun-tasks`.
+  states whether it was produced with `--rerun-tasks`. Since `D-119` and its 2026-09-05 mechanism
+  update, an ordinary invocation is sound and the flag is no longer required.
 - Open decisions or blockers: only the `D-71` signing decision above.
 - Exact next step: owner decision on the `D-71` violation, then a single push and the #54 update.
 
@@ -273,6 +277,23 @@
 
 ## Decisions Made
 
+- Second review round: the owner accepted mandatory first-run creation on both hosts (`D-121`), which
+  supersedes the `D-115` consequence that the Android system back gesture reaches the empty list, and
+  owner-scoped, failure-aware vehicle list resolution (`D-120`). The `D-119` mechanism was
+  strengthened from a literal allowlist to a repository-wide declaration; the decision is unchanged
+  and the change is recorded as a dated update in ADR-0120.
+- `NoCredentialException` now maps to the existing `UNKNOWN` outcome. A dedicated case would be more
+  actionable but widens the closed enum, the error taxonomy and the Swift ABI, so it is raised to the
+  owner as a decision request rather than taken by the agent.
+- TDD order exemption used: `SPECIFICATION.md §11` exempts native UI code from writing the test
+  first. The Android `BackHandler` and the iOS `interactiveDismissDisabled` changes are host UI, and
+  their tests were still written before the change in this round.
+- A Debug-only `CARAPP_UI_TEST_FORCE_FIRST_VEHICLE` environment seam was added to
+  `VehicleListView`. UI tests cannot clear the application container, and the unit-test target writes
+  into the same one, so the first-run state is not reproducible from data alone. It mirrors the
+  existing `CARAPP_UI_TEST_FORCE_WELCOME` precedent and, unlike it, is compiled out of Release.
+
+
 - After reviewing pull request #54 the owner selected: mounting the authenticated navigation graph
   once over the vehicle list (`D-115`); defining `VehicleListUiState.isLoading` as "the vehicle list
   is not known yet" rather than adding a state field (`D-116`); and recovering from an interrupted
@@ -300,6 +321,35 @@ product or architecture decision. `E1_07_API_36` and the iPhone 17 Pro simulator
 after the final device suite; the connected owner phone was neither targeted nor altered.
 
 ## Verification Run
+
+### Second review remediation (2026-09-05)
+
+- RED: `./gradlew :feature:vehicle:testAndroidHostTest` failed on the missing `ownerContext`
+  parameter; `./gradlew :androidApp:testDebugUnitTest` failed on the private mapping and message
+  functions the new guards call; `./gradlew :build-logic:convention:test` failed two of the four new
+  input-coverage guards; and the iOS test build failed on the missing `VehicleSaveOutcome`.
+- The complete `AGENTS.md` non-instrumented command passed 636 actionable tasks.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` —
+  passed, 234 actionable tasks.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` — 14 of 14 passed on
+  the `D-84` API 36 emulator, including the new system-back case. The connected owner phone was
+  excluded by pinning the serial.
+- Non-vacuity of the system-back test: with `BackHandler(enabled = false)` the same test fails, and
+  it passes with the shipped `enabled = !offersBackAffordance`.
+- iOS on an erased simulator: `carAppTests` executed 32 tests with 0 failures, including the new
+  creation-delivery test; `carAppUITests` executed 7 with 1 environment-gated skip and 0 failures,
+  including first-run swipe resistance, first-save detail routing and later-creation dismissibility.
+- `D-119` behavioural evidence: `:build-logic:convention:test` reported `UP-TO-DATE`, then executed
+  after a content change to
+  `composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/locale/IosLocaleProvider.kt`, which the
+  guards reach through a constant rather than a call-site literal.
+- Objective-C golden header: the framework was relinked and diffed against the committed golden with
+  the exact CI command; no difference. No Swift-facing declaration changed.
+- `git diff --check` clean; `plutil -lint` passed for `iosApp/Info.plist`,
+  `iosApp/Config/Debug/GoogleService-Info-Debug.plist` and `iosApp/carApp.entitlements`; `jq empty`
+  passed for `firebase.json` and `androidApp/src/debug/google-services.json`.
+- Simulator and emulator were shut down after verification.
+
 
 ### D-71 signing remediation (2026-09-05)
 
@@ -456,10 +506,22 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Risks or Follow-ups
 
+- Requested owner decision: a dedicated `NativeSignInFailure` case for "no account available on the
+  device". Until then that condition shows the generic unclassified message.
+- The iOS first-run UI tests depend on the Debug-only seam above. If it is ever removed, those tests
+  must regain a deterministic way to reach mandatory creation.
+- An owner transition or a persistent read failure now covers the mounted UI while the list is
+  unknown. The cover never unmounts navigation, but a permanent read failure leaves it in place with
+  its error message.
+- The pre-existing divergence where iOS stays on the vehicle list after creating a *later* vehicle is
+  deliberately untouched: the owner did not expand scope to it.
+
+
 - The D-71 `DEVELOPMENT_TEAM` violation that kept `architecture-check` red was removed on
-  2026-09-05. The separate process risk remains: `:build-logic:convention:test` does not declare the
-  repository files it reads as task inputs, so any signing-guard claim must continue to use
-  `--rerun-tasks` until that build-logic issue is addressed in its own scoped change.
+  2026-09-05. `D-119` then declared the guard inputs, and the second review round replaced the
+  literal allowlist with a repository-wide declaration (`ADR-0120`, update of 2026-09-05), so a
+  signing-guard claim no longer needs `--rerun-tasks`: an ordinary invocation re-runs the suite when
+  a guarded file changes.
 - The iOS unresolved-list indicator MUST stay inside `VehicleListView`. Gating it from an outer view
   reintroduces a second observer of the same state holder and with it the intermittent cover that
   failed `ios-simulator-build`.

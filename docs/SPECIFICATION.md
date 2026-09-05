@@ -595,6 +595,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-117 | Native sign-in interruption recovery | Handle host configuration changes in place and abandon an interrupted native acquisition through the closed cancellation intent. | Accepted |
 | D-118 | iOS device signing supply | Supply the developer team from an untracked local xcconfig that the committed signing configuration optionally includes; never commit it. | Accepted |
 | D-119 | Declared inputs for the repository guards | Declare the repository files the build-logic guards read as task inputs so they cannot report a stale pass. | Accepted |
+| D-120 | Owner-scoped vehicle list resolution | Resolve the vehicle list per owner and keep it unknown until that owner publishes a successful result; a read failure is not a confirmed empty list. | Accepted |
+| D-121 | Mandatory first-run vehicle creation | First-run vehicle creation refuses the system back and interactive dismissal gestures; later creation keeps them. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

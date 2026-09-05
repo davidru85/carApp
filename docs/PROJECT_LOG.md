@@ -38,6 +38,44 @@
 
 ## Entries
 
+### 2026-09-05 — E2-03 second review round: mandatory first run, owner-scoped list and honest guards
+
+- **Type:** correction
+- **Story / Decision:** `E2-03` / `D-120`, `D-121`, `D-119`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the owner reviewed pull request #54 again and confirmed five defects. First-run
+  vehicle creation was still escapable through the Android system and predictive back gestures and
+  through interactive dismissal of the iOS sheet, so both are now consumed for that route only
+  (`D-121`, superseding the `D-115` consequence that accepted the back gesture). iOS post-save
+  routing read form state that common code had already reset, because the view model ran its
+  completion before assigning the incoming state; creation now delivers the saved id from the
+  completing emission and the name captured when the save started. First-run routing could act on a
+  stale or failed list, because `AuthState.Unknown` and `SignedOut` expose `LOCAL_OWNER` and a read
+  failure was published as a confirmed empty list; the vehicle list is now resolved per owner and an
+  unreadable list stays unknown (`D-120`). The `D-119` guard inputs were an allowlist verified by
+  scanning call-site literals, which missed constants, composed paths, directory scans and a
+  whole-repository walk, so the declaration now covers the repository and excludes only generated
+  output, tooling state and machine-local files. `NoCredentialException` no longer tells an owner
+  with no Google account that the provider is unconfigured.
+- **Why:** three of the five let the product misbehave for a real owner — a trapped or escapable
+  mandatory step, a first vehicle whose detail never opened, and mandatory creation shown to a
+  returning owner who already had vehicles. The fourth meant the guard that exists to catch mistakes
+  could still miss most of what it reads.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0116`, `docs/adr/0120`, `docs/adr/0121`,
+  `docs/adr/0122`, `docs/handoff-E2-03.md` and this log.
+- **Verification:** the exact `AGENTS.md` command passed 636 actionable tasks; forced provider
+  decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14 including the new
+  system-back case, proved non-vacuous by disabling the handler; iOS ran 32 unit tests and 7 UI tests
+  on an erased simulator with one environment-gated skip and no failures; the guard suite reported
+  `UP-TO-DATE` and then executed after a content change to a file it reaches through a constant; the
+  Objective-C golden header is byte-identical; `contractCheck` reports 122 aligned decisions and ADRs.
+- **Follow-ups / risks:** an owner decision is requested for a dedicated `NativeSignInFailure` case
+  meaning "no account available on the device"; until then that condition shows the generic message.
+  The iOS first-run UI tests depend on a Debug-only environment seam, because UI tests cannot clear
+  the application container that the unit-test target also writes to. The pre-existing divergence
+  where iOS stays on the vehicle list after creating a later vehicle remains out of scope.
+
 ### 2026-09-05 — PR #54 restored D-71 signing compliance
 
 - **Type:** correction

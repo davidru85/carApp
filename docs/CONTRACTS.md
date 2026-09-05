@@ -2518,11 +2518,13 @@ Typed enums such as `FuelType` and `AuthProvider` are not user-facing text and a
 
 It is never display copy.
 
-`VehicleListUiState.isLoading` means the vehicle list is not known yet. It is `true` from the
-initial state until the vehicle repository emits for the first time, and an ordinary refresh MUST
-NOT set it (`D-116`). Hosts gate `SPECIFICATION.md` F-1 first-run routing on this value and, while
-it is `true`, MUST cover the mounted UI instead of replacing it, so navigation state is never
-destroyed by a refresh.
+`VehicleListUiState.isLoading` means the vehicle list of the currently resolved owner is not known
+yet. It is `true` from the initial state until that owner's first successful repository result, and
+an ordinary refresh MUST NOT set it (`D-116`). An owner transition returns it to `true` until the new
+owner publishes a successful result, and a repository read failure keeps it `true` while publishing
+its error code, so an unreadable list is never presented as a confirmed empty list (`D-120`). Hosts
+gate `SPECIFICATION.md` F-1 first-run routing on this value and, while it is `true`, MUST cover the
+mounted UI instead of replacing it, so navigation state is never destroyed by a refresh.
 
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
 

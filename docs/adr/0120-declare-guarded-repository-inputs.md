@@ -6,6 +6,21 @@ Accepted
 
 Selected by the owner on 2026-09-05.
 
+## Update, 2026-09-05
+
+The first mechanism enumerated an include allowlist and verified it by scanning path literals at the
+call sites. Review found that it missed everything the guards reach indirectly: paths resolved from
+constants, paths composed from other constants, directory listings, and one guard that walks the whole
+repository for Kotlin sources. Those reads were silently undeclared, so the defect this decision
+exists to prevent was still reachable.
+
+The declaration is no longer an allowlist. It covers the repository and excludes only generated
+output, tooling state and machine-local files, with the committed Objective-C golden header — which
+lives inside a generated directory — named individually. `GuardedRepositoryInputsTest` now fails if
+the declaration is narrowed back to an allowlist, if an exclusion outside the approved categories
+appears, if a guarded read is hidden by an exclusion, or if a machine-local file becomes a cache
+input. The decision itself is unchanged.
+
 ## Context
 
 The guard tests in `build-logic/convention/src/test` read committed repository files — the Xcode

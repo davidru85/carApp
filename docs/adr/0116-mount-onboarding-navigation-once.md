@@ -57,8 +57,10 @@ it waits for the vehicle list to be known, requires it to be empty, and is taken
 ### Negative
 
 - An empty vehicle list is composed beneath the first-run form.
-- The Android system back gesture on the first-run form reaches that empty list rather than leaving
-  the application. The owner accepted this over intercepting the system back gesture.
+- ~~The Android system back gesture on the first-run form reaches that empty list rather than leaving
+  the application.~~ **Superseded on 2026-09-05 by `D-121` / [ADR-0122](0122-make-first-run-vehicle-creation-mandatory.md):**
+  hiding the affordance did not make the step mandatory, so first-run creation now consumes the
+  system and predictive back gestures. Every other route keeps the platform behaviour.
 
 ### Constraints Introduced
 
