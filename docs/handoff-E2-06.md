@@ -55,7 +55,10 @@
   phase commits are `8492dbb` (RED), `9a2c227` (GREEN) and this one.
 - Push and pull-request status: the first round's ten checks ran and **`objc-header-golden-check`
   failed**; every other check passed. This round fixes that defect and applies the owner's three
-  decisions. The agent does not merge.
+  decisions. All three commits are pushed, and **all ten required checks pass on this round**,
+  including the `objc-header-golden-check` that failed before and the `shared-tests` job whose
+  `E1-14` flake did not fire. `mergeable` is clean; the gate that remains is the policy one. The
+  agent does not merge.
 - Completed since the previous checkpoint:
   1. **Defect found by CI, not by me.** Both `toAdoptionOutboxPayload` mappers were public in
      modules `:composition:ios` exports, so they reached the committed Objective-C golden header.
@@ -78,7 +81,8 @@
 - Verification evidence and known failures: see `Verification Run`, which is rewritten for this
   round. No known failure.
 - Open decisions or blockers: none. `D-123` was approved unchanged.
-- Exact next step: push the three commits to pull request #55 and wait for the ten required checks.
+- Exact next step: wait for the owner's review of the applied round. Nothing is in flight, and no
+  work is left that this story owns.
 
 ### Story complete, pull request #55 open and awaiting owner review (2026-09-06)
 
