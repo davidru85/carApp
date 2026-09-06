@@ -645,6 +645,24 @@ Acceptance criteria:
 - No shared state holder, contract, Swift-facing ABI or decision change is required. If one turns out
   to be required, the story stops and escalates instead of taking it.
 
+### E1-16 - Vehicle UI Fuel Type Selector - S
+
+Add a fuel type selector to the Vehicle creation and editing forms on Android (Compose) and iOS (SwiftUI), allowing the user to select from the supported MVP `FuelType` values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`), with `GASOLINE` as the default.
+
+Context:
+`FuelType` is already modeled in `:core:model`, persisted in `:core:database`, validated in Firestore rules, and supported by `VehicleFormStateHolder.setFuelType(...)`. Under decision `D-4`, the selector was originally omitted from the MVP UI. This story exposes the selector in the native UI.
+
+Acceptance criteria:
+
+- The Vehicle creation and edit forms on Android expose a selector (dropdown/menu/picker) for `FuelType`, defaulting to `GASOLINE`.
+- The Vehicle creation and edit forms on iOS expose a native `Picker` for `FuelType`, defaulting to `GASOLINE`.
+- Localized display strings exist in English and Spanish for all five MVP enum values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`).
+- Changing the selection dispatches `setFuelType` to `VehicleFormStateHolder`.
+- Saving a new vehicle persists the selected `FuelType`.
+- Opening an existing vehicle in edit mode loads and displays its persisted `FuelType`, and saving persists any updated selection.
+- Instrumented/UI tests on Android and iOS verify that selecting a non-default fuel type (e.g. `DIESEL`) persists correctly on vehicle creation and edit.
+- No database schema, migration, or sync rule changes are introduced (existing schema and rules already support all 5 values).
+
 ## Phase 2 - Authentication
 
 ### E2-01 - `:core:auth` - S
@@ -1084,6 +1102,25 @@ Acceptance criteria:
 - Crash-reporting redaction is verified: no UID, tokens, notes, exact odometer values, exact costs or raw Firestore payloads in crash reports.
 - Release logging redaction is verified: no UID, notes, odometer or cost values in release logs.
 
+## Post-MVP / Future Scope
+
+Stories in this section are outside the MVP scope and are deferred to post-MVP development. They require an ADR and specification update before becoming Ready.
+
+### E5-01 - Electric and Hybrid Vehicle Energy Model - L
+
+Status: Deferred / Post-MVP.
+
+Introduce support for electric and hybrid vehicles (`ELECTRIC`, `PHEV`, `HEV`), along with a dedicated energy model supporting mixed energy units (liters, kWh, gallon equivalents), unit conversions, charging sessions, and multi-energy consumption calculations.
+
+Scope & Prerequisites:
+
+- Requires an ADR and an update to `docs/SPECIFICATION.md §3.3` defining the multi-energy domain model, units, validation boundaries, and consumption formulas (e.g., kWh/100km, L/100km, combined metrics).
+- Expand `FuelType` enum in `:core:model` or introduce an `EnergyType`/`Powertrain` model without breaking backward compatibility.
+- SQLDelight migration (v2 schema) for local storage of energy-specific entry attributes.
+- Updated Firestore security rules for remote schema validation of new energy types and entry attributes.
+- Expand consumption calculation use cases to handle electric charging and hybrid consumption.
+- Update Vehicle and Fuel/Energy Entry creation/edit UI on Android and iOS with dynamic unit and field presentation based on powertrain.
+
 ## Execution Order
 
 ```text
@@ -1144,13 +1181,14 @@ links the Firebase integrations without an Xcode host. E1-13 must exercise the p
 Foundation behavior from a standard-command route while preserving that dependency rule and the
 D-108 host boundary. It has no dependency on E1-11 or E1-12 and may run in parallel with them.
 
-`E1-14` and `E1-15` are follow-ups found or confirmed during `E2-03` and are independent of it and
-of each other. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntryStateHolderTest`, the same
-class `E1-12` already hardened for a different Native-specific reason, and it SHOULD run before the
-next story that relies on a red `shared-tests` job meaning a real regression. `E1-15` removes the
+`E1-14`, `E1-15` and `E1-16` are follow-ups found, confirmed or requested during Phase 1/Phase 2 and are
+independent of each other. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntryStateHolderTest`,
+the same class `E1-12` already hardened for a different Native-specific reason, and it SHOULD run before
+the next story that relies on a red `shared-tests` job meaning a real regression. `E1-15` removes the
 pre-existing iOS divergence where creating a *later* vehicle stays on the list instead of opening its
-detail; it depends on the `E2-03` post-save routing already delivered for first-run creation, so it
-runs after pull request #54 merges. Neither blocks `E2-06`.
+detail; it depends on the `E2-03` post-save routing delivered for first-run creation, which merged
+on 2026-09-06, so it is unblocked. `E1-16` exposes the `FuelType` selector in the Vehicle creation and
+edit UI across Android and iOS for the supported MVP values. None of these blocks `E2-06`.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -1187,9 +1225,10 @@ proof after E3-04.
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
 | E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake | 1 | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | 1 | S | — |
+| E1-16 Vehicle UI fuel type selector | 1 | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
-| E2-03 Onboarding F-1 (delivered; pull request #54 awaiting owner review and merge) | 2 | M | — |
+| E2-03 Onboarding F-1 (completed) | 2 | M | — |
 | E2-06 Local owner adoption | 2 | M | Yes |
 | E2-04 Account conversion F-4 | 2 | M | Yes |
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |
@@ -1211,5 +1250,6 @@ proof after E3-04.
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |
 | E4-04 Release preparation | 4 | M | — |
+| E5-01 Electric and hybrid vehicle energy model | 5 (Post-MVP) | L | Yes |
 
 Human review gates are defined canonically in `AGENTS.md`. The column above is a convenience index, not a second source.
