@@ -684,10 +684,9 @@ Acceptance criteria:
 
 ### E2-03 - Onboarding Flow F-1 - M
 
-Status: delivered on 2026-09-04 and revised through three owner review rounds on 2026-09-05 and
-2026-09-06; awaiting the owner's review and merge of pull request #54. See
-`docs/handoff-E2-03.md` for the live checkpoint, the accepted decisions `D-112` to `D-121` and the
-outstanding manual provider acceptance.
+Status: completed on 2026-09-06, PR #54, after three owner review rounds on 2026-09-05 and
+2026-09-06. See `docs/handoff-E2-03.md` for the acceptance evidence, the accepted decisions `D-112`
+to `D-122` and the outstanding manual provider acceptance, which stays owner-owned.
 
 Implement the welcome screen, with an offline-capable local start. Provider selection happens on
 the welcome screen itself; there is no separate provider-selection screen.
@@ -704,6 +703,9 @@ Acceptance criteria:
 - Routing after authentication depends on whether vehicles exist.
 
 ### E2-06 - Local Owner Adoption - M
+
+Status: in progress on `story/E2-06-local-owner-adoption`, based on `main` at `fe9ed55`. See
+`docs/handoff-E2-06.md` for the live checkpoint.
 
 Adopt `LOCAL_OWNER` data into the first real UID.
 
@@ -1149,8 +1151,8 @@ of each other. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntryStateH
 class `E1-12` already hardened for a different Native-specific reason, and it SHOULD run before the
 next story that relies on a red `shared-tests` job meaning a real regression. `E1-15` removes the
 pre-existing iOS divergence where creating a *later* vehicle stays on the list instead of opening its
-detail; it depends on the `E2-03` post-save routing already delivered for first-run creation, so it
-runs after pull request #54 merges. Neither blocks `E2-06`.
+detail; it depends on the `E2-03` post-save routing delivered for first-run creation, which merged
+on 2026-09-06, so it is unblocked. Neither blocks `E2-06`.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -1189,7 +1191,7 @@ proof after E3-04.
 | E1-15 iOS later-vehicle creation routes to the created vehicle | 1 | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
-| E2-03 Onboarding F-1 (delivered; pull request #54 awaiting owner review and merge) | 2 | M | — |
+| E2-03 Onboarding F-1 (completed) | 2 | M | — |
 | E2-06 Local owner adoption | 2 | M | Yes |
 | E2-04 Account conversion F-4 | 2 | M | Yes |
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |

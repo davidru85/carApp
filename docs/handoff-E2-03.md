@@ -1,5 +1,15 @@
 # Agent Handoff - E2-03
 
+> **Closure update (2026-09-06):** pull request #54 merged into `main` as `fe9ed55` on 2026-09-06,
+> after three owner review rounds and with all ten required checks green. Every checkpoint below is
+> preserved as the record of the story as it was delivered. Two items survive the merge and are
+> tracked outside this document: the manual provider acceptance on configured development devices,
+> which stays owner-owned and is not a repository artifact; and the two defects found or confirmed
+> during the story, now filed as `E1-14` (the `FuelEntryStateHolderTest` Kotlin/Native timeout
+> flake) and `E1-15` (the iOS later-vehicle creation routing divergence). Automatic local-owner
+> adoption when connectivity returns was deliberately left out of this story and belongs to `E2-06`,
+> which is the story in progress.
+
 ## Story
 
 `E2-03 - Onboarding Flow F-1 - M`

@@ -38,6 +38,27 @@
 
 ## Entries
 
+### 2026-09-06 — E2-03 merged and E2-06 opened
+
+- **Type:** story
+- **Story / Decision:** `E2-03`, `E2-06` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** pull request #54 merged into `main` as `fe9ed55`, completing `E2-03`, the F-1
+  onboarding flow with native Android and iOS provider acquisition, after three owner review rounds
+  and with all ten required checks green. The repository status documents were realigned with that
+  fact, and `E2-06`, Local Owner Adoption, was opened on `story/E2-06-local-owner-adoption`.
+- **Why:** `AGENTS.md` §`Repository State` states that the story which merges a delivered story
+  updates that section. Six documents still described `E2-03` as awaiting review, which would have
+  told the next agent that Phase 2 had an unmerged story in flight.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/BACKLOG.md`, `docs/handoff-E2-03.md` (closure update), `docs/handoff-E2-06.md` (new) and
+  this log.
+- **Verification:** `./gradlew contractCheck architectureCheck`. No normative rule, decision or
+  contract changed; the update is a status realignment.
+- **Follow-ups / risks:** the `E2-03` manual provider acceptance on configured development devices
+  stays owner-owned. `E1-14` and `E1-15` remain open Phase 1 defects and do not block `E2-06`.
+  `E2-06` is a gated story: the agent does not merge it.
+
 ### 2026-09-06 — E1-14 and E1-15 filed for the two deferred defects
 
 - **Type:** correction
