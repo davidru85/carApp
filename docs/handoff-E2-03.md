@@ -47,8 +47,12 @@
 - Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
 - Current phase and latest commit: REFACTOR, in the commit that contains this text. RED is `582fb27`,
   GREEN is `421688b`, and the intake checkpoint was `456e7ff`.
-- Push and pull-request status: pending push at the time of writing; pull request #54 stays open and
-  the agent does not merge it.
+- Push and pull-request status: all four commits are pushed. Pull request #54 is open on `e7a4f4b`
+  with all ten required checks passed, including `objc-header-golden-check`, which independently
+  regenerates the header and diffs it against the committed golden updated here. `mergeable` is
+  `MERGEABLE` and `mergeStateStatus` is `CLEAN`, so nothing technical blocks the merge. The gate that
+  remains is the policy one: authentication is a gated topic and the contract, decision and Swift ABI
+  paths are gated, so only the owner merges. The agent does not merge it.
 - Completed since the previous checkpoint, specified by four failing tests first:
   1. `NativeSignInFailure` gains `NO_ACCOUNT_AVAILABLE`, mapped by `SessionStateHolder.failSignIn`
      to the new `AuthError.NoAccountAvailable` leaf and its `AUTH.NO_ACCOUNT_AVAILABLE` code.
