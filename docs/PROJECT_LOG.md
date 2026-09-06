@@ -68,6 +68,152 @@
   can merge in either order without renumbering.
 - **Follow-ups / risks:** the numbering gap closes when pull request #55 merges. `E1-15` and `E1-16`
   SHOULD run adjacently, in that order, because both change the same two Vehicle screens.
+### 2026-09-06 — E2-06 second owner review: cold-start race, real connectivity, per-write triggers
+
+- **Type:** correction
+- **Story / Decision:** `E2-06` / `D-124`, `D-125`, `D-126`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** four defects the owner's second review of pull request #55 found, plus one
+  decision. **The cold-start race** was the serious one: `FirebaseAuthClient.authState` starts at
+  `Unknown` while connectivity is already online, so the single connectivity emission was consumed
+  and refused before acquisition was legal; `AuthOwnerContext` maps `Unknown` and `SignedOut` alike
+  to the sentinel and deduplicates them, so no owner event followed and the device stayed under the
+  sentinel indefinitely. Auth readiness is now its own trigger. **Production had no connectivity
+  observation at all** — `:wiring:firebase` supplied `MutableStateFlow(true)` — so both hosts now
+  inject a real observer and the staged default reports offline; recorded as `D-126` / `ADR-0127`.
+  **Trigger isolation** was per collection rather than per emission, so the first handler failure
+  ended that observer permanently, and the write-launched trigger could leak an exception out of its
+  coroutine. **The `§11.2` post-commit re-evaluation** now covers Fuel Entry create, update and
+  delete, not vehicles alone.
+- **Why:** each of the four was a case where the story's own acceptance criterion could not actually
+  hold in the shipped app. The connectivity one is the clearest: "adoption is triggered
+  automatically when connectivity returns" cannot be true when nothing observes connectivity, and
+  the test suites all passed because they inject `FakeConnectivityObserver`. That is exactly how the
+  gap survived four stories.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0127`, `docs/adr/0126`, `README.md`,
+  `docs/DEFINITION.md`, `docs/handoff-E2-06.md` and this log.
+- **Verification:** seven new failing tests first, across four canonical routes. The exact
+  `AGENTS.md` command passed 636 actionable tasks, forced provider decoupling passed 234, the
+  regenerated Objective-C header matches the committed golden, and the `D-84` API 36 instrumented
+  suite passed 14 of 14. Twenty-eight adoption tests now run on both required shared targets.
+- **Follow-ups / risks:** the adoption gate performs one `COUNT(*)` over `vehicle` and `fuel_entry`
+  per gated read for an authenticated owner. Neither table has an `ownerId` index, so it scans both;
+  the cost is unmeasured and no performance claim is made for it. `E2-06` stays a gated story on
+  pull request #55; the agent does not merge it.
+
+### 2026-09-06 — Correction: the E2-06 adoption test count
+
+- **Type:** correction
+- **Story / Decision:** `E2-06` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the entry titled "E2-06 first owner review applied: D-124 revised, D-125
+  extended" states that "twenty-two adoption tests now run on both required shared targets". The
+  correct figure at that moment was twenty-three: seven in `:core:database` `LocalOwnerAdoptionTest`,
+  eleven in `:shared` `LocalOwnerAdoptionTest` and five in `:shared` `LocalOwnerAdoptionFailureTest`.
+  The handoff said twenty-three and the log said twenty-two; the handoff was right.
+- **Why:** the log entry was written before the fifth failure-path test was added and was not
+  re-counted afterwards. This log is append-only, so the original entry is left as it stands and
+  this entry carries the correction.
+- **Documents touched:** this log, and `docs/handoff-E2-06.md`, which now states the current figure
+  of twenty-eight and cites the JUnit XML it was counted from.
+- **Verification:** counted from the `iosSimulatorArm64Test` JUnit XML of all four adoption suites.
+- **Follow-ups / risks:** none. A test count in a completion claim is now taken from the XML rather
+  than from memory.
+
+### 2026-09-06 — E2-06 first owner review applied: D-124 revised, D-125 extended
+
+- **Type:** correction
+- **Story / Decision:** `E2-06` / `D-124`, `D-125`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** three things, on pull request #55. First, a defect CI found and the previous
+  entry's claim missed: both `toAdoptionOutboxPayload` mappers were public in modules
+  `:composition:ios` exports, so they entered the committed Objective-C golden header;
+  `objc-header-golden-check` failed on the first push. Both are now `@HiddenFromObjC` and the
+  regenerated header matches the golden byte for byte. Second, `D-124` was revised in place: the
+  automatic anonymous retry now admits either the explicit "continue without an account" choice,
+  remembered for the life of the process, or rows still owned by the sentinel, and it is triggered
+  by returning connectivity **and** by a write committing under the sentinel. Third, `D-125` was
+  extended: a failed adoption is `PersistenceError.TransactionFailed` on read and write paths rather
+  than a silent indefinite wait, the two automatic triggers cannot cancel each other, and the
+  deferred automatic retry is now an acceptance criterion of `E3-03`.
+- **Why:** the owner rejected the first form of `D-124` on two grounds, both correct. Rows are not
+  the owner's decision — someone who chooses the local start and writes nothing is invisible to a
+  rows-only gate. And the gate stranded a device: one that is online when it starts locally sees its
+  only connectivity emission *before* any row exists, so nothing would ever reopen the question
+  while the network stayed up. The claim in the previous entry that the first write self-corrected
+  that case was wrong, because nothing called the retry again. On `D-125`, an adoption that keeps
+  failing was left as an indefinite unknown list with no typed error, no way to distinguish it from
+  cancellation, and one observer able to cancel the other.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/CONTRACTS.md §11.2` and `§11.4`, `docs/adr/0125`,
+  `docs/adr/0126`, `docs/BACKLOG.md` (`E3-03` acceptance criteria), `docs/handoff-E2-06.md` and this
+  log. `D-124` and `D-125` were revised in place rather than superseded, because neither has been
+  merged; `AGENTS.md` requires a superseding decision only for one that has.
+- **Verification:** eight new failing tests first, all on compiled and executing code, with bounded
+  timeouts so a missing behaviour fails in seconds instead of hanging the suite. Twenty-two adoption
+  tests now run on both the JVM and `iosSimulatorArm64`. The exact `AGENTS.md` command passed 636
+  actionable tasks, the regenerated Objective-C header matches the committed golden, forced provider
+  decoupling and the `D-84` API 36 instrumented suite passed.
+- **Follow-ups / risks:** the automatic retry of a repeatedly failing adoption and its aggregate
+  status belong to `E3-03` and are written into that story's acceptance criteria. `E2-06` remains a
+  gated story on pull request #55; the agent does not merge it.
+
+### 2026-09-06 — E2-06 local owner adoption implemented
+
+- **Type:** story
+- **Story / Decision:** `E2-06` / `D-123`, `D-124`, `D-125`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** local owner adoption is implemented. `DatabaseMutations.adoptLocalOwner` runs
+  the whole `CONTRACTS.md §11.4` operation in one transaction: it rewrites every row still owned by
+  the `LOCAL_OWNER` sentinel, bumps `localRevision`, resets non-`SYNCED` rows to `PENDING` and
+  enqueues one outbox snapshot per reset row in the four-group push dependency order of `§8`, then
+  by `localMutationSeq ASC, id ASC`. `LocalOwnerAdoption` in `:shared` makes it automatic: returning
+  connectivity acquires the anonymous UID a device could not get offline, and an owner change
+  adopts. `AdoptionGatedVehicleRepository` holds Vehicle reads until adoption has run for the
+  current owner.
+- **Why:** the third decision is the non-obvious one. Without it, authentication publishes the new
+  UID, the vehicle list reopens per `D-120`, and the observation for that UID succeeds with an
+  *empty* list while the rows still belong to the sentinel. Under `D-116` that is a confirmed empty
+  list, so the host opens the `D-121` mandatory first-run creation — with no back affordance — over
+  an owner's existing vehicles that are one transaction away from arriving. Adoption cannot simply
+  run first: the auth state comes from the provider and the rewrite is a suspending transaction, so
+  no ordering between them can be guaranteed by observing both. Holding the read was chosen over
+  widening the exported UI contract with a second flag, which `D-116` exists to avoid.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/CONTRACTS.md §11.2` and `§11.4`, `docs/adr/README.md`,
+  `docs/adr/0124`, `docs/adr/0125`, `docs/adr/0126`, `docs/BACKLOG.md`, `docs/handoff-E2-06.md` and
+  this log.
+- **Verification:** thirteen new tests, written failing first, running on both the JVM and
+  `iosSimulatorArm64`. The exact `AGENTS.md` command passed 636 actionable tasks; forced provider
+  decoupling passed 234; `contractCheck` reports no `PENDING` over 126 decisions and 126 ADRs. The
+  Swift-facing surface is unchanged and the committed Objective-C golden header is untouched.
+- **Follow-ups / risks:** a repeatedly failing adoption leaves the list unknown rather than empty,
+  with no user-facing recovery yet; that belongs to `E3-03`. The `(max pre-existing seq) + 1`
+  criterion relies on `AUTOINCREMENT` and on the outbox being empty at adoption time, which the
+  contract guarantees today but `E2-04` should re-check. `E2-06` is a gated story and the agent does
+  not merge it.
+
+### 2026-09-06 — E2-03 merged and E2-06 opened
+
+- **Type:** story
+- **Story / Decision:** `E2-03`, `E2-06` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** pull request #54 merged into `main` as `fe9ed55`, completing `E2-03`, the F-1
+  onboarding flow with native Android and iOS provider acquisition, after three owner review rounds
+  and with all ten required checks green. The repository status documents were realigned with that
+  fact, and `E2-06`, Local Owner Adoption, was opened on `story/E2-06-local-owner-adoption`.
+- **Why:** `AGENTS.md` §`Repository State` states that the story which merges a delivered story
+  updates that section. Six documents still described `E2-03` as awaiting review, which would have
+  told the next agent that Phase 2 had an unmerged story in flight.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/BACKLOG.md`, `docs/handoff-E2-03.md` (closure update), `docs/handoff-E2-06.md` (new) and
+  this log.
+- **Verification:** `./gradlew contractCheck architectureCheck`. No normative rule, decision or
+  contract changed; the update is a status realignment.
+- **Follow-ups / risks:** the `E2-03` manual provider acceptance on configured development devices
+  stays owner-owned. `E1-14` and `E1-15` remain open Phase 1 defects and do not block `E2-06`.
+  `E2-06` is a gated story: the agent does not merge it.
 
 ### 2026-09-06 — E1-14 and E1-15 filed for the two deferred defects
 

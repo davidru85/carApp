@@ -109,6 +109,7 @@ internal class VehicleAppViewModel(
         firebaseAppProviders(
             databaseFilePath = application.getDatabasePath(DATABASE_FILE_NAME).absolutePath,
             localeProvider = AndroidLocaleProvider(),
+            connectivityObserver = AndroidConnectivityObserver.fromSystemService(application),
         )
     private val isDebugBuild = application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     private val graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)

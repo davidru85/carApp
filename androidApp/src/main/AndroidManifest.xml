@@ -6,6 +6,8 @@
       docs/SPECIFICATION.md out-of-scope: platform settings sync / backup through
       Google Play services / Android backup / iCloud is explicitly excluded).
     -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
         android:name=".CarAppApplication"
         android:allowBackup="false"

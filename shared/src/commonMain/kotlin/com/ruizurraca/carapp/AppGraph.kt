@@ -14,6 +14,7 @@ import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.feature.fuel.data.SqlDelightFuelEntryRepository
+import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryFormStateHolder
@@ -68,13 +69,18 @@ internal class DefaultAppGraph(
     private var closed = false
     private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
-    private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database)
-    private val fuelRepository =
-        SqlDelightFuelEntryRepository(
-            databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-            ownerContext = dependencies.ownerContext,
-            clock = dependencies.clock,
-            uuidGenerator = dependencies.uuidGenerator,
+    private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
+    private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
+    private val fuelRepository: FuelEntryRepository =
+        AdoptionNotifyingFuelEntryRepository(
+            delegate =
+                SqlDelightFuelEntryRepository(
+                    databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
+                    ownerContext = dependencies.ownerContext,
+                    clock = dependencies.clock,
+                    uuidGenerator = dependencies.uuidGenerator,
+                ),
+            adoption = localOwnerAdoption,
         )
     private val settingsRepository =
         SqlDelightSettingsRepository(
@@ -84,8 +90,10 @@ internal class DefaultAppGraph(
         )
 
     init {
-        // Keep this eager launch after every property touched by bootstrapSettings().
+        // Keep these eager launches after every property they touch. Adoption is automatic by
+        // contract (§11.2, §11.4): nothing in the UI starts it.
         graphScope.launch { bootstrapSettings() }
+        localOwnerAdoption.launchIn(graphScope)
     }
 
     override fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder {
@@ -151,7 +159,11 @@ internal class DefaultAppGraph(
 
     override fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder {
         checkOpen()
-        return SessionStateHolder(scope = scope, authClient = dependencies.authClient)
+        return SessionStateHolder(
+            scope = scope,
+            authClient = dependencies.authClient,
+            onLocalStartAccepted = localOwnerAdoption::onLocalStartAccepted,
+        )
     }
 
     override fun syncController(): SyncController {

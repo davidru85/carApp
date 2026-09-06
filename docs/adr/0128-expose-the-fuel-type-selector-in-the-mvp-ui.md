@@ -5,9 +5,10 @@
 Accepted
 
 Selected by the owner on 2026-09-06, after `E1-16` was filed and the conflict with `D-4` was
-escalated. Numbering note: `D-123` to `D-126` and `ADR-0124` to `ADR-0127` are reserved by pull
-request #55 (`E2-06`), which is in owner review and not merged. This record deliberately starts at
-`D-127` so both pull requests can merge in either order without renumbering.
+escalated. Numbering note: this record starts at `D-127` because `D-123` to `D-126` and `ADR-0124`
+to `ADR-0127` were reserved by pull request #55 (`E2-06`), which was in owner review when this
+decision was taken. That pull request has since merged, so the numbering is contiguous and the
+reservation is history rather than a gap.
 
 ## Context
 
