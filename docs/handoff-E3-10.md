@@ -35,18 +35,16 @@
 - Date: 2026-09-06.
 - Branch and base: `story/E3-10-account-deletion-service`, based on synchronized `main` at
   `a8bbfcf`.
-- Current phase and latest commit: RED phase complete; RED commit pending.
+- Current phase and latest commit: GREEN phase complete; RED commit `1e64ab8`; GREEN commit pending.
 - Push and pull-request status: not pushed; no pull request.
-- Completed since the previous checkpoint: completed story intake and the Ready check; added
-  focused failing server-side specifications for all E3-10 behavior units.
-- Verification evidence and known failures: `npm test` failed as intended. The new account-deletion
-  and registry suites reported `ERR_MODULE_NOT_FOUND` for the not-yet-implemented
-  `lib/callable/deleteAccount.js` and `lib/deletion/dataLocationRegistry.js`; all ten pre-existing
-  Cloud Functions tests remained green.
+- Completed since the previous checkpoint: committed RED; added the explicit data-location
+  registry, sequential reusable deletion service, Firebase Admin gateways, authenticated 2nd gen
+  callable handler and public function export.
+- Verification evidence and known failures: `npm test` passes all 21 Cloud Functions tests,
+  including the 11 new E3-10 tests. No known focused-test failure.
 - Open decisions or blockers: none. The owner explicitly requested one push after the REFACTOR
   commit instead of one push per TDD phase.
-- Exact next step: commit the RED phase, then implement the minimum server operation required to
-  make the focused specifications pass.
+- Exact next step: commit GREEN, then refactor and run the complete repository verification.
 
 ## Scope Completed
 
@@ -77,6 +75,7 @@
 
 - RED phase: `npm test` — failed as intended because the account-deletion callable and deletion
   registry/service modules do not exist; all ten pre-existing tests passed.
+- GREEN phase: `npm test` — passed all 21 tests.
 
 ## Contract Impact
 
