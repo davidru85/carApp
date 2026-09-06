@@ -105,7 +105,11 @@ after three owner review rounds, with all ten required checks green.
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
   owner-owned.
 - **Next:** `E2-06`, Local Owner Adoption.
-- **Remaining Phase 1:** `E1-14`, `E1-15` and `E1-16`. None of these blocks Phase 2.
+- **Remaining Phase 1:** none. The phase is closed.
+- **Follow-ups outside the phase milestones:** `E1-14`, `E1-15` and `E1-16`, in that order. They were
+  created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than inside a
+  reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127` superseded
+  the `D-4` clause that kept the fuel type selector out of the MVP UI.
 - **Remaining Phase 2:** `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.

@@ -4,6 +4,12 @@
 
 Accepted
 
+> **Superseded in part on 2026-09-06 by [ADR-0128](0128-expose-the-fuel-type-selector-in-the-mvp-ui.md)
+> (`D-127`).** Only the "Do not expose a selector in MVP UI" clause is replaced. Everything else in
+> this record stands and is implemented: `fuelType` belongs to `Vehicle`, the default is `GASOLINE`,
+> and `ELECTRIC` and `HYBRID` stay out of the MVP enum, deferred to the `E5-01` energy model. The
+> status stays `Accepted` because the storage decision this ADR exists for was never in question.
+
 ## Context
 
 Fuel type is not required in the MVP UI, but it is likely to matter for later reporting and additional expense types. Adding synchronized schema fields after real users exist is more expensive than storing a default field from the start.
@@ -23,6 +29,8 @@ The MVP records only combustion or fuel-like vehicle labels. Electric and hybrid
 
 Store `fuelType` on `Vehicle` from day one with default `GASOLINE`, but limit the MVP enum to `GASOLINE`, `DIESEL`, `LPG`, `CNG` and `OTHER`. Do not expose a selector in MVP UI. `ELECTRIC` and `HYBRID` are deferred to a future energy-model scope change.
 
+The selector sentence above is the one `D-127` supersedes; it is left in place so this record still reads as the decision that was actually taken on 2025-08-16.
+
 ## Consequences
 
 ### Positive
@@ -32,7 +40,7 @@ Store `fuelType` on `Vehicle` from day one with default `GASOLINE`, but limit th
 
 ### Negative
 
-- Domain model contains a field that the MVP UI does not edit.
+- Domain model contains a field that the MVP UI does not edit. `D-127` later closed this, which is why the consequence is worth keeping visible rather than deleting.
 - Future electric/hybrid support still needs an explicit enum/schema expansion and migration story.
 
 ### Constraints Introduced

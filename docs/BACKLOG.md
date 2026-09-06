@@ -575,94 +575,6 @@ Acceptance criteria:
 Human review required because the solution changes canonical verification and may touch gated
 decision documentation.
 
-### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
-
-Tracked as a follow-up found while verifying `E2-03`, recorded under `Risks or Follow-ups` in
-`docs/handoff-E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
-same class and not a production defect: no production path depends on the timing these tests assume.
-
-Make `:shared:iosSimulatorArm64Test` pass or fail on an assertion, never on a `runTest` timeout, so a
-red `shared-tests` job is always a real signal.
-
-Evidence to start from:
-
-- `shared-tests` failed on `88acfc3` with
-  `FuelEntryStateHolderTest.litersAndPriceDeriveTotalCostWhileTyping[iosSimulatorArm64]` and
-  `kotlinx.coroutines.test.UncompletedCoroutinesError`. The same run log records
-  `The number of threads 4 is more than the number of processors 3`.
-- The identical shared test and product code passed the same job on the preceding commit `e7a4f4b`,
-  which differs only by Markdown, so it is a flake and not a regression.
-- Reproduced locally at roughly one failure in seventeen `--rerun-tasks` runs, and that failure was a
-  *different* test of the same class,
-  `inconsistentPartialEntryRequiresConfirmationThenPublishesBothIndicators`, so the fragility belongs
-  to the class rather than to one test.
-- Each affected test awaits a real emission from a database-backed graph through `state.first { ... }`
-  inside `runTest`, with no bounded expectation.
-
-Acceptance criteria:
-
-- Every `:shared` test that awaits a state-holder emission from a graph-backed flow does so with a
-  bounded, explicit expectation rather than an unbounded `first { ... }` under the default `runTest`
-  timeout, or the suite is made deterministic by another means the handoff justifies.
-- The chosen mechanism is a reusable helper, so a future test cannot reintroduce the unbounded wait
-  by accident, in the same spirit as the `E1-12` collector helper.
-- Determinism is demonstrated, not asserted: the handoff records the repeated-run count on an
-  Apple-silicon host and states the observed failure count, and the run count is large enough to
-  exceed the ~1-in-17 rate recorded above.
-- A deliberately starved run, or an equivalent forced-timeout fixture, proves the new expectation
-  actually fires rather than passing vacuously.
-- Every `:shared` test class that mounts an `AppGraph` is audited for the same unbounded-wait shape;
-  the handoff lists every audited file.
-- The fix is confined to test code. Production timing, `StateHolders`, `AppGraph` and the database
-  layer are not changed by this story; if the investigation finds a production cause instead, it
-  stops and escalates rather than widening scope.
-- No schema, migration, contract, architecture-rule or decision change is introduced.
-
-### E1-15 - iOS Later-Vehicle Creation Routes to the Created Vehicle - S
-
-Tracked as a follow-up of `E1-09`. The divergence predates `E2-03`, and the owner declined to absorb
-it into that story across two review rounds; it is recorded in `docs/handoff-E2-03.md` under
-`Out of Scope / Not Done`.
-
-On Android, saving any vehicle routes to that vehicle's detail. On iOS only the **first** vehicle
-does: creating a later vehicle from the list dismisses the sheet and stays on the list. Align iOS
-with `docs/SPECIFICATION.md` F-2 and with Android.
-
-Acceptance criteria:
-
-- Saving a vehicle created from the iOS vehicle list routes to that vehicle's detail, identified by
-  the created identifier delivered with the completing emission, exactly as first-run creation
-  already does.
-- The routed detail titles itself from persisted state, so the canonical name produced by
-  `ValidateCreateVehicle` is the one shown, and no vehicle-name normalization is added to SwiftUI or
-  to the Swift view model (`D-120` third-round constraint).
-- First-run creation keeps the `D-121` mandatory behaviour: it stays non-dismissible, and later
-  creation stays dismissible by the interactive gesture.
-- An iOS UI test creates a second vehicle from a non-empty list and asserts the detail of that
-  vehicle is presented, with its canonical name. The test is proved non-vacuous.
-- The Android behaviour and its instrumented coverage are unchanged; this story removes a divergence
-  rather than introducing a second rule.
-- No shared state holder, contract, Swift-facing ABI or decision change is required. If one turns out
-  to be required, the story stops and escalates instead of taking it.
-
-### E1-16 - Vehicle UI Fuel Type Selector - S
-
-Add a fuel type selector to the Vehicle creation and editing forms on Android (Compose) and iOS (SwiftUI), allowing the user to select from the supported MVP `FuelType` values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`), with `GASOLINE` as the default.
-
-Context:
-`FuelType` is already modeled in `:core:model`, persisted in `:core:database`, validated in Firestore rules, and supported by `VehicleFormStateHolder.setFuelType(...)`. Under decision `D-4`, the selector was originally omitted from the MVP UI. This story exposes the selector in the native UI.
-
-Acceptance criteria:
-
-- The Vehicle creation and edit forms on Android expose a selector (dropdown/menu/picker) for `FuelType`, defaulting to `GASOLINE`.
-- The Vehicle creation and edit forms on iOS expose a native `Picker` for `FuelType`, defaulting to `GASOLINE`.
-- Localized display strings exist in English and Spanish for all five MVP enum values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`).
-- Changing the selection dispatches `setFuelType` to `VehicleFormStateHolder`.
-- Saving a new vehicle persists the selected `FuelType`.
-- Opening an existing vehicle in edit mode loads and displays its persisted `FuelType`, and saving persists any updated selection.
-- Instrumented/UI tests on Android and iOS verify that selecting a non-default fuel type (e.g. `DIESEL`) persists correctly on vehicle creation and edit.
-- No database schema, migration, or sync rule changes are introduced (existing schema and rules already support all 5 values).
-
 ## Phase 2 - Authentication
 
 ### E2-01 - `:core:auth` - S
@@ -1121,6 +1033,118 @@ Scope & Prerequisites:
 - Expand consumption calculation use cases to handle electric charging and hybrid consumption.
 - Update Vehicle and Fuel/Energy Entry creation/edit UI on Android and iOS with dynamic unit and field presentation based on powertrain.
 
+## Follow-Ups Outside the Phase Milestones
+
+Goal: hold work that was created **after** its phase closed, so that a closed milestone stays
+closed.
+
+A phase in this backlog is a delivery milestone, and a milestone that has been reached does not
+reopen because a defect was found afterwards or because scope was later added to an area it covered.
+These stories keep their original `E1-*` identifiers: those identifiers are already cited in
+`docs/PROJECT_LOG.md`, which is append-only, and in handoffs and commit messages, so renumbering them
+would leave those references dangling for no gain. The identifier records where the work belongs in
+the product; this section records when it is scheduled.
+
+Nothing here blocks Phase 2. Order within the section is the order below.
+
+`E1-14` SHOULD run before the next story that relies on a red `shared-tests` job meaning a real
+regression, because until it is fixed a red job on that suite is ambiguous.
+
+`E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. They SHOULD
+run adjacently, in that order, so those two screens are opened once rather than twice.
+
+### Defects found after Phase 1 closed
+
+### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
+
+Tracked as a follow-up found while verifying `E2-03`, recorded under `Risks or Follow-ups` in
+`docs/handoff-E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
+same class and not a production defect: no production path depends on the timing these tests assume.
+
+Make `:shared:iosSimulatorArm64Test` pass or fail on an assertion, never on a `runTest` timeout, so a
+red `shared-tests` job is always a real signal.
+
+Evidence to start from:
+
+- `shared-tests` failed on `88acfc3` with
+  `FuelEntryStateHolderTest.litersAndPriceDeriveTotalCostWhileTyping[iosSimulatorArm64]` and
+  `kotlinx.coroutines.test.UncompletedCoroutinesError`. The same run log records
+  `The number of threads 4 is more than the number of processors 3`.
+- The identical shared test and product code passed the same job on the preceding commit `e7a4f4b`,
+  which differs only by Markdown, so it is a flake and not a regression.
+- Reproduced locally at roughly one failure in seventeen `--rerun-tasks` runs, and that failure was a
+  *different* test of the same class,
+  `inconsistentPartialEntryRequiresConfirmationThenPublishesBothIndicators`, so the fragility belongs
+  to the class rather than to one test.
+- Each affected test awaits a real emission from a database-backed graph through `state.first { ... }`
+  inside `runTest`, with no bounded expectation.
+
+Acceptance criteria:
+
+- Every `:shared` test that awaits a state-holder emission from a graph-backed flow does so with a
+  bounded, explicit expectation rather than an unbounded `first { ... }` under the default `runTest`
+  timeout, or the suite is made deterministic by another means the handoff justifies.
+- The chosen mechanism is a reusable helper, so a future test cannot reintroduce the unbounded wait
+  by accident, in the same spirit as the `E1-12` collector helper.
+- Determinism is demonstrated, not asserted: the handoff records the repeated-run count on an
+  Apple-silicon host and states the observed failure count, and the run count is large enough to
+  exceed the ~1-in-17 rate recorded above.
+- A deliberately starved run, or an equivalent forced-timeout fixture, proves the new expectation
+  actually fires rather than passing vacuously.
+- Every `:shared` test class that mounts an `AppGraph` is audited for the same unbounded-wait shape;
+  the handoff lists every audited file.
+- The fix is confined to test code. Production timing, `StateHolders`, `AppGraph` and the database
+  layer are not changed by this story; if the investigation finds a production cause instead, it
+  stops and escalates rather than widening scope.
+- No schema, migration, contract, architecture-rule or decision change is introduced.
+
+### E1-15 - iOS Later-Vehicle Creation Routes to the Created Vehicle - S
+
+Tracked as a follow-up of `E1-09`. The divergence predates `E2-03`, and the owner declined to absorb
+it into that story across two review rounds; it is recorded in `docs/handoff-E2-03.md` under
+`Out of Scope / Not Done`.
+
+On Android, saving any vehicle routes to that vehicle's detail. On iOS only the **first** vehicle
+does: creating a later vehicle from the list dismisses the sheet and stays on the list. Align iOS
+with `docs/SPECIFICATION.md` F-2 and with Android.
+
+Acceptance criteria:
+
+- Saving a vehicle created from the iOS vehicle list routes to that vehicle's detail, identified by
+  the created identifier delivered with the completing emission, exactly as first-run creation
+  already does.
+- The routed detail titles itself from persisted state, so the canonical name produced by
+  `ValidateCreateVehicle` is the one shown, and no vehicle-name normalization is added to SwiftUI or
+  to the Swift view model (`D-120` third-round constraint).
+- First-run creation keeps the `D-121` mandatory behaviour: it stays non-dismissible, and later
+  creation stays dismissible by the interactive gesture.
+- An iOS UI test creates a second vehicle from a non-empty list and asserts the detail of that
+  vehicle is presented, with its canonical name. The test is proved non-vacuous.
+- The Android behaviour and its instrumented coverage are unchanged; this story removes a divergence
+  rather than introducing a second rule.
+- No shared state holder, contract, Swift-facing ABI or decision change is required. If one turns out
+  to be required, the story stops and escalates instead of taking it.
+
+### Deferred scope, now scheduled
+
+### E1-16 - Vehicle UI Fuel Type Selector - S
+
+Add a fuel type selector to the Vehicle creation and editing forms on Android (Compose) and iOS (SwiftUI), allowing the user to select from the supported MVP `FuelType` values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`), with `GASOLINE` as the default.
+
+Context:
+`FuelType` is already modeled in `:core:model`, persisted in `:core:database`, validated in Firestore rules, and supported by `VehicleFormStateHolder.setFuelType(...)`. `D-4` originally kept the selector out of the MVP UI; `D-127` supersedes that clause and authorises this story. Everything else in `D-4` stands, so `ELECTRIC` and `HYBRID` remain out of the enum and belong to `E5-01`.
+
+Acceptance criteria:
+
+- The Vehicle creation and edit forms on Android expose a selector (dropdown/menu/picker) for `FuelType`, defaulting to `GASOLINE`.
+- The Vehicle creation and edit forms on iOS expose a native `Picker` for `FuelType`, defaulting to `GASOLINE`.
+- Localized display strings exist in English and Spanish for all five MVP enum values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`).
+- Changing the selection dispatches `setFuelType` to `VehicleFormStateHolder`.
+- Saving a new vehicle persists the selected `FuelType`.
+- Opening an existing vehicle in edit mode loads and displays its persisted `FuelType`, and saving persists any updated selection.
+- Instrumented/UI tests on Android and iOS verify that selecting a non-default fuel type (e.g. `DIESEL`) persists correctly on vehicle creation and edit.
+- No database schema, migration, or sync rule changes are introduced (existing schema and rules already support all 5 values).
+
 ## Execution Order
 
 ```text
@@ -1181,14 +1205,16 @@ links the Firebase integrations without an Xcode host. E1-13 must exercise the p
 Foundation behavior from a standard-command route while preserving that dependency rule and the
 D-108 host boundary. It has no dependency on E1-11 or E1-12 and may run in parallel with them.
 
-`E1-14`, `E1-15` and `E1-16` are follow-ups found, confirmed or requested during Phase 1/Phase 2 and are
-independent of each other. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntryStateHolderTest`,
-the same class `E1-12` already hardened for a different Native-specific reason, and it SHOULD run before
-the next story that relies on a red `shared-tests` job meaning a real regression. `E1-15` removes the
+`E1-14`, `E1-15` and `E1-16` were created after Phase 1 closed and live in
+`## Follow-Ups Outside the Phase Milestones`, not inside the Phase 1 section, so that a reached
+milestone is not reopened by work discovered later. They are independent of each other and none of
+them blocks `E2-06`. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntryStateHolderTest`, the
+same class `E1-12` already hardened for a different Native-specific reason. `E1-15` removes the
 pre-existing iOS divergence where creating a *later* vehicle stays on the list instead of opening its
-detail; it depends on the `E2-03` post-save routing delivered for first-run creation, which merged
-on 2026-09-06, so it is unblocked. `E1-16` exposes the `FuelType` selector in the Vehicle creation and
-edit UI across Android and iOS for the supported MVP values. None of these blocks `E2-06`.
+detail; it depends on the `E2-03` post-save routing delivered for first-run creation, which merged on
+2026-09-06, so it is unblocked. `E1-16` exposes the `FuelType` selector across Android and iOS and is
+Ready only because `D-127` superseded the `D-4` clause that forbade it. `E1-15` and `E1-16` SHOULD run
+adjacently, in that order, because both change the same two Vehicle screens.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -1223,9 +1249,9 @@ proof after E3-04.
 | E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
-| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake | 1 | S | — |
-| E1-15 iOS later-vehicle creation routes to the created vehicle | 1 | S | — |
-| E1-16 Vehicle UI fuel type selector | 1 | S | — |
+| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake | follow-up | S | — |
+| E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
+| E1-16 Vehicle UI fuel type selector | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 (completed) | 2 | M | — |
