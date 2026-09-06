@@ -42,31 +42,30 @@
 
 ## In-Progress Checkpoint
 
-### Third review remediation checkpoint (2026-09-06, intake)
+### Third review remediation checkpoint (2026-09-06, complete)
 
 - Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
-- Current phase and latest commit: intake for a third owner review round. Latest commit is `090919d`,
-  on which all ten required checks passed.
-- Push and pull-request status: pull request #54 is open. The agent does not merge it.
-- Owner-confirmed findings entering this round:
-  1. Vehicle-list routing is not owner-consistent across an authentication transition. The holder
-     publishes its unresolved marker only after its collector is scheduled, so between the owner
-     change and that emission `state.value` still holds the previous owner's successful result while
-     `SessionStateHolder` may already expose the new session. A previous owner's empty list can open
-     mandatory first-vehicle creation for a returning owner who has vehicles, and the one-shot
-     presentation marker then prevents correction.
-  2. An initial vehicle-list read failure is invisible and unrecoverable. The production repository
-     flow emits the error and completes, and the hosts cover it with an indefinite spinner; Android
-     additionally disables the refresh action that would be the retry path.
-  3. `VehicleSaveOutcome.vehicleName` carries the raw Swift input, but `canonicalVehicleName` trims
-     and collapses whitespace before persistence, so the routed iOS detail title can disagree with
-     the stored name.
-- Verification evidence and known failures: none for this round yet.
-- Open decisions or blockers: none identified so far. The owner-consistency mechanism of finding 1
-  is being designed to publish synchronously with the authentication mutation and to use only the
-  fields `VehicleListUiState` already declares. If it turns out to require a public contract, Swift
-  ABI or accepted-decision change, the agent stops and requests the owner decision instead.
-- Exact next step: write the failing tests for the three findings, then implement.
+- Current phase and latest commit: REFACTOR, in the commit that contains this text. RED is
+  `fdd2920`, GREEN is `487e4b5`, and the intake checkpoint was `03b05e6`.
+- Push and pull-request status: every phase is pushed. Pull request #54 is open and its description
+  matches this branch state. The agent does not merge it.
+- Completed since the previous checkpoint, each specified by a failing test first:
+  1. `VehicleListStateHolder` publishes through a `MutableStateFlow` and observes owner resolution
+     undispatched and unconfined, so an owner transition is visible inside the same call stack that
+     changes the authentication state. It clears that owner's list, selection and message together.
+     Both hosts reset owner-scoped navigation on that transition, so the one-shot first-run marker
+     can no longer freeze a decision taken on another owner's data.
+  2. A refresh over an unreadable list creates a new local observation, and both hosts report the
+     localized error with a retry action instead of an indefinite indicator. `D-120`, ADR-0121 and
+     `CONTRACTS.md §20.10` carry the failure semantics and the host obligations.
+  3. iOS routes only the created identifier; `VehicleDetailView` titles itself from persisted state,
+     so the canonical name that `ValidateCreateVehicle` produced is the one shown. No vehicle-name
+     normalization exists in SwiftUI or in the Swift view model.
+- Verification evidence and known failures: recorded under `Verification Run`, section
+  `Third review remediation`. No known failure remains on this branch.
+- Open decisions or blockers: the `NativeSignInFailure` case for "no account available on the
+  device", requested in the previous round, is still an owner decision and is not taken here.
+- Exact next step: owner review of pull request #54, plus the manual provider acceptance below.
 
 ### Second review remediation checkpoint (2026-09-05, complete)
 
@@ -303,6 +302,16 @@
 
 ## Decisions Made
 
+- Third review round: `D-120` keeps its identity and its ADR records a dated update, because the
+  owner directed that the failure semantics and the recovery mechanism be updated in place rather
+  than recorded as a new decision. No new decision identifier was created in this round.
+- The vehicle list holder no longer uses `stateIn` with `WhileSubscribed`. It publishes through a
+  `MutableStateFlow`, so the local observation runs from construction until `close()` instead of only
+  while the state is subscribed. This is the cost of making the owner transition synchronous.
+- TDD order exemption used again for native UI code, per `SPECIFICATION.md §11`: the Android retry
+  surface and the iOS overlay are host UI. Their decision functions were still specified first.
+
+
 - Second review round: the owner accepted mandatory first-run creation on both hosts (`D-121`), which
   supersedes the `D-115` consequence that the Android system back gesture reaches the empty list, and
   owner-scoped, failure-aware vehicle list resolution (`D-120`). The `D-119` mechanism was
@@ -347,6 +356,32 @@ product or architecture decision. `E1_07_API_36` and the iPhone 17 Pro simulator
 after the final device suite; the connected owner phone was neither targeted nor altered.
 
 ## Verification Run
+
+### Third review remediation (2026-09-06)
+
+- RED: `./gradlew :feature:vehicle:testAndroidHostTest` failed the three owner-transition tests and
+  the retry test; `./gradlew :androidApp:testDebugUnitTest` failed to compile on the missing gate and
+  navigation-reset decisions; the iOS test build failed on the missing gate helpers.
+- The owner-transition tests were first written with an unconfined collector and passed against the
+  defective implementation, which proved they were not observing the interval. They were rewritten on
+  queued dispatchers with a test-owned scope; `runTest`'s `backgroundScope` does not pump those
+  coroutines, which is why the first attempt never subscribed the observation.
+- Non-vacuity: with the owner collector dispatched instead of undispatched, all three transition
+  tests fail; with the shipped undispatched collector they pass.
+- The complete `AGENTS.md` non-instrumented command passed 636 actionable tasks.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` —
+  passed, 234 actionable tasks.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` — 14 of 14 passed on
+  the `D-84` API 36 emulator. The connected owner phone was excluded by pinning the serial.
+- iOS on an erased simulator: `carAppTests` executed 36 tests with 0 failures; `carAppUITests`
+  executed 7 with 1 environment-gated skip and 0 failures, including
+  `testSavingTheFirstVehicleOpensItsDetailWithTheCanonicalName`, which types `"  AAA   First-n  "`
+  and requires the routed title to be `"AAA First-n"`.
+- Objective-C golden header: relinked and diffed with the exact CI command; no difference. No
+  Swift-facing declaration changed.
+- `git diff --check` clean.
+- Simulator and emulator were shut down after verification.
+
 
 ### Second review remediation (2026-09-05)
 
@@ -531,6 +566,18 @@ after the final device suite; the connected owner phone was neither targeted nor
 - [x] Entry appended
 
 ## Risks or Follow-ups
+
+- Requested owner decision, still open: a dedicated `NativeSignInFailure` case for "no account
+  available on the device".
+- The vehicle list observation is now eager for the lifetime of the holder. If a future screen needs
+  subscription-scoped observation, that is a deliberate change to make, not an oversight.
+- The owner-transition reset uses "a known list became unknown without a message" as its signal. A
+  future state that is unknown without a message for some other reason would also reset owner-scoped
+  navigation.
+- The iOS first-run UI tests depend on the Debug-only `CARAPP_UI_TEST_FORCE_FIRST_VEHICLE` seam.
+- The pre-existing divergence where iOS stays on the vehicle list after creating a *later* vehicle is
+  still out of scope.
+
 
 - Requested owner decision: a dedicated `NativeSignInFailure` case for "no account available on the
   device". Until then that condition shows the generic unclassified message.

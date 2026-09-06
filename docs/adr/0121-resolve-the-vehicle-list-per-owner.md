@@ -6,6 +6,31 @@ Accepted
 
 Selected by the owner on 2026-09-05, in the second E2-03 review round of pull request #54.
 
+## Update, 2026-09-06
+
+Review found two gaps in the first mechanism.
+
+The `flatMapLatest` scoping published its unresolved marker only once the holder's collector was
+scheduled. Until then `state.value` still held the previous owner's successful result, while
+`SessionStateHolder`, which observes the same authentication state through its own collector, could
+already expose the new session. A host combining the two could therefore open mandatory first-vehicle
+creation for a returning owner who has vehicles, and the one-shot presentation marker then froze that
+decision. The holder now publishes through a `MutableStateFlow` and observes owner resolution
+undispatched and unconfined, so the list becomes unknown inside the same call stack that changes the
+authentication state. It also clears the selection and the message of the previous owner, so nothing
+owner-scoped crosses the boundary.
+
+The failure semantics were correct but unusable. The production repository emits a read failure and
+then completes, so the observation ends and the hosts covered an unrecoverable state with an
+indefinite indicator; on Android the refresh action that would have been the retry was disabled. A
+refresh over an unreadable list now creates a new local observation, and both hosts distinguish an
+unreadable list, which reports the localized error with a retry action, from one that is still
+arriving, which keeps the indicator. A known list that becomes unknown without an error is the owner
+transition, and it is the only case in which the hosts reset owner-scoped navigation.
+
+`docs/CONTRACTS.md §20.10` carries these semantics. No field, type or signature changed, so the
+Swift-facing ABI and the golden header are unchanged.
+
 ## Context
 
 `D-116` made `VehicleListUiState.isLoading` mean "the vehicle list is not known yet", and `D-115`
@@ -24,7 +49,7 @@ never actually confirmed empty:
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| Re-subscribe the observation per owner and publish "not known" until that owner emits successfully (Selected) | Each emission belongs to the owner that was current when it was subscribed, because `flatMapLatest` cancels the previous scope; deterministic to test; no contract or ABI change | Re-subscribes the local observation on every owner transition |
+| Re-subscribe the observation per owner and publish "not known" until that owner emits successfully (Selected) | Each emission belongs to the owner that was current when it was subscribed; deterministic to test; no contract or ABI change. The 2026-09-06 update made that publication synchronous with the authentication change, because a scheduled one still left a stale interval | Re-subscribes the local observation on every owner transition, and the holder observes the database from construction rather than only while subscribed |
 | Pair each emission with the owner read when it is mapped | No re-subscription | An emission produced before the transition can be paired with the owner resolved after it, which is the same staleness in a subtler form |
 | Add an owner field to `VehicleListUiState` | Explicit to every host | Changes `docs/CONTRACTS.md §20.10` and the Swift-facing ABI for state the hosts do not otherwise need |
 | Keep resolving on the first emission of any owner | No change | Leaves both defects in place |
@@ -32,45 +57,59 @@ never actually confirmed empty:
 ## Decision
 
 `VehicleListStateHolder` takes the `OwnerContext` that `AppGraphDependencies` already carries and
-scopes the observation to it: `ownerContext.observe().flatMapLatest { repository.observeVehicles(...) }`,
-emitting an unresolved marker when a scope starts.
+owns its published value directly through a `MutableStateFlow`.
 
-`isLoading` is `true` while the current owner's list is unresolved **and** while the latest result for
-that owner is a failure. A failure also publishes its error code through `UiMessage`, so an
-unreadable list stays distinguishable from a confirmed empty one.
+Owner resolution is collected undispatched and unconfined, so the list becomes unknown inside the
+same call stack that changes the authentication state. No other observer of that state can expose a
+new session while this holder still publishes the previous owner's list. The transition also clears
+that owner's selection and message and starts a fresh observation for the new owner.
+
+`isLoading` is `true` while the current owner's list is unresolved **and** while the latest result
+for that owner is a failure. A failure publishes its error code through `UiMessage`, so the two
+unknown states are distinguishable: unknown without a message is a list that is still arriving, and
+unknown with a message is a list that could not be read. `refresh()` over an unreadable list creates
+a new local observation, which is the owner's retry; over a known list it never reopens it, which is
+what `D-116` protects.
 
 The constructor is `internal` and the published field set is unchanged, so `docs/CONTRACTS.md §20.10`,
 the Swift-facing ABI and the committed Objective-C golden header are unchanged. The `§20.10`
-semantics sentence is extended to state the owner scope and the failure case.
-
-`D-116` still holds: an ordinary refresh over an already known list does not reopen it and therefore
-cannot unmount navigation.
+semantics carry the owner scope, the failure case and the host obligations.
 
 ## Consequences
 
 ### Positive
 
 - F-1 mandatory creation can only open after a successful result for the owner in scope.
-- A read failure no longer looks like an empty account.
+- A read failure no longer looks like an empty account, is reported, and can be retried.
 - Both hosts inherit the fix from shared presentation, with no host-side duplication.
+- The one-shot first-run marker can no longer freeze a decision taken on another owner's data,
+  because an owner transition resets owner-scoped navigation.
 
 ### Negative
 
 - An owner transition briefly covers the mounted UI while the new owner's list resolves.
-- A persistent read failure keeps that cover in place; the error message states why.
+- The holder observes the local database from construction until `close()`, rather than only while
+  its state is subscribed.
 
 ### Constraints Introduced
 
-- An owner transition MUST reopen the list.
-- A read failure MUST NOT be published as a confirmed empty list.
+- An owner transition MUST reopen the list before any other observer can expose the new session, and
+  MUST clear that owner's selection and message.
+- A read failure MUST NOT be published as a confirmed empty list, MUST publish its error and MUST be
+  retryable through a new observation.
+- Hosts MUST reset owner-scoped navigation only on an owner transition, never on a read failure.
 - The gate MUST stay a shared-state concern; hosts MUST NOT re-derive owner scoping.
 
 ## Verification
 
-- Shared tests drive an owner-scoped repository fake: an empty result for one owner does not resolve
-  the next owner's list; an initial read failure leaves the list unknown and publishes its code; a
-  later successful result resolves it.
-- The existing `D-116` refresh test still proves that a refresh over a known list does not reopen it.
+- Shared tests drive an owner-scoped repository fake on queued dispatchers and observe the interval
+  between the owner change and the collector: the list is unknown immediately, exposes none of the
+  previous owner's vehicles, and carries neither its selection nor its message. Proved non-vacuous:
+  with the owner collector dispatched instead of undispatched, all three fail.
+- A repository fake that emits a read failure and completes, exactly as the production repository
+  does, leaves the list unknown with its error; a refresh then creates a second observation that
+  resolves.
+- Host decision tests on both platforms pin the three-way gate and the reset rule.
 - The Objective-C golden header is byte-identical, and `contractCheck` passes.
 
 ## References

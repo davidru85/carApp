@@ -38,6 +38,40 @@
 
 ## Entries
 
+### 2026-09-06 — E2-03 third review round: owner-consistent routing and recoverable list failures
+
+- **Type:** correction
+- **Story / Decision:** `E2-03` / `D-120`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the owner-scoped list of `D-120` published its unresolved marker only once the
+  holder's collector was scheduled, so between an authentication change and that emission the state
+  still held the previous owner's result while `SessionStateHolder` could already expose the new
+  session. The holder now publishes through a `MutableStateFlow` and observes owner resolution
+  undispatched and unconfined, so the transition lands in the same call stack as the authentication
+  change and clears that owner's list, selection and message; both hosts reset owner-scoped
+  navigation on that transition, so the one-shot first-run marker can no longer freeze a decision
+  taken on another owner's data. A read failure was correct but unusable: the production observation
+  emits its error and completes, and the hosts covered it with an indefinite indicator while Android
+  disabled the very action that would have retried. A refresh over an unreadable list now creates a
+  new observation, and both hosts report the localized error with a retry. Finally, iOS routes only
+  the created identifier and the detail titles itself from persisted state, so the canonical name
+  produced by `ValidateCreateVehicle` is the one shown.
+- **Why:** the first two defects could show mandatory first-vehicle creation to a returning owner who
+  already has vehicles, and could leave an owner stuck in front of a spinner with no way out. The
+  third made the detail title disagree with the stored name whenever the owner typed extra spaces.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md`, `docs/adr/0121`,
+  `docs/handoff-E2-03.md` and this log.
+- **Verification:** the exact `AGENTS.md` command passed 636 actionable tasks; forced provider
+  decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14; iOS ran 36 unit tests
+  and 7 UI tests on an erased simulator with one environment-gated skip and no failures; the
+  Objective-C golden header is byte-identical; `contractCheck` reports 122 aligned decisions and
+  ADRs. The owner-transition tests are proved non-vacuous: with the owner collector dispatched
+  instead of undispatched, all three fail.
+- **Follow-ups / risks:** the list observation is now eager for the lifetime of the holder rather
+  than subscription-scoped. The owner-transition reset is signalled by "a known list became unknown
+  without a message". The `NativeSignInFailure` case for "no account available on the device" is
+  still an open owner decision.
+
 ### 2026-09-05 — E2-03 second review round: mandatory first run, owner-scoped list and honest guards
 
 - **Type:** correction

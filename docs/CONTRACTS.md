@@ -2520,11 +2520,20 @@ It is never display copy.
 
 `VehicleListUiState.isLoading` means the vehicle list of the currently resolved owner is not known
 yet. It is `true` from the initial state until that owner's first successful repository result, and
-an ordinary refresh MUST NOT set it (`D-116`). An owner transition returns it to `true` until the new
-owner publishes a successful result, and a repository read failure keeps it `true` while publishing
-its error code, so an unreadable list is never presented as a confirmed empty list (`D-120`). Hosts
-gate `SPECIFICATION.md` F-1 first-run routing on this value and, while it is `true`, MUST cover the
-mounted UI instead of replacing it, so navigation state is never destroyed by a refresh.
+an ordinary refresh MUST NOT set it (`D-116`). An owner transition returns it to `true` before any
+other observer of the authentication state can expose the new session, and it also clears that
+owner's `selectedVehicleId` and `message`, so nothing owner-scoped crosses a session boundary. A
+repository read failure keeps it `true` while publishing its error code, so an unreadable list is
+never presented as a confirmed empty list (`D-120`).
+
+The two unknown states are therefore distinguishable by `message`: `isLoading` with no message is a
+list that is still arriving, and `isLoading` with a message is a list that could not be read. Hosts
+gate `SPECIFICATION.md` F-1 first-run routing on a resolved list only. While a list is still
+arriving they MUST cover the mounted UI instead of replacing it, so navigation state is never
+destroyed by a refresh. While a list is unreadable they MUST report the localized error and offer a
+retry instead of an indefinite indicator; `refresh()` over an unreadable list creates a new local
+observation. Owner-scoped navigation MUST be reset only when a known list becomes unknown without a
+message, which is the owner transition.
 
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
 
