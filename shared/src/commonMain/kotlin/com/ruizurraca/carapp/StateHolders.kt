@@ -23,6 +23,9 @@ import kotlinx.coroutines.launch
 class SessionStateHolder internal constructor(
     private val scope: CoroutineScope? = null,
     private val authClient: AuthClient? = null,
+    // Not exported: the constructor is internal, so this stays out of the Swift-facing surface.
+    @Suppress("UnusedPrivateProperty")
+    private val onLocalStartAccepted: () -> Unit = {},
 ) {
     private var closed = false
     private var operationJob: Job? = null

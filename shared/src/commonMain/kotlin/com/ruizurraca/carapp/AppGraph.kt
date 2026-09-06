@@ -154,7 +154,11 @@ internal class DefaultAppGraph(
 
     override fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder {
         checkOpen()
-        return SessionStateHolder(scope = scope, authClient = dependencies.authClient)
+        return SessionStateHolder(
+            scope = scope,
+            authClient = dependencies.authClient,
+            onLocalStartAccepted = localOwnerAdoption::onLocalStartAccepted,
+        )
     }
 
     override fun syncController(): SyncController {

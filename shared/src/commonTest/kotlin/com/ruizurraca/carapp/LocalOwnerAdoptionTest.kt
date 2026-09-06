@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * The automatic side of local owner adoption (`docs/CONTRACTS.md §11.2` and `§11.4`): a device that
@@ -54,7 +55,7 @@ class LocalOwnerAdoptionTest {
         }
 
     @Test
-    fun connectivityReturningDoesNotCreateAnAccountWhenThereIsNothingToAdopt() =
+    fun connectivityReturningCreatesNoAccountWithoutAnExplicitLocalStartAndWithoutRows() =
         runTest {
             val authClient = AdoptingAuthClient(uid = ADOPTING_UID)
             val database = openDatabase()
@@ -62,7 +63,64 @@ class LocalOwnerAdoptionTest {
 
             adoption.acquireAnonymousUidIfWaiting()
 
-            assertEquals(0, authClient.anonymousSignInCalls, "an empty local database never provokes a sign-in")
+            assertEquals(
+                0,
+                authClient.anonymousSignInCalls,
+                "an owner who never chose to continue without an account is never given one",
+            )
+        }
+
+    @Test
+    fun anExplicitLocalStartRetriesAcquisitionOnceWhenConnectivityReturnsBeforeAnyRowExists() =
+        runTest {
+            val authClient = AdoptingAuthClient(uid = ADOPTING_UID)
+            // Empty on purpose: the owner chose the local start and has written nothing yet, which is
+            // exactly the case row presence alone cannot represent.
+            val database = openDatabase()
+            val adoption = adoption(database, authClient, FakeConnectivityObserver(), FakeOwnerContext())
+
+            adoption.onLocalStartAccepted()
+            adoption.acquireAnonymousUidIfWaiting()
+
+            assertEquals(1, authClient.anonymousSignInCalls, "the explicit choice is the signal, not the rows")
+        }
+
+    @Test
+    fun localOwnerRowsAreDurableEvidenceOfALocalSessionAfterARestartLosesTheSignal() =
+        runTest {
+            val authClient = AdoptingAuthClient(uid = ADOPTING_UID)
+            val database = openDatabase()
+            database.seedLocalOwnerVehicle("vehicle-1")
+            // A fresh instance is what a process restart leaves: no in-memory signal, only the rows.
+            val adoption = adoption(database, authClient, FakeConnectivityObserver(), FakeOwnerContext())
+
+            adoption.acquireAnonymousUidIfWaiting()
+
+            assertEquals(1, authClient.anonymousSignInCalls, "rows outlive the process and stand in for the signal")
+        }
+
+    @Test
+    fun concurrentTriggersDoNotCreateDuplicateAcquisitionAttempts() =
+        runTest {
+            val database = openDatabase()
+            database.seedLocalOwnerVehicle("vehicle-1")
+            lateinit var adoption: LocalOwnerAdoption
+            // The re-entrant call is a second trigger arriving while the first acquisition is still
+            // in flight, which is the concurrency this has to survive. It fires once: a trigger that
+            // re-entered without limit would be a different defect and would mask this one.
+            var secondTriggerFired = false
+            val authClient =
+                AdoptingAuthClient(ADOPTING_UID) {
+                    if (!secondTriggerFired) {
+                        secondTriggerFired = true
+                        adoption.acquireAnonymousUidIfWaiting()
+                    }
+                }
+            adoption = adoption(database, authClient, FakeConnectivityObserver(), FakeOwnerContext())
+
+            adoption.acquireAnonymousUidIfWaiting()
+
+            assertEquals(1, authClient.anonymousSignInCalls, "a trigger arriving mid-flight adds no second attempt")
         }
 
     @Test
@@ -110,7 +168,7 @@ class LocalOwnerAdoptionTest {
 
     @Test
     fun authenticationAdoptsTheWaitingRowsAndTheListNeverResolvesEmpty() =
-        runTest {
+        runTest(timeout = AWAIT_TIMEOUT) {
             val database = openDatabase()
             database.seedLocalOwnerVehicle("vehicle-1")
             val ownerContext = FakeOwnerContext()
@@ -151,6 +209,75 @@ class LocalOwnerAdoptionTest {
                 harness.close()
             }
         }
+
+    @Test
+    fun theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission() =
+        runTest(timeout = AWAIT_TIMEOUT) {
+            // Online from the start, so the only connectivity emission happens before any row exists
+            // and finds nothing to do. Row presence alone would leave this device under the sentinel.
+            val authClient = AdoptingAuthClient(ADOPTING_UID)
+            val database = openDatabase()
+            val graph = graphOver(database, authClient, FakeOwnerContext(), FakeConnectivityObserver())
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val form = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
+                form.setName("Roadster")
+                form.save()
+                form.state.first { state -> !state.isSaving }
+
+                authClient.authState.first { state -> state is AuthState.SignedIn }
+                assertEquals(1, authClient.anonymousSignInCalls, "the first local write re-evaluates acquisition")
+            } finally {
+                harness.close()
+            }
+        }
+
+    @Test
+    fun anExplicitLocalStartIsRememberedSoReturningConnectivityRetriesWithNoRows() =
+        runTest(timeout = AWAIT_TIMEOUT) {
+            val authClient = AdoptingAuthClient(ADOPTING_UID, failFirstSignIn = true)
+            val connectivity = FakeConnectivityObserver(initiallyOnline = false)
+            val database = openDatabase()
+            val graph = graphOver(database, authClient, FakeOwnerContext(), connectivity)
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val session = graph.sessionStateHolder(harness.scope)
+                session.startAnonymousSignIn()
+                session.state.first { state -> state.message != null }
+
+                connectivity.set(true)
+                authClient.authState.first { state -> state is AuthState.SignedIn }
+
+                assertEquals(
+                    2,
+                    authClient.anonymousSignInCalls,
+                    "the failed choice is retried when the network returns",
+                )
+            } finally {
+                harness.close()
+            }
+        }
+
+    private fun graphOver(
+        database: AppDatabase,
+        authClient: AuthClient,
+        ownerContext: FakeOwnerContext,
+        connectivity: FakeConnectivityObserver,
+    ): AppGraph =
+        buildAppGraph(
+            isDebugBuild = true,
+            providers =
+                testAppProviders(
+                    testAppGraphDependencies(
+                        databaseFactory = SingleHandleDatabaseFactory(database),
+                        authClient = authClient,
+                        ownerContext = ownerContext,
+                        connectivityObserver = connectivity,
+                    ),
+                ),
+        )
 
     private fun openDatabase(): AppDatabase {
         val created = factory.create()
@@ -193,6 +320,8 @@ private class SingleHandleDatabaseFactory(
 
 private class AdoptingAuthClient(
     private val uid: String,
+    private val failFirstSignIn: Boolean = false,
+    private val onSignInStarted: suspend () -> Unit = {},
 ) : AuthClient {
     var anonymousSignInCalls: Int = 0
         private set
@@ -202,6 +331,8 @@ private class AdoptingAuthClient(
 
     override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> {
         anonymousSignInCalls += 1
+        onSignInStarted()
+        if (failFirstSignIn && anonymousSignInCalls == 1) return Outcome.Err(AuthError.NetworkUnavailable)
         val session = AuthSession(uid = uid, isAnonymous = true, providers = emptySet())
         mutableAuthState.value = AuthState.SignedIn(session)
         return Outcome.Ok(session)
@@ -251,3 +382,6 @@ private suspend fun AppDatabase.localOwnerRowCount(): Long =
 
 private suspend fun AppDatabase.outboxRowCount(entityId: String): Int =
     databaseQueries.selectOutboxByEntity(entityType = "VEHICLE", entityId = entityId).awaitAsList().size
+
+// Awaiting an effect that a missing behaviour never produces must fail fast, not hang the suite.
+private val AWAIT_TIMEOUT = 10.seconds

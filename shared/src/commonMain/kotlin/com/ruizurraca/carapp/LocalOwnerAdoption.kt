@@ -2,6 +2,8 @@ package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import com.ruizurraca.carapp.core.auth.AuthState
+import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -26,9 +28,13 @@ import kotlinx.coroutines.sync.withLock
 internal class LocalOwnerAdoption(
     private val dependencies: AppGraphDependencies,
     database: AppDatabase,
+    // Seamed so the failure path required by `D-125` is exercisable. Production always passes null
+    // and adopts through the real transaction.
+    injectedAdoptRows: (suspend (String) -> Unit)? = null,
 ) {
     private val queries = database.databaseQueries
     private val mutations = DatabaseMutations(database)
+    private val adoptRows: suspend (String) -> Unit = injectedAdoptRows ?: ::adoptThroughDatabase
 
     // Adoption is idempotent, but running two of them concurrently would read the same rows twice
     // and do the same work twice. One at a time is enough, and the transaction stays short.
@@ -42,9 +48,27 @@ internal class LocalOwnerAdoption(
      * rewritten, so an observation started after an authentication cannot publish an empty list
      * that first-run creation would then open over (`D-116`).
      */
-    suspend fun awaitAdoption() {
+    suspend fun awaitAdoption(): Outcome<Unit, AppError> {
         val owner = dependencies.ownerContext.current
         if (owner != LOCAL_OWNER) adopt(owner)
+        return Outcome.Ok(Unit)
+    }
+
+    /**
+     * Records that the owner explicitly chose "continue without an account" and that the choice fell
+     * back to a local session. Story `E2-06` implements the retention; this declaration exists so
+     * its failing tests compile and execute.
+     */
+    @Suppress("EmptyFunctionBlock")
+    fun onLocalStartAccepted() {
+    }
+
+    /**
+     * Re-evaluates anonymous acquisition after a write committed under the sentinel. Story `E2-06`
+     * implements the behavior; this declaration exists so its failing tests compile and execute.
+     */
+    @Suppress("EmptyFunctionBlock")
+    fun onLocalOwnerWriteCommitted() {
     }
 
     /**
@@ -67,12 +91,15 @@ internal class LocalOwnerAdoption(
             // Check-then-act is safe here: the transaction re-reads the rows under the write lock and
             // is idempotent, so this only avoids opening a transaction that would do nothing.
             if (!hasWaitingRows()) return@withLock
-            mutations.adoptLocalOwner(
-                newOwnerId = owner.value,
-                vehicleOutboxPayload = { row -> row.toAdoptionOutboxPayload() },
-                fuelEntryOutboxPayload = { row -> row.toAdoptionOutboxPayload() },
-            )
+            adoptRows(owner.value)
         }
+
+    private suspend fun adoptThroughDatabase(newOwnerId: String) =
+        mutations.adoptLocalOwner(
+            newOwnerId = newOwnerId,
+            vehicleOutboxPayload = { row -> row.toAdoptionOutboxPayload() },
+            fuelEntryOutboxPayload = { row -> row.toAdoptionOutboxPayload() },
+        )
 
     /**
      * Retries the anonymous acquisition of `§11.2` after connectivity returns. It is gated on there
