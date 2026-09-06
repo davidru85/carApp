@@ -36,16 +36,18 @@
 - Branch and base: `story/E3-10-account-deletion-service`, based on synchronized `main` at
   `a8bbfcf`.
 - Current phase and latest commit: REFACTOR phase complete; RED commit `1e64ab8`, GREEN commit
-  `60fb15b`, REFACTOR commit `e7b422f`; this continuity checkpoint is pending commit.
+  `60fb15b`, REFACTOR commit `e7b422f`, pull-request checkpoint commit `b1991bf`; this CI checkpoint
+  is pending commit.
 - Push and pull-request status: branch pushed to `origin`; pull request #58 is open at
-  `https://github.com/davidru85/carApp/pull/58` and awaits owner review.
-- Completed since the previous checkpoint: completed and committed REFACTOR, pushed the three TDD
-  phase commits in one operation as requested and created the gated pull request with full
-  acceptance evidence.
+  `https://github.com/davidru85/carApp/pull/58`, all ten required checks are green and owner review
+  remains required.
+- Completed since the previous checkpoint: monitored CI run `34060292954` through completion; all
+  ten jobs passed, including `ios-simulator-build` in 13 minutes 10 seconds without reproducing
+  E1-17.
 - Verification evidence and known failures: 22 Cloud Functions tests, 154 Firestore emulator tests,
   the 636-task full non-instrumented command, the 234-task provider-free command and Objective-C
-  header parity pass. The production audit reports only the seven moderate entries already
-  accepted under D-68. No known failure.
+  header parity pass. CI run `34060292954` passes all ten required jobs. The production audit
+  reports only the seven moderate entries already accepted under D-68. No known failure.
 - Open decisions or blockers: none. The owner explicitly requested one push after the REFACTOR
   commit instead of one push per TDD phase.
 - Exact next step: owner review of pull request #58; address any review findings or merge, then
