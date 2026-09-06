@@ -603,6 +603,9 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-125 | Adoption read gate | After authentication the vehicle list stays unknown until adoption has run, so first-run creation never opens over data that is about to arrive; if adoption fails the list is shown as unreadable with a retry, never as empty and never as a silent wait. | Accepted |
 | D-126 | Native connectivity-provider ownership | The app observes real network reachability on both platforms, so the automatic retry that follows an offline start fires in the shipped app and not only in tests. | Accepted |
 | D-127 | Fuel type selector in the MVP UI | The Vehicle creation and edit forms let the owner choose among the five MVP fuel types, defaulting to petrol. Supersedes the "not exposed in MVP UI" clause of `D-4`. | Accepted |
+| D-128 | Account-deletion callable wire contract | The authenticated `deleteAccount` callable receives the target UID, rejects a different caller and returns a closed success or typed failure. | Accepted |
+| D-129 | Firestore Admin deletion primitive | Account cleanup awaits the Admin SDK recursive deletion of each registered collection in the required order. | Accepted |
+| D-130 | Transitive `qs` advisory remediation | The Functions lockfile resolves the existing transitive HTTP parser to patched `qs` 6.16.0. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

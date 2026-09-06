@@ -98,7 +98,8 @@ providers and F-1 routing, are complete. `E2-03` merged on 2026-09-06 through pu
 after three owner review rounds, with all ten required checks green. `E2-06`, Local Owner Adoption,
 merged on 2026-09-06 through pull request #55, after two owner review rounds, with all ten required
 checks green. Local owner adoption, its automatic triggers and real platform connectivity
-observation on both hosts are therefore live.
+observation on both hosts are therefore live. `E3-10`, the Account Deletion Server Operation, is
+implemented and awaits owner review.
 
 ### Delivery status and remaining work
 
@@ -107,7 +108,8 @@ observation on both hosts are therefore live.
   `E2-01`, `E2-02`, `E2-03` and `E2-06`. `E2-03` introduced `D-112` through `D-122` and
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
   owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoff-E2-06.md` holds its
-  acceptance evidence.
+  acceptance evidence. `E3-10` is implemented on its story branch and its evidence lives in
+  `docs/handoff-E3-10.md`; it becomes a completed prerequisite when the owner merges its gated PR.
 - **Next:** `E2-07`, the anonymous sign-in benefit reminders. It is the first Ready Phase 2 story,
   because `E2-04` depends on `E3-11` and `E3-11` has not run.
 - **Remaining Phase 1:** none. The phase is closed.
@@ -118,7 +120,7 @@ observation on both hosts are therefore live.
   `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
   until they are fixed, a red required job is not by itself evidence of a regression.
 - **Remaining Phase 2:** `E2-07`, `E2-04` and `E2-05`.
-- **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
+- **Remaining Phase 3:** `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model).

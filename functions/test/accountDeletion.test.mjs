@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {createDeleteAccountHandler} from "../lib/callable/deleteAccount.js";
+import {FirebaseAdminFirestoreDeletionGateway} from "../lib/deletion/firebaseAdminDeletionGateways.js";
 import {deleteUserData} from "../lib/deletion/userDeletionService.js";
 
 const OWNER_UID = "owner-1";
@@ -33,6 +34,31 @@ test("deleteUserData is idempotent when documents are already absent", async () 
     ["deleteCollection", OWNER_UID, "fuelEntries"],
     ["deleteCollection", OWNER_UID, "vehicles"],
   ]);
+});
+
+test("the Firebase Admin gateway scopes deletion to the target user's registered collection", async () => {
+  const deletedPaths = [];
+  const firestore = {
+    collection(rootCollection) {
+      return {
+        doc(uid) {
+          return {
+            collection(childCollection) {
+              return {path: `${rootCollection}/${uid}/${childCollection}`};
+            },
+          };
+        },
+      };
+    },
+    async recursiveDelete(reference) {
+      deletedPaths.push(reference.path);
+    },
+  };
+  const gateway = new FirebaseAdminFirestoreDeletionGateway(firestore);
+
+  await gateway.deleteCollection(OWNER_UID, "fuelEntries");
+
+  assert.deepEqual(deletedPaths, [`users/${OWNER_UID}/fuelEntries`]);
 });
 
 test("an unauthenticated request is rejected before deletion", async () => {

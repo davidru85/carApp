@@ -824,6 +824,13 @@ Account deletion order is normative:
 4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
 5. Only after the server operation returns success, the app clears local data, including `user_settings`.
 
+The server operation is the Cloud Functions 2nd gen callable `deleteAccount`. Its request payload
+contains `targetUid: String`; the callable-verified Firebase caller UID MUST equal that value. A
+successful response is `{ status: "ACCOUNT_DELETED" }`. Missing authentication maps to callable
+code `unauthenticated`, a missing or empty `targetUid` maps to `invalid-argument`, a caller/target
+mismatch maps to `permission-denied`, and a remote-data or Auth deletion failure maps to `internal`.
+No UID, token, request payload or raw provider failure is attached to callable logs (`D-128`).
+
 The order `fuelEntries`, then `vehicles` is normative. Reversing it would leave a brief window during which a fuel entry exists without its vehicle, which is recoverable but adds an unnecessary transient state.
 
 The server operation MUST be idempotent for already-deleted documents and MUST NOT delete any document outside `users/{uid}`. It MAY page internally, but partial progress is not reported as success. If step 2, 3 or 4 fails, the app flow aborts with a typed `AuthError`, preserves local data, and does not perform client-side hard deletes. Deleting the auth account before the data would leave unreachable orphan documents.
@@ -844,6 +851,10 @@ The deletion order remains `fuelEntries`, then `vehicles`. Cloud Storage is not 
 but the empty prefix list is an executable registry entry rather than an undocumented convention.
 A server-side contract test compares the registry with the declared remote data schema and fails
 when either gains a location that the other omits.
+
+The Firebase Admin implementation calls Firestore `recursiveDelete` once for each registered
+collection reference, awaited sequentially in registry order. It does not delete the parent
+`users/{uid}` document and does not construct a path outside that subtree (`D-129`).
 
 Two anonymous-deletion entry points reuse this service:
 

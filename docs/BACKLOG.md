@@ -748,6 +748,9 @@ Human review required.
 
 ### E3-10 - Account Deletion Server Operation - M
 
+Implementation completed on 2026-09-06; owner review is required before merge. See
+`docs/handoff-E3-10.md`.
+
 Implement the Firebase Admin account deletion operation selected by `D-23`.
 
 Acceptance criteria:

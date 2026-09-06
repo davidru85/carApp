@@ -38,6 +38,73 @@
 
 ## Entries
 
+### 2026-09-06 — E3-10 account deletion server operation implemented
+
+- **Type:** story
+- **Story / Decision:** `E3-10` / `D-23`, `D-63`, `D-128`, `D-129`, `D-130`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** added the authenticated 2nd gen `deleteAccount` callable, the reusable
+  idempotent `deleteUserData` service, an executable Firestore/Storage location registry, Firebase
+  Admin gateways and server-side coverage for authorization, ordering, retry and redaction.
+- **Why:** E3-11 and the E2-04 collision path require one tested cleanup implementation, while D-23
+  requires the user-requested path to delete remote data before the Firebase Auth user.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, the decision mirrors,
+  ADR-0129 through ADR-0131, `docs/versions-matrix.md`, `docs/handoff-E3-10.md` and this log.
+- **Verification:** 22 Cloud Functions tests; production dependency audit with only the seven D-68
+  moderate entries; 154 Firestore emulator tests; complete 636-task non-instrumented command;
+  234-task provider-decoupling command; Objective-C header parity.
+- **Follow-ups / risks:** the owner must review and merge the gated PR. E3-11 then adds the native
+  anonymous deletion trigger and direct orphan-cleanup callable before E2-04 starts.
+
+### 2026-09-06 — D-130 resolves new `qs` advisories inside existing ranges
+
+- **Type:** decision
+- **Story / Decision:** `E3-10` / `D-130`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the Functions lockfile now resolves transitive `qs` to patched 6.16.0 without a
+  direct dependency or top-level SDK change.
+- **Why:** the E3-10 audit exposed two moderate HTTP-parser advisories in 6.15.3; both parent ranges
+  already admit the patched release, so retaining or overriding the vulnerable version had no
+  benefit.
+- **Documents touched:** `functions/package-lock.json`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/versions-matrix.md`, ADR-0131,
+  the ADR index and this log.
+- **Verification:** clean `npm ci`; `npm ls qs --all` resolves 6.16.0; production audit removed both
+  `qs` advisories and retained only the seven D-68 moderate entries.
+- **Follow-ups / risks:** the D-68 `uuid` residual keeps its 2026-12-01 TD-01 review.
+
+### 2026-09-06 — D-129 fixes the registered Firestore deletion primitive
+
+- **Type:** decision
+- **Story / Decision:** `E3-10` / `D-129`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `deleteUserData` awaits Firestore Admin `recursiveDelete` for each registered
+  owner collection, sequentially in registry order.
+- **Why:** this delegates bulk paging to the pinned SDK while preserving `fuelEntries` before
+  `vehicles`, idempotent retry and the exact `users/{uid}` boundary.
+- **Documents touched:** `docs/CONTRACTS.md §11.5`, the four decision mirrors, ADR-0130, the ADR
+  index and this log.
+- **Verification:** server-side tests cover order, repeated deletion, partial-failure retry and the
+  exact Admin collection path.
+- **Follow-ups / risks:** a future data location must update the registry and parity test in the
+  same change.
+
+### 2026-09-06 — D-128 fixes the account-deletion callable wire contract
+
+- **Type:** decision
+- **Story / Decision:** `E3-10` / `D-128`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** fixed the 2nd gen callable name `deleteAccount`, its `targetUid` request field,
+  caller equality, closed success response and callable error codes.
+- **Why:** D-23 required caller/target verification but did not provide enough wire detail for an
+  executable mismatch test or a stable later client adapter.
+- **Documents touched:** `docs/CONTRACTS.md §11.5`, the four decision mirrors, ADR-0129, the ADR
+  index and this log.
+- **Verification:** server-side tests cover missing auth, malformed input, mismatched UID, success
+  and typed failure; export metadata proves a 2nd gen function in `europe-west1`.
+- **Follow-ups / risks:** the later client adapter must send its current Firebase UID as
+  `targetUid`.
+
 ### 2026-09-06 — E1-17 filed for the iOS onboarding UI test flake
 
 - **Type:** incident
