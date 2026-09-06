@@ -724,7 +724,9 @@ Objective-C / Swift boundary.
 Provider tokens, credentials and Apple raw nonces MUST NOT enter `UiState`, analytics, `Logger` /
 Kermit or crash reporting. A cancelled acquisition, including one abandoned because the native host
 was rebuilt before any completion arrived, returns the owner to a retryable state without a
-user-visible error (`D-117`).
+user-visible error (`D-117`). A device that has no account to offer is reported as
+`AuthError.NoAccountAvailable`, not as `AuthError.ProviderUnavailable` and not as
+`AuthError.Unknown` (`D-122`).
 
 `deleteAccount()` is the client entry point for the `D-23` server/Admin account deletion operation. It MUST NOT call the mobile Firebase Auth account deletion API directly. It maps server operation failures to `AuthError.AccountDeletionRemoteFailed`, authentication freshness failures to `AuthError.RequiresRecentLogin`, caller mismatch or IAM rejection to `AuthError.PermissionDenied`, and connectivity failures to `AuthError.NetworkUnavailable`.
 
@@ -1780,6 +1782,7 @@ sealed interface AuthError : AppError {
     data object NetworkUnavailable : AuthError { override val code = "AUTH.NETWORK_UNAVAILABLE" }
     data object CredentialAlreadyInUse : AuthError { override val code = "AUTH.CREDENTIAL_ALREADY_IN_USE" }
     data object ProviderUnavailable : AuthError { override val code = "AUTH.PROVIDER_UNAVAILABLE" }
+    data object NoAccountAvailable : AuthError { override val code = "AUTH.NO_ACCOUNT_AVAILABLE" }
     data object TokenExpired : AuthError { override val code = "AUTH.TOKEN_EXPIRED" }
     data object PermissionDenied : AuthError { override val code = "AUTH.PERMISSION_DENIED" }
     data object RequiresRecentLogin : AuthError { override val code = "AUTH.REQUIRES_RECENT_LOGIN" }
@@ -2383,7 +2386,7 @@ class FuelEntryFormStateHolder {
     fun close()
 }
 
-enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, UNKNOWN }
+enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, NO_ACCOUNT_AVAILABLE, UNKNOWN }
 
 class SessionStateHolder {
     val state: StateFlow<SessionUiState>
@@ -2553,7 +2556,12 @@ active attempt so success, failure and subsequent retry cannot remain stuck.
 Cancellation is a recoverable retry state and not a reported failure: `CANCELLED` publishes no
 `UiMessage` and clears the message of the previous attempt (`D-117`). The remaining mapping is
 exhaustive and normative: `NETWORK -> AuthError.NetworkUnavailable`,
-`CONFIGURATION -> AuthError.ProviderUnavailable`, and `UNKNOWN -> AuthError.Unknown`. A host whose
+`CONFIGURATION -> AuthError.ProviderUnavailable`,
+`NO_ACCOUNT_AVAILABLE -> AuthError.NoAccountAvailable`, and `UNKNOWN -> AuthError.Unknown`.
+`NO_ACCOUNT_AVAILABLE` means the device has no account to offer. It MUST NOT be used for a provider
+configuration problem and MUST NOT be reported as an unclassified failure, and its host message MUST
+name the always-available "continue without an account" path (`D-122`). A host that cannot detect the
+condition reliably keeps `UNKNOWN` for it rather than reporting it speculatively. A host whose
 native acquisition is interrupted before any completion MUST abandon that attempt through
 `failSignIn(CANCELLED)` and MUST NOT introduce a separate abandonment intent.
 Native provider text never crosses the boundary. Provider tokens,

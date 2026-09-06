@@ -42,6 +42,35 @@
 
 ## In-Progress Checkpoint
 
+### D-122 actionable no-account outcome checkpoint (2026-09-06, complete)
+
+- Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
+- Current phase and latest commit: REFACTOR, in the commit that contains this text. RED is `582fb27`,
+  GREEN is `421688b`, and the intake checkpoint was `456e7ff`.
+- Push and pull-request status: pending push at the time of writing; pull request #54 stays open and
+  the agent does not merge it.
+- Completed since the previous checkpoint, specified by four failing tests first:
+  1. `NativeSignInFailure` gains `NO_ACCOUNT_AVAILABLE`, mapped by `SessionStateHolder.failSignIn`
+     to the new `AuthError.NoAccountAvailable` leaf and its `AUTH.NO_ACCOUNT_AVAILABLE` code.
+  2. Android produces the case from `NoCredentialException`; iOS keeps `UNKNOWN`, because its Google
+     flow is web-based and Apple exposes no reliable "no Apple ID on this device" signal.
+  3. Both hosts resolve the code to a message naming the two resolutions: adding an account, and the
+     "continue without an account" action that is always present on the welcome screen.
+  4. Both normative `AuthError` analytics mappings of `CONTRACTS.md §20.9` stay exhaustive over
+     eleven leaves; neither reason set gains a member, because account conversion and deletion never
+     reach a native credential acquisition that can report this condition.
+- Owner question answered during the round: the owner observed that the app appears to exclude
+  devices with no Google account or no Google Play Services. It does not exclude them from the app.
+  The welcome screen always offers "continue without an account" next to the provider action, and a
+  failed anonymous start falls back to `SessionPhase.LOCAL` rather than blocking. What such a device
+  cannot have is a permanent, recoverable account, which follows from `D-112` and the single Firebase
+  backend and is not introduced here. The observation changed the wording of the new message, which
+  now names that path instead of assuming the owner wants an account.
+- Verification evidence and known failures: recorded under `Verification Run`, section
+  `D-122 actionable no-account outcome`. No known failure remains on this branch.
+- Open decisions or blockers: none. The manual provider acceptance stays owner-owned.
+- Exact next step: push the three phases and let the owner review and merge pull request #54.
+
 ### D-122 actionable no-account outcome checkpoint (2026-09-06, intake)
 
 - Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
@@ -390,6 +419,38 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Verification Run
 
+### D-122 actionable no-account outcome (2026-09-06)
+
+- Baseline before any change, on `c5359c9`: the complete `AGENTS.md` non-instrumented command passed
+  636 actionable tasks; forced provider decoupling passed 234; the `D-84` API 36 instrumented suite
+  passed 14 of 14 with 0 skips; the generated Objective-C header was byte-identical to the committed
+  golden; `git diff --check` was clean.
+- RED: `:androidApp:testDebugUnitTest` failed
+  `aDeviceWithoutAnAvailableGoogleAccountReportsItsOwnFailureCase` and
+  `aDeviceWithoutAnAvailableAccountGetsItsOwnMessageInsteadOfTheGenericOne`;
+  `:shared:testAndroidHostTest` failed `aDeviceWithoutAnAvailableAccountPublishesItsOwnCode` with
+  `NoSuchElementException`, because the enum case did not exist; the iOS
+  `UiMessageMappingTests.testDeviceWithoutAnAvailableAccountGetsItsOwnMessage` failed because the new
+  code resolved to the same generic text as the fallback. Every failure was behavioural: all four
+  tests compiled and executed.
+- GREEN: the complete `AGENTS.md` non-instrumented command passed 636 actionable tasks. The iOS
+  `carAppTests` target executed 37 tests with 0 failures, one more than the 36 of the previous round.
+- The regenerated Objective-C header differed from the previous golden by exactly one line, the
+  `noAccountAvailable` class property. The committed golden was updated to it and is byte-identical
+  again.
+- REFACTOR: the tests reach the new case and the new leaf by direct reference rather than by name,
+  and the closed-mapping test covers all five failure cases. The complete `AGENTS.md`
+  non-instrumented command passed 636 actionable tasks; forced provider decoupling passed 234; the
+  `D-84` API 36 instrumented suite passed 14 of 14; the iOS run executed 37 unit tests with 0
+  failures and 7 UI tests with 1 environment-gated skip and 0 failures; the generated Objective-C
+  header is byte-identical to the updated golden; `contractCheck` reports 123 aligned decisions and
+  ADRs with none unresolved; `git diff --check` is clean.
+- One transient failure was observed and is recorded rather than hidden: `:shared:iosSimulatorArm64Test`
+  failed once under forced provider decoupling while an `xcodebuild` simulator test run was executing
+  concurrently. It passed on an isolated rerun of the same task and again on the complete isolated
+  command. The cause was simulator contention between two concurrently driven runs, not the change:
+  Kotlin/Native simulator tests and an `xcodebuild` test session MUST NOT be run at the same time.
+
 ### Third review remediation (2026-09-06)
 
 - RED: `./gradlew :feature:vehicle:testAndroidHostTest` failed the three owner-transition tests and
@@ -574,6 +635,13 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Contract Impact
 
+- `D-122` widens the Swift-facing ABI. `NativeSignInFailure` gains `NO_ACCOUNT_AVAILABLE` in
+  `docs/CONTRACTS.md §20.10` and its normative `failSignIn` mapping, `AuthError` gains
+  `NoAccountAvailable` with the stable code `AUTH.NO_ACCOUNT_AVAILABLE` in the `§20` canonical type
+  block, and `§11.1` states that a device with no account to offer is reported as that leaf rather
+  than as `ProviderUnavailable` or `Unknown`. This is the only round of the story that changed the
+  Swift-facing ABI: the committed Objective-C golden header grew exactly one line, the
+  `noAccountAvailable` class property.
 - `D-116` adds the normative meaning of `VehicleListUiState.isLoading` to `docs/CONTRACTS.md §20.10`.
   `D-117` rewrites the `failSignIn` mapping in the same section so `CANCELLED` publishes no message,
   and states in `§11.1` that an abandoned acquisition returns a retryable state without a
@@ -585,6 +653,7 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Decision Board Impact
 
+- `D-122` is owner-accepted and recorded with ADR-0123 in the four required mirrors.
 - `D-115`, `D-116` and `D-117` are owner-accepted and recorded with ADR-0116, ADR-0117 and ADR-0118
   in the four required mirrors.
 - D-112, D-113 and D-114 are owner-accepted and recorded with ADR-0113, ADR-0114 and ADR-0115 in
@@ -600,8 +669,13 @@ after the final device suite; the connected owner phone was neither targeted nor
 
 ## Risks or Follow-ups
 
-- Requested owner decision, still open: a dedicated `NativeSignInFailure` case for "no account
-  available on the device".
+- Closed on 2026-09-06: the owner decided the "no account available on the device" request as
+  `D-122`. The case exists, Android produces it, and iOS keeps `UNKNOWN` for the condition. A host
+  that later gains a reliable no-account signal MUST use `NO_ACCOUNT_AVAILABLE` rather than adding
+  another case.
+- `NO_ACCOUNT_AVAILABLE` is exported on the Swift ABI but is unreachable on iOS today. That is
+  deliberate, recorded in ADR-0123, and is not an unfinished implementation to complete on agent
+  judgement.
 - The vehicle list observation is now eager for the lifetime of the holder. If a future screen needs
   subscription-scoped observation, that is a deliberate change to make, not an oversight.
 - The owner-transition reset uses "a known list became unknown without a message" as its signal. A

@@ -13,8 +13,8 @@ class NativeSignInFailureMappingTest {
         val failure = NoCredentialException().toNativeSignInFailure()
 
         assertEquals(
-            "NO_ACCOUNT_AVAILABLE",
-            failure.name,
+            NativeSignInFailure.NO_ACCOUNT_AVAILABLE,
+            failure,
             "A device with no account to offer is a distinct outcome, not an unclassified failure.",
         )
     }

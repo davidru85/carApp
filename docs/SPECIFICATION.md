@@ -597,6 +597,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-119 | Declared inputs for the repository guards | Declare the repository files the build-logic guards read as task inputs so they cannot report a stale pass. | Accepted |
 | D-120 | Owner-scoped vehicle list resolution | Resolve the vehicle list per owner and keep it unknown until that owner publishes a successful result; a read failure is not a confirmed empty list. | Accepted |
 | D-121 | Mandatory first-run vehicle creation | First-run vehicle creation refuses the system back and interactive dismissal gestures; later creation keeps them. | Accepted |
+| D-122 | No-account sign-in outcome | A device with no account to offer reports `NativeSignInFailure.NO_ACCOUNT_AVAILABLE` and `AuthError.NoAccountAvailable`, and its message names both adding an account and continuing without one. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

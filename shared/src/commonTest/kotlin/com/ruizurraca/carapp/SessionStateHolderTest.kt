@@ -148,16 +148,14 @@ class SessionStateHolderTest {
 
     @Test
     fun aDeviceWithoutAnAvailableAccountPublishesItsOwnCode() {
-        val noAccountAvailable =
-            NativeSignInFailure.entries.single { entry -> entry.name == "NO_ACCOUNT_AVAILABLE" }
         val stateHolder = SessionStateHolder()
 
         stateHolder.startPermanentSignIn(AuthProvider.GOOGLE)
-        stateHolder.failSignIn(noAccountAvailable)
+        stateHolder.failSignIn(NativeSignInFailure.NO_ACCOUNT_AVAILABLE)
 
         assertFalse(stateHolder.state.value.isBusy)
         assertEquals(
-            "AUTH.NO_ACCOUNT_AVAILABLE",
+            AuthError.NoAccountAvailable.code,
             stateHolder.state.value
                 .message
                 ?.code,
@@ -173,6 +171,7 @@ class SessionStateHolderTest {
             mapOf(
                 NativeSignInFailure.NETWORK to AuthError.NetworkUnavailable,
                 NativeSignInFailure.CONFIGURATION to AuthError.ProviderUnavailable,
+                NativeSignInFailure.NO_ACCOUNT_AVAILABLE to AuthError.NoAccountAvailable,
                 NativeSignInFailure.UNKNOWN to AuthError.Unknown,
             )
         val stateHolder = SessionStateHolder()

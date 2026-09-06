@@ -38,6 +38,40 @@
 
 ## Entries
 
+### 2026-09-06 — D-122: a device with no account available reports itself
+
+- **Type:** decision
+- **Story / Decision:** `E2-03` / `D-122`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the request left open by the second and third review rounds is decided. A device
+  with no account to offer had been mapped to `NativeSignInFailure.UNKNOWN`, which resolves to
+  `AUTH.UNKNOWN` and the generic "something went wrong" message: truthful, and unusable. The enum
+  gains `NO_ACCOUNT_AVAILABLE`, mapped to the new `AuthError.NoAccountAvailable` leaf and its
+  `AUTH.NO_ACCOUNT_AVAILABLE` code, and both hosts resolve that code to a message naming the two
+  resolutions. Android produces the case from `NoCredentialException`; iOS keeps `UNKNOWN`, because
+  its Google flow is web-based and Apple exposes no reliable "no Apple ID on this device" signal.
+- **Why:** the generic message invites the owner to retry an action that will fail identically, while
+  never naming the two things that resolve it. The owner also asked whether the app excludes devices
+  with no Google account or no Google Play Services. It does not: the welcome screen always offers
+  "continue without an account" beside the provider action, and a failed anonymous start falls back
+  to `SessionPhase.LOCAL` instead of blocking. Such a device cannot hold a permanent recoverable
+  account, which follows from `D-112` and the single Firebase backend. That observation changed the
+  wording of the new message, which now names the account-free path rather than assuming the owner
+  wants an account.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0123`,
+  `docs/handoff-E2-03.md` and this log.
+- **Verification:** RED failed all four new behaviours for behavioural reasons, each test compiling
+  and executing. The exact `AGENTS.md` command passed 636 actionable tasks; forced provider
+  decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14; the iOS `carAppTests`
+  target executed 37 tests with 0 failures. The regenerated Objective-C golden header differs from
+  the previous one by exactly one line, the `noAccountAvailable` class property, and the committed
+  golden is updated to it.
+- **Follow-ups / risks:** `NO_ACCOUNT_AVAILABLE` is exported on the Swift ABI but unreachable on iOS
+  today. That is deliberate and recorded in ADR-0123; a host that gains a reliable signal must use
+  this case rather than adding another. This is the only round of `E2-03` that changed the
+  Swift-facing ABI.
+
 ### 2026-09-06 — Repository status documentation realigned with the merged work
 
 - **Type:** correction

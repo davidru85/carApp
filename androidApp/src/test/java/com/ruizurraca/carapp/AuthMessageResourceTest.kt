@@ -22,8 +22,8 @@ class AuthMessageResourceTest {
     fun aDeviceWithoutAnAvailableAccountGetsItsOwnMessageInsteadOfTheGenericOne() {
         val resource = authStringResource("AUTH.NO_ACCOUNT_AVAILABLE")
 
-        assertNotEquals(
-            R.string.error_unexpected,
+        assertEquals(
+            R.string.error_auth_no_account,
             resource,
             "Telling the owner that something went wrong hides the one action that resolves it.",
         )

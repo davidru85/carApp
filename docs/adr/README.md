@@ -128,5 +128,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-119 | [ADR-0120](0120-declare-guarded-repository-inputs.md) | Declare the repository files the guards read as task inputs. | Accepted |
 | D-120 | [ADR-0121](0121-resolve-the-vehicle-list-per-owner.md) | Resolve the vehicle list per owner. | Accepted |
 | D-121 | [ADR-0122](0122-make-first-run-vehicle-creation-mandatory.md) | Make first-run vehicle creation mandatory. | Accepted |
+| D-122 | [ADR-0123](0123-report-a-device-with-no-account-available.md) | Report a device with no account available as its own failure. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
