@@ -967,6 +967,7 @@ internal fun authStringResource(code: String): Int =
         "AUTH.CANCELLED" -> R.string.error_auth_cancelled
         "AUTH.NETWORK_UNAVAILABLE" -> R.string.error_auth_network
         "AUTH.PROVIDER_UNAVAILABLE" -> R.string.error_auth_provider
+        "AUTH.NO_ACCOUNT_AVAILABLE" -> R.string.error_auth_no_account
         else -> R.string.error_unexpected
     }
 

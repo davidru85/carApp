@@ -11,7 +11,7 @@ import kotlin.native.ObjCName
 enum class SessionPhase { UNKNOWN, LOCAL, ANONYMOUS, PERMANENT, SIGNED_OUT, DELETING }
 
 @ObjCName(name = "SharedNativeSignInFailure", swiftName = "NativeSignInFailure", exact = true)
-enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, UNKNOWN }
+enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, NO_ACCOUNT_AVAILABLE, UNKNOWN }
 
 data class SessionUiState(
     val phase: SessionPhase,

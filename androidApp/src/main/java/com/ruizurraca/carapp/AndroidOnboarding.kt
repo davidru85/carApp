@@ -185,10 +185,10 @@ internal fun Throwable.toNativeSignInFailure(): NativeSignInFailure =
         }
 
         // Having no credential available says nothing about how the provider is configured: the
-        // device simply has no account to offer. Reporting CONFIGURATION would tell the owner
-        // something untrue, so the attempt stays unclassified until the closed set can say more.
+        // device simply has no account to offer. It has its own case so the host can name the two
+        // resolutions, adding an account or continuing without one, instead of a generic failure.
         is NoCredentialException -> {
-            NativeSignInFailure.UNKNOWN
+            NativeSignInFailure.NO_ACCOUNT_AVAILABLE
         }
 
         is GetCredentialProviderConfigurationException,

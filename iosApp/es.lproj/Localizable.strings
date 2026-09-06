@@ -49,6 +49,7 @@
 "error_persistence" = "No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo.";
 "error_restore" = "No se ha podido recuperar la copia. Tus datos locales siguen disponibles.";
 "error_unexpected" = "Algo ha salido mal. Inténtalo de nuevo.";
+"error_auth_no_account" = "No hay ninguna cuenta disponible en este dispositivo. Añádela desde los Ajustes o continúa sin cuenta.";
 "error_auth_cancelled" = "Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo.";
 "error_auth_network" = "Necesitas conexión para iniciar sesión. Inténtalo cuando vuelvas a tener red.";
 "error_auth_provider" = "Este proveedor de inicio de sesión aún no está configurado.";

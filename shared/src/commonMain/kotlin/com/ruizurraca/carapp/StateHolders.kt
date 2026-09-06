@@ -198,6 +198,7 @@ private fun NativeSignInFailure.toReportableAuthError(): AuthError? =
         NativeSignInFailure.CANCELLED -> null
         NativeSignInFailure.NETWORK -> AuthError.NetworkUnavailable
         NativeSignInFailure.CONFIGURATION -> AuthError.ProviderUnavailable
+        NativeSignInFailure.NO_ACCOUNT_AVAILABLE -> AuthError.NoAccountAvailable
         NativeSignInFailure.UNKNOWN -> AuthError.Unknown
     }
 

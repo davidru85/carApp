@@ -37,6 +37,7 @@
     <string name="error_persistence">The change could not be saved on this device. Try again.</string>
     <string name="error_restore">The backup could not be restored. Your local data is still available.</string>
     <string name="error_unexpected">Something went wrong. Try again.</string>
+    <string name="error_auth_no_account">There is no Google account on this device. Add one in Settings, or continue without an account.</string>
     <string name="vehicle_list_unreadable">The vehicle list could not be read.</string>
     <string name="retry">Retry</string>
     <string name="error_auth_cancelled">Sign-in was cancelled. You can try again.</string>

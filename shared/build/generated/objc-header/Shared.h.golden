@@ -1077,6 +1077,7 @@ __attribute__((swift_name("NativeSignInFailure")))
 @property (class, readonly) SharedNativeSignInFailure *cancelled __attribute__((swift_name("cancelled")));
 @property (class, readonly) SharedNativeSignInFailure *network __attribute__((swift_name("network")));
 @property (class, readonly) SharedNativeSignInFailure *configuration __attribute__((swift_name("configuration")));
+@property (class, readonly) SharedNativeSignInFailure *noAccountAvailable __attribute__((swift_name("noAccountAvailable")));
 @property (class, readonly) SharedNativeSignInFailure *unknown __attribute__((swift_name("unknown")));
 @property (class, readonly) NSArray<SharedNativeSignInFailure *> *entries __attribute__((swift_name("entries")));
 + (instancetype)alloc __attribute__((unavailable));

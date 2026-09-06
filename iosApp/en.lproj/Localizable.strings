@@ -49,6 +49,7 @@
 "error_persistence" = "The change could not be saved on this device. Try again.";
 "error_restore" = "The backup could not be restored. Your local data is still available.";
 "error_unexpected" = "Something went wrong. Try again.";
+"error_auth_no_account" = "There is no account available on this device. Add one in Settings, or continue without an account.";
 "error_auth_cancelled" = "Sign-in was cancelled. You can try again.";
 "error_auth_network" = "Sign-in needs a network connection. Try again when you are online.";
 "error_auth_provider" = "This sign-in provider is not configured yet.";

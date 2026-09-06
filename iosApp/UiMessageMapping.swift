@@ -48,6 +48,8 @@ func localizedUiMessage(for code: String) -> String {
         key = "error_auth_network"
     case "AUTH.PROVIDER_UNAVAILABLE":
         key = "error_auth_provider"
+    case "AUTH.NO_ACCOUNT_AVAILABLE":
+        key = "error_auth_no_account"
     default:
         key = "error_unexpected"
     }

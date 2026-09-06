@@ -60,6 +60,7 @@ class AnalyticsContractTest {
                 AuthError.NetworkUnavailable to ConversionFailureReason.NETWORK,
                 AuthError.UidWouldChange to ConversionFailureReason.UID_WOULD_CHANGE,
                 AuthError.AccountDeletionRemoteFailed to ConversionFailureReason.UNKNOWN,
+                AuthError.NoAccountAvailable to ConversionFailureReason.UNKNOWN,
                 AuthError.PermissionDenied to ConversionFailureReason.UNKNOWN,
                 AuthError.ProviderUnavailable to ConversionFailureReason.UNKNOWN,
                 AuthError.RequiresRecentLogin to ConversionFailureReason.UNKNOWN,
@@ -67,7 +68,7 @@ class AnalyticsContractTest {
                 AuthError.Unknown to ConversionFailureReason.UNKNOWN,
             )
 
-        assertEquals(10, expected.size, "AuthError has ten leaves; all must be mapped")
+        assertEquals(11, expected.size, "AuthError has eleven leaves; all must be mapped")
         expected.forEach { (error, reason) -> assertEquals(reason, error.toConversionFailureReason()) }
     }
 
@@ -80,6 +81,7 @@ class AnalyticsContractTest {
                 AuthError.NetworkUnavailable to DeletionFailureReason.NETWORK,
                 AuthError.Cancelled to DeletionFailureReason.UNKNOWN,
                 AuthError.CredentialAlreadyInUse to DeletionFailureReason.UNKNOWN,
+                AuthError.NoAccountAvailable to DeletionFailureReason.UNKNOWN,
                 AuthError.PermissionDenied to DeletionFailureReason.UNKNOWN,
                 AuthError.ProviderUnavailable to DeletionFailureReason.UNKNOWN,
                 AuthError.TokenExpired to DeletionFailureReason.UNKNOWN,
@@ -87,7 +89,7 @@ class AnalyticsContractTest {
                 AuthError.Unknown to DeletionFailureReason.UNKNOWN,
             )
 
-        assertEquals(10, expected.size, "AuthError has ten leaves; all must be mapped")
+        assertEquals(11, expected.size, "AuthError has eleven leaves; all must be mapped")
         expected.forEach { (error, reason) -> assertEquals(reason, error.toDeletionFailureReason()) }
     }
 
