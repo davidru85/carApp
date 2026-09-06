@@ -38,6 +38,41 @@
 
 ## Entries
 
+### 2026-09-06 — E2-06 local owner adoption implemented
+
+- **Type:** story
+- **Story / Decision:** `E2-06` / `D-123`, `D-124`, `D-125`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** local owner adoption is implemented. `DatabaseMutations.adoptLocalOwner` runs
+  the whole `CONTRACTS.md §11.4` operation in one transaction: it rewrites every row still owned by
+  the `LOCAL_OWNER` sentinel, bumps `localRevision`, resets non-`SYNCED` rows to `PENDING` and
+  enqueues one outbox snapshot per reset row in the four-group push dependency order of `§8`, then
+  by `localMutationSeq ASC, id ASC`. `LocalOwnerAdoption` in `:shared` makes it automatic: returning
+  connectivity acquires the anonymous UID a device could not get offline, and an owner change
+  adopts. `AdoptionGatedVehicleRepository` holds Vehicle reads until adoption has run for the
+  current owner.
+- **Why:** the third decision is the non-obvious one. Without it, authentication publishes the new
+  UID, the vehicle list reopens per `D-120`, and the observation for that UID succeeds with an
+  *empty* list while the rows still belong to the sentinel. Under `D-116` that is a confirmed empty
+  list, so the host opens the `D-121` mandatory first-run creation — with no back affordance — over
+  an owner's existing vehicles that are one transaction away from arriving. Adoption cannot simply
+  run first: the auth state comes from the provider and the rewrite is a suspending transaction, so
+  no ordering between them can be guaranteed by observing both. Holding the read was chosen over
+  widening the exported UI contract with a second flag, which `D-116` exists to avoid.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/CONTRACTS.md §11.2` and `§11.4`, `docs/adr/README.md`,
+  `docs/adr/0124`, `docs/adr/0125`, `docs/adr/0126`, `docs/BACKLOG.md`, `docs/handoff-E2-06.md` and
+  this log.
+- **Verification:** thirteen new tests, written failing first, running on both the JVM and
+  `iosSimulatorArm64`. The exact `AGENTS.md` command passed 636 actionable tasks; forced provider
+  decoupling passed 234; `contractCheck` reports no `PENDING` over 126 decisions and 126 ADRs. The
+  Swift-facing surface is unchanged and the committed Objective-C golden header is untouched.
+- **Follow-ups / risks:** a repeatedly failing adoption leaves the list unknown rather than empty,
+  with no user-facing recovery yet; that belongs to `E3-03`. The `(max pre-existing seq) + 1`
+  criterion relies on `AUTOINCREMENT` and on the outbox being empty at adoption time, which the
+  contract guarantees today but `E2-04` should re-check. `E2-06` is a gated story and the agent does
+  not merge it.
+
 ### 2026-09-06 — E2-03 merged and E2-06 opened
 
 - **Type:** story

@@ -64,6 +64,8 @@ internal class LocalOwnerAdoption(
 
     private suspend fun adopt(owner: OwnerId) =
         adoptionLock.withLock {
+            // Check-then-act is safe here: the transaction re-reads the rows under the write lock and
+            // is idempotent, so this only avoids opening a transaction that would do nothing.
             if (!hasWaitingRows()) return@withLock
             mutations.adoptLocalOwner(
                 newOwnerId = owner.value,

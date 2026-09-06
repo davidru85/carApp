@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
+import kotlin.jvm.JvmName
 
 /** The transaction boundary for synchronized entity writes selected by `D-38`. */
 class DatabaseMutations(
@@ -527,8 +528,9 @@ class DatabaseMutations(
     ) {
         database.transaction {
             val sentinel = LOCAL_OWNER.value
-            // Both selections are already ordered by localMutationSeq ASC, id ASC, so partitioning
-            // them into the four push dependency groups is a stable partition, never a re-sort.
+            // Both selections arrive ordered by localMutationSeq ASC, id ASC, so splitting them into
+            // the four push dependency groups below is a stable partition and never a re-sort of the
+            // order inside a group, which is what §8 requires.
             val vehicles = queries.selectVehiclesForAdoption(sentinel).awaitAsList()
             val fuelEntries = queries.selectFuelEntriesForAdoption(sentinel).awaitAsList()
 
@@ -539,18 +541,15 @@ class DatabaseMutations(
                 queries.adoptFuelEntryRow(newOwnerId = newOwnerId, id = entry.id)
             }
 
-            for (vehicle in vehicles.filter { it.enqueueable() && it.deleted == 0L }) {
-                enqueueAdoptedVehicle(vehicle.id, vehicleOutboxPayload)
-            }
-            for (entry in fuelEntries.filter { it.enqueueable() && it.deleted == 0L }) {
-                enqueueAdoptedFuelEntry(entry.id, fuelEntryOutboxPayload)
-            }
-            for (entry in fuelEntries.filter { it.enqueueable() && it.deleted == 1L }) {
-                enqueueAdoptedFuelEntry(entry.id, fuelEntryOutboxPayload)
-            }
-            for (vehicle in vehicles.filter { it.enqueueable() && it.deleted == 1L }) {
-                enqueueAdoptedVehicle(vehicle.id, vehicleOutboxPayload)
-            }
+            val vehicleUpserts = vehicles.enqueueable(tombstones = false)
+            val vehicleTombstones = vehicles.enqueueable(tombstones = true)
+            val fuelEntryUpserts = fuelEntries.enqueueable(tombstones = false)
+            val fuelEntryTombstones = fuelEntries.enqueueable(tombstones = true)
+
+            for (id in vehicleUpserts) enqueueAdoptedVehicle(id, vehicleOutboxPayload)
+            for (id in fuelEntryUpserts) enqueueAdoptedFuelEntry(id, fuelEntryOutboxPayload)
+            for (id in fuelEntryTombstones) enqueueAdoptedFuelEntry(id, fuelEntryOutboxPayload)
+            for (id in vehicleTombstones) enqueueAdoptedVehicle(id, vehicleOutboxPayload)
         }
     }
 
@@ -587,10 +586,17 @@ class DatabaseMutations(
             null
         }
 
-    /** A `SYNCED` row already matches the remote copy, so adoption never enqueues it (`§11.4`). */
-    private fun Vehicle.enqueueable(): Boolean = syncState != "SYNCED"
+    /**
+     * The ids of one push dependency group, in the order the selection produced them. A `SYNCED` row
+     * already matches its remote copy, so adoption resets nothing and enqueues nothing for it.
+     */
+    @JvmName("enqueueableVehicles")
+    private fun List<Vehicle>.enqueueable(tombstones: Boolean): List<String> =
+        filter { it.syncState != "SYNCED" && (it.deleted == 1L) == tombstones }.map { it.id }
 
-    private fun Fuel_entry.enqueueable(): Boolean = syncState != "SYNCED"
+    @JvmName("enqueueableFuelEntries")
+    private fun List<Fuel_entry>.enqueueable(tombstones: Boolean): List<String> =
+        filter { it.syncState != "SYNCED" && (it.deleted == 1L) == tombstones }.map { it.id }
 
     private fun Fuel_entry.recomputeKeysDifferFrom(other: Fuel_entry): Boolean =
         id != other.id ||

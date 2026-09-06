@@ -129,5 +129,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-120 | [ADR-0121](0121-resolve-the-vehicle-list-per-owner.md) | Resolve the vehicle list per owner. | Accepted |
 | D-121 | [ADR-0122](0122-make-first-run-vehicle-creation-mandatory.md) | Make first-run vehicle creation mandatory. | Accepted |
 | D-122 | [ADR-0123](0123-report-a-device-with-no-account-available.md) | Report a device with no account available as its own failure. | Accepted |
+| D-123 | [ADR-0124](0124-own-the-adoption-transaction-in-core-database.md) | Own the adoption transaction in `:core:database` and inject its payloads. | Accepted |
+| D-124 | [ADR-0125](0125-gate-anonymous-retry-on-adoptable-data.md) | Gate the automatic anonymous retry on there being something to adopt. | Accepted |
+| D-125 | [ADR-0126](0126-hold-vehicle-reads-until-adoption-has-run.md) | Hold Vehicle reads until adoption has run for the current owner. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

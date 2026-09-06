@@ -734,7 +734,7 @@ user-visible error (`D-117`). A device that has no account to offer is reported 
 
 On first launch, when the user selects the "Continue without account" path, the app MUST attempt Firebase anonymous authentication. If anonymous authentication succeeds, the app uses that Firebase UID immediately and normal outbox synchronization applies.
 
-First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4).
+First launch MUST also succeed offline. If anonymous authentication cannot complete because connectivity or Firebase Auth is unavailable, the app creates a temporary local session with `ownerId = LOCAL_OWNER`, all MVP features work, and the outbox stays empty (§8). Anonymous UID acquisition is retried in the background when connectivity returns; on success, local-owner adoption runs (§11.4). That retry runs only while the owner is the sentinel, the auth state is `SignedOut`, and at least one row is still owned by the sentinel, so returning connectivity never creates an account for a device whose owner has not started using the app (`D-124`).
 
 An unlinked Firebase anonymous identity is device-bound. It can be resumed only while the same
 device retains its Firebase Auth session; the app MUST NOT expose a cross-device recovery promise
@@ -805,6 +805,8 @@ On the first successful authentication after a `LOCAL_OWNER` period, in one tran
 3. Reset every non-`SYNCED` synchronized row to `syncState = PENDING`, clear `lastError` / `lastErrorCode` context, and enqueue an outbox snapshot ordered by the push dependency order of §8 and then by `localMutationSeq ASC, id ASC`. The inserted outbox rows receive `seq` in that order.
 
 Adoption MUST preserve each row's existing `localMutationSeq`; the adoption rewrite itself does not consume a new mutation sequence. Outbox `seq` values assigned during adoption are sequential and strictly greater than any pre-existing outbox `seq`; the first inserted adoption row receives `(max pre-existing seq) + 1`. The adoption transaction holds the database write lock for the whole operation, and no concurrent sync writes are possible because the sync engine does not run while the owner is `LOCAL_OWNER`. `SYNCING` rows are therefore impossible under `LOCAL_OWNER`; the reset rule covers the legal `PENDING`, `FAILED_RETRYABLE` and `FAILED_POISONED` states. The operation MUST be idempotent and MUST be covered by a test that starts from a populated local-owner database. Implemented by story `E2-06`.
+
+Local reads for a newly authenticated owner MUST NOT resolve until adoption has run for that owner. Until it has, the vehicle list stays unknown in the sense of §20.10, and it MUST NOT publish the empty list that would otherwise be read as a confirmed empty list and open mandatory first-run creation. The gate is a no-op for the `LOCAL_OWNER` sentinel itself, which reads its own rows (`D-125`).
 
 ### 11.5 Sign-out and account deletion
 
