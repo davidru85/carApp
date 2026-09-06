@@ -1055,8 +1055,10 @@ the product; this section records when it is scheduled.
 
 Nothing here blocks Phase 2. Order within the section is the order below.
 
-`E1-14` SHOULD run before the next story that relies on a red `shared-tests` job meaning a real
-regression, because until it is fixed a red job on that suite is ambiguous.
+`E1-14` and `E1-17` SHOULD run before the next story that relies on a red required job meaning a
+real regression. Until both are fixed, `shared-tests` and `ios-simulator-build` can go red without a
+regression, which makes the reflex "re-run it" rather than "investigate it" - and that is how a real
+regression gets waved through.
 
 `E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. They SHOULD
 run adjacently, in that order, so those two screens are opened once rather than twice.
@@ -1132,6 +1134,49 @@ Acceptance criteria:
   rather than introducing a second rule.
 - No shared state holder, contract, Swift-facing ABI or decision change is required. If one turns out
   to be required, the story stops and escalates instead of taking it.
+
+### E1-17 - iOS Onboarding UI Test Flake in `ios-simulator-build` - S
+
+Tracked as a defect observed on 2026-09-06 while merging `main` into pull request #57. It is a
+test-infrastructure defect in `iosApp/UITests`, not a product defect.
+
+Evidence, all on the same day:
+
+- Run `34051361393`, job `101535476499`, commit `372f867`:
+  `VehicleAndFuelFlowUITests.testVehicleSwipeDeleteShowsConfirmationDialog` failed at
+  `iosApp/UITests/VehicleAndFuelFlowUITests.swift:214` with "Onboarding did not reach vehicle
+  creation before the timeout". The other two tests in the class passed in the same execution.
+- Re-running that job on the same commit, with nothing changed, passed.
+- Run `34051112907` on `main`, whose product code is identical to that commit, passed the same job.
+
+The helper that fails is the shared onboarding wait at `VehicleAndFuelFlowUITests.swift:194-214`. It
+polls for 30 seconds and taps `welcome_guest` and `add_vehicle` behind the one-shot latches
+`startedGuestSession` and `requestedVehicleCreation`. A tap that is registered but does not take
+effect - a recomposition or a navigation transition swallowing it - therefore sets the latch and is
+never retried, and the loop can only poll until the deadline. The failing log shows exactly that
+shape: `welcome_guest` was tapped, and the remaining ~35 seconds are repeated existence checks for
+`vehicle_name` and `add_vehicle`.
+
+Two candidate causes, to be distinguished by the story rather than assumed:
+
+1. the one-shot latches make a single ineffective tap unrecoverable; and
+2. the 30-second deadline includes a real Firebase anonymous sign-in round trip from the CI
+   simulator, so a slow provider response can exhaust it even when every tap landed.
+
+Acceptance criteria:
+
+- The onboarding wait helper retries an affordance that is still present and hittable, so a single
+  ineffective tap cannot strand the loop.
+- The helper distinguishes its failure modes: the message names which step was never reached rather
+  than reporting one generic timeout for the whole onboarding.
+- Either the deadline accommodates the slowest observed successful onboarding on CI with a stated
+  margin, or the test stops depending on a network round trip; whichever is chosen is justified in
+  the handoff with the measurement it rests on.
+- The change is confined to `iosApp/UITests`. No product code, shared state holder, contract,
+  Swift-facing ABI or decision changes. If one turns out to be required, the story stops and
+  escalates instead of taking it.
+- Evidence of stability: the affected test is run repeatedly on CI and the handoff records the
+  number of consecutive passes observed, so "fixed" rests on a count and not on one green run.
 
 ### Deferred scope, now scheduled
 
@@ -1222,7 +1267,9 @@ pre-existing iOS divergence where creating a *later* vehicle stays on the list i
 detail; it depends on the `E2-03` post-save routing delivered for first-run creation, which merged on
 2026-09-06, so it is unblocked. `E1-16` exposes the `FuelType` selector across Android and iOS and is
 Ready only because `D-127` superseded the `D-4` clause that forbade it. `E1-15` and `E1-16` SHOULD run
-adjacently, in that order, because both change the same two Vehicle screens.
+adjacently, in that order, because both change the same two Vehicle screens. `E1-17` removes the
+onboarding-wait flake in the iOS UI suite; with `E1-14` it is one of two defects that make a red
+required job ambiguous, and both SHOULD precede any story that relies on that signal.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
@@ -1260,6 +1307,7 @@ proof after E3-04.
 | E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake | follow-up | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
 | E1-16 Vehicle UI fuel type selector | follow-up | S | — |
+| E1-17 iOS onboarding UI test flake | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 (completed) | 2 | M | — |

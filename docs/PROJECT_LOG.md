@@ -38,6 +38,33 @@
 
 ## Entries
 
+### 2026-09-06 — E1-17 filed for the iOS onboarding UI test flake
+
+- **Type:** incident
+- **Story / Decision:** `E1-17` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `ios-simulator-build` failed on pull request #57, a documentation-only branch.
+  `VehicleAndFuelFlowUITests.testVehicleSwipeDeleteShowsConfirmationDialog` failed at
+  `VehicleAndFuelFlowUITests.swift:214` with "Onboarding did not reach vehicle creation before the
+  timeout"; the other two tests in the class passed in the same execution. Re-running the same job on
+  the same commit passed with nothing changed, and run `34051112907` on `main`, whose product code is
+  identical, had already passed the same job. The flake is now `E1-17` in the backlog's follow-up
+  section, beside `E1-14`.
+- **Why:** it is the second flake found in a required job on the same day. `E1-14` already makes a red
+  `shared-tests` ambiguous; this makes a red `ios-simulator-build` ambiguous too. Two of the ten
+  required checks that can go red without a regression turn the reflex into "re-run it" rather than
+  "investigate it", which is how a real regression eventually gets waved through. Recording it only
+  in a conversation or a handoff would not bind the next agent, so it is a backlog story with its
+  evidence attached. The most likely mechanism is named in the story but deliberately left to be
+  confirmed rather than assumed: the shared onboarding wait taps `welcome_guest` and `add_vehicle`
+  behind one-shot latches, so a tap that registers without taking effect is never retried and the
+  loop can only poll until its 30-second deadline.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md` and this log.
+- **Verification:** `./gradlew contractCheck architectureCheck :build-logic:convention:test`. No
+  product code and no test code changed; this entry records the defect, it does not fix it.
+- **Follow-ups / risks:** until `E1-14` and `E1-17` are fixed, a red required job is not by itself
+  evidence of a regression, and any story relying on that signal should say so in its handoff.
+
 ### 2026-09-06 — D-127 supersedes the D-4 UI clause, and post-Phase-1 work leaves the Phase 1 section
 
 - **Type:** decision

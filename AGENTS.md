@@ -111,10 +111,12 @@ observation on both hosts are therefore live.
 - **Next:** `E2-07`, the anonymous sign-in benefit reminders. It is the first Ready Phase 2 story,
   because `E2-04` depends on `E3-11` and `E3-11` has not run.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-14`, `E1-15` and `E1-16`, in that order. They were
-  created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than inside a
-  reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127` superseded
-  the `D-4` clause that kept the fuel type selector out of the MVP UI.
+- **Follow-ups outside the phase milestones:** `E1-14`, `E1-15`, `E1-16` and `E1-17`, in that order.
+  They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
+  inside a reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127`
+  superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
+  `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
+  until they are fixed, a red required job is not by itself evidence of a regression.
 - **Remaining Phase 2:** `E2-07`, `E2-04` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
