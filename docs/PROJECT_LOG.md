@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-06 — D-127 supersedes the D-4 UI clause, and post-Phase-1 work leaves the Phase 1 section
+
+- **Type:** decision
+- **Story / Decision:** `E1-16` / `D-127`, `D-4`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** two things, on their own branch and pull request rather than inside the gated
+  `E2-06` review. First, `D-127` was accepted: the MVP UI exposes a `FuelType` selector over the five
+  MVP values in the Vehicle creation and edit forms, defaulting to `GASOLINE`. It supersedes **only**
+  the "Do not expose a selector in MVP UI" clause of `D-4`; `D-4` keeps status `Accepted` because the
+  storage decision it exists for is unchanged and implemented. Second, `E1-14`, `E1-15` and `E1-16`
+  moved out of the Phase 1 section into a new `Follow-Ups Outside the Phase Milestones` section,
+  keeping their identifiers.
+- **Why:** `E1-16` was filed asking for exactly what an `Accepted` decision forbade. Its own text
+  acknowledged `D-4`, but `docs/BACKLOG.md` is derived, and `AGENTS.md` states that a rule recorded
+  only in a backlog entry does not bind the next agent and that a derived document contradicting a
+  normative one is void and MUST be escalated. So `E1-16` was not Ready, and an agent starting it
+  would have hit the contradiction on its first read. The reordering fixes a second contradiction:
+  `AGENTS.md` claimed "Phase 1 is complete" three lines above "Remaining Phase 1: E1-14, E1-15 and
+  E1-16". The cause was filing post-closure work inside a closed milestone because its identifier
+  began with `E1-`. Identifiers were kept because they are cited in this append-only log, in handoffs
+  and in commit messages, and renumbering would leave those references dangling for no gain.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0128` (new), `docs/adr/0005`
+  (partial-supersession note), `docs/BACKLOG.md`, `AGENTS.md` and this log.
+- **Verification:** `./gradlew contractCheck architectureCheck :build-logic:convention:test`. No
+  product code changed. `D-123` to `D-126` and `ADR-0124` to `ADR-0127` are deliberately skipped:
+  they are reserved by pull request #55 (`E2-06`), which is in owner review, so both pull requests
+  can merge in either order without renumbering.
+- **Follow-ups / risks:** the numbering gap closes when pull request #55 merges. `E1-15` and `E1-16`
+  SHOULD run adjacently, in that order, because both change the same two Vehicle screens.
 ### 2026-09-06 — E2-06 second owner review: cold-start race, real connectivity, per-write triggers
 
 - **Type:** correction

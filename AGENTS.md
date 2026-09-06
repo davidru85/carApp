@@ -96,21 +96,26 @@ locale-provider behavior coverage, `E2-01`, the complete auth contracts and owne
 `E2-02`, the complete Firebase Auth integration, and `E2-03`, the native Android/iOS onboarding
 providers and F-1 routing, are complete. `E2-03` merged on 2026-09-06 through pull request #54,
 after three owner review rounds, with all ten required checks green. `E2-06`, Local Owner Adoption,
-is delivered on `story/E2-06-local-owner-adoption` and is awaiting the owner's review and merge of
-pull request #55. It is a gated story and only the owner merges it.
+merged on 2026-09-06 through pull request #55, after two owner review rounds, with all ten required
+checks green. Local owner adoption, its automatic triggers and real platform connectivity
+observation on both hosts are therefore live.
 
 ### Delivery status and remaining work
 
 - **Completed:** all Phase 0 and Phase 1 stories; the pulled-forward `E3-06` and
   `E3-01` prerequisites; the `E0-07` walking-skeleton gate, including D-73 cleanup evidence;
-  `E2-01`, `E2-02` and `E2-03`. `E2-03` introduced `D-112` through `D-122`;
+  `E2-01`, `E2-02`, `E2-03` and `E2-06`. `E2-03` introduced `D-112` through `D-122` and
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
-  owner-owned.
-- **In owner review:** `E2-06`, Local Owner Adoption, on pull request #55. It is a gated story and
-  introduced `D-123` through `D-126`; `docs/handoff-E2-06.md` holds the live checkpoint and the
-  acceptance evidence. The story that merges it updates this section.
-- **Remaining Phase 1:** `E1-14`, `E1-15` and `E1-16`. None of these blocks Phase 2.
-- **Remaining Phase 2:** `E2-06`, `E2-04`, `E2-07` and `E2-05`.
+  owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoff-E2-06.md` holds its
+  acceptance evidence.
+- **Next:** `E2-07`, the anonymous sign-in benefit reminders. It is the first Ready Phase 2 story,
+  because `E2-04` depends on `E3-11` and `E3-11` has not run.
+- **Remaining Phase 1:** none. The phase is closed.
+- **Follow-ups outside the phase milestones:** `E1-14`, `E1-15` and `E1-16`, in that order. They were
+  created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than inside a
+  reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127` superseded
+  the `D-4` clause that kept the fuel type selector out of the MVP UI.
+- **Remaining Phase 2:** `E2-07`, `E2-04` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.

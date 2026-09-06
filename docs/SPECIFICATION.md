@@ -479,7 +479,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled`. | Superseded |
 | D-2 | Kotlin-to-Swift interop | SKIE, only in `:shared`. | Superseded |
 | D-3 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes. | Accepted |
-| D-4 | `fuelType` | Stored on `Vehicle` from day one, not exposed in MVP UI; electric/hybrid values are deferred. | Accepted |
+| D-4 | `fuelType` | Stored on `Vehicle` from day one; electric/hybrid values are deferred. `D-127` supersedes the original clause that kept it out of the MVP UI. | Accepted |
 | D-5 | Firestore access from KMP | GitLive Firestore 2.6.x behind `RemoteSyncSource`. | Accepted |
 | D-6 | Firebase Auth from KMP | GitLive Auth 2.6.x behind `AuthClient`. | Accepted |
 | D-7 | Navigation | Native navigation per platform. | Accepted |
@@ -602,6 +602,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-124 | Automatic anonymous retry gate | An anonymous account is created automatically only for a device whose owner explicitly chose to continue without one, evidenced by that choice while the app is running and by the rows it left behind after a restart. | Accepted |
 | D-125 | Adoption read gate | After authentication the vehicle list stays unknown until adoption has run, so first-run creation never opens over data that is about to arrive; if adoption fails the list is shown as unreadable with a retry, never as empty and never as a silent wait. | Accepted |
 | D-126 | Native connectivity-provider ownership | The app observes real network reachability on both platforms, so the automatic retry that follows an offline start fires in the shipped app and not only in tests. | Accepted |
+| D-127 | Fuel type selector in the MVP UI | The Vehicle creation and edit forms let the owner choose among the five MVP fuel types, defaulting to petrol. Supersedes the "not exposed in MVP UI" clause of `D-4`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

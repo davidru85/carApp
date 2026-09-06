@@ -18,7 +18,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-1 | Local database | Room 3.0 KMP with `androidx.sqlite:sqlite-bundled` | Superseded | Replaced by `D-36` because the mandatory SQLite `CHECK` constraints could not be represented as one Room-generated schema. |
 | D-2 | Swift interop | SKIE only in `:shared` | Superseded | D-58 retains SKIE and moves its application to the module that owns the exported framework. |
 | D-3 | DI | Koin KMP | Accepted | Owner-selected DI. Runtime wiring is acceptable if Koin is constrained to composition and wiring. |
-| D-4 | `fuelType` | Stored on `Vehicle` from day one, without electric/hybrid values in MVP | Accepted | Schema evolution is easier before users exist; selector is not part of MVP UI; electric/hybrid needs a future energy model. |
+| D-4 | `fuelType` | Stored on `Vehicle` from day one, without electric/hybrid values in MVP | Accepted | Schema evolution is easier before users exist; electric/hybrid needs a future energy model. The selector clause is superseded by `D-127`. |
 | D-5 | Firestore access | Firebase Firestore integration behind `RemoteSyncSource` | Accepted | Firebase is the initial database backend, fully decoupled so a future Ktor/API implementation can replace it. |
 | D-6 | Firebase Auth | GitLive Auth 2.6.x behind `AuthClient` | Accepted | Consistent with the Firestore wrapper. Native UI obtains Google and Apple credentials. |
 | D-7 | Navigation | Native per platform | Accepted | Compose Navigation and SwiftUI `NavigationStack`; no shared destination model. |
@@ -141,6 +141,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-124 | Automatic anonymous retry gate | `LocalOwnerAdoption.acquireAnonymousUidIfWaiting()` requires the sentinel owner, a `SignedOut` auth state, no acquisition in flight, and either the remembered explicit local start or rows still owned by the sentinel; `SessionStateHolder` records the choice and the vehicle repository re-evaluates after a write commits under the sentinel | Accepted | The choice is the decision and the rows are its durable evidence, so no new column or migration is introduced; the write trigger covers the device that was already online when it started locally and therefore has no later connectivity edge; `tryLock` keeps concurrent triggers to one attempt. |
 | D-125 | Adoption read gate | `AdoptionGatedVehicleRepository` awaits adoption before every Vehicle read and write in the composition root, and `awaitAdoption()` returns `Outcome<Unit, AppError>` so a failure is a typed error rather than a throw or a silent wait | Accepted | Closes the window in which an authenticated owner's list resolves empty while the rows still belong to the sentinel; a failure becomes an unreadable list that `refresh()` genuinely retries; the two automatic triggers are siblings under a supervisor so neither can cancel the other; hosts, state holders and the exported UI contract are unchanged. |
 | D-126 | Native connectivity-provider ownership | `AndroidConnectivityObserver.fromSystemService(context)` and `IosConnectivityObserver.fromNetworkPathMonitor()` are constructed by their host composition boundaries and passed to `firebaseAppProviders(...)`; the iOS source is reused into `:shared` `iosTest` through the `D-109` topology | Accepted | Replaces the `MutableStateFlow(true)` stub that made `§9.2`, `§11.2` and the `VehicleSliceRuntime` gates read a constant; both observers take their platform registration as a parameter so their contract behaviour runs on the canonical routes; an executable guard pins both hosts, the manifest permission and the absence of the stub. |
+| D-127 | Fuel type selector in the MVP UI | Expose `FuelType` in the Android and iOS Vehicle forms through the existing `VehicleFormStateHolder.setFuelType(...)`, implemented by `E1-16` | Accepted | Purely additive: every value is already modelled, persisted and accepted by the Firestore rules, so no schema, migration or rule change is authorised. Supersedes only the UI clause of `D-4`. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -482,7 +483,7 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 ### Phase 2 - Authentication
 
-Status: open; `E2-01`, `E2-02` and `E2-03` are complete, `E2-03` having merged on 2026-09-06 through pull request #54, and `E2-06` is delivered on pull request #55, awaiting the owner's review and merge.
+Status: open; `E2-01`, `E2-02`, `E2-03` and `E2-06` are complete, having merged on 2026-09-06 through pull requests #54 and #55. `E2-07` is the first Ready story that remains, because `E2-04` depends on `E3-11`.
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
 anonymous retention notices, sign-out and account deletion.
