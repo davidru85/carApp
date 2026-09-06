@@ -37,8 +37,13 @@ sqlite = "2.7.0" # androidx.sqlite:sqlite-bundled, same bundled SQLite on both p
 # --- Firebase group (D-0, D-5, D-6, D-10, D-21) ---
 firebaseBom = "34.18.0"
 firebaseApple = "11.8.0" # D-65; exact GitLive 2.6.0 Apple cinterop generation version
+googleSignInIos = "9.2.0" # D-113; exact SwiftPM pin, revalidate whenever D-65 moves
 googleServices = "4.5.0" # D-57; processes Android's debug-only Firebase configuration
 gitlive = "2.6.0" # GitLive 2.6.x, never the 3.0 alpha (D-5, D-6)
+
+# --- Android native authentication group (D-112) ---
+credentials = "1.6.0"
+googleId = "1.2.0"
 
 # --- Application libraries ---
 koin = "4.2.2" # D-3
@@ -76,6 +81,11 @@ firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appch
 firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
 gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
+
+# Android native authentication (D-112)
+androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "credentials" }
+googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleId" }
 
 # DI (D-3) and logging (D-15)
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

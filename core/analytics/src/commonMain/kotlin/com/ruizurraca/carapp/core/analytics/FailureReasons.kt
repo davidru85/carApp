@@ -25,6 +25,7 @@ fun AuthError.toConversionFailureReason(): ConversionFailureReason =
         AuthError.UidWouldChange -> ConversionFailureReason.UID_WOULD_CHANGE
 
         AuthError.AccountDeletionRemoteFailed,
+        AuthError.NoAccountAvailable,
         AuthError.PermissionDenied,
         AuthError.ProviderUnavailable,
         AuthError.RequiresRecentLogin,
@@ -47,6 +48,7 @@ fun AuthError.toDeletionFailureReason(): DeletionFailureReason =
 
         AuthError.Cancelled,
         AuthError.CredentialAlreadyInUse,
+        AuthError.NoAccountAvailable,
         AuthError.PermissionDenied,
         AuthError.ProviderUnavailable,
         AuthError.TokenExpired,

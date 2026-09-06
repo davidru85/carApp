@@ -7,11 +7,16 @@
 "session_signed_out" = "Not connected";
 "session_deleting" = "Deleting";
 "continue_without_account" = "Continue without an account";
+"welcome_title" = "Welcome to carApp";
+"welcome_body" = "Save locally now, or sign in to keep a recoverable backup.";
+"continue_with_google" = "Continue with Google";
 "vehicle_section" = "Vehicle";
 "vehicle_name" = "Vehicle name";
 "save_vehicle" = "Save vehicle";
 "restore_backup" = "Restore backup";
 "saved_vehicles" = "Saved vehicles";
+"vehicle_list_unreadable" = "The vehicle list could not be read.";
+"retry" = "Retry";
 "empty_vehicles" = "No vehicles saved yet.";
 
 "app_name" = "carApp";
@@ -44,6 +49,10 @@
 "error_persistence" = "The change could not be saved on this device. Try again.";
 "error_restore" = "The backup could not be restored. Your local data is still available.";
 "error_unexpected" = "Something went wrong. Try again.";
+"error_auth_no_account" = "There is no account available on this device. Add one in Settings, or continue without an account.";
+"error_auth_cancelled" = "Sign-in was cancelled. You can try again.";
+"error_auth_network" = "Sign-in needs a network connection. Try again when you are online.";
+"error_auth_provider" = "This sign-in provider is not configured yet.";
 "error_future_date" = "The date cannot be in the future.";
 "error_money_input" = "Enter the two required monetary values.";
 "error_currency" = "Select a supported currency.";

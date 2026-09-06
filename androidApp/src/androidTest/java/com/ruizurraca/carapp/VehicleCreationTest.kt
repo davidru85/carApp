@@ -31,7 +31,7 @@ class VehicleCreationTest {
     fun createsVehicleAndRoutesToEmptyDetailWithoutFuelTypeInput() {
         val vehicleName = "Instrumented vehicle ${System.currentTimeMillis()}"
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).assertDoesNotExist()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(vehicleName)
@@ -56,7 +56,7 @@ class VehicleCreationTest {
     fun configurationChangePreservesTheDraftAndBackStackExitReleasesIt() {
         val draftName = "Rotating draft ${System.currentTimeMillis()}"
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(draftName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("321")
         composeRule.waitForIdle()
@@ -71,7 +71,7 @@ class VehicleCreationTest {
             activity.onBackPressedDispatcher.onBackPressed()
         }
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
 
         composeRule
             .onNodeWithTag(VehicleTestTags.NAME)
@@ -88,7 +88,7 @@ class VehicleCreationTest {
     fun odometerPreservesInvalidRawInputAndShowsLocalizedError() {
         val overflowingOdometer = "999999999999999999999"
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("")
         composeRule
             .onNodeWithTag(VehicleTestTags.ODOMETER)
@@ -123,7 +123,7 @@ class VehicleCreationTest {
         val hostFields = Class.forName("com.ruizurraca.carapp.MainActivityKt").declaredFields
         assertFalse(hostFields.any { field -> field.name == "ODOMETER_RANGE_KM" })
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
 
         composeRule
             .onNodeWithTag(VehicleTestTags.ODOMETER)

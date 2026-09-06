@@ -1,5 +1,6 @@
 import FirebaseCore
 import FirebaseAppCheck
+import GoogleSignIn
 import Shared
 import SwiftUI
 
@@ -19,6 +20,9 @@ struct carAppApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(model: model, graph: graph)
+                .onOpenURL { url in
+                    GIDSignIn.sharedInstance.handle(url)
+                }
         }
     }
 }

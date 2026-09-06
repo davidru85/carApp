@@ -575,6 +575,76 @@ Acceptance criteria:
 Human review required because the solution changes canonical verification and may touch gated
 decision documentation.
 
+### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
+
+Tracked as a follow-up found while verifying `E2-03`, recorded under `Risks or Follow-ups` in
+`docs/handoff-E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
+same class and not a production defect: no production path depends on the timing these tests assume.
+
+Make `:shared:iosSimulatorArm64Test` pass or fail on an assertion, never on a `runTest` timeout, so a
+red `shared-tests` job is always a real signal.
+
+Evidence to start from:
+
+- `shared-tests` failed on `88acfc3` with
+  `FuelEntryStateHolderTest.litersAndPriceDeriveTotalCostWhileTyping[iosSimulatorArm64]` and
+  `kotlinx.coroutines.test.UncompletedCoroutinesError`. The same run log records
+  `The number of threads 4 is more than the number of processors 3`.
+- The identical shared test and product code passed the same job on the preceding commit `e7a4f4b`,
+  which differs only by Markdown, so it is a flake and not a regression.
+- Reproduced locally at roughly one failure in seventeen `--rerun-tasks` runs, and that failure was a
+  *different* test of the same class,
+  `inconsistentPartialEntryRequiresConfirmationThenPublishesBothIndicators`, so the fragility belongs
+  to the class rather than to one test.
+- Each affected test awaits a real emission from a database-backed graph through `state.first { ... }`
+  inside `runTest`, with no bounded expectation.
+
+Acceptance criteria:
+
+- Every `:shared` test that awaits a state-holder emission from a graph-backed flow does so with a
+  bounded, explicit expectation rather than an unbounded `first { ... }` under the default `runTest`
+  timeout, or the suite is made deterministic by another means the handoff justifies.
+- The chosen mechanism is a reusable helper, so a future test cannot reintroduce the unbounded wait
+  by accident, in the same spirit as the `E1-12` collector helper.
+- Determinism is demonstrated, not asserted: the handoff records the repeated-run count on an
+  Apple-silicon host and states the observed failure count, and the run count is large enough to
+  exceed the ~1-in-17 rate recorded above.
+- A deliberately starved run, or an equivalent forced-timeout fixture, proves the new expectation
+  actually fires rather than passing vacuously.
+- Every `:shared` test class that mounts an `AppGraph` is audited for the same unbounded-wait shape;
+  the handoff lists every audited file.
+- The fix is confined to test code. Production timing, `StateHolders`, `AppGraph` and the database
+  layer are not changed by this story; if the investigation finds a production cause instead, it
+  stops and escalates rather than widening scope.
+- No schema, migration, contract, architecture-rule or decision change is introduced.
+
+### E1-15 - iOS Later-Vehicle Creation Routes to the Created Vehicle - S
+
+Tracked as a follow-up of `E1-09`. The divergence predates `E2-03`, and the owner declined to absorb
+it into that story across two review rounds; it is recorded in `docs/handoff-E2-03.md` under
+`Out of Scope / Not Done`.
+
+On Android, saving any vehicle routes to that vehicle's detail. On iOS only the **first** vehicle
+does: creating a later vehicle from the list dismisses the sheet and stays on the list. Align iOS
+with `docs/SPECIFICATION.md` F-2 and with Android.
+
+Acceptance criteria:
+
+- Saving a vehicle created from the iOS vehicle list routes to that vehicle's detail, identified by
+  the created identifier delivered with the completing emission, exactly as first-run creation
+  already does.
+- The routed detail titles itself from persisted state, so the canonical name produced by
+  `ValidateCreateVehicle` is the one shown, and no vehicle-name normalization is added to SwiftUI or
+  to the Swift view model (`D-120` third-round constraint).
+- First-run creation keeps the `D-121` mandatory behaviour: it stays non-dismissible, and later
+  creation stays dismissible by the interactive gesture.
+- An iOS UI test creates a second vehicle from a non-empty list and asserts the detail of that
+  vehicle is presented, with its canonical name. The test is proved non-vacuous.
+- The Android behaviour and its instrumented coverage are unchanged; this story removes a divergence
+  rather than introducing a second rule.
+- No shared state holder, contract, Swift-facing ABI or decision change is required. If one turns out
+  to be required, the story stops and escalates instead of taking it.
+
 ## Phase 2 - Authentication
 
 ### E2-01 - `:core:auth` - S
@@ -613,6 +683,11 @@ Acceptance criteria:
 - No GitLive or Firebase type crosses the module boundary.
 
 ### E2-03 - Onboarding Flow F-1 - M
+
+Status: delivered on 2026-09-04 and revised through three owner review rounds on 2026-09-05 and
+2026-09-06; awaiting the owner's review and merge of pull request #54. See
+`docs/handoff-E2-03.md` for the live checkpoint, the accepted decisions `D-112` to `D-121` and the
+outstanding manual provider acceptance.
 
 Implement the welcome screen, with an offline-capable local start. Provider selection happens on
 the welcome screen itself; there is no separate provider-selection screen.
@@ -1069,6 +1144,14 @@ links the Firebase integrations without an Xcode host. E1-13 must exercise the p
 Foundation behavior from a standard-command route while preserving that dependency rule and the
 D-108 host boundary. It has no dependency on E1-11 or E1-12 and may run in parallel with them.
 
+`E1-14` and `E1-15` are follow-ups found or confirmed during `E2-03` and are independent of it and
+of each other. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntryStateHolderTest`, the same
+class `E1-12` already hardened for a different Native-specific reason, and it SHOULD run before the
+next story that relies on a red `shared-tests` job meaning a real regression. `E1-15` removes the
+pre-existing iOS divergence where creating a *later* vehicle stays on the list instead of opening its
+detail; it depends on the `E2-03` post-save routing already delivered for first-run creation, so it
+runs after pull request #54 merges. Neither blocks `E2-06`.
+
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
 metadata; E2-07 owns notices; E3-10 owns the reusable deletion service; E3-11 owns cleanup entry
@@ -1102,9 +1185,11 @@ proof after E3-04.
 | E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
+| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake | 1 | S | — |
+| E1-15 iOS later-vehicle creation routes to the created vehicle | 1 | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
-| E2-03 Onboarding F-1 | 2 | M | — |
+| E2-03 Onboarding F-1 (delivered; pull request #54 awaiting owner review and merge) | 2 | M | — |
 | E2-06 Local owner adoption | 2 | M | Yes |
 | E2-04 Account conversion F-4 | 2 | M | Yes |
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |

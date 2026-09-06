@@ -1,4 +1,13 @@
 {
+  "auth": {
+    "providers": {
+      "anonymous": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "carApp",
+        "supportEmail": "davidru85@gmail.com"
+      }
+    }
+  },
   "functions": {
     "source": "functions",
     "codebase": "default",

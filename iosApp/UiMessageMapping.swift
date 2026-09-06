@@ -42,6 +42,14 @@ func localizedUiMessage(for code: String) -> String {
          "REMOTE.NOT_FOUND",
          "REMOTE.UNKNOWN":
         key = "error_restore"
+    case "AUTH.CANCELLED":
+        key = "error_auth_cancelled"
+    case "AUTH.NETWORK_UNAVAILABLE":
+        key = "error_auth_network"
+    case "AUTH.PROVIDER_UNAVAILABLE":
+        key = "error_auth_provider"
+    case "AUTH.NO_ACCOUNT_AVAILABLE":
+        key = "error_auth_no_account"
     default:
         key = "error_unexpected"
     }

@@ -33,7 +33,7 @@ class FuelEntryFlowTest {
     fun moneyFieldsPreserveIncrementalEditingAndLiveDerivationAcrossRecreation() {
         val vehicleName = "Money typing vehicle ${System.currentTimeMillis()}"
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
@@ -82,7 +82,7 @@ class FuelEntryFlowTest {
     fun confirmedPartialRefuelRendersExplanationAndBothIndicators() {
         val vehicleName = "Fuel test vehicle ${System.currentTimeMillis()}"
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
@@ -133,7 +133,7 @@ class FuelEntryFlowTest {
     fun odometerFieldCanBeClearedAndRetypedWithoutLosingFocus() {
         val vehicleName = "Odometer vehicle ${System.currentTimeMillis()}"
 
-        composeRule.onNodeWithTag(VehicleTestTags.ADD_VEHICLE).performClick()
+        composeRule.openVehicleCreation()
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("100")
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()

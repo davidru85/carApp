@@ -13,8 +13,14 @@
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
+        <!--
+            Native credential acquisition renders over this activity and is cancelled with it, so the
+            common configuration changes are handled in place instead of recreating the host mid
+            sign-in. Locale changes are deliberately not listed and still recreate the activity.
+        -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|uiMode|density|fontScale"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

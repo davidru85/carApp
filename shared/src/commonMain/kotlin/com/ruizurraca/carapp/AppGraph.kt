@@ -95,6 +95,7 @@ internal class DefaultAppGraph(
             repository = vehicleRuntime.repository,
             dispatchers = dependencies.dispatchers,
             refreshVehicles = vehicleRuntime::refresh,
+            ownerContext = dependencies.ownerContext,
         )
     }
 

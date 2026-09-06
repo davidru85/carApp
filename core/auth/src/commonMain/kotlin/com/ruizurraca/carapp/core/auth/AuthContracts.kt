@@ -1,9 +1,12 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.auth
 
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.native.HiddenFromObjC
 import kotlin.time.Instant
 
 data class AuthSession(
@@ -23,6 +26,7 @@ sealed interface AuthState {
     ) : AuthState
 }
 
+@HiddenFromObjC
 sealed interface NativeAuthCredential {
     data class Google(
         val idToken: String,

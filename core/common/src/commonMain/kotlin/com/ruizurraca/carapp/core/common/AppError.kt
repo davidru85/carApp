@@ -134,6 +134,11 @@ sealed interface AuthError : AppError {
     }
 
     @HiddenFromObjC
+    data object NoAccountAvailable : AuthError {
+        override val code = "AUTH.NO_ACCOUNT_AVAILABLE"
+    }
+
+    @HiddenFromObjC
     data object TokenExpired : AuthError {
         override val code = "AUTH.TOKEN_EXPIRED"
     }

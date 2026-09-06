@@ -6,6 +6,7 @@ final class WalkingSkeletonModel: ObservableObject {
     @Published private(set) var sessionState: SessionUiState
     @Published private(set) var vehicleFormState: VehicleFormUiState
     @Published private(set) var vehicleListState: VehicleListUiState
+    let signInCoordinator: NativeSignInCoordinator
 
     private let sessionStateHolder: SessionStateHolder
     private let vehicleFormStateHolder: VehicleFormStateHolder
@@ -13,7 +14,9 @@ final class WalkingSkeletonModel: ObservableObject {
     private var observationTasks: [Task<Void, Never>] = []
 
     init(graph: SwiftAppGraph) {
-        sessionStateHolder = graph.sessionStateHolder()
+        let sessionStateHolder = graph.sessionStateHolder()
+        self.sessionStateHolder = sessionStateHolder
+        signInCoordinator = NativeSignInCoordinator(sessionStateHolder: sessionStateHolder)
         vehicleFormStateHolder = graph.vehicleFormStateHolder(vehicleId: nil)
         vehicleListStateHolder = graph.vehicleListStateHolder()
         sessionState = sessionStateHolder.state.value

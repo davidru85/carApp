@@ -43,7 +43,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         viewModel.setOdometerText("50000")
         
         var saved = false
-        viewModel.save {
+        viewModel.save { _ in
             saved = true
         }
 
@@ -52,6 +52,43 @@ final class ViewModelLifecycleTests: XCTestCase {
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         XCTAssertTrue(saved, "Vehicle save should complete, message: \(String(describing: viewModel.state.message?.code))")
+    }
+
+    func testSuccessfulCreationDeliversTheSavedIdAndThePersistedNameIsCanonical() async throws {
+        let viewModel = VehicleFormViewModel(graph: graph, vehicleId: nil)
+        let suffix = UUID().uuidString.prefix(8)
+        let enteredName = "  My   Car-\(suffix)  "
+        let canonicalName = "My Car-\(suffix)"
+        viewModel.setName(enteredName)
+        viewModel.setOdometerText("50000")
+
+        var outcome: VehicleSaveOutcome?
+        viewModel.save { result in
+            outcome = result
+        }
+
+        for _ in 0..<30 {
+            if outcome != nil { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        let delivered = try XCTUnwrap(outcome, "Creation must deliver its outcome")
+        let createdVehicleId = try XCTUnwrap(
+            delivered.createdVehicleId,
+            "Creation must deliver the saved vehicle id from the emission that completed it"
+        )
+        XCTAssertFalse(createdVehicleId.isEmpty)
+
+        // The routed title must come from persisted state, which carries the canonical name that
+        // ValidateCreateVehicle produced. Nothing on the Swift side may reproduce that rule.
+        let listViewModel = VehicleListViewModel(graph: graph)
+        var persistedName: String?
+        for _ in 0..<30 {
+            persistedName = listViewModel.state.vehicles.first { $0.id == createdVehicleId }?.name
+            if persistedName != nil { break }
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        XCTAssertEqual(persistedName, canonicalName)
     }
 
     func testVehicleListRequestDeleteEmitsConfirmationMessageWithoutDeleting() async throws {
@@ -63,7 +100,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("30000")
 
         var saved = false
-        vModel.save { saved = true }
+        vModel.save { _ in saved = true }
         for _ in 0..<30 {
             if saved { break }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -105,7 +142,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("20000")
 
         var saved = false
-        vModel.save { saved = true }
+        vModel.save { _ in saved = true }
         for _ in 0..<30 {
             if saved { break }
             try await Task.sleep(nanoseconds: 100_000_000)
@@ -152,7 +189,7 @@ final class ViewModelLifecycleTests: XCTestCase {
         vModel.setOdometerText("10000")
         
         var vehicleSaved = false
-        vModel.save {
+        vModel.save { _ in
             vehicleSaved = true
         }
 

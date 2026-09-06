@@ -27,6 +27,16 @@ final class UiMessageMappingTests: XCTestCase {
         }
     }
 
+    func testDeviceWithoutAnAvailableAccountGetsItsOwnMessage() {
+        let message = localizedUiMessage(for: "AUTH.NO_ACCOUNT_AVAILABLE")
+
+        XCTAssertEqual(
+            message,
+            String(localized: "error_auth_no_account"),
+            "A device with no account to offer needs the actionable message, not the generic one."
+        )
+    }
+
     func testConsumptionInvalidReasonExplanation() {
         let reasons: [ConsumptionInvalidReason?] = [
             .noPreviousFullTank,

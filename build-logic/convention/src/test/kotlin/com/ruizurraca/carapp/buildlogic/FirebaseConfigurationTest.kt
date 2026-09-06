@@ -135,6 +135,20 @@ class FirebaseConfigurationTest {
     }
 
     @Test
+    fun iosDeveloperTeamIsSuppliedByAnUntrackedLocalConfiguration() {
+        val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
+        val xcodeProject = repositoryRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText()
+        val signingConfiguration = repositoryRoot.resolve("iosApp/Signing.xcconfig").readText()
+        val ignoredPaths = repositoryRoot.resolve(".gitignore").readLines().map(String::trim)
+
+        assertTrue(projectSpec.contains("Signing.xcconfig"))
+        assertTrue(xcodeProject.contains("Signing.xcconfig"))
+        assertTrue(signingConfiguration.contains("#include? \"Local.xcconfig\""))
+        assertTrue(ignoredPaths.contains("iosApp/Local.xcconfig"))
+        assertFalse(signingConfiguration.contains("QGPVH5G7ST"))
+    }
+
+    @Test
     fun iosKeychainPersistenceAcceptanceUsesASeparateTestOnlyUiTarget() {
         val projectSpec = repositoryRoot.resolve("iosApp/project.yml").readText()
         val appEntitlements = repositoryRoot.resolve("iosApp/carApp.entitlements").readText()
