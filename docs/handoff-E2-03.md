@@ -42,6 +42,33 @@
 
 ## In-Progress Checkpoint
 
+### D-122 actionable no-account outcome checkpoint (2026-09-06, intake)
+
+- Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
+- Current phase and latest commit: intake, in the commit that contains this text. The previous head
+  was `c5359c9`, the documentation realignment that followed the third review round.
+- Push and pull-request status: pull request #54 is open and mergeable on `c5359c9`, with nine of
+  its ten required checks passed and `ios-simulator-build` still running at the time of this intake.
+  `mergeStateStatus` is `BLOCKED` for the missing owner review. The agent does not merge it.
+- Verification confirmed on `c5359c9` before any change: the complete `AGENTS.md` non-instrumented
+  command passed 636 actionable tasks; forced provider decoupling passed 234; the `D-84` API 36
+  instrumented suite passed 14 of 14 with no skips; the generated Objective-C header is
+  byte-identical to the committed golden; `git diff --check` is clean and the working tree has no
+  changes.
+- Owner decision received: the open request of the second and third review rounds is now decided.
+  A device that has no account to offer MUST produce an actionable outcome across the shared
+  taxonomy rather than the generic unclassified message. The owner selected the shared option over
+  an Android-only host message and over keeping the current behaviour, accepting that the exported
+  enum, the auth error taxonomy and the Swift ABI widen and that the committed golden header changes.
+  This is recorded as `D-122`.
+- Known limit accepted with the decision: only Android can recognise the condition today, through
+  `NoCredentialException`. iOS Google sign-in is web-based and has no device accounts, and Apple
+  sign-in does not expose a reliable "no Apple ID on this device" signal, so iOS keeps `UNKNOWN`
+  until such a signal exists.
+- Open decisions or blockers: none. The remaining manual provider acceptance stays owner-owned.
+- Exact next step: RED commit specifying the new failure case, its mapping and its message on both
+  hosts, then GREEN, then REFACTOR carrying `D-122`, ADR-0123 and the four mirrors.
+
 ### Third review remediation checkpoint (2026-09-06, complete)
 
 - Date: 2026-09-06. Branch and base: `story/E2-03-onboarding-flow`, based on `main` at `f7639dc`.
