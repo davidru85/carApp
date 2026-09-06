@@ -1,0 +1,47 @@
+#!/bin/sh
+# Refuse a direct push to a protected branch.
+#
+# `main` is protected by ten required checks and a pull request, but administrator enforcement is
+# off, so a push from the owner's credentials is accepted rather than rejected. That escape hatch
+# exists for recovery, and `docs/CONTRIBUTING.md` says not to rely on it. This hook makes the
+# ordinary mistake impossible instead of relying on remembering.
+#
+# The mistake it is written for is real: on 2026-09-06 an agent committed and pushed while the
+# shared clone had been moved to a different branch by a concurrent agent, and a documentation
+# commit reached `main` without a pull request.
+#
+# Install once per clone:
+#     git config core.hooksPath scripts/git-hooks
+#
+# Deliberate override, for a genuine recovery only:
+#     CARAPP_ALLOW_DIRECT_PUSH=1 git push origin main
+
+set -eu
+
+protected_branch="refs/heads/main"
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    [ "$remote_ref" = "$protected_branch" ] || continue
+
+    if [ "${CARAPP_ALLOW_DIRECT_PUSH:-0}" = "1" ]; then
+        echo "pre-push: CARAPP_ALLOW_DIRECT_PUSH is set; allowing a direct push to main." >&2
+        continue
+    fi
+
+    cat >&2 <<'MSG'
+pre-push: refusing to push directly to main.
+
+main is protected by a pull request and ten required checks. Administrator enforcement is off, so
+GitHub would accept this push; that is a recovery hatch, not a workflow (docs/CONTRIBUTING.md).
+
+Push a branch and open a pull request instead:
+
+    git switch -c <type>/<slug>
+    git push -u origin <type>/<slug>
+
+If this really is a recovery, repeat the push with CARAPP_ALLOW_DIRECT_PUSH=1.
+MSG
+    exit 1
+done
+
+exit 0
