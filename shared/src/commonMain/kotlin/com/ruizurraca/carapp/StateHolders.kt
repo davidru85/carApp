@@ -24,7 +24,6 @@ class SessionStateHolder internal constructor(
     private val scope: CoroutineScope? = null,
     private val authClient: AuthClient? = null,
     // Not exported: the constructor is internal, so this stays out of the Swift-facing surface.
-    @Suppress("UnusedPrivateProperty")
     private val onLocalStartAccepted: () -> Unit = {},
 ) {
     private var closed = false
@@ -60,6 +59,10 @@ class SessionStateHolder internal constructor(
                         }
 
                         is Outcome.Err -> {
+                            // The owner asked to continue without an account and got a local session.
+                            // That choice is the signal returning connectivity retries on, and it is
+                            // the only one a device with no rows yet can offer (`D-124`).
+                            onLocalStartAccepted()
                             SessionUiState(
                                 phase = SessionPhase.LOCAL,
                                 providers = emptyList(),

@@ -9,7 +9,8 @@ import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 
 /**
  * Holds every Vehicle read and write until local owner adoption has run for the current owner.
@@ -19,33 +20,53 @@ import kotlinx.coroutines.flow.onStart
  * sees a confirmed empty list (`D-116`) and opens mandatory first-run creation (`D-121`) over data
  * that is one transaction away from arriving. The gate is a no-op for the sentinel itself and for
  * any owner with nothing waiting, so it costs one indexed count on the paths that do not need it.
+ *
+ * An adoption failure is a typed error on every path, never a silent wait and never a cancellation
+ * of the caller (`D-125`). On a read it becomes an unreadable list, which `VehicleListUiState`
+ * already models as "not known yet" with its own retry; on a write it becomes the write's error.
  */
 internal class AdoptionGatedVehicleRepository(
     private val delegate: VehicleRepository,
     private val adoption: LocalOwnerAdoption,
 ) : VehicleRepository {
     override fun observeVehicles(includeDeleted: Boolean): Flow<Outcome<List<Vehicle>, AppError>> =
-        delegate.observeVehicles(includeDeleted).gated()
+        gated { delegate.observeVehicles(includeDeleted) }
 
-    override fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>> = delegate.observeVehicle(id).gated()
+    override fun observeVehicle(id: EntityId): Flow<Outcome<Vehicle?, AppError>> = gated { delegate.observeVehicle(id) }
 
     override fun observeVehicleEditFacts(id: EntityId): Flow<Outcome<VehicleEditFacts?, AppError>> =
-        delegate.observeVehicleEditFacts(id).gated()
+        gated { delegate.observeVehicleEditFacts(id) }
 
-    override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> {
-        adoption.awaitAdoption()
-        return delegate.createVehicle(command)
-    }
+    override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =
+        gatedWrite { delegate.createVehicle(command) }
 
-    override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> {
-        adoption.awaitAdoption()
-        return delegate.updateVehicle(command)
-    }
+    override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> =
+        gatedWrite { delegate.updateVehicle(command) }
 
-    override suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError> {
-        adoption.awaitAdoption()
-        return delegate.deleteVehicle(id)
-    }
+    override suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError> =
+        gatedWrite { delegate.deleteVehicle(id) }
 
-    private fun <T> Flow<T>.gated(): Flow<T> = onStart { adoption.awaitAdoption() }
+    private fun <T> gated(upstream: () -> Flow<Outcome<T, AppError>>): Flow<Outcome<T, AppError>> =
+        flow {
+            when (val gate = adoption.awaitAdoption()) {
+                is Outcome.Err -> emit(Outcome.Err(gate.error))
+                is Outcome.Ok -> emitAll(upstream())
+            }
+        }
+
+    private suspend fun <T> gatedWrite(write: suspend () -> Outcome<T, AppError>): Outcome<T, AppError> =
+        when (val gate = adoption.awaitAdoption()) {
+            is Outcome.Err -> {
+                Outcome.Err(gate.error)
+            }
+
+            is Outcome.Ok -> {
+                val result = write()
+                // A write that lands under the sentinel is the moment a device that started locally
+                // first gains something to adopt, and it may be the only trigger it ever gets if it
+                // was already online when it started (`D-124`). The guards inside decide.
+                if (result is Outcome.Ok) adoption.onLocalOwnerWriteCommitted()
+                result
+            }
+        }
 }
