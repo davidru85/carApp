@@ -147,6 +147,27 @@ class SessionStateHolderTest {
         }
 
     @Test
+    fun aDeviceWithoutAnAvailableAccountPublishesItsOwnCode() {
+        val noAccountAvailable =
+            NativeSignInFailure.entries.single { entry -> entry.name == "NO_ACCOUNT_AVAILABLE" }
+        val stateHolder = SessionStateHolder()
+
+        stateHolder.startPermanentSignIn(AuthProvider.GOOGLE)
+        stateHolder.failSignIn(noAccountAvailable)
+
+        assertFalse(stateHolder.state.value.isBusy)
+        assertEquals(
+            "AUTH.NO_ACCOUNT_AVAILABLE",
+            stateHolder.state.value
+                .message
+                ?.code,
+            "A device with no account to offer is reported as itself, not as an unclassified failure.",
+        )
+
+        stateHolder.close()
+    }
+
+    @Test
     fun nativeFailuresAreClosedMappedAndEveryAttemptCanRetry() {
         val cases =
             mapOf(

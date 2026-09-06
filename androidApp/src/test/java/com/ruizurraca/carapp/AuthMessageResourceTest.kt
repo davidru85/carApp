@@ -17,4 +17,15 @@ class AuthMessageResourceTest {
     fun anUnavailableProviderKeepsItsOwnMessage() {
         assertEquals(R.string.error_auth_provider, authStringResource("AUTH.PROVIDER_UNAVAILABLE"))
     }
+
+    @Test
+    fun aDeviceWithoutAnAvailableAccountGetsItsOwnMessageInsteadOfTheGenericOne() {
+        val resource = authStringResource("AUTH.NO_ACCOUNT_AVAILABLE")
+
+        assertNotEquals(
+            R.string.error_unexpected,
+            resource,
+            "Telling the owner that something went wrong hides the one action that resolves it.",
+        )
+    }
 }

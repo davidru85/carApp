@@ -9,15 +9,23 @@ import kotlin.test.assertNotEquals
 
 class NativeSignInFailureMappingTest {
     @Test
-    fun aDeviceWithoutAnAvailableGoogleAccountIsNotReportedAsAnUnconfiguredProvider() {
+    fun aDeviceWithoutAnAvailableGoogleAccountReportsItsOwnFailureCase() {
         val failure = NoCredentialException().toNativeSignInFailure()
 
+        assertEquals(
+            "NO_ACCOUNT_AVAILABLE",
+            failure.name,
+            "A device with no account to offer is a distinct outcome, not an unclassified failure.",
+        )
+    }
+
+    @Test
+    fun aDeviceWithoutAnAvailableGoogleAccountIsNotReportedAsAnUnconfiguredProvider() {
         assertNotEquals(
             NativeSignInFailure.CONFIGURATION,
-            failure,
+            NoCredentialException().toNativeSignInFailure(),
             "Having no account available on the device says nothing about the provider configuration.",
         )
-        assertEquals(NativeSignInFailure.UNKNOWN, failure)
     }
 
     @Test
