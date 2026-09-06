@@ -15,6 +15,7 @@ import com.ruizurraca.carapp.feature.vehicle.data.toAdoptionOutboxPayload
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
@@ -106,8 +107,7 @@ internal class LocalOwnerAdoption(
      */
     fun onLocalOwnerWriteCommitted() {
         val scope = triggerScope ?: return
-        if (!dependencies.connectivityObserver.isOnline.value) return
-        scope.launch { acquireAnonymousUidIfWaiting() }
+        scope.launch { attemptAcquisition("write-committed trigger") }
     }
 
     /**
@@ -123,22 +123,57 @@ internal class LocalOwnerAdoption(
         triggerScope = scope
         return scope.launch {
             supervisorScope {
-                launch { observeSafely { dependencies.ownerContext.observe().collect { awaitAdoption() } } }
                 launch {
-                    observeSafely {
-                        dependencies.connectivityObserver.isOnline.collect { online ->
-                            if (online) acquireAnonymousUidIfWaiting()
-                        }
+                    observe("owner trigger", dependencies.ownerContext.observe()) { awaitAdoption() }
+                }
+                launch {
+                    observe("connectivity trigger", dependencies.connectivityObserver.isOnline) {
+                        attemptAcquisition("connectivity trigger")
+                    }
+                }
+                // Auth readiness is its own trigger. On a cold start the process begins at
+                // `AuthState.Unknown` with connectivity already online, so the single connectivity
+                // emission is consumed and refused before acquisition is legal. `AuthOwnerContext`
+                // maps `Unknown` and `SignedOut` alike to the sentinel and deduplicates them, so no
+                // owner event follows either. Without this the device never leaves the sentinel.
+                launch {
+                    observe("auth trigger", dependencies.authClient.authState) {
+                        attemptAcquisition("auth trigger")
                     }
                 }
             }
         }
     }
 
-    // A trigger has to survive whatever its source throws, so the catch is deliberately total. The
-    // throwable is logged rather than swallowed, which is what makes the breadth acceptable here.
+    /**
+     * Collects [source] and handles each emission, keeping the observation alive across a handler
+     * failure. A trigger that ended on its first failure would leave the device under the sentinel
+     * with no way back, which is exactly what `D-125` forbids.
+     *
+     * A failure of the source itself ends this observation, because retrying a source that throws
+     * on subscription is a busy loop. It is logged, and the supervisor keeps the other triggers
+     * running. Cancellation is rethrown in both cases.
+     */
+    private suspend fun <T> observe(
+        trigger: String,
+        source: Flow<T>,
+        onEach: suspend (T) -> Unit,
+    ) {
+        runReporting("$trigger source") {
+            source.collect { value -> runReporting(trigger) { onEach(value) } }
+        }
+    }
+
+    private suspend fun attemptAcquisition(trigger: String) = runReporting(trigger) { acquireAnonymousUidIfWaiting() }
+
+    // A trigger has to survive whatever its source or its handler throws, so the catch is
+    // deliberately total. The throwable is reported rather than swallowed, which is what makes the
+    // breadth acceptable here.
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun observeSafely(block: suspend () -> Unit) {
+    private suspend fun runReporting(
+        trigger: String,
+        block: suspend () -> Unit,
+    ) {
         try {
             block()
         } catch (cancellation: CancellationException) {
@@ -147,8 +182,8 @@ internal class LocalOwnerAdoption(
             dependencies.logger.log(
                 level = LogLevel.WARN,
                 tag = LOG_TAG,
-                message = "adoption trigger stopped",
-                fields = mapOf("code" to PersistenceError.TransactionFailed.code),
+                message = "adoption trigger failed",
+                fields = mapOf("trigger" to trigger, "code" to PersistenceError.TransactionFailed.code),
                 throwable = throwable,
             )
         }
@@ -175,20 +210,28 @@ internal class LocalOwnerAdoption(
      * under the sentinel prove it across a restart (`D-124`). A device whose owner never chose to
      * continue without an account is never given one.
      *
+     * Every trigger shares this guard set, including the connectivity check, so the three of them
+     * cannot disagree about when an acquisition is legal.
+     *
      * A trigger that arrives while an acquisition is already in flight is dropped rather than
      * queued, so concurrent triggers produce one attempt and not two.
      */
     suspend fun acquireAnonymousUidIfWaiting() {
         if (!acquisitionLock.tryLock()) return
         try {
-            if (dependencies.ownerContext.current != LOCAL_OWNER) return
-            if (dependencies.authClient.authState.value !is AuthState.SignedOut) return
-            if (!localStartAccepted && !hasWaitingRows()) return
-            dependencies.authClient.signInAnonymously()
+            if (isAcquisitionEligible()) dependencies.authClient.signInAnonymously()
         } finally {
             acquisitionLock.unlock()
         }
     }
+
+    private suspend fun isAcquisitionEligible(): Boolean =
+        dependencies.connectivityObserver.isOnline.value &&
+            dependencies.ownerContext.current == LOCAL_OWNER &&
+            // `Unknown` is not a retryable state: the provider has not reported yet, and acquiring
+            // now would race its own answer.
+            dependencies.authClient.authState.value is AuthState.SignedOut &&
+            (localStartAccepted || hasWaitingRows())
 
     private suspend fun hasWaitingRows(): Boolean = queries.countRowsOwnedBy(LOCAL_OWNER.value).awaitAsOne() > 0
 

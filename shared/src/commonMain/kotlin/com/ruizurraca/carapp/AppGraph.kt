@@ -14,6 +14,7 @@ import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.feature.fuel.data.SqlDelightFuelEntryRepository
+import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryFormStateHolder
@@ -70,12 +71,16 @@ internal class DefaultAppGraph(
     private val databaseHandle = dependencies.databaseFactory.create()
     private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
     private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
-    private val fuelRepository =
-        SqlDelightFuelEntryRepository(
-            databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-            ownerContext = dependencies.ownerContext,
-            clock = dependencies.clock,
-            uuidGenerator = dependencies.uuidGenerator,
+    private val fuelRepository: FuelEntryRepository =
+        AdoptionNotifyingFuelEntryRepository(
+            delegate =
+                SqlDelightFuelEntryRepository(
+                    databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
+                    ownerContext = dependencies.ownerContext,
+                    clock = dependencies.clock,
+                    uuidGenerator = dependencies.uuidGenerator,
+                ),
+            adoption = localOwnerAdoption,
         )
     private val settingsRepository =
         SqlDelightSettingsRepository(
