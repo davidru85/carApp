@@ -95,8 +95,9 @@ payload `entityType` fix, `E1-12`, the shared-test graph-close race fix, and `E1
 locale-provider behavior coverage, `E2-01`, the complete auth contracts and owner context, and
 `E2-02`, the complete Firebase Auth integration, and `E2-03`, the native Android/iOS onboarding
 providers and F-1 routing, are complete. `E2-03` merged on 2026-09-06 through pull request #54,
-after three owner review rounds, with all ten required checks green. `E2-06`, Local Owner Adoption,
-is the open story; it is a gated story and only the owner merges it.
+after three owner review rounds, with all ten required checks green. `E2-06`, Local Owner Adoption, is
+delivered on `story/E2-06-local-owner-adoption` and is awaiting the owner's review and merge of pull
+request #55. It is a gated story and only the owner merges it.
 
 ### Delivery status and remaining work
 
@@ -105,8 +106,9 @@ is the open story; it is a gated story and only the owner merges it.
   `E2-01`, `E2-02` and `E2-03`. `E2-03` introduced `D-112` through `D-122`;
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
   owner-owned.
-- **In progress:** `E2-06`, Local Owner Adoption, a gated story. `docs/handoff-E2-06.md` holds the
-  live checkpoint.
+- **In owner review:** `E2-06`, Local Owner Adoption, on pull request #55. It is a gated story and
+  introduced `D-123`, `D-124` and `D-125`; `docs/handoff-E2-06.md` holds the live checkpoint and the
+  acceptance evidence. The story that merges it updates this section.
 - **Remaining Phase 1:** `E1-14` and `E1-15`, the two defects filed on 2026-09-06. Neither blocks
   Phase 2.
 - **Remaining Phase 2:** `E2-06`, `E2-04`, `E2-07` and `E2-05`.

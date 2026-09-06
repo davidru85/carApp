@@ -704,8 +704,9 @@ Acceptance criteria:
 
 ### E2-06 - Local Owner Adoption - M
 
-Status: in progress on `story/E2-06-local-owner-adoption`, based on `main` at `fe9ed55`. See
-`docs/handoff-E2-06.md` for the live checkpoint.
+Status: delivered on 2026-09-06 on `story/E2-06-local-owner-adoption`; pull request #55 is open and
+awaiting the owner's review and merge. See `docs/handoff-E2-06.md` for the live checkpoint, the
+acceptance evidence and the accepted decisions `D-123`, `D-124` and `D-125`.
 
 Adopt `LOCAL_OWNER` data into the first real UID.
 

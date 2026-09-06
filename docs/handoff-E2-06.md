@@ -47,15 +47,15 @@
 
 ## In-Progress Checkpoint
 
-### REFACTOR complete, verification green, pull request pending (2026-09-06)
+### Story complete, pull request #55 open and awaiting owner review (2026-09-06)
 
 - Date: 2026-09-06. Branch and base: `story/E2-06-local-owner-adoption`, based on `main` at
   `fe9ed55` (the `E2-03` merge commit).
 - Current phase and latest commit: REFACTOR, in the commit that contains this text. The three phase
   commits are `53491bd` (intake and status realignment), `2104ce1` (RED) and `4d44074` (GREEN).
-- Push and pull-request status: **not pushed yet; no pull request exists.** The next step is one
-  push of the whole branch followed by pull request creation, which is the cadence the owner asked
-  for. The agent does **not** merge: `E2-06` is a gated story and `core/database/**`,
+- Push and pull-request status: the branch is pushed and **pull request #55 is open** on `main`,
+  created after the single push the owner asked for. The agent does **not** merge: `E2-06` is a
+  gated story and `core/database/**`,
   `docs/CONTRACTS.md`, `docs/SPECIFICATION.md`, `docs/DECISION_BOARD.md` and `docs/adr/**` are gated
   paths.
 - Completed since the previous checkpoint:
@@ -73,7 +73,9 @@
 - Open decisions or blockers: none blocking. Three decisions were taken by the agent and are
   recorded as `Accepted` with their ADRs; they are the ones to review first, and each ADR carries
   the alternatives that were rejected.
-- Exact next step: push the branch and open the pull request against `main`. The agent stops there.
+- Exact next step: wait for the ten required checks on pull request #55, then for the owner's
+  review. Three agent-taken decisions (`D-123`, `D-124`, `D-125`) are presented for that review, and
+  `D-125` is the one to look at first. Nothing else is in flight.
 
 ### Intake and status realignment checkpoint (2026-09-06)
 
