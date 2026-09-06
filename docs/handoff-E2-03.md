@@ -65,6 +65,12 @@
   `Third review remediation`. No known failure remains on this branch.
 - Open decisions or blockers: the `NativeSignInFailure` case for "no account available on the
   device", requested in the previous round, is still an owner decision and is not taken here.
+- Documentation sync (2026-09-06): the repository-state claims that had drifted behind the merged
+  work were corrected in `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md` §
+  Phase 2 and `docs/BACKLOG.md`. They said `E2-02` was next and that `E2-03` was already complete;
+  they now state that `E2-01` and `E2-02` are merged and that `E2-03` is delivered and awaiting the
+  owner's review and merge of pull request #54. `AGENTS.md` names the story that merges it as the one
+  that updates the section.
 - Exact next step: owner review of pull request #54, plus the manual provider acceptance below.
 
 ### Second review remediation checkpoint (2026-09-05, complete)

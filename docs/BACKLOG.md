@@ -614,7 +614,10 @@ Acceptance criteria:
 
 ### E2-03 - Onboarding Flow F-1 - M
 
-Status: completed on 2026-09-04. See `docs/handoff-E2-03.md`.
+Status: delivered on 2026-09-04 and revised through three owner review rounds on 2026-09-05 and
+2026-09-06; awaiting the owner's review and merge of pull request #54. See
+`docs/handoff-E2-03.md` for the live checkpoint, the accepted decisions `D-112` to `D-121` and the
+outstanding manual provider acceptance.
 
 Implement the welcome screen, with an offline-capable local start. Provider selection happens on
 the welcome screen itself; there is no separate provider-selection screen.

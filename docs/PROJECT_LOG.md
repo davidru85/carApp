@@ -38,6 +38,29 @@
 
 ## Entries
 
+### 2026-09-06 — Repository status documentation realigned with the merged work
+
+- **Type:** correction
+- **Story / Decision:** `E2-03` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the human-facing status claims had drifted behind the repository. `README.md`,
+  `docs/DEFINITION.md` and `docs/TECHNICAL_PLAN.md` §Phase 2 still said that `E2-02` was next, and
+  `AGENTS.md` and `docs/BACKLOG.md` already claimed `E2-03` complete while its pull request was open.
+  They now state that Phase 1 and `E2-01` and `E2-02` are complete, that `E2-03` is delivered and
+  awaiting the owner's review and merge of pull request #54 after three review rounds, and that
+  `E2-06` is next after it.
+- **Why:** an incoming agent reads `AGENTS.md` §`Repository State` and the handoff to learn what
+  exists. A section that claims a story is complete while its pull request is still open sends that
+  agent to the wrong next story and hides the outstanding manual acceptance.
+- **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/BACKLOG.md`, `docs/handoff-E2-03.md` and this log.
+- **Verification:** `./gradlew contractCheck architectureCheck` passed; the complete `AGENTS.md`
+  non-instrumented command passed. No normative rule, decision or contract changed: only status
+  statements about what exists.
+- **Follow-ups / risks:** the story that merges pull request #54 owns flipping `E2-03` from "in owner
+  review" to complete in `AGENTS.md`, `README.md`, `docs/DEFINITION.md`,
+  `docs/TECHNICAL_PLAN.md` and `docs/BACKLOG.md`.
+
 ### 2026-09-06 — E2-03 third review round: owner-consistent routing and recoverable list failures
 
 - **Type:** correction

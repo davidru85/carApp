@@ -477,7 +477,7 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 ### Phase 2 - Authentication
 
-Status: open; E2-01 is complete and E2-02 is next.
+Status: open; `E2-01` and `E2-02` are complete, `E2-03` is delivered and awaiting the owner's merge of pull request #54, and `E2-06` is next after it.
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
 anonymous retention notices, sign-out and account deletion.
