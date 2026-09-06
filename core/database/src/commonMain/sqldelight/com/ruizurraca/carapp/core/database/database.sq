@@ -96,6 +96,10 @@ WHERE vehicleId = :vehicleId
 ORDER BY date DESC, createdAt DESC, id DESC
 LIMIT 1;
 
+countRowsOwnedBy:
+SELECT (SELECT COUNT(*) FROM vehicle WHERE ownerId = :ownerId)
+     + (SELECT COUNT(*) FROM fuel_entry WHERE ownerId = :ownerId);
+
 selectOutboxByEntity:
 SELECT *
 FROM outbox

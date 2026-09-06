@@ -509,6 +509,19 @@ class DatabaseMutations(
         }
     }
 
+    /**
+     * Rewrites every `LOCAL_OWNER` row to [newOwnerId] and enqueues the outbox snapshots of
+     * `docs/CONTRACTS.md §11.4`, in one transaction. Story `E2-06` implements the behavior; this
+     * declaration exists so its failing tests compile and execute.
+     */
+    @Suppress("UnusedParameter", "EmptyFunctionBlock")
+    suspend fun adoptLocalOwner(
+        newOwnerId: String,
+        vehicleOutboxPayload: (VehicleDatabaseRow) -> String,
+        fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String,
+    ) {
+    }
+
     private suspend fun Fuel_entry.activeSuccessor(): Fuel_entry? =
         if (deleted == 0L) {
             queries.selectNextActiveFuelEntry(vehicleId, date, createdAt, id).awaitAsOneOrNull()

@@ -170,7 +170,7 @@ internal suspend fun SqlDriver.insertFuelEntry(
     }.await()
 }
 
-private suspend fun SqlDriver.stringList(sql: String): List<String> =
+internal suspend fun SqlDriver.stringList(sql: String): List<String> =
     executeQuery(
         identifier = null,
         sql = sql,
