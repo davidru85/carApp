@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlin.coroutines.coroutineContext
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -154,6 +155,34 @@ class LocalOwnerAdoptionFailureTest {
             assertEquals(1, authClient.anonymousSignInCalls, "the connectivity trigger outlives the owner observer")
         }
 
+    @Test
+    fun aFailingConnectivityTriggerDoesNotDisableTheOwnerObserver() =
+        runTest(timeout = AWAIT_TIMEOUT) {
+            val database = openDatabase()
+            database.seedLocalOwnerVehicle("vehicle-1")
+            val ownerContext = FakeOwnerContext()
+            val adoption =
+                LocalOwnerAdoption(
+                    dependencies =
+                        testAppGraphDependencies(
+                            databaseFactory = SingleHandleFactory(database),
+                            // Throws rather than returning an error, so the connectivity trigger
+                            // fails the way an unexpected provider fault would.
+                            authClient = ThrowingAuthClient(),
+                            ownerContext = ownerContext,
+                            connectivityObserver = FakeConnectivityObserver(),
+                        ),
+                    database = database,
+                )
+
+            adoption.launchIn(backgroundScope)
+            ownerContext.set(OwnerId(ADOPTING_UID))
+
+            // The owner observer is the other trigger, and it still adopts.
+            while (database.localOwnerRowCount() > 0L) yield()
+            assertEquals(0L, database.localOwnerRowCount(), "the owner observer outlives the connectivity trigger")
+        }
+
     private fun openDatabase(): AppDatabase {
         val created = factory.create()
         handle = created
@@ -205,6 +234,27 @@ private class AdoptionFault(
         { newOwnerId ->
             if (failing) error("adoption transaction failed") else database.adoptForTest(newOwnerId)
         }
+}
+
+private class ThrowingAuthClient : AuthClient {
+    override val authState: StateFlow<AuthState> = MutableStateFlow(AuthState.SignedOut)
+
+    override suspend fun signInAnonymously(): Outcome<AuthSession, AuthError> = error("provider fault")
+
+    override suspend fun signInWithCredential(
+        credential: NativeAuthCredential,
+        allowUidChange: Boolean,
+    ): Outcome<AuthSession, AuthError> = Outcome.Err(AuthError.ProviderUnavailable)
+
+    override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
+        Outcome.Err(AuthError.ProviderUnavailable)
+
+    override suspend fun reauthenticate(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
+        Outcome.Err(AuthError.ProviderUnavailable)
+
+    override suspend fun signOut(): Outcome<Unit, AuthError> = Outcome.Ok(Unit)
+
+    override suspend fun deleteAccount(): Outcome<Unit, AuthError> = Outcome.Ok(Unit)
 }
 
 private class ThrowingOwnerContext : OwnerContext {

@@ -47,6 +47,39 @@
 
 ## In-Progress Checkpoint
 
+### Owner review round 1 applied on pull request #55 (2026-09-06)
+
+- Date: 2026-09-06. Branch and base: `story/E2-06-local-owner-adoption`, based on `main` at
+  `fe9ed55`. Pull request #55 is open.
+- Current phase and latest commit: REFACTOR, in the commit that contains this text. The round's
+  phase commits are `8492dbb` (RED), `9a2c227` (GREEN) and this one.
+- Push and pull-request status: the first round's ten checks ran and **`objc-header-golden-check`
+  failed**; every other check passed. This round fixes that defect and applies the owner's three
+  decisions. The agent does not merge.
+- Completed since the previous checkpoint:
+  1. **Defect found by CI, not by me.** Both `toAdoptionOutboxPayload` mappers were public in
+     modules `:composition:ios` exports, so they reached the committed Objective-C golden header.
+     The first round's handoff and pull request claimed the Swift-facing surface was unchanged;
+     that claim was wrong. Both are now `@HiddenFromObjC` and the regenerated header matches the
+     committed golden byte for byte.
+  2. **`D-124` revised, not superseded.** The owner rejected gating the retry on `LOCAL_OWNER` rows
+     alone: rows are not the decision, and the gate stranded a device that was online when it
+     started locally, whose only connectivity emission fires before any row exists. The retry now
+     admits either the explicit choice, remembered for the life of the process, or the rows a
+     restart leaves behind; a write committing under the sentinel re-evaluates it; and concurrent
+     triggers produce one attempt. The decision record was revised in place because `D-124` has
+     never been merged.
+  3. **`D-125` extended.** The gate stands, but a failed adoption is no longer a silent wait. It is
+     `PersistenceError.TransactionFailed` on read and write paths, never thrown across the gate and
+     never a cancellation of the caller; the list stays unknown with a message and `refresh()`
+     genuinely re-runs the gate; and the two automatic triggers are siblings under a supervisor so
+     neither can disable the other. The deferred half — automatic retry with backoff and aggregate
+     status — is now an acceptance criterion of `E3-03`, not a handoff note.
+- Verification evidence and known failures: see `Verification Run`, which is rewritten for this
+  round. No known failure.
+- Open decisions or blockers: none. `D-123` was approved unchanged.
+- Exact next step: push the three commits to pull request #55 and wait for the ten required checks.
+
 ### Story complete, pull request #55 open and awaiting owner review (2026-09-06)
 
 - Date: 2026-09-06. Branch and base: `story/E2-06-local-owner-adoption`, based on `main` at
@@ -128,13 +161,27 @@ Every criterion of `docs/BACKLOG.md` `E2-06`, in order:
    every row is enqueued exactly once, in the contract order, with the adopting UID in its payload.
    The push itself belongs to `E3-03`, which owns the sync engine.
 7. *Adoption is triggered automatically when connectivity returns, not only from a UI action.*
+   Seven tests after the owner's first review round:
    `connectivityReturningAcquiresAnAnonymousUidWhenLocalOwnerDataIsWaiting`,
-   `connectivityReturningDoesNotCreateAnAccountWhenThereIsNothingToAdopt`,
-   `anAlreadyAuthenticatedSessionNeverRepeatsTheAnonymousAcquisition`, and end to end through
-   `DefaultAppGraph` in `authenticationAdoptsTheWaitingRowsAndTheListNeverResolvesEmpty`, where the
-   only action taken is the authentication itself.
+   `connectivityReturningCreatesNoAccountWithoutAnExplicitLocalStartAndWithoutRows`,
+   `anExplicitLocalStartRetriesAcquisitionOnceWhenConnectivityReturnsBeforeAnyRowExists`,
+   `localOwnerRowsAreDurableEvidenceOfALocalSessionAfterARestartLosesTheSignal`,
+   `anAlreadyAuthenticatedSessionNeverRepeatsTheAnonymousAcquisition`,
+   `concurrentTriggersDoNotCreateDuplicateAcquisitionAttempts`, and
+   `theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`. End to
+   end through `DefaultAppGraph`: `authenticationAdoptsTheWaitingRowsAndTheListNeverResolvesEmpty`
+   and `anExplicitLocalStartIsRememberedSoReturningConnectivityRetriesWithNoRows`, where the only
+   actions taken are the authentication and the "continue without an account" choice itself.
 
-All thirteen tests run on both the JVM and `iosSimulatorArm64`.
+Beyond the story's own criteria, the owner's review added the `D-125` failure semantics, covered by
+`LocalOwnerAdoptionFailureTest`: a failed adoption is a typed
+`PersistenceError.TransactionFailed` on the read path and the write path, the caller is not
+cancelled, the list stays unknown with a message rather than resolving empty, `refresh()` recovers
+it by running the gate again, and a failing owner observer leaves the connectivity trigger working.
+
+All twenty-three tests run on both the JVM and `iosSimulatorArm64`: seven in `:core:database`
+`LocalOwnerAdoptionTest`, eleven in `:shared` `LocalOwnerAdoptionTest` and five in `:shared`
+`LocalOwnerAdoptionFailureTest`.
 
 ## Out of Scope / Not Done
 
@@ -142,9 +189,9 @@ All thirteen tests run on both the JVM and `iosSimulatorArm64`.
   drains it and `syncController()` is still staged by `D-88`.
 - **Gating the Fuel Entry repository.** `D-125` gates the Vehicle side only, because a fuel-entry
   read is reached through a vehicle and therefore cannot precede a resolved vehicle list.
-- **Surfacing a repeatedly failing adoption.** The gate leaves the list unknown rather than empty,
-  which is the safer failure, but there is no user-facing recovery for it yet. Recorded under
-  `Risks or Follow-ups` and belonging to `E3-03`, which owns sync failure surfacing.
+- **Automatic retry of a repeatedly failing adoption.** The failure is now typed, visible and
+  retryable by the owner, but nothing retries it on a schedule and it is not part of `SyncStatus`.
+  That half is an explicit acceptance criterion of `E3-03` in `docs/BACKLOG.md`, not a handoff note.
 - **`E1-14` and `E1-15`**, the two Phase 1 defects filed on 2026-09-06. Neither blocks this story.
 - **Manual acceptance on a real device.** Not required by this story's criteria; the behaviour is
   covered by executable tests on both targets.
@@ -160,14 +207,20 @@ Product code:
 - `feature/vehicle/src/commonMain/kotlin/.../data/VehicleOutboxMapper.kt` and
   `feature/fuel/src/commonMain/kotlin/.../data/FuelEntryOutboxMapper.kt` — one public
   `toAdoptionOutboxPayload()` each.
-- `shared/src/commonMain/kotlin/.../LocalOwnerAdoption.kt` (new) — the gate and the two triggers.
-- `shared/src/commonMain/kotlin/.../AdoptionGatedVehicleRepository.kt` (new) — the `D-125` decorator.
+- `shared/src/commonMain/kotlin/.../LocalOwnerAdoption.kt` (new) — the gate, the two signals and the
+  triggers.
+- `shared/src/commonMain/kotlin/.../AdoptionGatedVehicleRepository.kt` (new) — the `D-125` decorator
+  and its typed-error paths.
+- `shared/src/commonMain/kotlin/.../StateHolders.kt` — `SessionStateHolder` records the explicit
+  local start on its internal constructor callback, which stays out of the exported surface.
 - `shared/src/commonMain/kotlin/.../AppGraph.kt` and `.../VehicleSliceRuntime.kt` — composition.
 
 Tests:
 
 - `core/database/src/commonTest/kotlin/.../LocalOwnerAdoptionTest.kt` (new, seven tests).
-- `shared/src/commonTest/kotlin/.../LocalOwnerAdoptionTest.kt` (new, six tests).
+- `shared/src/commonTest/kotlin/.../LocalOwnerAdoptionTest.kt` (new, eleven tests).
+- `shared/src/commonTest/kotlin/.../LocalOwnerAdoptionFailureTest.kt` (new, five tests) — the
+  `D-125` failure semantics.
 - `core/database/src/commonTest/kotlin/.../SchemaV1Test.kt` — `stringList` widened to `internal` so
   the new test file can reuse it.
 
@@ -175,8 +228,10 @@ Documentation:
 
 - `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/README.md` — `D-123`, `D-124`, `D-125`.
-- `docs/adr/0124-*.md`, `docs/adr/0125-*.md`, `docs/adr/0126-*.md` (new).
+- `docs/adr/0124-*.md`, `docs/adr/0125-*.md`, `docs/adr/0126-*.md` (new; `0125` and `0126` revised
+  in the owner's first review round).
 - `docs/CONTRACTS.md` §11.2 and §11.4.
+- `docs/BACKLOG.md` `E3-03` — the deferred automatic retry is an acceptance criterion there.
 - `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/BACKLOG.md`, `docs/handoff-E2-03.md` — the
   `E2-03` merge realignment.
 - `docs/PROJECT_LOG.md`, `docs/handoff-E2-06.md`.
@@ -186,14 +241,18 @@ Documentation:
 - **`D-123` — Local owner adoption transaction ownership.** The whole `§11.4` operation is one
   `DatabaseMutations` transaction, and the outbox payload is injected as a pure function over the
   module's own row types. `ADR-0124`.
-- **`D-124` — Automatic anonymous retry gate.** The `§11.2` retry runs only for the sentinel owner,
-  a `SignedOut` auth state and at least one row still owned by the sentinel. `ADR-0125`.
+- **`D-124` — Automatic anonymous retry gate.** The `§11.2` retry runs for the sentinel owner, a
+  `SignedOut` auth state, no acquisition in flight, and either the explicit "continue without an
+  account" choice remembered for the life of the process or rows still owned by the sentinel. It is
+  triggered by returning connectivity and by a write committing under the sentinel. `ADR-0125`.
 - **`D-125` — Adoption read gate.** Vehicle reads and writes wait until adoption has run for the
-  current owner. `ADR-0126`.
+  current owner, and a failed adoption is a typed error rather than a silent wait. `ADR-0126`.
 
-None of the three is an owner decision reserved by `AGENTS.md` §`Owner Decisions`. Each is recorded
-as `Accepted` with the rejected alternatives in its ADR, so the owner can reverse any of them in
-review, which is how `D-115` to `D-122` were settled.
+None of the three is an owner decision reserved by `AGENTS.md` §`Owner Decisions`. All three were
+reviewed by the owner on pull request #55 on 2026-09-06: `D-123` was approved unchanged; `D-124` was
+rejected in its first form and revised in place, because it has never been merged and
+`AGENTS.md` requires a superseding decision only for one that has; `D-125` was approved with the
+failure semantics added.
 
 Deviations from a `SHOULD`, and other things worth stating:
 
@@ -208,9 +267,22 @@ Deviations from a `SHOULD`, and other things worth stating:
   a pair — "does not create an account when there is nothing to adopt" against "creates one when
   there is" — and no constant implementation satisfies both halves. The pairs are deliberate; the
   individual trivial pass is not evidence on its own.
+- **One test was added after GREEN, not before it.** The owner's list required that a failure in one
+  automatic observer not disable the other "and vice versa". The first round of tests covered a
+  failing owner observer leaving the connectivity trigger working; the reverse direction was added
+  once the supervisor made both directions symmetric by construction, so it passed on the first run.
+  It is coverage of an implemented property rather than a specification of a missing one, and it is
+  recorded here rather than presented as test-first.
 - **The `E1-14` flake was not observed** on any run of this story, but it is in
   `FuelEntryStateHolderTest`, which this branch does not touch. A red `shared-tests` job on CI
   should be checked against `E1-14` before being treated as a regression.
+- **The first round claimed the Swift-facing surface was unchanged, and that was wrong.** Both
+  `toAdoptionOutboxPayload` mappers were public in modules `:composition:ios` exports, so they
+  entered the committed Objective-C golden header. `objc-header-golden-check` caught it on the first
+  push; `contractCheck` assertion 7 did not, because it checks the committed golden rather than
+  regenerating the header. Both mappers are now `@HiddenFromObjC`. The lesson worth keeping is that
+  a claim about the exported surface has to be verified by regenerating the header locally, which is
+  now part of `Verification Run`.
 
 ## Verification Run
 
@@ -225,26 +297,42 @@ Deviations from a `SHOULD`, and other things worth stating:
 - `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84`
   `E1_07_API_36` AVD, booted with `-wipe-data` and API level confirmed as 36 — **14 of 14 tests
   passed**, `BUILD SUCCESSFUL`, 214 actionable tasks with 38 executed, so the suite ran rather than
-  reporting `UP-TO-DATE`. The Compose Vehicle and Fuel Entry flows now read through the `D-125`
-  gate and are unaffected.
+  reporting `UP-TO-DATE`. Re-run unchanged after the owner review round, with the Compose Vehicle
+  and Fuel Entry flows now reading through the `D-125` gate and its typed-error paths.
+- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by the CI job's own
+  `diff -u` between `shared/build/generated/objc-header/Shared.h.golden` and the regenerated
+  `Shared.h` — **identical.** This step exists because the first round's claim about the exported
+  surface was made without it and was wrong.
 - `contractCheck` reports 17 assertions passing and no `PENDING`, over 126 decisions and 126 ADRs.
-- New tests, confirmed executed on both targets from the JUnit XML: `core:database`
-  `LocalOwnerAdoptionTest` 7 tests, 0 failures on `iosSimulatorArm64Test`; `shared`
-  `LocalOwnerAdoptionTest` 6 tests, 0 failures on `iosSimulatorArm64Test`. Same counts on the JVM.
-- RED evidence: with the behaviour stubbed out, `:core:database` reported `7 tests completed, 7
-  failed` and `:shared` reported the four failures described under `Decisions Made`. Every failure
-  was an assertion failure on compiled, executing code, not a compilation or setup error.
+- New tests, confirmed executed on both targets from the JUnit XML rather than from the task result:
+  `core:database` `LocalOwnerAdoptionTest` 7 tests, `shared` `LocalOwnerAdoptionTest` 11 tests and
+  `shared` `LocalOwnerAdoptionFailureTest` 5 tests, 0 failures each on `iosSimulatorArm64Test`. Same
+  counts on the JVM.
+- RED evidence, first round: with the behaviour stubbed out, `:core:database` reported `7 tests
+  completed, 7 failed` and `:shared` reported four failures.
+- RED evidence, owner review round: `56 tests completed, 8 failed` in `:shared`, the eight being
+  exactly the new behaviours — the explicit local start and its retry, the durable-rows case, the
+  first-write trigger, the concurrency guard, the typed error on the read and write paths, the
+  unreadable-and-retryable list, and observer independence. Every failure was on compiled, executing
+  code, and the run completed in 51 seconds because the awaiting tests carry a bounded timeout.
 
 ## Contract Impact
 
 Updated `docs/CONTRACTS.md`:
 
-- **§11.2** — the background anonymous retry now states its three conditions (`D-124`).
+- **§11.2** — the background anonymous retry states which device it runs for: the explicit
+  "continue without an account" choice while the process lives, or rows under the sentinel after a
+  restart; a device with neither MUST NOT be given an account. It also states the second trigger, a
+  write committing under the sentinel, and that concurrent triggers produce at most one attempt
+  (`D-124`).
 - **§11.4** — local reads for a newly authenticated owner MUST NOT resolve until adoption has run,
-  and the gate is a no-op for the sentinel (`D-125`).
+  and the gate is a no-op for the sentinel. A failed adoption MUST be a typed `AppError`, never
+  thrown across the gate and never an indefinite wait; cancellation MUST stay distinguishable from
+  failure; and the automatic triggers MUST NOT be able to cancel one another (`D-125`).
 
-No type, signature or schema in `§20` changed, and the exported Swift-facing surface is unchanged:
-`objc-header-golden-check` passes against the unmodified committed golden.
+No type, signature or schema in `§20` changed. The exported Swift-facing surface is unchanged, and
+that is now verified by regenerating the Objective-C header and diffing it against the committed
+golden, not by assertion 7 of `contractCheck` alone.
 
 ## Decision Board Impact
 
@@ -268,9 +356,10 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
 ## Risks or Follow-ups
 
-- **A repeatedly failing adoption leaves the vehicle list unknown.** `D-125` chose that over an
-  empty list, which would open mandatory first-run creation. There is no user-facing recovery for
-  the stuck case yet. Owner: `E3-03`, which owns sync failure surfacing.
+- **A repeatedly failing adoption is visible and retryable, but not retried automatically.** `D-125`
+  chose an unreadable list over an empty one, which would open mandatory first-run creation, and the
+  owner can retry it. Nothing retries it on a schedule and it is not part of `SyncStatus`; that is
+  now an acceptance criterion of `E3-03` rather than a note here.
 - **The `(max pre-existing seq) + 1` criterion relies on `AUTOINCREMENT`.** It holds while no outbox
   row is ever deleted before adoption. Under the contract the outbox is empty at adoption time, so
   the premise holds today, but a future flow that deletes outbox rows and then adopts would see the

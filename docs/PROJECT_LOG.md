@@ -38,6 +38,44 @@
 
 ## Entries
 
+### 2026-09-06 — E2-06 first owner review applied: D-124 revised, D-125 extended
+
+- **Type:** correction
+- **Story / Decision:** `E2-06` / `D-124`, `D-125`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** three things, on pull request #55. First, a defect CI found and the previous
+  entry's claim missed: both `toAdoptionOutboxPayload` mappers were public in modules
+  `:composition:ios` exports, so they entered the committed Objective-C golden header;
+  `objc-header-golden-check` failed on the first push. Both are now `@HiddenFromObjC` and the
+  regenerated header matches the golden byte for byte. Second, `D-124` was revised in place: the
+  automatic anonymous retry now admits either the explicit "continue without an account" choice,
+  remembered for the life of the process, or rows still owned by the sentinel, and it is triggered
+  by returning connectivity **and** by a write committing under the sentinel. Third, `D-125` was
+  extended: a failed adoption is `PersistenceError.TransactionFailed` on read and write paths rather
+  than a silent indefinite wait, the two automatic triggers cannot cancel each other, and the
+  deferred automatic retry is now an acceptance criterion of `E3-03`.
+- **Why:** the owner rejected the first form of `D-124` on two grounds, both correct. Rows are not
+  the owner's decision — someone who chooses the local start and writes nothing is invisible to a
+  rows-only gate. And the gate stranded a device: one that is online when it starts locally sees its
+  only connectivity emission *before* any row exists, so nothing would ever reopen the question
+  while the network stayed up. The claim in the previous entry that the first write self-corrected
+  that case was wrong, because nothing called the retry again. On `D-125`, an adoption that keeps
+  failing was left as an indefinite unknown list with no typed error, no way to distinguish it from
+  cancellation, and one observer able to cancel the other.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/CONTRACTS.md §11.2` and `§11.4`, `docs/adr/0125`,
+  `docs/adr/0126`, `docs/BACKLOG.md` (`E3-03` acceptance criteria), `docs/handoff-E2-06.md` and this
+  log. `D-124` and `D-125` were revised in place rather than superseded, because neither has been
+  merged; `AGENTS.md` requires a superseding decision only for one that has.
+- **Verification:** eight new failing tests first, all on compiled and executing code, with bounded
+  timeouts so a missing behaviour fails in seconds instead of hanging the suite. Twenty-two adoption
+  tests now run on both the JVM and `iosSimulatorArm64`. The exact `AGENTS.md` command passed 636
+  actionable tasks, the regenerated Objective-C header matches the committed golden, forced provider
+  decoupling and the `D-84` API 36 instrumented suite passed.
+- **Follow-ups / risks:** the automatic retry of a repeatedly failing adoption and its aggregate
+  status belong to `E3-03` and are written into that story's acceptance criteria. `E2-06` remains a
+  gated story on pull request #55; the agent does not merge it.
+
 ### 2026-09-06 — E2-06 local owner adoption implemented
 
 - **Type:** story

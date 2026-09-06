@@ -4,7 +4,9 @@
 
 Accepted
 
-Taken while implementing `E2-06` on 2026-09-06.
+Taken while implementing `E2-06` on 2026-09-06 and extended the same day, before merge, in the
+owner's review of pull request #55. The gate itself was approved; leaving an adoption failure as a
+silent, indefinite wait was not. This record describes the extended, implemented behaviour.
 
 ## Context
 
@@ -44,6 +46,23 @@ When nothing is waiting it costs one indexed count.
 `isLoading` keeps the meaning `D-116` gave it, and gains no exception: while the gate is closed, the
 authenticated owner's list genuinely is not known yet.
 
+**A failure is typed, not silent.** `awaitAdoption()` returns `Outcome<Unit, AppError>`. A failed
+adoption transaction becomes `PersistenceError.TransactionFailed`, the same leaf the repository
+already uses for a failed write, and never an exception crossing the gate. `CancellationException` is
+rethrown, so the caller's own cancellation still behaves like cancellation and an adoption failure
+never arrives disguised as one.
+
+On a read the error is emitted as the flow's first value. `VehicleListStateHolder` already models an
+`Outcome.Err` listing as unreadable: `isLoading` stays true, the error is published as a message, and
+`refresh()` starts a new observation, which runs the gate again. The retry is therefore real work and
+not a redraw, and no confirmed empty list is ever published. On a write the error is the write's
+error, returned to the caller.
+
+**The two automatic triggers are independent.** They are siblings under a supervisor, so one failing
+cannot cancel the other, and each also survives its own failure with a logged warning rather than
+disappearing. Losing a trigger permanently would leave a device under the sentinel with no way back,
+which is the failure this decision exists to avoid.
+
 ## Consequences
 
 ### Positive
@@ -55,10 +74,12 @@ authenticated owner's list genuinely is not known yet.
 ### Negative
 
 - An adoption that fails repeatedly leaves the list unknown instead of empty. That is the safer of
-  the two failures, but it is a state with no user-facing recovery yet; `E3-03` owns sync failure
-  surfacing and is the natural place to close it.
+  the two failures, and it is now visible and retryable rather than silent, but the retry is
+  owner-driven: nothing retries it on a schedule. Automatic retry with backoff belongs to the sync
+  engine and is an acceptance criterion of `E3-03`.
 - Only the Vehicle side is gated. Fuel entries are reached through a vehicle, so no fuel-entry read
   can precede a resolved vehicle list.
+- Every Vehicle read and write now goes through one more suspension point.
 
 ### Constraints Introduced
 
@@ -66,12 +87,23 @@ authenticated owner's list genuinely is not known yet.
   `E2-03` offline start.
 - A read path added to the Vehicle repository MUST pass through the gate, or it can publish the empty
   list the gate exists to prevent.
+- An adoption failure MUST reach the caller as a typed `AppError`. It MUST NOT be thrown across the
+  gate, MUST NOT cancel the caller, and MUST NOT be left as an indefinite wait.
+- `CancellationException` MUST be rethrown rather than converted, so cancellation and failure stay
+  distinguishable.
+- The automatic triggers MUST NOT be able to cancel one another.
 
 ## Verification
 
 - `LocalOwnerAdoptionTest` in `:shared` covers both gate directions and the end-to-end path through
   `DefaultAppGraph`: the sentinel's list resolves to its own rows, and after authentication the next
   resolved list is the adopted one, never an empty one.
+- `LocalOwnerAdoptionFailureTest` in `:shared` covers the failure semantics against a transaction
+  that fails and can then be made to succeed: the gate reports `PersistenceError.TransactionFailed`
+  instead of throwing and the caller stays active; the list stays unknown with a message and no
+  confirmed empty list, and `refresh()` recovers it; a write behind a failed gate returns the same
+  typed error without cancelling its caller; and a failing owner observer leaves the connectivity
+  trigger working.
 - The existing `VehicleListStateHolderTest` and `AppGraphContractTest` suites still pass, so the
   decorator changed no existing behavior.
 
