@@ -449,6 +449,10 @@ after the final device suite; the connected owner phone was neither targeted nor
   failures and 7 UI tests with 1 environment-gated skip and 0 failures; the generated Objective-C
   header is byte-identical to the updated golden; `contractCheck` reports 123 aligned decisions and
   ADRs with none unresolved; `git diff --check` is clean.
+- A pre-existing flake in `FuelEntryStateHolderTest` on `iosSimulatorArm64` was found while verifying
+  this round, and is investigated and recorded rather than re-run away. It is not caused by `D-122`:
+  the class was last changed in `E1-12` and no commit of this round touches it. The evidence is in
+  `Risks or Follow-ups`.
 - One transient failure was observed and is recorded rather than hidden: `:shared:iosSimulatorArm64Test`
   failed once under forced provider decoupling while an `xcodebuild` simulator test run was executing
   concurrently. It passed on an isolated rerun of the same task and again on the complete isolated
@@ -680,6 +684,24 @@ after the final device suite; the connected owner phone was neither targeted nor
 - `NO_ACCOUNT_AVAILABLE` is exported on the Swift ABI but is unreachable on iOS today. That is
   deliberate, recorded in ADR-0123, and is not an unfinished implementation to complete on agent
   judgement.
+- **Residual risk: `FuelEntryStateHolderTest` is flaky on Kotlin/Native.** `shared-tests` failed on
+  `88acfc3` with
+  `FuelEntryStateHolderTest.litersAndPriceDeriveTotalCostWhileTyping[iosSimulatorArm64]` and
+  `kotlinx.coroutines.test.UncompletedCoroutinesError`, a `runTest` timeout; the same log records
+  `The number of threads 4 is more than the number of processors 3`, so the runner was
+  under-provisioned. The evidence that it is a flake and not a regression: the identical shared test
+  and product code passed the same job on `e7a4f4b`, and `88acfc3` differs from it only by Markdown
+  in this file. Reproduced locally at roughly one failure in seventeen `--rerun-tasks` runs of
+  `:shared:iosSimulatorArm64Test`, and that local failure was a *different* test of the same class,
+  `inconsistentPartialEntryRequiresConfirmationThenPublishesBothIndicators`, so the fragility belongs
+  to the class rather than to one test. Each affected test awaits a real emission from a
+  database-backed graph through `state.first { ... }` inside `runTest`, with no bounded expectation,
+  so a starved runner can exceed the default timeout.
+  This is pre-existing and outside `E2-03`. It is NOT absorbed into this story, for the same reason
+  the third round refused the pre-existing iOS later-creation divergence: it needs its own backlog
+  story, made explicit and Ready first. Until then, a `shared-tests` failure naming
+  `FuelEntryStateHolderTest` with `UncompletedCoroutinesError` should be confirmed against this entry
+  before it is treated as a regression.
 - The vehicle list observation is now eager for the lifetime of the holder. If a future screen needs
   subscription-scoped observation, that is a deliberate change to make, not an oversight.
 - The owner-transition reset uses "a known list became unknown without a message" as its signal. A
