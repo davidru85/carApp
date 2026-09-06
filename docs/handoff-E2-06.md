@@ -69,12 +69,11 @@
      `docs/CONTRACTS.md` §11.2 and §11.4 updated with the retry gate and the read gate.
 - Verification evidence and known failures: see `Verification Run`. The complete `AGENTS.md`
   non-instrumented command passed 636 actionable tasks and forced provider decoupling passed 234.
-  No known failure. The `D-84` API 36 instrumented suite is the one check still to run locally.
+  No known failure. The `D-84` API 36 instrumented suite passed 14 of 14.
 - Open decisions or blockers: none blocking. Three decisions were taken by the agent and are
   recorded as `Accepted` with their ADRs; they are the ones to review first, and each ADR carries
   the alternatives that were rejected.
-- Exact next step: run `:androidApp:connectedDebugAndroidTest` on the `E1_07_API_36` emulator, then
-  push the branch and open the pull request against `main`.
+- Exact next step: push the branch and open the pull request against `main`. The agent stops there.
 
 ### Intake and status realignment checkpoint (2026-09-06)
 
@@ -221,6 +220,11 @@ Deviations from a `SHOULD`, and other things worth stating:
   the exact command in `AGENTS.md` §`Build and verify`.
 - `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` —
   **BUILD SUCCESSFUL, 234 actionable tasks.** The `D-45` forced provider decoupling route.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84`
+  `E1_07_API_36` AVD, booted with `-wipe-data` and API level confirmed as 36 — **14 of 14 tests
+  passed**, `BUILD SUCCESSFUL`, 214 actionable tasks with 38 executed, so the suite ran rather than
+  reporting `UP-TO-DATE`. The Compose Vehicle and Fuel Entry flows now read through the `D-125`
+  gate and are unaffected.
 - `contractCheck` reports 17 assertions passing and no `PENDING`, over 126 decisions and 126 ADRs.
 - New tests, confirmed executed on both targets from the JUnit XML: `core:database`
   `LocalOwnerAdoptionTest` 7 tests, 0 failures on `iosSimulatorArm64Test`; `shared`
