@@ -697,11 +697,11 @@ after the final device suite; the connected owner phone was neither targeted nor
   to the class rather than to one test. Each affected test awaits a real emission from a
   database-backed graph through `state.first { ... }` inside `runTest`, with no bounded expectation,
   so a starved runner can exceed the default timeout.
-  This is pre-existing and outside `E2-03`. It is NOT absorbed into this story, for the same reason
-  the third round refused the pre-existing iOS later-creation divergence: it needs its own backlog
-  story, made explicit and Ready first. Until then, a `shared-tests` failure naming
-  `FuelEntryStateHolderTest` with `UncompletedCoroutinesError` should be confirmed against this entry
-  before it is treated as a regression.
+  This is pre-existing and outside `E2-03`, so it is not absorbed into this story. On 2026-09-06 the
+  owner directed that it be filed instead: it is now `E1-14` in `docs/BACKLOG.md`, carrying this
+  evidence. Until it is done, a `shared-tests` failure naming `FuelEntryStateHolderTest` with
+  `UncompletedCoroutinesError` should be confirmed against `E1-14` before it is treated as a
+  regression.
 - The vehicle list observation is now eager for the lifetime of the holder. If a future screen needs
   subscription-scoped observation, that is a deliberate change to make, not an oversight.
 - The owner-transition reset uses "a known list became unknown without a message" as its signal. A
@@ -709,7 +709,9 @@ after the final device suite; the connected owner phone was neither targeted nor
   navigation.
 - The iOS first-run UI tests depend on the Debug-only `CARAPP_UI_TEST_FORCE_FIRST_VEHICLE` seam.
 - The pre-existing divergence where iOS stays on the vehicle list after creating a *later* vehicle is
-  still out of scope.
+  still out of scope for this story. On 2026-09-06 the owner directed that it be filed: it is now
+  `E1-15` in `docs/BACKLOG.md`, and it runs after pull request #54 merges because it builds on the
+  post-save routing this story delivered for first-run creation.
 
 
 - Requested owner decision: a dedicated `NativeSignInFailure` case for "no account available on the

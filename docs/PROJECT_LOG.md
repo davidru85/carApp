@@ -38,6 +38,30 @@
 
 ## Entries
 
+### 2026-09-06 — E1-14 and E1-15 filed for the two deferred defects
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`, `E1-15` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** two known defects that had been recorded only as handoff follow-ups are now
+  backlog stories with acceptance criteria. `E1-14` covers the Kotlin/Native timeout flake in
+  `FuelEntryStateHolderTest`, found while verifying the `D-122` round: `shared-tests` failed on
+  `88acfc3` with `UncompletedCoroutinesError` on a three-processor runner, the identical code passed
+  the same job on `e7a4f4b`, and a local loop reproduced it at roughly one in seventeen runs in a
+  *different* test of the same class. `E1-15` covers the pre-existing iOS divergence where creating a
+  *later* vehicle dismisses the sheet and stays on the list instead of opening that vehicle's detail,
+  against `SPECIFICATION.md` F-2 and against Android.
+- **Why:** a follow-up recorded only in a handoff is history, and the next agent is not bound by it.
+  Both defects had survived several rounds that way. The flake in particular makes a red
+  `shared-tests` job ambiguous, which erodes the value of the gate itself.
+- **Documents touched:** `docs/BACKLOG.md`, `docs/handoff-E2-03.md` and this log. The stale story-index
+  row that still called `E2-03` complete was corrected in the same change to match its own entry.
+- **Verification:** `./gradlew contractCheck architectureCheck` passed. No normative rule, decision or
+  contract changed.
+- **Follow-ups / risks:** `E1-14` is confined to test code and stops and escalates if the
+  investigation finds a production cause. `E1-15` runs after pull request #54 merges, because it
+  builds on the post-save routing `E2-03` delivered for first-run creation.
+
 ### 2026-09-06 — D-122: a device with no account available reports itself
 
 - **Type:** decision
