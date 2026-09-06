@@ -93,25 +93,24 @@ accepted the prerequisite order `E3-06 -> E3-01 -> E0-07` in `D-42`. `E3-01` is 
 `E1-09`, iOS UI: Vehicles and Fuel Entries, `E1-10`, Settings, `E1-11`, the Vehicle outbox
 payload `entityType` fix, `E1-12`, the shared-test graph-close race fix, and `E1-13`, executable iOS
 locale-provider behavior coverage, `E2-01`, the complete auth contracts and owner context, and
-`E2-02`, the complete Firebase Auth integration, are complete. `E2-03`, the native Android/iOS
-onboarding providers and F-1 routing, is delivered on `story/E2-03-onboarding-flow` with all ten
-required checks green, and is awaiting the owner's review and merge of pull request #54 after three
-review rounds. The story that merges it updates this section.
+`E2-02`, the complete Firebase Auth integration, and `E2-03`, the native Android/iOS onboarding
+providers and F-1 routing, are complete. `E2-03` merged on 2026-09-06 through pull request #54,
+after three owner review rounds, with all ten required checks green.
 
 ### Delivery status and remaining work
 
 - **Completed:** all Phase 0 and Phase 1 stories; the pulled-forward `E3-06` and
   `E3-01` prerequisites; the `E0-07` walking-skeleton gate, including D-73 cleanup evidence;
-  `E2-01` and `E2-02`.
-- **In owner review:** `E2-03`, Onboarding Flow F-1, on pull request #54. It introduced `D-112`
-  through `D-121`; `docs/handoff-E2-03.md` holds the live checkpoint and the outstanding manual
-  provider acceptance.
-- **Next after that merges:** `E2-06`, Local Owner Adoption.
-- **Remaining Phase 1:** none.
+  `E2-01`, `E2-02` and `E2-03`. `E2-03` introduced `D-112` through `D-122`;
+  `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
+  owner-owned.
+- **Next:** `E2-06`, Local Owner Adoption.
+- **Remaining Phase 1:** `E1-14`, `E1-15` and `E1-16`. None of these blocks Phase 2.
 - **Remaining Phase 2:** `E2-06`, `E2-04`, `E2-07` and `E2-05`.
 - **Remaining Phase 3:** `E3-10`, `E3-11`, `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
+- **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model).
 
 `docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.
 
