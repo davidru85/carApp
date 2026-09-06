@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.core.database
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 
 /** The transaction boundary for synchronized entity writes selected by `D-38`. */
 class DatabaseMutations(
@@ -510,16 +511,73 @@ class DatabaseMutations(
     }
 
     /**
-     * Rewrites every `LOCAL_OWNER` row to [newOwnerId] and enqueues the outbox snapshots of
-     * `docs/CONTRACTS.md §11.4`, in one transaction. Story `E2-06` implements the behavior; this
-     * declaration exists so its failing tests compile and execute.
+     * Local owner adoption, `docs/CONTRACTS.md §11.4`. Rewrites every row still owned by the
+     * `LOCAL_OWNER` sentinel to [newOwnerId], increments its `localRevision`, resets every
+     * non-`SYNCED` row to `PENDING`, and enqueues one outbox snapshot per reset row in the push
+     * dependency order of `§8` and then by `localMutationSeq ASC, id ASC`.
+     *
+     * The adoption rewrite consumes no `localMutationSeq`, so the local mutation order that
+     * produced the rows survives it. Running the operation twice is a no-op the second time,
+     * because the first run leaves no row owned by the sentinel.
      */
-    @Suppress("UnusedParameter", "EmptyFunctionBlock")
     suspend fun adoptLocalOwner(
         newOwnerId: String,
         vehicleOutboxPayload: (VehicleDatabaseRow) -> String,
         fuelEntryOutboxPayload: (FuelEntryDatabaseRow) -> String,
     ) {
+        database.transaction {
+            val sentinel = LOCAL_OWNER.value
+            // Both selections are already ordered by localMutationSeq ASC, id ASC, so partitioning
+            // them into the four push dependency groups is a stable partition, never a re-sort.
+            val vehicles = queries.selectVehiclesForAdoption(sentinel).awaitAsList()
+            val fuelEntries = queries.selectFuelEntriesForAdoption(sentinel).awaitAsList()
+
+            for (vehicle in vehicles) {
+                queries.adoptVehicleRow(newOwnerId = newOwnerId, id = vehicle.id)
+            }
+            for (entry in fuelEntries) {
+                queries.adoptFuelEntryRow(newOwnerId = newOwnerId, id = entry.id)
+            }
+
+            for (vehicle in vehicles.filter { it.enqueueable() && it.deleted == 0L }) {
+                enqueueAdoptedVehicle(vehicle.id, vehicleOutboxPayload)
+            }
+            for (entry in fuelEntries.filter { it.enqueueable() && it.deleted == 0L }) {
+                enqueueAdoptedFuelEntry(entry.id, fuelEntryOutboxPayload)
+            }
+            for (entry in fuelEntries.filter { it.enqueueable() && it.deleted == 1L }) {
+                enqueueAdoptedFuelEntry(entry.id, fuelEntryOutboxPayload)
+            }
+            for (vehicle in vehicles.filter { it.enqueueable() && it.deleted == 1L }) {
+                enqueueAdoptedVehicle(vehicle.id, vehicleOutboxPayload)
+            }
+        }
+    }
+
+    private suspend fun enqueueAdoptedVehicle(
+        id: String,
+        outboxPayload: (VehicleDatabaseRow) -> String,
+    ) {
+        val adopted = queries.selectVehicleById(id).awaitAsOne().toVehicleDatabaseRow()
+        queries.coalesceOutbox(
+            entityType = "VEHICLE",
+            entityId = adopted.id,
+            payload = outboxPayload(adopted),
+            localRevision = adopted.localRevision,
+        )
+    }
+
+    private suspend fun enqueueAdoptedFuelEntry(
+        id: String,
+        outboxPayload: (FuelEntryDatabaseRow) -> String,
+    ) {
+        val adopted = queries.selectFuelEntryById(id).awaitAsOne().toFuelEntryDatabaseRow()
+        queries.coalesceOutbox(
+            entityType = "FUEL_ENTRY",
+            entityId = adopted.id,
+            payload = outboxPayload(adopted),
+            localRevision = adopted.localRevision,
+        )
     }
 
     private suspend fun Fuel_entry.activeSuccessor(): Fuel_entry? =
@@ -528,6 +586,11 @@ class DatabaseMutations(
         } else {
             null
         }
+
+    /** A `SYNCED` row already matches the remote copy, so adoption never enqueues it (`§11.4`). */
+    private fun Vehicle.enqueueable(): Boolean = syncState != "SYNCED"
+
+    private fun Fuel_entry.enqueueable(): Boolean = syncState != "SYNCED"
 
     private fun Fuel_entry.recomputeKeysDifferFrom(other: Fuel_entry): Boolean =
         id != other.id ||

@@ -68,7 +68,8 @@ internal class DefaultAppGraph(
     private var closed = false
     private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
-    private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database)
+    private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
+    private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
     private val fuelRepository =
         SqlDelightFuelEntryRepository(
             databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
@@ -84,8 +85,10 @@ internal class DefaultAppGraph(
         )
 
     init {
-        // Keep this eager launch after every property touched by bootstrapSettings().
+        // Keep these eager launches after every property they touch. Adoption is automatic by
+        // contract (§11.2, §11.4): nothing in the UI starts it.
         graphScope.launch { bootstrapSettings() }
+        localOwnerAdoption.launchIn(graphScope)
     }
 
     override fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder {

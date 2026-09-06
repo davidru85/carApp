@@ -20,11 +20,11 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * The automatic side of local owner adoption (`docs/CONTRACTS.md §11.2` and `§11.4`): a device that
@@ -44,15 +44,11 @@ class LocalOwnerAdoptionTest {
     fun connectivityReturningAcquiresAnAnonymousUidWhenLocalOwnerDataIsWaiting() =
         runTest {
             val authClient = AdoptingAuthClient(uid = ADOPTING_UID)
-            val connectivity = FakeConnectivityObserver(initiallyOnline = false)
-            val ownerContext = FakeOwnerContext()
             val database = openDatabase()
             database.seedLocalOwnerVehicle("vehicle-1")
-            val adoption = adoption(database, authClient, connectivity, ownerContext)
+            val adoption = adoption(database, authClient, FakeConnectivityObserver(), FakeOwnerContext())
 
-            adoption.launchIn(backgroundScope)
-            connectivity.set(true)
-            testScheduler.runCurrent()
+            adoption.acquireAnonymousUidIfWaiting()
 
             assertEquals(1, authClient.anonymousSignInCalls, "connectivity returning starts one acquisition")
         }
@@ -61,89 +57,96 @@ class LocalOwnerAdoptionTest {
     fun connectivityReturningDoesNotCreateAnAccountWhenThereIsNothingToAdopt() =
         runTest {
             val authClient = AdoptingAuthClient(uid = ADOPTING_UID)
-            val connectivity = FakeConnectivityObserver(initiallyOnline = false)
             val database = openDatabase()
-            val adoption = adoption(database, authClient, connectivity, FakeOwnerContext())
+            val adoption = adoption(database, authClient, FakeConnectivityObserver(), FakeOwnerContext())
 
-            adoption.launchIn(backgroundScope)
-            connectivity.set(true)
-            testScheduler.runCurrent()
+            adoption.acquireAnonymousUidIfWaiting()
 
             assertEquals(0, authClient.anonymousSignInCalls, "an empty local database never provokes a sign-in")
         }
 
     @Test
-    fun anAuthenticatedOwnerAdoptsTheWaitingRowsWithNoUiAction() =
+    fun anAlreadyAuthenticatedSessionNeverRepeatsTheAnonymousAcquisition() =
+        runTest {
+            val authClient = AdoptingAuthClient(uid = ADOPTING_UID)
+            val database = openDatabase()
+            database.seedLocalOwnerVehicle("vehicle-1")
+            val adoption =
+                adoption(database, authClient, FakeConnectivityObserver(), FakeOwnerContext(OwnerId(ADOPTING_UID)))
+
+            adoption.acquireAnonymousUidIfWaiting()
+
+            assertEquals(0, authClient.anonymousSignInCalls, "the retry is for the sentinel owner only")
+        }
+
+    @Test
+    fun theGateIsOpenForAnOwnerThatIsStillTheLocalSentinel() =
         runTest {
             val database = openDatabase()
             database.seedLocalOwnerVehicle("vehicle-1")
-            val ownerContext = FakeOwnerContext()
+            val adoption =
+                adoption(database, AdoptingAuthClient(ADOPTING_UID), FakeConnectivityObserver(), FakeOwnerContext())
+
+            adoption.awaitAdoption()
+
+            // An offline session reads its own rows. Adoption gates the authenticated owner only.
+            assertEquals(1L, database.localOwnerRowCount())
+        }
+
+    @Test
+    fun theGateOnlyReturnsForAnAuthenticatedOwnerOnceAdoptionHasCommitted() =
+        runTest {
+            val database = openDatabase()
+            database.seedLocalOwnerVehicle("vehicle-1")
+            val ownerContext = FakeOwnerContext(OwnerId(ADOPTING_UID))
             val adoption =
                 adoption(database, AdoptingAuthClient(ADOPTING_UID), FakeConnectivityObserver(), ownerContext)
 
-            adoption.launchIn(backgroundScope)
-            ownerContext.set(OwnerId(ADOPTING_UID))
-            testScheduler.runCurrent()
+            adoption.awaitAdoption()
 
-            assertEquals(0L, database.localOwnerRowCount())
+            assertEquals(0L, database.localOwnerRowCount(), "the gate does not return before the rewrite")
             assertEquals(1, database.outboxRowCount("vehicle-1"))
         }
 
     @Test
-    fun adoptionIsSettledForAnOwnerThatHasNothingWaiting() =
-        runTest {
-            val database = openDatabase()
-            val adoption =
-                adoption(database, AdoptingAuthClient(ADOPTING_UID), FakeConnectivityObserver(), FakeOwnerContext())
-
-            adoption.launchIn(backgroundScope)
-            testScheduler.runCurrent()
-
-            assertTrue(adoption.isSettled.value, "a database with no LOCAL_OWNER row has nothing to wait for")
-        }
-
-    @Test
-    fun adoptionIsUnsettledWhileLocalOwnerRowsStillWaitForTheirNewOwner() =
-        runTest {
-            val database = openDatabase()
-            database.seedLocalOwnerVehicle("vehicle-1")
-            val adoption =
-                adoption(database, AdoptingAuthClient(ADOPTING_UID), FakeConnectivityObserver(), FakeOwnerContext())
-
-            adoption.launchIn(backgroundScope)
-            testScheduler.runCurrent()
-
-            assertTrue(
-                !adoption.isSettled.value,
-                "rows still owned by LOCAL_OWNER mean the authenticated list is not known yet",
-            )
-        }
-
-    @Test
-    fun theVehicleListStaysUnknownUntilAdoptionForTheNewOwnerCommits() =
+    fun authenticationAdoptsTheWaitingRowsAndTheListNeverResolvesEmpty() =
         runTest {
             val database = openDatabase()
             database.seedLocalOwnerVehicle("vehicle-1")
             val ownerContext = FakeOwnerContext()
-            val dependencies =
-                testAppGraphDependencies(
-                    databaseFactory = SingleHandleDatabaseFactory(database),
-                    authClient = AdoptingAuthClient(ADOPTING_UID),
-                    ownerContext = ownerContext,
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            testAppGraphDependencies(
+                                databaseFactory = SingleHandleDatabaseFactory(database),
+                                authClient = AdoptingAuthClient(ADOPTING_UID),
+                                ownerContext = ownerContext,
+                            ),
+                        ),
                 )
-            val graph = buildAppGraph(isDebugBuild = true, providers = testAppProviders(dependencies))
             val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
                 val holder = graph.vehicleListStateHolder(harness.scope)
-                harness.collect(holder.state)
-                ownerContext.set(OwnerId(ADOPTING_UID))
-                testScheduler.runCurrent()
+                // The offline session reads its own rows: the gate never holds the sentinel owner.
+                assertEquals(
+                    1,
+                    holder.state
+                        .first { state -> !state.isLoading }
+                        .vehicles.size,
+                )
 
-                // Without the gate the list resolves empty here, and a host reading D-116 would open
-                // mandatory first-run creation over data that is one transaction away from arriving.
-                assertEquals(1, holder.state.value.vehicles.size, "the adopted vehicle is the list")
-                assertTrue(!holder.state.value.isLoading, "the list is known once adoption has committed")
+                // Authentication is the only thing that happens here. No UI action follows it.
+                ownerContext.set(OwnerId(ADOPTING_UID))
+                val adopted = holder.state.first { state -> !state.isLoading }
+
+                // Without the gate this list resolves empty first, and a host reading D-116 would
+                // open mandatory first-run creation over data one transaction away from arriving.
+                assertEquals(1, adopted.vehicles.size, "the adopted vehicle is the authenticated list")
+                assertEquals(0L, database.localOwnerRowCount(), "nothing is left under the sentinel")
+                assertEquals(1, database.outboxRowCount("vehicle-1"), "the adopted row is enqueued once")
             } finally {
                 harness.close()
             }
