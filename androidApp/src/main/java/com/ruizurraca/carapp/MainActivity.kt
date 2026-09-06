@@ -215,6 +215,8 @@ private fun AuthenticatedApp(
 ) {
     val navController = rememberNavController()
     var firstVehicleCreationPresented by rememberSaveable { mutableStateOf(false) }
+    val gate = vehicleListGate(isLoading = vehicleState.isLoading, hasMessage = vehicleState.message != null)
+    var previousGate by rememberSaveable { mutableStateOf(gate) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -224,19 +226,57 @@ private fun AuthenticatedApp(
             vehicleRoutes(navController, viewModel)
             fuelEntryRoutes(navController, viewModel)
         }
-        if (vehicleState.isLoading) WaitingIndicator()
+        when (gate) {
+            VehicleListGate.WAITING -> WaitingIndicator()
+            VehicleListGate.UNREADABLE -> UnreadableVehicleList(onRetry = viewModel.vehicleListStateHolder::refresh)
+            VehicleListGate.RESOLVED -> Unit
+        }
     }
 
-    LaunchedEffect(vehicleState.isLoading, vehicleState.vehicles.size) {
+    LaunchedEffect(gate, vehicleState.vehicles.size) {
+        if (shouldResetOwnerScopedNavigation(gate = gate, previousGate = previousGate)) {
+            // The list no longer belongs to the session that built this navigation.
+            firstVehicleCreationPresented = false
+            navController.popBackStack(VehicleRoutes.LIST, inclusive = false)
+        }
+        previousGate = gate
+
         val presentFirstVehicleCreation =
             shouldPresentFirstVehicleCreation(
-                isVehicleListKnown = !vehicleState.isLoading,
+                isVehicleListKnown = gate == VehicleListGate.RESOLVED,
                 vehicleCount = vehicleState.vehicles.size,
                 alreadyPresented = firstVehicleCreationPresented,
             )
         if (presentFirstVehicleCreation) {
             firstVehicleCreationPresented = true
             navController.navigate(VehicleRoutes.CREATE_FIRST)
+        }
+    }
+}
+
+/**
+ * A list that could not be read is reported and retried, never hidden behind an indefinite
+ * indicator. The message itself is localized from the shared `UiMessage` code.
+ */
+@Composable
+private fun UnreadableVehicleList(onRetry: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = stringResource(R.string.vehicle_list_unreadable),
+                modifier = Modifier.testTag(VehicleTestTags.LIST_UNREADABLE),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = onRetry,
+                modifier = Modifier.testTag(VehicleTestTags.LIST_RETRY),
+            ) {
+                Text(stringResource(R.string.retry))
+            }
         }
     }
 }
@@ -483,7 +523,7 @@ private fun VehicleListScreen(
                 actions = {
                     TextButton(
                         onClick = stateHolder::refresh,
-                        enabled = !state.isLoading,
+                        enabled = vehicleListGate(state.isLoading, state.message != null) != VehicleListGate.WAITING,
                     ) {
                         Text(stringResource(R.string.restore_backup))
                     }
@@ -963,6 +1003,8 @@ object VehicleTestTags {
     const val ODOMETER = "vehicle_odometer"
     const val SAVE = "save_vehicle"
     const val BACK = "vehicle_form_back"
+    const val LIST_UNREADABLE = "vehicle_list_unreadable"
+    const val LIST_RETRY = "vehicle_list_retry"
     const val DETAIL_NAME = "vehicle_detail_name"
     const val FIRST_FUEL_INVITATION = "first_fuel_invitation"
     const val ERROR = "vehicle_error"

@@ -4,13 +4,13 @@ import Shared
 struct VehicleFormView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: VehicleFormViewModel
-    var onSaved: ((String, String) -> Void)? = nil
+    var onSaved: ((String) -> Void)? = nil
     var onDismiss: (() -> Void)? = nil
 
     init(
         graph: SwiftAppGraph,
         vehicleId: String?,
-        onSaved: ((String, String) -> Void)? = nil,
+        onSaved: ((String) -> Void)? = nil,
         onDismiss: (() -> Void)? = nil
     ) {
         self.onSaved = onSaved
@@ -83,7 +83,7 @@ struct VehicleFormView: View {
                     Button(action: {
                         viewModel.save { outcome in
                             if let createdVehicleId = outcome.createdVehicleId {
-                                onSaved?(createdVehicleId, outcome.vehicleName)
+                                onSaved?(createdVehicleId)
                             }
                             onDismiss?()
                             dismiss()

@@ -5,7 +5,7 @@ struct VehicleDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let graph: SwiftAppGraph
     let vehicleId: String
-    let vehicleName: String
+    @StateObject private var vehicleListViewModel: VehicleListViewModel
 
     @StateObject private var viewModel: FuelEntryListViewModel
     @State private var editingVehicle = false
@@ -15,10 +15,16 @@ struct VehicleDetailView: View {
 
     private let calendarDay = FuelEntryCalendarDay()
 
-    init(graph: SwiftAppGraph, vehicleId: String, vehicleName: String) {
+    /// The title comes from persisted state, which carries the canonical name the domain produced
+    /// when the vehicle was validated. Nothing here reproduces that normalization.
+    private var vehicleName: String {
+        vehicleListViewModel.state.vehicles.first { $0.id == vehicleId }?.name ?? ""
+    }
+
+    init(graph: SwiftAppGraph, vehicleId: String) {
         self.graph = graph
         self.vehicleId = vehicleId
-        self.vehicleName = vehicleName
+        _vehicleListViewModel = StateObject(wrappedValue: VehicleListViewModel(graph: graph))
         _viewModel = StateObject(wrappedValue: FuelEntryListViewModel(graph: graph, vehicleId: vehicleId))
     }
 

@@ -5,7 +5,6 @@ import UIKit
 
 struct VehicleDetailRoute: Hashable {
     let vehicleId: String
-    let vehicleName: String
 }
 
 struct VehicleListView: View {
@@ -15,6 +14,7 @@ struct VehicleListView: View {
     @State private var path: [VehicleDetailRoute] = []
     @State private var creation: VehicleCreationPresentation?
     @State private var firstVehicleCreationPresented = false
+    @State private var previousGate: VehicleListGate = .waiting
     @State private var pendingDeleteVehicleId: String?
 
     init(graph: SwiftAppGraph, skeletonModel: WalkingSkeletonModel) {
@@ -30,17 +30,47 @@ struct VehicleListView: View {
         )
     }
 
+    private var gate: VehicleListGate {
+        vehicleListGate(isLoading: viewModel.state.isLoading, hasMessage: viewModel.state.message != nil)
+    }
+
     var body: some View {
         content
             // The list is covered, never replaced, while it is unknown, so no navigation state is
-            // torn down while it resolves. The indicator and the first-run decision read the same
-            // observed state, so the cover cannot outlive the decision it is waiting for.
+            // torn down while it resolves. The cover and the first-run decision read the same
+            // observed state, so the cover cannot outlive the decision it is waiting for. An
+            // unreadable list is reported and retried instead of hidden behind an indicator.
             .overlay {
-                if viewModel.state.isLoading {
+                switch gate {
+                case .waiting:
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color(UIColor.systemBackground))
+                case .unreadable:
+                    VStack(spacing: 16) {
+                        Text("vehicle_list_unreadable")
+                            .multilineTextAlignment(.center)
+                            .accessibilityIdentifier("vehicle_list_unreadable")
+                        Button("retry") { viewModel.refresh() }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("vehicle_list_retry")
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(UIColor.systemBackground))
+                case .resolved:
+                    EmptyView()
                 }
+            }
+            .onChange(of: gate) { newGate in
+                if shouldResetOwnerScopedNavigation(gate: newGate, previousGate: previousGate) {
+                    // The list no longer belongs to the session that built this navigation.
+                    path = []
+                    creation = nil
+                    firstVehicleCreationPresented = false
+                }
+                previousGate = newGate
+                presentFirstVehicleCreationIfNeeded()
             }
     }
 
@@ -62,7 +92,7 @@ struct VehicleListView: View {
                     .listRowBackground(Color.clear)
                 } else {
                     ForEach(viewModel.state.vehicles, id: \.id) { vehicle in
-                        NavigationLink(value: VehicleDetailRoute(vehicleId: vehicle.id, vehicleName: vehicle.name)) {
+                        NavigationLink(value: VehicleDetailRoute(vehicleId: vehicle.id)) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(vehicle.name)
                                     .font(.headline)
@@ -106,7 +136,7 @@ struct VehicleListView: View {
                 }
             }
             .navigationDestination(for: VehicleDetailRoute.self) { route in
-                VehicleDetailView(graph: graph, vehicleId: route.vehicleId, vehicleName: route.vehicleName)
+                VehicleDetailView(graph: graph, vehicleId: route.vehicleId)
             }
             .sheet(item: $creation) { presentation in
                 VehicleFormView(
@@ -118,7 +148,6 @@ struct VehicleListView: View {
                 .interactiveDismissDisabled(presentation.isMandatory)
             }
             .onAppear { presentFirstVehicleCreationIfNeeded() }
-            .onChange(of: viewModel.state.isLoading) { _ in presentFirstVehicleCreationIfNeeded() }
             .onChange(of: viewModel.state.vehicles.count) { _ in presentFirstVehicleCreationIfNeeded() }
             .alert(String(localized: "delete_vehicle_title"), isPresented: isDeleteConfirmationPresented) {
                 Button(String(localized: "delete"), role: .destructive) {
@@ -155,7 +184,7 @@ struct VehicleListView: View {
         #endif
 
         guard shouldPresentFirstVehicleCreation(
-            isVehicleListKnown: !viewModel.state.isLoading,
+            isVehicleListKnown: gate == .resolved,
             vehicleCount: viewModel.state.vehicles.count,
             alreadyPresented: firstVehicleCreationPresented
         ) else {
@@ -166,9 +195,10 @@ struct VehicleListView: View {
     }
 
     /// `SPECIFICATION.md` F-2 routes to the created vehicle detail after saving, including the very
-    /// first vehicle.
-    private func routeToCreatedVehicle(vehicleId: String, vehicleName: String) {
+    /// first vehicle. Only the identifier travels: the detail titles itself from persisted state, so
+    /// the canonical name that the domain produced is the one shown.
+    private func routeToCreatedVehicle(vehicleId: String) {
         creation = nil
-        path.append(VehicleDetailRoute(vehicleId: vehicleId, vehicleName: vehicleName))
+        path.append(VehicleDetailRoute(vehicleId: vehicleId))
     }
 }

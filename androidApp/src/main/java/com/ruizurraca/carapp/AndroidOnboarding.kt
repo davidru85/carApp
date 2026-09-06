@@ -57,6 +57,32 @@ internal fun resolveOnboardingDestination(
     }
 
 /**
+ * What the host may do with the vehicle list. `WAITING` and `UNREADABLE` both mean the list is not
+ * known, but only `UNREADABLE` has an error to show and a retry to offer (`D-120`).
+ */
+internal enum class VehicleListGate { RESOLVED, WAITING, UNREADABLE }
+
+internal fun vehicleListGate(
+    isLoading: Boolean,
+    hasMessage: Boolean,
+): VehicleListGate =
+    when {
+        !isLoading -> VehicleListGate.RESOLVED
+        hasMessage -> VehicleListGate.UNREADABLE
+        else -> VehicleListGate.WAITING
+    }
+
+/**
+ * A known list that becomes unknown without an error is an owner transition: the shared holder
+ * cleared that owner's list, selection and message, so navigation built for the previous owner MUST
+ * NOT survive. A read failure is not a transition and keeps the navigation it had.
+ */
+internal fun shouldResetOwnerScopedNavigation(
+    gate: VehicleListGate,
+    previousGate: VehicleListGate,
+): Boolean = previousGate == VehicleListGate.RESOLVED && gate == VehicleListGate.WAITING
+
+/**
  * F-1 routes an authenticated owner without vehicles to first-vehicle creation. The decision waits
  * for the vehicle list to be known, so an unresolved list never presents the form, and it is taken
  * once, so saving the first vehicle does not re-present it.

@@ -37,6 +37,8 @@
     <string name="error_persistence">No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo.</string>
     <string name="error_restore">No se ha podido recuperar la copia. Tus datos locales siguen disponibles.</string>
     <string name="error_unexpected">Algo ha salido mal. Inténtalo de nuevo.</string>
+    <string name="vehicle_list_unreadable">No se ha podido leer la lista de vehículos.</string>
+    <string name="retry">Reintentar</string>
     <string name="error_auth_cancelled">Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo.</string>
     <string name="error_auth_network">Necesitas conexión para iniciar sesión. Inténtalo cuando vuelvas a tener red.</string>
     <string name="error_auth_provider">Este proveedor de inicio de sesión aún no está configurado.</string>

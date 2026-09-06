@@ -16,13 +16,15 @@ import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
+import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -54,23 +56,128 @@ class VehicleListStateHolder internal constructor(
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
     private val refreshing = MutableStateFlow(false)
-    private val selectedVehicleId = MutableStateFlow<String?>(null)
-    private val transientMessage = MutableStateFlow<UiMessage?>(null)
     private var closed = false
 
-    // `isLoading` means the vehicle list of the currently resolved owner is not known yet: it stays
-    // true until that owner publishes a successful result, and an owner transition reopens it
-    // (D-116, D-120, CONTRACTS.md 20.10). A refresh over an already known list MUST NOT reopen it,
-    // because hosts gate first-run routing on this value. These stay plain comments: KDoc on an
-    // exported declaration is written into the Objective-C golden header, and a documentation-only
-    // diff there would be noise in a signal reserved for ABI changes.
-    val state: StateFlow<VehicleListUiState> =
-        combine(
-            ownerScopedVehicles(ownerContext),
-            selectedVehicleId,
-            transientMessage,
-        ) { result: Outcome<List<Vehicle>, AppError>?, selectedId: String?, message: UiMessage? ->
-            val readError = (result as? Outcome.Err)?.error
+    private var observedOwner: OwnerId? = null
+    private var observationJob: Job? = null
+    private var listing: Outcome<List<Vehicle>, AppError>? = null
+    private var selection: String? = null
+    private var message: UiMessage? = null
+
+    // `isLoading` means the vehicle list of the currently resolved owner is not known yet. It stays
+    // true until that owner publishes a successful result, an owner transition reopens it, and an
+    // unreadable list keeps it open while publishing the error (D-116, D-120, CONTRACTS.md 20.10).
+    // A refresh over an already known list MUST NOT reopen it, because hosts gate first-run routing
+    // on this value. These stay plain comments: KDoc on an exported declaration is written into the
+    // Objective-C golden header, and a documentation-only diff there would be noise in a signal
+    // reserved for ABI changes.
+    private val mutableState = MutableStateFlow(unresolvedState())
+    val state: StateFlow<VehicleListUiState> = mutableState
+
+    // Owner resolution is observed undispatched and unconfined so the list becomes unknown inside
+    // the same call stack that changes the authentication state. Any other observer of that state,
+    // including SessionStateHolder, therefore cannot expose a new session while this holder still
+    // publishes the previous owner's list (D-120).
+    private val ownerJob =
+        holderScope.launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
+            ownerContext.observe().collect(::onOwnerResolved)
+        }
+
+    fun refresh() {
+        if (closed || refreshing.value) return
+        // A list that could not be read is retried by creating a new local observation. A list that
+        // is already known is never reopened, which is what D-116 protects.
+        if (listing is Outcome.Err) startObservation()
+        refreshing.value = true
+        holderScope.launch(dispatchers.main) {
+            val result = withContext(dispatchers.io) { refreshVehicles() }
+            if (result is Outcome.Err) publish(message = result.error.toErrorMessage())
+            refreshing.value = false
+        }
+    }
+
+    fun selectVehicle(vehicleId: String?) {
+        if (closed) return
+        publish(selection = vehicleId)
+    }
+
+    fun requestDelete(vehicleId: String) {
+        if (closed) return
+        publish(
+            selection = vehicleId,
+            message =
+                UiMessage(
+                    id = DELETE_MESSAGE_ID,
+                    kind = UiMessageKind.WARNING,
+                    code = DELETE_CONFIRMATION_CODE,
+                    confirmation = null,
+                ),
+        )
+    }
+
+    fun confirmDelete(vehicleId: String) {
+        if (closed) return
+        publish(message = null)
+        holderScope.launch(dispatchers.main) {
+            when (val result = withContext(dispatchers.io) { repository.deleteVehicle(EntityId(vehicleId)) }) {
+                is Outcome.Ok -> if (selection == vehicleId) publish(selection = null)
+                is Outcome.Err -> publish(message = result.error.toErrorMessage())
+            }
+        }
+    }
+
+    fun clearMessage() {
+        if (closed) return
+        publish(message = null)
+    }
+
+    fun close() {
+        if (closed) return
+        closed = true
+        observationJob = null
+        ownerJob.cancel()
+        holderScope.cancel()
+    }
+
+    private fun onOwnerResolved(owner: OwnerId) {
+        if (closed || owner == observedOwner) return
+        observedOwner = owner
+        // Nothing owner-scoped survives a session boundary: not the list, not the selection and not
+        // the message that described the previous owner's data.
+        listing = null
+        selection = null
+        message = null
+        publishCurrent()
+        startObservation()
+    }
+
+    private fun startObservation() {
+        observationJob?.cancel()
+        observationJob =
+            holderScope.launch(dispatchers.main) {
+                repository
+                    .observeVehicles(includeDeleted = false)
+                    .flowOn(dispatchers.io)
+                    .collect { result ->
+                        listing = result
+                        publishCurrent()
+                    }
+            }
+    }
+
+    private fun publish(
+        selection: String? = this.selection,
+        message: UiMessage? = this.message,
+    ) {
+        this.selection = selection
+        this.message = message
+        publishCurrent()
+    }
+
+    private fun publishCurrent() {
+        val result = listing
+        val readError = (result as? Outcome.Err)?.error
+        mutableState.value =
             VehicleListUiState(
                 // An unresolved owner and an unreadable list are both "not known", and neither is a
                 // confirmed empty list that may open first-vehicle creation.
@@ -88,88 +195,20 @@ class VehicleListStateHolder internal constructor(
                                 deleted = false,
                             )
                         }.orEmpty(),
-                selectedVehicleId = selectedId,
+                selectedVehicleId = selection,
                 syncStatus = SyncStatus.Idle,
                 message = message ?: readError?.toErrorMessage(),
             )
-        }.stateIn(
-            scope = holderScope + dispatchers.main,
-            started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS),
-            initialValue =
-                VehicleListUiState(
-                    isLoading = true,
-                    vehicles = emptyList(),
-                    selectedVehicleId = null,
-                    syncStatus = SyncStatus.Idle,
-                    message = null,
-                ),
+    }
+
+    private fun unresolvedState(): VehicleListUiState =
+        VehicleListUiState(
+            isLoading = true,
+            vehicles = emptyList(),
+            selectedVehicleId = null,
+            syncStatus = SyncStatus.Idle,
+            message = null,
         )
-
-    /**
-     * Re-subscribes the observation for every owner, so an emission always belongs to the owner that
-     * is current, and marks the new owner's list unresolved until it publishes. `null` means "not
-     * known yet" for the owner in scope.
-     */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun ownerScopedVehicles(ownerContext: OwnerContext): Flow<Outcome<List<Vehicle>, AppError>?> =
-        ownerContext
-            .observe()
-            .flatMapLatest {
-                repository
-                    .observeVehicles(includeDeleted = false)
-                    .flowOn(dispatchers.io)
-                    .map<Outcome<List<Vehicle>, AppError>, Outcome<List<Vehicle>, AppError>?> { result -> result }
-                    .onStart { emit(null) }
-            }
-
-    fun refresh() {
-        if (closed || refreshing.value) return
-        refreshing.value = true
-        holderScope.launch(dispatchers.main) {
-            val result = withContext(dispatchers.io) { refreshVehicles() }
-            if (result is Outcome.Err) transientMessage.value = result.error.toErrorMessage()
-            refreshing.value = false
-        }
-    }
-
-    fun selectVehicle(vehicleId: String?) {
-        if (closed) return
-        selectedVehicleId.value = vehicleId
-    }
-
-    fun requestDelete(vehicleId: String) {
-        if (closed) return
-        selectedVehicleId.value = vehicleId
-        transientMessage.value =
-            UiMessage(
-                id = DELETE_MESSAGE_ID,
-                kind = UiMessageKind.WARNING,
-                code = DELETE_CONFIRMATION_CODE,
-                confirmation = null,
-            )
-    }
-
-    fun confirmDelete(vehicleId: String) {
-        if (closed) return
-        transientMessage.value = null
-        holderScope.launch(dispatchers.main) {
-            when (val result = withContext(dispatchers.io) { repository.deleteVehicle(EntityId(vehicleId)) }) {
-                is Outcome.Ok -> if (selectedVehicleId.value == vehicleId) selectedVehicleId.value = null
-                is Outcome.Err -> transientMessage.value = result.error.toErrorMessage()
-            }
-        }
-    }
-
-    fun clearMessage() {
-        if (closed) return
-        transientMessage.value = null
-    }
-
-    fun close() {
-        if (closed) return
-        closed = true
-        holderScope.cancel()
-    }
 }
 
 @ObjCName(name = "SharedVehicleFormStateHolder", swiftName = "VehicleFormStateHolder", exact = true)

@@ -15,6 +15,8 @@
 "save_vehicle" = "Guardar vehículo";
 "restore_backup" = "Recuperar copia";
 "saved_vehicles" = "Vehículos guardados";
+"vehicle_list_unreadable" = "No se ha podido leer la lista de vehículos.";
+"retry" = "Reintentar";
 "empty_vehicles" = "Todavía no hay vehículos guardados.";
 
 "app_name" = "carApp";

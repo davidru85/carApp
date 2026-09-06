@@ -19,6 +19,7 @@ import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleEditFacts
 import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -347,20 +348,14 @@ class VehicleStateHoldersTest {
             holder.close()
         }
 
-
     @Test
     fun anOwnerTransitionIsVisibleBeforeTheListCollectorIsScheduled() =
         runTest {
             val ownerContext = FakeOwnerContext(LOCAL_OWNER)
             val repository = OwnerScopedVehicleRepository(ownerContext)
-            val holder =
-                ownerScopedListHolder(
-                    ownerContext = ownerContext,
-                    repository = repository,
-                    // Queued, like production: the collector is scheduled but has not run.
-                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
-                )
+            val holder = queuedListHolder(ownerContext, repository)
             backgroundScope.launch { holder.state.collect() }
+            advanceUntilIdle()
             repository.resultsFor(LOCAL_OWNER).emit(Outcome.Ok(emptyList()))
             advanceUntilIdle()
             assertFalse(holder.state.value.isLoading)
@@ -381,14 +376,9 @@ class VehicleStateHoldersTest {
         runTest {
             val ownerContext = FakeOwnerContext(LOCAL_OWNER)
             val repository = OwnerScopedVehicleRepository(ownerContext)
-            val holder =
-                ownerScopedListHolder(
-                    ownerContext = ownerContext,
-                    repository = repository,
-                    // Queued, like production: the collector is scheduled but has not run.
-                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
-                )
+            val holder = queuedListHolder(ownerContext, repository)
             backgroundScope.launch { holder.state.collect() }
+            advanceUntilIdle()
             repository.resultsFor(LOCAL_OWNER).emit(Outcome.Ok(listOf(vehicle())))
             advanceUntilIdle()
             assertEquals(1, holder.state.value.vehicles.size)
@@ -408,14 +398,9 @@ class VehicleStateHoldersTest {
         runTest {
             val ownerContext = FakeOwnerContext(LOCAL_OWNER)
             val repository = OwnerScopedVehicleRepository(ownerContext)
-            val holder =
-                ownerScopedListHolder(
-                    ownerContext = ownerContext,
-                    repository = repository,
-                    // Queued, like production: the collector is scheduled but has not run.
-                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
-                )
+            val holder = queuedListHolder(ownerContext, repository)
             backgroundScope.launch { holder.state.collect() }
+            advanceUntilIdle()
             repository.resultsFor(LOCAL_OWNER).emit(Outcome.Ok(listOf(vehicle())))
             advanceUntilIdle()
             holder.requestDelete(VEHICLE_ID)
@@ -428,6 +413,21 @@ class VehicleStateHoldersTest {
             assertEquals(null, holder.state.value.message)
             holder.close()
         }
+
+    /** Queued dispatchers, like production: a collector is scheduled and has not run yet. */
+    private fun TestScope.queuedListHolder(
+        ownerContext: OwnerContext,
+        repository: VehicleRepository,
+    ): VehicleListStateHolder {
+        val queued = StandardTestDispatcher(testScheduler)
+        return VehicleListStateHolder(
+            scope = CoroutineScope(queued),
+            repository = repository,
+            dispatchers = TestDispatcherProvider(queued),
+            refreshVehicles = { Outcome.Ok(Unit) },
+            ownerContext = ownerContext,
+        )
+    }
 
     @Test
     fun anObservationThatFailsAndCompletesLeavesTheListUnknownWithItsError() =
