@@ -96,6 +96,36 @@ WHERE vehicleId = :vehicleId
 ORDER BY date DESC, createdAt DESC, id DESC
 LIMIT 1;
 
+selectVehiclesForAdoption:
+SELECT *
+FROM vehicle
+WHERE ownerId = :ownerId
+ORDER BY localMutationSeq ASC, id ASC;
+
+selectFuelEntriesForAdoption:
+SELECT *
+FROM fuel_entry
+WHERE ownerId = :ownerId
+ORDER BY localMutationSeq ASC, id ASC;
+
+adoptVehicleRow:
+UPDATE vehicle
+SET ownerId = :newOwnerId,
+  localRevision = localRevision + 1,
+  syncState = CASE WHEN syncState = 'SYNCED' THEN 'SYNCED' ELSE 'PENDING' END
+WHERE id = :id;
+
+adoptFuelEntryRow:
+UPDATE fuel_entry
+SET ownerId = :newOwnerId,
+  localRevision = localRevision + 1,
+  syncState = CASE WHEN syncState = 'SYNCED' THEN 'SYNCED' ELSE 'PENDING' END
+WHERE id = :id;
+
+countRowsOwnedBy:
+SELECT (SELECT COUNT(*) FROM vehicle WHERE ownerId = :ownerId)
+     + (SELECT COUNT(*) FROM fuel_entry WHERE ownerId = :ownerId);
+
 selectOutboxByEntity:
 SELECT *
 FROM outbox

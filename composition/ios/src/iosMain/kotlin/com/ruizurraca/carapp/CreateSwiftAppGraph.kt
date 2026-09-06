@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.connectivity.IosConnectivityObserver
 import com.ruizurraca.carapp.locale.IosLocaleProvider
 import com.ruizurraca.carapp.wiring.firebase.firebaseAppProviders
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -13,6 +14,7 @@ fun createSwiftAppGraph(isDebugBuild: Boolean): SwiftAppGraph {
         firebaseAppProviders(
             databaseFilePath = iosDatabaseFilePath(),
             localeProvider = IosLocaleProvider(),
+            connectivityObserver = IosConnectivityObserver.fromNetworkPathMonitor(),
         )
     return wrapAppGraphForSwift(
         graph = buildAppGraph(isDebugBuild, providers),

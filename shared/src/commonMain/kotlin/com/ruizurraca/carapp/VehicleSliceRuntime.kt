@@ -17,6 +17,7 @@ import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.feature.vehicle.data.SqlDelightVehicleRepository
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
+import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -27,14 +28,19 @@ import kotlinx.serialization.json.Json
 internal class VehicleSliceRuntime(
     private val dependencies: AppGraphDependencies,
     private val database: AppDatabase,
+    adoption: LocalOwnerAdoption,
 ) {
     private val mutations = DatabaseMutations(database)
-    val repository =
-        SqlDelightVehicleRepository(
-            databaseAccess = VehicleDatabaseAccess(database),
-            ownerContext = dependencies.ownerContext,
-            clock = dependencies.clock,
-            uuidGenerator = dependencies.uuidGenerator,
+    val repository: VehicleRepository =
+        AdoptionGatedVehicleRepository(
+            delegate =
+                SqlDelightVehicleRepository(
+                    databaseAccess = VehicleDatabaseAccess(database),
+                    ownerContext = dependencies.ownerContext,
+                    clock = dependencies.clock,
+                    uuidGenerator = dependencies.uuidGenerator,
+                ),
+            adoption = adoption,
         )
 
     suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> {

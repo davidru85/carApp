@@ -65,6 +65,7 @@ fun firebaseAppProviders(): AppProviders {
 fun firebaseAppProviders(
     databaseFilePath: String,
     localeProvider: LocaleProvider,
+    connectivityObserver: ConnectivityObserver,
 ): AppProviders {
     val dispatchers = stagedDispatcherProvider()
     val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
@@ -76,6 +77,7 @@ fun firebaseAppProviders(
         remoteSyncSource = FirebaseRemoteSyncSource(),
         localeProvider = localeProvider,
         dispatchers = dispatchers,
+        connectivityObserver = connectivityObserver,
     )
 }
 
@@ -86,10 +88,12 @@ internal fun firebaseAppProviders(
     remoteSyncSource: RemoteSyncSource,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
     dispatchers: DispatcherProvider = stagedDispatcherProvider(),
-): AppProviders {
-    val connectivityState = MutableStateFlow(true)
-
-    return object : AppProviders {
+    // Real platform reachability is injected by each host composition boundary, the same shape
+    // `D-108` established for `LocaleProvider`. The staged default is offline-safe: it reports
+    // nothing rather than claiming a network that was never observed.
+    connectivityObserver: ConnectivityObserver = stagedConnectivityObserver(),
+): AppProviders =
+    object : AppProviders {
         override val databaseFactory = databaseFactory
         override val authClient = authClient
         override val tokenProvider = tokenProvider
@@ -102,10 +106,9 @@ internal fun firebaseAppProviders(
         override val uuidGenerator = stagedUuidGenerator()
         override val logger = stagedLogger()
         override val localeProvider = localeProvider
-        override val connectivityObserver = stagedConnectivityObserver(connectivityState)
+        override val connectivityObserver = connectivityObserver
         override val syncTriggerAdapter = SyncTriggerAdapter { }
     }
-}
 
 private fun stagedAuthClient(authState: StateFlow<AuthState>): AuthClient =
     object : AuthClient {
@@ -205,9 +208,9 @@ private fun stagedLocaleProvider(): LocaleProvider =
         )
     }
 
-private fun stagedConnectivityObserver(state: StateFlow<Boolean>): ConnectivityObserver =
+private fun stagedConnectivityObserver(): ConnectivityObserver =
     object : ConnectivityObserver {
-        override val isOnline = state
+        override val isOnline = MutableStateFlow(false)
     }
 
 private fun <T> providerUnavailable(): Outcome<T, AuthError> = Outcome.Err(AuthError.ProviderUnavailable)

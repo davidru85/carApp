@@ -152,6 +152,51 @@ class IosCompositionContractTest {
     }
 
     @Test
+    fun bothHostsInjectRealPlatformConnectivityIntoTheProviderGraph() {
+        val swiftFactory = repositoryRoot.resolve(CREATE_SWIFT_APP_GRAPH_PATH).readText()
+        val androidHost = repositoryRoot.resolve(ANDROID_MAIN_ACTIVITY_PATH).readText()
+        val androidManifest = repositoryRoot.resolve(ANDROID_MANIFEST_PATH).readText()
+        val firebaseProviders = repositoryRoot.resolve(FIREBASE_PROVIDERS_PATH).readText()
+        val iosObserverDirectory = repositoryRoot.resolve(IOS_CONNECTIVITY_SOURCE_DIRECTORY)
+        val sharedBuild = repositoryRoot.resolve("shared/build.gradle.kts").readText()
+
+        assertTrue(
+            swiftFactory.contains("connectivityObserver = IosConnectivityObserver"),
+            "the iOS composition root MUST inject real connectivity, not the staged default",
+        )
+        assertTrue(
+            androidHost.contains("connectivityObserver = AndroidConnectivityObserver"),
+            "the Android host MUST inject real connectivity, not the staged default",
+        )
+        assertTrue(
+            androidManifest.contains("android.permission.ACCESS_NETWORK_STATE"),
+            "real Android connectivity observation requires ACCESS_NETWORK_STATE",
+        )
+        assertFalse(
+            firebaseProviders.contains("MutableStateFlow(true)"),
+            "the always-online connectivity stub MUST NOT survive in the production provider graph",
+        )
+        assertTrue(
+            iosObserverDirectory.resolve(IOS_CONNECTIVITY_SOURCE_NAME).isFile,
+            "the composition-owned iOS observer MUST live at $IOS_CONNECTIVITY_SOURCE_DIRECTORY",
+        )
+        assertEquals(
+            listOf(IOS_CONNECTIVITY_SOURCE_NAME),
+            iosObserverDirectory
+                .walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .map { it.relativeTo(iosObserverDirectory).invariantSeparatorsPath }
+                .sorted()
+                .toList(),
+            "only the observer belongs in the reused source directory",
+        )
+        assertTrue(
+            sharedBuild.contains(IOS_CONNECTIVITY_SOURCE_DIRECTORY),
+            "shared iosTest MUST reuse the composition-owned observer source, as D-109 does for locale",
+        )
+    }
+
+    @Test
     fun exportedCommonEnumsPinTheirExactObjectiveCAndSwiftNames() {
         val expectedNames =
             listOf(
@@ -178,6 +223,16 @@ class IosCompositionContractTest {
     }
 
     private companion object {
+        const val CREATE_SWIFT_APP_GRAPH_PATH =
+            "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/CreateSwiftAppGraph.kt"
+        const val ANDROID_MAIN_ACTIVITY_PATH =
+            "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
+        const val ANDROID_MANIFEST_PATH = "androidApp/src/main/AndroidManifest.xml"
+        const val FIREBASE_PROVIDERS_PATH =
+            "wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt"
+        const val IOS_CONNECTIVITY_SOURCE_DIRECTORY =
+            "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/connectivity"
+        const val IOS_CONNECTIVITY_SOURCE_NAME = "IosConnectivityObserver.kt"
         const val APP_ERROR_PATH =
             "core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/AppError.kt"
         const val PLATFORM_ABSTRACTIONS_PATH =

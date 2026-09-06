@@ -702,10 +702,9 @@ Acceptance criteria:
 
 ### E2-03 - Onboarding Flow F-1 - M
 
-Status: delivered on 2026-09-04 and revised through three owner review rounds on 2026-09-05 and
-2026-09-06; awaiting the owner's review and merge of pull request #54. See
-`docs/handoff-E2-03.md` for the live checkpoint, the accepted decisions `D-112` to `D-121` and the
-outstanding manual provider acceptance.
+Status: completed on 2026-09-06, PR #54, after three owner review rounds on 2026-09-05 and
+2026-09-06. See `docs/handoff-E2-03.md` for the acceptance evidence, the accepted decisions `D-112`
+to `D-122` and the outstanding manual provider acceptance, which stays owner-owned.
 
 Implement the welcome screen, with an offline-capable local start. Provider selection happens on
 the welcome screen itself; there is no separate provider-selection screen.
@@ -722,6 +721,10 @@ Acceptance criteria:
 - Routing after authentication depends on whether vehicles exist.
 
 ### E2-06 - Local Owner Adoption - M
+
+Status: delivered on 2026-09-06 on `story/E2-06-local-owner-adoption`; pull request #55 is open and
+awaiting the owner's review and merge. See `docs/handoff-E2-06.md` for the live checkpoint, the
+acceptance evidence and the accepted decisions `D-123`, `D-124` and `D-125`.
 
 Adopt `LOCAL_OWNER` data into the first real UID.
 
@@ -921,6 +924,12 @@ Acceptance criteria:
 - Wire every state holder that exposes `SyncStatus` to the single `SyncController.status` flow and
   add the `docs/CONTRACTS.md §14` unit test proving that two holders converge. This closes the D-88
   E1-07 exception for constant `Idle` and direct Vehicle restoration.
+- A local owner adoption that keeps failing is retried automatically under the same backoff as any
+  other failing operation, and its state is visible through `SyncStatus` rather than only as an
+  unreadable vehicle list. `E2-06` and `D-125` made the failure typed, visible and retryable by the
+  owner; the automatic retry and the aggregate status are owned here. Covered by a test that fails
+  the adoption transaction, asserts the scheduled retry, and asserts that a later success resolves
+  the list without a user action.
 
 Human review required.
 

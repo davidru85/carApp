@@ -1,11 +1,15 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.feature.vehicle.data
 
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
+import com.ruizurraca.carapp.core.database.VehicleDatabaseRow
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlin.native.HiddenFromObjC
 
 internal fun LocalVehicle.toVehicleOutboxPayloadOrNull(): String? =
     if (ownerId == LOCAL_OWNER) {
@@ -53,3 +57,14 @@ internal fun FuelEntryDatabaseRow.toFuelEntryTombstonePayload(
         put("deletedAt", timestamp)
         put("schemaVersion", schemaVersion)
     }.toString()
+
+/**
+ * The outbox snapshot local owner adoption enqueues for a vehicle row it has already rewritten to
+ * its new owner (`docs/CONTRACTS.md §11.4`). It is the ordinary payload of `§8`, built from the
+ * stored row rather than from a command, so an adopted snapshot and an edited one are identical.
+ */
+@HiddenFromObjC
+fun VehicleDatabaseRow.toAdoptionOutboxPayload(): String =
+    requireNotNull(toLocalVehicle().toVehicleOutboxPayloadOrNull()) {
+        "adoption rewrites the owner before it builds a payload, so the sentinel cannot reach here"
+    }
