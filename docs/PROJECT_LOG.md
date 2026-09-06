@@ -38,6 +38,59 @@
 
 ## Entries
 
+### 2026-09-06 — E2-06 second owner review: cold-start race, real connectivity, per-write triggers
+
+- **Type:** correction
+- **Story / Decision:** `E2-06` / `D-124`, `D-125`, `D-126`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** four defects the owner's second review of pull request #55 found, plus one
+  decision. **The cold-start race** was the serious one: `FirebaseAuthClient.authState` starts at
+  `Unknown` while connectivity is already online, so the single connectivity emission was consumed
+  and refused before acquisition was legal; `AuthOwnerContext` maps `Unknown` and `SignedOut` alike
+  to the sentinel and deduplicates them, so no owner event followed and the device stayed under the
+  sentinel indefinitely. Auth readiness is now its own trigger. **Production had no connectivity
+  observation at all** — `:wiring:firebase` supplied `MutableStateFlow(true)` — so both hosts now
+  inject a real observer and the staged default reports offline; recorded as `D-126` / `ADR-0127`.
+  **Trigger isolation** was per collection rather than per emission, so the first handler failure
+  ended that observer permanently, and the write-launched trigger could leak an exception out of its
+  coroutine. **The `§11.2` post-commit re-evaluation** now covers Fuel Entry create, update and
+  delete, not vehicles alone.
+- **Why:** each of the four was a case where the story's own acceptance criterion could not actually
+  hold in the shipped app. The connectivity one is the clearest: "adoption is triggered
+  automatically when connectivity returns" cannot be true when nothing observes connectivity, and
+  the test suites all passed because they inject `FakeConnectivityObserver`. That is exactly how the
+  gap survived four stories.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0127`, `docs/adr/0126`, `README.md`,
+  `docs/DEFINITION.md`, `docs/handoff-E2-06.md` and this log.
+- **Verification:** seven new failing tests first, across four canonical routes. The exact
+  `AGENTS.md` command passed 636 actionable tasks, forced provider decoupling passed 234, the
+  regenerated Objective-C header matches the committed golden, and the `D-84` API 36 instrumented
+  suite passed 14 of 14. Twenty-eight adoption tests now run on both required shared targets.
+- **Follow-ups / risks:** the adoption gate performs one `COUNT(*)` over `vehicle` and `fuel_entry`
+  per gated read for an authenticated owner. Neither table has an `ownerId` index, so it scans both;
+  the cost is unmeasured and no performance claim is made for it. `E2-06` stays a gated story on
+  pull request #55; the agent does not merge it.
+
+### 2026-09-06 — Correction: the E2-06 adoption test count
+
+- **Type:** correction
+- **Story / Decision:** `E2-06` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the entry titled "E2-06 first owner review applied: D-124 revised, D-125
+  extended" states that "twenty-two adoption tests now run on both required shared targets". The
+  correct figure at that moment was twenty-three: seven in `:core:database` `LocalOwnerAdoptionTest`,
+  eleven in `:shared` `LocalOwnerAdoptionTest` and five in `:shared` `LocalOwnerAdoptionFailureTest`.
+  The handoff said twenty-three and the log said twenty-two; the handoff was right.
+- **Why:** the log entry was written before the fifth failure-path test was added and was not
+  re-counted afterwards. This log is append-only, so the original entry is left as it stands and
+  this entry carries the correction.
+- **Documents touched:** this log, and `docs/handoff-E2-06.md`, which now states the current figure
+  of twenty-eight and cites the JUnit XML it was counted from.
+- **Verification:** counted from the `iosSimulatorArm64Test` JUnit XML of all four adoption suites.
+- **Follow-ups / risks:** none. A test count in a completion claim is now taken from the XML rather
+  than from memory.
+
 ### 2026-09-06 — E2-06 first owner review applied: D-124 revised, D-125 extended
 
 - **Type:** correction

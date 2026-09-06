@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.flow
  * new UID while the rows are still owned by the `LOCAL_OWNER` sentinel. A host reading that list
  * sees a confirmed empty list (`D-116`) and opens mandatory first-run creation (`D-121`) over data
  * that is one transaction away from arriving. The gate is a no-op for the sentinel itself and for
- * any owner with nothing waiting, so it costs one indexed count on the paths that do not need it.
+ * any owner with nothing waiting, where it costs one `COUNT(*)` over `vehicle` and `fuel_entry`.
+ * Neither table has an `ownerId` index, so that count is a scan of both; on the local database sizes
+ * this MVP targets it has not been measured and no performance claim is made for it.
  *
  * An adoption failure is a typed error on every path, never a silent wait and never a cancellation
  * of the caller (`D-125`). On a read it becomes an unreadable list, which `VehicleListUiState`

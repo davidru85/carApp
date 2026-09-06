@@ -601,6 +601,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-123 | Local owner adoption transaction ownership | The whole adoption operation is one database transaction, and the outbox payload it enqueues is built by the same mapper an ordinary edit uses. | Accepted |
 | D-124 | Automatic anonymous retry gate | An anonymous account is created automatically only for a device whose owner explicitly chose to continue without one, evidenced by that choice while the app is running and by the rows it left behind after a restart. | Accepted |
 | D-125 | Adoption read gate | After authentication the vehicle list stays unknown until adoption has run, so first-run creation never opens over data that is about to arrive; if adoption fails the list is shown as unreadable with a retry, never as empty and never as a silent wait. | Accepted |
+| D-126 | Native connectivity-provider ownership | The app observes real network reachability on both platforms, so the automatic retry that follows an offline start fires in the shipped app and not only in tests. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

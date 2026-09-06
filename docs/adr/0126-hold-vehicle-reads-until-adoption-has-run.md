@@ -41,7 +41,9 @@ suspending database transaction, and no ordering between them can be guaranteed 
 
 The gate returns immediately for the `LOCAL_OWNER` sentinel: an offline session reads its own rows and
 is never held. For an authenticated owner it returns only after any waiting rows have been rewritten.
-When nothing is waiting it costs one indexed count.
+When nothing is waiting it costs one `COUNT(*)` over `vehicle` and `fuel_entry`. Neither table has
+an `ownerId` index, so that is a scan of both tables rather than an indexed lookup; the cost has not
+been measured and no performance claim is made for it.
 
 `isLoading` keeps the meaning `D-116` gave it, and gains no exception: while the gate is closed, the
 authenticated owner's list genuinely is not known yet.

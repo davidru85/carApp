@@ -84,6 +84,40 @@
 - Exact next step: wait for the owner's review of the applied round. Nothing is in flight, and no
   work is left that this story owns.
 
+### Owner review round 2 applied on pull request #55 (2026-09-06)
+
+- Date: 2026-09-06. Branch and base: `story/E2-06-local-owner-adoption`. The branch merged
+  `origin/main` at `a644467` during this round, so its base is now that merge rather than `fe9ed55`.
+- Current phase and latest commit: REFACTOR, in the commit that contains this text. The round's
+  commits are `3c6af1f` (RED), `37e44c0` (GREEN), `c3c6ad8` (merge of `main`) and this one.
+- Push and pull-request status: pull request #55 is open with all ten checks green on the previous
+  head. This round is pushed on top. The agent does not merge.
+- Completed since the previous checkpoint, one finding at a time:
+  1. **Cold-start auth-readiness race.** In production `FirebaseAuthClient.authState` starts at
+     `Unknown` while connectivity is already online, so the single connectivity emission was
+     consumed and refused before acquisition was legal. `AuthOwnerContext` maps `Unknown` and
+     `SignedOut` alike to the sentinel and deduplicates them, so no owner event followed and the
+     device stayed under the sentinel indefinitely. Auth readiness is now its own trigger, and every
+     trigger shares one guard set that includes connectivity.
+  2. **Real platform connectivity.** Production had none: `:wiring:firebase` supplied
+     `MutableStateFlow(true)`. Both hosts now inject a real observer (`ConnectivityManager` on
+     Android with `ACCESS_NETWORK_STATE`, `NWPathMonitor` on iOS), and the staged default became
+     offline rather than online. Recorded as `D-126` / `ADR-0127`.
+  3. **Trigger failure isolation.** `observeSafely` caught around the whole `collect`, so the first
+     handler failure ended that observer permanently. Handling is now per emission; a source that
+     throws still ends its own observation, because resubscribing to it would be a busy loop, and
+     the supervisor keeps the others alive. `onLocalOwnerWriteCommitted()` reports its own failure
+     instead of leaking it out of a launched coroutine.
+  4. **Post-commit re-evaluation on every synchronized write.** Fuel Entry create, update and delete
+     now re-evaluate acquisition, asynchronously. Vehicle-only coverage stranded an owner who had
+     created a vehicle before the network returned and then only added fuel entries.
+  5. **Documentation.** Status aligned across `README.md`, `docs/DEFINITION.md` and
+     `docs/TECHNICAL_PLAN.md`; every "indexed count" claim corrected; the test count corrected by an
+     appended project-log entry rather than by editing an append-only one.
+- Verification evidence and known failures: see `Verification Run`. No known failure.
+- Open decisions or blockers: none. `D-126` was taken during the round and is recorded in full.
+- Exact next step: wait for the ten required checks on the pushed head, then for the owner's review.
+
 ### Story complete, pull request #55 open and awaiting owner review (2026-09-06)
 
 - Date: 2026-09-06. Branch and base: `story/E2-06-local-owner-adoption`, based on `main` at
@@ -183,9 +217,11 @@ Beyond the story's own criteria, the owner's review added the `D-125` failure se
 cancelled, the list stays unknown with a message rather than resolving empty, `refresh()` recovers
 it by running the gate again, and a failing owner observer leaves the connectivity trigger working.
 
-All twenty-three tests run on both the JVM and `iosSimulatorArm64`: seven in `:core:database`
-`LocalOwnerAdoptionTest`, eleven in `:shared` `LocalOwnerAdoptionTest` and five in `:shared`
-`LocalOwnerAdoptionFailureTest`.
+All twenty-eight adoption tests run on both the JVM and `iosSimulatorArm64`, counted from the JUnit
+XML: seven in `:core:database` `LocalOwnerAdoptionTest`, eleven in `:shared`
+`LocalOwnerAdoptionTest`, five in `:shared` `LocalOwnerAdoptionFailureTest` and five in `:shared`
+`LocalOwnerAdoptionTriggerTest`. The second review round added the last file and the two
+connectivity-observer suites, which run on their own canonical host routes.
 
 ## Out of Scope / Not Done
 
@@ -215,6 +251,11 @@ Product code:
   triggers.
 - `shared/src/commonMain/kotlin/.../AdoptionGatedVehicleRepository.kt` (new) — the `D-125` decorator
   and its typed-error paths.
+- `shared/src/commonMain/kotlin/.../AdoptionNotifyingFuelEntryRepository.kt` (new) — the `§11.2`
+  post-commit re-evaluation on Fuel Entry writes.
+- `androidApp/src/main/java/.../AndroidConnectivityObserver.kt` (new), `MainActivity.kt` and
+  `AndroidManifest.xml`; `composition/ios/src/iosMain/.../connectivity/IosConnectivityObserver.kt`
+  (new) and `CreateSwiftAppGraph.kt`; `wiring/firebase/.../FirebaseAppProviders.kt` — `D-126`.
 - `shared/src/commonMain/kotlin/.../StateHolders.kt` — `SessionStateHolder` records the explicit
   local start on its internal constructor callback, which stays out of the exported surface.
 - `shared/src/commonMain/kotlin/.../AppGraph.kt` and `.../VehicleSliceRuntime.kt` — composition.
@@ -225,6 +266,11 @@ Tests:
 - `shared/src/commonTest/kotlin/.../LocalOwnerAdoptionTest.kt` (new, eleven tests).
 - `shared/src/commonTest/kotlin/.../LocalOwnerAdoptionFailureTest.kt` (new, five tests) — the
   `D-125` failure semantics.
+- `shared/src/commonTest/kotlin/.../LocalOwnerAdoptionTriggerTest.kt` (new, five tests) — the
+  cold-start ordering, trigger isolation and the per-write re-evaluation.
+- `androidApp/src/test/.../AndroidConnectivityObserverTest.kt` and
+  `shared/src/iosTest/.../connectivity/IosConnectivityObserverTest.kt` (new); the executable host
+  wiring guard in `build-logic/.../IosCompositionContractTest.kt`.
 - `core/database/src/commonTest/kotlin/.../SchemaV1Test.kt` — `stringList` widened to `internal` so
   the new test file can reuse it.
 
@@ -251,6 +297,12 @@ Documentation:
   triggered by returning connectivity and by a write committing under the sentinel. `ADR-0125`.
 - **`D-125` — Adoption read gate.** Vehicle reads and writes wait until adoption has run for the
   current owner, and a failed adoption is a typed error rather than a silent wait. `ADR-0126`.
+- **`D-126` — Native connectivity-provider ownership.** Each host composition boundary injects a
+  real `ConnectivityObserver`, and the staged default reports offline rather than online.
+  `ADR-0127`. Taken in the second review round, because `E2-06`'s automatic-trigger criterion could
+  not be satisfied by the shipped app while production had no connectivity observation at all. No
+  existing decision assigned that implementation elsewhere: `E3-08` names no provider, and `D-55`,
+  `D-88` and `D-95` stage state holders and sync status, not platform abstractions.
 
 None of the three is an owner decision reserved by `AGENTS.md` §`Owner Decisions`. All three were
 reviewed by the owner on pull request #55 on 2026-09-06: `D-123` was approved unchanged; `D-124` was
@@ -298,6 +350,16 @@ Deviations from a `SHOULD`, and other things worth stating:
   the exact command in `AGENTS.md` §`Build and verify`.
 - `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` —
   **BUILD SUCCESSFUL, 234 actionable tasks.** The `D-45` forced provider decoupling route.
+- Second review round, re-run in full after the `origin/main` merge: the exact `AGENTS.md` command
+  passed **636 actionable tasks**; forced provider decoupling passed **234**; the regenerated
+  Objective-C header is identical to the committed golden; the `D-84` API 36 instrumented suite
+  passed **14 of 14** with the new manifest permission and host wiring in place.
+- Second round RED evidence: seven failing tests across four routes -
+  `:shared` `LocalOwnerAdoptionTriggerTest` (4 of 5, the fifth being the complementary guard that
+  acquisition never runs while auth is `Unknown`), `:androidApp:testDebugUnitTest`
+  `AndroidConnectivityObserverTest` (1 of 2), `:shared:iosSimulatorArm64Test`
+  `IosConnectivityObserverTest` (1 of 2), and `:build-logic:convention:test`
+  `IosCompositionContractTest.bothHostsInjectRealPlatformConnectivityIntoTheProviderGraph`.
 - `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84`
   `E1_07_API_36` AVD, booted with `-wipe-data` and API level confirmed as 36 — **14 of 14 tests
   passed**, `BUILD SUCCESSFUL`, 214 actionable tasks with 38 executed, so the suite ran rather than
@@ -370,9 +432,12 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   first adoption row land above `max + 1`. Worth revisiting when `E2-04` adds the conversion flow.
 - **`E1-14`** makes a red `shared-tests` job ambiguous until it is fixed. **`E1-15`** is unblocked
   now that `E2-03` has merged.
-- **The gate adds one indexed count per Vehicle observation.** Measured cost is a single-row
-  aggregate over two indexed columns; if it ever shows up, the natural fix is to cache the
-  "nothing waiting" answer per owner rather than to remove the gate.
+- **The gate adds one `COUNT(*)` over `vehicle` and `fuel_entry` per gated Vehicle read for an
+  authenticated owner.** The first round called that an indexed count. It is not: the schema's only
+  index is `idx_outbox_due`, so the count scans both tables. The cost has not been measured and no
+  performance claim is made for it. Adding an `ownerId` index would be a schema change requiring a
+  migration and migration tests, which is out of this story's scope; if it is ever needed, caching
+  the "nothing waiting" answer per owner is the cheaper fix and needs no migration.
 
 ## Human Review Gate
 
