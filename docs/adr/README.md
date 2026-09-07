@@ -134,5 +134,9 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-125 | [ADR-0126](0126-hold-vehicle-reads-until-adoption-has-run.md) | Hold Vehicle reads until adoption has run for the current owner. | Accepted |
 | D-126 | [ADR-0127](0127-observe-real-platform-connectivity-at-the-host-boundary.md) | Observe real platform connectivity at the host composition boundary. | Accepted |
 | D-127 | [ADR-0128](0128-expose-the-fuel-type-selector-in-the-mvp-ui.md) | Expose the fuel type selector in the MVP UI. | Accepted |
+| D-128 | [ADR-0129](0129-fix-the-account-deletion-callable-contract.md) | Fix the account-deletion callable wire contract. | Accepted |
+| D-129 | [ADR-0130](0130-use-firestore-recursive-delete-per-registered-collection.md) | Use Firestore recursive deletion per registered collection. | Accepted |
+| D-130 | [ADR-0131](0131-resolve-qs-advisories-within-existing-ranges.md) | Resolve the `qs` advisories within existing dependency ranges. | Accepted |
+| D-131 | [ADR-0132](0132-bound-the-account-deletion-callable-runtime.md) | Bound the account-deletion callable runtime. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
