@@ -56,14 +56,15 @@
   refactor change relinquishes the bespoke `internal` rethrow in the trigger in favor of the
   original failure, with the test asserting rejection instead of a bespoke code. `npm test`
   still passes 47/47.
-- Push and pull-request status: nothing pushed; no pull request open.
-- Completed since the previous checkpoint: ran the full local verification — `npm test` 47/47;
-  `npm run audit` (exit 0: only the seven D-68 moderate `uuid` entries, no high/critical);
-  `npm run test:firestore-rules` 154/154; the complete 13-task non-instrumented Gradle command
-  636 actionable tasks BUILD SUCCESSFUL. `git diff --check` clean.
-- Verification evidence and known failures: no known failures. REFACTOR commit pending.
-- Open decisions or blockers: the E3-11 decision group awaits owner selection at the end of the
-  process; no code decision that requires the owner will be resolved before that.
-- Exact next step: write the RED tests for `onAnonymousUserDeleted` eligibility and
-  `deleteOrphanedAnonymousAccount` verification behavior plus the TD-01 generation-policy
-  contract coverage; run `npm test` to observe the failures.
+- Push and pull-request status: branch pushed through `29e54ca`; draft pull request #60 open at
+  `https://github.com/davidru85/carApp/pull/60`. The PR stays draft until the owner selects the
+  grouped E3-11 decisions and the corresponding ADRs, contract text and project-log entries land.
+- Completed since the previous checkpoint: pushed the three TDD commits and opened the draft PR
+  with the full ready-check, evidence and pending-decision group recorded.
+- Verification evidence and known failures: no known failures; all ten required-check inputs
+  verified locally. CI results pending on the draft PR.
+- Open decisions or blockers: five owner decisions pending — (1) shared Cloud Functions App Check
+  scope; (2) the `deleteOrphanedAnonymousAccount` wire contract D-id; (3) the 1st gen trigger
+  eligibility semantics D-id; (4) the callable runtime bounds D-id; (5) the placement of the
+  generation-policy contract check. The PR must not merge before they are recorded.
+- Exact next step: present the grouped decisions to the owner with three options each.
