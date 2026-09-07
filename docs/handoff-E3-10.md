@@ -36,21 +36,21 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: first owner-review RED phase prepared; latest commit `12904be`.
+- Current phase and latest commit: first owner-review GREEN phase complete; RED commit `cc2e6fd`;
+  GREEN changes are pending commit.
 - Push and pull-request status: the merge and RED work are not pushed yet; pull request #58 remains
   open at `https://github.com/davidru85/carApp/pull/58` for a second owner review after correction.
-- Completed since the previous checkpoint: confirmed pull request #59 merged; integrated `main`;
-  resolved the sole `docs/PROJECT_LOG.md` conflict by preserving both entries in required order;
-  added registry-parity regression tests and callable-log characterization coverage.
-- Verification evidence and known failures: clean `npm ci`; the review RED run executed 26 tests,
-  with 24 passing and the two new parity mutation tests failing with `Missing expected exception.`
-  A deliberately contaminated test logger made all three redaction assertions fail (10/13 passed),
-  proving the new AUTH_USER and success-path checks detect unsafe output; that test-only mutation
-  was removed immediately and production code was never changed.
+- Completed since the previous checkpoint: committed the RED tests, then replaced whole-document
+  path scanning and the hardcoded empty Storage assertion with a parser for the fenced registry
+  declaration in `docs/CONTRACTS.md`. It compares the complete Firestore entries and declared
+  Storage-prefix array with the executable registry.
+- Verification evidence and known failures: RED evidence remains 24/26 tests with both mutation
+  tests failing with `Missing expected exception.`; the clean GREEN run passes all 26 tests. The
+  test-only contaminated logger evidence remains 10/13 passing and was removed before `cc2e6fd`.
 - Open decisions or blockers: callable runtime options remain an owner decision and are explicitly
   out of scope for this review. No implementation blocker.
-- Exact next step: commit the RED tests, replace the defective parity extraction with parsing of the
-  fenced contract registry, then run GREEN and final verification.
+- Exact next step: commit GREEN, apply the required post-merge status and correction records, then
+  run final verification.
 
 ## Scope Completed
 

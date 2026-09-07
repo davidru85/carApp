@@ -39,20 +39,51 @@ function readContracts() {
 }
 
 function assertRegistryMatchesContract(contracts) {
-  const declaredCollections = new Set();
-  const pathPattern = /users\/\{uid\}\/([A-Za-z]+)\/\{(?:vehicleId|entryId)\}/g;
+  const declaredLocations = parseDeclaredDataLocations(contracts);
 
-  for (const match of contracts.matchAll(pathPattern)) {
-    declaredCollections.add(match[1]);
+  assert.deepEqual(
+    USER_DATA_LOCATIONS.firestoreCollections,
+    declaredLocations.firestoreCollections,
+  );
+  assert.deepEqual(
+    USER_DATA_LOCATIONS.storagePrefixes,
+    declaredLocations.storagePrefixes,
+  );
+}
+
+function parseDeclaredDataLocations(contracts) {
+  const declarationMarker = "The registry is currently exactly:";
+  const markerIndex = contracts.indexOf(declarationMarker);
+  assert.notEqual(markerIndex, -1, "missing deletion registry declaration");
+
+  const declaration = contracts.slice(markerIndex + declarationMarker.length);
+  const registryBlock = /^\s*```text\r?\n([\s\S]*?)\r?\n```/.exec(declaration);
+  assert.ok(registryBlock, "missing fenced deletion registry block");
+
+  const firestoreCollections = [];
+  let storagePrefixes;
+  for (const line of registryBlock[1].split(/\r?\n/)) {
+    const firestorePrefix = "Firestore collection: ";
+    const storagePrefix = "Cloud Storage prefixes: ";
+    if (line.startsWith(firestorePrefix)) {
+      const path = line.slice(firestorePrefix.length);
+      const pathMatch = /^users\/\{uid\}\/([^/]+)\/\{[^/{}]+\}$/.exec(path);
+      assert.ok(pathMatch, `invalid registered Firestore path: ${path}`);
+      firestoreCollections.push({collection: pathMatch[1], path});
+    } else if (line.startsWith(storagePrefix)) {
+      assert.equal(storagePrefixes, undefined, "duplicate Cloud Storage prefix declaration");
+      const parsedPrefixes = JSON.parse(line.slice(storagePrefix.length));
+      assert.equal(
+        Array.isArray(parsedPrefixes) && parsedPrefixes.every((prefix) => typeof prefix === "string"),
+        true,
+        "Cloud Storage prefixes must be a JSON string array",
+      );
+      storagePrefixes = parsedPrefixes;
+    } else {
+      assert.fail(`unknown deletion registry declaration: ${line}`);
+    }
   }
 
-  assert.deepEqual(
-    USER_DATA_LOCATIONS.firestoreCollections.map((location) => location.collection),
-    ["fuelEntries", "vehicles"],
-  );
-  assert.deepEqual(
-    new Set(USER_DATA_LOCATIONS.firestoreCollections.map((location) => location.collection)),
-    declaredCollections,
-  );
-  assert.deepEqual(USER_DATA_LOCATIONS.storagePrefixes, []);
+  assert.notEqual(storagePrefixes, undefined, "missing Cloud Storage prefix declaration");
+  return {firestoreCollections, storagePrefixes};
 }
