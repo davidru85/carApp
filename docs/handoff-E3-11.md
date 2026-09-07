@@ -48,50 +48,54 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (D-141 security remediation implemented and locally verified).
+- Date: 2026-09-07 (PR #60 review round 5, after Finding 2 RED).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: D-141 implementation, decision documentation and local verification complete;
-  commit, single push and PR update next.
-  - An AI-assisted security review of commits `519d0b4` and `0aef797` found that the expired-token
-    verifier accepts tokens from other Firebase projects because it does not validate `aud` or
-    `iss`, and it prefers an attacker-controlled top-level `uid` custom claim over the authentic
-    `sub`. In combination, an authenticated permanent caller can target an arbitrary account for
-    Auth and Firestore deletion. Those commits MUST NOT merge without the remediation now present
-    later in the branch.
-  - The same review found two robustness defects: malformed certificate `max-age` values can
-    disable cache hits, and the certificate fetch has no timeout within the function's 60-second
-    runtime bound.
-  - The owner selected Option B. D-141 and ADR-0142 now supersede D-133 and D-140 with a
-    server-issued cleanup authorization ticket created while the anonymous session is live.
-- Push and pull-request status: PR #60 is open at `https://github.com/davidru85/carApp/pull/60`.
-  The vulnerable commits are pushed. Nine required checks are green and `ios-simulator-build` was
-  still running when the security finding was recorded; green CI would not make the vulnerable
-  implementation mergeable. The agent will not merge it.
-- Verification evidence: the review-round-4 implementation previously passed `npm test` (63 passed,
-  1 skipped), the live Firestore emulator test, the accepted D-68 audit, Firestore rules 154/154,
-  `contractCheck`, the complete non-instrumented Gradle command and `git diff --check`. These results
-  do not cover foreign-project `aud`, incorrect `iss`, or `uid`/`sub` disagreement and therefore do
-  not validate the expired-token authorization path. Remediation RED: `cd functions && npm test`
-  executed 65 tests, with the focused issuance test failing because
-  `createOrphanCleanupTicketHandler` did not exist. GREEN: the same command passes 64 tests with
-  the emulator test skipped after adding the minimum handler; the raw ticket is returned only to
-  the caller and its SHA-256 digest is bound to the verified anonymous caller UID for 30 days.
-  Second RED: `cd functions && npm test` executed 66 tests; the focused deletion test failed with
-  `invalid-argument` because the existing handler still requires `anonymousIdToken`; 64 passed and
-  the emulator test was skipped. Second GREEN: the command passes 56 tests with the emulator test
-  skipped after replacing the token path with ticket resolution, deleting Auth then registered
-  data, and marking the authorization completed last. The expired-token verifier, certificate
-  fetcher and `uid`/`sub` parsing are removed. Focused coverage preserves authentication guards,
-  expiry, missing/completed ticket behavior, failure mapping, retries and log redaction. Retention
-  RED: `cd functions && npm test` executed 59 tests; the focused TTL policy test failed because
-  `firestore.indexes.json` still had no field override; 57 passed and the emulator test was skipped.
-  Retention GREEN: `cd functions && npm test` passes 58 tests with the emulator test skipped;
-  `npm run test:emulator` passes the real Admin Firestore ticket lifecycle; and root
-  `npm run test:firestore-rules` passes 155/155, including denial of every mobile read, write and
-  delete against `orphanCleanupTickets`.
-- Open decisions or blockers: none. Exact next step: commit the D-141 documentation closure, push
-  once under the owner-granted exception, update PR #60 and wait for its required checks. The
-  agent will not merge it.
+- Current phase: review Finding 2 RED is reproduced; its RED test is the only uncommitted file.
+- Latest commit: `62dc1ad fix(E3-11): revalidate ticket-bound account eligibility`.
+- Push and pull-request status: the branch is two commits ahead of
+  `origin/story/E3-11-anonymous-cleanup-entry-points`. PR #60 remains open and MUST NOT be merged by
+  the agent. Commit `3371386` is the latest pushed commit; all ten required checks for that pushed
+  state were green before review round 5 began.
+- Review round 5 scope and status:
+  1. **Finding 1 — GREEN, documentation pending.** RED commit `3acacf6` added failing-first tests
+     for a ticket-bound account that gained a federated provider, a phone-only account, a still
+     anonymous account, a missing account and an unexpected Auth lookup failure. The RED run
+     executed 62 tests: 56 passed, five failed as expected and the emulator test was skipped.
+     GREEN commit `62dc1ad` extracted the shared D-134 predicate, added the Admin `getUser` lookup,
+     rejects a now-permanent bound account with `failed-precondition` before deletion, preserves
+     missing-user convergence and maps other lookup failures to redacted `AUTH_USER`/`internal`.
+     The GREEN run executed 62 tests: 61 passed and the emulator test was skipped. A new decision
+     and ADR amending D-141/ADR-0142, plus the required contract mirrors, remain to be written.
+  2. **Finding 2 — RED.** The uncommitted
+     `ContractAssertionIdTest.kt` runs every contract assertion, groups by ID and requires no
+     duplicates. The focused Gradle run executed one test and failed because
+     `FunctionGenerationContract` and `NativeTestExemptionContract` both emit ID 21. The RED test
+     has not yet been committed. The implementation must assign the next unused ID after the RED
+     commit.
+  3. **Finding 3 — not started.** Add failing fixtures for grouped, padded and aliased TypeScript
+     exports, then make the exact-export parser capture every exported alias.
+  4. **Finding 4 — not started.** The selected erasure posture is to purge server-only
+     `orphanCleanupTickets` records bound to a UID during account deletion rather than retain the
+     identifier for up to 30 days. Add failing account-deletion and internal-collection registry
+     tests first; implement purge; declare the collection and its D-63 exclusion in
+     `docs/CONTRACTS.md` section 16; record the decision and amend ADR-0142.
+  5. **Finding 5 — not started.** Add a failing policy test proving the emulator script cannot use
+     an implicitly resolved or network-fetched Firebase CLI, then invoke the repository-root
+     pinned `firebase-tools` binary explicitly and verify the emulator path.
+- Verification baseline before review round 5: Functions 58 passed with one emulator skip; the
+  live Functions emulator integration passed; Firestore rules passed 155/155; `contractCheck`
+  passed 142 decision/ADR assertions; the full non-instrumented Gradle command executed 636 tasks
+  successfully; Firebase Functions and indexes dry runs passed. These counts describe commit
+  `3371386`, not the unpushed review-round-5 changes, so full verification must be repeated.
+- Known failures: the focused `ContractAssertionIdTest` is intentionally RED due to duplicate ID
+  21. No unexplained failure is known.
+- Open decisions or blockers: no blocker. Finding 1 requires the next decision ID and ADR; Finding
+  4 requires a separate decision for account-deletion erasure and internal-collection registry
+  treatment. The owner has authorised the five requested remediations and the purge posture was
+  selected as the safer interpretation within that scope.
+- Exact next step: commit the Finding 2 RED test, assign the next unused assertion ID, run the
+  focused test and `contractCheck`, commit GREEN, then update this checkpoint before starting
+  Finding 3.
 
 ## Scope Completed
 
