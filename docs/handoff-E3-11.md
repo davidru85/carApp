@@ -48,17 +48,31 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (review round 4 resolved).
+- Date: 2026-09-07 (critical security finding under review).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Review Round 4 resolved.
-  - Defect reproduced with RED test: demonstrated non-convergence on 1-hour token expiry when the anonymous Auth user still exists after interruption during steps 2–4 or after an initial failure prior to Auth deletion.
-  - Owner selected Option A: recorded D-140 (ADR-0141) superseding D-139; implemented cryptographic RS256 signature verification against Google public certificates with a 30-day `iat` window in `deleteOrphanedAnonymousAccount`.
-  - Removed unexercised seam: made `OrphanCleanupAuthGateway.getUser` mandatory.
-  - Added cryptographic verification tests: invalid RS256 signature, unknown `kid`, expired `iat` (> 30 days), and public key retrieval failure.
-  - Story records updated: `AGENTS.md` decision range D-132..D-140, `docs/PROJECT_LOG.md`, `docs/handoff-E3-11.md`, and PR #60 body (removed stale draft/push statements, updated test counts).
-- Push and pull-request status: PR #60 open at `https://github.com/davidru85/carApp/pull/60`; all review findings resolved; the agent will not merge it.
-- Verification evidence: `npm test` 63 passed, 1 skipped, 64 total; `npm run test:emulator` passed against live Firestore emulator; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passed; `./gradlew contractCheck` passed (141 decisions / 141 ADRs); complete non-instrumented Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
-- Open decisions or blockers: none. Ready for owner review round 4 closure.
+- Current phase: Security remediation design confirmed; RED phase next.
+  - An AI-assisted security review of commits `519d0b4` and `0aef797` found that the expired-token
+    verifier accepts tokens from other Firebase projects because it does not validate `aud` or
+    `iss`, and it prefers an attacker-controlled top-level `uid` custom claim over the authentic
+    `sub`. In combination, an authenticated permanent caller can target an arbitrary account for
+    Auth and Firestore deletion. PR #60 MUST NOT merge in this state.
+  - The same review found two robustness defects: malformed certificate `max-age` values can
+    disable cache hits, and the certificate fetch has no timeout within the function's 60-second
+    runtime bound.
+  - The owner selected Option B: replace the expired-token path with a server-issued cleanup
+    authorization ticket created in step 1 while the anonymous session is live. The decision will
+    supersede D-140 and will be recorded before the implementation is declared complete.
+- Push and pull-request status: PR #60 is open at `https://github.com/davidru85/carApp/pull/60`.
+  The vulnerable commits are pushed. Nine required checks are green and `ios-simulator-build` was
+  still running when the security finding was recorded; green CI would not make the vulnerable
+  implementation mergeable. The agent will not merge it.
+- Verification evidence: the review-round-4 implementation previously passed `npm test` (63 passed,
+  1 skipped), the live Firestore emulator test, the accepted D-68 audit, Firestore rules 154/154,
+  `contractCheck`, the complete non-instrumented Gradle command and `git diff --check`. These results
+  do not cover foreign-project `aud`, incorrect `iss`, or `uid`/`sub` disagreement and therefore do
+  not validate the expired-token authorization path. No remediation verification has run yet.
+- Open decisions or blockers: none. Exact next step: add and commit the first focused RED test for
+  issuing an opaque cleanup ticket from a verified anonymous session.
 
 ## Scope Completed
 
@@ -190,6 +204,13 @@
   - Made `OrphanCleanupAuthGateway.getUser` mandatory, eliminating unexercised seams.
   - Added tests for invalid cryptographic signatures, unknown `kid`, expired `iat` bounds (> 30 days), and certificate fetch failures.
   - Updated `docs/handoff-E3-11.md` and PR #60 body removing stale draft/push statements.
+- A subsequent AI-assisted security review of the review-round-4 commits found that the D-140
+  implementation did not bind expired tokens to this Firebase project and trusted a top-level
+  custom `uid` claim ahead of `sub`. The finding is critical, PR #60 is blocked, and the D-140
+  choice is reopened for owner confirmation before remediation.
+- The owner selected the server-issued cleanup authorization ticket/lease option. The replacement
+  decision and its exact wire, persistence, retention and idempotency contract remain to be
+  recorded as part of the remediation.
 - The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at
   the end, the same exception granted to E3-10.
 - No `SHOULD` rule was intentionally deviated from.
@@ -243,6 +264,10 @@
 
 ## Risks or Follow-ups
 
+- **Critical security blocker:** commits `519d0b4` and `0aef797` MUST NOT merge as written. The
+  expired-token verifier omits project-bound `aud` and `iss` checks and lets `uid` override `sub`.
+  Future token-verification work, including TD-01 migration work, must retain this lesson and must
+  prove project binding and subject selection with explicit negative tests.
 - TD-01 closure now has two guards that must move together: `functionGenerationPolicy.test.mjs`
   and `contractCheck` assertion 21 (D-136). The migration must carry forward `europe-west1` (D-137)
   and the runtime bounds and retry configuration (D-138).

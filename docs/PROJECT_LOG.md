@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-07 — Critical expired-token authorization vulnerability found in PR #60
+
+- **Type:** security finding
+- **Story / Decision:** `E3-11` / `D-140` (reopened for owner confirmation)
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** recorded a critical security finding in the review-round-4 implementation from
+  commits `519d0b4` and `0aef797`. The hand-written expired Firebase ID-token verifier checks a
+  Google signature but does not validate `aud` against this Firebase project or `iss` against this
+  project's Secure Token issuer. It also prefers the non-reserved top-level `uid` custom claim over
+  the authentic JWT `sub`. A token issued by an attacker-controlled Firebase project can therefore
+  name a victim through `uid` and authorize deletion of that victim's Auth account and Firestore
+  data when presented by any permanent authenticated caller. The same review identified an
+  unbounded certificate fetch and a certificate-cache fallback defect for malformed `max-age`.
+- **Why:** the owner supplied an AI-assisted manual security review that compared the implementation
+  with the Firebase Admin SDK verifier and composed the cross-project token plus custom-claim attack.
+  Existing tests use an injected key pair and omit `aud` and `iss`, so the required CI suite could
+  pass without exercising project binding or canonical subject selection.
+- **Documents touched:** `docs/handoff-E3-11.md` and this log. ADR-0141 and its normative mirrors
+  remain to be corrected after the owner chooses between a project-bound expired-token verifier and
+  a server-issued cleanup authorization ticket or lease.
+- **Verification:** source review confirms the missing `aud` and `iss` checks and the `uid`-before-
+  `sub` branch. PR #60 is open; nine required checks were green and `ios-simulator-build` was still
+  running when recorded. No result can override this security blocker.
+- **Follow-ups / risks:** PR #60 MUST NOT merge in its current state. Re-evaluate D-140 Option A
+  against the server-issued ticket/lease option using the D-138 retry guarantee. The owner selected
+  the server-issued option. Add focused RED coverage, replace the vulnerable token path, correct
+  ADR-0141's false assurances, and rerun the complete local and protected CI suites.
+
 ### 2026-09-07 — D-140 verifies expired anonymous tokens cryptographically; PR #60 review round 4 resolved
 
 - **Type:** story
