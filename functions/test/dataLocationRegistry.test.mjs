@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import test from "node:test";
 
-import {USER_DATA_LOCATIONS} from "../lib/deletion/dataLocationRegistry.js";
+import * as dataLocationRegistry from "../lib/deletion/dataLocationRegistry.js";
+
+const {USER_DATA_LOCATIONS} = dataLocationRegistry;
 
 test("the deletion registry exactly matches the closed remote data-location schema", async () => {
   const contracts = await readContracts();
@@ -33,6 +35,34 @@ test("the parity check detects an omitted Cloud Storage prefix", async () => {
   assert.throws(() => assertRegistryMatchesContract(expandedContracts));
 });
 
+test("the internal server-only registry exactly matches the contract exclusion list", async () => {
+  const contracts = await readContracts();
+  const declaredLocations = parseDeclaredInternalDataLocations(contracts);
+
+  assert.deepEqual(
+    dataLocationRegistry.INTERNAL_SERVER_DATA_LOCATIONS,
+    declaredLocations,
+  );
+  assert.equal(
+    USER_DATA_LOCATIONS.firestoreCollections.some(({path}) =>
+      declaredLocations.firestoreCollections.some((internal) => internal.path === path)),
+    false,
+  );
+});
+
+test("the internal parity check detects an undeclared server-only collection", async () => {
+  const contracts = await readContracts();
+  const expandedContracts = contracts.replace(
+    "Internal Firestore collection: orphanCleanupTickets/{ticketHash}",
+    [
+      "Internal Firestore collection: orphanCleanupTickets/{ticketHash}",
+      "Internal Firestore collection: internalAudit/{entryId}",
+    ].join("\n"),
+  );
+
+  assert.throws(() => assertInternalRegistryMatchesContract(expandedContracts));
+});
+
 function readContracts() {
   const contractsUrl = new URL("../../docs/CONTRACTS.md", import.meta.url);
   return readFile(contractsUrl, "utf8");
@@ -48,6 +78,13 @@ function assertRegistryMatchesContract(contracts) {
   assert.deepEqual(
     USER_DATA_LOCATIONS.storagePrefixes,
     declaredLocations.storagePrefixes,
+  );
+}
+
+function assertInternalRegistryMatchesContract(contracts) {
+  assert.deepEqual(
+    dataLocationRegistry.INTERNAL_SERVER_DATA_LOCATIONS,
+    parseDeclaredInternalDataLocations(contracts),
   );
 }
 
@@ -86,4 +123,25 @@ function parseDeclaredDataLocations(contracts) {
 
   assert.notEqual(storagePrefixes, undefined, "missing Cloud Storage prefix declaration");
   return {firestoreCollections, storagePrefixes};
+}
+
+function parseDeclaredInternalDataLocations(contracts) {
+  const declarationMarker = "The internal server-only collection registry is exactly:";
+  const markerIndex = contracts.indexOf(declarationMarker);
+  assert.notEqual(markerIndex, -1, "missing internal server-only registry declaration");
+
+  const declaration = contracts.slice(markerIndex + declarationMarker.length);
+  const registryBlock = /^\s*```text\r?\n([\s\S]*?)\r?\n```/.exec(declaration);
+  assert.ok(registryBlock, "missing internal server-only registry block");
+
+  const firestoreCollections = registryBlock[1].split(/\r?\n/).map((line) => {
+    const prefix = "Internal Firestore collection: ";
+    assert.equal(line.startsWith(prefix), true, `unknown internal registry declaration: ${line}`);
+    const path = line.slice(prefix.length);
+    const pathMatch = /^([^/]+)\/\{[^/{}]+\}$/.exec(path);
+    assert.ok(pathMatch, `invalid internal Firestore path: ${path}`);
+    return {collection: pathMatch[1], path};
+  });
+
+  return {firestoreCollections};
 }

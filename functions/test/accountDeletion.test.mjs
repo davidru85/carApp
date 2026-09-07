@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {createDeleteAccountHandler} from "../lib/callable/deleteAccount.js";
-import {FirebaseAdminFirestoreDeletionGateway} from "../lib/deletion/firebaseAdminDeletionGateways.js";
+import {
+  FirebaseAdminFirestoreDeletionGateway,
+  FirebaseAdminOrphanCleanupAuthorizationGateway,
+} from "../lib/deletion/firebaseAdminDeletionGateways.js";
 import {deleteUserData} from "../lib/deletion/userDeletionService.js";
 
 const OWNER_UID = "owner-1";
@@ -61,6 +64,52 @@ test("the Firebase Admin gateway scopes deletion to the target user's registered
   assert.deepEqual(deletedPaths, [`users/${OWNER_UID}/fuelEntries`]);
 });
 
+test("the Firebase Admin gateway purges cleanup authorizations bound to the deleted UID", async () => {
+  const calls = [];
+  const references = [{path: "orphanCleanupTickets/ticket-a"}, {path: "orphanCleanupTickets/ticket-b"}];
+  const firestore = {
+    collection(collection) {
+      assert.equal(collection, "orphanCleanupTickets");
+      return {
+        where(field, operator, uid) {
+          calls.push(["where", field, operator, uid]);
+          return {
+            limit(limit) {
+              calls.push(["limit", limit]);
+              return {
+                async get() {
+                  return {docs: references, empty: false, size: references.length};
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+    batch() {
+      return {
+        delete(reference) {
+          calls.push(["delete", reference.path]);
+        },
+        async commit() {
+          calls.push(["commit"]);
+        },
+      };
+    },
+  };
+  const gateway = new FirebaseAdminOrphanCleanupAuthorizationGateway(firestore);
+
+  await gateway.purgeForUid(OWNER_UID);
+
+  assert.deepEqual(calls, [
+    ["where", "anonymousUid", "==", OWNER_UID],
+    ["limit", 200],
+    ["delete", "orphanCleanupTickets/ticket-a"],
+    ["delete", "orphanCleanupTickets/ticket-b"],
+    ["commit"],
+  ]);
+});
+
 test("an unauthenticated request is rejected before deletion", async () => {
   const harness = deletionHarness();
 
@@ -103,6 +152,7 @@ test("account deletion removes remote data before the Auth user", async () => {
   assert.deepEqual(harness.calls, [
     ["deleteCollection", OWNER_UID, "fuelEntries"],
     ["deleteCollection", OWNER_UID, "vehicles"],
+    ["purgeCleanupAuthorizations", OWNER_UID],
     ["deleteAuthUser", OWNER_UID],
   ]);
 });
@@ -144,7 +194,29 @@ test("a retry resumes safely after partial remote deletion", async () => {
     ["deleteCollection", OWNER_UID, "vehicles"],
     ["deleteCollection", OWNER_UID, "fuelEntries"],
     ["deleteCollection", OWNER_UID, "vehicles"],
+    ["purgeCleanupAuthorizations", OWNER_UID],
     ["deleteAuthUser", OWNER_UID],
+  ]);
+});
+
+test("cleanup authorization purge failure is typed and prevents Auth deletion", async () => {
+  const rawFailure = "authorization store exposed a private failure";
+  const harness = deletionHarness({authorizationFailure: new Error(rawFailure)});
+
+  await assert.rejects(
+    harness.handler(authenticatedRequest()),
+    (failure) => failure.code === "internal" && failure.message === "Account deletion failed",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["deleteCollection", OWNER_UID, "fuelEntries"],
+    ["deleteCollection", OWNER_UID, "vehicles"],
+    ["purgeCleanupAuthorizations", OWNER_UID],
+  ]);
+  assert.equal(JSON.stringify(harness.logs).includes(OWNER_UID), false);
+  assert.equal(JSON.stringify(harness.logs).includes(rawFailure), false);
+  assert.deepEqual(harness.logs, [
+    ["error", "Account deletion failed", {stage: "AUTHORIZATION"}],
   ]);
 });
 
@@ -231,6 +303,7 @@ function firestoreGateway(calls, {failCollection, failCollectionOnce} = {}) {
 }
 
 function deletionHarness({
+  authorizationFailure,
   authFailure,
   authUserMissing = false,
   failCollection,
@@ -251,6 +324,14 @@ function deletionHarness({
       },
     },
     firestore: firestoreGateway(calls, {failCollection, failCollectionOnce}),
+    orphanCleanupAuthorizations: {
+      async purgeForUid(uid) {
+        calls.push(["purgeCleanupAuthorizations", uid]);
+        if (authorizationFailure !== undefined) {
+          throw authorizationFailure;
+        }
+      },
+    },
     logger: {
       error(message, context) {
         logs.push(["error", message, context]);
