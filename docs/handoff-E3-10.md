@@ -36,22 +36,22 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: D-131 RED phase prepared; latest commit `da02763`.
+- Current phase and latest commit: D-131 GREEN phase complete; RED commit `e6de1ca`; GREEN changes
+  are pending commit.
 - Push and pull-request status: branch pushed through `da02763`; pull request #58 is open at
   `https://github.com/davidru85/carApp/pull/58`, and its preceding review checkpoint passed all ten
   required checks. D-131 work is not pushed yet.
-- Completed since the previous checkpoint: the owner fixed the `deleteAccount` runtime bounds as
-  `maxInstances: 3`, `concurrency: 1`, `memory: "256MiB"` and `timeoutSeconds: 300`; the endpoint
-  metadata test now requires their emitted `__endpoint` representation.
-- Verification evidence and known failures: inspecting the built endpoint confirmed all four
-  fields currently emit Firebase Functions `ResetValue` sentinels. The D-131 RED run passed 25/26
-  Functions tests; the endpoint metadata test failed with all four actual reset values differing
-  from expected `availableMemoryMb: 256`, `concurrency: 1`, `maxInstances: 3` and
-  `timeoutSeconds: 300`. This is the sole expected failure.
+- Completed since the previous checkpoint: committed the endpoint-metadata RED test, then added
+  exactly the four owner-selected options to the `deleteAccount` `onCall` declaration without
+  changing its region or handler behavior.
+- Verification evidence and known failures: the D-131 RED run passed 25/26 tests and showed all
+  four emitted fields as Firebase Functions `ResetValue` sentinels. The GREEN run passes all 26
+  Functions tests, and direct inspection of the built endpoint reports `availableMemoryMb: 256`,
+  `concurrency: 1`, `maxInstances: 3` and `timeoutSeconds: 300`. No known failure.
 - Open decisions or blockers: none. D-131 explicitly defers Cloud Functions App Check enforcement
   and a dedicated minimum-privilege service account; neither is authorized in this change.
-- Exact next step: commit RED, add only the four owner-selected callable options, run GREEN, then
-  complete D-131 documentation and full verification.
+- Exact next step: commit GREEN, add D-131 and ADR-0132 to every required decision mirror and story
+  record, then run full verification.
 
 ## Scope Completed
 

@@ -71,7 +71,11 @@ export function createDeleteAccountHandler(dependencies: DeleteAccountDependenci
 
 export const deleteAccount = onCall<DeleteAccountPayload>(
     {
+        concurrency: 1,
+        maxInstances: 3,
+        memory: "256MiB",
         region: "europe-west1",
+        timeoutSeconds: 300,
     },
     async (request) => {
         const gateways = firebaseAdminDeletionGateways();
