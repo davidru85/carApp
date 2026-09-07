@@ -32,26 +32,25 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-06.
-- Branch and base: `story/E3-10-account-deletion-service`, based on synchronized `main` at
-  `a8bbfcf`.
-- Current phase and latest commit: REFACTOR phase complete; RED commit `1e64ab8`, GREEN commit
-  `60fb15b`, REFACTOR commit `e7b422f`, pull-request checkpoint commit `b1991bf`; this CI checkpoint
-  is pending commit.
-- Push and pull-request status: branch pushed to `origin`; pull request #58 is open at
-  `https://github.com/davidru85/carApp/pull/58`, all ten required checks are green and owner review
-  remains required.
-- Completed since the previous checkpoint: monitored CI run `34060292954` through completion; all
-  ten jobs passed, including `ios-simulator-build` in 13 minutes 10 seconds without reproducing
-  E1-17.
-- Verification evidence and known failures: 22 Cloud Functions tests, 154 Firestore emulator tests,
-  the 636-task full non-instrumented command, the 234-task provider-free command and Objective-C
-  header parity pass. CI run `34060292954` passes all ten required jobs. The production audit
-  reports only the seven moderate entries already accepted under D-68. No known failure.
-- Open decisions or blockers: none. The owner explicitly requested one push after the REFACTOR
-  commit instead of one push per TDD phase.
-- Exact next step: owner review of pull request #58; address any review findings or merge, then
-  begin E3-11 on its own story branch.
+- Date: 2026-09-07.
+- Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
+  through merge commit `12904be`; work continues in the isolated worktree required after pull
+  request #59.
+- Current phase and latest commit: first owner-review RED phase prepared; latest commit `12904be`.
+- Push and pull-request status: the merge and RED work are not pushed yet; pull request #58 remains
+  open at `https://github.com/davidru85/carApp/pull/58` for a second owner review after correction.
+- Completed since the previous checkpoint: confirmed pull request #59 merged; integrated `main`;
+  resolved the sole `docs/PROJECT_LOG.md` conflict by preserving both entries in required order;
+  added registry-parity regression tests and callable-log characterization coverage.
+- Verification evidence and known failures: clean `npm ci`; the review RED run executed 26 tests,
+  with 24 passing and the two new parity mutation tests failing with `Missing expected exception.`
+  A deliberately contaminated test logger made all three redaction assertions fail (10/13 passed),
+  proving the new AUTH_USER and success-path checks detect unsafe output; that test-only mutation
+  was removed immediately and production code was never changed.
+- Open decisions or blockers: callable runtime options remain an owner decision and are explicitly
+  out of scope for this review. No implementation blocker.
+- Exact next step: commit the RED tests, replace the defective parity extraction with parsing of the
+  fenced contract registry, then run GREEN and final verification.
 
 ## Scope Completed
 

@@ -169,6 +169,47 @@ test("account deletion logs contain no UID, token, payload or raw failure", asyn
   ]);
 });
 
+test("Auth deletion failure logs contain no UID, token, payload or raw failure", async () => {
+  const secretToken = "secret-token-value";
+  const rawFailure = "Auth provider exposed a private failure";
+  const harness = deletionHarness({authFailure: new Error(rawFailure)});
+
+  await assert.rejects(
+    harness.handler({
+      auth: {token: {rawClaim: secretToken}, uid: OWNER_UID},
+      data: {targetUid: OWNER_UID},
+      rawRequest: {body: secretToken},
+    }),
+  );
+
+  const serializedLogs = JSON.stringify(harness.logs);
+  assert.equal(serializedLogs.includes(OWNER_UID), false);
+  assert.equal(serializedLogs.includes(secretToken), false);
+  assert.equal(serializedLogs.includes(rawFailure), false);
+  assert.deepEqual(harness.logs, [
+    ["error", "Account deletion failed", {stage: "AUTH_USER"}],
+  ]);
+});
+
+test("account deletion success logs contain no UID, token or payload", async () => {
+  const secretToken = "secret-token-value";
+  const harness = deletionHarness();
+
+  const result = await harness.handler({
+    auth: {token: {rawClaim: secretToken}, uid: OWNER_UID},
+    data: {targetUid: OWNER_UID},
+    rawRequest: {body: secretToken},
+  });
+
+  assert.deepEqual(result, {status: "ACCOUNT_DELETED"});
+  const serializedLogs = JSON.stringify(harness.logs);
+  assert.equal(serializedLogs.includes(OWNER_UID), false);
+  assert.equal(serializedLogs.includes(secretToken), false);
+  assert.deepEqual(harness.logs, [
+    ["info", "Account deletion completed", {status: "ACCOUNT_DELETED"}],
+  ]);
+});
+
 function authenticatedRequest(data = {targetUid: OWNER_UID}) {
   return {
     auth: {token: {}, uid: OWNER_UID},
@@ -189,13 +230,21 @@ function firestoreGateway(calls, {failCollection, failCollectionOnce} = {}) {
   };
 }
 
-function deletionHarness({authUserMissing = false, failCollection, failCollectionOnce} = {}) {
+function deletionHarness({
+  authFailure,
+  authUserMissing = false,
+  failCollection,
+  failCollectionOnce,
+} = {}) {
   const calls = [];
   const logs = [];
   const handler = createDeleteAccountHandler({
     auth: {
       async deleteUser(uid) {
         calls.push(["deleteAuthUser", uid]);
+        if (authFailure !== undefined) {
+          throw authFailure;
+        }
         if (authUserMissing) {
           throw Object.assign(new Error("already gone"), {code: "auth/user-not-found"});
         }
