@@ -12,7 +12,7 @@ internal object DecisionRegistry {
     private const val AWAITING_HEADING = "## Decisions Awaiting Owner Confirmation"
 
     /** The part of the board that is the decision registry, excluding the awaiting summary. */
-    fun registryOf(board: String): String = board
+    fun registryOf(board: String): String = board.substringBefore(AWAITING_HEADING)
 
     /** Only the `ID` and `Status` columns are compared, per assertion 10. */
     fun decisionsWithStatus(
