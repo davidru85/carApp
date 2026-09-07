@@ -262,23 +262,48 @@ test("a revoked or invalid token error maps to invalid-argument without internal
   assert.deepEqual(harness.logs, []);
 });
 
-test("an expired token for an active Auth user is rejected with invalid-argument", async () => {
+test("interruption during steps 2-4 with token expiry must converge on deleting the existing anonymous account and remote data", async () => {
+  // Step 1: Capture anonymous token.
+  // Step 2-4: Interrupted / delayed until token expires (> 1 hour). Client is signed into permanent account.
+  // Step 5: First invocation of deleteOrphanedAnonymousAccount with expired token while Auth user still exists.
+  // Under CONTRACTS §11.3, retry after any interruption MUST converge.
   const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}});
   const harness = orphanHarness({
     userExistsInAuth: true,
     verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
   });
 
-  await assert.rejects(
-    harness.handler(authed({anonymousIdToken: expiredToken})),
-    (failure) => failure.code === "invalid-argument",
-  );
+  const result = await harness.handler(authed({anonymousIdToken: expiredToken}));
 
+  assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
   assert.deepEqual(harness.calls, [
     ["verifyIdToken", expiredToken],
     ["getUser", ORPHAN_UID],
+    ["deleteAuthUser", ORPHAN_UID],
+    ["deleteCollection", ORPHAN_UID, "fuelEntries"],
+    ["deleteCollection", ORPHAN_UID, "vehicles"],
   ]);
-  assert.deepEqual(harness.logs, []);
+});
+
+test("delayed retry after an earlier failure before Auth deletion must converge even after token expiry", async () => {
+  // Earlier attempt failed before Auth deletion occurred.
+  // Subsequent retry happens > 1 hour later: token is expired, Auth user still exists.
+  const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}});
+  const harness = orphanHarness({
+    userExistsInAuth: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  const result = await harness.handler(authed({anonymousIdToken: expiredToken}));
+
+  assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
+  assert.deepEqual(harness.calls, [
+    ["verifyIdToken", expiredToken],
+    ["getUser", ORPHAN_UID],
+    ["deleteAuthUser", ORPHAN_UID],
+    ["deleteCollection", ORPHAN_UID, "fuelEntries"],
+    ["deleteCollection", ORPHAN_UID, "vehicles"],
+  ]);
 });
 
 test("a retry with an expired anonymous token converges when the Auth account is already deleted", async () => {
