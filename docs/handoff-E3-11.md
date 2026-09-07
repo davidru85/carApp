@@ -50,7 +50,7 @@
 
 - Date: 2026-09-07 (critical security finding under review).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Security remediation design confirmed; RED phase next.
+- Current phase: Security remediation RED phase for anonymous ticket issuance.
   - An AI-assisted security review of commits `519d0b4` and `0aef797` found that the expired-token
     verifier accepts tokens from other Firebase projects because it does not validate `aud` or
     `iss`, and it prefers an attacker-controlled top-level `uid` custom claim over the authentic
@@ -70,9 +70,12 @@
   1 skipped), the live Firestore emulator test, the accepted D-68 audit, Firestore rules 154/154,
   `contractCheck`, the complete non-instrumented Gradle command and `git diff --check`. These results
   do not cover foreign-project `aud`, incorrect `iss`, or `uid`/`sub` disagreement and therefore do
-  not validate the expired-token authorization path. No remediation verification has run yet.
-- Open decisions or blockers: none. Exact next step: add and commit the first focused RED test for
-  issuing an opaque cleanup ticket from a verified anonymous session.
+  not validate the expired-token authorization path. Remediation RED: `cd functions && npm test`
+  executed 65 tests, with the new focused issuance test failing because
+  `createOrphanCleanupTicketHandler` does not exist; 63 passed and the emulator test was skipped.
+- Open decisions or blockers: none. Exact next step: commit this RED state, then add the minimum
+  ticket-issuance handler that binds the SHA-256 ticket digest to the verified anonymous caller UID
+  for 30 days without persisting the raw ticket.
 
 ## Scope Completed
 

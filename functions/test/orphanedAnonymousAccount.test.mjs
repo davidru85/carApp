@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 
-import {createOrphanCleanupHandler} from "../lib/callable/deleteOrphanedAnonymousAccount.js";
+import * as orphanCleanupModule from "../lib/callable/deleteOrphanedAnonymousAccount.js";
+
+const {createOrphanCleanupHandler} = orphanCleanupModule;
 
 const testKeyPair = crypto.generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -14,6 +16,48 @@ const TEST_KID = "test-kid";
 const PERMANENT_UID = "permanent-1";
 const ORPHAN_UID = "orphan-1";
 const ORPHAN_TOKEN = "orphan-id-token";
+const CLEANUP_TICKET = "A".repeat(43);
+const NOW_MS = Date.UTC(2026, 8, 7, 12, 0, 0);
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+test("an authenticated anonymous session receives an opaque cleanup ticket bound to its UID", async () => {
+  assert.equal(typeof orphanCleanupModule.createOrphanCleanupTicketHandler, "function");
+  const calls = [];
+  const logs = [];
+  const handler = orphanCleanupModule.createOrphanCleanupTicketHandler({
+    authorizations: {
+      async issue(authorization) {
+        calls.push(["issueAuthorization", authorization]);
+      },
+    },
+    clock: {nowMs: () => NOW_MS},
+    logger: testLogger(logs),
+    ticketGenerator: () => CLEANUP_TICKET,
+  });
+
+  const result = await handler({
+    auth: {
+      token: {firebase: {sign_in_provider: "anonymous"}},
+      uid: ORPHAN_UID,
+    },
+    data: {},
+  });
+
+  const ticketHash = crypto.createHash("sha256").update(CLEANUP_TICKET, "utf8").digest("hex");
+  assert.deepEqual(result, {cleanupTicket: CLEANUP_TICKET});
+  assert.deepEqual(calls, [["issueAuthorization", {
+    anonymousUid: ORPHAN_UID,
+    expiresAtMs: NOW_MS + THIRTY_DAYS_MS,
+    status: "PENDING",
+    ticketHash,
+  }]]);
+  assert.equal(JSON.stringify(calls).includes(CLEANUP_TICKET), false);
+  assert.deepEqual(logs, [[
+    "info",
+    "Orphan cleanup ticket issued",
+    {status: "ORPHAN_CLEANUP_TICKET_ISSUED"},
+  ]]);
+});
 
 test("an unauthenticated call is rejected before any verification or deletion", async () => {
   const harness = orphanHarness();
