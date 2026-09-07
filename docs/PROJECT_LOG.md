@@ -203,6 +203,77 @@
 - **Follow-ups / risks:** `D-144` makes schema version 2 the new migration baseline, so every later
   schema change extends the chain and ships its own populated previous-version migration test.
 
+### 2026-09-08 — E3-14 hardens ticket issuance and sanitizes the trigger rejection
+
+- **Type:** story
+- **Story / Decision:** `E3-14` / `D-148`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `issueOrphanCleanupTicket` now resolves the caller's current Auth record through
+  the Admin SDK before it writes anything, and issues only while that record exists, is enabled and
+  is still anonymous; `createAnonymousDeletionHandler` rejects with a newly constructed sanitized
+  error instead of rethrowing the provider exception; and `contractCheck` no longer reads the
+  awaiting-confirmation summary as decision registry rows.
+- **Why:** the two post-merge findings of the `E3-11` review of pull request #60. Callable token
+  verification performs no revocation check, so an anonymous claim outlived linking, disabling and
+  deletion, and the issuer trusted it with no Admin call at all. An uncaught trigger exception is
+  delivered verbatim to runtime logging and Error Reporting, so the raw Firestore failure, whose
+  message can carry a UID-bearing path, escaped the redaction posture every neighbouring surface
+  already obeys.
+- **Documents touched:** `docs/BACKLOG.md` (`E3-14`, `E3-15`), `docs/CONTRACTS.md §11.5`,
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
+  `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md`,
+  `docs/adr/0150-close-the-ticket-issuance-and-account-deletion-race.md`, `docs/adr/README.md`,
+  `AGENTS.md`, `docs/handoff-E3-14.md` and this log.
+- **Verification:** the complete Functions suite (73 passing), the Firestore emulator suite, 155
+  Firestore rules tests, the dependency audit, `contractCheck` with 146 aligned decisions, the
+  complete required Gradle command and the Functions and indexes dry-run all pass. One `E1-14`
+  flake occurred on `iosSimulatorArm64` and did not reproduce; this branch changes no Kotlin source
+  outside `build-logic`.
+- **Follow-ups / risks:** the issuance/deletion interleaving is **not** closed. It is `E3-15`,
+  blocked on the `Proposed` `D-149`, and until that decision is taken one UID-bound authorization
+  can outlive a successful account deletion and is removed only by the 30-day TTL.
+
+### 2026-09-08 — D-148 accepted and D-149 proposed for the orphan cleanup ticket
+
+- **Type:** decision
+- **Story / Decision:** `E3-14`, `E3-15` / `D-148`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `D-148` requires the ticket issuer to verify the caller's current Auth record
+  through the Admin SDK before issuing, using the single shared `D-134` predicate plus a
+  not-disabled requirement. `D-149` is `Proposed` and records the three options that could close
+  the remaining issuance/deletion interleaving, with the second-purge-pass option recommended.
+- **Why:** `D-142` already established that a claim is only evidence of what was true when the token
+  was minted, and applied that at consumption; the issuing side, where the authorization is
+  actually created, had no such check. The interleaving that remains cannot be closed inside the
+  issuer, because at the moment of its write the account legitimately still exists, so closing it
+  changes the normative deletion order or adds a new store. That is the owner's call, not an
+  implementation detail.
+- **Documents touched:** ADR-0149, ADR-0150, the four decision mirrors, the awaiting-confirmation
+  table of `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md §11.5` and this log.
+- **Verification:** `contractCheck` reports 146 aligned decisions and ADRs and lists `D-149` as the
+  one unresolved decision with `E3-15` as its `Needed by` story.
+- **Follow-ups / risks:** `E3-15` MUST NOT start until `D-149` is `Accepted`. If the owner defers
+  instead of deciding, the residual risk MUST be recorded in `docs/SECURITY.md`.
+
+### 2026-09-08 — contractCheck could not express its first unresolved decision
+
+- **Type:** correction
+- **Story / Decision:** `E3-14` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the decision registry parse is scoped to the registry table, so the
+  "Decisions Awaiting Owner Confirmation" summary is no longer read as decision rows.
+- **Why:** assertion 4 requires every unresolved decision to be listed in that summary, and its rows
+  start with a decision ID, but its fifth column is `Consequence if unresolved` rather than a
+  status. The parser scanned the whole board and kept the last match, so the summary silently
+  overrode the real status and assertions 2 and 4 failed together. The defect was latent because the
+  board had never carried a `Proposed` decision; `D-149` is the first.
+- **Documents touched:** `build-logic/convention/.../contract/DecisionRegistry.kt` (new),
+  `.../contract/ContractCheck.kt`, `.../contract/DecisionRegistryTest.kt` (new) and this log.
+- **Verification:** the new fixture test fails against the previous behaviour and passes against the
+  fix; `contractCheck` reports 146 aligned decisions and `1 listed` for assertion 4.
+- **Follow-ups / risks:** none. The parser moved unchanged, so no existing assertion changed
+  meaning.
+
 ### 2026-09-07 — PR #60 review round 5 resolved the five remaining findings
 
 - **Type:** story
