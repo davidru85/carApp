@@ -47,6 +47,7 @@ test("the deployed billing cutoff does not reach the vulnerable dependency path"
     assert.deepEqual(Object.keys(exportedFunctions).sort(), [
       "deleteAccount",
       "deleteOrphanedAnonymousAccount",
+      "issueOrphanCleanupTicket",
       "onAnonymousUserDeleted",
       "stopBilling",
     ]);
@@ -78,6 +79,20 @@ test("the deployed billing cutoff does not reach the vulnerable dependency path"
         availableMemoryMb: exportedFunctions.deleteOrphanedAnonymousAccount.__endpoint.availableMemoryMb,
         maxInstances: exportedFunctions.deleteOrphanedAnonymousAccount.__endpoint.maxInstances,
         timeoutSeconds: exportedFunctions.deleteOrphanedAnonymousAccount.__endpoint.timeoutSeconds,
+      },
+      {
+        availableMemoryMb: 256,
+        maxInstances: 2,
+        timeoutSeconds: 60,
+      },
+    );
+    assert.equal(exportedFunctions.issueOrphanCleanupTicket.__endpoint.platform, "gcfv2");
+    assert.deepEqual(exportedFunctions.issueOrphanCleanupTicket.__endpoint.region, ["europe-west1"]);
+    assert.deepEqual(
+      {
+        availableMemoryMb: exportedFunctions.issueOrphanCleanupTicket.__endpoint.availableMemoryMb,
+        maxInstances: exportedFunctions.issueOrphanCleanupTicket.__endpoint.maxInstances,
+        timeoutSeconds: exportedFunctions.issueOrphanCleanupTicket.__endpoint.timeoutSeconds,
       },
       {
         availableMemoryMb: 256,

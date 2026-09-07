@@ -3,11 +3,12 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import type {Auth} from "firebase-admin/auth";
 import {getAuth} from "firebase-admin/auth";
 import type {Firestore} from "firebase-admin/firestore";
-import {getFirestore} from "firebase-admin/firestore";
+import {getFirestore, Timestamp} from "firebase-admin/firestore";
 
 import type {AccountDeletionAuthGateway} from "../callable/deleteAccount.js";
 import type {
-    VerifiedIdentityToken,
+    OrphanCleanupAuthorizationGateway,
+    OrphanCleanupAuthorizationRecord,
 } from "../callable/deleteOrphanedAnonymousAccount.js";
 import type {
     UserDataFirestoreGateway,
@@ -36,26 +37,76 @@ export class FirebaseAdminAuthDeletionGateway implements AccountDeletionAuthGate
         await this.auth.deleteUser(uid);
     }
 
-    public async getUser(uid: string): Promise<{uid: string}> {
-        return this.auth.getUser(uid);
+}
+
+const ORPHAN_CLEANUP_TICKETS_COLLECTION = "orphanCleanupTickets";
+
+export class FirebaseAdminOrphanCleanupAuthorizationGateway implements OrphanCleanupAuthorizationGateway {
+    public constructor(private readonly firestore: Firestore) {}
+
+    public async issue(authorization: OrphanCleanupAuthorizationRecord): Promise<void> {
+        await this.firestore
+            .collection(ORPHAN_CLEANUP_TICKETS_COLLECTION)
+            .doc(authorization.ticketHash)
+            .create({
+                anonymousUid: authorization.anonymousUid,
+                expiresAt: Timestamp.fromMillis(authorization.expiresAtMs),
+                status: authorization.status,
+            });
     }
 
-    public async verifyIdToken(token: string): Promise<VerifiedIdentityToken> {
-        return this.auth.verifyIdToken(token);
+    public async get(ticketHash: string): Promise<OrphanCleanupAuthorizationRecord | null> {
+        const snapshot = await this.firestore
+            .collection(ORPHAN_CLEANUP_TICKETS_COLLECTION)
+            .doc(ticketHash)
+            .get();
+        if (!snapshot.exists) {
+            return null;
+        }
+
+        const data = snapshot.data();
+        const anonymousUid = data?.anonymousUid;
+        const expiresAt = data?.expiresAt;
+        const status = data?.status;
+        if (
+            typeof anonymousUid !== "string" ||
+            anonymousUid.length === 0 ||
+            !(expiresAt instanceof Timestamp) ||
+            (status !== "PENDING" && status !== "COMPLETED")
+        ) {
+            throw new Error("Malformed orphan cleanup authorization");
+        }
+
+        return {
+            anonymousUid,
+            expiresAtMs: expiresAt.toMillis(),
+            status,
+            ticketHash,
+        };
+    }
+
+    public async complete(ticketHash: string): Promise<void> {
+        await this.firestore
+            .collection(ORPHAN_CLEANUP_TICKETS_COLLECTION)
+            .doc(ticketHash)
+            .update({status: "COMPLETED"});
     }
 }
 
 export function firebaseAdminDeletionGateways(): {
     auth: FirebaseAdminAuthDeletionGateway;
     firestore: FirebaseAdminFirestoreDeletionGateway;
+    orphanCleanupAuthorizations: FirebaseAdminOrphanCleanupAuthorizationGateway;
 } {
     const app = getApps()[0] ?? initializeApp();
     return gatewaysForApp(app);
 }
 
 function gatewaysForApp(app: App) {
+    const firestore = getFirestore(app);
     return {
         auth: new FirebaseAdminAuthDeletionGateway(getAuth(app)),
-        firestore: new FirebaseAdminFirestoreDeletionGateway(getFirestore(app)),
+        firestore: new FirebaseAdminFirestoreDeletionGateway(firestore),
+        orphanCleanupAuthorizations: new FirebaseAdminOrphanCleanupAuthorizationGateway(firestore),
     };
 }

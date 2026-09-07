@@ -50,7 +50,7 @@
 
 - Date: 2026-09-07 (critical security finding under review).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Security remediation RED phase for ticket-authorized deletion.
+- Current phase: Security remediation GREEN phase for ticket-authorized deletion.
   - An AI-assisted security review of commits `519d0b4` and `0aef797` found that the expired-token
     verifier accepts tokens from other Firebase projects because it does not validate `aud` or
     `iss`, and it prefers an attacker-controlled top-level `uid` custom claim over the authentic
@@ -77,10 +77,14 @@
   the caller and its SHA-256 digest is bound to the verified anonymous caller UID for 30 days.
   Second RED: `cd functions && npm test` executed 66 tests; the focused deletion test failed with
   `invalid-argument` because the existing handler still requires `anonymousIdToken`; 64 passed and
-  the emulator test was skipped.
-- Open decisions or blockers: none. Exact next step: commit this RED state, remove the expired-token
-  path, and make the existing cleanup handler resolve the ticket digest to its server-bound UID,
-  perform the idempotent Auth/data deletion, and mark the authorization completed last.
+  the emulator test was skipped. Second GREEN: the command passes 56 tests with the emulator test
+  skipped after replacing the token path with ticket resolution, deleting Auth then registered
+  data, and marking the authorization completed last. The expired-token verifier, certificate
+  fetcher and `uid`/`sub` parsing are removed. Focused coverage preserves authentication guards,
+  expiry, missing/completed ticket behavior, failure mapping, retries and log redaction.
+- Open decisions or blockers: none. Exact next step: commit this GREEN behavior, then adapt the real
+  Firestore emulator integration to issue, resolve and complete the authorization record and add
+  the TTL/rules deployment contract.
 
 ## Scope Completed
 

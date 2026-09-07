@@ -39,6 +39,7 @@ test("onAnonymousUserDeleted is the only 1st gen function in the project", () =>
     [
       "deleteAccount",
       "deleteOrphanedAnonymousAccount",
+      "issueOrphanCleanupTicket",
       "onAnonymousUserDeleted",
       "stopBilling",
     ],
