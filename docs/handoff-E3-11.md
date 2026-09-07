@@ -320,7 +320,7 @@
 ## Decision Board Impact
 
 - Added D-141 and ADR-0142, superseded D-133 and D-140, corrected ADR-0141's false security
-  assurances and updated all normative mirrors. The E3-11 range is now D-132 through D-141.
+  assurances and updated all normative mirrors. The E3-11 range is now D-132 through D-143.
 
 ## Shared-Write Modules Touched
 

@@ -111,7 +111,7 @@ gated owner review through pull request #60.
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
   owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoff-E2-06.md` holds its
   acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoff-E3-10.md`.
-  `E3-11` introduced `D-132` through `D-141` and `docs/handoff-E3-11.md` holds its acceptance
+  `E3-11` introduced `D-132` through `D-143` and `docs/handoff-E3-11.md` holds its acceptance
   evidence pending the gated owner review.
 - **Next:** `E2-07`, the anonymous sign-in benefit reminders. It is the first Ready Phase 2 story,
   because `E2-04` depends on `E3-11`, which is implemented and awaiting its gated owner review.

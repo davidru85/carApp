@@ -771,8 +771,9 @@ After confirmation, the operation is ordered as follows:
    operation marker until both the remote replacement and step 5 succeed.
 5. Call `deleteOrphanedAnonymousAccount` with the persisted cleanup ticket. The backend resolves
    the server-bound abandoned anonymous UID, verifies that it differs from the current permanent
-   UID, deletes that anonymous Firebase Auth account, directly invokes the D-63 user-data deletion
-   service for the anonymous UID, and marks the authorization completed last.
+   UID, re-verifies that the bound account is still anonymous (`D-142`), deletes that anonymous
+   Firebase Auth account, directly invokes the D-63 user-data deletion service for the anonymous
+   UID, and marks the authorization completed last.
 
 Retry after any interruption MUST converge on the same permanent-account snapshot and the same
 deleted anonymous identity. It MUST NOT re-enter normal recovery pull while the replacement marker
@@ -902,7 +903,16 @@ Two anonymous-deletion entry points reuse this service:
   snapshot replacement. Its request payload contains `cleanupTicket: String`, in the same
   canonical 43-character base64url form. The callable requires an authenticated permanent caller,
   hashes the ticket, resolves the server-bound anonymous UID, rejects an absent or expired ticket,
-  and rejects a bound UID equal to the caller UID. It deletes the anonymous Auth account through
+  and rejects a bound UID equal to the caller UID. Before any destructive stage it resolves the
+  bound UID's current Auth record through the Admin SDK and re-verifies D-134 eligibility: a bound
+  account that still exists MUST have an empty `providerData` list, because the bound UID's account
+  may have ceased to be anonymous between issuance and consumption, for example by linking to a
+  permanent credential without a collision; such an account is rejected with
+  `failed-precondition` before deletion begins (`D-142`, amending the `D-141` threat model). A
+  missing bound account is preserved as idempotent success so direct remote deletion and
+  completion-last retries still converge; any other lookup failure maps to `internal` with the
+  redacted `AUTH_USER` stage log. The eligibility predicate is the single shared D-134 definition
+  also used by `onAnonymousUserDeleted`. It then deletes the anonymous Auth account through
   the Admin SDK, treating `auth/user-not-found` as idempotent success, invokes `deleteUserData`
   directly, and changes the authorization to `COMPLETED` only after both deletion stages succeed.
   A completed, unexpired authorization returns the same successful response without repeating
@@ -911,10 +921,10 @@ Two anonymous-deletion entry points reuse this service:
 - A successful deletion response is
   `{ status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED" }`. Missing authentication maps to
   `unauthenticated`; a missing, malformed, absent or expired `cleanupTicket` maps to
-  `invalid-argument`; a non-permanent caller or a bound UID equal to the caller UID maps to
-  `failed-precondition`; and authorization-storage, Admin Auth or remote-data failure maps to
-  `internal`. No UID, raw ticket, ticket hash, request payload or raw provider failure is attached
-  to callable logs.
+  `invalid-argument`; a non-permanent caller, a bound UID equal to the caller UID, or a bound
+  account that is no longer anonymous maps to `failed-precondition`; and authorization-storage,
+  Admin Auth or remote-data failure maps to `internal`. No UID, raw ticket, ticket hash, request
+  payload or raw provider failure is attached to callable logs.
 - Both callables declare `maxInstances: 2`, `memory: "256MiB"`, `timeoutSeconds: 60` and
   `region: "europe-west1"` (`D-135`, `D-141`).
 

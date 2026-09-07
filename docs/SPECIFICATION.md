@@ -618,6 +618,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-139 | Expired anonymous token retry convergence | Permit well-formed expired anonymous ID token on retry if and only if Auth user is already deleted (`auth/user-not-found`) | Superseded |
 | D-140 | Expired anonymous token retry convergence via RS256 signature verification | Cryptographically verify Google RS256 signature (with iat window) of expired anonymous ID token to converge deletion of active Auth user and Firestore data. | Superseded |
 | D-141 | Server-issued orphan-cleanup authorization | Before switching accounts, the authenticated anonymous session receives a single-purpose opaque cleanup ticket; the permanent caller later uses it to delete only the server-bound anonymous identity without any expired-token verification fallback. | Accepted |
+| D-142 | Ticket-consumption anonymity revalidation | The orphan-cleanup callable re-verifies D-134 anonymity of the ticket-bound account before any destructive stage. | Accepted |
+| D-143 | Account-deletion erasure of orphan-cleanup authorizations | Account deletion purges every orphan-cleanup authorization bound to the deleted UID; internal server-only collections are declared in a separate registry excluded from D-63. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

@@ -148,5 +148,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-139 | [ADR-0140](0140-permit-expired-anonymous-token-on-retry-when-auth-user-deleted.md) | Permit expired anonymous token on retry when Auth user is deleted. | Superseded |
 | D-140 | [ADR-0141](0141-verify-expired-anonymous-token-cryptographically-for-resumable-cleanup.md) | Verify expired anonymous token cryptographically for resumable cleanup. | Superseded |
 | D-141 | [ADR-0142](0142-use-server-issued-orphan-cleanup-tickets.md) | Use server-issued tickets for orphan cleanup authorization. | Accepted |
+| D-142 | [ADR-0143](0143-revalidate-ticket-bound-anonymity-at-consumption.md) | Revalidate ticket-bound anonymity at consumption. | Accepted |
+| D-143 | [ADR-0144](0144-erase-orphan-cleanup-authorizations-on-account-deletion.md) | Erase orphan-cleanup authorizations on account deletion. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
