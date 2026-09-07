@@ -151,6 +151,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-134 | Anonymous cleanup trigger eligibility | Eligible = deleted Auth user with empty `providerData`; otherwise skipped with a redacted log | Accepted | Prevents the Admin-privileged trigger from touching linked or phone accounts while keeping trigger/callable overlap idempotent. |
 | D-135 | Orphan-cleanup callable runtime bounds | `deleteOrphanedAnonymousAccount`: at most two instances, 256 MiB, 60-second timeout, default concurrency | Accepted | Fits the shorter verification-plus-deletion workload while keeping explicit bounds as the primary control; re-evaluated with any registry growth. |
 | D-136 | Sole-1st-gen allowlist enforcement | Functions suite plus a `contractCheck` `FunctionGenerationContract` with a failing fixture | Accepted | Makes the TD-01 exception visible to the CI contract job and the local Gradle contract command; TD-01 closure updates both checks. |
+| D-137 | Anonymous cleanup trigger region | `onAnonymousUserDeleted`: explicit `europe-west1` region pin | Accepted | Colocates trigger execution with Cloud Firestore and the project's other backend functions; eliminates cross-region traffic and preserves D-13 and D-22. |
+| D-138 | Anonymous cleanup trigger runtime bounds and retry policy | `onAnonymousUserDeleted`: at most two instances, 256 MiB, 60-second timeout, with execution retries enabled | Accepted | Explicit runtime bounds control costs while platform retries backstop the deletion guarantee against transient Firestore disruptions. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -579,7 +581,7 @@ Exact migration surface once E3-10 and E3-11 create it:
 
 | File or configuration | Affected declaration | Migration responsibility |
 |-----------------------|----------------------|--------------------------|
-| `functions/src/auth/onAnonymousUserDeleted.ts` | `onAnonymousUserDeleted` | Replace the `firebase-functions/v1` Auth deletion builder with the generally available 2nd gen Authentication deletion trigger. |
+| `functions/src/auth/onAnonymousUserDeleted.ts` | `onAnonymousUserDeleted` | Replace the `firebase-functions/v1` Auth deletion builder with the generally available 2nd gen Authentication deletion trigger, carrying forward the `europe-west1` region, 256 MiB memory, 60-second timeout, 2 max instances and execution retry configuration. |
 | `functions/src/index.ts` | `onAnonymousUserDeleted` export | Retain the public deployed function name while switching its implementation export. |
 | `functions/test/contract/functionGenerationPolicy.test.ts` | sole-1st-gen allowlist | Remove the D-63 exception and require every exported function to use 2nd gen. |
 | `functions/test/integration/anonymousCleanup.test.ts` | automatic-cleanup trigger coverage | Run the same deletion, idempotency and overlap assertions against the 2nd gen trigger. |

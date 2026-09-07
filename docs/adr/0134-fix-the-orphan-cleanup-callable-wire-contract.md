@@ -45,6 +45,13 @@ or raw provider failure is attached to callable logs.
 
 ### Constraints Introduced
 
+- Captured anonymous identity token verification relies on standard Firebase ID token expiry
+  (1 hour). No additional freshness threshold (`auth_time`) or `checkRevoked` check is applied:
+  anonymous sessions do not support re-authentication or token revocation, and an aggressive
+  freshness bound would risk leaving abandoned accounts permanently undeletable if account
+  linking or network round trips face transient delays. The verified token acts as a scoped bearer
+  capability for deleting only the captured anonymous identity, which is immediately deleted from
+  Auth upon verification.
 - Any change to the payload field, the success literal or the error-code set requires a
   superseding owner decision and an atomic update of `docs/CONTRACTS.md §11.5`.
 - `docs/CONTRACTS.md §11.5` records this exact contract; no other spelling is valid.

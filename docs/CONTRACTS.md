@@ -866,13 +866,19 @@ Two anonymous-deletion entry points reuse this service:
   `providerData` list is empty; a deleted record carrying any provider entry, including a
   phone-only user, is skipped, as is a record without a UID, both with a redacted skip log
   (`D-134`). Delivery caused by another anonymous deletion is treated as harmless idempotent
-  overlap, never as the primary guarantee for that path.
+  overlap, never as the primary guarantee for that path. The trigger declares
+  `region: "europe-west1"` (`D-137`), `memory: "256MB"`, `maxInstances: 2`, `timeoutSeconds: 60`,
+  and `failurePolicy: true` (`eventTrigger.retry = true`), ensuring transient Firestore deletion
+  failures are retried by Cloud Functions until completion (`D-138`).
 - `deleteOrphanedAnonymousAccount` is a Cloud Functions 2nd gen callable used by the confirmed
   account-linking collision flow. Its request payload contains `anonymousIdToken: String`; the
-  callable verifies the captured anonymous ID token (`sign_in_provider == "anonymous"`) and the
+  callable verifies the captured anonymous ID token (requiring the nested claim
+  `firebase.sign_in_provider == "anonymous"` in `DecodedIdToken`) and the
   authenticated permanent caller context, rejects deletion of the current permanent UID, deletes
   the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion service
-  directly after that deletion. A successful response is
+  directly after that deletion. Token verification relies on standard Firebase ID token expiry
+  (1 hour) without additional `auth_time` freshness or `checkRevoked` checks, because anonymous
+  accounts cannot re-authenticate or revoke tokens (`D-133`). A successful response is
   `{ status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED" }`. Missing authentication maps to
   `unauthenticated`, a missing or invalid `anonymousIdToken` maps to `invalid-argument`, a
   captured identity that is not anonymous or that equals the caller UID maps to
