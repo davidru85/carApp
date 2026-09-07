@@ -96,10 +96,39 @@ test("a permanent caller uses a valid stored ticket to delete only its bound ano
   assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
   assert.deepEqual(harness.calls, [
     ["getAuthorization", ticketHash(CLEANUP_TICKET)],
+    ["getAuthUser", ORPHAN_UID],
     ["deleteAuthUser", ORPHAN_UID],
     ["deleteCollection", ORPHAN_UID, "fuelEntries"],
     ["deleteCollection", ORPHAN_UID, "vehicles"],
     ["completeAuthorization", ticketHash(CLEANUP_TICKET)],
+  ]);
+});
+
+test("a ticket bound to an account that is now permanent is rejected before deletion", async () => {
+  const harness = cleanupHarness({providerData: [{providerId: "google.com"}]});
+
+  await assert.rejects(
+    harness.handler(permanentRequest({cleanupTicket: CLEANUP_TICKET})),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["getAuthorization", ticketHash(CLEANUP_TICKET)],
+    ["getAuthUser", ORPHAN_UID],
+  ]);
+});
+
+test("a ticket bound to a phone-only account is rejected before deletion", async () => {
+  const harness = cleanupHarness({providerData: [{providerId: "phone"}]});
+
+  await assert.rejects(
+    harness.handler(permanentRequest({cleanupTicket: CLEANUP_TICKET})),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["getAuthorization", ticketHash(CLEANUP_TICKET)],
+    ["getAuthUser", ORPHAN_UID],
   ]);
 });
 
@@ -203,11 +232,30 @@ test("a missing anonymous Auth user continues with direct remote deletion", asyn
   assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
   assert.deepEqual(harness.calls, [
     ["getAuthorization", ticketHash(CLEANUP_TICKET)],
-    ["deleteAuthUser", ORPHAN_UID],
+    ["getAuthUser", ORPHAN_UID],
     ["deleteCollection", ORPHAN_UID, "fuelEntries"],
     ["deleteCollection", ORPHAN_UID, "vehicles"],
     ["completeAuthorization", ticketHash(CLEANUP_TICKET)],
   ]);
+});
+
+test("an Auth lookup failure maps to internal and prevents every destructive stage", async () => {
+  const harness = cleanupHarness({getAuthUserError: new Error("private Auth lookup failure")});
+
+  await assert.rejects(
+    harness.handler(permanentRequest({cleanupTicket: CLEANUP_TICKET})),
+    (failure) => failure.code === "internal",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["getAuthorization", ticketHash(CLEANUP_TICKET)],
+    ["getAuthUser", ORPHAN_UID],
+  ]);
+  assert.deepEqual(harness.logs, [[
+    "error",
+    "Orphaned anonymous cleanup failed",
+    {stage: "AUTH_USER"},
+  ]]);
 });
 
 test("an authorization lookup failure maps to internal and performs no deletion", async () => {
@@ -323,7 +371,9 @@ function cleanupHarness({
   expiresAtMs = NOW_MS + THIRTY_DAYS_MS,
   failCollection,
   failCollectionOnce,
+  getAuthUserError,
   getError,
+  providerData = [],
   rawFailure = "database exploded",
   status = "PENDING",
 } = {}) {
@@ -339,13 +389,20 @@ function cleanupHarness({
   } : authorization;
   const handler = createOrphanCleanupHandler({
     auth: {
+      async getUser(uid) {
+        calls.push(["getAuthUser", uid]);
+        if (getAuthUserError !== undefined) {
+          throw getAuthUserError;
+        }
+        if (authUserMissing) {
+          return null;
+        }
+        return {providerData};
+      },
       async deleteUser(uid) {
         calls.push(["deleteAuthUser", uid]);
         if (authError !== undefined) {
           throw authError;
-        }
-        if (authUserMissing) {
-          throw Object.assign(new Error("already gone"), {code: "auth/user-not-found"});
         }
       },
     },
