@@ -194,11 +194,186 @@ test("callable logs contain no UID, token, payload or raw provider value", async
   ]);
 });
 
+test("an authenticated anonymous caller is rejected before token verification or deletion", async () => {
+  const harness = orphanHarness();
+
+  await assert.rejects(
+    harness.handler({
+      auth: {
+        token: {
+          firebase: {
+            sign_in_provider: "anonymous",
+          },
+        },
+        uid: "another-anonymous-uid",
+      },
+      data: {anonymousIdToken: ORPHAN_TOKEN},
+    }),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, []);
+});
+
+test("an authenticated caller without a verified permanent provider claim is rejected", async () => {
+  const harness = orphanHarness();
+
+  await assert.rejects(
+    harness.handler({
+      auth: {
+        token: {},
+        uid: PERMANENT_UID,
+      },
+      data: {anonymousIdToken: ORPHAN_TOKEN},
+    }),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, []);
+});
+
+test("an Admin SDK internal verification error maps to internal and logs AUTH_USER stage", async () => {
+  const harness = orphanHarness({
+    verifyError: Object.assign(new Error("connection timeout"), {code: "auth/internal-error"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed()),
+    (failure) => failure.code === "internal",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", ORPHAN_TOKEN]]);
+  assert.deepEqual(harness.logs, [
+    ["error", "Orphaned anonymous cleanup failed", {stage: "AUTH_USER"}],
+  ]);
+});
+
+test("a revoked or invalid token error maps to invalid-argument without internal log", async () => {
+  const harness = orphanHarness({
+    verifyError: Object.assign(new Error("token revoked"), {code: "auth/id-token-revoked"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed()),
+    (failure) => failure.code === "invalid-argument",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", ORPHAN_TOKEN]]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("an expired token for an active Auth user is rejected with invalid-argument", async () => {
+  const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}});
+  const harness = orphanHarness({
+    userExistsInAuth: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: expiredToken})),
+    (failure) => failure.code === "invalid-argument",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["verifyIdToken", expiredToken],
+    ["getUser", ORPHAN_UID],
+  ]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("a retry with an expired anonymous token converges when the Auth account is already deleted", async () => {
+  const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}});
+  const harness = orphanHarness({
+    authUserMissing: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  const result = await harness.handler(authed({anonymousIdToken: expiredToken}));
+
+  assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
+  assert.deepEqual(harness.calls, [
+    ["verifyIdToken", expiredToken],
+    ["getUser", ORPHAN_UID],
+    ["deleteCollection", ORPHAN_UID, "fuelEntries"],
+    ["deleteCollection", ORPHAN_UID, "vehicles"],
+  ]);
+});
+
+test("an expired token carrying a non-anonymous provider is rejected with invalid-argument", async () => {
+  const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "google.com"}});
+  const harness = orphanHarness({
+    authUserMissing: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: expiredToken})),
+    (failure) => failure.code === "invalid-argument",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", expiredToken]]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("an expired token targeting the caller UID is rejected with failed-precondition", async () => {
+  const expiredToken = makeJwt({sub: PERMANENT_UID, firebase: {sign_in_provider: "anonymous"}});
+  const harness = orphanHarness({
+    authUserMissing: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: expiredToken})),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["verifyIdToken", expiredToken],
+    ["getUser", PERMANENT_UID],
+  ]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("a transient failure during user lookup on expired token retry maps to internal", async () => {
+  const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}});
+  const harness = orphanHarness({
+    getUserError: Object.assign(new Error("network timeout"), {code: "auth/internal-error"}),
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: expiredToken})),
+    (failure) => failure.code === "internal",
+  );
+
+  assert.deepEqual(harness.calls, [
+    ["verifyIdToken", expiredToken],
+    ["getUser", ORPHAN_UID],
+  ]);
+  assert.deepEqual(harness.logs, [
+    ["error", "Orphaned anonymous cleanup failed", {stage: "AUTH_USER"}],
+  ]);
+});
+
 function authed(data = {anonymousIdToken: ORPHAN_TOKEN}) {
   return {
-    auth: {token: {}, uid: PERMANENT_UID},
+    auth: {
+      token: {
+        firebase: {
+          sign_in_provider: "google.com",
+        },
+      },
+      uid: PERMANENT_UID,
+    },
     data,
   };
+}
+
+function makeJwt(payload) {
+  const header = Buffer.from(JSON.stringify({alg: "RS256", kid: "test-kid"})).toString("base64url");
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = Buffer.from("sig").toString("base64url");
+  return `${header}.${body}.${sig}`;
 }
 
 function realSdkToken({uid, signInProvider}) {
@@ -220,7 +395,10 @@ function orphanHarness({
   authUserMissing = false,
   failCollection,
   failCollectionOnce,
+  getUserError,
+  userExistsInAuth = false,
   verified = verifiedToken(),
+  verifyError,
   verifyFailure = false,
 } = {}) {
   const calls = [];
@@ -237,8 +415,24 @@ function orphanHarness({
           throw Object.assign(new Error("already gone"), {code: "auth/user-not-found"});
         }
       },
+      async getUser(uid) {
+        calls.push(["getUser", uid]);
+        if (getUserError !== undefined) {
+          throw getUserError;
+        }
+        if (userExistsInAuth) {
+          return {uid};
+        }
+        if (authUserMissing) {
+          throw Object.assign(new Error("already gone"), {code: "auth/user-not-found"});
+        }
+        return {uid};
+      },
       async verifyIdToken(token) {
         calls.push(["verifyIdToken", token]);
+        if (verifyError !== undefined) {
+          throw verifyError;
+        }
         if (verifyFailure) {
           throw Object.assign(new Error("bad token"), {code: "auth/argument-error"});
         }
