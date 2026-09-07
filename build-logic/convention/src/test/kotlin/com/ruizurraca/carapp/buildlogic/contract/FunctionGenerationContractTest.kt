@@ -21,7 +21,7 @@ class FunctionGenerationContractTest {
         val extraV1Module = inputs.functionSources +
             ("auth/onUserCreated.ts" to "import {auth} from \"firebase-functions/v1\";")
 
-        for (fixture in listOf(
+        val fixtures = listOf(
             inputs.copy(functionSources = extraV1Module),
             inputs.copy(
                 functionSources = inputs.functionSources -
@@ -32,6 +32,15 @@ class FunctionGenerationContractTest {
                     ("index.ts" to inputs.functionSources.getValue("index.ts") +
                         "\nexport const onUserCreated = 1;\n"),
             ),
+            inputs.withAdditionalIndexExport(
+                "export {hiddenGrouped, secondHidden} from \"./hidden.js\";",
+            ),
+            inputs.withAdditionalIndexExport(
+                "export { paddedHidden } from \"./hidden.js\";",
+            ),
+            inputs.withAdditionalIndexExport(
+                "export {sourceHidden as aliasedHidden} from \"./hidden.js\";",
+            ),
             inputs.copy(
                 firebaseConfig = inputs.firebaseConfig.replace("nodejs22", "nodejs24"),
             ),
@@ -41,14 +50,20 @@ class FunctionGenerationContractTest {
                     "\"codebase\": \"default\", \"codebase\": \"second\"",
                 ),
             ),
-        )) {
-            assertEquals(
-                AssertionResult.Status.FAIL,
-                FunctionGenerationContract(fixture).validate().status,
-                "fixture should fail: $fixture",
-            )
-        }
+        )
+
+        assertEquals(
+            List(fixtures.size) { AssertionResult.Status.FAIL },
+            fixtures.map { FunctionGenerationContract(it).validate().status },
+        )
     }
+
+    private fun FunctionGenerationContractInputs.withAdditionalIndexExport(
+        exportStatement: String,
+    ) = copy(
+        functionSources = functionSources +
+            ("index.ts" to "${functionSources.getValue("index.ts")}\n$exportStatement\n"),
+    )
 
     private fun repositoryInputs() = FunctionGenerationContractInputs(
         functionSources = repositoryRoot.resolve("functions/src").walkTopDown()

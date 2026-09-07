@@ -48,11 +48,11 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (PR #60 review round 5, Finding 2 GREEN ready to commit).
+- Date: 2026-09-07 (PR #60 review round 5, after Finding 3 RED).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: review Finding 2 GREEN is verified and ready to commit.
-- Latest commit: `46c99d5 test(E3-11): require unique contract assertion IDs` (RED).
-- Push and pull-request status: the branch is three commits ahead of
+- Current phase: review Finding 3 RED is reproduced; its test changes are uncommitted.
+- Latest commit: `266a4de fix(E3-11): assign unique function generation assertion ID` (GREEN).
+- Push and pull-request status: the branch is four commits ahead of
   `origin/story/E3-11-anonymous-cleanup-entry-points`. PR #60 remains open and MUST NOT be merged by
   the agent. Commit `3371386` is the latest pushed commit; all ten required checks for that pushed
   state were green before review round 5 began.
@@ -66,15 +66,19 @@
      missing-user convergence and maps other lookup failures to redacted `AUTH_USER`/`internal`.
      The GREEN run executed 62 tests: 61 passed and the emulator test was skipped. A new decision
      and ADR amending D-141/ADR-0142, plus the required contract mirrors, remain to be written.
-  2. **Finding 2 — GREEN, ready to commit.** RED commit `46c99d5` added
+  2. **Finding 2 — complete.** RED commit `46c99d5` added
      `ContractAssertionIdTest.kt`, which runs every contract assertion, groups by ID and requires
      no duplicates. Its focused RED run executed one test and failed because
      `FunctionGenerationContract` and `NativeTestExemptionContract` both emitted ID 21. The GREEN
-     change assigns `FunctionGenerationContract` the next unused ID, 22. The combined focused test
-     and `contractCheck` run passed; `contractCheck` emitted distinct entries for IDs 21 and 22 and
-     reported 142 decisions and 142 matching ADRs.
-  3. **Finding 3 — not started.** Add failing fixtures for grouped, padded and aliased TypeScript
-     exports, then make the exact-export parser capture every exported alias.
+     commit `266a4de` assigns `FunctionGenerationContract` the next unused ID, 22. The combined
+     focused test and `contractCheck` run passed; `contractCheck` emitted distinct entries for IDs
+     21 and 22 and reported 142 decisions and 142 matching ADRs.
+  3. **Finding 3 — RED.** The uncommitted test change adds grouped
+     (`export {a, b}`), whitespace-padded (`export { c }`) and aliased
+     (`export {source as deployed}`) index-export fixtures. It evaluates every fixture before
+     asserting, so the result proves all three forms are missed by the current parser. The focused
+     run executed one test and failed as expected: the three new fixtures returned `PASS` where
+     `FAIL` was required. The RED test must be committed before changing the parser.
   4. **Finding 4 — not started.** The selected erasure posture is to purge server-only
      `orphanCleanupTickets` records bound to a UID during account deletion rather than retain the
      identifier for up to 30 days. Add failing account-deletion and internal-collection registry
@@ -88,14 +92,16 @@
   passed 142 decision/ADR assertions; the full non-instrumented Gradle command executed 636 tasks
   successfully; Firebase Functions and indexes dry runs passed. These counts describe commit
   `3371386`, not the unpushed review-round-5 changes, so full verification must be repeated.
-- Known failures: none. The intentional Finding 2 RED is resolved by the current GREEN change.
+- Known failures: the focused `FunctionGenerationContractTest.everyAllowlistInputIsLoadBearing`
+  is intentionally RED because the current parser misses all three new export forms. No
+  unexplained failure is known.
 - Open decisions or blockers: no blocker. Finding 1 requires the next decision ID and ADR; Finding
   4 requires a separate decision for account-deletion erasure and internal-collection registry
   treatment. The owner has authorised the five requested remediations and the purge posture was
   selected as the safer interpretation within that scope.
-- Exact next step: commit the Finding 2 GREEN change, then add the three failing export-parser
-  fixtures for Finding 3 and prove that the current parser misses grouped, padded and aliased
-  exports.
+- Exact next step: rerun the strengthened Finding 3 test to capture its full three-fixture RED
+  evidence, commit that RED, implement clause parsing with exported-alias capture, run the focused
+  tests and `contractCheck`, then commit GREEN.
 
 ## Scope Completed
 
