@@ -50,7 +50,7 @@
 
 - Date: 2026-09-07 (critical security finding under review).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Security remediation RED phase for authorization retention policy.
+- Current phase: Security remediation GREEN phase complete; decision documentation/refactor next.
   - An AI-assisted security review of commits `519d0b4` and `0aef797` found that the expired-token
     verifier accepts tokens from other Firebase projects because it does not validate `aud` or
     `iss`, and it prefers an attacker-controlled top-level `uid` custom claim over the authentic
@@ -83,10 +83,14 @@
   fetcher and `uid`/`sub` parsing are removed. Focused coverage preserves authentication guards,
   expiry, missing/completed ticket behavior, failure mapping, retries and log redaction. Retention
   RED: `cd functions && npm test` executed 59 tests; the focused TTL policy test failed because
-  `firestore.indexes.json` still has no field override; 57 passed and the emulator test was skipped.
-- Open decisions or blockers: none. Exact next step: commit this RED state, add the unindexed
-  `expiresAt` TTL policy, prove the internal collection is denied to mobile clients, and adapt the
-  real Firestore emulator integration to issue, resolve and complete a ticket record.
+  `firestore.indexes.json` still had no field override; 57 passed and the emulator test was skipped.
+  Retention GREEN: `cd functions && npm test` passes 58 tests with the emulator test skipped;
+  `npm run test:emulator` passes the real Admin Firestore ticket lifecycle; and root
+  `npm run test:firestore-rules` passes 155/155, including denial of every mobile read, write and
+  delete against `orphanCleanupTickets`.
+- Open decisions or blockers: none. Exact next step: commit this GREEN state, record D-141 and
+  ADR-0142 across every normative mirror, correct ADR-0141's false assurances, then refactor and run
+  the complete verification suite.
 
 ## Scope Completed
 
@@ -225,6 +229,10 @@
 - The owner selected the server-issued cleanup authorization ticket/lease option. The replacement
   decision and its exact wire, persistence, retention and idempotency contract remain to be
   recorded as part of the remediation.
+- The TDD order exemption for Firebase Admin provider integration and Firestore security rules was
+  used exactly as allowed by `docs/SPECIFICATION.md §11`: the real gateway and existing default-deny
+  rule were verified after the focused handler cycles by the Admin emulator lifecycle and a mobile
+  denial test. The ticket handler behavior itself followed focused RED/GREEN cycles.
 - The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at
   the end, the same exception granted to E3-10.
 - No `SHOULD` rule was intentionally deviated from.
