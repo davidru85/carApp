@@ -22,14 +22,19 @@ export interface AccountDeletionAuthGateway {
     deleteUser(uid: string): Promise<void>;
 }
 
+export interface AccountDeletionAuthorizationGateway {
+    purgeForUid(uid: string): Promise<void>;
+}
+
 interface AccountDeletionLogger {
-    error(message: string, context: {stage: "AUTH_USER" | "REMOTE_DATA"}): void;
+    error(message: string, context: {stage: "AUTHORIZATION" | "AUTH_USER" | "REMOTE_DATA"}): void;
     info(message: string, context: {status: typeof ACCOUNT_DELETED}): void;
 }
 
 interface DeleteAccountDependencies {
     auth: AccountDeletionAuthGateway;
     firestore: UserDataFirestoreGateway;
+    orphanCleanupAuthorizations: AccountDeletionAuthorizationGateway;
     logger: AccountDeletionLogger;
 }
 
@@ -52,6 +57,13 @@ export function createDeleteAccountHandler(dependencies: DeleteAccountDependenci
             await deleteUserData({firestore: dependencies.firestore, uid: targetUid});
         } catch {
             dependencies.logger.error("Account deletion failed", {stage: "REMOTE_DATA"});
+            throw new HttpsError("internal", "Account deletion failed");
+        }
+
+        try {
+            await dependencies.orphanCleanupAuthorizations.purgeForUid(targetUid);
+        } catch {
+            dependencies.logger.error("Account deletion failed", {stage: "AUTHORIZATION"});
             throw new HttpsError("internal", "Account deletion failed");
         }
 

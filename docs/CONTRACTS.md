@@ -822,8 +822,11 @@ Account deletion order is normative:
 1. Before calling the server operation, the app MUST verify the Firebase ID token is fresh, meaning `AppClock.now() - issuedAt <= FRESH_LOGIN_THRESHOLD_MS` (using the `issuedAt` field of `AuthToken`, §20.8); otherwise it MUST trigger a fresh re-authentication UI flow and re-submit step 2.
 2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
 3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
-4. Only after remote document deletion fully succeeds, the server operation deletes the Firebase Auth user for the same UID.
-5. Only after the server operation returns success, the app clears local data, including `user_settings`.
+4. Only after remote document deletion fully succeeds, the server operation purges every internal
+   orphan-cleanup authorization bound to the same UID.
+5. Only after the authorization purge fully succeeds, the server operation deletes the Firebase
+   Auth user for the same UID.
+6. Only after the server operation returns success, the app clears local data, including `user_settings`.
 
 The server operation is the Cloud Functions 2nd gen callable `deleteAccount`. Its request payload
 contains `targetUid: String`; the callable-verified Firebase caller UID MUST equal that value. A
@@ -836,7 +839,13 @@ The callable declares `maxInstances: 3`, `concurrency: 1`, `memory: "256MiB"` an
 
 The order `fuelEntries`, then `vehicles` is normative. Reversing it would leave a brief window during which a fuel entry exists without its vehicle, which is recoverable but adds an unnecessary transient state.
 
-The server operation MUST be idempotent for already-deleted documents and MUST NOT delete any document outside `users/{uid}`. It MAY page internally, but partial progress is not reported as success. If step 2, 3 or 4 fails, the app flow aborts with a typed `AuthError`, preserves local data, and does not perform client-side hard deletes. Deleting the auth account before the data would leave unreachable orphan documents.
+The server operation MUST be idempotent for already-deleted documents and authorization records.
+Its product-data deletion MUST NOT delete any document outside `users/{uid}`; its separately
+registered authorization purge deletes only root `orphanCleanupTickets` records whose
+`anonymousUid` equals the target UID. It MAY page internally, but partial progress is not reported
+as success. If step 2, 3, 4 or 5 fails, the app flow aborts with a typed `AuthError`, preserves
+local data, and does not perform client-side hard deletes. Deleting the auth account before the
+data or authorization records would leave unreachable retained state.
 
 If the local database has pending outbox rows at the time of account deletion, those rows are dropped together with all local data after the server operation succeeds. The server operation is the authoritative purge; the client's outbox state is discarded. Rows typed shortly before deletion may be lost, which is the expected trade-off of the destructive operation.
 
@@ -854,6 +863,12 @@ The deletion order remains `fuelEntries`, then `vehicles`. Cloud Storage is not 
 but the empty prefix list is an executable registry entry rather than an undocumented convention.
 A server-side contract test compares the registry with the declared remote data schema and fails
 when either gains a location that the other omits.
+
+The D-63 registry deliberately excludes the internal server-only collection declared in §16. It
+is authorization lifecycle state rather than client-facing application data, lives outside the
+`users/{uid}` subtree and has its own executable registry and deletion path. The internal-registry
+parity test MUST fail if another server-only collection is declared without a matching registry
+entry.
 
 The Firebase Admin implementation calls Firestore `recursiveDelete` once for each registered
 collection reference, awaited sequentially in registry order. It does not delete the parent
@@ -1346,6 +1361,27 @@ users/{uid}/fuelEntries/{entryId}
 This list is also the declared Firestore data-location schema used by the D-63 deletion-registry
 parity test in §11.5. There is no remote settings document and there are no Cloud Storage prefixes
 in the MVP (§3).
+
+### Internal server-only collections
+
+The client-facing remote schema above remains closed. The following root collection is internal
+server authorization state, is inaccessible to mobile Firestore clients and is not a product-data
+collection consumed by backup, recovery or synchronization. It is therefore explicitly excluded
+from the D-63 `USER_DATA_LOCATIONS` registry and its `users/{uid}` deletion traversal.
+
+The internal server-only collection registry is exactly:
+
+```text
+Internal Firestore collection: orphanCleanupTickets/{ticketHash}
+```
+
+`orphanCleanupTickets/{ticketHash}` contains exactly `anonymousUid`, `expiresAt` and `status` as
+defined in §11.5. The account-deletion operation MUST query this collection by `anonymousUid` and
+delete every matching record before deleting the Auth user. This purge is idempotent and owns the
+account-erasure guarantee; the 30-day Firestore TTL remains a bounded fallback for abandoned or
+completed authorizations, not the normal account-deletion retention path. A contract test compares
+this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not overlap the D-63
+registry and rejects an undeclared internal collection.
 
 The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
 

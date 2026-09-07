@@ -5,7 +5,10 @@ import {getAuth} from "firebase-admin/auth";
 import type {Firestore} from "firebase-admin/firestore";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 
-import type {AccountDeletionAuthGateway} from "../callable/deleteAccount.js";
+import type {
+    AccountDeletionAuthGateway,
+    AccountDeletionAuthorizationGateway,
+} from "../callable/deleteAccount.js";
 import type {
     OrphanCleanupAuthorizationGateway,
     OrphanCleanupAuthorizationRecord,
@@ -13,7 +16,10 @@ import type {
 import type {
     UserDataFirestoreGateway,
 } from "./userDeletionService.js";
-import type {UserFirestoreCollection} from "./dataLocationRegistry.js";
+import {
+    INTERNAL_SERVER_DATA_LOCATIONS,
+    type UserFirestoreCollection,
+} from "./dataLocationRegistry.js";
 
 export class FirebaseAdminFirestoreDeletionGateway implements UserDataFirestoreGateway {
     public constructor(private readonly firestore: Firestore) {}
@@ -58,9 +64,13 @@ function isMissingAuthUser(failure: unknown): boolean {
         failure.code === "auth/user-not-found";
 }
 
-const ORPHAN_CLEANUP_TICKETS_COLLECTION = "orphanCleanupTickets";
+const ORPHAN_CLEANUP_TICKETS_COLLECTION =
+    INTERNAL_SERVER_DATA_LOCATIONS.firestoreCollections[0].collection;
+const AUTHORIZATION_DELETE_BATCH_SIZE = 200;
 
-export class FirebaseAdminOrphanCleanupAuthorizationGateway implements OrphanCleanupAuthorizationGateway {
+export class FirebaseAdminOrphanCleanupAuthorizationGateway implements
+    OrphanCleanupAuthorizationGateway,
+    AccountDeletionAuthorizationGateway {
     public constructor(private readonly firestore: Firestore) {}
 
     public async issue(authorization: OrphanCleanupAuthorizationRecord): Promise<void> {
@@ -109,6 +119,25 @@ export class FirebaseAdminOrphanCleanupAuthorizationGateway implements OrphanCle
             .collection(ORPHAN_CLEANUP_TICKETS_COLLECTION)
             .doc(ticketHash)
             .update({status: "COMPLETED"});
+    }
+
+    public async purgeForUid(uid: string): Promise<void> {
+        const snapshot = await this.firestore
+            .collection(ORPHAN_CLEANUP_TICKETS_COLLECTION)
+            .where("anonymousUid", "==", uid)
+            .limit(AUTHORIZATION_DELETE_BATCH_SIZE)
+            .get();
+        if (snapshot.empty) {
+            return;
+        }
+
+        const batch = this.firestore.batch();
+        snapshot.docs.forEach((document) => batch.delete(document.ref));
+        await batch.commit();
+
+        if (snapshot.size === AUTHORIZATION_DELETE_BATCH_SIZE) {
+            await this.purgeForUid(uid);
+        }
     }
 }
 

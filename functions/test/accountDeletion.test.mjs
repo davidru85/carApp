@@ -66,7 +66,10 @@ test("the Firebase Admin gateway scopes deletion to the target user's registered
 
 test("the Firebase Admin gateway purges cleanup authorizations bound to the deleted UID", async () => {
   const calls = [];
-  const references = [{path: "orphanCleanupTickets/ticket-a"}, {path: "orphanCleanupTickets/ticket-b"}];
+  const references = [
+    {path: "orphanCleanupTickets/ticket-a", ref: {path: "orphanCleanupTickets/ticket-a"}},
+    {path: "orphanCleanupTickets/ticket-b", ref: {path: "orphanCleanupTickets/ticket-b"}},
+  ];
   const firestore = {
     collection(collection) {
       assert.equal(collection, "orphanCleanupTickets");

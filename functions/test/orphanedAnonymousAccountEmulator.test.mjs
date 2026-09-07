@@ -73,6 +73,9 @@ test(
         async deleteUser(uid) {
           deletedAuthUsers.push(uid);
         },
+        async getUser(uid) {
+          return deletedAuthUsers.includes(uid) ? null : {providerData: []};
+        },
       },
       authorizations: authorizationGateway,
       clock: {nowMs: () => Date.now()},
@@ -105,6 +108,57 @@ test(
     await ticketReference.delete();
     await otherVehicleReference.delete();
     await otherEntryReference.delete();
+  },
+);
+
+test(
+  "the real authorization gateway purges only the records bound to the deleted UID in the Firestore emulator",
+  {skip: !isEmulatorRunning ? "FIRESTORE_EMULATOR_HOST is not set" : false},
+  async () => {
+    const app = getApps().length > 0 ? getApps()[0] : initializeApp({projectId: PROJECT_ID});
+    const db = getFirestore(app);
+    const authorizationGateway = new FirebaseAdminOrphanCleanupAuthorizationGateway(db);
+    const purgedUid = "emulator-purge-target-uid";
+    const survivingUid = "emulator-purge-survivor-uid";
+    const purgedTickets = ["purge-ticket-a", "purge-ticket-b", "purge-ticket-c"];
+    const survivingTicket = "purge-ticket-survivor";
+    const ticketCollection = db.collection("orphanCleanupTickets");
+
+    await Promise.all(
+      [...purgedTickets, survivingTicket].map((ticket) =>
+        ticketCollection.doc(ticket).delete(),
+      ),
+    );
+    await Promise.all(
+      purgedTickets.map((ticket) =>
+        ticketCollection.doc(ticket).set({
+          anonymousUid: purgedUid,
+          expiresAt: Timestamp.now(),
+          status: "PENDING",
+        }),
+      ),
+    );
+    await ticketCollection.doc(survivingTicket).set({
+      anonymousUid: survivingUid,
+      expiresAt: Timestamp.now(),
+      status: "PENDING",
+    });
+
+    await authorizationGateway.purgeForUid(purgedUid);
+
+    for (const ticket of purgedTickets) {
+      assert.equal((await ticketCollection.doc(ticket).get()).exists, false);
+    }
+    const survivor = await ticketCollection.doc(survivingTicket).get();
+    assert.equal(survivor.exists, true);
+    assert.equal(survivor.data().anonymousUid, survivingUid);
+
+    await authorizationGateway.purgeForUid(purgedUid);
+    for (const ticket of purgedTickets) {
+      assert.equal((await ticketCollection.doc(ticket).get()).exists, false);
+    }
+
+    await ticketCollection.doc(survivingTicket).delete();
   },
 );
 
