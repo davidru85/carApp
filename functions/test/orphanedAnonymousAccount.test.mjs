@@ -557,6 +557,17 @@ function realSdkToken({uid, signInProvider}) {
   };
 }
 
+function testLogger(logs) {
+  return {
+    error(message, context) {
+      logs.push(["error", message, context]);
+    },
+    info(message, context) {
+      logs.push(["info", message, context]);
+    },
+  };
+}
+
 function verifiedToken({uid = ORPHAN_UID, signInProvider = "anonymous"} = {}) {
   return realSdkToken({uid, signInProvider});
 }

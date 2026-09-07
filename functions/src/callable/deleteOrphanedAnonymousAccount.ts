@@ -1,4 +1,4 @@
-import {createPublicKey, verify as cryptoVerify} from "node:crypto";
+import {createHash, createPublicKey, verify as cryptoVerify} from "node:crypto";
 import {logger as firebaseLogger} from "firebase-functions";
 import type {DecodedIdToken} from "firebase-admin/auth";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
@@ -10,6 +10,8 @@ import {
 } from "../deletion/userDeletionService.js";
 
 const ORPHAN_DELETED = "ORPHANED_ANONYMOUS_ACCOUNT_DELETED";
+const ORPHAN_CLEANUP_TICKET_ISSUED = "ORPHAN_CLEANUP_TICKET_ISSUED";
+const ORPHAN_CLEANUP_TICKET_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_EXPIRED_TOKEN_AGE_SECONDS = 30 * 24 * 3600;
 const CLOCK_SKEW_SECONDS = 300;
 
@@ -29,6 +31,58 @@ interface OrphanCleanupRequest {
         };
     };
     data: unknown;
+}
+
+export interface OrphanCleanupAuthorizationRecord {
+    anonymousUid: string;
+    expiresAtMs: number;
+    status: "PENDING" | "COMPLETED";
+    ticketHash: string;
+}
+
+export interface OrphanCleanupAuthorizationGateway {
+    issue(authorization: OrphanCleanupAuthorizationRecord): Promise<void>;
+}
+
+interface OrphanCleanupTicketLogger {
+    error(message: string, context: {stage: "AUTHORIZATION"}): void;
+    info(message: string, context: {status: typeof ORPHAN_CLEANUP_TICKET_ISSUED}): void;
+}
+
+export interface OrphanCleanupTicketDependencies {
+    authorizations: OrphanCleanupAuthorizationGateway;
+    clock: {nowMs(): number};
+    logger: OrphanCleanupTicketLogger;
+    ticketGenerator(): string;
+}
+
+export function createOrphanCleanupTicketHandler(dependencies: OrphanCleanupTicketDependencies) {
+    return async (request: OrphanCleanupRequest): Promise<{cleanupTicket: string}> => {
+        const anonymousUid = request.auth?.uid;
+        if (anonymousUid === undefined) {
+            throw new HttpsError("unauthenticated", "Authentication is required");
+        }
+        if (request.auth?.token?.firebase?.sign_in_provider !== "anonymous") {
+            throw new HttpsError(
+                "failed-precondition",
+                "The caller must be authenticated with an anonymous account",
+            );
+        }
+
+        const cleanupTicket = dependencies.ticketGenerator();
+        const ticketHash = createHash("sha256").update(cleanupTicket, "utf8").digest("hex");
+        await dependencies.authorizations.issue({
+            anonymousUid,
+            expiresAtMs: dependencies.clock.nowMs() + ORPHAN_CLEANUP_TICKET_LIFETIME_MS,
+            status: "PENDING",
+            ticketHash,
+        });
+
+        dependencies.logger.info("Orphan cleanup ticket issued", {
+            status: ORPHAN_CLEANUP_TICKET_ISSUED,
+        });
+        return {cleanupTicket};
+    };
 }
 
 export type VerifiedIdentityToken = Pick<DecodedIdToken, "uid" | "firebase">;
