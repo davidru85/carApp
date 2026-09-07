@@ -74,7 +74,7 @@ internal class FunctionGenerationContract private constructor(
     }
 
     internal companion object {
-        const val ID = 21
+        const val ID = 22
         const val NAME = "only onAnonymousUserDeleted uses Cloud Functions 1st gen (TD-01)"
         val TD01_EXPORT_SURFACE = listOf(
             "deleteAccount",
