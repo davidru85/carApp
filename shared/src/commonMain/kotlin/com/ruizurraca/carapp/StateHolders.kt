@@ -34,6 +34,7 @@ class SessionStateHolder internal constructor(
     private var closed = false
     private var operationJob: Job? = null
     private var reminderJob: Job? = null
+    private var awaitingRestoredSession = false
     private var activePermanentProvider: AuthProvider? = null
     private val mutableState =
         MutableStateFlow(authClient?.authState?.value.toSessionUiState())
@@ -52,10 +53,14 @@ class SessionStateHolder internal constructor(
                         } else {
                             next
                         }
-                    // Permanent sign-in and successful linking end the schedule (§11.3).
+                    // Permanent sign-in and successful linking end the schedule (§11.3). The
+                    // in-flight evaluation is cancelled first, so it cannot write a position back
+                    // after the clear.
                     if (authState is AuthState.SignedIn && !authState.session.isAnonymous) {
+                        reminderJob?.cancel()
                         anonymousReminders?.clear()
                     }
+                    completePendingEvaluation(authState)
                 }
             }
         } else {
@@ -152,9 +157,7 @@ class SessionStateHolder internal constructor(
     fun evaluateAnonymousReminder() {
         if (closed || reminderJob?.isActive == true) return
         val operationScope = scope ?: return
-        val session = (authClient?.authState?.value as? AuthState.SignedIn)?.session ?: return
-        // The schedule is disabled for the sentinel owner, signed-out and permanent sessions.
-        if (!session.isAnonymous) return
+        val session = anonymousSessionToEvaluate() ?: return
         reminderJob = operationScope.launch { publishDueReminder(session) }
     }
 
@@ -188,6 +191,7 @@ class SessionStateHolder internal constructor(
         operationJob = null
         reminderJob?.cancel()
         reminderJob = null
+        awaitingRestoredSession = false
         authStateJob?.cancel()
         activePermanentProvider = null
     }
@@ -229,6 +233,33 @@ class SessionStateHolder internal constructor(
     }
 
     /**
+     * The anonymous session this evaluation applies to, or `null` when there is nothing to evaluate.
+     *
+     * An undetermined auth state is not "no session": on a cold start the provider may still be
+     * restoring one (§11.1). The request is remembered and completed once by the auth-state
+     * collector, so a launch evaluation is not lost until the next foreground return. That is the
+     * same host-requested evaluation finishing late, not a second trigger: it is one-shot, and any
+     * resolution other than an anonymous session consumes it without running it (`D-147`).
+     */
+    private fun anonymousSessionToEvaluate(): AuthSession? {
+        val authState = authClient?.authState?.value ?: return null
+        if (authState is AuthState.Unknown) {
+            awaitingRestoredSession = true
+            return null
+        }
+        // The schedule is disabled for the sentinel owner, signed-out and permanent sessions.
+        return (authState as? AuthState.SignedIn)?.session?.takeIf { session -> session.isAnonymous }
+    }
+
+    private fun completePendingEvaluation(authState: AuthState) {
+        if (!awaitingRestoredSession || authState is AuthState.Unknown) return
+        awaitingRestoredSession = false
+        if (authState is AuthState.SignedIn && authState.session.isAnonymous) {
+            evaluateAnonymousReminder()
+        }
+    }
+
+    /**
      * Persisting the index before publishing it is what consumes every lower pending reminder. A
      * notice shown before its index survived would come back on the next foreground return, and a
      * failure the owner cannot act on is not worth reporting for a non-blocking notice.
@@ -237,9 +268,16 @@ class SessionStateHolder internal constructor(
         val reminders = anonymousReminders ?: return
         val dueIndex = dueReminderIndexFor(session) ?: return
         if (reminders.recordShown(session.uid, dueIndex) is Outcome.Err) return
-        if (!closed) {
-            mutableState.value = mutableState.value.copy(anonymousReminderIndex = dueIndex)
-        }
+        // Re-read after the last suspension point. Cancellation is cooperative, so on a real
+        // dispatcher the session can change while the position is being persisted, and an index
+        // computed for an identity that is no longer current would be shown to the wrong owner.
+        if (closed || !isCurrentSession(session.uid)) return
+        mutableState.value = mutableState.value.copy(anonymousReminderIndex = dueIndex)
+    }
+
+    private fun isCurrentSession(anonymousUid: String): Boolean {
+        val current = (authClient?.authState?.value as? AuthState.SignedIn)?.session ?: return false
+        return current.isAnonymous && current.uid == anonymousUid
     }
 
     private suspend fun dueReminderIndexFor(session: AuthSession): Int? {

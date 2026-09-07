@@ -24,6 +24,15 @@ struct carAppApp: App {
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
                 }
+                // Launch and foreground return are the two evaluation moments of D-146. onAppear
+                // covers the launch one on its own, because a cold launch that is already .active
+                // when the scene is installed never delivers an onChange for it. The scene-phase
+                // change covers every later return. Both call the same single entry point, and the
+                // shared holder collapses a duplicate call: an evaluation still in flight is
+                // skipped, and a completed one has already consumed the index it published.
+                .onAppear {
+                    model.evaluateAnonymousReminder()
+                }
                 .onChange(of: scenePhase) { newPhase in
                     if newPhase == .active {
                         model.evaluateAnonymousReminder()

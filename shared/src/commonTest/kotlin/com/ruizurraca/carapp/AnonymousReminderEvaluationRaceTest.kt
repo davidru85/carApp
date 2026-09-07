@@ -116,7 +116,7 @@ class AnonymousReminderEvaluationRaceTest {
     @Test
     fun aPermanentSignInWhileAnEvaluationIsInFlightPublishesNoReminder() =
         runTest {
-            val reminders = RecordingReminders()
+            val reminders = RecordingReminders(holdRecord = true)
             val authClient = FakeAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
             val stateHolder = stateHolder(authClient, reminders, elapsed = 20.days)
 
@@ -137,7 +137,7 @@ class AnonymousReminderEvaluationRaceTest {
     @Test
     fun aPermanentSignInWhileAnEvaluationIsInFlightLeavesTheScheduleStateCleared() =
         runTest {
-            val reminders = RecordingReminders()
+            val reminders = RecordingReminders(holdRecord = true)
             val authClient = FakeAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
             val stateHolder = stateHolder(authClient, reminders, elapsed = 20.days)
 
@@ -159,7 +159,7 @@ class AnonymousReminderEvaluationRaceTest {
     @Test
     fun aSwitchToADifferentAnonymousIdentityWhileAnEvaluationIsInFlightPublishesNoReminder() =
         runTest {
-            val reminders = RecordingReminders()
+            val reminders = RecordingReminders(holdRecord = true)
             val authClient = FakeAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
             val stateHolder = stateHolder(authClient, reminders, elapsed = 20.days)
 
@@ -217,14 +217,17 @@ class AnonymousReminderEvaluationRaceTest {
  * Counts reads and holds the write open, so a test can place a session change exactly inside an
  * evaluation that has already decided what to show but has not published it yet.
  */
-private class RecordingReminders : AnonymousReminderRepository {
+private class RecordingReminders(
+    holdRecord: Boolean = false,
+) : AnonymousReminderRepository {
     val recorded = mutableListOf<Pair<String, Int>>()
     var lookups: Int = 0
         private set
     var cleared: Boolean = false
         private set
 
-    private val recordGate = CompletableDeferred<Unit>()
+    /** Open unless a test asks to hold the write, so only the race tests suspend mid-evaluation. */
+    private val recordGate = CompletableDeferred<Unit>().apply { if (!holdRecord) complete(Unit) }
 
     fun releaseRecord() {
         recordGate.complete(Unit)
