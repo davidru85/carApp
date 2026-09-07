@@ -120,6 +120,47 @@ test("native trigger logs contain no UID, token, event payload or raw failure", 
   ]);
 });
 
+test("the native trigger rejects with an error carrying none of the raw failure", async () => {
+  const secretToken = "secret-trigger-token";
+  const harness = anonymousHarness({failCollection: "fuelEntries"});
+
+  const rejection = await harness.handler(
+    anonymousUser(ORPHAN_UID, [], {
+      rawPayload: secretToken,
+      resource: {name: `users/${ORPHAN_UID}`},
+    }),
+  ).then(
+    () => undefined,
+    (failure) => failure,
+  );
+
+  assert.notEqual(rejection, undefined, "The rejection is what makes failurePolicy retry.");
+  const serializedRejection = [
+    rejection?.message,
+    rejection?.stack,
+    JSON.stringify(rejection ?? null),
+    JSON.stringify(Object.getOwnPropertyNames(rejection ?? {})),
+  ].join("|");
+  assert.equal(serializedRejection.includes("database exploded"), false);
+  assert.equal(serializedRejection.includes(ORPHAN_UID), false);
+  assert.equal(serializedRejection.includes(secretToken), false);
+  assert.equal(serializedRejection.includes("users/"), false);
+  assert.equal(rejection?.cause, undefined, "A cause would carry the original failure onward.");
+});
+
+test("the native trigger rejection is a newly constructed error, not the provider one", async () => {
+  const harness = anonymousHarness({failCollection: "vehicles"});
+
+  const rejection = await harness.handler(anonymousUser(ORPHAN_UID)).then(
+    () => undefined,
+    (failure) => failure,
+  );
+
+  assert.ok(rejection instanceof Error);
+  assert.notEqual(rejection, harness.thrownFailure);
+  assert.equal(rejection.message, "Anonymous cleanup failed");
+});
+
 test("trigger deletion while the callable is mid-deletion converges idempotently", async () => {
   const harness = anonymousHarness({gateCollection: "vehicles"});
 
@@ -137,10 +178,11 @@ test("trigger deletion while the callable is mid-deletion converges idempotently
   assert.equal(harness.calls.filter(([, , c]) => c === "vehicles").length, 2);
 });
 
-function anonymousUser(uid, providerData = []) {
+function anonymousUser(uid, providerData = [], extras = {}) {
   return {
     uid,
     providerData,
+    ...extras,
   };
 }
 
@@ -159,6 +201,7 @@ function anonymousHarness({
   const calls = [];
   const logs = [];
   let remainingOneShotFailure = failCollectionOnce;
+  let thrownFailure;
   let gateWaiters = [];
   let gateEntered;
   const handler = createAnonymousDeletionHandler({
@@ -171,7 +214,8 @@ function anonymousHarness({
         }
         if (collection === failCollection || collection === remainingOneShotFailure) {
           remainingOneShotFailure = undefined;
-          throw new Error("database exploded");
+          thrownFailure = new Error(`database exploded at users/${uid}`);
+          throw thrownFailure;
         }
       },
     },
@@ -188,6 +232,9 @@ function anonymousHarness({
     calls,
     handler,
     logs,
+    get thrownFailure() {
+      return thrownFailure;
+    },
     async waitForGateEntry() {
       for (let attempt = 0; attempt < 100 && gateEntered === undefined; attempt += 1) {
         await new Promise((resolve) => setImmediate(resolve));
