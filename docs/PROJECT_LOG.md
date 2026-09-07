@@ -38,6 +38,27 @@
 
 ## Entries
 
+### 2026-09-07 — E3-10 review corrects deletion-registry parity coverage
+
+- **Type:** correction
+- **Story / Decision:** `E3-10` / `D-128`, `D-129`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the deletion-registry contract test now parses the fenced registry declaration
+  in `docs/CONTRACTS.md`, compares complete Firestore locations and Cloud Storage prefixes in both
+  directions, and recognizes any valid document-ID placeholder. Callable-log coverage now also
+  proves redaction for the `AUTH_USER` failure stage and the success `info` event.
+- **Why:** the original test hardcoded `vehicleId` and `entryId` while comparing Storage with a
+  literal empty array, so a new owner collection using another placeholder or a new declared
+  Storage prefix could be omitted from deletion without failing the parity gate.
+- **Documents touched:** `functions/test/dataLocationRegistry.test.mjs`,
+  `functions/test/accountDeletion.test.mjs`, `AGENTS.md`, `docs/BACKLOG.md`,
+  `docs/handoff-E3-10.md` and this log.
+- **Verification:** the RED run failed both schema-mutation tests with
+  `Missing expected exception.`; the GREEN Functions run passed all 26 tests. Full Gradle,
+  Firestore emulator and pull-request CI results are recorded in `docs/handoff-E3-10.md`.
+- **Follow-ups / risks:** callable runtime resource options and Cloud Functions App Check
+  enforcement remain a separate owner decision; E3-11 remains the next Phase 3 prerequisite.
+
 ### 2026-09-07 — Incident: a documentation commit reached `main` without a pull request
 
 - **Type:** incident

@@ -36,21 +36,24 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: first owner-review GREEN phase complete; RED commit `cc2e6fd`;
-  GREEN changes are pending commit.
+- Current phase and latest commit: first owner-review GREEN phase complete; RED commit `cc2e6fd`
+  and GREEN commit `2d7b6c2`; no code refactor was needed and review documentation is pending
+  commit.
 - Push and pull-request status: the merge and RED work are not pushed yet; pull request #58 remains
   open at `https://github.com/davidru85/carApp/pull/58` for a second owner review after correction.
-- Completed since the previous checkpoint: committed the RED tests, then replaced whole-document
-  path scanning and the hardcoded empty Storage assertion with a parser for the fenced registry
-  declaration in `docs/CONTRACTS.md`. It compares the complete Firestore entries and declared
-  Storage-prefix array with the executable registry.
-- Verification evidence and known failures: RED evidence remains 24/26 tests with both mutation
-  tests failing with `Missing expected exception.`; the clean GREEN run passes all 26 tests. The
-  test-only contaminated logger evidence remains 10/13 passing and was removed before `cc2e6fd`.
+- Completed since the previous checkpoint: committed GREEN; updated the post-merge status in
+  `AGENTS.md` and `docs/BACKLOG.md`; appended the required correction log entry; completed the
+  review-round acceptance, scope, decision and verification evidence in this handoff.
+- Verification evidence and known failures: clean `npm ci && npm test` passes all 26 Functions
+  tests; Firestore emulator tests pass 154/154; the complete non-instrumented Gradle command passes
+  636 actionable tasks. The first Gradle attempt lacked the worktree-local Android SDK path, and the
+  first Firestore attempt lacked root dependencies after sandboxed port access; adding ignored
+  `local.properties`, running root `npm ci` and repeating the exact commands resolved both
+  environment-only failures. No product or test failure remains.
 - Open decisions or blockers: callable runtime options remain an owner decision and are explicitly
   out of scope for this review. No implementation blocker.
-- Exact next step: commit GREEN, apply the required post-merge status and correction records, then
-  run final verification.
+- Exact next step: commit this review checkpoint, push the story branch, update pull request #58,
+  then monitor all ten required checks for the second owner review.
 
 ## Scope Completed
 
@@ -61,6 +64,9 @@
 - Added Firebase Admin Auth and Firestore gateways; collection deletion uses awaited sequential
   `recursiveDelete` calls rooted exactly at `users/{uid}`.
 - Added typed failure handling and redacted logs that contain stage/status only.
+- Corrected registry/schema parity so the test derives complete Firestore and Storage locations
+  from the fenced contract registry without hardcoded document-ID placeholder names.
+- Extended log-redaction coverage to the Auth-deletion failure stage and successful completion.
 - Resolved the two newly published `qs@6.15.3` advisories by selecting patched 6.16.0 inside the
   already accepted transitive ranges.
 
@@ -68,13 +74,13 @@
 
 - `accountDeletion.test.mjs` proves unauthenticated and malformed calls do nothing; a caller cannot
   delete another UID; remote collections are deleted before Auth; a missing Auth user succeeds;
-  failures are typed; partial progress retries safely; and logs omit UID, token, payload and raw
-  failure values.
+  failures are typed; partial progress retries safely; and remote-data failure, Auth-user failure
+  and success logs omit UID, token, payload and raw failure values.
 - The same suite proves `deleteUserData` order and idempotency and proves the Firebase Admin gateway
   constructs only `users/{uid}/{registeredCollection}`.
-- `dataLocationRegistry.test.mjs` compares the executable registry with every declared remote path
-  in `docs/CONTRACTS.md`, fixes order to `fuelEntries`, then `vehicles`, and asserts the Storage list
-  is empty.
+- `dataLocationRegistry.test.mjs` parses only the fenced registry declaration in
+  `docs/CONTRACTS.md`, compares complete Firestore entries and the declared Storage-prefix array in
+  both directions, and proves omissions are detected for arbitrary document-ID placeholder names.
 - `dependencyReachability.test.mjs` fixes the public export set and proves `deleteAccount` is a 2nd
   gen function in `europe-west1` while the existing D-68 affected modules remain unreachable from
   `stopBilling`.
@@ -106,6 +112,9 @@
 - The owner selected the prerequisite sequence `E3-10 -> E3-11 -> E2-04`.
 - The owner explicitly requested RED, GREEN and REFACTOR commits followed by one push. This is the
   story-specific exception to the default per-phase push cadence in `docs/SPECIFICATION.md`.
+- The first owner review prescribed the registry-block parser and expanded redaction coverage, so
+  this review introduced no new technical decision. Callable runtime options remain owner-owned and
+  were not changed or recorded as a decision.
 - D-128 fixes the `deleteAccount` callable name, request, success and failure wire contract.
 - D-129 selects sequential Firestore Admin `recursiveDelete` calls over the D-63 registry.
 - D-130 resolves the newly reported `qs` advisories at 6.16.0 inside existing parent ranges.
@@ -127,6 +136,30 @@
   - Provider-decoupling Gradle command — passed 234 actionable tasks.
   - `:composition:ios:linkDebugFrameworkIosSimulatorArm64` — passed 70 actionable tasks; generated
     header matches `Shared.h.golden` byte for byte.
+- First owner review RED phase:
+
+  ```text
+  # Subtest: the parity check detects any omitted owner collection placeholder
+  not ok 24 - the parity check detects any omitted owner collection placeholder
+    error: 'Missing expected exception.'
+  # Subtest: the parity check detects an omitted Cloud Storage prefix
+  not ok 25 - the parity check detects an omitted Cloud Storage prefix
+    error: 'Missing expected exception.'
+  1..26
+  # tests 26
+  # pass 24
+  # fail 2
+  ```
+
+  The two additional log tests already passed against production and are therefore characterization
+  tests. A deliberately contaminated test logger made the remote-data, `AUTH_USER` and success log
+  assertions fail (10/13 passed); the mutation was removed before the RED commit, and no production
+  source changed.
+- First owner review GREEN phase: `npm test` — passed all 26 tests.
+- First owner review final verification:
+  - `cd functions && npm ci && npm test` — passed all 26 tests.
+  - `npm run test:firestore-rules` — passed all 154 emulator tests.
+  - Complete non-instrumented Gradle command — passed 636 actionable tasks.
 
 ## Contract Impact
 
@@ -149,6 +182,8 @@
 ## Risks or Follow-ups
 
 - E3-11 remains required before E2-04 is Ready.
+- Callable `maxInstances`, memory, timeout and Cloud Functions App Check enforcement remain a
+  separate owner decision and were not changed in this review.
 - The seven moderate production dependency entries accepted under D-68 remain and keep their
   2026-12-01 TD-01 review.
 

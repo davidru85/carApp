@@ -98,8 +98,9 @@ providers and F-1 routing, are complete. `E2-03` merged on 2026-09-06 through pu
 after three owner review rounds, with all ten required checks green. `E2-06`, Local Owner Adoption,
 merged on 2026-09-06 through pull request #55, after two owner review rounds, with all ten required
 checks green. Local owner adoption, its automatic triggers and real platform connectivity
-observation on both hosts are therefore live. `E3-10`, the Account Deletion Server Operation, is
-implemented and awaits owner review.
+observation on both hosts are therefore live. `E3-10`, the Account Deletion Server Operation,
+merged on 2026-09-07 through pull request #58, after two owner review rounds, with all ten required
+checks green.
 
 ### Delivery status and remaining work
 
@@ -108,8 +109,7 @@ implemented and awaits owner review.
   `E2-01`, `E2-02`, `E2-03` and `E2-06`. `E2-03` introduced `D-112` through `D-122` and
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
   owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoff-E2-06.md` holds its
-  acceptance evidence. `E3-10` is implemented on its story branch and its evidence lives in
-  `docs/handoff-E3-10.md`; it becomes a completed prerequisite when the owner merges its gated PR.
+  acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoff-E3-10.md`.
 - **Next:** `E2-07`, the anonymous sign-in benefit reminders. It is the first Ready Phase 2 story,
   because `E2-04` depends on `E3-11` and `E3-11` has not run.
 - **Remaining Phase 1:** none. The phase is closed.
