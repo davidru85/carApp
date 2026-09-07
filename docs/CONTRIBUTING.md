@@ -28,9 +28,31 @@ agent can continue from the repository alone. Use the `In-Progress Checkpoint` f
 `docs/templates/agent-handoff.md`; do not use chat history or an uncommitted mental plan as the sole
 record of progress.
 
+## Local Setup
+
+Install the repository hooks once per clone:
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+`scripts/git-hooks/pre-push` refuses a direct push to `main`. GitHub would accept one, because
+administrator enforcement is off, and that hatch exists for recovery rather than for use. Override
+it only for a genuine recovery, with `CARAPP_ALLOW_DIRECT_PUSH=1`.
+
+**If more than one agent shares a clone, work in a `git worktree`.** Branch checkouts are global to a
+clone, so a concurrent agent switching branches moves the ground under everyone else. A worktree
+gives each agent its own checkout of its own branch:
+
+```bash
+git worktree add ../carApp-<slug> -b <type>/<slug> origin/main
+```
+
 ## Branches and Commits
 
 - Branch: `story/<STORY-ID>-<short-slug>`, for example `story/E1-04-fuel-entry-domain`.
+- Confirm the branch before every commit. `git status` shows it, and in a shared clone it may not be
+  the branch you left.
 - Commits follow Conventional Commits with the story ID as scope: `feat(E1-04): derive price from liters and total`.
 - Commit messages, code comments, ADRs and all repository artifacts are written in technical English. Conversation with the project owner may happen in Spanish.
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.

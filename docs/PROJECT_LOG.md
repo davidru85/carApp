@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-07 — Incident: a documentation commit reached `main` without a pull request
+
+- **Type:** incident
+- **Story / Decision:** `E1-17` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** on 2026-09-06, commit `a8bbfcf`, which files `E1-17`, was committed and pushed
+  directly to `main`, bypassing the pull request that `docs/CONTRIBUTING.md` requires. It was
+  intended for pull request #57 and was written while that pull request was open; #57 merged as
+  `44fb11f` while the work was in progress. The commit is documentation only, it had passed the full
+  `AGENTS.md` verification command locally before the push, and the owner decided to leave it in
+  place rather than revert and re-land, because reverting would move `main` twice more for a change
+  whose content was already agreed.
+- **Why:** two causes, and the second is the one worth fixing. The proximate cause is that the agent
+  did not confirm the current branch before committing. The underlying cause is that two agents
+  share one clone: a branch checkout is global to a clone, so the concurrent agent switching to
+  `story/E3-10-account-deletion-service` moved this session onto a different branch between one
+  command and the next. The push then succeeded because `enforce_admins` is `false` on `main`'s
+  protection - the recovery hatch `docs/CONTRIBUTING.md` says not to rely on. Branch protection was
+  not weakened: ten required checks and the force-push refusal are intact, and nothing about the
+  protection configuration was changed.
+- **Documents touched:** `docs/CONTRIBUTING.md`, `scripts/git-hooks/pre-push` (new) and this log.
+- **Verification:** the hook was exercised on all three paths before commit: a push to `main` is
+  refused with exit 1, a push to any other branch passes, and `CARAPP_ALLOW_DIRECT_PUSH=1` allows the
+  push with a warning. This change itself was made in a `git worktree` on its own branch and reaches
+  `main` through a pull request.
+- **Follow-ups / risks:** the hook is local, so `git config core.hooksPath scripts/git-hooks` has to
+  be run once per clone; `docs/CONTRIBUTING.md` now carries that step. Enabling `enforce_admins`
+  would move the guarantee to the server and cover every client, but it also removes the owner's own
+  recovery hatch, so it stays an owner decision and was not taken here.
+
 ### 2026-09-06 — E3-10 account deletion server operation implemented
 
 - **Type:** story
