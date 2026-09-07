@@ -138,5 +138,17 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-129 | [ADR-0130](0130-use-firestore-recursive-delete-per-registered-collection.md) | Use Firestore recursive deletion per registered collection. | Accepted |
 | D-130 | [ADR-0131](0131-resolve-qs-advisories-within-existing-ranges.md) | Resolve the `qs` advisories within existing dependency ranges. | Accepted |
 | D-131 | [ADR-0132](0132-bound-the-account-deletion-callable-runtime.md) | Bound the account-deletion callable runtime. | Accepted |
+| D-132 | [ADR-0133](0133-keep-app-check-enforcement-on-auth-and-firestore.md) | Keep App Check enforcement on Authentication and Firestore. | Accepted |
+| D-133 | [ADR-0134](0134-fix-the-orphan-cleanup-callable-wire-contract.md) | Fix the orphan-cleanup callable wire contract. | Superseded |
+| D-134 | [ADR-0135](0135-deleted-user-eligibility-for-the-anonymous-cleanup-trigger.md) | Define deleted-user eligibility for the anonymous cleanup trigger. | Accepted |
+| D-135 | [ADR-0136](0136-bound-the-orphan-cleanup-callable-runtime.md) | Bound the orphan-cleanup callable runtime. | Accepted |
+| D-136 | [ADR-0137](0137-mirror-the-sole-1st-gen-allowlist-in-contractcheck.md) | Mirror the sole-1st-gen allowlist in `contractCheck`. | Accepted |
+| D-137 | [ADR-0138](0138-pin-the-anonymous-cleanup-trigger-to-europe-west1.md) | Pin the anonymous cleanup trigger to `europe-west1`. | Accepted |
+| D-138 | [ADR-0139](0139-bound-the-anonymous-cleanup-trigger-runtime-and-enable-retries.md) | Bound the anonymous cleanup trigger runtime and enable retries. | Accepted |
+| D-139 | [ADR-0140](0140-permit-expired-anonymous-token-on-retry-when-auth-user-deleted.md) | Permit expired anonymous token on retry when Auth user is deleted. | Superseded |
+| D-140 | [ADR-0141](0141-verify-expired-anonymous-token-cryptographically-for-resumable-cleanup.md) | Verify expired anonymous token cryptographically for resumable cleanup. | Superseded |
+| D-141 | [ADR-0142](0142-use-server-issued-orphan-cleanup-tickets.md) | Use server-issued tickets for orphan cleanup authorization. | Accepted |
+| D-142 | [ADR-0143](0143-revalidate-ticket-bound-anonymity-at-consumption.md) | Revalidate ticket-bound anonymity at consumption. | Accepted |
+| D-143 | [ADR-0144](0144-erase-orphan-cleanup-authorizations-on-account-deletion.md) | Erase orphan-cleanup authorizations on account deletion. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

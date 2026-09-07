@@ -211,6 +211,32 @@ test("unknown collections are denied", async () => {
   });
 });
 
+test("orphan cleanup authorization tickets are inaccessible to mobile clients", async () => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const ticketId = "a".repeat(64);
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `orphanCleanupTickets/${ticketId}`), {
+        anonymousUid: OWNER_ID,
+        expiresAt: Timestamp.fromMillis(1_800_000_000_000),
+        status: "PENDING",
+      });
+    });
+
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const ticketReference = doc(
+      ownerContext.firestore(),
+      `orphanCleanupTickets/${ticketId}`,
+    );
+    await assertFails(getDoc(ticketReference));
+    await assertFails(setDoc(ticketReference, {
+      anonymousUid: OWNER_ID,
+      expiresAt: Timestamp.fromMillis(1_800_000_000_000),
+      status: "COMPLETED",
+    }));
+    await assertFails(deleteDoc(ticketReference));
+  });
+});
+
 test("client hard deletes are denied", async () => {
   await withTestEnvironment(async (testEnvironment) => {
     await testEnvironment.withSecurityRulesDisabled(async (context) => {

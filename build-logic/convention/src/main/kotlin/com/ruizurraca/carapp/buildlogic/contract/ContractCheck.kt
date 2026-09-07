@@ -37,6 +37,7 @@ class ContractCheck(
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
         *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
+        FunctionGenerationContract(repoRoot).validate(),
         NativeTestExemptionContract.validate(
             workflow = read(".github/workflows/ci.yml"),
             dependencyGraph = nativeTestDependencyGraph,

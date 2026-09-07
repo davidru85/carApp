@@ -10,7 +10,8 @@
   "scripts": {
     "audit": "npm audit --omit=dev --audit-level=high",
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:emulator": "npm run build && node ../node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --only firestore --project davidruiz-carapp-dev \"node --test test/orphanedAnonymousAccountEmulator.test.mjs\""
   },
   "dependencies": {
     "@google-cloud/billing": "6.0.0",

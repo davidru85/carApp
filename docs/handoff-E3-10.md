@@ -1,5 +1,11 @@
 # Agent Handoff - E3-10
 
+> **Closure update (2026-09-07):** the deferred Cloud Functions App Check decision was taken in
+> E3-11 as `D-132`: enforcement stays on Authentication and Firestore (D-67 unchanged), and any
+> future extension must cover both deletion callables and the D-141 ticket issuer together. The
+> orphan-cleanup trigger and callables now exist; their evidence lives in
+> `docs/handoff-E3-11.md`.
+
 ## Story
 
 `E3-10 - Account Deletion Server Operation - M`
