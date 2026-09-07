@@ -48,31 +48,35 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (PR #60 review round 5, after Finding 4 GREEN).
+- Date: 2026-09-07 (PR #60 review round 5, all five findings complete, full verification re-run).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Findings 1-3 complete; Finding 4 GREEN committed as `1654a26`; Finding 5 next.
-- Latest commit: `1654a26 fix(E3-11): erase orphan cleanup authorizations on account deletion`.
-- Push and pull-request status: the branch is eight commits ahead of
-  `origin/story/E3-11-anonymous-cleanup-entry-points`. PR #60 remains open and MUST NOT be merged by
-  the agent. Commit `3371386` is the latest pushed commit; all ten required checks for that pushed
-  state were green before review round 5 began.
+- Current phase: review round 5 complete; all five findings GREEN and documented; awaiting the
+  gated owner review. No further work is in flight.
+- Latest commit: `e346fee docs(E3-11): record ticket revalidation and authorization erasure
+  decisions`.
+- Push and pull-request status: the branch is eleven commits ahead of
+  `origin/story/E3-11-anonymous-cleanup-entry-points`; this checkpoint will be pushed together with
+  the round. PR #60 remains open and MUST NOT be merged by the agent. Commit `3371386` was the
+  latest pushed state with all ten required checks green; the review-round-5 commits re-run CI on
+  push.
 - Review round 5 scope and status:
-  1. **Finding 1 — GREEN, documentation pending.** RED commit `3acacf6` added failing-first tests
+  1. **Finding 1 — complete.** RED commit `3acacf6` added failing-first tests
       for a ticket-bound account that gained a federated provider, a phone-only account, a still
       anonymous account, a missing account and an unexpected Auth lookup failure. The RED run
       executed 62 tests: 56 passed, five failed as expected and the emulator test was skipped.
-      GREEN commit `62dc1ad` extracted the shared D-134 predicate, added the Admin `getUser` lookup,
+      GREEN commit `62dc1ad` extracted the shared D-134 predicate
+      (`functions/src/auth/anonymousUserEligibility.ts`), added the Admin `getUser` lookup,
       rejects a now-permanent bound account with `failed-precondition` before deletion, preserves
       missing-user convergence and maps other lookup failures to redacted `AUTH_USER`/`internal`.
-      The GREEN run executed 62 tests: 61 passed and the emulator test was skipped. A new decision
-      and ADR amending D-141/ADR-0142, plus the required contract mirrors, remain to be written.
+      D-142 (ADR-0143) amends the D-141/ADR-0142 threat model; CONTRACTS §11.3 step 5, §11.5 and
+      all normative mirrors are updated.
   2. **Finding 2 — complete.** RED commit `46c99d5` added
       `ContractAssertionIdTest.kt`, which runs every contract assertion, groups by ID and requires
       no duplicates. Its focused RED run executed one test and failed because
       `FunctionGenerationContract` and `NativeTestExemptionContract` both emitted ID 21. The GREEN
       commit `266a4de` assigns `FunctionGenerationContract` the next unused ID, 22. The combined
       focused test and `contractCheck` run passed; `contractCheck` emitted distinct entries for IDs
-      21 and 22 and reported 142 decisions and 142 matching ADRs.
+      21 and 22.
   3. **Finding 3 — complete.** RED commit `09a837b` adds grouped
       (`export {a, b}`), whitespace-padded (`export { c }`) and aliased
       (`export {source as deployed}`) index-export fixtures. It evaluates every fixture before
@@ -81,7 +85,7 @@
       GREEN commit `7e122cc` splits grouped clauses, trims whitespace, captures the exported side of
       `as` and accepts TypeScript identifiers. The full `FunctionGenerationContractTest` class and
       `contractCheck` pass, with five deployed exports reported.
-  4. **Finding 4 — GREEN.** The selected erasure posture is to purge server-only
+  4. **Finding 4 — complete.** The selected erasure posture is to purge server-only
       `orphanCleanupTickets` records bound to a UID during account deletion rather than retain the
       identifier for up to 30 days. RED commit `e2a2ed0` requires the account-deletion handler to
       purge after registered remote data and before Auth deletion, requires a purge failure to
@@ -90,28 +94,45 @@
       internal collection registry with the contract while proving it does not overlap D-63
       user-data locations. GREEN commit `1654a26` implements the paged batched purge, the
       `INTERNAL_SERVER_DATA_LOCATIONS` registry, the deletion-order change in `deleteAccount` and
-      the CONTRACTS.md §16 internal-collections declaration. The GREEN `npm test` run executed 66
-      tests: 65 passed and the emulator test was skipped; the emulator integration run passed 2/2
-      including a new real-gateway purge test proving only UID-bound authorizations are deleted;
-      `npm run test:firestore-rules` passed 155/155. A follow-up decision + ADR for the erasure
-      posture and internal registry remains to be recorded.
-  5. **Finding 5 — not started.** Make the `test:emulator` script resolve the Firebase CLI
-     explicitly (repository-root pinned `firebase-tools` or a pinned functions devDependency)
-     instead of relying on `npx` implicit resolution through the repo-root `node_modules`.
-- Verification baseline before review round 5: Functions 58 passed with one emulator skip; the
-  live Functions emulator integration passed; Firestore rules passed 155/155; `contractCheck`
-  passed 142 decision/ADR assertions; the full non-instrumented Gradle command executed 636 tasks
-  successfully; Firebase Functions and indexes dry runs passed. These counts describe commit
-  `3371386`, not the unpushed review-round-5 changes, so full verification must be repeated.
-- Known failures: none. All Finding 4 tests are GREEN.
-- Open decisions or blockers: no blocker. Finding 1 requires the next decision ID and ADR; Finding
-  4 requires a separate decision for account-deletion erasure and internal-collection registry
-  treatment. The owner has authorised the five requested remediations and the purge posture was
-  selected as the safer interpretation within that scope.
-- Exact next step: implement Finding 5 by making the emulator CLI resolution explicit with a
-  RED policy test first, then record the new decisions (finding 1 anonymity revalidation,
-  finding 4 erasure posture) with ADRs and all normative mirrors, then run the full
-  CI-equivalent verification.
+      the CONTRACTS.md §16 internal-collections declaration. The handoff checkpoint recorded an
+      intermediate state whose uncommitted implementation purged before remote data; the committed
+      GREEN implements the contract order (remote data, then purge, then Auth). A new real-gateway
+      emulator test proves only UID-bound authorizations are deleted. D-143 (ADR-0144) records the
+      erasure posture and the internal registry treatment, and ADR-0142's Negative consequences are
+      amended.
+  5. **Finding 5 — complete.** RED commit `252366c` added
+      `functions/test/emulatorCliPolicy.test.mjs`, which fails while `test:emulator` relies on
+      implicit `npx` resolution. GREEN commit `bb46f2d` invokes the repository-root pinned
+      `firebase-tools` 15.28.1 binary explicitly (`node
+      ../node_modules/firebase-tools/lib/bin/firebase.js`), keeping the repository pin the single
+      source and never fetching an unpinned CLI from the network.
+- Full verification re-run on the final state (`e346fee`, executed 2026-09-07):
+  - `cd functions && npm ci` then `npm test` — 68 tests: 66 passed, 0 failed, 2 skipped (the two
+    emulator-only tests skipped when `FIRESTORE_EMULATOR_HOST` is unset).
+  - `cd functions && npm run test:emulator` — 2/2 passed against the real Firestore emulator,
+    including the ticket lifecycle and the new real-gateway UID-bound purge test, resolving the
+    CLI through the pinned repository-root binary.
+  - `npm run test:firestore-rules` (repository root) — 155/155 passed.
+  - `cd functions && npm run audit` — exit 0; only the seven D-68 moderate `uuid` entries.
+  - `./gradlew contractCheck :build-logic:convention:test` (within the full command) — passed;
+    144 decisions and 144 matching ADRs; assertion IDs 21 and 22 distinct; the ID-uniqueness test
+    passes.
+  - Complete non-instrumented Gradle command (ktlintCheck, detekt, architectureCheck,
+    contractCheck, build-logic tests, koverVerify, assembleDebug, androidApp unit tests,
+    testAndroidHostTest, iosSimulatorArm64Test with the four D-75 exclusions) — BUILD SUCCESSFUL,
+    636 actionable tasks.
+  - `npx firebase deploy --only functions,firestore:indexes --dry-run --force --project
+    davidruiz-carapp-dev` — exit 0, Functions analysis, rules compilation and index file reading
+    succeeded.
+  - `git diff --check` — clean.
+- Known failures: none.
+- Open decisions or blockers: no blocker. D-142 and D-143 are recorded as Accepted with ADR-0143
+  and ADR-0144 and mirrored across DECISION_BOARD, SPECIFICATION §12, TECHNICAL_PLAN §2 and
+  adr/README.md. The purge posture was selected as the safer interpretation within the owner's
+  authorized five remediations; the gated owner review confirms them with the pull request.
+- Exact next step: push the branch so PR #60 re-runs its ten required checks, update the PR body
+  with the round-5 remediation summary, and hand the pull request to the gated owner review. The
+  agent MUST NOT merge.
 
 ## Scope Completed
 
@@ -187,7 +208,10 @@
 ## Files Changed
 
 - Functions implementation: `functions/src/auth/onAnonymousUserDeleted.ts`,
+  `functions/src/auth/anonymousUserEligibility.ts`,
   `functions/src/callable/deleteOrphanedAnonymousAccount.ts`,
+  `functions/src/callable/deleteAccount.ts`,
+  `functions/src/deletion/dataLocationRegistry.ts`,
   `functions/src/deletion/firebaseAdminDeletionGateways.ts`, `functions/src/index.ts`,
   `functions/package.json`.
 - Functions tests: `functions/test/anonymousCleanup.test.mjs`,
@@ -195,14 +219,17 @@
   `functions/test/orphanedAnonymousAccountEmulator.test.mjs`,
   `functions/test/orphanCleanupTicketPolicy.test.mjs`,
   `functions/test/functionGenerationPolicy.test.mjs`,
+  `functions/test/accountDeletion.test.mjs`,
+  `functions/test/dataLocationRegistry.test.mjs`,
+  `functions/test/emulatorCliPolicy.test.mjs`,
   `functions/test/dependencyReachability.test.mjs`.
 - Firestore policy: `firestore/firestore.indexes.json`, `firestore/tests/firestore.rules.test.mjs`.
 - Build-logic contract check: `build-logic/convention/.../contract/FunctionGenerationContract.kt`,
-  `FunctionGenerationContractTest.kt`, `ContractCheck.kt`.
+  `FunctionGenerationContractTest.kt`, `ContractAssertionIdTest.kt`, `ContractCheck.kt`.
 - CI workflow: `.github/workflows/ci.yml`.
-- Normative documentation: `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`,
-  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2, §13`, `docs/adr/README.md`,
-  ADR-0062, ADR-0064, ADR-0133, ADR-0134, ADR-0141 and ADR-0142.
+- Normative documentation: `docs/CONTRACTS.md §11.3`, `§11.5`, `§16`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
+  ADR-0062, ADR-0064, ADR-0133, ADR-0134, ADR-0141, ADR-0142, ADR-0143 and ADR-0144.
 - Story records: this handoff, `AGENTS.md` and `docs/PROJECT_LOG.md`.
 
 ## Decisions Made
@@ -255,8 +282,23 @@
   used exactly as allowed by `docs/SPECIFICATION.md §11`: the real gateway and existing default-deny
   rule were verified after the focused handler cycles by the Admin emulator lifecycle and a mobile
   denial test. The ticket handler behavior itself followed focused RED/GREEN cycles.
-- The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at
-  the end, the same exception granted to E3-10.
+- The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at the
+  end, the same exception granted to E3-10.
+- Review round 5 resolved the five review findings:
+  - Finding 1: D-142 (ADR-0143) amends the D-141 threat model with ticket-consumption anonymity
+    revalidation through the single shared D-134 predicate and Admin `getUser`.
+  - Finding 2: `FunctionGenerationContract` moved from colliding ID 21 to the next unused ID 22,
+    and `ContractAssertionIdTest` now enforces ID uniqueness across every contract assertion.
+  - Finding 3: the export-surface parser recognizes grouped, whitespace-padded and aliased export
+    clauses, with fixtures proving each form was previously missed.
+  - Finding 4: D-143 (ADR-0144) owns the account-erasure guarantee — account deletion purges
+    UID-bound authorizations after remote data and before Auth deletion — and internal server-only
+    collections gain an explicit CONTRACTS §16 registry excluded from D-63 with an executable
+    parity test. ADR-0142's Negative consequences are amended accordingly.
+  - Finding 5: `test:emulator` invokes the repository-root pinned `firebase-tools` binary
+    explicitly; no implicit `npx` resolution remains.
+  - The owner authorized the five remediations; the purge posture of Finding 4 was selected as the
+    safer interpretation within that scope rather than accepting 30-day retention.
 - No `SHOULD` rule was intentionally deviated from.
 
 ## Verification Run
@@ -308,19 +350,37 @@
     davidruiz-carapp-dev` — exit 0; Functions source analysis, Firestore rules compilation, index
     file reading and the complete deployment dry run succeeded without deploying.
   - `git diff --check` — clean.
+- Full suite verification after review round 5 (final state `e346fee`):
+  - `cd functions && npm test` — 68 tests: 66 passed, 0 failed, 2 skipped (emulator-only tests
+    without `FIRESTORE_EMULATOR_HOST`).
+  - `cd functions && npm run test:emulator` — 2/2 passed against the real Firestore emulator,
+    including the ticket lifecycle and the new real-gateway UID-bound purge, resolving the CLI
+    through the pinned repository-root binary.
+  - `npm run test:firestore-rules` — 155/155 passed.
+  - `cd functions && npm run audit` — exit 0; only the seven D-68 moderate `uuid` entries.
+  - Complete non-instrumented Gradle command — BUILD SUCCESSFUL, 636 actionable tasks, including
+    `contractCheck` with 144 decisions and 144 ADRs and distinct assertion IDs 21 and 22.
+  - `npx firebase deploy --only functions,firestore:indexes --dry-run --force --project
+    davidruiz-carapp-dev` — exit 0.
+  - `git diff --check` — clean.
 
 ## Contract Impact
 
 - Updated `docs/CONTRACTS.md §11.3`, §11.5 and §16 with the D-141 issuance step, exact ticket wire
   contract, digest-only authorization schema, 30-day TTL, completion-last retry semantics,
   default-denied storage and the closed error/logging contract. D-133 and D-140 are superseded;
-  no expired-token fallback remains. No Kotlin or Swift contract changed because E2-04 owns the
-  client implementation.
+  no expired-token fallback remains. Review round 5 added the D-142 ticket-consumption anonymity
+  revalidation to §11.3 step 5 and §11.5, the D-143 account-deletion authorization-purge stage
+  and internal server-only collection registry to §11.5 and §16, and the `failed-precondition`
+  no-longer-anonymous bound-account error mapping. No Kotlin or Swift contract changed because
+  E2-04 owns the client implementation.
 
 ## Decision Board Impact
 
 - Added D-141 and ADR-0142, superseded D-133 and D-140, corrected ADR-0141's false security
-  assurances and updated all normative mirrors. The E3-11 range is now D-132 through D-143.
+  assurances and updated all normative mirrors. Review round 5 added D-142 (ADR-0143) and
+  D-143 (ADR-0144) and amended ADR-0142's consequences. The E3-11 range is now D-132 through
+  D-143.
 
 ## Shared-Write Modules Touched
 
@@ -349,6 +409,12 @@
 - The seven D-68 moderate advisories remain under the 2026-12-01 TD-01 review.
 - CI on pull request #60 is pending when this handoff is committed; results are recorded
   in the pull request.
+- A stale ticket whose bound account became permanent now fails permanently with
+  `failed-precondition` (D-142); the E2-04 client flow should surface that typed error rather
+  than retrying indefinitely.
+- `deleteAccount` gained the authorization-purge stage (D-143); a registry growth or a second
+  internal server-only collection must join `INTERNAL_SERVER_DATA_LOCATIONS` and the CONTRACTS §16
+  internal registry in the same change, or the internal parity test fails.
 
 ## Human Review Gate
 

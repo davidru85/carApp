@@ -38,6 +38,43 @@
 
 ## Entries
 
+### 2026-09-07 — PR #60 review round 5 resolved the five remaining findings
+
+- **Type:** story
+- **Story / Decision:** `E3-11` / `D-142`, `D-143` (ADR-0143, ADR-0144)
+- **Author:** opencode (glm-5.3), continuing the interrupted review-round-5 work, on behalf of
+  David Ruiz
+- **What changed:** resolved the five owner review findings on PR #60 without merging.
+  (1) `deleteOrphanedAnonymousAccount` now revalidates D-134 anonymity of the ticket-bound account
+  through Admin `getUser` before any destructive stage, closing the stale-marker data-loss sequence
+  where the bound UID linked to a permanent credential after issuance (D-142). (2) The colliding
+  `contractCheck` assertion ID moved to 22 and a build-logic uniqueness test now rejects duplicate
+  assertion IDs. (3) The exact-export-surface parser recognizes grouped, whitespace-padded and
+  aliased export clauses that previously passed undetected. (4) `orphanCleanupTickets` gained an
+  explicit internal server-only registry in `docs/CONTRACTS.md §16` excluded from D-63, and account
+  deletion purges every UID-bound authorization after remote data and before Auth deletion, so the
+  30-day TTL is only a bounded fallback (D-143). (5) `functions` `test:emulator` invokes the
+  repository-root pinned `firebase-tools` 15.28.1 binary explicitly instead of implicit `npx`
+  resolution.
+- **Why:** the ticket cannot select a UID but its bound account may cease to be anonymous between
+  issuance and consumption; an undeclared internal collection weakened the closed remote schema and
+  left `anonymousUid` retained after account deletion; and both contract-check and export-surface
+  guards had silent under-detection gaps.
+- **Documents touched:** Functions implementation and tests (including the new
+  `emulatorCliPolicy.test.mjs` and the real-gateway purge emulator test),
+  `build-logic/convention/.../contract/`, `docs/CONTRACTS.md §11.3`/§11.5/§16`,
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
+  `docs/adr/README.md`, ADR-0142 (amended), ADR-0143, ADR-0144, `AGENTS.md` and
+  `docs/handoff-E3-11.md`.
+- **Verification:** Functions tests 68 (66 passed, 2 emulator-only skipped); Functions emulator
+  integration 2/2 with the pinned CLI; Firestore rules 155/155; Functions audit exit 0 with only
+  the seven D-68 moderates; complete 636-task Gradle verification passed with `contractCheck`
+  reporting 144 decisions/144 ADRs and distinct assertion IDs; Functions and indexes deploy dry-run
+  exit 0; `git diff --check` clean. CI re-runs on push to PR #60.
+- **Follow-ups / risks:** the gated owner review of PR #60 remains; the agent does not merge.
+  E2-04 must surface the new `failed-precondition` no-longer-anonymous error rather than retrying
+  indefinitely.
+
 ### 2026-09-07 — D-141 replaces unsafe expired-token cleanup authorization in PR #60
 
 - **Type:** decision and security remediation
