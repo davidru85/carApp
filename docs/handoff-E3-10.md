@@ -36,12 +36,13 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: D-131 is locally complete through decision-record commit
-  `9f4f200`; RED commit `e6de1ca` and GREEN commit `a2daf0f` are complete. No REFACTOR commit is
-  needed because the production change is already the exact declarative endpoint configuration.
-- Push and pull-request status: branch pushed through `da02763`; pull request #58 is open at
-  `https://github.com/davidru85/carApp/pull/58`, and its preceding review checkpoint passed all ten
-  required checks. D-131 work is not pushed yet.
+- Current phase and latest commit: D-131 is complete through pushed checkpoint `8514233`; RED
+  commit `e6de1ca`, GREEN commit `a2daf0f` and decision-record commit `9f4f200` are complete. No
+  REFACTOR commit is needed because the production change is already the exact declarative endpoint
+  configuration.
+- Push and pull-request status: branch pushed through `8514233`; pull request #58 is open at
+  `https://github.com/davidru85/carApp/pull/58`, its description includes D-131, and all ten required
+  checks pass on CI run `34094696312` after the failed `shared-tests` attempt was rerun unchanged.
 - Completed since the previous checkpoint: committed the endpoint-metadata RED test, then added
   exactly the four owner-selected options to the `deleteAccount` `onCall` declaration without
   changing its region or handler behavior.
@@ -53,7 +54,8 @@
   `timeoutSeconds: 300`. No known failure.
 - Open decisions or blockers: none. D-131 explicitly defers Cloud Functions App Check enforcement
   and a dedicated minimum-privilege service account; neither is authorized in this change.
-- Exact next step: push the D-131 commits, update pull request #58 and confirm its required checks.
+- Exact next step: commit and push this final CI checkpoint, confirm the new documentation-only SHA
+  and return pull request #58 for owner review. The agent will not merge or deploy it.
 
 ## Scope Completed
 
@@ -178,6 +180,13 @@
   - `./gradlew contractCheck` — passed, including identical status for all 132 decisions and ADRs.
   - Complete non-instrumented Gradle command — passed 636 actionable tasks.
   - `git diff --check` — passed.
+- D-131 CI run `34094696312` on `8514233`:
+  - Nine jobs passed on the first attempt. `shared-tests` failed only
+    `LocalOwnerAdoptionTest.authenticationAdoptsTheWaitingRowsAndTheListNeverResolvesEmpty` on
+    `iosSimulatorArm64` with `kotlin.AssertionError`; D-131 changes no Kotlin source or test.
+  - The failed job passed on an unchanged rerun of `8514233`, so all ten required checks are green.
+    This is additional evidence for E1-14's existing graph-backed Kotlin/Native test scope, not a
+    D-131 regression.
 
 ## Contract Impact
 
@@ -200,6 +209,8 @@
 ## Risks or Follow-ups
 
 - E3-11 remains required before E2-04 is Ready.
+- CI run `34094696312` adds a `LocalOwnerAdoptionTest` transient assertion failure to the evidence
+  for E1-14; the unchanged rerun passed, and the local 636-task command also passed.
 - Cloud Functions App Check remains deliberately deferred to E3-11, when both callable entry points
   can be governed by one decision.
 - A dedicated least-privilege service account remains deferred until GCP provisioning and
