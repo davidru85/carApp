@@ -36,9 +36,9 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: D-131 documentation is ready to commit after final verification;
-  RED commit `e6de1ca` and GREEN commit `a2daf0f` are complete. No REFACTOR commit is needed because
-  the production change is already the exact declarative endpoint configuration.
+- Current phase and latest commit: D-131 is locally complete through decision-record commit
+  `9f4f200`; RED commit `e6de1ca` and GREEN commit `a2daf0f` are complete. No REFACTOR commit is
+  needed because the production change is already the exact declarative endpoint configuration.
 - Push and pull-request status: branch pushed through `da02763`; pull request #58 is open at
   `https://github.com/davidru85/carApp/pull/58`, and its preceding review checkpoint passed all ten
   required checks. D-131 work is not pushed yet.
@@ -53,8 +53,7 @@
   `timeoutSeconds: 300`. No known failure.
 - Open decisions or blockers: none. D-131 explicitly defers Cloud Functions App Check enforcement
   and a dedicated minimum-privilege service account; neither is authorized in this change.
-- Exact next step: commit the D-131 and ADR-0132 records, push the three D-131 commits, update pull
-  request #58 and confirm its required checks.
+- Exact next step: push the D-131 commits, update pull request #58 and confirm its required checks.
 
 ## Scope Completed
 
