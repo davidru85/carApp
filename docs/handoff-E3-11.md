@@ -48,15 +48,17 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (review round 2 resolved).
+- Date: 2026-09-07 (review round 3 resolved).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Review Round 2 resolved.
-  - Findings A & B resolved: validated real CLI deployment feasibility and retry policy recognition via `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev`, confirming `onAnonymousUserDeleted(europe-west1)` and `failurePolicy: true`. Evidence recorded in ADR-0138, ADR-0139, handoff and project log.
-  - Finding C resolved: documented in ADR-0134 and Decisions Made that `VerifiedIdentityToken` requires `uid: string`, dropping the redundant runtime check `verified.uid === undefined`.
-  - Follow-up recorded: extending `scripts/verify-cloud-runtime.sh` to check region and generation of the new functions once deployed.
+- Current phase: Review Round 3 resolved.
+  - Finding 1 resolved: verified permanent caller precondition (`failed-precondition`) via caller token's nested Firebase claim (`request.auth.token.firebase.sign_in_provider !== "anonymous"`), with RED test proving anonymous callers are rejected before token verification or deletion.
+  - Finding 2 resolved: wrote RED test demonstrating non-convergence on 1-hour token expiry after Auth deletion; owner selected Option A; recorded D-139 (ADR-0140); implemented expired-token retry convergence via Admin Auth `getUser` checking `auth/user-not-found`.
+  - Finding 3 resolved: distinguished client token errors (`invalid-argument`) from Admin SDK transient/infrastructure failures (`internal` logging stage `"AUTH_USER"` in redacted form) in `resolveCapturedIdentity`.
+  - Finding 4 resolved: created `orphanedAnonymousAccountEmulator.test.mjs` running against live Firestore emulator via `FirebaseAdminFirestoreDeletionGateway(db)`, proving recursive deletion of registered collections under `users/{orphanUid}` and non-interference with other UIDs with trigger delivery suppressed; integrated `npm run test:emulator` into CI.
+  - Finding 5 resolved: story records updated (`AGENTS.md` decision range D-132..D-139, `docs/PROJECT_LOG.md`, `docs/handoff-E3-11.md`, and PR #60 body).
 - Push and pull-request status: PR #60 open at `https://github.com/davidru85/carApp/pull/60`; the branch will be pushed with the review fixes; the agent will not merge it.
-- Verification evidence: `npm test` 49/49 passed; `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev` exited 0 with dry-run complete; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passed; complete non-instrumented Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
-- Open decisions or blockers: none. Ready for owner review round 2 closure.
+- Verification evidence: `npm test` 59/59 passed; `npm run test:emulator` passed against live Firestore emulator; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passed; `./gradlew contractCheck` passed (140 decisions / 140 ADRs); complete non-instrumented Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
+- Open decisions or blockers: none. Ready for owner review round 3 closure.
 
 ## Scope Completed
 
@@ -72,15 +74,23 @@
 - Added the 2nd gen callable `deleteOrphanedAnonymousAccount`
   (`functions/src/callable/deleteOrphanedAnonymousAccount.ts`): verifies the captured
   `anonymousIdToken` (checking `firebase.sign_in_provider == "anonymous"` on the Admin SDK
-  `DecodedIdToken` representation), rejects targeting the current permanent UID, deletes the
-  orphaned Auth user through the Admin SDK and only then invokes `deleteUserData`, never relying
-  on trigger delivery. Token verification relies on standard 1-hour expiry without extra freshness
-  or revocation checks. The wire contract is the D-133 one; runtime bounds are the D-135 ones.
-- Extended `FirebaseAdminAuthDeletionGateway` with `verifyIdToken` so the callable verifies
-  captured tokens through the same injection seam as deletion.
+  `DecodedIdToken` representation) and the authenticated permanent caller context
+  (`request.auth.token.firebase.sign_in_provider !== "anonymous"`), rejects targeting the current
+  permanent UID, deletes the orphaned Auth user through the Admin SDK and only then invokes
+  `deleteUserData`, never relying on trigger delivery. Under D-139 (ADR-0140), retries with an
+  expired anonymous token after initial Auth deletion are verified and permitted when Admin Auth
+  `getUser` confirms `auth/user-not-found`, preserving §11.3 retry convergence while rejecting active
+  users with `invalid-argument`. The wire contract is the D-133 one; runtime bounds are the D-135
+  ones.
+- Extended `FirebaseAdminAuthDeletionGateway` with `verifyIdToken` and `getUser` so the callable
+  verifies captured tokens and inspects user presence through the same injection seam as deletion.
 - Added the TD-01 generation-policy suite (`functionGenerationPolicy.test.mjs`) and, per D-136,
   mirrored the sole-1st-gen allowlist into `contractCheck` as assertion 21 with a failing
   fixture in `:build-logic:convention:test`.
+- Added true Firestore emulator integration test (`orphanedAnonymousAccountEmulator.test.mjs`)
+  exercising the Admin SDK path against a live Firestore emulator instance with trigger delivery
+  suppressed, proving deletion of registered collections under `users/{orphanUid}` while other UIDs
+  remain untouched.
 - Updated the reachable export set and pinned endpoint metadata in
   `dependencyReachability.test.mjs` for all deployed functions.
 
@@ -96,11 +106,16 @@
 - `deleteOrphanedAnonymousAccount` verifies the captured anonymous token and permanent caller
   context, rejects the current permanent UID (`failed-precondition`), deletes through the Admin
   SDK and then invokes `deleteUserData` directly — `orphanedAnonymousAccount.test.mjs` covers
-  the real Admin SDK token shape, rejection of legacy flat tokens, the closed error-code set,
-  the Admin-then-data ordering with no trigger involvement, the Auth-missing retry path, one-shot
-  failure recovery, typed failures and redacted logs with no UID, token, payload or raw provider
-  value. `dependencyReachability.test.mjs` pins its `gcfv2` platform, `europe-west1` region,
+  the real Admin SDK token shape, rejection of legacy flat tokens, permanent caller enforcement,
+  the closed error-code set, the Admin-then-data ordering with no trigger involvement, the
+  Auth-missing retry path, expired token retry convergence under D-139, one-shot failure recovery,
+  typed failures and redacted logs with no UID, token, payload or raw provider value.
+  `dependencyReachability.test.mjs` pins its `gcfv2` platform, `europe-west1` region,
   256 MiB memory, 2 max instances and 60s timeout.
+- True Firestore emulator integration test (`orphanedAnonymousAccountEmulator.test.mjs`) proves that
+  the Admin SDK deletion path removes `fuelEntries` and `vehicles` under `users/{orphanUid}` in the
+  real emulator while leaving `users/{otherUid}` completely untouched, with trigger delivery
+  suppressed.
 - Both paths are idempotent and overlap is harmless: redelivery and concurrent-overlap tests in
   both suites converge on exactly the registered collections under `users/{uid}`.
 - Logs contain no forbidden value: both suites serialize the emitted logs and assert the
@@ -121,17 +136,20 @@
 
 - Functions implementation: `functions/src/auth/onAnonymousUserDeleted.ts`,
   `functions/src/callable/deleteOrphanedAnonymousAccount.ts`,
-  `functions/src/deletion/firebaseAdminDeletionGateways.ts`, `functions/src/index.ts`.
+  `functions/src/deletion/firebaseAdminDeletionGateways.ts`, `functions/src/index.ts`,
+  `functions/package.json`.
 - Functions tests: `functions/test/anonymousCleanup.test.mjs`,
   `functions/test/orphanedAnonymousAccount.test.mjs`,
+  `functions/test/orphanedAnonymousAccountEmulator.test.mjs`,
   `functions/test/functionGenerationPolicy.test.mjs`,
   `functions/test/dependencyReachability.test.mjs`.
 - Build-logic contract check: `build-logic/convention/.../contract/FunctionGenerationContract.kt`,
   `FunctionGenerationContractTest.kt`, `ContractCheck.kt`.
+- CI workflow: `.github/workflows/ci.yml`.
 - Normative documentation: `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2, §13`, `docs/adr/README.md`,
-  ADR-0133 through ADR-0139.
-- Story records: this handoff and `docs/PROJECT_LOG.md`.
+  ADR-0133 through ADR-0140.
+- Story records: this handoff, `AGENTS.md` and `docs/PROJECT_LOG.md`.
 
 ## Decisions Made
 
@@ -152,6 +170,19 @@
     `Pick<DecodedIdToken, "uid" | "firebase">`, so the previous runtime guard `verified.uid === undefined`
     was dropped as redundant under the type system. If a verifier test double returned a missing `uid`,
     subsequent Admin SDK deletion fails and maps to `internal` rather than `failed-precondition`.
+- Review round 3 resolved Findings 1, 2, 3, 4 and 5:
+  - Finding 1: Enforced permanent caller precondition (`failed-precondition`) via caller token's
+    nested claim (`request.auth.token.firebase.sign_in_provider !== "anonymous"`), with RED test.
+  - Finding 2: Owner selected Option A; recorded D-139 (ADR-0140) permitting well-formed expired
+    anonymous ID tokens on retry if and only if the Auth user was already deleted (`auth/user-not-found`),
+    guaranteeing §11.3 retry convergence after partial failures even when > 1 hour has elapsed.
+  - Finding 3: Distinguished client token errors (`invalid-argument`) from Admin SDK transient/infrastructure
+    failures (`internal` logging stage `"AUTH_USER"` in redacted form) in `resolveCapturedIdentity`.
+  - Finding 4: Added actual Firestore emulator integration test (`orphanedAnonymousAccountEmulator.test.mjs`)
+    verifying collection deletion under `users/{orphanUid}` while other UIDs remain untouched, with trigger
+    delivery suppressed; integrated `npm run test:emulator` into CI.
+  - Finding 5: Updated `AGENTS.md` decision range to D-132..D-139, refreshed handoff, added append-only
+    project log entries, and updated PR #60 body.
 - The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at
   the end, the same exception granted to E3-10.
 - No `SHOULD` rule was intentionally deviated from.
@@ -170,11 +201,12 @@
   - `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev` — exit code 0;
     dry run complete, explicitly recognizing `onAnonymousUserDeleted(europe-west1)` and its retry policy:
     `⚠ functions: The following functions will newly be retried in case of failure: onAnonymousUserDeleted(europe-west1)... ✔ Dry run complete!`.
-- Full suite verification after review rounds 1 and 2:
-  - `cd functions && npm test` — 49/49 passed.
+- Full suite verification after review round 3:
+  - `cd functions && npm test` — 59/59 passed (58 unit tests passed, 1 emulator test skipped when run without emulator).
+  - `npm run test:emulator` (functions) — passed against live Firestore emulator (Admin recursive deletion verified under `users/{orphanUid}`).
   - `npm run audit` (functions) — exit 0; only the seven D-68 moderate `uuid` entries.
   - `npm run test:firestore-rules` — 154/154 emulator tests passed.
-  - `./gradlew contractCheck` — passed; assertion 2 reports 139 decisions with ADR parity,
+  - `./gradlew contractCheck` — passed; assertion 2 reports 140 decisions with ADR parity,
     assertion 21 (TD-01 allowlist) passes on the real repository and its five mutated fixtures
     fail in `:build-logic:convention:test`.
   - Complete non-instrumented Gradle command — passed 636 actionable tasks.
@@ -183,14 +215,15 @@
 ## Contract Impact
 
 - Updated `docs/CONTRACTS.md §11.5` with the executable D-134 eligibility predicate, the D-133
-  wire contract, token verification shape and expiry posture, the runtime bounds for
+  wire contract, token verification shape and expiry posture, D-139 expired anonymous token retry
+  convergence under Admin Auth deletion confirmation, the runtime bounds for
   `deleteOrphanedAnonymousAccount` (D-135), the D-137 region and D-138 runtime bounds and retry
   policy for `onAnonymousUserDeleted`, and the D-132 App Check posture for Cloud Functions. No
   Kotlin or Swift contract changed.
 
 ## Decision Board Impact
 
-- Added D-132 through D-138 with ADR-0133 through ADR-0139 and matching rows in the four
+- Added D-132 through D-139 with ADR-0133 through ADR-0140 and matching rows in the four
   mirroring documents, validated by `contractCheck` assertions 2 and 3.
 
 ## Shared-Write Modules Touched

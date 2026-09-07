@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-07 — D-139 permits expired anonymous token retry convergence; PR #60 review round 3 resolved
+
+- **Type:** story
+- **Story / Decision:** `E3-11` / `D-139`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** resolved all review round 3 findings: enforced permanent caller precondition (`failed-precondition`) by inspecting `request.auth.token.firebase.sign_in_provider !== "anonymous"`; added D-139 (ADR-0140) to permit well-formed expired anonymous ID tokens on retry if and only if the Auth user was already deleted (`auth/user-not-found`), restoring §11.3 retry convergence; distinguished client token errors (`invalid-argument`) from Admin SDK infrastructure failures (`internal` at stage `AUTH_USER`) in `resolveCapturedIdentity`; added an integration test running against the real Firestore emulator proving recursive deletion of registered collections under `users/{orphanUid}` while other UIDs remain untouched without trigger involvement; integrated `npm run test:emulator` into CI.
+- **Why:** review round 3 identified unverified permanent caller context, stranded orphan data on retries > 1 hour after partial failure, blanket invalid-argument error mapping, and lack of real Firestore emulator integration testing.
+- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/src/deletion/firebaseAdminDeletionGateways.ts`, `functions/test/orphanedAnonymousAccount.test.mjs`, `functions/test/orphanedAnonymousAccountEmulator.test.mjs`, `functions/package.json`, `.github/workflows/ci.yml`, `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0140, `AGENTS.md`, `docs/handoff-E3-11.md`, and this log.
+- **Verification:** `npm test` 59/59 passes; `npm run test:emulator` passes against live Firestore emulator; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passes; `./gradlew contractCheck` passes across 140 decisions and 140 ADRs; `git diff --check` clean.
+- **Follow-ups / risks:** awaiting owner review round 3 closure.
+
 ### 2026-09-07 — PR #60 (E3-11) review round 2 evidence recorded
 
 - **Type:** story

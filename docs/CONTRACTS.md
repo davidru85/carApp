@@ -878,12 +878,19 @@ Two anonymous-deletion entry points reuse this service:
   the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion service
   directly after that deletion. Token verification relies on standard Firebase ID token expiry
   (1 hour) without additional `auth_time` freshness or `checkRevoked` checks, because anonymous
-  accounts cannot re-authenticate or revoke tokens (`D-133`). A successful response is
+  accounts cannot re-authenticate or revoke tokens (`D-133`). If verification fails with
+  `auth/id-token-expired` on a retry after an initial attempt has already deleted the Auth account,
+  the callable verifies the expired token's structural claims and confirms via Admin Auth `getUser`
+  that the user is already absent (`auth/user-not-found`); if confirmed, it completes remote data
+  deletion to preserve §11.3 retry convergence (`D-139`). If the user still exists in Auth or claims
+  are invalid, the expired token maps to `invalid-argument`. A successful response is
   `{ status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED" }`. Missing authentication maps to
   `unauthenticated`, a missing or invalid `anonymousIdToken` maps to `invalid-argument`, a
-  captured identity that is not anonymous or that equals the caller UID maps to
-  `failed-precondition`, and an Admin Auth or remote-data deletion failure maps to `internal`.
-  No UID, token, request payload or raw provider failure is attached to callable logs (`D-133`).
+  captured identity that is not anonymous, a non-permanent authenticated caller context, or a
+  captured identity that equals the caller UID maps to `failed-precondition`, and an Admin Auth
+  transient verification failure, user lookup failure, or remote-data deletion failure maps to
+  `internal`. No UID, token, request payload or raw provider failure is attached to callable logs
+  (`D-133`, `D-139`).
   The callable declares `maxInstances: 2`, `memory: "256MiB"`, `timeoutSeconds: 60` and
   `region: "europe-west1"` (`D-135`). It MUST NOT rely on `onAnonymousUserDeleted` being
   delivered.
