@@ -48,41 +48,17 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (review round 1 in flight).
-- Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`, in the
-  isolated worktree `/private/tmp/carapp-worktrees/E3-11`.
-- Current phase and latest commit: applying owner review round 1 on PR #60 (five findings).
-  Last pushed story commit: `4bd2a11`. Finding facts verified against the installed SDKs:
-  `DecodedIdToken` nests the provider claim as `firebase.sign_in_provider` (no top-level claim),
-  and the 1st gen trigger builder supports `.region(...)` and `runWith({failurePolicy: true})`.
-- Push and pull-request status: PR #60 open at
-  `https://github.com/davidru85/carApp/pull/60`; the branch will be pushed with the review
-  fixes; the agent will not merge it.
-- Completed since the previous checkpoint: review intake, SDK fact-checks.
-- Verification evidence and known failures: Finding 1 confirmed (top-level `sign_in_provider`
-  is always undefined in production; tests encode the same wrong shape). Finding 4 confirmed
-  (no `__endpoint` assertions for the new callable). Awaiting RED commits.
-- Open decisions or blockers: findings 2, 3 and 5 are owner decisions (trigger region, trigger
-  runtime bounds and retry posture, captured-token freshness posture).
-- Exact next step: RED for Finding 1 (nested-token success plus flat-token rejection).
-- Current phase and latest commit: REFACTOR phase verification complete locally; the only
-  refactor change relinquishes the bespoke `internal` rethrow in the trigger in favor of the
-  original failure, with the test asserting rejection instead of a bespoke code. `npm test`
-  still passes 47/47.
-- Push and pull-request status: branch pushed through `29e54ca`; draft pull request #60 open at
-  `https://github.com/davidru85/carApp/pull/60`. The PR stays draft until the owner selects the
-  grouped E3-11 decisions and the corresponding ADRs, contract text and project-log entries land.
-- Completed since the previous checkpoint: pushed the three TDD commits and opened the draft PR
-  with the full ready-check, evidence and pending-decision group recorded.
-- Verification evidence and known failures: no known failures; all ten required-check inputs
-  verified locally. CI results pending on the draft PR.
-- Open decisions or blockers: none. On 2026-09-07 the owner selected the recommended options for
-  the grouped E3-11 decisions, now recorded as D-132 (Functions App Check scope stays on
-  Auth/Firestore), D-133 (orphan-cleanup wire contract), D-134 (deleted-user eligibility =
-  empty `providerData`), D-135 (orphan-cleanup runtime bounds) and D-136 (sole-1st-gen allowlist
-  mirrored into `contractCheck`).
-- Exact next step: finish the decision records (ADRs, mirrors, contract text, handoff and
-  project-log entries), re-run the complete verification, and return PR #60 for owner review.
+- Date: 2026-09-07.
+- Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
+- Current phase: Review Round 1 findings resolved.
+  - Finding 1 resolved: `deleteOrphanedAnonymousAccount` reads `verified.firebase?.sign_in_provider === "anonymous"` using `Pick<DecodedIdToken, "uid" | "firebase">`; tests assert real Admin SDK decoded token shape and reject legacy flat format.
+  - Finding 2 resolved: D-137 / ADR-0138 pins `onAnonymousUserDeleted` explicitly to `europe-west1` via `.region("europe-west1")`.
+  - Finding 3 resolved: D-138 / ADR-0139 bounds `onAnonymousUserDeleted` to 2 instances, 256MB memory, 60s timeout, and sets `failurePolicy: true` (`eventTrigger.retry = true`) to enable platform retries on transient Firestore errors.
+  - Finding 4 resolved: `functions/test/dependencyReachability.test.mjs` pins endpoint metadata for both `deleteOrphanedAnonymousAccount` and `onAnonymousUserDeleted` (platform, region, memory, timeout, instances, retry).
+  - Finding 5 resolved: ADR-0134 and `docs/CONTRACTS.md §11.5` explicitly document that captured anonymous ID token verification relies on standard Firebase 1-hour expiry without `auth_time` freshness or `checkRevoked`.
+- Push and pull-request status: PR #60 open at `https://github.com/davidru85/carApp/pull/60`; the branch will be pushed with the review fixes; the agent will not merge it.
+- Verification evidence: `npm test` 49/49 passed; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passed; complete non-instrumented Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
+- Open decisions or blockers: none. Awaiting owner review round 2.
 
 ## Scope Completed
 
@@ -90,21 +66,25 @@
   (`functions/src/auth/onAnonymousUserDeleted.ts`): an `auth.user().onDelete` handler that
   skips records without a UID (`MISSING_UID`) or with any provider entry (`NOT_ANONYMOUS`,
   covering linked and phone-only users) and delegates eligible anonymous UIDs to the E3-10
-  `deleteUserData` service with redacted logs. Redelivery, retry-after-failure and concurrent
-  trigger/callable overlap are provably harmless.
+  `deleteUserData` service with redacted logs. The trigger is pinned to `europe-west1` (`D-137`),
+  bounded to two 256 MiB instances, 60-second timeout and configured with `failurePolicy: true`
+  (`eventTrigger.retry = true`) so transient Firestore errors trigger Cloud Functions retries
+  (`D-138`). Redelivery, retry-after-failure and concurrent trigger/callable overlap are provably
+  harmless and idempotent.
 - Added the 2nd gen callable `deleteOrphanedAnonymousAccount`
   (`functions/src/callable/deleteOrphanedAnonymousAccount.ts`): verifies the captured
-  `anonymousIdToken` (`sign_in_provider == "anonymous"`), rejects targeting the current
-  permanent UID, deletes the orphaned Auth user through the Admin SDK and only then invokes
-  `deleteUserData`, never relying on trigger delivery. The wire contract is the D-133 one; the
-  runtime bounds are the D-135 ones.
+  `anonymousIdToken` (checking `firebase.sign_in_provider == "anonymous"` on the Admin SDK
+  `DecodedIdToken` representation), rejects targeting the current permanent UID, deletes the
+  orphaned Auth user through the Admin SDK and only then invokes `deleteUserData`, never relying
+  on trigger delivery. Token verification relies on standard 1-hour expiry without extra freshness
+  or revocation checks. The wire contract is the D-133 one; runtime bounds are the D-135 ones.
 - Extended `FirebaseAdminAuthDeletionGateway` with `verifyIdToken` so the callable verifies
   captured tokens through the same injection seam as deletion.
 - Added the TD-01 generation-policy suite (`functionGenerationPolicy.test.mjs`) and, per D-136,
   mirrored the sole-1st-gen allowlist into `contractCheck` as assertion 21 with a failing
   fixture in `:build-logic:convention:test`.
-- Updated the reachable export set in `dependencyReachability.test.mjs` to the exact TD-01
-  surface.
+- Updated the reachable export set and pinned endpoint metadata in
+  `dependencyReachability.test.mjs` for all deployed functions.
 
 ## Acceptance Evidence
 
@@ -113,13 +93,16 @@
   fixture, and the pinned `firebase.json` deployment configuration all prove it. The trigger
   delegates only eligible anonymous UIDs to `deleteUserData` and treats other deliveries as
   harmless overlap — `anonymousCleanup.test.mjs` covers eligibility, redelivery, retry,
-  concurrent overlap and log redaction.
+  concurrent overlap and log redaction. `dependencyReachability.test.mjs` pins its `europe-west1`
+  region, 256 MiB memory, 2 max instances, 60s timeout, and `retry === true`.
 - `deleteOrphanedAnonymousAccount` verifies the captured anonymous token and permanent caller
   context, rejects the current permanent UID (`failed-precondition`), deletes through the Admin
   SDK and then invokes `deleteUserData` directly — `orphanedAnonymousAccount.test.mjs` covers
-  the closed error-code set, the Admin-then-data ordering with no trigger involvement, the
-  Auth-missing retry path, one-shot failure recovery, typed failures and redacted logs with no
-  UID, token, payload or raw provider value.
+  the real Admin SDK token shape, rejection of legacy flat tokens, the closed error-code set,
+  the Admin-then-data ordering with no trigger involvement, the Auth-missing retry path, one-shot
+  failure recovery, typed failures and redacted logs with no UID, token, payload or raw provider
+  value. `dependencyReachability.test.mjs` pins its `gcfv2` platform, `europe-west1` region,
+  256 MiB memory, 2 max instances and 60s timeout.
 - Both paths are idempotent and overlap is harmless: redelivery and concurrent-overlap tests in
   both suites converge on exactly the registered collections under `users/{uid}`.
 - Logs contain no forbidden value: both suites serialize the emitted logs and assert the
@@ -148,8 +131,8 @@
 - Build-logic contract check: `build-logic/convention/.../contract/FunctionGenerationContract.kt`,
   `FunctionGenerationContractTest.kt`, `ContractCheck.kt`.
 - Normative documentation: `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`,
-  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
-  ADR-0133 through ADR-0137.
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2, §13`, `docs/adr/README.md`,
+  ADR-0133 through ADR-0139.
 - Story records: this handoff and `docs/PROJECT_LOG.md`.
 
 ## Decisions Made
@@ -158,6 +141,10 @@
   D-132 option B (no Functions App Check enforcement), D-133 option A (implemented wire
   contract), D-134 option A (empty `providerData` eligibility), D-135 option B (fitted runtime
   bounds) and D-136 option B (allowlist mirrored into `contractCheck`).
+- Review round 1 introduced D-137 (pinning `onAnonymousUserDeleted` to `europe-west1`) and
+  D-138 (bounding `onAnonymousUserDeleted` runtime to 256 MiB / 60s / 2 instances and enabling
+  platform execution retries via `failurePolicy: true`), with captured anonymous token lifetime
+  explicitly documented under ADR-0134.
 - The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at
   the end, the same exception granted to E3-10.
 - No `SHOULD` rule was intentionally deviated from.
@@ -169,12 +156,14 @@
 - GREEN phase: `npm test` — 47/47 passed.
 - REFACTOR phase (trigger failure propagation passes the original error through; the bespoke
   wrapper was dropped): `npm test` — 47/47 passed.
-- After the owner decision records:
-  - `cd functions && npm test` — 47/47 passed (clean install, lifecycle scripts blocked by
-    repository policy).
+- Review Round 1 RED/GREEN:
+  - Added tests for real `DecodedIdToken` shape and rejection of legacy flat token; verified RED then GREEN.
+  - Added endpoint metadata assertions in `dependencyReachability.test.mjs`; verified RED failure on unconfigured trigger region/bounds/retry, then GREEN upon configuring `region("europe-west1").runWith(...)`.
+- After review round 1:
+  - `cd functions && npm test` — 49/49 passed.
   - `npm run audit` (functions) — exit 0; only the seven D-68 moderate `uuid` entries.
   - `npm run test:firestore-rules` — 154/154 emulator tests passed.
-  - `./gradlew contractCheck` — passed; assertion 2 reports 137 decisions with ADR parity,
+  - `./gradlew contractCheck` — passed; assertion 2 reports 139 decisions with ADR parity,
     assertion 21 (TD-01 allowlist) passes on the real repository and its five mutated fixtures
     fail in `:build-logic:convention:test`.
   - Complete non-instrumented Gradle command — passed 636 actionable tasks.
@@ -183,12 +172,14 @@
 ## Contract Impact
 
 - Updated `docs/CONTRACTS.md §11.5` with the executable D-134 eligibility predicate, the D-133
-  wire contract and runtime bounds for `deleteOrphanedAnonymousAccount`, and the D-132 App
-  Check posture for Cloud Functions. No Kotlin or Swift contract changed.
+  wire contract, token verification shape and expiry posture, the runtime bounds for
+  `deleteOrphanedAnonymousAccount` (D-135), the D-137 region and D-138 runtime bounds and retry
+  policy for `onAnonymousUserDeleted`, and the D-132 App Check posture for Cloud Functions. No
+  Kotlin or Swift contract changed.
 
 ## Decision Board Impact
 
-- Added D-132 through D-136 with ADR-0133 through ADR-0137 and matching rows in the four
+- Added D-132 through D-138 with ADR-0133 through ADR-0139 and matching rows in the four
   mirroring documents, validated by `contractCheck` assertions 2 and 3.
 
 ## Shared-Write Modules Touched
@@ -202,7 +193,8 @@
 ## Risks or Follow-ups
 
 - TD-01 closure now has two guards that must move together: `functionGenerationPolicy.test.mjs`
-  and `contractCheck` assertion 21 (D-136).
+  and `contractCheck` assertion 21 (D-136). The migration must carry forward `europe-west1` (D-137)
+  and the runtime bounds and retry configuration (D-138).
 - A registry growth (Storage prefixes or new collections) must re-evaluate the D-135 timeout
   before merging.
 - The seven D-68 moderate advisories remain under the 2026-12-01 TD-01 review.

@@ -38,6 +38,39 @@
 
 ## Entries
 
+### 2026-09-07 — PR #60 (E3-11) review round 1 fixes applied
+
+- **Type:** story
+- **Story / Decision:** `E3-11` / —
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** resolved all five review findings on PR #60: corrected `deleteOrphanedAnonymousAccount` to read `verified.firebase?.sign_in_provider === "anonymous"` from the real Admin SDK `DecodedIdToken` shape; pinned `onAnonymousUserDeleted` to `europe-west1` (`D-137`); bounded `onAnonymousUserDeleted` to two 256 MiB instances, 60-second timeout and enabled execution retries with `failurePolicy: true` (`D-138`); pinned endpoint metadata in `dependencyReachability.test.mjs` for both functions; documented captured anonymous token validity (1-hour standard expiry without `auth_time` freshness or `checkRevoked`).
+- **Why:** verified `DecodedIdToken` does not expose top-level `sign_in_provider`; 1st gen Auth trigger lacked regional pin, resource limits and retry failure policy; endpoint assertions were missing from reachability tests.
+- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/src/auth/onAnonymousUserDeleted.ts`, `functions/test/dependencyReachability.test.mjs`, `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13`, `docs/DECISION_BOARD.md`, `docs/adr/0134-fix-the-orphan-cleanup-callable-wire-contract.md`, `docs/adr/0138-pin-the-anonymous-cleanup-trigger-to-europe-west1.md`, `docs/adr/0139-bound-the-anonymous-cleanup-trigger-runtime-and-enable-retries.md`, `docs/handoff-E3-11.md`.
+- **Verification:** `npm test` 49/49 passes; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passes; full Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
+- **Follow-ups / risks:** awaiting owner review and merge of PR #60.
+
+### 2026-09-07 — D-138 bounds anonymous cleanup trigger runtime and enables retries
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-138`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** `onAnonymousUserDeleted` declares `maxInstances: 2`, `memory: "256MB"`, `timeoutSeconds: 60`, and `failurePolicy: true` (`eventTrigger.retry = true`).
+- **Why:** 1st gen background functions do not retry without `failurePolicy: true`, risking abandoned orphan data on transient Firestore errors; explicit bounds enforce workload and cost controls matching D-135.
+- **Documents touched:** ADR-0139, `functions/src/auth/onAnonymousUserDeleted.ts`, `functions/test/dependencyReachability.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13`, decision mirrors and this log.
+- **Verification:** `dependencyReachability.test.mjs` pins `availableMemoryMb: 256`, `maxInstances: 2`, `timeoutSeconds: 60`, and `eventTrigger.retry === true`; `anonymousCleanup.test.mjs` verifies retry convergence.
+- **Follow-ups / risks:** TD-01 migration must carry forward runtime bounds and retry policy.
+
+### 2026-09-07 — D-137 pins the anonymous cleanup trigger to `europe-west1`
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-137`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** `onAnonymousUserDeleted` is explicitly configured with `region("europe-west1")`.
+- **Why:** Cloud Functions 1st gen defaults to `us-central1` if unconfigured; D-13 and D-22 require all backend infrastructure and Cloud Firestore to remain in `europe-west1` to eliminate cross-region egress and latency.
+- **Documents touched:** ADR-0138, `functions/src/auth/onAnonymousUserDeleted.ts`, `functions/test/dependencyReachability.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13`, decision mirrors and this log.
+- **Verification:** `dependencyReachability.test.mjs` pins `region: ["europe-west1"]`.
+- **Follow-ups / risks:** TD-01 migration must carry forward `europe-west1`.
+
 ### 2026-09-07 — D-136 mirrors the sole-1st-gen allowlist into `contractCheck`
 
 - **Type:** decision
