@@ -7,6 +7,9 @@ import {getFirestore} from "firebase-admin/firestore";
 
 import type {AccountDeletionAuthGateway} from "../callable/deleteAccount.js";
 import type {
+    VerifiedIdentityToken,
+} from "../callable/deleteOrphanedAnonymousAccount.js";
+import type {
     UserDataFirestoreGateway,
 } from "./userDeletionService.js";
 import type {UserFirestoreCollection} from "./dataLocationRegistry.js";
@@ -31,6 +34,10 @@ export class FirebaseAdminAuthDeletionGateway implements AccountDeletionAuthGate
 
     public async deleteUser(uid: string): Promise<void> {
         await this.auth.deleteUser(uid);
+    }
+
+    public async verifyIdToken(token: string): Promise<VerifiedIdentityToken> {
+        return this.auth.verifyIdToken(token);
     }
 }
 

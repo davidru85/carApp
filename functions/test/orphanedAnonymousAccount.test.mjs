@@ -150,7 +150,7 @@ test("an Admin Auth failure is typed, prevents remote deletion and stays redacte
 test("callable logs contain no UID, token, payload or raw provider value", async () => {
   const harness = orphanHarness();
 
-  const result = await harness.handler(authed({extra: "forbidden-payload"}));
+  const result = await harness.handler(authed({anonymousIdToken: ORPHAN_TOKEN, extra: "forbidden-payload"}));
 
   assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
   const serializedLogs = JSON.stringify(harness.logs);
