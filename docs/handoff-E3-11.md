@@ -52,24 +52,16 @@
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, created from `main` at
   `6c74b5e` in the isolated worktree `/private/tmp/carapp-worktrees/E3-11` (required after the
   2026-09-06 shared-clone incident). No local or remote commits yet.
-- Current phase and latest commit: GREEN phase complete locally; `npm test` passes all 47 tests.
-  RED commit `4d43d1c` recorded the failing state. The two entry points are implemented:
-  `functions/src/auth/onAnonymousUserDeleted.ts` (sole v1 `auth.user().onDelete` trigger with
-  the anonymous-eligibility filter, redacted logs and safe rethrow) and
-  `functions/src/callable/deleteOrphanedAnonymousAccount.ts` (2nd gen callable that verifies the
-  captured anonymous token, rejects the current permanent UID, deletes the orphaned Auth user via
-  the Admin SDK and only then invokes `deleteUserData`). The Admin Auth gateway now also exposes
-  `verifyIdToken`. GREEN commit pending.
+- Current phase and latest commit: REFACTOR phase verification complete locally; the only
+  refactor change relinquishes the bespoke `internal` rethrow in the trigger in favor of the
+  original failure, with the test asserting rejection instead of a bespoke code. `npm test`
+  still passes 47/47.
 - Push and pull-request status: nothing pushed; no pull request open.
-- Completed since the previous checkpoint: implemented both entry points, the shared
-  generation-policy contract test and the updated export-set assertion; fixed the emit (v1 import
-  comes only from `functions/src/auth/onAnonymousUserDeleted.ts`); verified the emitted endpoint
-  metadata (`platform: gcfv2`, `region: europe-west1`, bounded instances) and that the v1 trigger
-  carries only an `eventTrigger`, so the policy classifies by source dependency, not by the
-  absence of `__endpoint`.
-- Verification evidence and known failures: GREEN run `npm test` — 47 tests, 47 pass, 0 fail
-  (in clean install with lifecycle scripts blocked per repository policy). Awaiting the
-  Firestore-rules and full Gradle verification in the REFACTOR phase.
+- Completed since the previous checkpoint: ran the full local verification — `npm test` 47/47;
+  `npm run audit` (exit 0: only the seven D-68 moderate `uuid` entries, no high/critical);
+  `npm run test:firestore-rules` 154/154; the complete 13-task non-instrumented Gradle command
+  636 actionable tasks BUILD SUCCESSFUL. `git diff --check` clean.
+- Verification evidence and known failures: no known failures. REFACTOR commit pending.
 - Open decisions or blockers: the E3-11 decision group awaits owner selection at the end of the
   process; no code decision that requires the owner will be resolved before that.
 - Exact next step: write the RED tests for `onAnonymousUserDeleted` eligibility and

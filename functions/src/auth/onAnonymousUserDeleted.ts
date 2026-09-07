@@ -45,7 +45,7 @@ export function createAnonymousDeletionHandler(dependencies: AnonymousDeletionDe
             await deleteUserData({firestore: dependencies.firestore, uid});
         } catch (failure) {
             dependencies.logger.error("Anonymous cleanup failed", {path: "NATIVE_TRIGGER"});
-            throw Object.assign(new Error("Anonymous cleanup failed"), {code: "internal", cause: failure});
+            throw failure;
         }
         dependencies.logger.info("Anonymous cleanup invoked", {path: "NATIVE_TRIGGER"});
     };
