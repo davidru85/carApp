@@ -48,17 +48,15 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07.
+- Date: 2026-09-07 (review round 2 resolved).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Review Round 1 findings resolved.
-  - Finding 1 resolved: `deleteOrphanedAnonymousAccount` reads `verified.firebase?.sign_in_provider === "anonymous"` using `Pick<DecodedIdToken, "uid" | "firebase">`; tests assert real Admin SDK decoded token shape and reject legacy flat format.
-  - Finding 2 resolved: D-137 / ADR-0138 pins `onAnonymousUserDeleted` explicitly to `europe-west1` via `.region("europe-west1")`.
-  - Finding 3 resolved: D-138 / ADR-0139 bounds `onAnonymousUserDeleted` to 2 instances, 256MB memory, 60s timeout, and sets `failurePolicy: true` (`eventTrigger.retry = true`) to enable platform retries on transient Firestore errors.
-  - Finding 4 resolved: `functions/test/dependencyReachability.test.mjs` pins endpoint metadata for both `deleteOrphanedAnonymousAccount` and `onAnonymousUserDeleted` (platform, region, memory, timeout, instances, retry).
-  - Finding 5 resolved: ADR-0134 and `docs/CONTRACTS.md §11.5` explicitly document that captured anonymous ID token verification relies on standard Firebase 1-hour expiry without `auth_time` freshness or `checkRevoked`.
+- Current phase: Review Round 2 resolved.
+  - Findings A & B resolved: validated real CLI deployment feasibility and retry policy recognition via `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev`, confirming `onAnonymousUserDeleted(europe-west1)` and `failurePolicy: true`. Evidence recorded in ADR-0138, ADR-0139, handoff and project log.
+  - Finding C resolved: documented in ADR-0134 and Decisions Made that `VerifiedIdentityToken` requires `uid: string`, dropping the redundant runtime check `verified.uid === undefined`.
+  - Follow-up recorded: extending `scripts/verify-cloud-runtime.sh` to check region and generation of the new functions once deployed.
 - Push and pull-request status: PR #60 open at `https://github.com/davidru85/carApp/pull/60`; the branch will be pushed with the review fixes; the agent will not merge it.
-- Verification evidence: `npm test` 49/49 passed; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passed; complete non-instrumented Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
-- Open decisions or blockers: none. Awaiting owner review round 2.
+- Verification evidence: `npm test` 49/49 passed; `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev` exited 0 with dry-run complete; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passed; complete non-instrumented Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
+- Open decisions or blockers: none. Ready for owner review round 2 closure.
 
 ## Scope Completed
 
@@ -145,6 +143,15 @@
   D-138 (bounding `onAnonymousUserDeleted` runtime to 256 MiB / 60s / 2 instances and enabling
   platform execution retries via `failurePolicy: true`), with captured anonymous token lifetime
   explicitly documented under ADR-0134.
+- Review round 2 resolved Findings A, B and C:
+  - Validated real CLI deployment feasibility and retry policy recognition via
+    `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev`, confirming
+    that Firebase CLI cleanly validates `onAnonymousUserDeleted(europe-west1)` and recognizes
+    `failurePolicy: true` with automatic retry semantics.
+  - Recorded in ADR-0134 and here that `VerifiedIdentityToken` derives `uid: string` directly from
+    `Pick<DecodedIdToken, "uid" | "firebase">`, so the previous runtime guard `verified.uid === undefined`
+    was dropped as redundant under the type system. If a verifier test double returned a missing `uid`,
+    subsequent Admin SDK deletion fails and maps to `internal` rather than `failed-precondition`.
 - The owner explicitly confirmed the RED/GREEN/REFACTOR commit sequence with a single push at
   the end, the same exception granted to E3-10.
 - No `SHOULD` rule was intentionally deviated from.
@@ -159,7 +166,11 @@
 - Review Round 1 RED/GREEN:
   - Added tests for real `DecodedIdToken` shape and rejection of legacy flat token; verified RED then GREEN.
   - Added endpoint metadata assertions in `dependencyReachability.test.mjs`; verified RED failure on unconfigured trigger region/bounds/retry, then GREEN upon configuring `region("europe-west1").runWith(...)`.
-- After review round 1:
+- Review Round 2 Validation:
+  - `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev` — exit code 0;
+    dry run complete, explicitly recognizing `onAnonymousUserDeleted(europe-west1)` and its retry policy:
+    `⚠ functions: The following functions will newly be retried in case of failure: onAnonymousUserDeleted(europe-west1)... ✔ Dry run complete!`.
+- Full suite verification after review rounds 1 and 2:
   - `cd functions && npm test` — 49/49 passed.
   - `npm run audit` (functions) — exit 0; only the seven D-68 moderate `uuid` entries.
   - `npm run test:firestore-rules` — 154/154 emulator tests passed.
@@ -197,6 +208,10 @@
   and the runtime bounds and retry configuration (D-138).
 - A registry growth (Storage prefixes or new collections) must re-evaluate the D-135 timeout
   before merging.
+- Post-deployment verification: once `onAnonymousUserDeleted` and `deleteOrphanedAnonymousAccount`
+  are deployed to `davidruiz-carapp-dev`, extend `scripts/verify-cloud-runtime.sh` to assert their
+  region (`europe-west1`) and runtime generation (`gcfv1` and `gcfv2` respectively), mirroring
+  the check currently performed for `stopBilling`.
 - The seven D-68 moderate advisories remain under the 2026-12-01 TD-01 review.
 - CI on the draft pull request is pending when this handoff is committed; results are recorded
   in the pull request.

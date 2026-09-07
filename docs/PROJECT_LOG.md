@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-07 — PR #60 (E3-11) review round 2 evidence recorded
+
+- **Type:** story
+- **Story / Decision:** `E3-11` / —
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** recorded real CLI dry-run validation evidence for `onAnonymousUserDeleted` in `europe-west1` with `failurePolicy: true`; documented `VerifiedIdentityToken` non-optional `uid` typing in ADR-0134; added post-deploy `scripts/verify-cloud-runtime.sh` extension follow-up.
+- **Why:** review round 2 required proving that the Firebase CLI and platform accept a 1st gen Auth trigger deployed to `europe-west1` and recognize its failure policy, beyond SDK-emitted endpoint metadata.
+- **Documents touched:** ADR-0134, ADR-0138, ADR-0139, `docs/handoff-E3-11.md` and this log.
+- **Verification:** `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev` exited with code 0 (`Dry run complete!`), explicitly confirming `onAnonymousUserDeleted(europe-west1)` and its retry policy; `npm test` 49/49 passes; Firestore rules 154/154 passes; full Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
+- **Follow-ups / risks:** awaiting owner review round 2 closure.
+
 ### 2026-09-07 — PR #60 (E3-11) review round 1 fixes applied
 
 - **Type:** story

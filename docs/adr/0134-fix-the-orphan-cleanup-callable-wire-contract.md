@@ -52,6 +52,11 @@ or raw provider failure is attached to callable logs.
   linking or network round trips face transient delays. The verified token acts as a scoped bearer
   capability for deleting only the captured anonymous identity, which is immediately deleted from
   Auth upon verification.
+- `VerifiedIdentityToken` derives directly from the Admin SDK as `Pick<DecodedIdToken, "uid" | "firebase">`,
+  guaranteeing compile-time alignment with the decoded token shape and requiring `uid: string`. The
+  previous defensive runtime check `verified.uid === undefined` was dropped as redundant under the
+  type system. If a token verifier were to return a token lacking a `uid`, the subsequent Admin Auth
+  deletion would fail and map to `internal` rather than `failed-precondition`.
 - Any change to the payload field, the success literal or the error-code set requires a
   superseding owner decision and an atomic update of `docs/CONTRACTS.md §11.5`.
 - `docs/CONTRACTS.md §11.5` records this exact contract; no other spelling is valid.

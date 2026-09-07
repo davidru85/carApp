@@ -36,7 +36,11 @@ pinned by the Functions test suite.
 
 ### Negative
 
-- None. `europe-west1` is a supported region for Cloud Functions 1st gen Auth triggers.
+- Emitted endpoint metadata alone (`__endpoint.region`) does not prove deployment feasibility;
+  regional support was verified via `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev`,
+  which successfully validated `onAnonymousUserDeleted(europe-west1)`. Auth event routing to
+  `europe-west1` depends on Google's cross-region event infrastructure between the global Auth service
+  and regional functions.
 
 ### Constraints Introduced
 
@@ -48,6 +52,15 @@ pinned by the Functions test suite.
 
 - `functions/test/dependencyReachability.test.mjs` asserts
   `exportedFunctions.onAnonymousUserDeleted.__endpoint.region` strictly equals `["europe-west1"]`.
+- Platform deployment validation verified via:
+  ```bash
+  npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev
+  ```
+  which cleanly accepted `onAnonymousUserDeleted(europe-west1)`:
+  ```text
+  ⚠  functions: The following functions will newly be retried in case of failure: onAnonymousUserDeleted(europe-west1).
+  ✔  Dry run complete!
+  ```
 
 ## References
 

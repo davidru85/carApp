@@ -57,6 +57,15 @@ Endpoint metadata, including `eventTrigger.retry === true`, is pinned by the Fun
   `timeoutSeconds: 60` and `eventTrigger.retry === true`.
 - `functions/test/anonymousCleanup.test.mjs` asserts that failures are rethrown and that subsequent
   redelivery converges idempotently.
+- Platform deployment validation verified via:
+  ```bash
+  npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev
+  ```
+  The Firebase CLI explicitly recognized the failure policy and confirmed execution retries:
+  ```text
+  ⚠  functions: The following functions will newly be retried in case of failure: onAnonymousUserDeleted(europe-west1). Retried executions are billed as any other execution, and functions are retried repeatedly until they either successfully execute or the maximum retry period has elapsed, which can be up to 7 days. For safety, you might want to ensure that your functions are idempotent; see https://firebase.google.com/docs/functions/retries to learn more.
+  ✔  Dry run complete!
+  ```
 
 ## References
 
