@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-0142 (D-141)
+
+## Closure Update (2026-09-07)
+
+D-141 replaces the `anonymousIdToken` request with a server-issued `cleanupTicket`. The success
+literal and closed error-code set remain unchanged. This record is retained as the historical
+decision that governed the earlier PR #60 implementation; ADR-0142 is the current contract.
 
 ## Context
 

@@ -256,9 +256,10 @@ Credential collision:
 - The current anonymous-session snapshot wins only after explicit destructive confirmation that
   the existing permanent-account data will be replaced. Cancellation leaves the anonymous session
   and local data untouched.
-- After confirmation, the app persists a complete local snapshot and captures a fresh anonymous ID
-  token before signing into the existing permanent account. It replaces that account's remote data
-  with the snapshot through an idempotent, resumable flow, then requests deletion of the abandoned
+- After confirmation, the app persists a complete local snapshot and obtains a server-issued,
+  single-purpose cleanup ticket while the anonymous session is still active, before signing into
+  the existing permanent account. It replaces that account's remote data with the snapshot through
+  an idempotent, resumable flow, then uses the durable ticket to request deletion of the abandoned
   anonymous identity. Exact failure and cleanup semantics are in `docs/CONTRACTS.md §11.3` and
   `§11.5`.
 
@@ -607,15 +608,16 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-129 | Firestore Admin deletion primitive | Account cleanup awaits the Admin SDK recursive deletion of each registered collection in the required order. | Accepted |
 | D-130 | Transitive `qs` advisory remediation | The Functions lockfile resolves the existing transitive HTTP parser to patched `qs` 6.16.0. | Accepted |
 | D-131 | Account-deletion callable runtime bounds | The account-deletion callable runs within explicit instance, concurrency, memory and timeout bounds. | Accepted |
-| D-132 | Cloud Functions App Check scope | App Check enforcement stays on Authentication and Firestore; deletion callables rely on verified authentication and payload validation. | Accepted |
-| D-133 | Orphan-cleanup callable wire contract | The orphan-cleanup callable takes `anonymousIdToken`, returns a stable success literal and closes its callable error codes. | Accepted |
+| D-132 | Cloud Functions App Check scope | App Check enforcement stays on Authentication and Firestore; the ticket issuer and deletion callables rely on verified authentication plus explicit authorization and payload validation. | Accepted |
+| D-133 | Orphan-cleanup callable wire contract | The orphan-cleanup callable takes `anonymousIdToken`, returns a stable success literal and closes its callable error codes. | Superseded |
 | D-134 | Anonymous cleanup trigger eligibility | Only a deleted Auth user with an empty provider list is delegated to the cleanup service. | Accepted |
 | D-135 | Orphan-cleanup callable runtime bounds | The orphan-cleanup callable runs with explicit instance, memory and timeout bounds in the Firestore region. | Accepted |
 | D-136 | Sole-1st-gen allowlist enforcement | The single permitted 1st gen function is guarded by the Functions suite and by the Gradle contract check. | Accepted |
 | D-137 | Anonymous cleanup trigger region | The anonymous cleanup trigger is pinned explicitly to europe-west1 with Cloud Firestore and the project's other backend functions. | Accepted |
 | D-138 | Anonymous cleanup trigger runtime bounds and retry policy | The anonymous cleanup trigger runs within explicit instance, memory and timeout bounds with automatic retries enabled. | Accepted |
 | D-139 | Expired anonymous token retry convergence | Permit well-formed expired anonymous ID token on retry if and only if Auth user is already deleted (`auth/user-not-found`) | Superseded |
-| D-140 | Expired anonymous token retry convergence via RS256 signature verification | Cryptographically verify Google RS256 signature (with iat window) of expired anonymous ID token to converge deletion of active Auth user and Firestore data | Accepted |
+| D-140 | Expired anonymous token retry convergence via RS256 signature verification | Cryptographically verify Google RS256 signature (with iat window) of expired anonymous ID token to converge deletion of active Auth user and Firestore data. | Superseded |
+| D-141 | Server-issued orphan-cleanup authorization | Before switching accounts, the authenticated anonymous session receives a single-purpose opaque cleanup ticket; the permanent caller later uses it to delete only the server-bound anonymous identity without any expired-token verification fallback. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

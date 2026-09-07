@@ -33,8 +33,11 @@ adds two callers:
 - `onAnonymousUserDeleted`, the sole permitted 1st gen function, is relied upon only for Firebase's
   automatic anonymous-account cleanup path; delivery from another anonymous deletion is harmless
   overlap;
-- `deleteOrphanedAnonymousAccount`, a 2nd gen callable, verifies the captured anonymous token,
-  deletes that Auth account and invokes `deleteUserData` directly afterward.
+- `issueOrphanCleanupTicket`, a 2nd gen callable, binds a single-purpose authorization to the
+  currently authenticated anonymous UID before the client switches accounts;
+- `deleteOrphanedAnonymousAccount`, a 2nd gen callable, resolves that authorization for the
+  authenticated permanent caller, deletes the bound Auth account and invokes `deleteUserData`
+  directly afterward.
 
 Trigger overlap is expected and harmless. The registry lists every Firestore location and Storage
 prefix owned by the schema. The MVP Storage list is explicitly empty. Executable parity tests fail

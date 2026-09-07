@@ -24,10 +24,11 @@ The current anonymous-session data wins. The app must show an explicit destructi
 that the existing permanent-account data will be replaced. Cancellation leaves the anonymous
 session and all local data unchanged.
 
-After confirmation, the client persists a complete local snapshot and captures a fresh anonymous
-ID token before switching sessions. It signs in with the colliding provider credential, replaces
-the permanent account's remote data with the snapshot and can resume after interruption without
-data loss. It then calls the E3-11 backend operation, which verifies ownership of the abandoned
+After confirmation, the client persists a complete local snapshot and obtains a server-issued,
+single-purpose cleanup ticket while the anonymous session is still active. It stores the ticket in
+the same durable operation marker, signs in with the colliding provider credential, replaces the
+permanent account's remote data with the snapshot and can resume after interruption without data
+loss. It then calls the E3-11 backend operation, which resolves the ticket's server-bound abandoned
 anonymous identity and deletes it.
 
 ## Consequences
@@ -48,4 +49,3 @@ anonymous identity and deletes it.
 - `docs/CONTRACTS.md §11.3`
 - `docs/BACKLOG.md` (`E2-04`, `E3-11`)
 - `D-23`, `D-63`
-

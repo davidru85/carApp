@@ -79,6 +79,7 @@ internal class FunctionGenerationContract private constructor(
         val TD01_EXPORT_SURFACE = listOf(
             "deleteAccount",
             "deleteOrphanedAnonymousAccount",
+            "issueOrphanCleanupTicket",
             "onAnonymousUserDeleted",
             "stopBilling",
         )

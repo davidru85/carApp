@@ -146,15 +146,16 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-129 | Firestore Admin deletion primitive | Sequential `recursiveDelete` for each D-63 registry collection | Accepted | Retains `fuelEntries` before `vehicles`, delegates pagination/retry mechanics to the pinned Admin SDK and scopes references under `users/{uid}`. |
 | D-130 | Transitive `qs` advisory remediation | Lock patched `qs` 6.16.0 inside the existing Express/Body Parser semver ranges | Accepted | Removes two moderate HTTP-parser advisories without a direct override, top-level stack change or install-script exception. |
 | D-131 | Account-deletion callable runtime bounds | `deleteAccount`: at most three instances, one concurrent request per instance, 256 MiB and a 300-second timeout | Accepted | Makes explicit runtime bounds the primary cost control while keeping the D-66 cutoff as a delayed safety net; Functions App Check and a dedicated runtime identity remain separately deferred. |
-| D-132 | Cloud Functions App Check scope | D-67 unchanged; no App Check enforcement on the two deletion callables | Accepted | Closes the D-131 deferral for both callables with one decision; authentication, payload validation and the D-66 budget remain the controls; any future Functions App Check change covers both callables together. |
-| D-133 | Orphan-cleanup callable wire contract | `anonymousIdToken` payload, `ORPHANED_ANONYMOUS_ACCOUNT_DELETED` success literal, closed error codes | Accepted | Gives E2-04 a typed contract and keeps the anonymous-only and permanent-UID guards distinguishable; logs are redacted to stage/status. |
+| D-132 | Cloud Functions App Check scope | D-67 unchanged; no App Check enforcement on the ticket issuer or two deletion callables | Accepted | Closes the callable-surface deferral with one posture; authentication, authorization, payload validation and the D-66 budget remain the controls; any future Functions App Check change covers all three callables together. |
+| D-133 | Orphan-cleanup callable wire contract | `anonymousIdToken` payload, `ORPHANED_ANONYMOUS_ACCOUNT_DELETED` success literal, closed error codes | Superseded | D-141 replaces the token payload while retaining the stable success literal and closed errors. |
 | D-134 | Anonymous cleanup trigger eligibility | Eligible = deleted Auth user with empty `providerData`; otherwise skipped with a redacted log | Accepted | Prevents the Admin-privileged trigger from touching linked or phone accounts while keeping trigger/callable overlap idempotent. |
-| D-135 | Orphan-cleanup callable runtime bounds | `deleteOrphanedAnonymousAccount`: at most two instances, 256 MiB, 60-second timeout, default concurrency | Accepted | Fits the shorter verification-plus-deletion workload while keeping explicit bounds as the primary control; re-evaluated with any registry growth. |
+| D-135 | Orphan-cleanup callable runtime bounds | `deleteOrphanedAnonymousAccount`: at most two instances, 256 MiB, 60-second timeout, default concurrency | Accepted | Fits the shorter authorization-lookup-and-deletion workload while keeping explicit bounds as the primary control; re-evaluated with any registry growth. |
 | D-136 | Sole-1st-gen allowlist enforcement | Functions suite plus a `contractCheck` `FunctionGenerationContract` with a failing fixture | Accepted | Makes the TD-01 exception visible to the CI contract job and the local Gradle contract command; TD-01 closure updates both checks. |
 | D-137 | Anonymous cleanup trigger region | `onAnonymousUserDeleted`: explicit `europe-west1` region pin | Accepted | Colocates trigger execution with Cloud Firestore and the project's other backend functions; eliminates cross-region traffic and preserves D-13 and D-22. |
 | D-138 | Anonymous cleanup trigger runtime bounds and retry policy | `onAnonymousUserDeleted`: at most two instances, 256 MiB, 60-second timeout, with execution retries enabled | Accepted | Explicit runtime bounds control costs while platform retries backstop the deletion guarantee against transient Firestore disruptions. |
 | D-139 | Expired anonymous token retry convergence | Permit well-formed expired anonymous ID token on retry if and only if Auth user is already deleted (`auth/user-not-found`) | Superseded | Superseded by `D-140`; expired token retry convergence cryptographically verifies Google RS256 signatures with an iat window for active Auth deletion and Firestore cleanup. |
-| D-140 | Expired anonymous token retry convergence via RS256 signature verification | Cryptographically verify Google RS256 signature (with iat window) of expired anonymous ID token to converge deletion of active Auth user and Firestore data | Accepted | Guarantees §11.3 retry convergence after interruption during steps 2-4 without trusting unverified claims, without client protocol changes in E2-04, and keeping Auth deletion and Firestore data cleanup fully authorized. |
+| D-140 | Expired anonymous token retry convergence via RS256 signature verification | Cryptographically verify Google RS256 signature (with iat window) of expired anonymous ID token to converge deletion of active Auth user and Firestore data | Superseded | D-141 removes the unsafe hand-written verifier after the review-round security finding. |
+| D-141 | Server-issued orphan-cleanup authorization | Issue a 256-bit ticket while the anonymous session is verified; store only its SHA-256 digest, bound UID, status and 30-day TTL; require it from the permanent caller and mark completion last | Accepted | Removes expired-token verification, narrows authorization to one anonymous UID, keeps retries idempotent, denies the internal collection to mobile clients and lets D-138 converge cleanup after native anonymous-account deletion. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -388,7 +389,9 @@ Rationale:
 
 - User-scoped subcollections make authorization straightforward.
 - Reads are naturally owner-scoped.
-- Delta pull uses the automatic single-field `updatedAt` index; `firestore/firestore.indexes.json` exists and stays empty until a composite index is required.
+- Delta pull uses the automatic single-field `updatedAt` index and requires no composite index.
+  `firestore/firestore.indexes.json` contains only the D-141 unindexed `expiresAt` TTL field override
+  for `orphanCleanupTickets` until a query requires a composite index.
 
 The normative security rule shape, including per-field range validation and the `allow delete: if false` tombstone policy, is in `docs/CONTRACTS.md §16`. It MUST NOT be restated here in a weaker form.
 
@@ -594,9 +597,9 @@ Exact migration surface once E3-10 and E3-11 create it:
 `functions/src/deletion/dataLocationRegistry.ts`,
 `functions/src/deletion/userDeletionService.ts` (`deleteUserData`) and
 `functions/src/callable/deleteOrphanedAnonymousAccount.ts`
-(`deleteOrphanedAnonymousAccount`) are intentionally generation-neutral or 2nd gen and MUST NOT be
-rewritten as part of this migration. That boundary keeps the migration surface narrow and known in
-advance.
+(`issueOrphanCleanupTicket` and `deleteOrphanedAnonymousAccount`) are intentionally
+generation-neutral or 2nd gen and MUST NOT be rewritten as part of this migration. That boundary
+keeps the migration surface narrow and known in advance.
 
 The owner watches both the [Firebase release notes](https://firebase.google.com/support/releases)
 and the [Cloud Functions Authentication trigger documentation](https://firebase.google.com/docs/functions/1st-gen/auth-events).

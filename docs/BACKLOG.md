@@ -666,9 +666,10 @@ Acceptance criteria:
   will be replaced by the current anonymous-session snapshot, gated by
   `Confirmation.AdoptExistingAccount`.
 - Cancelling leaves the anonymous session and local data untouched.
-- Confirmation persists a complete local snapshot and captures a fresh anonymous ID token before
-  switching sessions, replaces the permanent account's remote data idempotently, and keeps a
-  durable operation marker until replacement and orphan cleanup both succeed.
+- Confirmation persists a complete local snapshot and obtains an E3-11 server-issued cleanup
+  ticket before switching sessions, replaces the permanent account's remote data idempotently,
+  and keeps the snapshot and raw ticket in a durable operation marker until replacement and orphan
+  cleanup both succeed.
 - Interruption tests cover every boundary after confirmation, including after the permanent-account
   session switch; retry resumes the captured replacement instead of pulling over it.
 - After replacement, the flow calls the E3-11 2nd gen callable to delete the orphaned anonymous
@@ -783,14 +784,19 @@ Acceptance criteria:
   application relies on it only for Firebase native automatic anonymous cleanup, and it delegates
   eligible deleted anonymous UIDs to E3-10 `deleteUserData`; delivery from another deletion path is
   harmless overlap.
-- `deleteOrphanedAnonymousAccount` is a 2nd gen callable. It verifies the captured anonymous ID
-  token and the permanent caller context, rejects deletion of the current permanent UID, deletes
-  the orphaned anonymous Auth account through the Admin SDK, then invokes `deleteUserData`
-  directly.
+- `issueOrphanCleanupTicket` is a 2nd gen callable. While the anonymous session is active it
+  accepts no client-selected UID, binds an opaque 256-bit ticket to the verified anonymous caller,
+  persists only its digest in a default-denied 30-day TTL record and returns the raw ticket for the
+  durable collision marker.
+- `deleteOrphanedAnonymousAccount` is a 2nd gen callable. It requires the server-issued ticket and
+  a permanent caller context, rejects deletion of the current permanent UID, deletes the
+  server-bound anonymous Auth account through the Admin SDK, invokes `deleteUserData` directly,
+  and marks the ticket completed last. No ID-token verification fallback is permitted.
 - The callable never relies on `onAnonymousUserDeleted` firing. An integration test deletes through
   the Admin SDK path with trigger delivery suppressed or disregarded and still proves
   `users/{uid}` is removed.
-- Both paths are idempotent and concurrent or delayed overlap is harmless.
+- Both deletion paths are idempotent and concurrent or delayed overlap is harmless. Ticket expiry,
+  completed-ticket response loss and retry after each deletion stage are covered.
 - Logs contain no UID, token, raw payload or other forbidden value.
 - The functions, exports and deployment configuration match the exact `TD-01` migration surface;
   a contract check rejects any additional 1st gen function.

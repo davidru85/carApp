@@ -760,18 +760,19 @@ will be replaced by the current anonymous-session snapshot. The MVP never merges
 After confirmation, the operation is ordered as follows:
 
 1. Persist a complete, durable local snapshot of the current anonymous owner's synchronized
-   `Vehicle` and `FuelEntry` rows, including tombstones, and capture a fresh Firebase ID token for
-   that anonymous UID.
+   `Vehicle` and `FuelEntry` rows, including tombstones. While the anonymous session is still
+   active, call `issueOrphanCleanupTicket` and persist the returned `cleanupTicket` in the same
+   durable operation marker. Ticket issuance is a prerequisite for leaving the anonymous session.
 2. Sign into the permanent account that owns the colliding provider credential via `signInWithCredential(credential, allowUidChange = true)` (`D-111`).
 3. Replace that permanent account's remote `vehicles` and `fuelEntries` data with the captured
    snapshot. Replacement is idempotent and resumable; an interrupted attempt resumes from the
    durable snapshot rather than pulling and overwriting it.
 4. Rebuild the permanent owner's local rows from the same snapshot, preserving a recoverable
    operation marker until both the remote replacement and step 5 succeed.
-5. Call `deleteOrphanedAnonymousAccount` with the captured anonymous token. The backend verifies
-   the token, verifies that it represents the abandoned anonymous UID rather than the current
-   permanent UID, deletes that anonymous Firebase Auth account and directly invokes the D-63
-   user-data deletion service for the anonymous UID.
+5. Call `deleteOrphanedAnonymousAccount` with the persisted cleanup ticket. The backend resolves
+   the server-bound abandoned anonymous UID, verifies that it differs from the current permanent
+   UID, deletes that anonymous Firebase Auth account, directly invokes the D-63 user-data deletion
+   service for the anonymous UID, and marks the authorization completed last.
 
 Retry after any interruption MUST converge on the same permanent-account snapshot and the same
 deleted anonymous identity. It MUST NOT re-enter normal recovery pull while the replacement marker
@@ -870,38 +871,41 @@ Two anonymous-deletion entry points reuse this service:
   `region: "europe-west1"` (`D-137`), `memory: "256MB"`, `maxInstances: 2`, `timeoutSeconds: 60`,
   and `failurePolicy: true` (`eventTrigger.retry = true`), ensuring transient Firestore deletion
   failures are retried by Cloud Functions until completion (`D-138`).
-- `deleteOrphanedAnonymousAccount` is a Cloud Functions 2nd gen callable used by the confirmed
-  account-linking collision flow. Its request payload contains `anonymousIdToken: String`; the
-  callable verifies the captured anonymous ID token (requiring the nested claim
-  `firebase.sign_in_provider == "anonymous"` in `DecodedIdToken`) and the
-  authenticated permanent caller context, rejects deletion of the current permanent UID, deletes
-  the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion service
-  directly after that deletion.  Token verification relies on standard Firebase ID token expiry (1 hour) without additional
-  `auth_time` freshness or `checkRevoked` checks, because anonymous accounts cannot re-authenticate
-  or revoke tokens (`D-133`). If verification fails with `auth/id-token-expired`, the callable
-  cryptographically verifies the token's RS256 signature against Google's public certificates,
-  verifying `header.alg == "RS256"`, `kid`, `sub`, the nested
-  `firebase.sign_in_provider == "anonymous"`, and an `iat` (issued-at) within the past 30 days
-  (`D-140`, superseding `D-139`). If valid, the callable queries Admin Auth `getUser`: if the user
-  is present, it deletes the Auth account (`deleteUser`), then completes remote data deletion; if
-  absent (`auth/user-not-found`), it proceeds directly to remote data deletion. In either case,
-  §11.3 retry convergence is guaranteed even after interruptions or delays during steps 2–4. If
-  signature verification fails, `kid` is unknown, `iat` exceeds 30 days, or claims are invalid, the
-  token maps to `invalid-argument`. A successful response is
+- `issueOrphanCleanupTicket` is a Cloud Functions 2nd gen callable used before account switching
+  in the confirmed collision flow. It accepts no client-selected UID, requires authenticated
+  callable context with `firebase.sign_in_provider == "anonymous"`, generates 32 cryptographically
+  random bytes and returns their canonical 43-character base64url encoding as
+  `{ cleanupTicket: String }`. Missing authentication maps to `unauthenticated`, a non-anonymous
+  caller maps to `failed-precondition`, and persistence failure maps to `internal`.
+- The issuer stores only the ticket's SHA-256 digest as the document ID under
+  `orphanCleanupTickets/{ticketHash}`. The server record contains exactly the verified
+  `anonymousUid`, `expiresAt` as a server-generated Firestore timestamp 30 days after issuance,
+  and `status` as `PENDING` or `COMPLETED`. Mobile Firestore clients have no access to this
+  internal collection. `expiresAt` is TTL-enabled and has no single-field indexes. The raw ticket
+  exists only in the callable response and the durable client operation marker (`D-141`).
+- `deleteOrphanedAnonymousAccount` is a Cloud Functions 2nd gen callable used after the permanent
+  snapshot replacement. Its request payload contains `cleanupTicket: String`, in the same
+  canonical 43-character base64url form. The callable requires an authenticated permanent caller,
+  hashes the ticket, resolves the server-bound anonymous UID, rejects an absent or expired ticket,
+  and rejects a bound UID equal to the caller UID. It deletes the anonymous Auth account through
+  the Admin SDK, treating `auth/user-not-found` as idempotent success, invokes `deleteUserData`
+  directly, and changes the authorization to `COMPLETED` only after both deletion stages succeed.
+  A completed, unexpired authorization returns the same successful response without repeating
+  deletion. It MUST NOT use an ID-token or JWT-verification fallback and MUST NOT rely on
+  `onAnonymousUserDeleted` being delivered (`D-141`, superseding `D-133` and `D-140`).
+- A successful deletion response is
   `{ status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED" }`. Missing authentication maps to
-  `unauthenticated`, a missing or invalid `anonymousIdToken` maps to `invalid-argument`, a
-  captured identity that is not anonymous, a non-permanent authenticated caller context, or a
-  captured identity that equals the caller UID maps to `failed-precondition`, and an Admin Auth
-  transient verification failure, public key retrieval failure, user lookup failure, or remote-data
-  deletion failure maps to `internal`. No UID, token, request payload or raw provider failure is
-  attached to callable logs (`D-133`, `D-140`).
-  The callable declares `maxInstances: 2`, `memory: "256MiB"`, `timeoutSeconds: 60` and
-  `region: "europe-west1"` (`D-135`). It MUST NOT rely on `onAnonymousUserDeleted` being
-  delivered.
+  `unauthenticated`; a missing, malformed, absent or expired `cleanupTicket` maps to
+  `invalid-argument`; a non-permanent caller or a bound UID equal to the caller UID maps to
+  `failed-precondition`; and authorization-storage, Admin Auth or remote-data failure maps to
+  `internal`. No UID, raw ticket, ticket hash, request payload or raw provider failure is attached
+  to callable logs.
+- Both callables declare `maxInstances: 2`, `memory: "256MiB"`, `timeoutSeconds: 60` and
+  `region: "europe-west1"` (`D-135`, `D-141`).
 
-Cloud Functions App Check is not enforced for either callable: D-67 remains scoped to
-Authentication and Firestore, and any future extension MUST cover both deletion callables
-together (`D-132`).
+Cloud Functions App Check is not enforced for the ticket issuer or either deletion callable:
+D-67 remains scoped to Authentication and Firestore, and any future extension MUST cover all
+three callables together (`D-132`, `D-141`).
 
 Both paths are idempotent. Trigger/callable overlap is expected and harmless. An integration test
 MUST suppress or disregard trigger delivery for the Admin SDK path and still prove that
@@ -1567,7 +1571,10 @@ later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentI
 limit(200)
 ```
 
-This query is served by the automatic single-field index. `firestore/firestore.indexes.json` MUST exist and MUST be empty until a query requires a composite index.
+This query is served by the automatic single-field index. `firestore/firestore.indexes.json` MUST
+contain no composite indexes. Its only field override is the D-141 `expiresAt` TTL policy for the
+`orphanCleanupTickets` collection group, with `ttl: true` and an empty `indexes` list. Any other
+index or field override requires the story that introduces its query or retention contract.
 
 Required emulator tests:
 

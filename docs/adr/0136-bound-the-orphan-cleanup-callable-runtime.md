@@ -7,7 +7,7 @@ Accepted
 ## Context
 
 D-131 fixed explicit runtime bounds for `deleteAccount`. `deleteOrphanedAnonymousAccount`
-performs an ID-token verification and one Admin Auth deletion before delegating to the same
+performs an authorization-record lookup and one Admin Auth deletion before delegating to the same
 `deleteUserData` purge, so it is lighter than the account-deletion callable but equally
 destructive. Leaving it on provider defaults would repeat the exact risk D-131 rejected.
 
@@ -15,7 +15,7 @@ destructive. Leaving it on provider defaults would repeat the exact risk D-131 r
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| Reuse the exact D-131 bounds (`maxInstances: 3`, `concurrency: 1`, `memory: "256MiB"`, `timeoutSeconds: 300`) | One runtime rule to audit. | Overprovisions a verification-plus-deletion operation; the 300-second timeout was chosen for the user-requested purge, not this path. |
+| Reuse the exact D-131 bounds (`maxInstances: 3`, `concurrency: 1`, `memory: "256MiB"`, `timeoutSeconds: 300`) | One runtime rule to audit. | Overprovisions an authorization-lookup-and-deletion operation; the 300-second timeout was chosen for the user-requested purge, not this path. |
 | Bounds fitted to the workload (`maxInstances: 2`, `memory: "256MiB"`, `timeoutSeconds: 60`, default concurrency) | Keeps an explicit instance cap and memory floor while matching the shorter operation; enough headroom for the awaited `deleteUserData` purge given the bounded MVP collection sizes. | Introduces a second runtime profile to review; a pathological purge can still reach the 60-second limit and must be retried idempotently. |
 | No explicit bounds; rely on the D-66 billing cutoff | No configuration. | Repeats the configuration D-131 already rejected: a delayed cutoff as the primary control and a default timeout that can truncate a destructive operation. |
 

@@ -2,7 +2,23 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-0142 (D-141)
+
+## Closure Update (2026-09-07)
+
+An AI-assisted security review of the PR #60 review-round commits found that the implementation
+did not validate `aud` or `iss`, so a token signed by Google's shared Firebase signer was not bound
+to this Firebase project. It also preferred a custom top-level `uid` claim over the signed JWT
+subject `sub`. Together, those defects let an authenticated permanent caller select an arbitrary
+victim UID for Auth and Firestore deletion. The tests described below did not exercise either
+negative case.
+
+The statement below that signature verification alone "mathematically proves" authorization was
+false: signature authenticity does not establish project audience, issuer, subject selection or
+permission for this destructive operation. Even a corrected implementation would retain a
+hand-written expired-token verifier and certificate-rotation dependency. D-141 therefore removes
+this verifier and supersedes both its authorization model and wire contract with a server-issued,
+single-purpose cleanup ticket.
 
 ## Context
 
@@ -27,7 +43,7 @@ cryptographic signature against Google's public x509 certificates proves authent
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| **Option A (Accepted, D-140): Cryptographic RS256 signature verification against Google public certs with an `iat` window** | Retains the exact `{ anonymousIdToken }` wire contract and F-4 step sequence; guarantees complete convergence whether Auth was deleted or not; mathematically proves Google issued the token for this anonymous account without trusting unverified claims. | Requires fetching and caching Google public certificates; tokens delayed beyond key rotation/`iat` bounds (30 days) require fallback. |
+| **Option A (Accepted at the time, D-140): Cryptographic RS256 signature verification against Google public certs with an `iat` window** | Retained the exact `{ anonymousIdToken }` wire contract and F-4 step sequence. | The implementation omitted project binding and selected the wrong UID claim; even a corrected verifier would require custom JWT validation plus certificate fetching and caching. |
 | Option B: Server-side cleanup authorization ticket / lease in step 1 | Cryptographically authorized by the active session before account switch. | Adds network dependency and complexity to step 1 (E2-04); requires new callable/collection. |
 | Option C: Reorder F-4 lifecycle (delete Auth in step 1, remote data in step 5) | Relies on existing D-139 `auth/user-not-found` path. | Leaves user with a destroyed Auth account if permanent sign-in fails or is cancelled in step 2; changes client protocol contract. |
 
@@ -51,7 +67,8 @@ Superseding D-139, when `deleteOrphanedAnonymousAccount` verifies `anonymousIdTo
 ### Positive
 
 - Complete self-healing convergence under `docs/CONTRACTS.md §11.3` after any interruption in steps 2–4 or delayed retries.
-- Cryptographic proof guarantees authenticity; no unverified claims are trusted.
+- Intended cryptographic authenticity was incomplete and did not prove authorization; the
+  implementation trusted an attacker-controlled UID claim and omitted project binding.
 - No protocol changes in client flow (E2-04) or extra Firestore round trips.
 - Eliminated unexercised seam `getUser?` on `OrphanCleanupAuthGateway`.
 

@@ -38,6 +38,32 @@
 
 ## Entries
 
+### 2026-09-07 — D-141 replaces unsafe expired-token cleanup authorization in PR #60
+
+- **Type:** decision and security remediation
+- **Story / Decision:** `E3-11` / `D-141`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the owner selected the server-issued ticket option. Added
+  `issueOrphanCleanupTicket`, replaced `anonymousIdToken` with `cleanupTicket`, stored only a
+  SHA-256 digest bound to the verified anonymous caller in a default-denied 30-day TTL record,
+  and made deletion completion-last and idempotent. Removed the hand-written JWT verifier,
+  certificate fetch/cache and client-selected UID path. D-141/ADR-0142 supersede D-133 and D-140.
+- **Why:** normal callable authentication at ticket issuance establishes the anonymous UID inside
+  this project, while an unguessable single-purpose capability survives the account switch without
+  reimplementing expired Firebase-token verification on a destructive endpoint.
+- **Documents touched:** Functions implementation and tests, `firestore/firestore.indexes.json`,
+  Firestore rules tests, `docs/SPECIFICATION.md` F-4/§12, `docs/CONTRACTS.md §11.3`/§11.5/§16,
+  `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, ADR-0062, ADR-0064,
+  ADR-0133, ADR-0134, ADR-0141, ADR-0142, `AGENTS.md` and `docs/handoff-E3-11.md`.
+- **Verification:** focused issuance, deletion and retention RED/GREEN cycles; Functions tests 58
+  passed with the emulator test skipped; real Admin Firestore emulator lifecycle passed; Firestore
+  rules 155/155 passed; audit retained only the accepted D-68 moderates; contract and fixture tests
+  passed across 142 decisions/ADRs and five Functions exports; the complete 636-task Android/iOS
+  verification passed; Firebase Functions plus Firestore indexes dry-run completed successfully.
+  Protected PR checks are recorded in PR #60 after the push.
+- **Follow-ups / risks:** E2-04 must obtain and durably persist the ticket before leaving the
+  anonymous session. Human review remains required; the agent does not merge PR #60.
+
 ### 2026-09-07 — Critical expired-token authorization vulnerability found in PR #60
 
 - **Type:** security finding
