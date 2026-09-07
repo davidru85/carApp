@@ -6,6 +6,7 @@ import {
     deleteUserData,
     type UserDataFirestoreGateway,
 } from "../deletion/userDeletionService.js";
+import {isAnonymousAuthUser} from "./anonymousUserEligibility.js";
 
 interface AuthTriggerLogger {
     error(message: string, context: {path: "NATIVE_TRIGGER"}): void;
@@ -25,10 +26,6 @@ interface DeletedAuthUser {
     uid?: string;
 }
 
-function isAnonymous(user: DeletedAuthUser): boolean {
-    return (user.providerData ?? []).length === 0;
-}
-
 export function createAnonymousDeletionHandler(dependencies: AnonymousDeletionDependencies) {
     return async (user: DeletedAuthUser): Promise<void> => {
         const uid = user.uid;
@@ -36,7 +33,7 @@ export function createAnonymousDeletionHandler(dependencies: AnonymousDeletionDe
             dependencies.logger.info("Anonymous cleanup skipped", {reason: "MISSING_UID"});
             return;
         }
-        if (!isAnonymous(user)) {
+        if (!isAnonymousAuthUser(user)) {
             dependencies.logger.info("Anonymous cleanup skipped", {reason: "NOT_ANONYMOUS"});
             return;
         }

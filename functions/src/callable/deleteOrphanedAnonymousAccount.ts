@@ -2,6 +2,10 @@ import {createHash, randomBytes} from "node:crypto";
 import {logger as firebaseLogger} from "firebase-functions";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 
+import {
+    type AuthUserProviderSnapshot,
+    isAnonymousAuthUser,
+} from "../auth/anonymousUserEligibility.js";
 import {firebaseAdminDeletionGateways} from "../deletion/firebaseAdminDeletionGateways.js";
 import {
     deleteUserData,
@@ -63,6 +67,7 @@ export interface OrphanCleanupTicketDependencies {
 
 export interface OrphanCleanupAuthGateway {
     deleteUser(uid: string): Promise<void>;
+    getUser(uid: string): Promise<AuthUserProviderSnapshot | null>;
 }
 
 export interface OrphanCleanupDependencies {
@@ -156,8 +161,24 @@ export function createOrphanCleanupHandler(dependencies: OrphanCleanupDependenci
             );
         }
 
+        let orphanUser: AuthUserProviderSnapshot | null;
         try {
-            await dependencies.auth.deleteUser(orphanUid);
+            orphanUser = await dependencies.auth.getUser(orphanUid);
+        } catch {
+            dependencies.logger.error("Orphaned anonymous cleanup failed", {stage: "AUTH_USER"});
+            throw new HttpsError("internal", "Orphaned anonymous cleanup failed");
+        }
+        if (orphanUser !== null && !isAnonymousAuthUser(orphanUser)) {
+            throw new HttpsError(
+                "failed-precondition",
+                "The cleanup ticket no longer targets an anonymous account",
+            );
+        }
+
+        try {
+            if (orphanUser !== null) {
+                await dependencies.auth.deleteUser(orphanUid);
+            }
         } catch (failure) {
             if (!isMissingAuthUser(failure)) {
                 dependencies.logger.error("Orphaned anonymous cleanup failed", {stage: "AUTH_USER"});

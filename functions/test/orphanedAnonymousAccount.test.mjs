@@ -284,6 +284,7 @@ test("an Auth deletion failure maps to internal and prevents remote deletion", a
 
   assert.deepEqual(harness.calls, [
     ["getAuthorization", ticketHash(CLEANUP_TICKET)],
+    ["getAuthUser", ORPHAN_UID],
     ["deleteAuthUser", ORPHAN_UID],
   ]);
   assert.deepEqual(harness.logs, [[

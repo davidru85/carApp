@@ -37,6 +37,25 @@ export class FirebaseAdminAuthDeletionGateway implements AccountDeletionAuthGate
         await this.auth.deleteUser(uid);
     }
 
+    public async getUser(uid: string): Promise<{providerData: ReadonlyArray<unknown>} | null> {
+        try {
+            const user = await this.auth.getUser(uid);
+            return {providerData: user.providerData};
+        } catch (failure) {
+            if (isMissingAuthUser(failure)) {
+                return null;
+            }
+            throw failure;
+        }
+    }
+
+}
+
+function isMissingAuthUser(failure: unknown): boolean {
+    return failure !== null &&
+        typeof failure === "object" &&
+        "code" in failure &&
+        failure.code === "auth/user-not-found";
 }
 
 const ORPHAN_CLEANUP_TICKETS_COLLECTION = "orphanCleanupTickets";
