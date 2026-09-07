@@ -50,7 +50,7 @@
 
 - Date: 2026-09-07 (critical security finding under review).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: Security remediation GREEN phase for anonymous ticket issuance.
+- Current phase: Security remediation RED phase for ticket-authorized deletion.
   - An AI-assisted security review of commits `519d0b4` and `0aef797` found that the expired-token
     verifier accepts tokens from other Firebase projects because it does not validate `aud` or
     `iss`, and it prefers an attacker-controlled top-level `uid` custom claim over the authentic
@@ -75,8 +75,12 @@
   `createOrphanCleanupTicketHandler` did not exist. GREEN: the same command passes 64 tests with
   the emulator test skipped after adding the minimum handler; the raw ticket is returned only to
   the caller and its SHA-256 digest is bound to the verified anonymous caller UID for 30 days.
-- Open decisions or blockers: none. Exact next step: commit this GREEN behavior, then add the next
-  focused RED test requiring permanent-account cleanup to resolve only a valid stored ticket.
+  Second RED: `cd functions && npm test` executed 66 tests; the focused deletion test failed with
+  `invalid-argument` because the existing handler still requires `anonymousIdToken`; 64 passed and
+  the emulator test was skipped.
+- Open decisions or blockers: none. Exact next step: commit this RED state, remove the expired-token
+  path, and make the existing cleanup handler resolve the ticket digest to its server-bound UID,
+  perform the idempotent Auth/data deletion, and mark the authorization completed last.
 
 ## Scope Completed
 

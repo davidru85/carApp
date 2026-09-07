@@ -59,6 +59,56 @@ test("an authenticated anonymous session receives an opaque cleanup ticket bound
   ]]);
 });
 
+test("a permanent caller uses a valid stored ticket to delete only its bound anonymous account", async () => {
+  const calls = [];
+  const logs = [];
+  const ticketHash = crypto.createHash("sha256").update(CLEANUP_TICKET, "utf8").digest("hex");
+  const handler = createOrphanCleanupHandler({
+    auth: {
+      async deleteUser(uid) {
+        calls.push(["deleteAuthUser", uid]);
+      },
+    },
+    authorizations: {
+      async complete(hash) {
+        calls.push(["completeAuthorization", hash]);
+      },
+      async get(hash) {
+        calls.push(["getAuthorization", hash]);
+        return {
+          anonymousUid: ORPHAN_UID,
+          expiresAtMs: NOW_MS + THIRTY_DAYS_MS,
+          status: "PENDING",
+          ticketHash: hash,
+        };
+      },
+    },
+    clock: {nowMs: () => NOW_MS},
+    firestore: {
+      async deleteCollection(uid, collection) {
+        calls.push(["deleteCollection", uid, collection]);
+      },
+    },
+    logger: testLogger(logs),
+  });
+
+  const result = await handler(authed({cleanupTicket: CLEANUP_TICKET}));
+
+  assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
+  assert.deepEqual(calls, [
+    ["getAuthorization", ticketHash],
+    ["deleteAuthUser", ORPHAN_UID],
+    ["deleteCollection", ORPHAN_UID, "fuelEntries"],
+    ["deleteCollection", ORPHAN_UID, "vehicles"],
+    ["completeAuthorization", ticketHash],
+  ]);
+  assert.deepEqual(logs, [[
+    "info",
+    "Orphaned anonymous cleanup completed",
+    {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"},
+  ]]);
+});
+
 test("an unauthenticated call is rejected before any verification or deletion", async () => {
   const harness = orphanHarness();
 
