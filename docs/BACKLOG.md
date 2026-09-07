@@ -1009,6 +1009,74 @@ Acceptance criteria:
 
 Depends on: E3-02 or later (whichever sync-engine story first consumes `entityType`).
 
+### E3-14 - Orphan Cleanup Ticket Issuance Hardening - M
+
+Tracked as two post-merge security and privacy findings of the `E3-11` review of pull request #60.
+Both are defects in merged behaviour, not new features.
+
+Finding 1 (partial, the Ready half): `issueOrphanCleanupTicket` trusts `request.auth.uid` and the
+token's `firebase.sign_in_provider` claim without asking the Admin SDK whether that user still
+exists, is enabled and is still anonymous. Callable token verification performs no revocation or
+current-user check, so an ID token minted while the account was anonymous stays valid for the rest
+of its lifetime after the account is linked, disabled or deleted. A stale token can therefore mint
+a cleanup ticket for an identity that is no longer eligible for one.
+
+Finding 2: `createAnonymousDeletionHandler` logs a redacted line and then rethrows the original
+provider exception. An uncaught Cloud Functions exception reaches runtime logging and Error
+Reporting, so the raw Firestore failure text, which can carry a UID-bearing resource path, escapes
+the redaction posture of `docs/CONTRACTS.md §11.5` and `D-128`.
+
+Acceptance criteria:
+
+- `issueOrphanCleanupTicket` resolves the caller's current Auth record through the Admin SDK before
+  it writes anything, and rejects with `failed-precondition` unless that record exists, is enabled
+  and still satisfies the shared `D-134` anonymity predicate. A missing record rejects too.
+- A rejected issuance MUST NOT create an authorization record, and MUST NOT leak the UID, the token,
+  the payload or the raw provider failure into its logs or its error.
+- An Admin lookup failure maps to `internal` with the redacted `AUTH_USER` stage log, distinct from
+  the eligibility rejection.
+- `createAnonymousDeletionHandler` rejects with a newly constructed sanitized error that carries no
+  original message, stack, cause, UID, Firestore path, token or payload. The rejection is preserved,
+  so `failurePolicy: true` still retries the delivery.
+- Existing `E3-10` and `E3-11` behaviour and tests are preserved, including consumption,
+  completion-last semantics and idempotent retries.
+
+Depends on: E3-10, E3-11.
+
+Does **not** close the issuance/deletion interleaving; that is `E3-15`.
+
+Human review required.
+
+### E3-15 - Close the Ticket Issuance and Account Deletion Interleaving - M
+
+**Not Ready.** Blocked on owner decision `D-149`, which is `Proposed` in `docs/DECISION_BOARD.md`
+with its options in [ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md).
+
+`E3-14` stops a stale token from minting a ticket, but it cannot by itself guarantee that no
+UID-bound authorization survives a successful account deletion. The normative deletion order of
+`docs/CONTRACTS.md §11.5` is: remote data, then the authorization purge, then the Firebase Auth
+user. An issuance whose Admin eligibility check passes before the purge, and whose Firestore write
+lands after it, leaves an authorization record behind while `deleteAccount` still returns success.
+No amount of checking inside the issuer closes that window, because at the moment of the write the
+Auth user legitimately still exists.
+
+Closing it requires changing something outside the issuer: the deletion order, an additional purge
+pass, or a new server-side marker. Each option has different costs, so the owner selects one.
+
+Acceptance criteria (to be finalised once `D-149` is accepted):
+
+- Every meaningful interleaving of `issueOrphanCleanupTicket` and `deleteAccount` for the same UID
+  converges with zero UID-bound authorization records once account deletion returns success.
+- The issuer never returns a ticket whose authorization was concurrently removed and is therefore
+  already unusable.
+- No client-selected UID, JWT verification fallback or weaker authorization path is introduced.
+- Consumption, completion-last semantics and idempotent retries stay intact.
+- The interleavings are proven against the real Firestore emulator, not only against fakes.
+
+Depends on: E3-14, `D-149`.
+
+Human review required.
+
 ## Phase 4 - MVP Hardening
 
 ### E4-01 - Settings UI - S
@@ -1381,6 +1449,8 @@ proof after E3-04.
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
+| E3-14 Orphan cleanup ticket issuance hardening | 3 | M | Yes |
+| E3-15 Close the ticket issuance and account deletion interleaving | 3 | M | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |
