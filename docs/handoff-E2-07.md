@@ -56,7 +56,8 @@
 - Current phase and latest commit: refactor phase; the decision records, the contract updates and
   this handoff are the last change of the story.
 - Push and pull-request status: pull request #61 is open with all ten required checks green, after
-  one `E1-14` flake re-run of `shared-tests` on the identical commit.
+  one `E1-14` re-run of `shared-tests` and one `E1-17` re-run of `ios-simulator-build`, both on
+  identical code.
 - Completed since the previous checkpoint: red phase (18 failing tests), green phase (schedule,
   schema version 2 and its migration, persistence, session behaviour, both hosts and the
   regenerated golden header), and the refactor phase recorded here.
@@ -231,6 +232,10 @@
 - `E1-14` also fires on `:shared:testAndroidHostTest`, which this story observed and recorded in the
   backlog. Its acceptance criteria still name only `:shared:iosSimulatorArm64Test`; whoever takes
   `E1-14` MUST cover both targets, or a red `shared-tests` stays ambiguous on the JVM side.
+- `E1-17` also recurred on this pull request, on a Markdown-only commit whose iOS binary was
+  identical to the preceding green one. The two flakes cost this story two re-runs of jobs that
+  were green on the identical code, which is the concrete price of leaving `E1-14` and `E1-17`
+  open.
 
 ## Human Review Gate
 

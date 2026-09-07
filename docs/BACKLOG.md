@@ -1164,6 +1164,12 @@ Evidence, all on the same day:
   creation before the timeout". The other two tests in the class passed in the same execution.
 - Re-running that job on the same commit, with nothing changed, passed.
 - Run `34051112907` on `main`, whose product code is identical to that commit, passed the same job.
+- Recurred on 2026-09-07 in run `34143700898`, job `101811041469`, commit `6f15e77` of pull request
+  #61 (`E2-07`): the same test, the same `VehicleAndFuelFlowUITests.swift:214` and the same
+  "Onboarding did not reach vehicle creation before the timeout". That commit changes Markdown only,
+  so the iOS binary was identical to the preceding commit whose `ios-simulator-build` had just
+  passed, and re-running the job on the same commit passed. The flake therefore survives across
+  stories and is unrelated to the change under test.
 
 The helper that fails is the shared onboarding wait at `VehicleAndFuelFlowUITests.swift:194-214`. It
 polls for 30 seconds and taps `welcome_guest` and `add_vehicle` behind the one-shot latches

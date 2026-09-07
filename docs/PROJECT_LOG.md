@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-09-07 — E1-17 recurred on a Markdown-only commit in pull request #61
+
+- **Type:** correction
+- **Story / Decision:** `E1-17` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the `E1-17` evidence in `docs/BACKLOG.md` records a second occurrence, in run
+  `34143700898` on commit `6f15e77` of pull request #61, with the same test, the same
+  `VehicleAndFuelFlowUITests.swift:214` and the same "Onboarding did not reach vehicle creation
+  before the timeout".
+- **Why:** that commit changes Markdown only, so the iOS binary was identical to the preceding
+  commit whose `ios-simulator-build` had just passed. It is the cleanest possible demonstration that
+  the flake is independent of the change under test, and it shows the defect survives across
+  stories rather than being tied to `E1-09` or `E2-03`.
+- **Documents touched:** `docs/BACKLOG.md` (`E1-17`), `docs/handoff-E2-07.md` and this log.
+- **Verification:** re-running the job on the same commit passed, and the ten required checks are
+  green.
+- **Follow-ups / risks:** `E1-14` and `E1-17` together cost `E2-07` two re-runs of jobs that were
+  green on identical code. Until both are fixed, a red `shared-tests` or `ios-simulator-build` is
+  not by itself evidence of a regression, which is exactly the ambiguity `AGENTS.md` warns about.
+
 ### 2026-09-07 — E1-14 also fires on the Android host target
 
 - **Type:** correction
