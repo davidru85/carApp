@@ -51,7 +51,24 @@
 - Date: 2026-09-07.
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, created from `main` at
   `6c74b5e` in the isolated worktree `/private/tmp/carapp-worktrees/E3-11` (required after the
-  2026-09-06 shared-clone incident). No local or remote commits yet.
+  2026-09-06 shared-clone incident).
+- Current phase and latest commit: story complete pending the gated owner review. TDD commits
+  `4d43d1c` (RED), `cb83d82` (GREEN), `29e54ca` (REFACTOR), checkpoint `53e59f8` and
+  decision-record commit `9cf92b1` are pushed.
+- Push and pull-request status: branch pushed through `9cf92b1`; pull request #60 at
+  `https://github.com/davidru85/carApp/pull/60` is marked ready for review. The agent will not
+  merge it.
+- Completed since the previous checkpoint: recorded D-132 through D-136 with ADR-0133 through
+  ADR-0137, updated `docs/CONTRACTS.md §11.5` and the four decision mirrors, added
+  `contractCheck` assertion 21 with its failing fixtures, appended the six project-log entries,
+  refreshed `AGENTS.md` repository state and added the E3-10 closure update.
+- Verification evidence and known failures: `npm test` 47/47; `npm run audit` exit 0 with only
+  the seven D-68 moderates; Firestore rules 154/154; complete non-instrumented Gradle command
+  636 actionable tasks BUILD SUCCESSFUL including assertion 21 and the fixture suite;
+  `git diff --check` clean. No known failures.
+- Open decisions or blockers: none.
+- Exact next step: the owner reviews and merges pull request #60; the agent then reports the CI
+  result.
 - Current phase and latest commit: REFACTOR phase verification complete locally; the only
   refactor change relinquishes the bespoke `internal` rethrow in the trigger in favor of the
   original failure, with the test asserting rejection instead of a bespoke code. `npm test`
