@@ -73,6 +73,11 @@ test(
           logs.push(["info", message, context]);
         },
       },
+      publicKeyFetcher: {
+        async fetchKeys() {
+          return {};
+        },
+      },
     });
 
     // Trigger delivery is suppressed: no Auth trigger runs or is required for this cleanup path

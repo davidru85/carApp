@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import test from "node:test";
 
 import {createOrphanCleanupHandler} from "../lib/callable/deleteOrphanedAnonymousAccount.js";
+
+const testKeyPair = crypto.generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: {type: "spki", format: "pem"},
+  privateKeyEncoding: {type: "pkcs8", format: "pem"},
+});
+const TEST_KID = "test-kid";
 
 const PERMANENT_UID = "permanent-1";
 const ORPHAN_UID = "orphan-1";
@@ -380,6 +388,88 @@ test("a transient failure during user lookup on expired token retry maps to inte
   ]);
 });
 
+test("an expired token with an invalid cryptographic signature is rejected with invalid-argument", async () => {
+  const otherKeyPair = crypto.generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: {type: "spki", format: "pem"},
+    privateKeyEncoding: {type: "pkcs8", format: "pem"},
+  });
+  // Signed with a different private key that does not match the public key for TEST_KID
+  const invalidSigToken = makeJwt(
+    {sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}},
+    {privateKey: otherKeyPair.privateKey},
+  );
+  const harness = orphanHarness({
+    authUserMissing: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: invalidSigToken})),
+    (failure) => failure.code === "invalid-argument",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", invalidSigToken]]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("an expired token with an unknown kid is rejected with invalid-argument", async () => {
+  const unknownKidToken = makeJwt(
+    {sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}},
+    {kid: "unknown-kid"},
+  );
+  const harness = orphanHarness({
+    authUserMissing: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: unknownKidToken})),
+    (failure) => failure.code === "invalid-argument",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", unknownKidToken]]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("an expired token with iat older than 30 days is rejected with invalid-argument", async () => {
+  const thirtyOneDaysAgoSeconds = Math.floor(Date.now() / 1000) - (31 * 24 * 3600);
+  const tooOldToken = makeJwt(
+    {sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}},
+    {iat: thirtyOneDaysAgoSeconds},
+  );
+  const harness = orphanHarness({
+    authUserMissing: true,
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: tooOldToken})),
+    (failure) => failure.code === "invalid-argument",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", tooOldToken]]);
+  assert.deepEqual(harness.logs, []);
+});
+
+test("a transient failure during public key retrieval on expired token retry maps to internal", async () => {
+  const expiredToken = makeJwt({sub: ORPHAN_UID, firebase: {sign_in_provider: "anonymous"}});
+  const harness = orphanHarness({
+    publicKeyFetcherError: new Error("network timeout fetching google certs"),
+    verifyError: Object.assign(new Error("token expired"), {code: "auth/id-token-expired"}),
+  });
+
+  await assert.rejects(
+    harness.handler(authed({anonymousIdToken: expiredToken})),
+    (failure) => failure.code === "internal",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", expiredToken]]);
+  assert.deepEqual(harness.logs, [
+    ["error", "Orphaned anonymous cleanup failed", {stage: "AUTH_USER"}],
+  ]);
+});
+
 function authed(data = {anonymousIdToken: ORPHAN_TOKEN}) {
   return {
     auth: {
@@ -394,10 +484,22 @@ function authed(data = {anonymousIdToken: ORPHAN_TOKEN}) {
   };
 }
 
-function makeJwt(payload) {
-  const header = Buffer.from(JSON.stringify({alg: "RS256", kid: "test-kid"})).toString("base64url");
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const sig = Buffer.from("sig").toString("base64url");
+function makeJwt(payload, {
+  kid = TEST_KID,
+  privateKey = testKeyPair.privateKey,
+  alg = "RS256",
+  iat = Math.floor(Date.now() / 1000),
+} = {}) {
+  const fullPayload = {...payload};
+  if (fullPayload.iat === undefined) {
+    fullPayload.iat = iat;
+  }
+  const header = Buffer.from(JSON.stringify({alg, kid})).toString("base64url");
+  const body = Buffer.from(JSON.stringify(fullPayload)).toString("base64url");
+  const data = Buffer.from(`${header}.${body}`, "utf8");
+  const sign = crypto.createSign("RSA-SHA256");
+  sign.update(data);
+  const sig = sign.sign(privateKey).toString("base64url");
   return `${header}.${body}.${sig}`;
 }
 
@@ -421,6 +523,8 @@ function orphanHarness({
   failCollection,
   failCollectionOnce,
   getUserError,
+  publicKeyFetcherError,
+  publicKeyMap = {[TEST_KID]: testKeyPair.publicKey},
   userExistsInAuth = false,
   verified = verifiedToken(),
   verifyError,
@@ -479,6 +583,14 @@ function orphanHarness({
       },
       info(message, context) {
         logs.push(["info", message, context]);
+      },
+    },
+    publicKeyFetcher: {
+      async fetchKeys() {
+        if (publicKeyFetcherError !== undefined) {
+          throw publicKeyFetcherError;
+        }
+        return publicKeyMap;
       },
     },
   });
