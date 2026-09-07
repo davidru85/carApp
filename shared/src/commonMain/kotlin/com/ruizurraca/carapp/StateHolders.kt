@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
@@ -13,6 +14,7 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.FuelType
+import com.ruizurraca.carapp.feature.session.domain.AnonymousReminderRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -20,11 +22,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+@Suppress("UnusedPrivateProperty")
 class SessionStateHolder internal constructor(
     private val scope: CoroutineScope? = null,
     private val authClient: AuthClient? = null,
     // Not exported: the constructor is internal, so this stays out of the Swift-facing surface.
     private val onLocalStartAccepted: () -> Unit = {},
+    private val clock: AppClock? = null,
+    private val anonymousReminders: AnonymousReminderRepository? = null,
 ) {
     private var closed = false
     private var operationJob: Job? = null
@@ -74,6 +79,7 @@ class SessionStateHolder internal constructor(
                                         code = result.error.code,
                                         confirmation = null,
                                     ),
+                                anonymousReminderIndex = null,
                             )
                         }
                     }
@@ -122,6 +128,20 @@ class SessionStateHolder internal constructor(
                 isBusy = false,
                 message = reason.toReportableAuthError()?.toUiMessage(),
             )
+    }
+
+    /**
+     * Evaluates the `D-62` reminder schedule on app launch and foreground return
+     * (`docs/CONTRACTS.md §11.3`). It introduces no scheduler, alarm or operating-system
+     * notification: the host calls it from its own foreground lifecycle.
+     */
+    fun evaluateAnonymousReminder() {
+        // RED: declared without behaviour so the reminder session tests compile and execute.
+    }
+
+    /** Dismisses the reminder currently shown. Its index stays consumed. */
+    fun dismissAnonymousReminder() {
+        // RED: declared without behaviour so the reminder session tests compile and execute.
     }
 
     fun startAccountConversion(provider: AuthProvider) = provider.let { Unit }
@@ -220,9 +240,9 @@ private fun AuthState?.toSessionUiState(): SessionUiState =
     when (this) {
         null,
         AuthState.Unknown,
-        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null)
+        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null, null)
 
-        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null)
+        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null, null)
 
         is AuthState.SignedIn -> session.toSessionUiState()
     }
@@ -233,6 +253,7 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         providers = AuthProvider.entries.filter(providers::contains),
         isBusy = false,
         message = null,
+        anonymousReminderIndex = null,
     )
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L

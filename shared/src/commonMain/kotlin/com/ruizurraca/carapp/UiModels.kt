@@ -18,6 +18,11 @@ data class SessionUiState(
     val providers: List<AuthProvider>,
     val isBusy: Boolean,
     val message: UiMessage?,
+    /**
+     * The zero-based index of the `D-62` anonymous sign-in benefit reminder currently offered, or
+     * `null` when no reminder is being shown (`docs/CONTRACTS.md §11.3`).
+     */
+    val anonymousReminderIndex: Int?,
 )
 
 data class SyncUiState(

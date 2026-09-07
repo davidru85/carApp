@@ -27,6 +27,7 @@ class OnboardingFlowTest {
                         providers = emptyList(),
                         isBusy = false,
                         message = null,
+                        anonymousReminderIndex = null,
                     ),
                 onGoogle = { selectedProvider = AuthProvider.GOOGLE },
                 onContinueWithoutAccount = { anonymousStarts += 1 },

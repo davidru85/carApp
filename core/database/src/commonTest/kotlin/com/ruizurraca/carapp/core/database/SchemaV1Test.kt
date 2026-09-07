@@ -24,6 +24,7 @@ class SchemaV1Test {
 
             assertEquals(
                 listOf(
+                    "anonymous_reminder",
                     "fuel_entry",
                     "local_sequence",
                     "outbox",
