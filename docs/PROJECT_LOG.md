@@ -228,7 +228,7 @@
   Firestore rules tests, the dependency audit, `contractCheck` with 146 aligned decisions, the
   complete required Gradle command and the Functions and indexes dry-run all pass. One `E1-14`
   flake occurred on `iosSimulatorArm64` and did not reproduce; this branch changes no Kotlin source
-  outside `build-logic`.
+  outside `build-logic`. The ten protected checks pass on pull request #63 on the first run.
 - **Follow-ups / risks:** the issuance/deletion interleaving is **not** closed. It is `E3-15`,
   blocked on the `Proposed` `D-149`, and until that decision is taken one UID-bound authorization
   can outlive a successful account deletion and is removed only by the 30-day TTL.

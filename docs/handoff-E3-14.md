@@ -168,7 +168,10 @@ Commands and results:
   `onAnonymousUserDeleted` declares `failurePolicy: true` (`D-138`); the flag suppresses the
   confirmation prompt and does not deploy under `--dry-run`.
 - `git diff --check`: clean.
-- The ten protected checks: recorded in the pull request once they complete.
+- The ten protected checks on pull request #63, run `34170210421`: all ten pass on the first run,
+  with no re-run. `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
+  `provider-decoupling` and `shared-tests`.
 
 ### The one failure that occurred
 
