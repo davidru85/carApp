@@ -182,6 +182,9 @@ private fun VehicleApp(
     val vehicleState by viewModel.vehicleListStateHolder.state.collectAsState()
     val onGoogle = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
 
+    // Launch and foreground return are the only evaluation moments of the D-62 schedule (§11.3).
+    OnForegroundReturn(viewModel.sessionStateHolder::evaluateAnonymousReminder)
+
     when (resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)) {
         OnboardingDestination.WAITING -> {
             WaitingIndicator()
@@ -198,7 +201,11 @@ private fun VehicleApp(
         OnboardingDestination.FIRST_VEHICLE,
         OnboardingDestination.VEHICLE_LIST,
         -> {
-            AuthenticatedApp(viewModel = viewModel, vehicleState = vehicleState)
+            AuthenticatedApp(
+                viewModel = viewModel,
+                vehicleState = vehicleState,
+                anonymousReminderIndex = sessionState.anonymousReminderIndex,
+            )
         }
     }
 }
@@ -213,24 +220,42 @@ private fun VehicleApp(
 private fun AuthenticatedApp(
     viewModel: VehicleAppViewModel,
     vehicleState: VehicleListUiState,
+    anonymousReminderIndex: Int?,
 ) {
     val navController = rememberNavController()
     var firstVehicleCreationPresented by rememberSaveable { mutableStateOf(false) }
     val gate = vehicleListGate(isLoading = vehicleState.isLoading, hasMessage = vehicleState.message != null)
     var previousGate by rememberSaveable { mutableStateOf(gate) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = VehicleRoutes.LIST,
-        ) {
-            vehicleRoutes(navController, viewModel)
-            fuelEntryRoutes(navController, viewModel)
+    Column(modifier = Modifier.fillMaxSize()) {
+        // The notice sits above the product surface instead of over it, so it never gates a feature.
+        anonymousReminderIndex?.let { index ->
+            AnonymousReminderBanner(
+                index = index,
+                onDismiss = viewModel.sessionStateHolder::dismissAnonymousReminder,
+            )
         }
-        when (gate) {
-            VehicleListGate.WAITING -> WaitingIndicator()
-            VehicleListGate.UNREADABLE -> UnreadableVehicleList(onRetry = viewModel.vehicleListStateHolder::refresh)
-            VehicleListGate.RESOLVED -> Unit
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = VehicleRoutes.LIST,
+            ) {
+                vehicleRoutes(navController, viewModel)
+                fuelEntryRoutes(navController, viewModel)
+            }
+            when (gate) {
+                VehicleListGate.WAITING -> {
+                    WaitingIndicator()
+                }
+
+                VehicleListGate.UNREADABLE -> {
+                    UnreadableVehicleList(onRetry = viewModel.vehicleListStateHolder::refresh)
+                }
+
+                VehicleListGate.RESOLVED -> {
+                    Unit
+                }
+            }
         }
     }
 

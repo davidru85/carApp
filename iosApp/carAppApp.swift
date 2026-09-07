@@ -6,6 +6,7 @@ import SwiftUI
 
 @main
 struct carAppApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var model: WalkingSkeletonModel
     private let graph: SwiftAppGraph
 
@@ -22,6 +23,11 @@ struct carAppApp: App {
             ContentView(model: model, graph: graph)
                 .onOpenURL { url in
                     GIDSignIn.sharedInstance.handle(url)
+                }
+                .onChange(of: scenePhase) { newPhase in
+                    if newPhase == .active {
+                        model.evaluateAnonymousReminder()
+                    }
                 }
         }
     }

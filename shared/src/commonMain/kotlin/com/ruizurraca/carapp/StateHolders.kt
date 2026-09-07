@@ -15,6 +15,7 @@ import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.feature.session.domain.AnonymousReminderRepository
+import com.ruizurraca.carapp.feature.session.domain.dueAnonymousReminderIndex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -22,7 +23,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-@Suppress("UnusedPrivateProperty")
 class SessionStateHolder internal constructor(
     private val scope: CoroutineScope? = null,
     private val authClient: AuthClient? = null,
@@ -33,6 +33,7 @@ class SessionStateHolder internal constructor(
 ) {
     private var closed = false
     private var operationJob: Job? = null
+    private var reminderJob: Job? = null
     private var activePermanentProvider: AuthProvider? = null
     private val mutableState =
         MutableStateFlow(authClient?.authState?.value.toSessionUiState())
@@ -41,7 +42,20 @@ class SessionStateHolder internal constructor(
         if (scope != null && authClient != null) {
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 authClient.authState.collect { authState ->
-                    if (!closed) mutableState.value = authState.toSessionUiState()
+                    if (closed) return@collect
+                    val next = authState.toSessionUiState()
+                    // A session that is still the same anonymous one keeps the notice it is
+                    // already showing; every other phase drops it.
+                    mutableState.value =
+                        if (next.phase == SessionPhase.ANONYMOUS) {
+                            next.copy(anonymousReminderIndex = mutableState.value.anonymousReminderIndex)
+                        } else {
+                            next
+                        }
+                    // Permanent sign-in and successful linking end the schedule (§11.3).
+                    if (authState is AuthState.SignedIn && !authState.session.isAnonymous) {
+                        anonymousReminders?.clear()
+                    }
                 }
             }
         } else {
@@ -136,12 +150,18 @@ class SessionStateHolder internal constructor(
      * notification: the host calls it from its own foreground lifecycle.
      */
     fun evaluateAnonymousReminder() {
-        // RED: declared without behaviour so the reminder session tests compile and execute.
+        if (closed || reminderJob?.isActive == true) return
+        val operationScope = scope ?: return
+        val session = (authClient?.authState?.value as? AuthState.SignedIn)?.session ?: return
+        // The schedule is disabled for the sentinel owner, signed-out and permanent sessions.
+        if (!session.isAnonymous) return
+        reminderJob = operationScope.launch { publishDueReminder(session) }
     }
 
     /** Dismisses the reminder currently shown. Its index stays consumed. */
     fun dismissAnonymousReminder() {
-        // RED: declared without behaviour so the reminder session tests compile and execute.
+        if (closed) return
+        mutableState.value = mutableState.value.copy(anonymousReminderIndex = null)
     }
 
     fun startAccountConversion(provider: AuthProvider) = provider.let { Unit }
@@ -166,6 +186,8 @@ class SessionStateHolder internal constructor(
         closed = true
         operationJob?.cancel()
         operationJob = null
+        reminderJob?.cancel()
+        reminderJob = null
         authStateJob?.cancel()
         activePermanentProvider = null
     }
@@ -204,6 +226,35 @@ class SessionStateHolder internal constructor(
                         }
                     }
             }
+    }
+
+    /**
+     * Persisting the index before publishing it is what consumes every lower pending reminder. A
+     * notice shown before its index survived would come back on the next foreground return, and a
+     * failure the owner cannot act on is not worth reporting for a non-blocking notice.
+     */
+    private suspend fun publishDueReminder(session: AuthSession) {
+        val reminders = anonymousReminders ?: return
+        val dueIndex = dueReminderIndexFor(session) ?: return
+        if (reminders.recordShown(session.uid, dueIndex) is Outcome.Err) return
+        if (!closed) {
+            mutableState.value = mutableState.value.copy(anonymousReminderIndex = dueIndex)
+        }
+    }
+
+    private suspend fun dueReminderIndexFor(session: AuthSession): Int? {
+        val accountCreatedAt = session.createdAt
+        val appClock = clock
+        // An identity with no provider creation timestamp has no anchor to measure elapsed days
+        // from, so it is left alone rather than measured from an invented origin.
+        if (accountCreatedAt == null || appClock == null) return null
+        val storedIndex = anonymousReminders?.lastShownIndex(session.uid)
+        if (storedIndex !is Outcome.Ok) return null
+        return dueAnonymousReminderIndex(
+            accountCreatedAt = accountCreatedAt,
+            now = appClock.now(),
+            lastShownIndex = storedIndex.value,
+        )
     }
 
     private fun publishError(error: AuthError) {

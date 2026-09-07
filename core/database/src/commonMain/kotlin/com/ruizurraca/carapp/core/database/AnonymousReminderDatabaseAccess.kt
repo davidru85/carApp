@@ -1,5 +1,7 @@
 package com.ruizurraca.carapp.core.database
 
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+
 /** The device-local anonymous reminder schedule position of `docs/CONTRACTS.md §11.3`. */
 data class AnonymousReminderRow(
     val anonymousUid: String,
@@ -7,20 +9,23 @@ data class AnonymousReminderRow(
 )
 
 /** Keeps SQLDelight-generated anonymous reminder types inside `:core:database`. */
-@Suppress("UnusedPrivateProperty", "FunctionOnlyReturningConstant", "UnusedParameter")
 class AnonymousReminderDatabaseAccess(
     private val database: AppDatabase,
 ) {
-    suspend fun selectReminder(): AnonymousReminderRow? {
-        // RED: declared without behaviour so the reminder persistence tests compile and execute.
-        return null
-    }
+    suspend fun selectReminder(): AnonymousReminderRow? =
+        database.databaseQueries
+            .selectAnonymousReminder()
+            .awaitAsOneOrNull()
+            ?.let { row -> AnonymousReminderRow(row.anonymousUid, row.lastShownIndex.toInt()) }
 
     suspend fun upsertReminder(row: AnonymousReminderRow) {
-        // RED: declared without behaviour so the reminder persistence tests compile and execute.
+        database.databaseQueries.upsertAnonymousReminder(
+            anonymousUid = row.anonymousUid,
+            lastShownIndex = row.lastShownIndex.toLong(),
+        )
     }
 
     suspend fun deleteReminder() {
-        // RED: declared without behaviour so the reminder persistence tests compile and execute.
+        database.databaseQueries.deleteAnonymousReminder()
     }
 }

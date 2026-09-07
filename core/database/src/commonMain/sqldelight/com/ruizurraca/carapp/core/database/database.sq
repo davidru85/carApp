@@ -367,3 +367,19 @@ DELETE FROM outbox
 WHERE entityType = 'VEHICLE'
   AND entityId = :entityId
   AND localRevision = :pushedLocalRevision;
+
+selectAnonymousReminder:
+SELECT anonymousUid, lastShownIndex
+FROM anonymous_reminder
+WHERE id = 0;
+
+upsertAnonymousReminder:
+INSERT INTO anonymous_reminder(id, anonymousUid, lastShownIndex)
+VALUES (0, :anonymousUid, :lastShownIndex)
+ON CONFLICT(id) DO UPDATE SET
+  anonymousUid = excluded.anonymousUid,
+  lastShownIndex = excluded.lastShownIndex;
+
+deleteAnonymousReminder:
+DELETE FROM anonymous_reminder
+WHERE id = 0;

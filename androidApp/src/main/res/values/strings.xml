@@ -90,4 +90,10 @@
     <string name="error_future_date">The date cannot be in the future.</string>
     <string name="error_money_input">Enter the two required monetary values.</string>
     <string name="error_currency">Select a supported currency.</string>
+    <string name="anonymous_reminder_title">Your data lives only on this device</string>
+    <string name="anonymous_reminder_body_1">Sign in with Google to keep your vehicles and refuels recoverable. Until you do, this account belongs to this device only and Firebase deletes it after 30 days without use.</string>
+    <string name="anonymous_reminder_body_2">Your vehicles and refuels are still stored on this device only. Sign in with Google to make them recoverable elsewhere; an unlinked account is deleted after 30 days without use.</string>
+    <string name="anonymous_reminder_body_3">This account is still not linked. Sign in with Google to keep your data recoverable, because an unlinked account is deleted after 30 days without use.</string>
+    <string name="anonymous_reminder_body_4">Last reminder: this account still belongs to this device only and is deleted after 30 days without use. Sign in with Google to keep your vehicles and refuels recoverable.</string>
+    <string name="anonymous_reminder_dismiss">Dismiss</string>
 </resources>

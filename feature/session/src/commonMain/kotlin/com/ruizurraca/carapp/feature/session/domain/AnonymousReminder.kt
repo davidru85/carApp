@@ -9,10 +9,10 @@ import kotlin.time.Instant
 
 /**
  * The fixed elapsed-day thresholds of the `D-62` anonymous sign-in benefit reminder schedule
- * (`docs/CONTRACTS.md §11.3`). The list is the single configuration constant of the schedule and
- * its position in the list is the zero-based reminder index.
+ * (`docs/CONTRACTS.md §11.3`). The list is the single configuration constant of the schedule and a
+ * threshold's position in it is the zero-based reminder index.
  */
-val ANONYMOUS_REMINDER_ELAPSED_DAYS: List<Int> = emptyList()
+val ANONYMOUS_REMINDER_ELAPSED_DAYS: List<Int> = listOf(1, 3, 8, 18)
 
 /**
  * The highest due reminder index that has not been shown yet, or `null` when this evaluation emits
@@ -21,16 +21,23 @@ val ANONYMOUS_REMINDER_ELAPSED_DAYS: List<Int> = emptyList()
  * [accountCreatedAt] is the Firebase anonymous user-creation timestamp, which anchors the schedule.
  * [lastShownIndex] is the persisted zero-based index of the last reminder shown on this device, or
  * `null` when none has been shown.
+ *
+ * Only the highest due index is returned, so a device that returns after an inactive period shows
+ * one notice instead of replaying the backlog it missed. Persisting that index consumes every lower
+ * pending reminder.
  */
 @HiddenFromObjC
-@Suppress("FunctionOnlyReturningConstant", "UnusedParameter")
 fun dueAnonymousReminderIndex(
     accountCreatedAt: Instant,
     now: Instant,
     lastShownIndex: Int?,
 ): Int? {
-    // RED: declared without behaviour so the schedule tests compile and execute.
-    return null
+    val elapsedDays = (now - accountCreatedAt).inWholeDays
+    val highestDueIndex =
+        ANONYMOUS_REMINDER_ELAPSED_DAYS.indexOfLast { threshold -> elapsedDays >= threshold }
+    if (highestDueIndex < 0) return null
+    if (lastShownIndex != null && highestDueIndex <= lastShownIndex) return null
+    return highestDueIndex
 }
 
 /**
