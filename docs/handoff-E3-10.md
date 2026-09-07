@@ -36,24 +36,24 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: first owner-review GREEN phase complete; RED commit `cc2e6fd`
-  and GREEN commit `2d7b6c2`; no code refactor was needed and review documentation is pending
-  commit.
-- Push and pull-request status: the merge and RED work are not pushed yet; pull request #58 remains
-  open at `https://github.com/davidru85/carApp/pull/58` for a second owner review after correction.
-- Completed since the previous checkpoint: committed GREEN; updated the post-merge status in
-  `AGENTS.md` and `docs/BACKLOG.md`; appended the required correction log entry; completed the
-  review-round acceptance, scope, decision and verification evidence in this handoff.
+- Current phase and latest commit: first owner review complete; RED commit `cc2e6fd`, GREEN commit
+  `2d7b6c2` and review-documentation commit `697b4d9`; this CI checkpoint is pending commit.
+- Push and pull-request status: branch pushed through `697b4d9`; pull request #58 is open at
+  `https://github.com/davidru85/carApp/pull/58`, its description includes the review round, and all
+  ten required checks are green.
+- Completed since the previous checkpoint: committed and pushed the review documentation, updated
+  the pull-request description and monitored CI run `34069170619` through successful completion.
 - Verification evidence and known failures: clean `npm ci && npm test` passes all 26 Functions
   tests; Firestore emulator tests pass 154/154; the complete non-instrumented Gradle command passes
   636 actionable tasks. The first Gradle attempt lacked the worktree-local Android SDK path, and the
   first Firestore attempt lacked root dependencies after sandboxed port access; adding ignored
   `local.properties`, running root `npm ci` and repeating the exact commands resolved both
-  environment-only failures. No product or test failure remains.
+  environment-only failures. CI run `34069170619` passes all ten required jobs, including
+  `ios-simulator-build` without reproducing E1-17. No product or test failure remains.
 - Open decisions or blockers: callable runtime options remain an owner decision and are explicitly
   out of scope for this review. No implementation blocker.
-- Exact next step: commit this review checkpoint, push the story branch, update pull request #58,
-  then monitor all ten required checks for the second owner review.
+- Exact next step: commit and push this CI checkpoint, confirm the final SHA remains green, then
+  return pull request #58 to the owner for its second review and merge.
 
 ## Scope Completed
 
