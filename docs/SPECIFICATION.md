@@ -614,7 +614,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-136 | Sole-1st-gen allowlist enforcement | The single permitted 1st gen function is guarded by the Functions suite and by the Gradle contract check. | Accepted |
 | D-137 | Anonymous cleanup trigger region | The anonymous cleanup trigger is pinned explicitly to europe-west1 with Cloud Firestore and the project's other backend functions. | Accepted |
 | D-138 | Anonymous cleanup trigger runtime bounds and retry policy | The anonymous cleanup trigger runs within explicit instance, memory and timeout bounds with automatic retries enabled. | Accepted |
-| D-139 | Expired anonymous token retry convergence | Permit well-formed expired anonymous ID token on retry if and only if Auth user is already deleted (`auth/user-not-found`) | Accepted |
+| D-139 | Expired anonymous token retry convergence | Permit well-formed expired anonymous ID token on retry if and only if Auth user is already deleted (`auth/user-not-found`) | Superseded |
+| D-140 | Expired anonymous token retry convergence via RS256 signature verification | Cryptographically verify Google RS256 signature (with iat window) of expired anonymous ID token to converge deletion of active Auth user and Firestore data | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

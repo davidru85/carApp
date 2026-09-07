@@ -145,6 +145,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-136 | [ADR-0137](0137-mirror-the-sole-1st-gen-allowlist-in-contractcheck.md) | Mirror the sole-1st-gen allowlist in `contractCheck`. | Accepted |
 | D-137 | [ADR-0138](0138-pin-the-anonymous-cleanup-trigger-to-europe-west1.md) | Pin the anonymous cleanup trigger to `europe-west1`. | Accepted |
 | D-138 | [ADR-0139](0139-bound-the-anonymous-cleanup-trigger-runtime-and-enable-retries.md) | Bound the anonymous cleanup trigger runtime and enable retries. | Accepted |
-| D-139 | [ADR-0140](0140-permit-expired-anonymous-token-on-retry-when-auth-user-deleted.md) | Permit expired anonymous token on retry when Auth user is deleted. | Accepted |
+| D-139 | [ADR-0140](0140-permit-expired-anonymous-token-on-retry-when-auth-user-deleted.md) | Permit expired anonymous token on retry when Auth user is deleted. | Superseded |
+| D-140 | [ADR-0141](0141-verify-expired-anonymous-token-cryptographically-for-resumable-cleanup.md) | Verify expired anonymous token cryptographically for resumable cleanup. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

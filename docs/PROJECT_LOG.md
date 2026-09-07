@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-07 — D-140 verifies expired anonymous tokens cryptographically; PR #60 review round 4 resolved
+
+- **Type:** story
+- **Story / Decision:** `E3-11` / `D-140`
+- **Author:** Antigravity, on behalf of David Ruiz
+- **What changed:** resolved PR #60 review round 4 findings: reproduced non-convergence defect on 1-hour token expiry with an active Auth user via RED tests; owner selected Option A; superseded D-139 with D-140 (ADR-0141); implemented cryptographic RS256 signature verification of expired anonymous ID tokens against Google public certificates (with 30-day `iat` window) in `deleteOrphanedAnonymousAccount`; made `OrphanCleanupAuthGateway.getUser` mandatory, eliminating unexercised seams; added tests for invalid cryptographic signatures, unknown `kid`, expired `iat` bounds (> 30 days), and certificate fetch failures; updated handoff and PR body removing stale draft/push statements.
+- **Why:** review round 4 identified that interruptions during resumable steps 2–4 of F-4 collision flow caused `deleteOrphanedAnonymousAccount` to fail permanently with `invalid-argument` because D-139 only permitted expired tokens if the Auth user was already deleted, stranding orphaned accounts and violating §11.3 retry convergence.
+- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/test/orphanedAnonymousAccount.test.mjs`, `functions/test/orphanedAnonymousAccountEmulator.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0140, ADR-0141, `AGENTS.md`, `docs/handoff-E3-11.md`, and this log.
+- **Verification:** `npm test` 63 passed, 1 skipped, 64 total; `npm run test:emulator` 1 passed against live Firestore emulator; `npm run audit` exit 0 (7 D-68 moderates only); `./gradlew contractCheck` passes across 141 decisions and 141 ADRs; `git diff --check` clean.
+- **Follow-ups / risks:** awaiting owner review round 4 closure.
+
 ### 2026-09-07 — D-139 permits expired anonymous token retry convergence; PR #60 review round 3 resolved
 
 - **Type:** story
