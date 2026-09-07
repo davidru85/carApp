@@ -20,13 +20,90 @@ test("an authenticated anonymous session receives an opaque cleanup ticket bound
   const result = await harness.handler(anonymousRequest());
 
   assert.deepEqual(result, {cleanupTicket: CLEANUP_TICKET});
-  assert.deepEqual(harness.calls, [["issueAuthorization", {
-    anonymousUid: ORPHAN_UID,
-    expiresAtMs: NOW_MS + THIRTY_DAYS_MS,
-    status: "PENDING",
-    ticketHash: ticketHash(CLEANUP_TICKET),
-  }]]);
+  assert.deepEqual(harness.calls, [
+    ["getUser", ORPHAN_UID],
+    ["issueAuthorization", {
+      anonymousUid: ORPHAN_UID,
+      expiresAtMs: NOW_MS + THIRTY_DAYS_MS,
+      status: "PENDING",
+      ticketHash: ticketHash(CLEANUP_TICKET),
+    }],
+  ]);
   assert.equal(JSON.stringify(harness.calls).includes(CLEANUP_TICKET), false);
+});
+
+test("ticket issuance rejects stale anonymous claims once the account has been linked", async () => {
+  const harness = ticketHarness({
+    callerUser: {disabled: false, providerData: [{providerId: "google.com"}]},
+  });
+
+  await assert.rejects(
+    harness.handler(anonymousRequest()),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+});
+
+test("ticket issuance rejects stale anonymous claims for a disabled account", async () => {
+  const harness = ticketHarness({callerUser: {disabled: true, providerData: []}});
+
+  await assert.rejects(
+    harness.handler(anonymousRequest()),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+});
+
+test("ticket issuance rejects stale anonymous claims for a deleted account", async () => {
+  const harness = ticketHarness({callerUser: null});
+
+  await assert.rejects(
+    harness.handler(anonymousRequest()),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+});
+
+test("ticket issuance maps an Admin lookup failure to internal with a redacted stage", async () => {
+  const harness = ticketHarness({lookupError: new Error(`admin exploded for ${ORPHAN_UID}`)});
+
+  await assert.rejects(
+    harness.handler(anonymousRequest()),
+    (failure) => failure.code === "internal",
+  );
+
+  assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+  assert.deepEqual(harness.logs, [[
+    "error",
+    "Orphan cleanup ticket issuance failed",
+    {stage: "AUTH_USER"},
+  ]]);
+});
+
+test("a rejected issuance leaks no UID, token, payload or raw failure", async () => {
+  const secretToken = "secret-issuer-token";
+  const harness = ticketHarness({lookupError: new Error(`admin exploded for ${ORPHAN_UID}`)});
+
+  const rejection = await harness.handler({
+    auth: {
+      token: {firebase: {sign_in_provider: "anonymous"}, secret: secretToken},
+      uid: ORPHAN_UID,
+    },
+    data: {secret: secretToken},
+  }).then(() => undefined, (failure) => failure);
+
+  const serialized = [
+    JSON.stringify(harness.logs),
+    rejection?.message,
+    rejection?.stack,
+    JSON.stringify(rejection ?? null),
+  ].join("|");
+  assert.equal(serialized.includes(ORPHAN_UID), false);
+  assert.equal(serialized.includes(secretToken), false);
+  assert.equal(serialized.includes("admin exploded"), false);
 });
 
 test("ticket issuance rejects an unauthenticated caller before persistence", async () => {
@@ -344,10 +421,23 @@ test("cleanup logs contain no UID, ticket, request payload or raw provider failu
   ]]);
 });
 
-function ticketHarness({issueError} = {}) {
+function ticketHarness({
+  issueError,
+  lookupError,
+  callerUser = {disabled: false, providerData: []},
+} = {}) {
   const calls = [];
   const logs = [];
   const handler = createOrphanCleanupTicketHandler({
+    auth: {
+      async getUser(uid) {
+        calls.push(["getUser", uid]);
+        if (lookupError !== undefined) {
+          throw lookupError;
+        }
+        return callerUser;
+      },
+    },
     authorizations: {
       async issue(authorization) {
         calls.push(["issueAuthorization", authorization]);
