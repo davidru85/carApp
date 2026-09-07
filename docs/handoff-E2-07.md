@@ -55,8 +55,8 @@
   (merge of pull request #60, `E3-11`).
 - Current phase and latest commit: refactor phase; the decision records, the contract updates and
   this handoff are the last change of the story.
-- Push and pull-request status: the intake, red and green commits are pushed; the pull request is
-  opened after this commit.
+- Push and pull-request status: pull request #61 is open with all ten required checks green, after
+  one `E1-14` flake re-run of `shared-tests` on the identical commit.
 - Completed since the previous checkpoint: red phase (18 failing tests), green phase (schedule,
   schema version 2 and its migration, persistence, session behaviour, both hosts and the
   regenerated golden header), and the refactor phase recorded here.
@@ -68,7 +68,7 @@
   known `E1-12` / `E1-14` class of test-infrastructure flake, not a production path.
 - Open decisions or blockers: none. `D-144`, `D-145` and `D-146` are recorded with their ADRs and
   the four mirrors.
-- Exact next step: open the pull request and request the gated owner review.
+- Exact next step: gated owner review of pull request #61.
 
 ## Scope Completed
 
@@ -182,6 +182,15 @@
   `shared/build/generated/objc-header/Shared.h.golden` — no difference after the golden update.
 - Red-phase evidence before the implementation: 18 failing tests across `:feature:session` (7),
   `:core:database` (4), `:shared` (5) and `:androidApp` (2).
+- Pull request #61, first run: nine of the ten required checks green and `shared-tests` red on
+  `FuelEntryStateHolderTest.litersAndPriceDeriveTotalCostWhileTyping` with
+  `kotlinx.coroutines.test.UncompletedCoroutinesError` in `:shared:testAndroidHostTest`. That is the
+  `E1-14` flake, not a regression of this story: the failing test builds a Fuel Entry form holder
+  and never touches the session, the schedule or the schema this story changed; it fails on a
+  `runTest` timeout rather than an assertion; re-running the identical commit turned all ten checks
+  green; and the same test passed 25 consecutive local `--rerun-tasks` runs. The `E1-14` evidence
+  in `docs/BACKLOG.md` was extended with this occurrence, because it had only ever been recorded on
+  `iosSimulatorArm64`.
 
 ## Contract Impact
 
@@ -219,6 +228,9 @@
 - The `ViewModelLifecycleTests` connection-pool crash seen once in a full `xcodebuild test` run is
   the known `E1-12` / `E1-14` flake class. It did not reproduce and no production path depends on
   it, but it makes a red `ios-simulator-build` ambiguous until `E1-14` is fixed.
+- `E1-14` also fires on `:shared:testAndroidHostTest`, which this story observed and recorded in the
+  backlog. Its acceptance criteria still name only `:shared:iosSimulatorArm64Test`; whoever takes
+  `E1-14` MUST cover both targets, or a red `shared-tests` stays ambiguous on the JVM side.
 
 ## Human Review Gate
 

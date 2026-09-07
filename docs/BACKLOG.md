@@ -1098,6 +1098,12 @@ Evidence to start from:
   to the class rather than to one test.
 - Each affected test awaits a real emission from a database-backed graph through `state.first { ... }`
   inside `runTest`, with no bounded expectation.
+- The flake is **not** specific to `iosSimulatorArm64`. `shared-tests` failed the same way on
+  `:shared:testAndroidHostTest` in pull request #61 (`E2-07`), on
+  `litersAndPriceDeriveTotalCostWhileTyping` with the same
+  `kotlinx.coroutines.test.UncompletedCoroutinesError`; re-running the identical commit passed all
+  ten required checks, and the same test passed 25 consecutive local `--rerun-tasks` runs on an
+  Apple-silicon host. The fix therefore has to cover both test targets, not only the Native one.
 
 Acceptance criteria:
 

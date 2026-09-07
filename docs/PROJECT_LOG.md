@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-09-07 — E1-14 also fires on the Android host target
+
+- **Type:** correction
+- **Story / Decision:** `E1-14` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the `E1-14` evidence in `docs/BACKLOG.md` now records that the
+  `FuelEntryStateHolderTest` `runTest` timeout also occurs on `:shared:testAndroidHostTest`, not
+  only on `iosSimulatorArm64`. It corrects the scope implied by the entry of 2026-09-06 that opened
+  `E1-14`, which named only the Native target.
+- **Why:** the first `shared-tests` run of pull request #61 failed on
+  `litersAndPriceDeriveTotalCostWhileTyping` with `kotlinx.coroutines.test.UncompletedCoroutinesError`
+  in the JVM target. A fix that hardened only the Native suite would have left a red
+  `shared-tests` ambiguous on the other half.
+- **Documents touched:** `docs/BACKLOG.md` (`E1-14`), `docs/handoff-E2-07.md` and this log.
+- **Verification:** re-running the identical commit turned all ten required checks green, and the
+  same test passed 25 consecutive local `--rerun-tasks` runs on an Apple-silicon host. The failing
+  test builds a Fuel Entry form holder and touches nothing `E2-07` changed.
+- **Follow-ups / risks:** `E1-14` acceptance criteria still name only `:shared:iosSimulatorArm64Test`
+  and MUST be widened to both targets when the story is taken.
+
 ### 2026-09-07 — E2-07 anonymous sign-in benefit reminders implemented
 
 - **Type:** story
