@@ -48,66 +48,70 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (PR #60 review round 5, after Finding 4 RED).
+- Date: 2026-09-07 (PR #60 review round 5, after Finding 4 GREEN).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: review Finding 4 RED is reproduced; its test changes are uncommitted.
-- Latest commit: `7e122cc fix(E3-11): parse grouped function exports` (GREEN).
-- Push and pull-request status: the branch is six commits ahead of
+- Current phase: Findings 1-3 complete; Finding 4 GREEN committed as `1654a26`; Finding 5 next.
+- Latest commit: `1654a26 fix(E3-11): erase orphan cleanup authorizations on account deletion`.
+- Push and pull-request status: the branch is eight commits ahead of
   `origin/story/E3-11-anonymous-cleanup-entry-points`. PR #60 remains open and MUST NOT be merged by
   the agent. Commit `3371386` is the latest pushed commit; all ten required checks for that pushed
   state were green before review round 5 began.
 - Review round 5 scope and status:
   1. **Finding 1 — GREEN, documentation pending.** RED commit `3acacf6` added failing-first tests
-     for a ticket-bound account that gained a federated provider, a phone-only account, a still
-     anonymous account, a missing account and an unexpected Auth lookup failure. The RED run
-     executed 62 tests: 56 passed, five failed as expected and the emulator test was skipped.
-     GREEN commit `62dc1ad` extracted the shared D-134 predicate, added the Admin `getUser` lookup,
-     rejects a now-permanent bound account with `failed-precondition` before deletion, preserves
-     missing-user convergence and maps other lookup failures to redacted `AUTH_USER`/`internal`.
-     The GREEN run executed 62 tests: 61 passed and the emulator test was skipped. A new decision
-     and ADR amending D-141/ADR-0142, plus the required contract mirrors, remain to be written.
+      for a ticket-bound account that gained a federated provider, a phone-only account, a still
+      anonymous account, a missing account and an unexpected Auth lookup failure. The RED run
+      executed 62 tests: 56 passed, five failed as expected and the emulator test was skipped.
+      GREEN commit `62dc1ad` extracted the shared D-134 predicate, added the Admin `getUser` lookup,
+      rejects a now-permanent bound account with `failed-precondition` before deletion, preserves
+      missing-user convergence and maps other lookup failures to redacted `AUTH_USER`/`internal`.
+      The GREEN run executed 62 tests: 61 passed and the emulator test was skipped. A new decision
+      and ADR amending D-141/ADR-0142, plus the required contract mirrors, remain to be written.
   2. **Finding 2 — complete.** RED commit `46c99d5` added
-     `ContractAssertionIdTest.kt`, which runs every contract assertion, groups by ID and requires
-     no duplicates. Its focused RED run executed one test and failed because
-     `FunctionGenerationContract` and `NativeTestExemptionContract` both emitted ID 21. The GREEN
-     commit `266a4de` assigns `FunctionGenerationContract` the next unused ID, 22. The combined
-     focused test and `contractCheck` run passed; `contractCheck` emitted distinct entries for IDs
-     21 and 22 and reported 142 decisions and 142 matching ADRs.
+      `ContractAssertionIdTest.kt`, which runs every contract assertion, groups by ID and requires
+      no duplicates. Its focused RED run executed one test and failed because
+      `FunctionGenerationContract` and `NativeTestExemptionContract` both emitted ID 21. The GREEN
+      commit `266a4de` assigns `FunctionGenerationContract` the next unused ID, 22. The combined
+      focused test and `contractCheck` run passed; `contractCheck` emitted distinct entries for IDs
+      21 and 22 and reported 142 decisions and 142 matching ADRs.
   3. **Finding 3 — complete.** RED commit `09a837b` adds grouped
-     (`export {a, b}`), whitespace-padded (`export { c }`) and aliased
-     (`export {source as deployed}`) index-export fixtures. It evaluates every fixture before
-     asserting; the focused RED run executed one test and reported actual statuses
-     `[FAIL, FAIL, FAIL, PASS, PASS, PASS, FAIL, FAIL]`, proving all three forms were missed. The
-     GREEN commit `7e122cc` splits grouped clauses, trims whitespace, captures the exported side of
-     `as` and accepts TypeScript identifiers. The full `FunctionGenerationContractTest` class and
-     `contractCheck` pass, with five deployed exports reported.
-  4. **Finding 4 — RED.** The selected erasure posture is to purge server-only
-     `orphanCleanupTickets` records bound to a UID during account deletion rather than retain the
-     identifier for up to 30 days. Uncommitted tests require the account-deletion handler to purge
-     after registered remote data and before Auth deletion, require a purge failure to return
-     `internal` with redacted `AUTHORIZATION` logging and prevent Auth deletion, exercise the real
-     Firebase Admin gateway's UID-bound query and batch deletion, and compare a separate internal
-     collection registry with the contract while proving it does not overlap D-63 user-data
-     locations. The RED `npm test` run executed 66 tests: 60 passed, five failed for the missing
-     purge/gateway/contract declaration and one emulator test was skipped.
-  5. **Finding 5 — not started.** Add a failing policy test proving the emulator script cannot use
-     an implicitly resolved or network-fetched Firebase CLI, then invoke the repository-root
-     pinned `firebase-tools` binary explicitly and verify the emulator path.
+      (`export {a, b}`), whitespace-padded (`export { c }`) and aliased
+      (`export {source as deployed}`) index-export fixtures. It evaluates every fixture before
+      asserting; the focused RED run executed one test and reported actual statuses
+      `[FAIL, FAIL, FAIL, PASS, PASS, PASS, FAIL, FAIL]`, proving all three forms were missed. The
+      GREEN commit `7e122cc` splits grouped clauses, trims whitespace, captures the exported side of
+      `as` and accepts TypeScript identifiers. The full `FunctionGenerationContractTest` class and
+      `contractCheck` pass, with five deployed exports reported.
+  4. **Finding 4 — GREEN.** The selected erasure posture is to purge server-only
+      `orphanCleanupTickets` records bound to a UID during account deletion rather than retain the
+      identifier for up to 30 days. RED commit `e2a2ed0` requires the account-deletion handler to
+      purge after registered remote data and before Auth deletion, requires a purge failure to
+      return `internal` with redacted `AUTHORIZATION` logging and prevent Auth deletion, exercises
+      the Firebase Admin gateway's UID-bound query and batch deletion, and compares a separate
+      internal collection registry with the contract while proving it does not overlap D-63
+      user-data locations. GREEN commit `1654a26` implements the paged batched purge, the
+      `INTERNAL_SERVER_DATA_LOCATIONS` registry, the deletion-order change in `deleteAccount` and
+      the CONTRACTS.md §16 internal-collections declaration. The GREEN `npm test` run executed 66
+      tests: 65 passed and the emulator test was skipped; the emulator integration run passed 2/2
+      including a new real-gateway purge test proving only UID-bound authorizations are deleted;
+      `npm run test:firestore-rules` passed 155/155. A follow-up decision + ADR for the erasure
+      posture and internal registry remains to be recorded.
+  5. **Finding 5 — not started.** Make the `test:emulator` script resolve the Firebase CLI
+     explicitly (repository-root pinned `firebase-tools` or a pinned functions devDependency)
+     instead of relying on `npx` implicit resolution through the repo-root `node_modules`.
 - Verification baseline before review round 5: Functions 58 passed with one emulator skip; the
   live Functions emulator integration passed; Firestore rules passed 155/155; `contractCheck`
   passed 142 decision/ADR assertions; the full non-instrumented Gradle command executed 636 tasks
   successfully; Firebase Functions and indexes dry runs passed. These counts describe commit
   `3371386`, not the unpushed review-round-5 changes, so full verification must be repeated.
-- Known failures: five Finding 4 tests are intentionally RED because account deletion does not
-  purge authorizations, the gateway has no purge method and the contract has no internal registry.
-  No unexplained failure is known.
+- Known failures: none. All Finding 4 tests are GREEN.
 - Open decisions or blockers: no blocker. Finding 1 requires the next decision ID and ADR; Finding
   4 requires a separate decision for account-deletion erasure and internal-collection registry
   treatment. The owner has authorised the five requested remediations and the purge posture was
   selected as the safer interpretation within that scope.
-- Exact next step: commit the Finding 4 RED tests, implement the separate internal location
-  registry, paged/batched UID purge and account-deletion ordering/error mapping, then run
-  Functions tests before documenting D-142/D-143 and the normative section 16 declaration.
+- Exact next step: implement Finding 5 by making the emulator CLI resolution explicit with a
+  RED policy test first, then record the new decisions (finding 1 anonymity revalidation,
+  finding 4 erasure posture) with ADRs and all normative mirrors, then run the full
+  CI-equivalent verification.
 
 ## Scope Completed
 
