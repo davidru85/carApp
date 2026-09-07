@@ -830,6 +830,8 @@ successful response is `{ status: "ACCOUNT_DELETED" }`. Missing authentication m
 code `unauthenticated`, a missing or empty `targetUid` maps to `invalid-argument`, a caller/target
 mismatch maps to `permission-denied`, and a remote-data or Auth deletion failure maps to `internal`.
 No UID, token, request payload or raw provider failure is attached to callable logs (`D-128`).
+The callable declares `maxInstances: 3`, `concurrency: 1`, `memory: "256MiB"` and
+`timeoutSeconds: 300` as explicit bounded runtime options (`D-131`).
 
 The order `fuelEntries`, then `vehicles` is normative. Reversing it would leave a brief window during which a fuel entry exists without its vehicle, which is recoverable but adds an unnecessary transient state.
 

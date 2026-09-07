@@ -36,8 +36,9 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: D-131 GREEN phase complete; RED commit `e6de1ca`; GREEN changes
-  are pending commit.
+- Current phase and latest commit: D-131 documentation is ready to commit after final verification;
+  RED commit `e6de1ca` and GREEN commit `a2daf0f` are complete. No REFACTOR commit is needed because
+  the production change is already the exact declarative endpoint configuration.
 - Push and pull-request status: branch pushed through `da02763`; pull request #58 is open at
   `https://github.com/davidru85/carApp/pull/58`, and its preceding review checkpoint passed all ten
   required checks. D-131 work is not pushed yet.
@@ -45,18 +46,21 @@
   exactly the four owner-selected options to the `deleteAccount` `onCall` declaration without
   changing its region or handler behavior.
 - Verification evidence and known failures: the D-131 RED run passed 25/26 tests and showed all
-  four emitted fields as Firebase Functions `ResetValue` sentinels. The GREEN run passes all 26
-  Functions tests, and direct inspection of the built endpoint reports `availableMemoryMb: 256`,
-  `concurrency: 1`, `maxInstances: 3` and `timeoutSeconds: 300`. No known failure.
+  four emitted fields as Firebase Functions `ResetValue` sentinels. Clean-install Functions passes
+  26/26, Firestore Rules passes 154/154, `contractCheck` validates all 132 decisions and ADRs, and
+  the complete non-instrumented Gradle command passes 636 actionable tasks. Direct inspection of
+  the built endpoint reports `availableMemoryMb: 256`, `concurrency: 1`, `maxInstances: 3` and
+  `timeoutSeconds: 300`. No known failure.
 - Open decisions or blockers: none. D-131 explicitly defers Cloud Functions App Check enforcement
   and a dedicated minimum-privilege service account; neither is authorized in this change.
-- Exact next step: commit GREEN, add D-131 and ADR-0132 to every required decision mirror and story
-  record, then run full verification.
+- Exact next step: commit the D-131 and ADR-0132 records, push the three D-131 commits, update pull
+  request #58 and confirm its required checks.
 
 ## Scope Completed
 
 - Added the Cloud Functions 2nd gen `deleteAccount` callable in `europe-west1` with authenticated
   caller/target equality and a closed success/error wire contract.
+- Bounded that callable to three single-concurrency 256 MiB instances with a 300-second timeout.
 - Added the reusable `deleteUserData` service and explicit data-location registry containing
   `fuelEntries`, `vehicles` and an empty Storage-prefix list.
 - Added Firebase Admin Auth and Firestore gateways; collection deletion uses awaited sequential
@@ -80,8 +84,8 @@
   `docs/CONTRACTS.md`, compares complete Firestore entries and the declared Storage-prefix array in
   both directions, and proves omissions are detected for arbitrary document-ID placeholder names.
 - `dependencyReachability.test.mjs` fixes the public export set and proves `deleteAccount` is a 2nd
-  gen function in `europe-west1` while the existing D-68 affected modules remain unreachable from
-  `stopBilling`.
+  gen function in `europe-west1` with the D-131 instance, concurrency, memory and timeout bounds,
+  while the existing D-68 affected modules remain unreachable from `stopBilling`.
 - The unchanged 154-test Firestore emulator suite proves client hard deletes remain denied.
 
 ## Out of Scope / Not Done
@@ -89,6 +93,9 @@
 - E3-11 owns the anonymous-deletion trigger and orphan-cleanup callable.
 - E2-05 owns the client account-deletion presentation flow and local-data clearing.
 - E2-04 owns anonymous account conversion and collision recovery.
+- E3-11 owns the shared Cloud Functions App Check decision when it introduces the second callable.
+- Provisioning and selecting a dedicated least-privilege service account remains deferred until the
+  function is deployed.
 
 ## Files Changed
 
@@ -102,7 +109,7 @@
 - Normative and derived documentation: `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`,
   `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
   `docs/versions-matrix.md`.
-- Decision and story records: `docs/adr/README.md`, ADR-0129 through ADR-0131, this handoff and
+- Decision and story records: `docs/adr/README.md`, ADR-0129 through ADR-0132, this handoff and
   `docs/PROJECT_LOG.md`.
 
 ## Decisions Made
@@ -111,11 +118,13 @@
 - The owner explicitly requested RED, GREEN and REFACTOR commits followed by one push. This is the
   story-specific exception to the default per-phase push cadence in `docs/SPECIFICATION.md`.
 - The first owner review prescribed the registry-block parser and expanded redaction coverage, so
-  this review introduced no new technical decision. Callable runtime options remain owner-owned and
-  were not changed or recorded as a decision.
+  that review introduced no new technical decision. The owner subsequently selected D-131's exact
+  callable runtime bounds.
 - D-128 fixes the `deleteAccount` callable name, request, success and failure wire contract.
 - D-129 selects sequential Firestore Admin `recursiveDelete` calls over the D-63 registry.
 - D-130 resolves the newly reported `qs` advisories at 6.16.0 inside existing parent ranges.
+- D-131 bounds the account-deletion callable runtime and explicitly defers Functions App Check and
+  a dedicated least-privilege service account.
 - No `SHOULD` rule was intentionally deviated from.
 
 ## Verification Run
@@ -158,6 +167,18 @@
   - `cd functions && npm ci && npm test` — passed all 26 tests.
   - `npm run test:firestore-rules` — passed all 154 emulator tests.
   - Complete non-instrumented Gradle command — passed 636 actionable tasks.
+- D-131 RED phase: `npm test` — failed only the endpoint-metadata assertion; 25/26 tests passed and
+  the four runtime fields were Firebase Functions `ResetValue` sentinels instead of `256`, `1`, `3`
+  and `300`.
+- D-131 GREEN phase: `npm test` — passed all 26 tests; direct built-endpoint inspection reported
+  `availableMemoryMb: 256`, `concurrency: 1`, `maxInstances: 3` and `timeoutSeconds: 300`.
+- D-131 final verification:
+  - `cd functions && npm ci && npm test` — passed all 26 tests with lifecycle scripts remaining
+    blocked by repository policy.
+  - `npm run test:firestore-rules` — passed all 154 emulator tests.
+  - `./gradlew contractCheck` — passed, including identical status for all 132 decisions and ADRs.
+  - Complete non-instrumented Gradle command — passed 636 actionable tasks.
+  - `git diff --check` — passed.
 
 ## Contract Impact
 
@@ -166,8 +187,8 @@
 
 ## Decision Board Impact
 
-- Added D-128, D-129 and D-130 with ADR-0129, ADR-0130 and ADR-0131. The implementation also
-  executes accepted D-23 and D-63.
+- Added D-128 through D-131 with ADR-0129 through ADR-0132. The implementation also executes
+  accepted D-23 and D-63.
 
 ## Shared-Write Modules Touched
 
@@ -175,13 +196,15 @@
 
 ## Project Log Entry
 
-- [x] Story and D-128 through D-130 entries appended.
+- [x] Story and D-128 through D-131 entries appended.
 
 ## Risks or Follow-ups
 
 - E3-11 remains required before E2-04 is Ready.
-- Callable `maxInstances`, memory, timeout and Cloud Functions App Check enforcement remain a
-  separate owner decision and were not changed in this review.
+- Cloud Functions App Check remains deliberately deferred to E3-11, when both callable entry points
+  can be governed by one decision.
+- A dedicated least-privilege service account remains deferred until GCP provisioning and
+  deployment are in scope.
 - The seven moderate production dependency entries accepted under D-68 remain and keep their
   2026-12-01 TD-01 review.
 

@@ -145,6 +145,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-128 | Account-deletion callable wire contract | 2nd gen `deleteAccount` callable with `targetUid`, caller equality, closed success and callable error codes | Accepted | Makes authorization mismatch testable and gives the client a stable D-23 server boundary without creating a general Admin deletion endpoint. |
 | D-129 | Firestore Admin deletion primitive | Sequential `recursiveDelete` for each D-63 registry collection | Accepted | Retains `fuelEntries` before `vehicles`, delegates pagination/retry mechanics to the pinned Admin SDK and scopes references under `users/{uid}`. |
 | D-130 | Transitive `qs` advisory remediation | Lock patched `qs` 6.16.0 inside the existing Express/Body Parser semver ranges | Accepted | Removes two moderate HTTP-parser advisories without a direct override, top-level stack change or install-script exception. |
+| D-131 | Account-deletion callable runtime bounds | `deleteAccount`: at most three instances, one concurrent request per instance, 256 MiB and a 300-second timeout | Accepted | Makes explicit runtime bounds the primary cost control while keeping the D-66 cutoff as a delayed safety net; Functions App Check and a dedicated runtime identity remain separately deferred. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

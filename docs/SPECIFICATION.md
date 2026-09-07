@@ -606,6 +606,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-128 | Account-deletion callable wire contract | The authenticated `deleteAccount` callable receives the target UID, rejects a different caller and returns a closed success or typed failure. | Accepted |
 | D-129 | Firestore Admin deletion primitive | Account cleanup awaits the Admin SDK recursive deletion of each registered collection in the required order. | Accepted |
 | D-130 | Transitive `qs` advisory remediation | The Functions lockfile resolves the existing transitive HTTP parser to patched `qs` 6.16.0. | Accepted |
+| D-131 | Account-deletion callable runtime bounds | The account-deletion callable runs within explicit instance, concurrency, memory and timeout bounds. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

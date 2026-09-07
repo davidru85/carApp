@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-09-07 — D-131 bounds the account-deletion callable runtime
+
+- **Type:** decision
+- **Story / Decision:** `E3-10` / `D-131`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** `deleteAccount` now declares a three-instance maximum, single-request
+  concurrency, 256 MiB of memory and a 300-second timeout. ADR-0132 records the accepted bounds.
+- **Why:** the delayed D-66 billing cutoff is a safety net rather than the primary workload control,
+  and the destructive recursive purge needs a longer explicit timeout than the provider default.
+- **Documents touched:** `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, ADR-0132, `docs/adr/README.md`,
+  `docs/handoff-E3-10.md` and this log.
+- **Verification:** the endpoint-metadata RED test observed four unset Firebase Functions values;
+  the GREEN and clean-install Functions runs passed all 26 tests and reported the four accepted
+  values. `contractCheck` validated 132 decisions and ADRs, all 154 Firestore Rules tests passed,
+  and the complete non-instrumented Gradle command passed 636 actionable tasks.
+- **Follow-ups / risks:** E3-11 owns the shared Cloud Functions App Check decision when it adds the
+  second callable. A dedicated least-privilege service account remains deferred until the function
+  is provisioned.
+
 ### 2026-09-07 — E3-10 review corrects deletion-registry parity coverage
 
 - **Type:** correction
