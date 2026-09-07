@@ -1,5 +1,5 @@
 import {logger as firebaseLogger} from "firebase-functions";
-import {auth} from "firebase-functions/v1";
+import {region} from "firebase-functions/v1";
 
 import {firebaseAdminDeletionGateways} from "../deletion/firebaseAdminDeletionGateways.js";
 import {
@@ -51,7 +51,14 @@ export function createAnonymousDeletionHandler(dependencies: AnonymousDeletionDe
     };
 }
 
-export const onAnonymousUserDeleted = auth
+export const onAnonymousUserDeleted = region("europe-west1")
+    .runWith({
+        failurePolicy: true,
+        maxInstances: 2,
+        memory: "256MB",
+        timeoutSeconds: 60,
+    })
+    .auth
     .user()
     .onDelete(async (user) => {
         const gateways = firebaseAdminDeletionGateways();
