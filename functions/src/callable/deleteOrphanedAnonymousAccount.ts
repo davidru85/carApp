@@ -1,4 +1,5 @@
 import {logger as firebaseLogger} from "firebase-functions";
+import type {DecodedIdToken} from "firebase-admin/auth";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 
 import {firebaseAdminDeletionGateways} from "../deletion/firebaseAdminDeletionGateways.js";
@@ -18,14 +19,11 @@ interface OrphanCleanupRequest {
     data: unknown;
 }
 
+export type VerifiedIdentityToken = Pick<DecodedIdToken, "uid" | "firebase">;
+
 export interface OrphanCleanupAuthGateway {
     deleteUser(uid: string): Promise<void>;
     verifyIdToken(token: string): Promise<VerifiedIdentityToken>;
-}
-
-export interface VerifiedIdentityToken {
-    sign_in_provider?: string;
-    uid?: string;
 }
 
 interface OrphanCleanupLogger {
@@ -52,7 +50,7 @@ export function createOrphanCleanupHandler(dependencies: OrphanCleanupDependenci
         }
 
         const verified = await verifyCapturedIdentity(dependencies.auth, anonymousIdToken);
-        if (verified.uid === undefined || verified.sign_in_provider !== "anonymous") {
+        if (verified.firebase?.sign_in_provider !== "anonymous") {
             throw new HttpsError(
                 "failed-precondition",
                 "The captured identity is not an anonymous account",
