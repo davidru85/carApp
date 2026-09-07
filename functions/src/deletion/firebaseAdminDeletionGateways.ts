@@ -36,6 +36,10 @@ export class FirebaseAdminAuthDeletionGateway implements AccountDeletionAuthGate
         await this.auth.deleteUser(uid);
     }
 
+    public async getUser(uid: string): Promise<{uid: string}> {
+        return this.auth.getUser(uid);
+    }
+
     public async verifyIdToken(token: string): Promise<VerifiedIdentityToken> {
         return this.auth.verifyIdToken(token);
     }

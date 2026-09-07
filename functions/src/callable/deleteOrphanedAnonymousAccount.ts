@@ -15,7 +15,16 @@ interface OrphanCleanupPayload {
 }
 
 interface OrphanCleanupRequest {
-    auth?: {uid: string};
+    auth?: {
+        uid: string;
+        token?: {
+            firebase?: {
+                sign_in_provider?: string;
+                [key: string]: unknown;
+            };
+            [key: string]: unknown;
+        };
+    };
     data: unknown;
 }
 
@@ -23,6 +32,7 @@ export type VerifiedIdentityToken = Pick<DecodedIdToken, "uid" | "firebase">;
 
 export interface OrphanCleanupAuthGateway {
     deleteUser(uid: string): Promise<void>;
+    getUser?(uid: string): Promise<{uid: string}>;
     verifyIdToken(token: string): Promise<VerifiedIdentityToken>;
 }
 
@@ -44,12 +54,24 @@ export function createOrphanCleanupHandler(dependencies: OrphanCleanupDependenci
             throw new HttpsError("unauthenticated", "Authentication is required");
         }
 
+        const callerProvider = request.auth?.token?.firebase?.sign_in_provider;
+        if (callerProvider === undefined || callerProvider === "anonymous") {
+            throw new HttpsError(
+                "failed-precondition",
+                "The caller must be authenticated with a permanent account",
+            );
+        }
+
         const anonymousIdToken = readAnonymousIdToken(request.data);
         if (anonymousIdToken === null) {
             throw new HttpsError("invalid-argument", "A valid anonymous ID token is required");
         }
 
-        const verified = await verifyCapturedIdentity(dependencies.auth, anonymousIdToken);
+        const {skipAuthDeletion, verified} = await resolveCapturedIdentity(
+            dependencies,
+            anonymousIdToken,
+        );
+
         if (verified.firebase?.sign_in_provider !== "anonymous") {
             throw new HttpsError(
                 "failed-precondition",
@@ -65,12 +87,14 @@ export function createOrphanCleanupHandler(dependencies: OrphanCleanupDependenci
             );
         }
 
-        try {
-            await dependencies.auth.deleteUser(orphanUid);
-        } catch (failure) {
-            if (!isMissingAuthUser(failure)) {
-                dependencies.logger.error("Orphaned anonymous cleanup failed", {stage: "AUTH_USER"});
-                throw new HttpsError("internal", "Orphaned anonymous cleanup failed");
+        if (!skipAuthDeletion) {
+            try {
+                await dependencies.auth.deleteUser(orphanUid);
+            } catch (failure) {
+                if (!isMissingAuthUser(failure)) {
+                    dependencies.logger.error("Orphaned anonymous cleanup failed", {stage: "AUTH_USER"});
+                    throw new HttpsError("internal", "Orphaned anonymous cleanup failed");
+                }
             }
         }
 
@@ -112,15 +136,98 @@ function readAnonymousIdToken(data: unknown): string | null {
     return typeof token === "string" && token.length > 0 ? token : null;
 }
 
-async function verifyCapturedIdentity(
-    auth: OrphanCleanupAuthGateway,
+async function resolveCapturedIdentity(
+    dependencies: OrphanCleanupDependencies,
     token: string,
-): Promise<VerifiedIdentityToken> {
+): Promise<{skipAuthDeletion: boolean; verified: VerifiedIdentityToken}> {
     try {
-        return await auth.verifyIdToken(token);
-    } catch {
-        throw new HttpsError("invalid-argument", "The anonymous ID token is not valid");
+        const verified = await dependencies.auth.verifyIdToken(token);
+        return {skipAuthDeletion: false, verified};
+    } catch (failure) {
+        if (isExpiredTokenError(failure)) {
+            const expiredClaims = parseExpiredAnonymousToken(token);
+            if (expiredClaims !== null && typeof dependencies.auth.getUser === "function") {
+                try {
+                    await dependencies.auth.getUser(expiredClaims.uid);
+                    throw new HttpsError("invalid-argument", "The anonymous ID token is not valid");
+                } catch (userLookupError) {
+                    if (isMissingAuthUser(userLookupError)) {
+                        return {skipAuthDeletion: true, verified: expiredClaims};
+                    }
+                    if (userLookupError instanceof HttpsError) {
+                        throw userLookupError;
+                    }
+                    dependencies.logger.error("Orphaned anonymous cleanup failed", {stage: "AUTH_USER"});
+                    throw new HttpsError("internal", "Orphaned anonymous cleanup failed");
+                }
+            }
+            throw new HttpsError("invalid-argument", "The anonymous ID token is not valid");
+        }
+
+        if (isClientTokenError(failure)) {
+            throw new HttpsError("invalid-argument", "The anonymous ID token is not valid");
+        }
+
+        dependencies.logger.error("Orphaned anonymous cleanup failed", {stage: "AUTH_USER"});
+        throw new HttpsError("internal", "Orphaned anonymous cleanup failed");
     }
+}
+
+function parseExpiredAnonymousToken(token: string): VerifiedIdentityToken | null {
+    try {
+        const parts = token.split(".");
+        if (parts.length !== 3) {
+            return null;
+        }
+        const payloadPart = parts[1];
+        if (payloadPart === undefined || payloadPart.length === 0) {
+            return null;
+        }
+        const payloadJson = Buffer.from(payloadPart, "base64url").toString("utf8");
+        const payload = JSON.parse(payloadJson);
+        if (payload === null || typeof payload !== "object") {
+            return null;
+        }
+        const uid = typeof payload.uid === "string" && payload.uid.length > 0
+            ? payload.uid
+            : typeof payload.sub === "string" && payload.sub.length > 0
+                ? payload.sub
+                : null;
+        if (uid === null) {
+            return null;
+        }
+        const provider = payload.firebase?.sign_in_provider;
+        if (provider !== "anonymous") {
+            return null;
+        }
+        return {
+            uid,
+            firebase: {
+                identities: {},
+                sign_in_provider: "anonymous",
+            },
+        };
+    } catch {
+        return null;
+    }
+}
+
+function isExpiredTokenError(failure: unknown): boolean {
+    return failure !== null &&
+        typeof failure === "object" &&
+        "code" in failure &&
+        failure.code === "auth/id-token-expired";
+}
+
+function isClientTokenError(failure: unknown): boolean {
+    if (failure === null || typeof failure !== "object" || !("code" in failure)) {
+        return false;
+    }
+    const code = failure.code;
+    return code === "auth/argument-error" ||
+        code === "auth/invalid-argument" ||
+        code === "auth/invalid-id-token" ||
+        code === "auth/id-token-revoked";
 }
 
 function isMissingAuthUser(failure: unknown): boolean {
