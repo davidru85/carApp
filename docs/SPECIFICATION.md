@@ -623,6 +623,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-144 | Anonymous reminder persistence | Persist the last-shown reminder index with its anonymous UID in a dedicated device-local table introduced by schema version 2. | Accepted |
 | D-145 | Anonymous reminder presentation channel | Carry the reminder on its own typed `SessionUiState` index field with its own dismissal intent, not on the shared message channel. | Accepted |
 | D-146 | Anonymous reminder evaluation trigger | Each host calls `evaluateAnonymousReminder()` on launch and foreground return; no scheduler, alarm or operating-system notification is introduced. | Accepted |
+| D-147 | Deferred launch evaluation | A launch evaluation blocked by an undetermined auth state completes once when the session resolves to an anonymous one, and is consumed by any other resolution. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

@@ -814,10 +814,27 @@ copy, and every one of them states both the recovery benefit and the 30-day clea
 naming only the providers that platform offers.
 
 `SessionStateHolder.evaluateAnonymousReminder()` is the only evaluation entry point (`D-146`). Each
-host calls it on launch and on every foreground return, from the Android `ON_START` lifecycle event
-and the iOS active scene phase, and MUST NOT call it on any other event. The index MUST be
-persisted before the reminder is published, so a notice whose index did not survive is never shown.
-No scheduler, alarm, background task or operating-system notification participates.
+host calls it on launch and on every foreground return, and MUST NOT call it on any other event. On
+Android the launch and foreground moments are the `ON_START` lifecycle event; on iOS they are the
+initial appearance and the active scene phase, because a cold launch that is already active when the
+scene is installed delivers no scene-phase change for it. A duplicate call is collapsed rather than
+producing a second notice: an evaluation already in flight is skipped, and a completed one has
+consumed the index it published. The index MUST be persisted before the reminder is published, so a
+notice whose index did not survive is never shown. No scheduler, alarm, background task or
+operating-system notification participates.
+
+An evaluation requested while the auth state is `AuthState.Unknown` MUST be remembered and completed
+exactly once when that state resolves to an anonymous session, so a launch evaluation is not lost
+while the provider is still restoring the session (`D-147`). That completion is the original
+request finishing late, not a new trigger: any resolution other than an anonymous session consumes
+the pending request without running it, a resolution that arrives when no evaluation was requested
+MUST evaluate nothing, and `close()` drops a pending request. A `SignedOut` or permanent state is
+nothing to evaluate and MUST NOT be deferred.
+
+A reminder MUST NOT be published for a session that is no longer the anonymous session its index was
+computed for. Because the index is persisted before it is published, the current session MUST be
+re-checked after that persistence and before the state is written; a permanent sign-in or a switch
+to a different anonymous identity landing in that window leaves `anonymousReminderIndex` null.
 
 ### 11.4 Local owner adoption
 
