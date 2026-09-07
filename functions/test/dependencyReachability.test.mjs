@@ -47,6 +47,20 @@ test("the deployed billing cutoff does not reach the vulnerable dependency path"
     assert.deepEqual(Object.keys(exportedFunctions), ["deleteAccount", "stopBilling"]);
     assert.equal(exportedFunctions.deleteAccount.__endpoint.platform, "gcfv2");
     assert.deepEqual(exportedFunctions.deleteAccount.__endpoint.region, ["europe-west1"]);
+    assert.deepEqual(
+      {
+        availableMemoryMb: exportedFunctions.deleteAccount.__endpoint.availableMemoryMb,
+        concurrency: exportedFunctions.deleteAccount.__endpoint.concurrency,
+        maxInstances: exportedFunctions.deleteAccount.__endpoint.maxInstances,
+        timeoutSeconds: exportedFunctions.deleteAccount.__endpoint.timeoutSeconds,
+      },
+      {
+        availableMemoryMb: 256,
+        concurrency: 1,
+        maxInstances: 3,
+        timeoutSeconds: 300,
+      },
+    );
     assert.equal(
       exportedFunctions.stopBilling.__endpoint.serviceAccountEmail,
       "development-billing-cutoff@davidruiz-carapp-dev.iam.gserviceaccount.com",

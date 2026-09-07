@@ -36,24 +36,22 @@
 - Branch and base: `story/E3-10-account-deletion-service`, synchronized with `main` at `c8cf2b8`
   through merge commit `12904be`; work continues in the isolated worktree required after pull
   request #59.
-- Current phase and latest commit: first owner review complete; RED commit `cc2e6fd`, GREEN commit
-  `2d7b6c2` and review-documentation commit `697b4d9`; this CI checkpoint is pending commit.
-- Push and pull-request status: branch pushed through `697b4d9`; pull request #58 is open at
-  `https://github.com/davidru85/carApp/pull/58`, its description includes the review round, and all
-  ten required checks are green.
-- Completed since the previous checkpoint: committed and pushed the review documentation, updated
-  the pull-request description and monitored CI run `34069170619` through successful completion.
-- Verification evidence and known failures: clean `npm ci && npm test` passes all 26 Functions
-  tests; Firestore emulator tests pass 154/154; the complete non-instrumented Gradle command passes
-  636 actionable tasks. The first Gradle attempt lacked the worktree-local Android SDK path, and the
-  first Firestore attempt lacked root dependencies after sandboxed port access; adding ignored
-  `local.properties`, running root `npm ci` and repeating the exact commands resolved both
-  environment-only failures. CI run `34069170619` passes all ten required jobs, including
-  `ios-simulator-build` without reproducing E1-17. No product or test failure remains.
-- Open decisions or blockers: callable runtime options remain an owner decision and are explicitly
-  out of scope for this review. No implementation blocker.
-- Exact next step: commit and push this CI checkpoint, confirm the final SHA remains green, then
-  return pull request #58 to the owner for its second review and merge.
+- Current phase and latest commit: D-131 RED phase prepared; latest commit `da02763`.
+- Push and pull-request status: branch pushed through `da02763`; pull request #58 is open at
+  `https://github.com/davidru85/carApp/pull/58`, and its preceding review checkpoint passed all ten
+  required checks. D-131 work is not pushed yet.
+- Completed since the previous checkpoint: the owner fixed the `deleteAccount` runtime bounds as
+  `maxInstances: 3`, `concurrency: 1`, `memory: "256MiB"` and `timeoutSeconds: 300`; the endpoint
+  metadata test now requires their emitted `__endpoint` representation.
+- Verification evidence and known failures: inspecting the built endpoint confirmed all four
+  fields currently emit Firebase Functions `ResetValue` sentinels. The D-131 RED run passed 25/26
+  Functions tests; the endpoint metadata test failed with all four actual reset values differing
+  from expected `availableMemoryMb: 256`, `concurrency: 1`, `maxInstances: 3` and
+  `timeoutSeconds: 300`. This is the sole expected failure.
+- Open decisions or blockers: none. D-131 explicitly defers Cloud Functions App Check enforcement
+  and a dedicated minimum-privilege service account; neither is authorized in this change.
+- Exact next step: commit RED, add only the four owner-selected callable options, run GREEN, then
+  complete D-131 documentation and full verification.
 
 ## Scope Completed
 
