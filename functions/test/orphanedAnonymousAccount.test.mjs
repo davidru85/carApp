@@ -40,9 +40,38 @@ test("a malformed token is rejected before any deletion", async () => {
   assert.deepEqual(harness.calls, [["verifyIdToken", ORPHAN_TOKEN]]);
 });
 
+test("the real Admin SDK decoded-token shape (nested firebase claim) is accepted", async () => {
+  const harness = orphanHarness({
+    verified: realSdkToken({uid: ORPHAN_UID, signInProvider: "anonymous"}),
+  });
+
+  const result = await harness.handler(authed());
+
+  assert.deepEqual(result, {status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED"});
+  assert.deepEqual(harness.calls, [
+    ["verifyIdToken", ORPHAN_TOKEN],
+    ["deleteAuthUser", ORPHAN_UID],
+    ["deleteCollection", ORPHAN_UID, "fuelEntries"],
+    ["deleteCollection", ORPHAN_UID, "vehicles"],
+  ]);
+});
+
+test("a token carrying only a legacy top-level sign_in_provider is rejected", async () => {
+  const harness = orphanHarness({
+    verified: {sign_in_provider: "anonymous", uid: ORPHAN_UID},
+  });
+
+  await assert.rejects(
+    harness.handler(authed()),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [["verifyIdToken", ORPHAN_TOKEN]]);
+});
+
 test("a permanent captured identity is rejected as not anonymous", async () => {
   const harness = orphanHarness({
-    verified: verifiedToken({signInProvider: "google.com"}),
+    verified: realSdkToken({uid: ORPHAN_UID, signInProvider: "google.com"}),
   });
 
   await assert.rejects(
@@ -54,7 +83,9 @@ test("a permanent captured identity is rejected as not anonymous", async () => {
 });
 
 test("deleting the current permanent UID is rejected before Admin deletion", async () => {
-  const harness = orphanHarness({verified: verifiedToken({uid: PERMANENT_UID})});
+  const harness = orphanHarness({
+    verified: realSdkToken({uid: PERMANENT_UID, signInProvider: "anonymous"}),
+  });
 
   await assert.rejects(
     harness.handler(authed()),
@@ -170,8 +201,18 @@ function authed(data = {anonymousIdToken: ORPHAN_TOKEN}) {
   };
 }
 
+function realSdkToken({uid, signInProvider}) {
+  return {
+    uid,
+    firebase: {
+      identities: {},
+      sign_in_provider: signInProvider,
+    },
+  };
+}
+
 function verifiedToken({uid = ORPHAN_UID, signInProvider = "anonymous"} = {}) {
-  return {sign_in_provider: signInProvider, uid};
+  return realSdkToken({uid, signInProvider});
 }
 
 function orphanHarness({

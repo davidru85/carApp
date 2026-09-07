@@ -48,27 +48,23 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07.
-- Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, created from `main` at
-  `6c74b5e` in the isolated worktree `/private/tmp/carapp-worktrees/E3-11` (required after the
-  2026-09-06 shared-clone incident).
-- Current phase and latest commit: story complete pending the gated owner review. TDD commits
-  `4d43d1c` (RED), `cb83d82` (GREEN), `29e54ca` (REFACTOR), checkpoint `53e59f8` and
-  decision-record commit `9cf92b1` are pushed.
-- Push and pull-request status: branch pushed through `9cf92b1`; pull request #60 at
-  `https://github.com/davidru85/carApp/pull/60` is marked ready for review. The agent will not
-  merge it.
-- Completed since the previous checkpoint: recorded D-132 through D-136 with ADR-0133 through
-  ADR-0137, updated `docs/CONTRACTS.md §11.5` and the four decision mirrors, added
-  `contractCheck` assertion 21 with its failing fixtures, appended the six project-log entries,
-  refreshed `AGENTS.md` repository state and added the E3-10 closure update.
-- Verification evidence and known failures: `npm test` 47/47; `npm run audit` exit 0 with only
-  the seven D-68 moderates; Firestore rules 154/154; complete non-instrumented Gradle command
-  636 actionable tasks BUILD SUCCESSFUL including assertion 21 and the fixture suite;
-  `git diff --check` clean. No known failures.
-- Open decisions or blockers: none.
-- Exact next step: the owner reviews and merges pull request #60; the agent then reports the CI
-  result.
+- Date: 2026-09-07 (review round 1 in flight).
+- Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`, in the
+  isolated worktree `/private/tmp/carapp-worktrees/E3-11`.
+- Current phase and latest commit: applying owner review round 1 on PR #60 (five findings).
+  Last pushed story commit: `4bd2a11`. Finding facts verified against the installed SDKs:
+  `DecodedIdToken` nests the provider claim as `firebase.sign_in_provider` (no top-level claim),
+  and the 1st gen trigger builder supports `.region(...)` and `runWith({failurePolicy: true})`.
+- Push and pull-request status: PR #60 open at
+  `https://github.com/davidru85/carApp/pull/60`; the branch will be pushed with the review
+  fixes; the agent will not merge it.
+- Completed since the previous checkpoint: review intake, SDK fact-checks.
+- Verification evidence and known failures: Finding 1 confirmed (top-level `sign_in_provider`
+  is always undefined in production; tests encode the same wrong shape). Finding 4 confirmed
+  (no `__endpoint` assertions for the new callable). Awaiting RED commits.
+- Open decisions or blockers: findings 2, 3 and 5 are owner decisions (trigger region, trigger
+  runtime bounds and retry posture, captured-token freshness posture).
+- Exact next step: RED for Finding 1 (nested-token success plus flat-token rejection).
 - Current phase and latest commit: REFACTOR phase verification complete locally; the only
   refactor change relinquishes the bespoke `internal` rethrow in the trigger in favor of the
   original failure, with the test asserting rejection instead of a bespoke code. `npm test`
