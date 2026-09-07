@@ -38,6 +38,55 @@
 
 ## Entries
 
+### 2026-09-07 — E2-07 anonymous sign-in benefit reminders implemented
+
+- **Type:** story
+- **Story / Decision:** `E2-07` / `D-144`, `D-145`, `D-146`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the `D-62` retention notices are executable end to end. The schedule constant
+  `[1, 3, 8, 18]` and its pure evaluation live in `:feature:session` `domain`; the position is
+  persisted in the new device-local `anonymous_reminder` table (schema version 2, migration
+  `1.sqm`); `SessionStateHolder` gained `evaluateAnonymousReminder()`,
+  `dismissAnonymousReminder()` and the typed `SessionUiState.anonymousReminderIndex`; and both
+  hosts render a dismissible banner from their own foreground lifecycle.
+- **Why:** an unlinked anonymous identity is device-bound and eligible for Firebase cleanup after
+  30 days (`D-60`), so the owner must learn the recovery benefit before losing the data, without a
+  scheduler or an operating-system notification, both of which are out of MVP scope.
+- **Documents touched:** `docs/CONTRACTS.md §11.3` and `§20.10`, `docs/TECHNICAL_PLAN.md §2`
+  and `§6`, `docs/SPECIFICATION.md §12`, `docs/DECISION_BOARD.md`, `docs/adr/0145`–`0147`,
+  `docs/adr/README.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`, `docs/handoff-E2-07.md` and
+  this log.
+- **Verification:** the full non-instrumented CI command exits `0`, including `contractCheck` with
+  147 aligned decisions and ADRs and no `PENDING` assertion;
+  `:androidApp:connectedDebugAndroidTest` runs 17 tests on the D-84 API 36 emulator;
+  `xcodebuild` builds the iOS simulator app and its 40 unit tests pass on an erased simulator; the
+  regenerated Objective-C header matches the committed golden.
+- **Follow-ups / risks:** the notice explains permanent sign-in but offers no action, because the
+  settings entry point that starts it belongs to `E2-04` and `E2-05`. The story is human-review
+  gated and touches `core/database/**`, which it owns for its duration.
+
+### 2026-09-07 — D-144, D-145 and D-146 accepted for the anonymous reminder implementation
+
+- **Type:** decision
+- **Story / Decision:** `E2-07` / `D-144`, `D-145`, `D-146`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `D-144` puts the last-shown reminder index in a dedicated device-local table
+  keyed by the anonymous UID; `D-145` carries the reminder on its own typed `SessionUiState` field
+  instead of the shared `UiMessage` channel; `D-146` triggers evaluation from a host foreground
+  intent instead of a new `AppGraphDependencies` member.
+- **Why:** `D-62` deliberately left the persistence location to this story's intake. The stored
+  position is schedule state rather than a user preference and is only meaningful next to the
+  identity that produced it; the single message channel is already owned by authentication errors,
+  so sharing it would let a notice and an error silently consume each other; and one lifecycle
+  event does not justify changing the canonical graph parameter order of `docs/CONTRACTS.md §11.6`.
+- **Documents touched:** `docs/adr/0145-store-the-anonymous-reminder-position-in-a-dedicated-local-table.md`,
+  `docs/adr/0146-carry-the-anonymous-reminder-on-a-typed-session-state-field.md`,
+  `docs/adr/0147-evaluate-the-anonymous-reminder-from-a-host-foreground-intent.md`, the four
+  decision mirrors, `docs/CONTRACTS.md §11.3`, `docs/TECHNICAL_PLAN.md §6` and this log.
+- **Verification:** `contractCheck` reports 147 aligned decisions and ADRs.
+- **Follow-ups / risks:** `D-144` makes schema version 2 the new migration baseline, so every later
+  schema change extends the chain and ships its own populated previous-version migration test.
+
 ### 2026-09-07 — PR #60 review round 5 resolved the five remaining findings
 
 - **Type:** story

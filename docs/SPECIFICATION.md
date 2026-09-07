@@ -620,6 +620,9 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-141 | Server-issued orphan-cleanup authorization | Before switching accounts, the authenticated anonymous session receives a single-purpose opaque cleanup ticket; the permanent caller later uses it to delete only the server-bound anonymous identity without any expired-token verification fallback. | Accepted |
 | D-142 | Ticket-consumption anonymity revalidation | The orphan-cleanup callable re-verifies D-134 anonymity of the ticket-bound account before any destructive stage. | Accepted |
 | D-143 | Account-deletion erasure of orphan-cleanup authorizations | Account deletion purges every orphan-cleanup authorization bound to the deleted UID; internal server-only collections are declared in a separate registry excluded from D-63. | Accepted |
+| D-144 | Anonymous reminder persistence | Persist the last-shown reminder index with its anonymous UID in a dedicated device-local table introduced by schema version 2. | Accepted |
+| D-145 | Anonymous reminder presentation channel | Carry the reminder on its own typed `SessionUiState` index field with its own dismissal intent, not on the shared message channel. | Accepted |
+| D-146 | Anonymous reminder evaluation trigger | Each host calls `evaluateAnonymousReminder()` on launch and foreground return; no scheduler, alarm or operating-system notification is introduced. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 

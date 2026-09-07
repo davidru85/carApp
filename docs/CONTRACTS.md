@@ -798,6 +798,27 @@ reminder was shown; and no reminder on day 31 after reminder 3 has been consumed
 MUST explain the benefit of permanent sign-in and the device-bound, 30-day cleanup risk. These are
 foreground authentication-retention notices, not operating-system notifications.
 
+The last-shown index is persisted in the device-local `anonymous_reminder` table together with the
+anonymous UID that produced it (`D-144`, `docs/TECHNICAL_PLAN.md §6`). A stored position belonging
+to a different anonymous UID MUST read as absent, so a new anonymous identity starts the schedule
+again. The table is never synchronized, never enqueued in the outbox and absent from the closed
+remote schema of §16. A persistence failure MUST NOT be reported to the owner: the notice is simply
+not shown, because a non-blocking reminder is not worth an error the owner cannot act on.
+
+The reminder reaches the UI as the typed `SessionUiState.anonymousReminderIndex` (§20.10), never as
+`UiMessage` (`D-145`). It is therefore independent of the message channel: `clearMessage()` MUST NOT
+dismiss the reminder, and publishing or clearing a reminder MUST NOT touch `message`.
+`SessionStateHolder.dismissAnonymousReminder()` clears the field without releasing the persisted
+index, which was already consumed when the reminder was shown. Each host maps the index to its own
+copy, and every one of them states both the recovery benefit and the 30-day cleanup risk while
+naming only the providers that platform offers.
+
+`SessionStateHolder.evaluateAnonymousReminder()` is the only evaluation entry point (`D-146`). Each
+host calls it on launch and on every foreground return, from the Android `ON_START` lifecycle event
+and the iOS active scene phase, and MUST NOT call it on any other event. The index MUST be
+persisted before the reminder is published, so a notice whose index did not survive is never shown.
+No scheduler, alarm, background task or operating-system notification participates.
+
 ### 11.4 Local owner adoption
 
 On the first successful authentication after a `LOCAL_OWNER` period, in one transaction:
@@ -2498,6 +2519,8 @@ class SessionStateHolder {
     fun completeGoogleSignIn(idToken: String, accessToken: String?)
     fun completeAppleSignIn(idToken: String, rawNonce: String)
     fun failSignIn(reason: NativeSignInFailure)
+    fun evaluateAnonymousReminder()
+    fun dismissAnonymousReminder()
     fun startAccountConversion(provider: AuthProvider)
     fun confirmAccountConversion(confirmation: Confirmation)
     fun requestSignOut()
@@ -2596,6 +2619,7 @@ data class SessionUiState(
     val providers: List<AuthProvider>,
     val isBusy: Boolean,
     val message: UiMessage?,
+    val anonymousReminderIndex: Int?,
 )
 
 data class SyncUiState(
@@ -2707,6 +2731,11 @@ UNKNOWN -> SIGNED_OUT after local-data clear
 ```
 
 From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+
+`SessionUiState.anonymousReminderIndex` is the zero-based index of the `D-62` retention notice
+currently offered, or `null` when none is. It is a typed value, not display copy: each host maps it
+to its own string resources under §14. Its lifecycle, its independence from `message` and its single
+evaluation entry point are normative in §11.3.
 
 `SyncStatus` is exported through the SKIE/Kotlin-Native sealed-class shape fixed by the generated header. Swift consumers MUST be able to distinguish `Idle`, `Syncing`, `Pending(count)` and `Failed(retryableCount, poisonedCount)` exhaustively.
 

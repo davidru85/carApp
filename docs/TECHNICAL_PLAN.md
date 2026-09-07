@@ -158,6 +158,9 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-141 | Server-issued orphan-cleanup authorization | Issue a 256-bit ticket while the anonymous session is verified; store only its SHA-256 digest, bound UID, status and 30-day TTL; require it from the permanent caller and mark completion last | Accepted | Removes expired-token verification, narrows authorization to one anonymous UID, keeps retries idempotent, denies the internal collection to mobile clients and lets D-138 converge cleanup after native anonymous-account deletion. |
 | D-142 | Ticket-consumption anonymity revalidation | Resolve the bound UID's Auth record via Admin `getUser` before any destructive stage; reject with `failed-precondition` unless it is missing or still D-134-anonymous | Accepted | Closes the stale-ticket data-loss sequence where the bound account links to a permanent credential after issuance; keeps the single shared D-134 predicate and missing-account convergence. |
 | D-143 | Account-deletion erasure of orphan-cleanup authorizations | Purge every `orphanCleanupTickets` record bound to the deleted UID after remote data and before Auth deletion; declare internal server-only collections in a separate §16 registry excluded from D-63 | Accepted | Owns the account-erasure guarantee in the deletion flow; the 30-day TTL becomes a bounded fallback; an undeclared internal collection or a D-63 overlap fails the internal parity test. |
+| D-144 | Anonymous reminder persistence | Dedicated single-row `anonymous_reminder` table holding the anonymous UID and the zero-based last-shown index, added by schema version 2 through the committed `1.sqm` migration | Accepted | The position is schedule state, not a user preference, and it is only meaningful next to the identity that produced it; the additive migration cannot lose an existing row, and a different anonymous UID restarts the schedule with no explicit reset. |
+| D-145 | Anonymous reminder presentation channel | `SessionUiState.anonymousReminderIndex: Int?` plus `dismissAnonymousReminder()`, independent of `message` and `clearMessage()` | Accepted | The single message channel is owned by authentication errors, so sharing it would let a notice and an error silently consume each other; the exported index also lets the last reminder before cleanup eligibility read more urgently than the first. |
+| D-146 | Anonymous reminder evaluation trigger | `SessionStateHolder.evaluateAnonymousReminder()` called from the Android `ON_START` event and the iOS active scene phase | Accepted | Keeps the canonical `AppGraphDependencies` parameter order of `docs/CONTRACTS.md §11.6` intact for one lifecycle event that is already intent-shaped, and keeps every scheduler and operating-system notification out of the MVP. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -303,7 +306,7 @@ Synchronized entity control columns:
 | `localMutationSeq` | Monotonic database-local mutation order, shared across synchronized entity tables. |
 | `schemaVersion` | Payload schema version. |
 
-Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`.
+Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`, `anonymous_reminder`.
 
 There is **no enforced foreign key** from `fuel_entry` to `vehicle`: sync can legitimately deliver an entry before its vehicle, and a constraint failure inside a pull transaction would stall the cursor permanently.
 
@@ -370,11 +373,23 @@ CREATE TABLE sync_cursor (
 );
 ```
 
+Anonymous reminder schema (`D-144`, schema version 2):
+
+```sql
+CREATE TABLE anonymous_reminder (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  anonymousUid TEXT NOT NULL,
+  lastShownIndex INTEGER NOT NULL CHECK (lastShownIndex >= 0)
+);
+```
+
+The table holds the device-local position of the `D-62` reminder schedule (`docs/CONTRACTS.md §11.3`). It is never synchronized, never enqueued in the outbox and absent from the closed remote schema of `docs/CONTRACTS.md §16`. `anonymousUid` scopes the position: a stored row belonging to a different anonymous identity reads as absent, which restarts the schedule.
+
 `lastDocumentId` is `TEXT NOT NULL` because `docs/CONTRACTS.md §9.4` forbids `null` as a cursor component; the `RemoteCursor.INITIAL` sentinel is never stored as a row. An `E1-01` migration test MUST verify the constraint rejects an unknown `entityType`.
 
 Future columns MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
-SQLDelight configuration: committed `.sq` files are the canonical schema and query source, asynchronous generation and `verifyMigrations` are enabled, and system-SQLite linking is disabled for the bundled Native driver. Destructive schema recreation is FORBIDDEN. Every version bump ships a committed `.sqm` migration plus a test that migrates a populated previous-version database and asserts row preservation. Schema v1 is covered by create, constraint and close/reopen persistence tests on Android and iOS.
+SQLDelight configuration: committed `.sq` files are the canonical schema and query source, asynchronous generation and `verifyMigrations` are enabled, and system-SQLite linking is disabled for the bundled Native driver. Destructive schema recreation is FORBIDDEN. Every version bump ships a committed `.sqm` migration plus a test that migrates a populated previous-version database and asserts row preservation. Schema v1 is covered by create, constraint and close/reopen persistence tests on Android and iOS. Schema v2 is the `D-144` `anonymous_reminder` table, added by the committed `1.sqm` migration and covered by a populated version-one migration test.
 
 ## 7. Firestore Design
 

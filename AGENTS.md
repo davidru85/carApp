@@ -100,8 +100,9 @@ merged on 2026-09-06 through pull request #55, after two owner review rounds, wi
 checks green. Local owner adoption, its automatic triggers and real platform connectivity
 observation on both hosts are therefore live. `E3-10`, the Account Deletion Server Operation,
 merged on 2026-09-07 through pull request #58, after two owner review rounds, with all ten required
-checks green. `E3-11`, the Anonymous Identity Cleanup Entry Points, is implemented and awaiting the
-gated owner review through pull request #60.
+checks green. `E3-11`, the Anonymous Identity Cleanup Entry Points, merged on 2026-09-07 through
+pull request #60, after five owner review rounds. `E2-07`, the Anonymous Sign-In Benefit Reminders,
+is implemented and awaiting its gated owner review.
 
 ### Delivery status and remaining work
 
@@ -111,10 +112,11 @@ gated owner review through pull request #60.
   `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
   owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoff-E2-06.md` holds its
   acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoff-E3-10.md`.
-  `E3-11` introduced `D-132` through `D-143` and `docs/handoff-E3-11.md` holds its acceptance
-  evidence pending the gated owner review.
-- **Next:** `E2-07`, the anonymous sign-in benefit reminders. It is the first Ready Phase 2 story,
-  because `E2-04` depends on `E3-11`, which is implemented and awaiting its gated owner review.
+  `E3-11` is also complete; it introduced `D-132` through `D-143` and its evidence lives in
+  `docs/handoff-E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
+  `docs/handoff-E2-07.md` holds its acceptance evidence pending the gated owner review.
+- **Next:** `E2-04`, the anonymous account conversion, now that `E3-11` has merged. `E2-05` follows
+  it.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-14`, `E1-15`, `E1-16` and `E1-17`, in that order.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
@@ -122,10 +124,11 @@ gated owner review through pull request #60.
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
   `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
   until they are fixed, a red required job is not by itself evidence of a regression.
-- **Remaining Phase 2:** `E2-07`, `E2-04` and `E2-05`.
+- **Remaining Phase 2:** `E2-04` and `E2-05`. `E2-07` is implemented and awaiting its gated owner
+  review.
 - **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01` and `E3-06` are already complete, and `E3-11` is
-  implemented and awaiting its gated owner review in pull request #60.
+  `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already
+  complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model).
 
@@ -140,14 +143,14 @@ build-logic/       convention plugins, an included build
 :core:analytics    AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
-:core:database     SQLDelight schema v1, typed queries, mutation facade and bundled SQLite driver
+:core:database     SQLDelight schema v2, typed queries, mutation facade and bundled SQLite driver
 :core:auth         complete provider-free auth contracts, models and auth-backed owner context
 :core:sync         staged sync contracts for the E0-07 application graph
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
 :feature:vehicle   Vehicle domain, local repository and shared presentation state holders
 :feature:fuel      Fuel Entry domain, SQLDelight local repository, projections, R-3 consumption and presentation
-:feature:session   device-local settings domain and SQLDelight repository plus the staged session surface
+:feature:session   device-local settings and anonymous reminder domain plus SQLDelight repositories and the staged session surface
 :shared            provider-free graph contracts, Swift facade and exported shared declarations
 :shared:testing    KMP app-graph test factory, consumed from commonTest only
 :wiring:firebase   staged Firebase provider composition contract

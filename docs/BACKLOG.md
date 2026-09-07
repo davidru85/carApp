@@ -682,6 +682,8 @@ Human review required.
 
 ### E2-07 - Anonymous Sign-In Benefit Reminders - S
 
+Status: implemented on 2026-09-07, awaiting the gated owner review. See `docs/handoff-E2-07.md`.
+
 Implement the foreground-only anonymous-account retention notices selected by `D-62`.
 
 Acceptance criteria:
