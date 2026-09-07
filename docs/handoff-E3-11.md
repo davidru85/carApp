@@ -48,11 +48,11 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-07 (PR #60 review round 5, after Finding 3 RED).
+- Date: 2026-09-07 (PR #60 review round 5, Finding 3 GREEN ready to commit).
 - Branch and base: `story/E3-11-anonymous-cleanup-entry-points`, from `main` at `6c74b5e`.
-- Current phase: review Finding 3 RED is reproduced; its test changes are uncommitted.
-- Latest commit: `266a4de fix(E3-11): assign unique function generation assertion ID` (GREEN).
-- Push and pull-request status: the branch is four commits ahead of
+- Current phase: review Finding 3 GREEN is verified and ready to commit.
+- Latest commit: `09a837b test(E3-11): reject hidden grouped function exports` (RED).
+- Push and pull-request status: the branch is five commits ahead of
   `origin/story/E3-11-anonymous-cleanup-entry-points`. PR #60 remains open and MUST NOT be merged by
   the agent. Commit `3371386` is the latest pushed commit; all ten required checks for that pushed
   state were green before review round 5 began.
@@ -73,12 +73,14 @@
      commit `266a4de` assigns `FunctionGenerationContract` the next unused ID, 22. The combined
      focused test and `contractCheck` run passed; `contractCheck` emitted distinct entries for IDs
      21 and 22 and reported 142 decisions and 142 matching ADRs.
-  3. **Finding 3 — RED.** The uncommitted test change adds grouped
+  3. **Finding 3 — GREEN, ready to commit.** RED commit `09a837b` adds grouped
      (`export {a, b}`), whitespace-padded (`export { c }`) and aliased
      (`export {source as deployed}`) index-export fixtures. It evaluates every fixture before
-     asserting, so the result proves all three forms are missed by the current parser. The focused
-     run executed one test and failed as expected: the three new fixtures returned `PASS` where
-     `FAIL` was required. The RED test must be committed before changing the parser.
+     asserting; the focused RED run executed one test and reported actual statuses
+     `[FAIL, FAIL, FAIL, PASS, PASS, PASS, FAIL, FAIL]`, proving all three forms were missed. The
+     GREEN parser splits grouped clauses, trims whitespace, captures the exported side of `as` and
+     accepts TypeScript identifiers. The full `FunctionGenerationContractTest` class and
+     `contractCheck` pass, with five deployed exports reported.
   4. **Finding 4 — not started.** The selected erasure posture is to purge server-only
      `orphanCleanupTickets` records bound to a UID during account deletion rather than retain the
      identifier for up to 30 days. Add failing account-deletion and internal-collection registry
@@ -92,16 +94,14 @@
   passed 142 decision/ADR assertions; the full non-instrumented Gradle command executed 636 tasks
   successfully; Firebase Functions and indexes dry runs passed. These counts describe commit
   `3371386`, not the unpushed review-round-5 changes, so full verification must be repeated.
-- Known failures: the focused `FunctionGenerationContractTest.everyAllowlistInputIsLoadBearing`
-  is intentionally RED because the current parser misses all three new export forms. No
-  unexplained failure is known.
+- Known failures: none. The intentional Finding 3 RED is resolved by the current GREEN change.
 - Open decisions or blockers: no blocker. Finding 1 requires the next decision ID and ADR; Finding
   4 requires a separate decision for account-deletion erasure and internal-collection registry
   treatment. The owner has authorised the five requested remediations and the purge posture was
   selected as the safer interpretation within that scope.
-- Exact next step: rerun the strengthened Finding 3 test to capture its full three-fixture RED
-  evidence, commit that RED, implement clause parsing with exported-alias capture, run the focused
-  tests and `contractCheck`, then commit GREEN.
+- Exact next step: commit the Finding 3 GREEN change, inspect the E3-10 account-deletion handler,
+  Firebase Admin gateways and D-63 registry tests, then add Finding 4 failing-first coverage for
+  purging bound cleanup authorizations and pinning the internal-collection exclusion registry.
 
 ## Scope Completed
 

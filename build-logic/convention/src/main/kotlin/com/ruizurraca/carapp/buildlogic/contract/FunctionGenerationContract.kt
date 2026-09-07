@@ -68,12 +68,24 @@ internal class FunctionGenerationContract private constructor(
 
     private fun exportedFunctionNames(indexSource: String): List<String> {
         val names = mutableListOf<String>()
-        Regex("""export \{(\w+)}""").findAll(indexSource).forEach { names += it.groupValues[1] }
-        Regex("""export const (\w+)""").findAll(indexSource).forEach { names += it.groupValues[1] }
+        EXPORT_CLAUSE.findAll(indexSource).forEach { match ->
+            match.groupValues[1]
+                .split(',')
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .map { declaration -> declaration.split(ALIAS_SEPARATOR).last().trim() }
+                .filter(TYPESCRIPT_IDENTIFIER::matches)
+                .forEach(names::add)
+        }
+        EXPORTED_CONST.findAll(indexSource).forEach { names += it.groupValues[1] }
         return names.sorted()
     }
 
     internal companion object {
+        private val EXPORT_CLAUSE = Regex("""export\s*\{([^}]*)}""")
+        private val ALIAS_SEPARATOR = Regex("""\s+as\s+""")
+        private val TYPESCRIPT_IDENTIFIER = Regex("""[A-Za-z_$][A-Za-z0-9_$]*""")
+        private val EXPORTED_CONST = Regex("""export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)""")
         const val ID = 22
         const val NAME = "only onAnonymousUserDeleted uses Cloud Functions 1st gen (TD-01)"
         val TD01_EXPORT_SURFACE = listOf(
