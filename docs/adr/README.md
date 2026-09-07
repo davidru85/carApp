@@ -138,5 +138,10 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-129 | [ADR-0130](0130-use-firestore-recursive-delete-per-registered-collection.md) | Use Firestore recursive deletion per registered collection. | Accepted |
 | D-130 | [ADR-0131](0131-resolve-qs-advisories-within-existing-ranges.md) | Resolve the `qs` advisories within existing dependency ranges. | Accepted |
 | D-131 | [ADR-0132](0132-bound-the-account-deletion-callable-runtime.md) | Bound the account-deletion callable runtime. | Accepted |
+| D-132 | [ADR-0133](0133-keep-app-check-enforcement-on-auth-and-firestore.md) | Keep App Check enforcement on Authentication and Firestore. | Accepted |
+| D-133 | [ADR-0134](0134-fix-the-orphan-cleanup-callable-wire-contract.md) | Fix the orphan-cleanup callable wire contract. | Accepted |
+| D-134 | [ADR-0135](0135-deleted-user-eligibility-for-the-anonymous-cleanup-trigger.md) | Define deleted-user eligibility for the anonymous cleanup trigger. | Accepted |
+| D-135 | [ADR-0136](0136-bound-the-orphan-cleanup-callable-runtime.md) | Bound the orphan-cleanup callable runtime. | Accepted |
+| D-136 | [ADR-0137](0137-mirror-the-sole-1st-gen-allowlist-in-contractcheck.md) | Mirror the sole-1st-gen allowlist in `contractCheck`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

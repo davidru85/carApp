@@ -862,13 +862,29 @@ Two anonymous-deletion entry points reuse this service:
 
 - `onAnonymousUserDeleted` is the sole permitted Cloud Functions 1st gen function. The application
   relies on it only for Firebase's native automatic anonymous-account cleanup path, and it invokes
-  the service for an eligible deleted anonymous UID. Delivery caused by another anonymous deletion
-  is treated as harmless idempotent overlap, never as the primary guarantee for that path.
+  the service for an eligible deleted anonymous UID. A deleted Auth user is eligible when its
+  `providerData` list is empty; a deleted record carrying any provider entry, including a
+  phone-only user, is skipped, as is a record without a UID, both with a redacted skip log
+  (`D-134`). Delivery caused by another anonymous deletion is treated as harmless idempotent
+  overlap, never as the primary guarantee for that path.
 - `deleteOrphanedAnonymousAccount` is a Cloud Functions 2nd gen callable used by the confirmed
-  account-linking collision flow. It verifies the captured anonymous ID token and caller context,
-  deletes the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion
-  service directly after that deletion. It MUST NOT rely on `onAnonymousUserDeleted` being
+  account-linking collision flow. Its request payload contains `anonymousIdToken: String`; the
+  callable verifies the captured anonymous ID token (`sign_in_provider == "anonymous"`) and the
+  authenticated permanent caller context, rejects deletion of the current permanent UID, deletes
+  the orphaned anonymous Auth account through the Admin SDK, and invokes the deletion service
+  directly after that deletion. A successful response is
+  `{ status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED" }`. Missing authentication maps to
+  `unauthenticated`, a missing or invalid `anonymousIdToken` maps to `invalid-argument`, a
+  captured identity that is not anonymous or that equals the caller UID maps to
+  `failed-precondition`, and an Admin Auth or remote-data deletion failure maps to `internal`.
+  No UID, token, request payload or raw provider failure is attached to callable logs (`D-133`).
+  The callable declares `maxInstances: 2`, `memory: "256MiB"`, `timeoutSeconds: 60` and
+  `region: "europe-west1"` (`D-135`). It MUST NOT rely on `onAnonymousUserDeleted` being
   delivered.
+
+Cloud Functions App Check is not enforced for either callable: D-67 remains scoped to
+Authentication and Firestore, and any future extension MUST cover both deletion callables
+together (`D-132`).
 
 Both paths are idempotent. Trigger/callable overlap is expected and harmless. An integration test
 MUST suppress or disregard trigger delivery for the Admin SDK path and still prove that

@@ -38,6 +38,110 @@
 
 ## Entries
 
+### 2026-09-07 — D-136 mirrors the sole-1st-gen allowlist into `contractCheck`
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-136`
+- **Author:** OpenCode (kimi-k3), on behalf of David Ruiz
+- **What changed:** the TD-01 generation allowlist gained a second executable guard: assertion 21
+  in `contractCheck`, backed by a failing fixture in `:build-logic:convention:test`, while the
+  Functions suite remains the behavioral owner.
+- **Why:** the owner selected mirroring over keeping the guard invisible to Gradle-only
+  verification; an informational-only report was rejected because `contractCheck` has no PENDING
+  assertions by design.
+- **Documents touched:** ADR-0137, `build-logic` contract sources and fixtures, the decision
+  mirrors and this log.
+- **Verification:** `contractCheck` assertion 21 passes on the repository and all five mutated
+  fixtures fail in the convention test suite.
+- **Follow-ups / risks:** closing TD-01 must update both guards in the same change.
+
+### 2026-09-07 — D-135 bounds the orphan-cleanup callable runtime
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-135`
+- **Author:** OpenCode (kimi-k3), on behalf of David Ruiz
+- **What changed:** `deleteOrphanedAnonymousAccount` declares `maxInstances: 2`,
+  `memory: "256MiB"`, `timeoutSeconds: 60` and `region: "europe-west1"`.
+- **Why:** the owner selected fitted bounds over reusing the longer D-131 profile: the collision
+  path verifies a token and deletes one Auth user before delegating to `deleteUserData`, so a
+  60-second timeout fails fast into an idempotent retry.
+- **Documents touched:** ADR-0136, `docs/CONTRACTS.md §11.5`, the decision mirrors and this log.
+- **Verification:** `dependencyReachability.test.mjs` pins the emitted endpoint metadata; the
+  retry tests prove convergence after failure.
+- **Follow-ups / risks:** the bound must be re-evaluated before the deletion registry gains
+  Storage prefixes or larger collections.
+
+### 2026-09-07 — D-134 defines anonymous-trigger eligibility
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-134`
+- **Author:** OpenCode (kimi-k3), on behalf of David Ruiz
+- **What changed:** a deleted Auth user is eligible for `onAnonymousUserDeleted` cleanup only
+  when its `providerData` list is empty; linked and phone-only records and UID-less records are
+  skipped with redacted logs.
+- **Why:** the owner selected the documented Firebase representation of an unlinked anonymous
+  account over broader predicates, because the Admin-privileged trigger must never purge linked
+  user data.
+- **Documents touched:** ADR-0135, `docs/CONTRACTS.md §11.5`, the decision mirrors and this log.
+- **Verification:** `anonymousCleanup.test.mjs` covers linked, phone-only and UID-less skips plus
+  redelivery, retry, overlap and redaction.
+- **Follow-ups / risks:** the predicate inherits any future Firebase provider-representation
+  change and is part of the TD-01 migration review.
+
+### 2026-09-07 — D-133 fixes the orphan-cleanup callable wire contract
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-133`
+- **Author:** OpenCode (kimi-k3), on behalf of David Ruiz
+- **What changed:** `deleteOrphanedAnonymousAccount` takes `anonymousIdToken: String`, returns
+  `{ status: "ORPHANED_ANONYMOUS_ACCOUNT_DELETED" }` and closes its error codes to
+  `unauthenticated`, `invalid-argument`, `failed-precondition` and `internal`.
+- **Why:** the owner selected the implemented contract over reusing the D-128 surface, because
+  the collision flow needs the anonymous/eligibility and permanent-UID guards distinguishable
+  from transport and validation failures.
+- **Documents touched:** ADR-0134, `docs/CONTRACTS.md §11.5`, the decision mirrors and this log.
+- **Verification:** `orphanedAnonymousAccount.test.mjs` pins every mapping and the success
+  literal; E2-04 gains a stable typed contract before it exists.
+- **Follow-ups / risks:** none beyond the shared log-redaction posture.
+
+### 2026-09-07 — D-132 keeps App Check enforcement on Authentication and Firestore
+
+- **Type:** decision
+- **Story / Decision:** `E3-11` / `D-132`
+- **Author:** OpenCode (kimi-k3), on behalf of David Ruiz
+- **What changed:** closes the D-131 deferral: the two deletion callables are not added to the
+  D-67 App Check enforcement scope.
+- **Why:** the owner selected the unchanged D-67 scope over enforcing or monitoring App Check on
+  Cloud Functions; both callables already require a verified Firebase caller, the orphan path
+  verifies the captured anonymous token, and the D-66 budget remains the development cost
+  safety net.
+- **Documents touched:** ADR-0133, `docs/CONTRACTS.md §11.5`, the decision mirrors and this log.
+- **Verification:** no App Check dependency or middleware exists under `functions/src`; the
+  export set is pinned by `dependencyReachability.test.mjs`.
+- **Follow-ups / risks:** a future Functions App Check extension is a separate owner decision
+  that must cover both deletion callables together.
+
+### 2026-09-07 — E3-11 anonymous identity cleanup entry points implemented
+
+- **Type:** story
+- **Story / Decision:** `E3-11` / `D-132`, `D-133`, `D-134`, `D-135`, `D-136`
+- **Author:** OpenCode (kimi-k3), on behalf of David Ruiz
+- **What changed:** added the sole 1st gen `onAnonymousUserDeleted` trigger delegating eligible
+  anonymous deletions to `deleteUserData`, the 2nd gen `deleteOrphanedAnonymousAccount` callable
+  that verifies the captured anonymous token, rejects the current permanent UID and deletes the
+  orphaned Auth account before purging its data, plus the TD-01 generation-policy guards in the
+  Functions suite and in `contractCheck`.
+- **Why:** E3-11 is the last prerequisite before E2-04; both cleanup paths reuse the tested
+  E3-10 service, and overlap between them is provably harmless.
+- **Documents touched:** `AGENTS.md` repository state is updated by this entry's merge;
+  `docs/BACKLOG.md`, `docs/CONTRACTS.md §11.5`, the decision mirrors, ADR-0133..ADR-0137,
+  `docs/handoff-E3-11.md` and this log.
+- **Verification:** RED 26/30 then GREEN 47/47 Functions tests; 154/154 Firestore emulator
+  tests; production audit exit 0 with only the seven D-68 moderates; complete 636-task
+  non-instrumented Gradle command; `contractCheck` including the new assertion 21; draft PR #60.
+- **Follow-ups / risks:** the owner must review and merge the gated PR. E2-04 is Ready once it
+  merges.
+
 ### 2026-09-07 — D-131 bounds the account-deletion callable runtime
 
 - **Type:** decision

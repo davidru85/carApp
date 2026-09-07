@@ -607,6 +607,11 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-129 | Firestore Admin deletion primitive | Account cleanup awaits the Admin SDK recursive deletion of each registered collection in the required order. | Accepted |
 | D-130 | Transitive `qs` advisory remediation | The Functions lockfile resolves the existing transitive HTTP parser to patched `qs` 6.16.0. | Accepted |
 | D-131 | Account-deletion callable runtime bounds | The account-deletion callable runs within explicit instance, concurrency, memory and timeout bounds. | Accepted |
+| D-132 | Cloud Functions App Check scope | App Check enforcement stays on Authentication and Firestore; deletion callables rely on verified authentication and payload validation. | Accepted |
+| D-133 | Orphan-cleanup callable wire contract | The orphan-cleanup callable takes `anonymousIdToken`, returns a stable success literal and closes its callable error codes. | Accepted |
+| D-134 | Anonymous cleanup trigger eligibility | Only a deleted Auth user with an empty provider list is delegated to the cleanup service. | Accepted |
+| D-135 | Orphan-cleanup callable runtime bounds | The orphan-cleanup callable runs with explicit instance, memory and timeout bounds in the Firestore region. | Accepted |
+| D-136 | Sole-1st-gen allowlist enforcement | The single permitted 1st gen function is guarded by the Functions suite and by the Gradle contract check. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
