@@ -39,7 +39,7 @@
 
 - Date: 2026-09-08
 - Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`.
-- Current phase and latest commit: review remediation complete at `5e55009`; ready for the second
+- Current phase and latest commit: review remediation complete at `31ce7e7`; ready for the second
   gated owner review round. The three findings of the first review round are remediated:
   1. **ADR-0150 reworked** (`3da621c`): no option is recommended as satisfying the erasure
      invariant. The owner's counterexample is modelled explicitly (issuer eligibility read passes;
@@ -60,11 +60,16 @@
      starts only the Firestore emulator, so it does not exercise the real Admin Auth gateway. The
      record now distinguishes handler tests (fakes), concrete-gateway unit coverage (stub `Auth`
      client) and Firestore emulator coverage (real Firestore gateways, stubbed Auth).
-- Push and pull-request status: all commits pushed through `6743d2f`; pull request #63 targets
-  `main`, stays OPEN and MUST NOT be merged. **The ten protected checks pass on the post-fix head**,
-  run `34227983544`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+- Push and pull-request status: all commits pushed; the head is `31ce7e7` (the follow-up
+  documentation commit `31ce7e7` triggered a further check run; see below). Pull request #63 targets
+  `main`, stays OPEN and MUST NOT be merged. **The ten protected checks pass on the post-fix
+  head**: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
   `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
-  `provider-decoupling` and `shared-tests`, all `SUCCESS`, no re-run.
+  `provider-decoupling` and `shared-tests`. Run `34227983544` on `6743d2f` passed all ten with no
+  re-run; the follow-up commit's run `34230198804` hit the documented `E1-14` flake once in
+  `provider-decoupling` (a `:shared` Kotlin/Native test this branch does not touch — the branch
+  changes no Kotlin source outside `build-logic`), the failed job alone was re-run, and it and the
+  run then completed `success` with all ten checks green on the pull request.
 - Verification evidence and known failures: the full battery is green from the post-fix head
   (`6743d2f`): 78 Functions unit tests with 76 pass and 2 emulator-gated skips, the emulator suite
   (2 pass), 155 rules tests, the audit exit 0 with the pre-existing moderate `uuid` advisory,
@@ -230,6 +235,20 @@ Post-fix battery, run from the head `6743d2f`:
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
 
+### The one flake of the post-fix check run, and its re-run
+
+The follow-up documentation commit `31ce7e7` triggered run `34230198804`. Its
+`provider-decoupling` job failed once on
+`LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
+with `kotlinx.coroutines.test.UncompletedCoroutinesError`, in the run that also logs
+`The number of threads 4 is more than the number of processors 3` — the `E1-14` flake class, on
+the failure mode and target that story documents, in a test this branch does not introduce or
+touch: `git diff --stat origin/main...HEAD -- shared/ feature/ androidApp/ iosApp/ core/` is empty,
+so the branch changes no Kotlin source at all outside `build-logic`. The failed job alone was
+re-run; it and the whole run then completed `success`, and all ten checks are green on the pull
+request. `E1-14` remains open and makes a single red Native test ambiguous; the full analysis is
+in `docs/BACKLOG.md` (`E1-14`).
+
 ### The one failure that occurred (pre-review run, superseded)
 
 The first pre-review run of the Gradle command failed on
@@ -282,8 +301,10 @@ open and documented in `docs/BACKLOG.md`.
   serialization point; whichever is accepted must discharge the ADR-0150 proof obligations.
 - The issuer now depends on Admin availability: an Admin outage blocks issuance where it previously
   would not have. That is the intended trade of `D-148`, and it fails closed.
-- `E1-14` remains open and makes a red `shared-tests` or `iosSimulatorArm64Test` ambiguous. The
-  post-fix Gradle run passed first time.
+- `E1-14` remains open and makes a red `shared-tests`, `provider-decoupling` or
+  `iosSimulatorArm64Test` ambiguous: the post-fix check run `34230198804` failed once in
+  `provider-decoupling` on that flake, in a test this branch does not touch, and passed on the
+  re-run of the failed job. The post-fix Gradle command passed first time.
 
 ## Human Review Gate
 
