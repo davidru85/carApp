@@ -60,14 +60,17 @@
      starts only the Firestore emulator, so it does not exercise the real Admin Auth gateway. The
      record now distinguishes handler tests (fakes), concrete-gateway unit coverage (stub `Auth`
      client) and Firestore emulator coverage (real Firestore gateways, stubbed Auth).
-- Push and pull-request status: all commits pushed; pull request #63 targets `main`, stays OPEN and
-  MUST NOT be merged. The ten protected checks were green on the pre-review head; the post-fix runs
-  are recorded in **Verification Run**.
+- Push and pull-request status: all commits pushed through `6743d2f`; pull request #63 targets
+  `main`, stays OPEN and MUST NOT be merged. **The ten protected checks pass on the post-fix head**,
+  run `34227983544`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
+  `provider-decoupling` and `shared-tests`, all `SUCCESS`, no re-run.
 - Verification evidence and known failures: the full battery is green from the post-fix head
-  (`5e55009`): 78 Functions unit tests with 76 pass and 2 emulator-gated skips, the emulator suite
+  (`6743d2f`): 78 Functions unit tests with 76 pass and 2 emulator-gated skips, the emulator suite
   (2 pass), 155 rules tests, the audit exit 0 with the pre-existing moderate `uuid` advisory,
   `contractCheck` with 150 aligned decisions and `D-149` the one unresolved, the complete required
-  Gradle command exit 0 (no `E1-14` flake this time), the dry run exit 0, `git diff --check` clean.
+  Gradle command exit 0 (no `E1-14` flake this time), the dry run exit 0, `git diff --check` clean,
+  and the ten protected checks green on run `34227983544` with no re-run.
 - Open decisions or blockers: `D-149` is `Proposed` and is the owner's. The remediation explicitly
   does not decide it and does not pre-select an option.
 - Exact next step: the owner's second gated review of pull request #63, and a decision on `D-149`.
@@ -196,7 +199,7 @@ Red then green, per behaviour:
 | Decision registry parse | `6e7c311`, 1 failing of 70 | `0d08fca`, 70 passing |
 | Fail-closed eligibility on unknown state (review round) | `4208d86`, 1 failing of 78 | `fb56b11`, 78 passing |
 
-Post-fix battery, run from the head `5e55009`:
+Post-fix battery, run from the head `6743d2f`:
 
 - Complete Functions unit suite — `cd functions && npm test`: 78 tests, 76 pass, 0 fail, 2 skipped
   (the emulator-gated tests, which run below).
@@ -222,8 +225,10 @@ Post-fix battery, run from the head `5e55009`:
   `onAnonymousUserDeleted` declares `failurePolicy: true` (`D-138`); the flag suppresses the
   confirmation prompt and does not deploy under `--dry-run`.
 - `git diff --check`: clean.
-- The ten protected checks on pull request #63 from the post-fix push: recorded in the checks list
-  of the pull request; the review round's run is the authoritative one.
+- The ten protected checks on pull request #63 from the post-fix head `6743d2f`, run `34227983544`:
+  all ten pass with no re-run. `android-assemble`, `android-instrumented-tests`,
+  `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
+  `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
 
 ### The one failure that occurred (pre-review run, superseded)
 
