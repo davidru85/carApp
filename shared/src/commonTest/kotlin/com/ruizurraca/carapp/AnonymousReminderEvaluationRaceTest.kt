@@ -177,6 +177,57 @@ class AnonymousReminderEvaluationRaceTest {
             stateHolder.close()
         }
 
+    @Test
+    fun aPublishedReminderIsDroppedWhenTheSessionBecomesADifferentAnonymousIdentity() =
+        runTest {
+            val reminders = RecordingReminders()
+            val authClient = FakeAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
+            val stateHolder = stateHolder(authClient, reminders, elapsed = 20.days)
+
+            stateHolder.evaluateAnonymousReminder()
+            advanceUntilIdle()
+            assertEquals(
+                3,
+                stateHolder.state.value.anonymousReminderIndex,
+                "The first identity has reached the end of its schedule, so its notice is up.",
+            )
+            authClient.setAuthState(
+                AuthState.SignedIn(anonymousSession(uid = "other-anonymous-uid")),
+            )
+            advanceUntilIdle()
+
+            assertNull(
+                stateHolder.state.value.anonymousReminderIndex,
+                "The second identity has no reminder of its own, so it cannot inherit the banner.",
+            )
+            stateHolder.close()
+        }
+
+    @Test
+    fun aPublishedReminderIsKeptWhenTheSameAnonymousIdentityReEmits() =
+        runTest {
+            val reminders = RecordingReminders()
+            val authClient = FakeAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
+            val stateHolder = stateHolder(authClient, reminders, elapsed = 4.days)
+
+            stateHolder.evaluateAnonymousReminder()
+            advanceUntilIdle()
+            assertEquals(
+                1,
+                stateHolder.state.value.anonymousReminderIndex,
+                "Four elapsed days make reminder 1 the highest due one.",
+            )
+            authClient.setAuthState(AuthState.SignedIn(anonymousSession()))
+            advanceUntilIdle()
+
+            assertEquals(
+                1,
+                stateHolder.state.value.anonymousReminderIndex,
+                "A re-emission of the same anonymous session must not disturb its own notice.",
+            )
+            stateHolder.close()
+        }
+
     private fun TestScope.stateHolder(
         authClient: FakeAuthClient,
         reminders: AnonymousReminderRepository,
