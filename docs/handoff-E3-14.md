@@ -69,10 +69,12 @@
   MUST NOT be merged. `D-149` stays `Proposed` and `E3-15` stays not Ready.
 - Open decisions or blockers: `D-149` is `Proposed` and is the owner's. The review round is
   remediated without deciding it.
-- Exact next step: RED test for the fail-open eligibility predicate, then the GREEN fix, then the
-  ADR-0150 rework and its mirrors, then the ADR-0149 verification correction, the
+- Exact next step: the ADR-0150 rework and its mirrors, the ADR-0149 verification correction, the
   `docs/PROJECT_LOG.md` correction entry, the full verification battery and the refreshed PR
   description.
+- Progress this round: the intake checkpoint (`e2d3a42`), the gateway coverage pin (`8ce1bdf`), the
+  RED fail-closed test (`4208d86`, 1 failing of 78, pushed) and the GREEN eligibility fix
+  (`fb56b11`, 78 passing, pushed).
 - Previous checkpoint (pre-review state, preserved for continuity): the story had completed three
   red/green pairs (sanitized trigger rejection `2c65533`/`9490d2b`, Admin eligibility
   `73e0b90`/`d6365c1`, decision registry parse `6e7c311`/`0d08fca`), the decision records, the
