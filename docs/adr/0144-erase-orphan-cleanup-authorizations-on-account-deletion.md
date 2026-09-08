@@ -32,7 +32,11 @@ silently.
 Account deletion purges internal orphan-cleanup authorizations as a normative stage of the
 deletion order in `docs/CONTRACTS.md` §11.5: after registered remote document deletion fully
 succeeds, and before the Firebase Auth user is deleted, the server operation deletes every
-`orphanCleanupTickets` record whose `anonymousUid` equals the target UID. The purge:
+`orphanCleanupTickets` record whose `anonymousUid` equals the target UID **that its paged query
+observes while the purge runs**. A concurrent issuance may still write such a record after the purge
+has run; that remaining race is owned by `D-149` / `E3-15` and is not closed here, and a record it
+produces is left to the existing asynchronous Firestore TTL, which is provider-managed eventual
+cleanup and neither a hard retention bound nor a proven maximum. The purge:
 
 - is paged (batches of 200) and repeated until no matching records remain, so it is complete
   regardless of how many tickets the UID accumulated;
@@ -73,11 +77,11 @@ bound, nor cited as proof of the maximum time a record can survive.
 ### Positive
 
 - `anonymousUid` does not survive account deletion in any authorization the purge can see: for
-   those records the erasure is owned by the deletion flow rather than by asynchronous TTL cleanup.
-   This is **not** an unconditional guarantee that no `anonymousUid` survives — the ADR-0150
-   interleaving can leave one authorization written after the purge has run, and that record is
-   removed only by provider-managed asynchronous TTL cleanup, with no proven maximum. The
-   unconditional guarantee is `D-149`'s to deliver, not this decision's.
+  those records the erasure is owned by the deletion flow rather than by asynchronous TTL cleanup.
+  This is **not** an unconditional guarantee that no `anonymousUid` survives — the ADR-0150
+  interleaving can leave one authorization written after the purge has run, and that record is
+  removed only by provider-managed asynchronous TTL cleanup, with no proven maximum. The
+  unconditional guarantee is `D-149`'s to deliver, not this decision's.
 - The client-facing remote schema stays closed while every server-only collection is explicit and
   executable.
 - The D-63 registry keeps its exact `users/{uid}` meaning; the internal collection cannot leak
@@ -93,8 +97,12 @@ bound, nor cited as proof of the maximum time a record can survive.
 
 ### Constraints Introduced
 
-- The account-deletion operation MUST purge every internal authorization bound to the target UID
-  after remote data deletion and before Auth deletion.
+- The account-deletion operation MUST purge, after remote data deletion and before Auth deletion,
+  every internal authorization bound to the target UID that its paged query observes while the purge
+  runs, and MUST remove all of them completely. This obligation is bounded by what that query can
+  observe: a concurrent issuance MAY write an authorization after the purge has run, that remaining
+  race is owned by `D-149` / `E3-15`, and such a record is left to the existing asynchronous
+  Firestore TTL, which MUST NOT be presented as a hard retention bound or a proven maximum.
 - The purge MUST be idempotent, paged and bounded to records whose `anonymousUid` equals the
   target UID.
 - A purge failure MUST map to `internal` with the redacted `AUTHORIZATION` stage log and MUST NOT

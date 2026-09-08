@@ -38,6 +38,46 @@
 
 ## Entries
 
+### 2026-09-09 — Correction: ADR-0144 did not satisfy its own D-143 scope constraint
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the sixth gated owner review of pull request #63 found that ADR-0144 violated the
+  constraint it defines — every restatement of `D-143` must scope its guarantee to the
+  orphan-cleanup authorizations visible to the paged query when the purge runs and must name
+  `D-149` / `E3-15` as the owner of the remaining concurrent-issuance race — in two operative
+  places. The opening statement of its `Decision` section said the server operation deletes every
+  `orphanCleanupTickets` record whose `anonymousUid` equals the target UID, and the first bullet of
+  its `Constraints Introduced` carried the same unqualified MUST. Both now limit the guarantee to
+  the records the paged query observes while the purge runs, state that a concurrent issuance may
+  write one afterwards, name `D-149` / `E3-15` as the owner of that race, and say a record so
+  produced is left to the existing asynchronous Firestore TTL, which is neither a hard retention
+  bound nor a proven maximum. Every operational requirement is preserved: the purge stays paged in
+  batches of 200 and repeated until no matching records remain, idempotent, bounded to
+  `anonymousUid == target`, run after remote-data deletion and before Auth deletion, and complete
+  for every matching record its query observes. The same round removed a duplicated closing sentence
+  from the `Exact next step` paragraph of `docs/handoff-E3-14.md`.
+- **Why:** the constraint is only enforceable if the ADR that introduces it obeys it. An agent
+  reading ADR-0144's `Decision` opening or its first MUST would otherwise take the unconditional
+  reading the rest of the ADR spends a section refuting.
+- **Documents touched:** `docs/adr/0144-erase-orphan-cleanup-authorizations-on-account-deletion.md`,
+  `docs/handoff-E3-14.md` and this log. The sweep of current, non-historical documentation found no
+  further unqualified restatement. Two deliberate exclusions: ADR-0150's numbered restatement of the
+  `§11.5` deletion order, which quotes the contract's step order to set up the interleaving analysis
+  that ADR-0150 itself owns; and the lines of `docs/handoff-E3-14.md` that quote pre-correction
+  wording in order to describe what was corrected. `docs/handoff-E3-11.md` and the earlier entries
+  of this log were left intact: they record the state observed when `E3-11` merged, and this entry
+  corrects their wording without rewriting them.
+- **Verification:** the `rg` sweep over `AGENTS.md` and `docs`;
+  `./gradlew contractCheck :build-logic:convention:test` passes with 150 aligned decisions, `D-143`
+  `Accepted` and `D-149` the one unresolved `Pending` decision with its `Needed by` row;
+  `git diff --check origin/main...HEAD` clean and a clean working tree. Protected-check evidence for
+  the final head is in the pull-request description, per the CI-evidence policy.
+- **Follow-ups / risks:** unchanged. `D-143` stays `Accepted`, `D-149` remains the owner's decision
+  with no recommendation and no option selected, `E3-15` stays Not Ready, and `docs/SECURITY.md`
+  still carries no accepted-residual-risk entry. `E1-14` and `E1-17` remain open.
+
 ### 2026-09-08 — Correction: three D-143 restatements did not satisfy ADR-0144's scope constraint
 
 - **Type:** correction
