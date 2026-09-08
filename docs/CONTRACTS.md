@@ -945,17 +945,24 @@ Two anonymous-deletion entry points reuse this service:
   current-user check, so an anonymous `sign_in_provider` claim stays true for the rest of that
   token's lifetime after the account is linked, disabled or deleted. Before generating or
   persisting anything, the issuer MUST resolve the caller's current Auth record through the Admin
-  SDK and MUST issue only while that record exists, is not disabled, and still satisfies the shared
-  `D-134` eligibility predicate (`D-148`). A linked, disabled or missing record maps to
-  `failed-precondition` and MUST NOT create an authorization; an Admin lookup failure maps to
-  `internal` with the redacted `AUTH_USER` stage log. The predicate is the single shared `D-134`
-  definition used by the trigger and by the consumption callable.
+  SDK and MUST issue only while that record exists, is known to be enabled — an explicit
+  `disabled === false` state, so a record whose enabled state is unavailable rejects rather than
+  issues — and still satisfies the shared `D-134` eligibility predicate (`D-148`). A linked,
+  disabled, missing or state-unknown record maps to `failed-precondition` and MUST NOT create an
+  authorization; an Admin lookup failure maps to `internal` with the redacted `AUTH_USER` stage
+  log. The predicate is the single shared `D-134` definition used by the trigger and by the
+  consumption callable.
 - `D-148` does not by itself guarantee that no UID-bound authorization survives a successful
   account deletion. Because the deletion order above purges authorizations before deleting the Auth
   user, an issuance whose eligibility check passes before the purge and whose write lands after it
   outlives that deletion, and no check inside the issuer can close that window. Closing it is
   `D-149`, which is `Proposed`; until it is accepted and `E3-15` ships, that single interleaving is
-  a known residual risk bounded by the 30-day TTL.
+  a known residual risk bounded by the 30-day TTL. `D-149` distinguishes eventual convergence from
+  synchronous crash-safe erasure: a post-write read-back or a later purge pass is not atomic with
+  either the deletion or the authorization creation, so such mechanisms converge only eventually
+  and MUST NOT be described as guaranteeing zero UID-bound authorizations when deletion returns
+  success; only a mechanism with a proven serialization point may claim that, and the accepted
+  option MUST discharge the proof obligations of ADR-0150.
 - The issuer stores only the ticket's SHA-256 digest as the document ID under
   `orphanCleanupTickets/{ticketHash}`. The server record contains exactly the verified
   `anonymousUid`, `expiresAt` as a server-generated Firestore timestamp 30 days after issuance,

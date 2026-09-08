@@ -1029,8 +1029,10 @@ the redaction posture of `docs/CONTRACTS.md §11.5` and `D-128`.
 Acceptance criteria:
 
 - `issueOrphanCleanupTicket` resolves the caller's current Auth record through the Admin SDK before
-  it writes anything, and rejects with `failed-precondition` unless that record exists, is enabled
-  and still satisfies the shared `D-134` anonymity predicate. A missing record rejects too.
+  it writes anything, and rejects with `failed-precondition` unless that record exists, is known to
+  be enabled and still satisfies the shared `D-134` anonymity predicate. A missing record rejects
+  too, and so does a record whose enabled state is unavailable: eligibility is a positive fact, and
+  the issuer fails closed rather than treating an unknown state as enabled.
 - A rejected issuance MUST NOT create an authorization record, and MUST NOT leak the UID, the token,
   the payload or the raw provider failure into its logs or its error.
 - An Admin lookup failure maps to `internal` with the redacted `AUTH_USER` stage log, distinct from
@@ -1061,12 +1063,26 @@ No amount of checking inside the issuer closes that window, because at the momen
 Auth user legitimately still exists.
 
 Closing it requires changing something outside the issuer: the deletion order, an additional purge
-pass, or a new server-side marker. Each option has different costs, so the owner selects one.
+pass, or a new server-side marker. Each option has different costs, so the owner selects one, and
+none of them may be described as satisfying the erasure invariant without the crash-safe
+serialization proof that ADR-0150 obliges the accepted option to discharge. ADR-0150 distinguishes
+eventual convergence — a record may be observable for a bounded window and is then cleaned up —
+from synchronous crash-safe erasure — no record exists at the moment deletion returns success,
+under any crash — and shows with an explicit counterexample that a post-write read-back or a later
+purge pass is not atomic with either the deletion or the authorization creation, so such
+mechanisms deliver at most convergence. Option C, the marker collection read inside the issuance
+transaction, is the only candidate with a real serialization point, and the owner decides whether
+its cost is worth that property.
 
 Acceptance criteria (to be finalised once `D-149` is accepted):
 
-- Every meaningful interleaving of `issueOrphanCleanupTicket` and `deleteAccount` for the same UID
-  converges with zero UID-bound authorization records once account deletion returns success.
+- The accepted option discharges the proof obligations of ADR-0150: every interleaving of
+  `issueOrphanCleanupTicket` and `deleteAccount` for the same UID, including every crash point, is
+  enumerated, and the evidence states which property holds — eventual convergence with its bound,
+  or synchronous crash-safe erasure — and the mechanism that delivers it.
+- If the accepted option provides convergence rather than synchronous erasure, the maximum time a
+  UID-bound authorization can outlive a successful deletion is stated, the mechanism that removes
+  it is proven, and the residual risk is recorded in `docs/SECURITY.md`.
 - The issuer never returns a ticket whose authorization was concurrently removed and is therefore
   already unusable.
 - No client-selected UID, JWT verification fallback or weaker authorization path is introduced.

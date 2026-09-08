@@ -35,13 +35,19 @@ issuing side is where the authorization is created.
 
 `issueOrphanCleanupTicket` resolves the caller's current Firebase Auth record through the Admin SDK
 before it generates or persists anything, and issues a ticket only when
-`canIssueOrphanCleanupTicket` holds: the record exists, is **not disabled**, and still satisfies the
-shared `D-134` empty-`providerData` predicate. A linked, disabled or missing record is rejected with
-`failed-precondition` and creates no authorization.
+`canIssueOrphanCleanupTicket` holds: the record exists, is **known to be enabled** — an explicit
+`disabled === false` state — and still satisfies the shared `D-134` empty-`providerData` predicate.
+A linked, disabled, missing or state-unknown record is rejected with `failed-precondition` and
+creates no authorization.
 
-Disabled records are rejected as well as linked and missing ones, because disabling is how an
-account is taken out of service without deleting it, and a stale ID token outlives that change
-exactly as it outlives linking.
+Disabled records are rejected as well as linked, missing and state-unknown ones, because disabling
+is how an account is taken out of service without deleting it, and a stale ID token outlives that
+change exactly as it outlives linking. The enabled state is required explicitly rather than inferred
+from the absence of a `disabled` value: eligibility is a positive fact about the current record, and
+a snapshot that does not carry the value is not known to be enabled, so the predicate fails closed
+rather than treating an unknown state as enabled. The production
+`FirebaseAdminAuthDeletionGateway.getUser` returns the real `UserRecord.disabled` value, so the
+concrete gateway always supplies the explicit state.
 
 An Admin lookup failure is not an eligibility answer: it maps to `internal` with the redacted
 `AUTH_USER` stage log, and it too creates no authorization. Neither path attaches the UID, the
@@ -71,18 +77,30 @@ The predicate is a single shared function so the trigger (`D-134`), the consumpt
   and found eligible.
 - Eligibility MUST use the single shared `D-134` predicate; a second definition of "anonymous" is a
   contract failure.
+- The record MUST be known to be enabled: an explicit `disabled === false` state. A snapshot whose
+  enabled state is unavailable MUST reject, never issue.
 - An eligibility rejection MUST be `failed-precondition` and an Admin lookup failure MUST be
   `internal` with the redacted `AUTH_USER` stage; neither may leak the UID, token, payload or raw
   failure.
 
 ## Verification
 
-- `functions/test/orphanedAnonymousAccount.test.mjs` pins the three stale-claim rejections (linked,
-  disabled, deleted), each asserting that the calls list holds the lookup alone so no authorization
-  was created; the `internal` classification of an Admin lookup failure with its redacted stage
-  log; the redaction of the rejection itself; and the ordering of the lookup before the write on the
-  happy path.
-- `functions/test/orphanedAnonymousAccountEmulator.test.mjs` exercises the real Admin gateway.
+- `functions/test/orphanedAnonymousAccount.test.mjs` pins the four stale-claim rejections (linked,
+  disabled, deleted, and unknown enabled state), each asserting that the calls list holds the lookup
+  alone so no authorization was created; the `internal` classification of an Admin lookup failure
+  with its redacted stage log; the redaction of the rejection itself; and the ordering of the lookup
+  before the write on the happy path. These are handler tests against injected fake gateways.
+- `functions/test/firebaseAdminDeletionGateways.test.mjs` pins the concrete
+  `FirebaseAdminAuthDeletionGateway.getUser`: it forwards the record's `disabled` and `providerData`
+  values unchanged and maps only `auth/user-not-found` to `null`, rethrowing any other provider
+  failure. This is unit coverage of the production gateway against a stub `Auth` client, not a live
+  Admin Auth round trip.
+- `functions/test/orphanedAnonymousAccountEmulator.test.mjs` runs against the real Firestore
+  emulator and exercises the real Firestore gateways (the authorization gateway and the data
+  deletion gateway) end to end. It does **not** exercise the real Admin Auth gateway: the suite
+  starts only the Firestore emulator, so the `D-148` eligibility lookup is stubbed there with an
+  eligible anonymous record. The live Admin Auth path is exercised by the ten protected checks'
+  deployable build and by the dry-run deploy, not by an emulator round trip.
 
 ## References
 

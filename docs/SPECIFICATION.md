@@ -624,8 +624,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-145 | Anonymous reminder presentation channel | Carry the reminder on its own typed `SessionUiState` index field with its own dismissal intent, not on the shared message channel. | Accepted |
 | D-146 | Anonymous reminder evaluation trigger | Each host calls `evaluateAnonymousReminder()` on launch and foreground return; no scheduler, alarm or operating-system notification is introduced. | Accepted |
 | D-147 | Deferred launch evaluation | A launch evaluation blocked by an undetermined auth state completes once when the session resolves to an anonymous one, and is consumed by any other resolution. | Accepted |
-| D-148 | Admin verification at ticket issuance | The ticket issuer resolves the caller's current Auth record and issues only while it exists, is enabled and is still anonymous. | Accepted |
-| D-149 | Ticket issuance and account deletion race | Mechanism to guarantee no UID-bound authorization survives a successful account deletion. | Proposed |
+| D-148 | Admin verification at ticket issuance | The ticket issuer resolves the caller's current Auth record and issues only while it exists, is known to be enabled and is still anonymous; an unavailable enabled state rejects. | Accepted |
+| D-149 | Ticket issuance and account deletion race | Mechanism to close the issuance/deletion interleaving; no option is pre-selected, and none may be described as guaranteeing zero UID-bound authorizations at deletion success without the crash-safe serialization proof of ADR-0150. | Proposed |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` decision MUST be confirmed or changed by the project owner before the story that depends on it starts.
 
