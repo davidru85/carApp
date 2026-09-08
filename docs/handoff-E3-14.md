@@ -38,29 +38,47 @@
 ## In-Progress Checkpoint
 
 - Date: 2026-09-08
-- Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, rebased onto `main` at
-  `112e973`. The original base was `main` at `7a79fab`; pull requests #61 (`E2-07`) and #62
-  (`E2-08`) landed on `main` while this branch was open, which made the branch report as CONFLICTING
-  and required this rebase. Nothing they introduced was changed: their decisions `D-144` through
-  `D-147`, their ADRs 0145 through 0148, their project-log entries and their `AGENTS.md` state
-  survive unchanged, unioned with this branch's `D-148`, `D-149`, ADR-0149, ADR-0150 and the
-  `E3-14` / `E3-15` statements.
-- Current phase and latest commit: documentation phase; the handoff, the project log entries, an
-  owner-requested `AGENTS.md` merge-state correction and this rebase are the last changes of the
-  story.
-- Push and pull-request status: force-pushed after the rebase; the pull request #63 targets `main`
-  and is green on the rebased head.
-- Completed since the previous checkpoint: three red/green pairs, the decision records, the contract
-  updates, the full verification battery, the `AGENTS.md` correction recording that `E3-11`
-  merged through pull request #60 (merge commit `7a79fab`, 2026-09-07) and that `E3-14` is the
-  open pull request #63, and the rebase onto the `main` head that carries `E2-07` and `E2-08`.
-- Verification evidence and known failures: see **Verification Run**. One `E1-14` flake occurred and
-  is analysed there; no failure attributable to this change. The `AGENTS.md` correction is
-  documentation-only and re-runs `contractCheck` only. The rebase is documentation-only on the
-  six conflicting files and re-runs the full local suite on the new base.
-- Open decisions or blockers: `D-149` is `Proposed` and is the owner's. `E3-15` MUST NOT start until
-  it is resolved.
-- Exact next step: gated owner review, and a decision on `D-149`.
+- Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`
+  (rebased; see below). The pull request #63 targets `main` and was green on the ten protected
+  checks when the owner's gated review returned three findings.
+- Current phase: review remediation. The owner's review of pull request #63 found three defects:
+  1. ADR-0150's option-A recommendation is unsound: a second purge pass plus an issuer post-write
+     read-back do not give the "zero UID-bound authorizations when `deleteAccount` returns success"
+     guarantee, because neither step is atomic with the issuer's write. The counterexample: the
+     issuer's eligibility read passes, deletion completes both its Auth deletion and the second
+     purge, the issuer then writes the authorization, deletion returns success, and the issuer
+     crashes before any post-write revalidation or compensating delete; the record survives until
+     TTL expiry. ADR-0150, its four mirrors, the `E3-14` / `E3-15` backlog statements, the
+     `§11.5` statement and the PR description MUST be reworked so that no option claims the
+     guarantee without a crash-safe serialization proof, the eventual-convergence vs
+     synchronous-guarantee distinction is explicit, and the corrected options and proof
+     obligations go to the owner. `D-149` stays `Proposed`; no option is silently selected.
+  2. `canIssueOrphanCleanupTicket` fails open: it accepts `disabled === undefined` because it tests
+     `disabled !== true`. Issuance is permitted only when the current record is **known** to be
+     enabled. TDD correction: a RED test first, then requiring explicit enabled state. The shared
+     `D-134` anonymity predicate and all existing linked / disabled / deleted / logging /
+     error-mapping behaviour are preserved, and `FirebaseAdminAuthDeletionGateway.getUser` gains
+     direct unit coverage proving it forwards `disabled` and `providerData` and maps only
+     `auth/user-not-found` to `null`.
+  3. ADR-0149's Verification section overstates coverage:
+     `functions/test/orphanedAnonymousAccountEmulator.test.mjs` stubs Auth (the emulator suite
+     starts Firestore only), so it does not exercise the real Admin Auth gateway. The record must
+     describe real coverage: handler tests with fakes, concrete-gateway unit coverage, and
+     Firestore emulator coverage.
+- Push and pull-request status: unpushed local changes begin this round; the PR stays open and
+  MUST NOT be merged. `D-149` stays `Proposed` and `E3-15` stays not Ready.
+- Open decisions or blockers: `D-149` is `Proposed` and is the owner's. The review round is
+  remediated without deciding it.
+- Exact next step: RED test for the fail-open eligibility predicate, then the GREEN fix, then the
+  ADR-0150 rework and its mirrors, then the ADR-0149 verification correction, the
+  `docs/PROJECT_LOG.md` correction entry, the full verification battery and the refreshed PR
+  description.
+- Previous checkpoint (pre-review state, preserved for continuity): the story had completed three
+  red/green pairs (sanitized trigger rejection `2c65533`/`9490d2b`, Admin eligibility
+  `73e0b90`/`d6365c1`, decision registry parse `6e7c311`/`0d08fca`), the decision records, the
+  contract updates, the full verification battery, an owner-requested `AGENTS.md` merge-state
+  correction, and the rebase onto the `main` head `112e973` carrying `E2-07` and `E2-08`, after
+  which the ten protected checks were green on pull request #63.
 
 ## Scope Completed
 
