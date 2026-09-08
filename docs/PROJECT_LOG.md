@@ -38,6 +38,68 @@
 
 ## Entries
 
+### 2026-09-08 — Correction: D-149 is Pending, Firestore TTL is not a hard bound, and option C is not clean
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-141`, `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the second gated owner review of pull request #63 returned three normative
+  documentation findings. This entry records their correction; it changes no production code and no
+  decision content. (1) **`D-149` is `Pending`, not `Proposed`.** `docs/DECISION_BOARD.md` defines
+  `Proposed` as "a recommendation is on the table" and `Pending` as "no recommendation yet", and
+  ADR-0150 explicitly recommends no option, selects no default and leaves the trade to the owner.
+  The status is corrected in ADR-0150, the decision registry row and the awaiting-confirmation table
+  of `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/SPECIFICATION.md` §12,
+  `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md`, `docs/CONTRACTS.md` §11.5 and the handoff. No
+  recommendation was introduced to keep the `Proposed` label; `E3-15` stays Not Ready.
+  (2) **Firestore TTL is not a hard 30-day deletion bound.** At `expiresAt` a document becomes
+  eligible for asynchronous deletion; expired documents may remain queryable, and the deletion
+  typically observed within 24 hours of expiration is neither a guaranteed maximum nor an SLA. Every
+  claim that the residual risk is "bounded by the 30-day TTL", that a record is removed "only by its
+  30-day TTL" at a guaranteed time, that the existing TTL proves a maximum survival time, or that
+  options A or B obtain a bounded residual window from that TTL, is replaced by the precise
+  statement: provider-managed eventual cleanup after a 30-day expiration horizon, with an
+  asynchronous and non-hard-bounded deletion delay. Where a provable maximum retention period is
+  wanted, ADR-0150 and `docs/BACKLOG.md` now state that `E3-15` needs an additional deterministic
+  cleanup mechanism selected by the owner, which is deliberately not designed here.
+  (3) **Option C of ADR-0150 is not a clean P2 solution.** Its never-expiring `deletedUids` marker
+  necessarily retains a stable, UID-correlatable key for every deleted account forever, which
+  conflicts with `D-143` (ADR-0144), whose accepted rationale is that retaining an account
+  identifier after deletion violates the project's account-erasure expectation. ADR-0150 now
+  separates option C's serialization point from its unresolved indefinite retention problem and
+  enumerates, without selecting anything, what a valid design would have to prove: a justified
+  safety horizon covering every already-issued credential or token and every in-flight callable
+  execution plus clock skew and retry behaviour for a finite marker lifetime, or an alternative
+  privacy-preserving serialization representation with its own proof. The option B wording is
+  corrected in the same pass: option B is a probability reduction that removes no record and adds no
+  cleanup, so any convergence for a record it misses comes solely from the pre-existing
+  asynchronous TTL fallback and not from the option itself.
+- **Why:** a status label that claims a recommendation the ADR refuses to give misrepresents the
+  decision to the owner who has to take it; an overstated TTL guarantee would let a residual-risk
+  acceptance rest on a bound the provider does not offer; and presenting option C as clean would
+  have hidden that it closes the interleaving by reintroducing, permanently and in another
+  collection, exactly the retention `D-143` was accepted to remove.
+- **Documents touched:** `docs/adr/0150-...md`, `docs/adr/0144-...md`, `docs/adr/0142-...md`,
+  `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md` §12,
+  `docs/TECHNICAL_PLAN.md` §2, `docs/CONTRACTS.md` §11.5 and §16, `docs/BACKLOG.md` (`E3-15`),
+  `docs/handoff-E3-14.md` and this log. This entry corrects the wording of the 2026-09-08 entries
+  "Correction: the D-149 analysis was unsound and two E3-14 records overstated facts", "E3-14
+  hardens ticket issuance and sanitizes the trigger rejection" and "D-148 accepted and D-149
+  proposed for the orphan cleanup ticket", each of which describes `D-149` as `Proposed` and the
+  residual retention as bounded by the 30-day TTL. Per the append-only rule those entries are left
+  exactly as written; this entry supersedes their wording. No production source file changed: the
+  E3-14 Admin eligibility implementation, the fail-closed `disabled === false` predicate and the
+  concrete Firebase Admin gateway tests are untouched.
+- **Verification:** `cd functions && npm test`, the Firestore emulator suite, the Firestore rules
+  tests and `./gradlew contractCheck :build-logic:convention:test` all pass on the corrected head;
+  `contractCheck` still reports `D-149` as the one unresolved decision, now with status `Pending`,
+  and its awaiting-confirmation row. The exact figures and the protected-check run are recorded in
+  `docs/handoff-E3-14.md`.
+- **Follow-ups / risks:** `D-149` remains the owner's decision and `E3-15` stays Not Ready. Until it
+  is taken, one UID-bound authorization can outlive a successful account deletion, and the only
+  cleanup for it is provider-managed asynchronous Firestore TTL after the 30-day expiration horizon,
+  with no proven maximum.
+
 ### 2026-09-08 — Correction: the D-149 analysis was unsound and two E3-14 records overstated facts
 
 - **Type:** correction

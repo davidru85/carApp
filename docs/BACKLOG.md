@@ -1051,8 +1051,9 @@ Human review required.
 
 ### E3-15 - Close the Ticket Issuance and Account Deletion Interleaving - M
 
-**Not Ready.** Blocked on owner decision `D-149`, which is `Proposed` in `docs/DECISION_BOARD.md`
-with its options in [ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md).
+**Not Ready.** Blocked on owner decision `D-149`, which is `Pending` in `docs/DECISION_BOARD.md`
+— no recommendation is offered and no option is pre-selected — with its options in
+[ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md).
 
 `E3-14` stops a stale token from minting a ticket, but it cannot by itself guarantee that no
 UID-bound authorization survives a successful account deletion. The normative deletion order of
@@ -1066,13 +1067,23 @@ Closing it requires changing something outside the issuer: the deletion order, a
 pass, or a new server-side marker. Each option has different costs, so the owner selects one, and
 none of them may be described as satisfying the erasure invariant without the crash-safe
 serialization proof that ADR-0150 obliges the accepted option to discharge. ADR-0150 distinguishes
-eventual convergence — a record may be observable for a bounded window and is then cleaned up —
-from synchronous crash-safe erasure — no record exists at the moment deletion returns success,
-under any crash — and shows with an explicit counterexample that a post-write read-back or a later
-purge pass is not atomic with either the deletion or the authorization creation, so such
-mechanisms deliver at most convergence. Option C, the marker collection read inside the issuance
-transaction, is the only candidate with a real serialization point, and the owner decides whether
-its cost is worth that property.
+eventual convergence — a record may be observable for a while and is then cleaned up — from
+synchronous crash-safe erasure — no record exists at the moment deletion returns success, under any
+crash — and shows with an explicit counterexample that a post-write read-back or a later purge pass
+is not atomic with either the deletion or the authorization creation, so such mechanisms deliver at
+most convergence.
+
+Two facts constrain the story and neither may be glossed over. First, the only cleanup that exists
+today for a record that escapes the flow is the Firestore TTL on `expiresAt`: provider-managed
+eventual cleanup after a 30-day expiration horizon, with an asynchronous, non-hard-bounded deletion
+delay. It is **not** a hard 30-day deletion bound and MUST NOT be cited as the maximum time a
+record can survive; if the owner requires a provable maximum retention period, the accepted option
+must include an additional deterministic cleanup mechanism, which is itself part of the `D-149`
+decision. Second, option C — the marker collection read inside the issuance transaction — is the
+only candidate whose transaction supplies a real serialization point, but its proposed
+never-expiring marker retains a UID-correlatable key for every deleted account indefinitely, which
+conflicts with `D-143`. Option C is therefore not a clean solution as drafted: its serialization
+half and its retention half are separate, and the retention half is unresolved.
 
 Acceptance criteria (to be finalised once `D-149` is accepted):
 
@@ -1080,9 +1091,15 @@ Acceptance criteria (to be finalised once `D-149` is accepted):
   `issueOrphanCleanupTicket` and `deleteAccount` for the same UID, including every crash point, is
   enumerated, and the evidence states which property holds — eventual convergence with its bound,
   or synchronous crash-safe erasure — and the mechanism that delivers it.
-- If the accepted option provides convergence rather than synchronous erasure, the maximum time a
-  UID-bound authorization can outlive a successful deletion is stated, the mechanism that removes
-  it is proven, and the residual risk is recorded in `docs/SECURITY.md`.
+- If the accepted option provides convergence rather than synchronous erasure, the evidence states
+  which records the option itself removes and when, and — for every record it does not remove —
+  that the only cleanup is the provider's asynchronous TTL, which supplies no proven maximum. A
+  maximum retention time MAY be claimed only if the accepted option adds a deterministic cleanup
+  mechanism that proves it. The residual risk is recorded in `docs/SECURITY.md`.
+- If the accepted option is C, the marker's retention rule is stated and justified against `D-143`:
+  either a finite marker lifetime with a safety horizon covering every already-issued
+  credential/token, every in-flight callable execution, clock skew and retry behaviour, or a
+  privacy-preserving serialization representation with its own proof.
 - The issuer never returns a ticket whose authorization was concurrently removed and is therefore
   already unusable.
 - No client-selected UID, JWT verification fallback or weaker authorization path is introduced.

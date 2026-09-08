@@ -956,13 +956,18 @@ Two anonymous-deletion entry points reuse this service:
   account deletion. Because the deletion order above purges authorizations before deleting the Auth
   user, an issuance whose eligibility check passes before the purge and whose write lands after it
   outlives that deletion, and no check inside the issuer can close that window. Closing it is
-  `D-149`, which is `Proposed`; until it is accepted and `E3-15` ships, that single interleaving is
-  a known residual risk bounded by the 30-day TTL. `D-149` distinguishes eventual convergence from
-  synchronous crash-safe erasure: a post-write read-back or a later purge pass is not atomic with
-  either the deletion or the authorization creation, so such mechanisms converge only eventually
-  and MUST NOT be described as guaranteeing zero UID-bound authorizations when deletion returns
-  success; only a mechanism with a proven serialization point may claim that, and the accepted
-  option MUST discharge the proof obligations of ADR-0150.
+  `D-149`, which is `Pending` — no recommendation is on the table and the choice is the owner's.
+  Until it is accepted and `E3-15` ships, that single interleaving is a known residual risk whose
+  only cleanup is the pre-existing Firestore TTL on `expiresAt`: provider-managed eventual cleanup
+  after a 30-day expiration horizon, with an asynchronous and non-hard-bounded deletion delay. That
+  TTL MUST NOT be described as bounding the residual risk or as proving the maximum time a record
+  can survive; a provable maximum retention period would require an additional deterministic
+  cleanup mechanism, which is part of the `D-149` decision and is not specified here. `D-149`
+  distinguishes eventual convergence from synchronous crash-safe erasure: a post-write read-back or
+  a later purge pass is not atomic with either the deletion or the authorization creation, so such
+  mechanisms converge only eventually and MUST NOT be described as guaranteeing zero UID-bound
+  authorizations when deletion returns success; only a mechanism with a proven serialization point
+  may claim that, and the accepted option MUST discharge the proof obligations of ADR-0150.
 - The issuer stores only the ticket's SHA-256 digest as the document ID under
   `orphanCleanupTickets/{ticketHash}`. The server record contains exactly the verified
   `anonymousUid`, `expiresAt` as a server-generated Firestore timestamp 30 days after issuance,
@@ -1458,8 +1463,10 @@ Internal Firestore collection: orphanCleanupTickets/{ticketHash}
 `orphanCleanupTickets/{ticketHash}` contains exactly `anonymousUid`, `expiresAt` and `status` as
 defined in §11.5. The account-deletion operation MUST query this collection by `anonymousUid` and
 delete every matching record before deleting the Auth user. This purge is idempotent and owns the
-account-erasure guarantee; the 30-day Firestore TTL remains a bounded fallback for abandoned or
-completed authorizations, not the normal account-deletion retention path. A contract test compares
+account-erasure guarantee; the 30-day Firestore TTL remains a fallback for abandoned or completed
+authorizations, not the normal account-deletion retention path. That fallback is provider-managed
+eventual cleanup after the 30-day expiration horizon, with an asynchronous and non-hard-bounded
+deletion delay, so it MUST NOT be cited as a retention bound. A contract test compares
 this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not overlap the D-63
 registry and rejects an undeclared internal collection.
 

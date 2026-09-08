@@ -9,7 +9,7 @@
 - Backlog story: `E3-14 - Orphan Cleanup Ticket Issuance Hardening - M`, added to `docs/BACKLOG.md`
   in this story from the two post-merge findings of the `E3-11` review of pull request #60. The
   interleaving that `E3-14` deliberately does not close is `E3-15`, which is **not Ready** because
-  it depends on the `Proposed` decision `D-149`.
+  it depends on the unresolved owner decision `D-149`, which is `Pending`.
 - Acceptance criteria reviewed: the five criteria of `E3-14`. The issuance/deletion interleaving is
   explicitly out of this story's scope and is escalated instead of worked around.
 - Dependencies checked: `E3-10` (PR #58) and `E3-11` (PR #60) are merged; the branch is based on
@@ -17,7 +17,7 @@
 - Decisions checked: `D-23`, `D-63`, `D-128`, `D-129`, `D-131`, `D-132`, `D-134`, `D-135`, `D-137`,
   `D-138`, `D-141`, `D-142` and `D-143` are `Accepted` and govern this code. No decision this story
   depends on is `Proposed` or `Pending` at intake; the story itself introduces `D-148` (`Accepted`)
-  and `D-149` (`Proposed`, owner decision, needed by `E3-15`).
+  and `D-149` (`Pending`, owner decision, needed by `E3-15`).
 - Normative sections reviewed: `docs/CONTRACTS.md` §11.3, §11.5 (the deletion order, the ticket
   issuer, the consumption callable and their redaction rules), §16 (the internal server-only
   collection registry), §17 (logging and privacy), §18; `docs/SPECIFICATION.md` §3.2 (the closed
@@ -39,17 +39,66 @@
 
 - Date: 2026-09-08
 - Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`.
-- Current phase and latest commit: review remediation complete at `31ce7e7`; ready for the second
-  gated owner review round. The three findings of the first review round are remediated:
+- Current phase and latest commit: two rounds of gated-review remediation are complete; the pull
+  request is returned for the owner's next gated review and MUST NOT be merged.
+
+  **Second gated-review intake (2026-09-08).** The owner's review of pull request #63 returned three
+  normative findings against the documentation, none against the E3-14 production implementation.
+  The validated Admin eligibility implementation, the fail-closed `disabled === false` predicate and
+  the concrete Firebase Admin gateway tests are unchanged; no production source file is touched in
+  this round. The three findings and their corrections:
+  1. **`D-149` was labelled `Proposed` while carrying no recommendation.** `docs/DECISION_BOARD.md`
+     defines `Proposed` as "a recommendation is on the table" and `Pending` as "no recommendation
+     yet"; ADR-0150 explicitly recommends no option, selects no default and leaves the trade to the
+     owner, so `Proposed` was the wrong label. `D-149` is now `Pending` in ADR-0150, the decision
+     registry row and the awaiting-owner-confirmation table of `docs/DECISION_BOARD.md`,
+     `docs/adr/README.md`, `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
+     `docs/BACKLOG.md`, `docs/CONTRACTS.md` §11.5, this handoff and the pull-request description.
+     **No recommendation was introduced to preserve the `Proposed` label.** `E3-15` stays Not Ready
+     and blocked on the owner decision, and `contractCheck` assertion 4 — which treats `Proposed`
+     and `Pending` alike — still recognises `D-149` as the one unresolved decision and requires its
+     awaiting-confirmation row.
+  2. **The Firestore TTL semantics were overstated.** Firestore TTL is not a hard 30-day deletion
+     bound: at `expiresAt` a document becomes eligible for asynchronous deletion, expired documents
+     may remain queryable, and the typical deletion within 24 hours of expiration that Firebase
+     documents is neither a guaranteed maximum nor an SLA. Every claim that the residual risk is
+     "bounded by the 30-day TTL", that a record is removed "only by its 30-day TTL" at a guaranteed
+     time, that the existing TTL proves the maximum time a record survives, or that options A or B
+     obtain a bounded residual window from that TTL, is corrected to the precise statement:
+     provider-managed eventual cleanup after a 30-day expiration horizon, with an asynchronous and
+     non-hard-bounded deletion delay. Where a provable maximum retention period is required,
+     ADR-0150 and `docs/BACKLOG.md` now say explicitly that `E3-15` needs an **additional
+     deterministic cleanup mechanism selected by the owner**, and that mechanism is deliberately not
+     designed or implemented here. The correction is applied in ADR-0144, ADR-0142, ADR-0150,
+     `docs/CONTRACTS.md` §11.5 and §16, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md`,
+     `docs/DECISION_BOARD.md`, this handoff and the pull-request description; `docs/PROJECT_LOG.md`
+     keeps its append-only history and receives a dated correction entry instead of a rewrite.
+  3. **Option C was presented as a clean P2 solution.** ADR-0150 said its `deletedUids` marker must
+     never expire and therefore accumulates, treating indefinite accumulation as a cost. A marker
+     that never expires necessarily retains a stable UID, or a UID-correlatable key, for every
+     deleted account forever, which conflicts with `D-143`/ADR-0144, whose accepted rationale is
+     that retaining an account identifier after deletion violates the project's account-erasure
+     expectation. ADR-0150 now separates the two facts explicitly — its Firestore transaction may
+     supply the required serialization point; its proposed never-expiring marker is a distinct,
+     unresolved indefinite UID-linked retention problem — and enumerates, without selecting
+     anything, what a valid serialization design would have to prove: a justified safety horizon
+     covering every already-issued credential or token and every in-flight callable execution plus
+     clock skew and retry behaviour for any finite marker lifetime, or an alternative
+     privacy-preserving serialization representation with its own proof, in either case reconciled
+     with `D-143`. The same round corrects the option B wording: option B delivers a probability
+     reduction only — it refuses issuances whose eligibility read follows the disable — and removes
+     no already-written record and adds no cleanup, so any convergence for a record it misses comes
+     solely from the pre-existing asynchronous TTL fallback and not from the option.
+
+  The three findings of the first review round remain remediated:
   1. **ADR-0150 reworked** (`3da621c`): no option is recommended as satisfying the erasure
      invariant. The owner's counterexample is modelled explicitly (issuer eligibility read passes;
      deletion completes the Auth delete and its second purge; the issuer writes after that purge;
      deletion returns success; the issuer crashes before any post-write revalidation or
-     compensating delete; the record survives to TTL expiry), the ADR distinguishes eventual
-     convergence (P1) from synchronous crash-safe erasure (P2), option C is named the only
-     candidate with a real serialization point without being selected, and every accepted option
-     must discharge the crash-safe proof obligations. `D-149` stays `Proposed`; `E3-15` stays not
-     Ready.
+     compensating delete; the record outlives success and is left to eventual TTL cleanup), the
+     ADR distinguishes eventual convergence (P1) from synchronous crash-safe erasure (P2), option C
+     is named the only candidate with a real serialization point without being selected, and every
+     accepted option must discharge the crash-safe proof obligations. `E3-15` stays not Ready.
   2. **D-148 eligibility fails closed** (`4208d86` RED, `fb56b11` GREEN): a snapshot without a
      known `disabled: false` value rejects with `failed-precondition` and creates no authorization;
      the predicate requires `disabled === false`. The shared `D-134` predicate and all existing
@@ -76,8 +125,11 @@
   `contractCheck` with 150 aligned decisions and `D-149` the one unresolved, the complete required
   Gradle command exit 0 (no `E1-14` flake this time), the dry run exit 0, `git diff --check` clean,
   and the ten protected checks green on run `34227983544` with no re-run.
-- Open decisions or blockers: `D-149` is `Proposed` and is the owner's. The remediation explicitly
-  does not decide it and does not pre-select an option.
+- Open decisions or blockers: `D-149` is `Pending` and is the owner's. The second review round
+  corrected the status: the repository defines `Proposed` as "a recommendation is on the table" and
+  `Pending` as "no recommendation yet", and ADR-0150 recommends no option, selects no default and
+  leaves the trade entirely to the owner. The remediation explicitly does not decide it and does
+  not pre-select an option.
 - Exact next step: the owner's second gated review of pull request #63, and a decision on `D-149`.
 
 ## Scope Completed
@@ -95,6 +147,10 @@
 - The first gated-review remediation: the ADR-0150 soundness correction with all mirrors, the
   fail-closed eligibility correction, the gateway unit coverage, the ADR-0149 verification-record
   correction, and the append-only `docs/PROJECT_LOG.md` correction entry.
+- The second gated-review remediation, documentation only: the `D-149` status correction to
+  `Pending` across every mirror, the Firestore TTL semantics correction everywhere the rule is
+  repeated, the option C retention analysis and the option B P1 wording in ADR-0150, and a second
+  append-only `docs/PROJECT_LOG.md` correction entry. No production source file changed.
 
 ## Acceptance Evidence
 
@@ -130,7 +186,7 @@
 
 ## Out of Scope / Not Done
 
-- **The issuance/deletion interleaving is not closed.** It is `E3-15`, blocked on the `Proposed`
+- **The issuance/deletion interleaving is not closed.** It is `E3-15`, blocked on the `Pending`
   `D-149`. ADR-0150 carries the corrected interleaving analysis, the convergence-versus-erasure
   distinction and the owner's options with their proof obligations. This is an escalation, not a
   workaround: the analysis is in the repository and the residual risk is stated in
@@ -155,10 +211,13 @@
 - `build-logic/convention/src/main/kotlin/.../contract/DecisionRegistry.kt` (new),
   `.../contract/ContractCheck.kt`,
   `build-logic/convention/src/test/kotlin/.../contract/DecisionRegistryTest.kt` (new).
-- `docs/BACKLOG.md` (`E3-14`, `E3-15` and two index rows), `docs/CONTRACTS.md` §11.5,
+- `docs/BACKLOG.md` (`E3-14`, `E3-15` and two index rows), `docs/CONTRACTS.md` §11.5 and §16,
   `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
   `docs/adr/0149-...md` (new), `docs/adr/0150-...md` (new), `docs/adr/README.md`, `AGENTS.md`,
-  `docs/PROJECT_LOG.md`, this handoff.
+  `docs/PROJECT_LOG.md`, this handoff. The second review round additionally corrects the TTL
+  semantics in `docs/adr/0142-use-server-issued-orphan-cleanup-tickets.md` and
+  `docs/adr/0144-erase-orphan-cleanup-authorizations-on-account-deletion.md`; both keep their
+  `Accepted` status and their decisions are unchanged, only the overstated TTL wording is fixed.
 
 ## Decisions Made
 
@@ -168,23 +227,32 @@
   anonymous. The review-round correction that made the enabled state explicit is a sharpening of
   the same decision, not a new one: the contract already permitted issuance only for a known
   enabled record, and the `disabled !== true` implementation was the defect.
-- `D-149` (ADR-0150, `Proposed`, **owner's**): the mechanism that closes the issuance/deletion
+- `D-149` (ADR-0150, `Pending`, **owner's**): the mechanism that closes the issuance/deletion
   interleaving. **No option is pre-selected and no default is presented.** Option A (a second purge
   pass) and option B (disabling the Auth user first) converge only eventually — the ADR-0150
-  counterexample shows a record surviving to TTL expiry after a crash — while option C (an internal
-  `deletedUids` marker collection read inside the issuance transaction) is the only candidate with
-  a real serialization point, at the cost of a new internal collection and retention rule. The
-  accepted option must discharge the ADR's crash-safe proof obligations. Listed in the
-  awaiting-confirmation table with `E3-15` as `Needed by`.
+  counterexample shows a record outliving success after a crash, after which only the
+  provider-managed asynchronous TTL cleanup removes it, with no proven maximum — while option C (an
+  internal `deletedUids` marker collection read inside the issuance transaction) is the only
+  candidate whose transaction supplies a real serialization point. Option C is **not** a clean
+  solution: its proposed never-expiring marker retains a UID-correlatable key for every deleted
+  account indefinitely, which conflicts with `D-143`, so its serialization half and its retention
+  half are stated separately and the retention half is unresolved. The accepted option must
+  discharge the ADR's crash-safe proof obligations. Listed in the awaiting-confirmation table with
+  `E3-15` as `Needed by`.
 - The sanitized trigger rejection is a defect fix under `D-128` and `§11.5`, not a new decision.
 - The `contractCheck` parser fix is a defect fix in the tooling, not a decision. It was forced:
-  recording a `Proposed` decision in the prescribed form made assertions 2 and 4 mutually
+  recording an unresolved decision — `Proposed` or `Pending` — in the prescribed form made
+  assertions 2 and 4 mutually
   unsatisfiable, because the awaiting-confirmation rows start with a decision ID and their fifth
   column is `Consequence if unresolved`, not a status. The defect was latent only because the board
   had never carried an unresolved decision.
-- The ADR-0150 rework is a correction of this story's own record, not a decision change: `D-149`
-  was and remains `Proposed`, and the unsound option-A recommendation is withdrawn rather than
-  replaced by another selection.
+- The ADR-0150 rework is a correction of this story's own record, not a decision change: the
+  unsound option-A recommendation is withdrawn rather than replaced by another selection, and
+  `D-149` is still undecided and still the owner's. Its **status label** changed in the second
+  review round, from `Proposed` to `Pending`, because withdrawing the recommendation left the
+  decision with none, and `docs/DECISION_BOARD.md` defines `Proposed` as "a recommendation is on
+  the table" and `Pending` as "no recommendation yet". This is a labelling correction that makes
+  the board match ADR-0150, not a new decision and not a change of the decision's content.
 - **Commit hygiene, stated rather than hidden:** the two ADRs and the four decision mirrors landed
   in `6e7c311`, the red commit of the `contractCheck` fix, rather than in a separate documentation
   commit. The red/green separation of the review-round behaviours is exact: the gateway coverage pin
@@ -263,20 +331,23 @@ open and documented in `docs/BACKLOG.md`.
 - Updated `docs/CONTRACTS.md` §11.5 with four rules: the issuer's Admin eligibility requirement and
   its error mapping (`D-148`), including the explicit known-enabled state; the explicit statement
   that `D-148` does not close the issuance/deletion interleaving, naming `D-149`, the residual risk
-  bounded by the 30-day TTL, and the convergence-versus-erasure distinction with the proof
-  obligation; and the trigger's obligation to reject with a newly constructed sanitized error while
+  whose only cleanup today is provider-managed eventual TTL cleanup after a 30-day expiration
+  horizon with a non-hard-bounded deletion delay, and the convergence-versus-erasure distinction
+  with the proof obligation; and the trigger's obligation to reject with a newly constructed sanitized error while
   preserving the rejection that `failurePolicy: true` retries.
 
 ## Decision Board Impact
 
 - Added `D-148` ([ADR-0149](adr/0149-verify-the-issuing-account-through-the-admin-sdk.md)),
   `Accepted`, and `D-149`
-  ([ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md)), `Proposed`, with
+  ([ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md)), now `Pending`
+  (recorded as `Proposed` in the original delivery), with
   identical rows in the four mirroring documents. `D-149` is listed in the awaiting-confirmation
   table with `E3-15` as its `Needed by` story. The review round corrected the `D-148` rows to state
   the known-enabled requirement and reworked the `D-149` rows, the awaiting-confirmation row and
   ADR-0150 so that no option claims the erasure invariant without the crash-safe serialization
-  proof; `D-149` remains `Proposed`.
+  proof. The second review round moved `D-149` from `Proposed` to `Pending` in every mirror,
+  because ADR-0150 offers no recommendation.
 
 ## Shared-Write Modules Touched
 
@@ -285,20 +356,39 @@ open and documented in `docs/BACKLOG.md`.
 ## Project Log Entry
 
 - [x] Entry appended — one story entry, one decision entry and one correction entry from the
-  original delivery, plus the review-round correction entry.
+  original delivery, plus one correction entry per gated-review round (two). `docs/PROJECT_LOG.md`
+  stays append-only: no historical entry was edited or deleted.
 
 ## Risks or Follow-ups
 
 - **Residual risk, unresolved by design:** the interleaving of ADR-0150 can still leave one
-  UID-bound authorization record alive after a successful account deletion, removed afterwards only
-  by the 30-day TTL. The record contains `anonymousUid`, so the `D-143` erasure guarantee is
-  conditional until `D-149` is decided and `E3-15` ships. The window is narrow and requires a
-  cleanup-ticket issuance concurrent with an account deletion of the same UID, which the client flow
-  does not perform, but a caller holding a valid anonymous token can reach it.
-- **The `D-149` options are presented without a recommendation.** Options A and B converge only
-  eventually; option C is the only candidate with a real serialization point, and it costs a new
-  internal collection and retention rule. The owner chooses between a bounded window and a
-  serialization point; whichever is accepted must discharge the ADR-0150 proof obligations.
+  UID-bound authorization record alive after a successful account deletion. **The retention of that
+  record is not bounded by the 30-day TTL and MUST NOT be stated as if it were.** The only cleanup
+  that exists today is the Firestore TTL on `expiresAt`: at `expiresAt` the document becomes
+  eligible for asynchronous deletion, expired documents may remain queryable, and Firebase documents
+  a typical deletion within 24 hours of expiration, which is neither a guaranteed maximum nor an
+  SLA. The correct statement is provider-managed eventual cleanup after a 30-day expiration horizon,
+  with an asynchronous and non-hard-bounded deletion delay. A provable maximum retention period
+  would require an additional deterministic cleanup mechanism, which `E3-15` can only add once the
+  owner selects it; it is deliberately not designed in this pull request. The record contains
+  `anonymousUid`, so the `D-143` erasure guarantee is conditional until `D-149` is decided and
+  `E3-15` ships. The window is narrow and requires a cleanup-ticket issuance concurrent with an
+  account deletion of the same UID, which the client flow does not perform, but a caller holding a
+  valid anonymous token can reach it.
+- **The `D-149` options are presented without a recommendation**, which is why the decision is
+  `Pending` rather than `Proposed`. Option A removes only the authorizations that had already
+  landed when its second pass ran; option B narrows the window at the eligibility read but removes
+  nothing and adds no cleanup of its own, so any convergence for a record either one misses comes
+  solely from the pre-existing asynchronous TTL fallback, not from the option. Option C is the only
+  candidate whose transaction supplies a real serialization point, but it is **not** a clean
+  solution: its proposed never-expiring `deletedUids` marker retains a stable, UID-correlatable key
+  for every deleted account indefinitely, which conflicts with `D-143`, whose accepted rationale is
+  that retaining an account identifier after deletion violates the project's erasure expectation.
+  ADR-0150 separates option C's sound serialization half from its unresolved retention half and
+  enumerates what a valid design would have to prove — a justified safety horizon covering every
+  already-issued credential or token, every in-flight callable execution, clock skew and retry
+  behaviour, or else a privacy-preserving serialization representation with its own proof — without
+  selecting either. Whichever option is accepted must discharge the ADR-0150 proof obligations.
 - The issuer now depends on Admin availability: an Admin outage blocks issuance where it previously
   would not have. That is the intended trade of `D-148`, and it fails closed.
 - `E1-14` remains open and makes a red `shared-tests`, `provider-decoupling` or

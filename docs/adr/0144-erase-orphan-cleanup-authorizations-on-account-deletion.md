@@ -10,19 +10,21 @@ PR #60 introduced the root-level `orphanCleanupTickets` collection (D-141) but d
 anywhere in the `docs/CONTRACTS.md` §16 remote schema, which states that the remote schema is
 closed and that unknown collections are invalid. The D-63 `USER_DATA_LOCATIONS` deletion registry
 consequently did not cover the collection, and the E3-10 `deleteAccount` operation left records
-carrying `anonymousUid` in place for up to 30 days after account deletion.
+carrying `anonymousUid` in place for at least the 30-day `expiresAt` horizon after account
+deletion, and then for however long the provider's asynchronous TTL cleanup took to reach them.
 
 That retention conflicts with the account-erasure expectation of the deletion flow: a deleted
-account's identifier would remain readable in a server-only collection until TTL cleanup. The
-review also required an explicit, documented treatment of internal server-only collections, so a
-future internal collection cannot be introduced silently.
+account's identifier would remain readable in a server-only collection until that eventual TTL
+cleanup removed it, at no guaranteed time. The review also required an explicit, documented
+treatment of internal server-only collections, so a future internal collection cannot be introduced
+silently.
 
 ## Options Considered
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| **Purge UID-bound authorizations during account deletion (accepted)** | The account-erasure guarantee is owned by the deletion flow itself; the 30-day TTL becomes only a bounded fallback; no accepted-retention decision is needed. | Adds one paged query plus batch deletes to every account deletion; a new stage in the normative deletion order. |
-| Accept up to 30 days of TTL-bounded retention with an owner decision | No deletion-flow change. | A deleted account's UID remains stored after erasure; requires an explicit accepted-residual-risk entry and weakens the erasure posture. |
+| **Purge UID-bound authorizations during account deletion (accepted)** | The account-erasure guarantee is owned by the deletion flow itself; the 30-day TTL becomes only a fallback for abandoned or completed authorizations; no accepted-retention decision is needed. | Adds one paged query plus batch deletes to every account deletion; a new stage in the normative deletion order. |
+| Accept TTL-only retention with an owner decision | No deletion-flow change. | A deleted account's UID remains stored after erasure, for the 30-day expiration horizon plus an asynchronous, non-hard-bounded provider cleanup delay; requires an explicit accepted-residual-risk entry and weakens the erasure posture. |
 | Register the collection in D-63 `USER_DATA_LOCATIONS` | Reuses the existing registry. | The registry drives the `users/{uid}` recursive-delete traversal and the client-facing schema parity test; a root collection outside that subtree does not fit either contract. |
 
 ## Decision
@@ -47,8 +49,12 @@ client-facing application data, and it lives outside the `users/{uid}` subtree. 
 parity test compares the declaration with the registry, proves the two registries do not overlap,
 and fails when a server-only collection is declared in the contract without a registry entry.
 
-The 30-day TTL remains enabled as a bounded fallback for abandoned or completed authorizations;
-it is no longer the normal account-deletion retention path.
+The 30-day TTL remains enabled as a fallback for abandoned or completed authorizations; it is no
+longer the normal account-deletion retention path. That fallback is provider-managed **eventual**
+cleanup: at `expiresAt` a record becomes eligible for asynchronous deletion, expired records may
+still be queryable, and deletion typically follows within 24 hours of expiration without that being
+a guaranteed maximum or an SLA. The TTL therefore MUST NOT be described as a hard 30-day deletion
+bound, nor cited as proof of the maximum time a record can survive.
 
 ## Consequences
 
