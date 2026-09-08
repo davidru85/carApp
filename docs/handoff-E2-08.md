@@ -83,17 +83,17 @@
 - Date: 2026-09-08
 - Branch and base: `story/E2-08-anonymous-reminder-launch-and-race-fixes`, based on
   `story/E2-07-anonymous-benefit-reminders` at `aad3f96`.
-- Current phase and latest commit: additional-fix intake recorded; RED phase for the two new tests
-  is the next step.
-- Push and pull-request status: pushed; pull request #62 is open, targeting the `E2-07` branch,
-  awaiting its gated owner review.
-- Completed since the previous checkpoint: the truncated `docs/handoff-E2-08.md` was restored (see
-  "Decisions Made") and this additional-fix ready check was recorded.
-- Verification evidence and known failures: the head commit `6201d5f` reproduced all ten required
-  checks locally before this fix was ordered. No known failure.
+- Current phase and latest commit: additional fix complete. RED `88f82e9`, GREEN `1e3e85c`, and the
+  documentation commits are the whole fix; no refactoring phase was earned.
+- Push and pull-request status: all commits pushed; pull request #62 is open, targeting the `E2-07`
+  branch, awaiting its gated owner review.
+- Completed since the previous checkpoint: the full cycle — RED (1 failing test, the inherited
+  banner), GREEN (the UID binding in the collector), the `docs/CONTRACTS.md` §11.3 paragraph, this
+  handoff, the project log entry and the pull request body update.
+- Verification evidence and known failures: the full local suite exits `0`; the parent-commit
+  failure proof is recorded under "Verification Run (additional fix)". No known failure.
 - Open decisions or blockers: none. This fix adds no decision.
-- Exact next step: RED phase — two failing tests in
-  `AnonymousReminderEvaluationRaceTest`, one per behaviour, committed on their own.
+- Exact next step: gated owner review of pull request #62.
 
 ## In-Progress Checkpoint (original story, 2026-09-07)
 
@@ -116,6 +116,11 @@
 
 ## Scope Completed
 
+- Additional fix (2026-09-08): a published reminder index is now bound to the anonymous UID that
+  produced it. The auth-state collector in `SessionStateHolder` records that UID, carries the index
+  across an emission only when the incoming session is the same anonymous identity, and drops it on
+  a switch to a different anonymous identity — the case E2-08 had left open after hardening only
+  the in-flight evaluation.
 - Observation 1: a launch evaluation blocked by `AuthState.Unknown` is remembered and completed
   once by the existing auth-state collector when the session resolves to an anonymous one.
 - Observation 2: the iOS host also evaluates on the initial appearance, so the launch moment no
@@ -127,7 +132,16 @@
 
 ## Acceptance Evidence
 
-1. *A launch evaluation blocked by `Unknown` completes once when the state resolves, without
+1. *A published index is dropped for a different anonymous identity and kept for the same one
+   (additional fix).* `aPublishedReminderIsDroppedWhenTheSessionBecomesADifferentAnonymousIdentity`
+   publishes index 3 on day 20 for the first identity, switches directly to a second anonymous
+   identity and observes `null`: the second identity inherits no banner, because its own schedule
+   has evaluated and persisted nothing. On the red commit this test observed `3` — the defect — and
+   was the only failure of the class (9 completed, 1 failed).
+   `aPublishedReminderIsKeptWhenTheSameAnonymousIdentityReEmits` publishes index 1 on day 4 and
+   observes that the same identity's re-emission leaves its own notice standing, so the fix is a
+   UID comparison and not a blanket drop.
+2. *A launch evaluation blocked by `Unknown` completes once when the state resolves, without
    becoming a new trigger.*
    `AnonymousReminderEvaluationRaceTest.anEvaluationRequestedBeforeTheSessionIsRestoredCompletesWhenItResolves`
    proves the completion;
@@ -137,21 +151,24 @@
    it without running it; and `aResolvedPendingEvaluationIsNotRunAgainByALaterSessionChange` proves
    the one-shot rule by counting exactly one repository read across a signed-out and a second
    anonymous emission.
-2. *A reminder is never published for a session that is no longer the one its index was computed
+3. *A reminder is never published for a session that is no longer the one its index was computed
    for.* `aPermanentSignInWhileAnEvaluationIsInFlightPublishesNoReminder` leaves the index null,
    `aPermanentSignInWhileAnEvaluationIsInFlightLeavesTheScheduleStateCleared` proves no position is
    written back after `clear()`, and
    `aSwitchToADifferentAnonymousIdentityWhileAnEvaluationIsInFlightPublishesNoReminder` exercises the
    re-check on its own, because that transition is still anonymous and therefore not cancelled.
-3. *The iOS launch evaluation does not depend on the scene-phase change.* `iosApp/carAppApp.swift`
+4. *The iOS launch evaluation does not depend on the scene-phase change.* `iosApp/carAppApp.swift`
    calls the same single entry point from `.onAppear` and from `.onChange(of: scenePhase)`. The
    duplicate is collapsed by the in-flight guard in `evaluateAnonymousReminder()` and by the
    schedule itself, since a completed evaluation has already persisted the index it published.
-4. *No new trigger anywhere.* No scheduler, alarm, background task, notification permission or
+5. *No new trigger anywhere.* No scheduler, alarm, background task, notification permission or
    observer beyond the `D-146` host intents exists in the change.
 
 ## Out of Scope / Not Done
 
+- Additional fix: no host code changed. The carry-over rule is shared behaviour, and both hosts
+  already render whatever `SessionUiState.anonymousReminderIndex` holds, so no Android or iOS
+  change exists for this defect.
 - `D-62`, `D-144`, `D-145` and `D-146` are untouched, as required. The schedule, its thresholds, its
   persistence location and its presentation channel are exactly as accepted in `E2-07`.
 - The reminder still offers no sign-in action; that entry point remains `E2-04` and `E2-05` work.
@@ -162,8 +179,10 @@
 ## Files Changed
 
 - `shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt` — the deferred evaluation,
-  the session re-check, the in-flight cancellation and the pending-request cleanup in `close()`.
-- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AnonymousReminderEvaluationRaceTest.kt` (new).
+  the session re-check, the in-flight cancellation, the pending-request cleanup in `close()`, and
+  (additional fix) the published-index UID binding.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AnonymousReminderEvaluationRaceTest.kt` (new;
+  the additional fix adds its last two tests).
 - `iosApp/carAppApp.swift` — the initial-appearance trigger.
 - `docs/BACKLOG.md` (the `E2-08` story and the index row), `docs/CONTRACTS.md` §11.3,
   `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/DECISION_BOARD.md`,
@@ -205,13 +224,40 @@
 
 ## Verification Run (additional fix, 2026-09-08)
 
-- Recorded at intake, to be completed by the fix: the stacked pull request #62 targets the `E2-07`
-  branch, so `.github/workflows/ci.yml` runs no GitHub check on it; an empty check list there is a
-  property of the base branch, not a green or red signal. All ten required checks are reproduced
-  locally on the head commit instead. This paragraph was the content the truncated commit
-  `6201d5f` intended to add.
-- Pending: RED evidence for the two new tests, GREEN evidence, the full local suite run and the
-  parent-commit failure proof. See the In-Progress Checkpoint.
+- No GitHub check runs on the stacked pull request #62, because `.github/workflows/ci.yml`
+  triggers only on pull requests targeting `main` and on pushes to `main`. An empty check list
+  there is a property of the base branch, not a green or a red signal; all ten required checks are
+  reproduced locally on the head commit instead. (This paragraph was the content the truncated
+  commit `6201d5f` intended to add.)
+- Red-phase evidence: `./gradlew :shared:testAndroidHostTest --tests
+  "com.ruizurraca.carapp.AnonymousReminderEvaluationRaceTest"` on the RED commit `88f82e9` —
+  9 tests completed, 1 failed:
+  `aPublishedReminderIsDroppedWhenTheSessionBecomesADifferentAnonymousIdentity` failed with
+  `expected null, but was:<3>`, the inherited banner. The same-identity test passed on the same
+  commit, as its complementary half must on the unfixed code.
+- Green-phase evidence: the same command on the GREEN commit `1e3e85c` — `BUILD SUCCESSFUL`, all 9
+  tests of the class and the full `:shared` Android-host suite pass; `:shared:ktlintCheck` and
+  `:shared:detekt` pass.
+- Parent-commit proof: with `StateHolders.kt` from the GREEN commit's parent checked out over the
+  fixed tree, the class fails exactly as recorded — `tests=9 failures=1 errors=0`,
+  `aPublishedReminderIsDroppedWhenTheSessionBecomesADifferentAnonymousIdentity` failing with
+  `java.lang.AssertionError: The second identity has no reminder of its own, so it cannot inherit
+  the banner. expected null, but was:<3>`. Restoring the fix makes the class green again.
+- Full local suite (2026-09-08, head of this story's branch):
+  `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest
+  iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test
+  -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test
+  -x :composition:ios:iosSimulatorArm64Test` — exit `0`, `BUILD SUCCESSFUL`, 636 actionable tasks.
+  `contractCheck`: all assertions `PASS`, 148 aligned decisions and ADRs, no `PENDING`.
+  `architectureCheck`: 16 rules, 23 modules, no violation. `koverVerify` holds on every module.
+- The new test class also passes on Kotlin/Native:
+  `./gradlew :shared:iosSimulatorArm64Test --tests
+  "com.ruizurraca.carapp.AnonymousReminderEvaluationRaceTest"` — exit `0`.
+- No exported declaration changed: `SessionUiState`'s public shape is untouched and
+  `contractCheck` assertion 7 validates the committed Objective-C golden header on every run above.
+  `:composition:ios` was not modified, and the iOS build of the original story (its evidence below)
+  was produced from a `:shared` API identical to this one.
 
 ## Verification Run (original story, 2026-09-07)
 
@@ -255,6 +301,10 @@ The SwiftUI host change is TDD-exempt, so its evidence is manual and is stated w
   moments and the collapsing of a duplicate call; the deferred evaluation and its one-shot bounds
   (`D-147`); and the requirement that a reminder is never published for a session that is no longer
   the anonymous session its index was computed for.
+- Additional fix: extended the same section with the explicit UID-binding rule — a published index
+  belongs to the anonymous UID that produced it, survives only a re-emission of that same identity,
+  and the carry-over compares the UID, never the phase alone. The rule was already the normative
+  behaviour of the persisted position one paragraph above; it is now stated for the published one.
 
 ## Decision Board Impact
 
@@ -272,6 +322,11 @@ The SwiftUI host change is TDD-exempt, so its evidence is manual and is stated w
 
 ## Risks or Follow-ups
 
+- Additional fix: the published-index UID is `SessionStateHolder` state, not a persisted value, and
+  that is deliberate — `dismissAnonymousReminder()` already releases the banner without releasing
+  the consumed position, so a dismissal must also release the binding; otherwise a dismissed banner
+  could be resurrected by a same-identity re-emission. The recorded UID is cleared at exactly the
+  points the published index is cleared.
 - The deferred evaluation adds a second responsibility to the auth-state collector. A future reader
   could mistake it for a new trigger and either remove it as dead code or generalise it into an
   observer; the KDoc, ADR-0148 and the `§11.3` wording exist to prevent both, and the one-shot test

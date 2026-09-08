@@ -836,6 +836,12 @@ computed for. Because the index is persisted before it is published, the current
 re-checked after that persistence and before the state is written; a permanent sign-in or a switch
 to a different anonymous identity landing in that window leaves `anonymousReminderIndex` null.
 
+A published reminder index belongs to the anonymous UID that produced it, exactly as the persisted
+position does. It survives a subsequent auth-state emission only while the current session is that
+same anonymous UID; any other transition — a different anonymous UID, a permanent session, signed
+out, unknown — drops it. The carry-over therefore compares the anonymous UID, never the phase
+alone, so a new anonymous identity never inherits a banner its own schedule has not reached.
+
 ### 11.4 Local owner adoption
 
 On the first successful authentication after a `LOCAL_OWNER` period, in one transaction:

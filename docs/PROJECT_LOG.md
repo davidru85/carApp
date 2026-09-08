@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-08 — E2-08 additional fix binds a published reminder to its anonymous identity
+
+- **Type:** correction
+- **Story / Decision:** `E2-08` / —
+- **Author:** Claude (opencode session), on behalf of David Ruiz
+- **What changed:** the auth-state collector in `SessionStateHolder` carried
+  `anonymousReminderIndex` across any transition into `SessionPhase.ANONYMOUS` with no UID
+  comparison, so a direct move from an anonymous identity that had already published a reminder to a
+  different anonymous identity let the new identity inherit a banner its own schedule had not
+  reached and never persisted. The collector now records the anonymous UID that produced the
+  published index and carries it only across a re-emission of that same identity; every other
+  transition drops it, as a non-anonymous phase already did. `docs/CONTRACTS.md` §11.3 now states
+  the UID-binding rule for the published index explicitly, mirroring the rule the persisted
+  position already had.
+- **Why:** the defect contradicted §11.3's UID scoping and the `SqlDelightAnonymousReminderRepository`
+  semantics, and it presented the escalating copy out of order: identity B inherited A's index 2
+  and only later saw its own index 0. E2-08 had hardened only the in-flight evaluation; the
+  already-published case was still open.
+- **Documents touched:** `shared/.../StateHolders.kt`,
+  `shared/.../AnonymousReminderEvaluationRaceTest.kt`, `docs/CONTRACTS.md` §11.3,
+  `docs/handoff-E2-08.md` and this log.
+- **Verification:** RED commit `88f82e9`: the new class ran 9 tests with 1 failure, the failing one
+  observing the inherited banner (`expected null, but was:<3>`); GREEN commit `1e3e85c`: the class
+  and the full `:shared` Android-host suite pass, ktlint and detekt clean. The full local suite and
+  the parent-commit failure proof are recorded in `docs/handoff-E2-08.md`. No decision was added;
+  `D-62`, `D-144`, `D-145`, `D-146` and `D-147` are untouched.
+- **Follow-ups / risks:** pull request #62 remains stacked on the open `E2-07` branch and awaits its
+  gated owner review. During intake, `docs/handoff-E2-08.md` was found truncated to an empty file
+  by commit `6201d5f` and restored in full from its parent before this fix began.
+
 ### 2026-09-07 — E2-08 closes the three E2-07 review observations
 
 - **Type:** story
