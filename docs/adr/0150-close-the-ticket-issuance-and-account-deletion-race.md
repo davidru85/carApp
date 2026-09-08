@@ -71,9 +71,15 @@ deliberately does not treat them as equivalent:
 
 - **P1, eventual convergence:** after any interleaving of issuance and deletion, and after all
   retries settle, no UID-bound authorization record for the deleted UID remains, even if one was
-  observable for a while. This is a liveness-plus-cleanup property. A compensating delete, a later
-  purge pass, or a deterministic scheduled cleanup can provide it with a stated bound; the existing
-  Firestore TTL provides only the non-hard-bounded eventual form described above.
+  observable for a while. This is a liveness-plus-cleanup property, and it is **global**: it is
+  quantified over *every* interleaving, so a mechanism either delivers it or it does not. **There is
+  no "partial P1".** A mechanism that cleans up some interleavings and leaves others to something
+  else has not delivered P1; it has delivered a partial cleanup, and P1 for the remaining
+  interleavings — if it holds at all — is delivered by that something else and MUST be attributed to
+  it. In this system, the only mechanism that covers the remaining interleavings today is the
+  existing Firestore TTL, which supplies P1 only in the non-hard-bounded eventual form described
+  above. A compensating delete, a later purge pass, or a deterministic scheduled cleanup could
+  supply P1 with a stated bound, but only if it covers every interleaving.
 - **P2, synchronous crash-safe erasure:** at the instant `deleteAccount` returns success, no
   UID-bound authorization record for the deleted UID exists, and this holds even if any process
   crashes at any point. This requires a serialization point between the issuer's write and the
@@ -107,8 +113,9 @@ completed its purge; the disabled marker then no longer matters, because the wri
 happened and the record is never revisited.
 
 The earlier draft of this ADR recommended the second-purge-pass option as satisfying the erasure
-invariant. That recommendation was **unsound**: it asserted P2 while the mechanism delivers at
-most P1. The owner's review rejected it, and this ADR is reworked so that no option is described as
+invariant. That recommendation was **unsound**: it asserted P2 while the mechanism delivers only
+partial synchronous cleanup — it removes the authorizations that were already visible when the
+second pass ran, and nothing else — which is neither P2 nor the global P1 property. The owner's review rejected it, and this ADR is reworked so that no option is described as
 providing P2 without a complete crash-safe serialization proof. A mechanism that cannot provide P2
 can still be chosen — but then the choice is to accept a residual window whose cleanup, with the
 mechanisms that exist today, is eventual and not hard-bounded, and the residual risk MUST be
@@ -123,8 +130,8 @@ conflating the two is exactly the error the first draft made.
 
 | Option | Mechanism | Property delivered by the option itself | Convergence inherited from the pre-existing TTL | What it cannot deliver |
 |--------|-----------|------------------------------------------|--------------------------------------------------|------------------------|
-| **A. Second purge pass after Auth deletion** | `§11.5` runs the authorization purge a second time after the Auth user is deleted. | **Partial P1 only.** The option itself removes exactly those authorizations that had already landed when the second pass ran; that removal is synchronous with the deletion flow and needs no TTL. | For any write that lands after the second pass, the option contributes nothing further; the record is removed only by the pre-existing provider-managed TTL cleanup, eventually and without a hard bound. | **Not P2**, and not full P1 with a proven bound. The owner's counterexample: the issuer writes after the second purge and crashes; nothing in the option revisits the record. The pass is a convergence argument over one ordering, not a serialization point. |
-| **B. Disable the Auth user as the first deletion stage** | `§11.5` disables the account before deleting data; `D-148` rejects a disabled record, so most racing issuances are refused at the eligibility read. | **Neither P1 nor P2 — a probability reduction only.** The option itself refuses those issuances whose eligibility read happens after the disable, which is a real and useful narrowing of the window, but it removes no record that has already been written and adds no cleanup step at all. | Every record written by an issuance whose eligibility read preceded the disable survives the flow entirely; the only thing that removes it is the pre-existing provider-managed TTL cleanup, eventually and without a hard bound. | **Not P2, and no convergence of its own.** To reach even partial P1 it must be combined with option A's second purge pass. It also adds a user-visible lockout when a deletion fails midway. |
+| **A. Second purge pass after Auth deletion** | `§11.5` runs the authorization purge a second time after the Auth user is deleted. | **Partial synchronous cleanup — neither P1 nor P2.** The option itself removes exactly those authorizations that were already visible when the second pass ran; that removal is synchronous with the deletion flow and needs no TTL. It covers only the interleavings in which the racing write precedes the pass, so it is not the global P1 property. | For every write that lands after the second pass, the option contributes nothing; such a record is removed solely by the pre-existing provider-managed TTL cleanup, eventually and without a hard bound. Whatever eventual convergence the system has for those interleavings is the TTL's, not the option's. | **Neither P1 nor P2.** The owner's counterexample: the issuer writes after the second purge and crashes; nothing in the option revisits the record. The pass is a cleanup over one class of orderings, not a serialization point and not a global convergence proof. |
+| **B. Disable the Auth user as the first deletion stage** | `§11.5` disables the account before deleting data; `D-148` rejects a disabled record, so most racing issuances are refused at the eligibility read. | **Neither P1 nor P2 — a probability reduction only.** The option itself refuses those issuances whose eligibility read happens after the disable, which is a real and useful narrowing of the set of interleavings that can produce a surviving record, but it removes no record that has already been written and adds no cleanup step at all. | Every record written by an issuance whose eligibility read preceded the disable survives the flow entirely; the only thing that removes it is the pre-existing provider-managed TTL cleanup, eventually and without a hard bound. | **Neither P1 nor P2, and no cleanup of its own.** To remove anything at all it must be combined with option A's second purge pass, and even that combination is partial synchronous cleanup rather than P1. It also adds a user-visible lockout when a deletion fails midway. |
 | **C. Internal `deletedUids` marker collection read inside the issuance transaction** | A server-only marker is written by the deletion flow before the purge; the issuer reads the marker inside the same Firestore transaction as its authorization write and refuses if present. | **P2 for the interleaving, by construction — conditional on an unresolved retention design.** The transaction is a real serialization point: the marker write and the authorization create conflict on Firestore's transaction ordering, so no crash interleaving leaves a UID-bound authorization after success, *provided the marker is written before the purge and is still present when a racing issuance runs*. | None needed for the authorizations themselves. | **Not a clean solution as currently drafted.** The marker lifetime that makes the serialization argument work is itself unresolved and conflicts with `D-143`; see the next section. It is also the heaviest option: a new internal server-only collection, a `§16` internal-registry entry, the parity test, and an extra transaction on every issuance. |
 
 No option is recommended. Only option C can provide P2 as stated, and it can only do so once its
@@ -207,11 +214,14 @@ can close.
 
 ## Proof obligations for the accepted option
 
-Any accepted option MUST come with a complete crash-safe argument, not a convergence argument. For
-options A and B, that argument can only justify P1, and — with the mechanisms that exist today —
-only the non-hard-bounded eventual form of it; the handoff and `docs/SECURITY.md` MUST then state
-the residual risk explicitly, including that no maximum retention time is proven. For option C, the
-argument MUST establish P2 **and** resolve the marker retention problem above.
+Any accepted option MUST come with a complete crash-safe argument, not a convergence argument.
+Options A and B deliver neither P1 nor P2 on their own: A is partial synchronous cleanup and B is a
+probability reduction, and with the mechanisms that exist today the only thing that covers the
+interleavings they miss is the pre-existing Firestore TTL, in its non-hard-bounded eventual form.
+An argument for A or B MUST therefore attribute each part of the outcome to the mechanism that
+actually produces it, and the handoff and `docs/SECURITY.md` MUST state the residual risk
+explicitly, including that no maximum retention time is proven. For option C, the argument MUST
+establish P2 **and** resolve the marker retention problem above.
 
 Concretely, `E3-15` MUST, on the real Firestore emulator (plus the Auth emulator if the accepted
 option touches Auth state):
@@ -223,10 +233,11 @@ option touches Auth state):
 - for option C, demonstrate the transaction conflict itself — a marker write concurrent with an
   authorization-creating transaction aborts or re-reads the transaction — rather than asserting it,
   and state and justify the marker's retention rule against `D-143`;
-- state the accepted option's actual guarantee: for P1 claims, which records the option itself
-  removes and when, and for every record it does not remove, that its cleanup is the provider's
-  asynchronous TTL and therefore has no proven maximum. **A provable maximum retention period MAY
-  NOT be claimed from the existing TTL**; if the owner requires one, the accepted option MUST
+- state the accepted option's actual guarantee, attributing each part to its mechanism: which
+  records the option itself removes and when, and — for every record it does not remove — that its
+  cleanup is the provider's asynchronous TTL and therefore has no proven maximum. A partial cleanup
+  MUST NOT be reported as P1, because P1 is quantified over every interleaving.
+  **A provable maximum retention period MAY NOT be claimed from the existing TTL**; if the owner requires one, the accepted option MUST
   include an additional deterministic cleanup mechanism, which is itself part of the owner's
   decision and is not designed here. For P2 claims, prove that no interleaving leaves a record;
 - keep consumption, completion-last semantics and idempotent retries intact;
@@ -260,8 +271,10 @@ option touches Auth state):
 ## Verification
 
 - To be defined by the accepted option, per the proof obligations above. In every case `E3-15`
-  MUST prove the interleavings against the real Firestore emulator, and MUST state which property —
-  P1 with what the option itself guarantees, or P2 — its evidence establishes.
+  MUST prove the interleavings against the real Firestore emulator, and MUST state exactly which
+  property its evidence establishes — P2, P1, or neither, with each part of the outcome attributed
+  to the mechanism that actually produces it. Partial synchronous cleanup MUST be reported as
+  partial synchronous cleanup, never as P1.
 
 ## References
 

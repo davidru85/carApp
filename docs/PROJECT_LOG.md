@@ -38,6 +38,57 @@
 
 ## Entries
 
+### 2026-09-08 — Correction: the D-143 erasure guarantee is conditional and option A is not "Partial P1"
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the third gated owner review of pull request #63 found two documentation
+  contradictions left standing by the second round. This entry records their correction; no
+  production code changed and `D-149` is still undecided. (1) **ADR-0144 claimed unconditionally
+  that `anonymousUid` cannot survive account deletion**, while ADR-0150 documents a concurrent
+  issuance whose write lands after the purge and survives a successful deletion — the two cannot
+  both be true. ADR-0144 now scopes the guarantee exactly: the `D-143` purge removes every matching
+  authorization **visible to it when it runs**, and its zero-retention reading is conditional
+  because of that concurrent issuance, whose closure is owned by `D-149` and `E3-15` rather than by
+  this purge. A new constraint forbids restating the guarantee unconditionally anywhere, and the
+  same reconciliation is applied to `docs/CONTRACTS.md §16`, the `D-143` guardrail row of
+  `docs/DECISION_BOARD.md` and the `D-143` row of `docs/TECHNICAL_PLAN.md §2`. **`D-143` keeps its
+  `Accepted` status and its decision content is unchanged**; only the scope of the claim is stated
+  correctly. (2) **ADR-0150 described option A as "Partial P1".** P1 is quantified over every
+  interleaving, so it is a global property and admits no partial form. The P1 definition now states
+  that explicitly, and option A is described as **partial synchronous cleanup**: it removes only the
+  authorizations already visible when the second purge runs, which is neither P1 nor P2, and the
+  eventual convergence covering the writes it misses comes solely from the existing
+  non-hard-bounded Firestore TTL fallback and is attributed to it. Option B's "to reach even partial
+  P1" tail, the proof obligations and the verification clause are corrected the same way, and the
+  equivalent claims were searched for and corrected in `docs/CONTRACTS.md §11.5`, `docs/BACKLOG.md`
+  (`E3-15` and its acceptance criteria), the `D-149` rows of `docs/DECISION_BOARD.md` and
+  `docs/TECHNICAL_PLAN.md §2`, and `docs/handoff-E3-14.md`, from which the stale "bounded residual
+  window" wording is removed.
+- **Why:** a normative document that states a guarantee unconditionally while another normative
+  document documents a counterexample to it leaves the next agent free to pick either reading, and
+  the erasure posture is exactly where that must not happen. Reporting a partial cleanup as a
+  partial form of a globally quantified property would let `E3-15` discharge its proof obligation
+  with evidence that covers only the interleavings the mechanism happens to observe.
+- **Documents touched:** `docs/adr/0144-...md`, `docs/adr/0150-...md`, `docs/CONTRACTS.md` §11.5 and
+  §16, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (`E3-15`),
+  `docs/handoff-E3-14.md` and this log. This entry corrects the wording of the earlier 2026-09-08
+  entries that restate the `D-143` guarantee unconditionally and that describe options A and B as
+  converging eventually. Per the append-only rule those entries are left exactly as written; this
+  entry supersedes their wording. `D-143` and `D-148` keep their `Accepted` status, `D-149` stays
+  `Pending`, and the E3-14 Admin eligibility implementation, the fail-closed `disabled === false`
+  predicate and the concrete Firebase Admin gateway tests are untouched.
+- **Verification:** `cd functions && npm test`, `npm run test:emulator`, `npm run
+  test:firestore-rules` and `./gradlew contractCheck :build-logic:convention:test` all pass on the
+  corrected head; `contractCheck` still reports 150 aligned decisions, `D-143` `Accepted` and
+  `D-149` the one unresolved `Pending` decision with its `Needed by` row. `git diff --check
+  origin/main...HEAD` is clean. The figures and the protected-check run are in
+  `docs/handoff-E3-14.md` and the pull-request description.
+- **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision, `E3-15` stays Not Ready,
+  and until the decision is taken one UID-bound authorization can outlive a successful account
+  deletion with only provider-managed asynchronous Firestore TTL cleanup to remove it.
+
 ### 2026-09-08 — Correction: D-149 is Pending, Firestore TTL is not a hard bound, and option C is not clean
 
 - **Type:** correction

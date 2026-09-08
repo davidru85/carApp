@@ -965,7 +965,8 @@ Two anonymous-deletion entry points reuse this service:
   cleanup mechanism, which is part of the `D-149` decision and is not specified here. `D-149`
   distinguishes eventual convergence from synchronous crash-safe erasure: a post-write read-back or
   a later purge pass is not atomic with either the deletion or the authorization creation, so such
-  mechanisms converge only eventually and MUST NOT be described as guaranteeing zero UID-bound
+  mechanisms deliver at most a partial synchronous cleanup of the interleavings they observe, never
+  the global convergence property, and MUST NOT be described as guaranteeing zero UID-bound
   authorizations when deletion returns success; only a mechanism with a proven serialization point
   may claim that, and the accepted option MUST discharge the proof obligations of ADR-0150.
 - The issuer stores only the ticket's SHA-256 digest as the document ID under
@@ -1463,8 +1464,11 @@ Internal Firestore collection: orphanCleanupTickets/{ticketHash}
 `orphanCleanupTickets/{ticketHash}` contains exactly `anonymousUid`, `expiresAt` and `status` as
 defined in §11.5. The account-deletion operation MUST query this collection by `anonymousUid` and
 delete every matching record before deleting the Auth user. This purge is idempotent and owns the
-account-erasure guarantee; the 30-day Firestore TTL remains a fallback for abandoned or completed
-authorizations, not the normal account-deletion retention path. That fallback is provider-managed
+erasure of every authorization visible to it when it runs; the 30-day Firestore TTL remains a
+fallback for abandoned or completed authorizations, not the normal account-deletion retention path.
+The purge is **not** by itself a zero-retention guarantee for the account: `D-149` documents a
+concurrent issuance whose write can land after the purge, and closing that race is `D-149` and
+`E3-15`, not this stage (§11.5). That fallback is provider-managed
 eventual cleanup after the 30-day expiration horizon, with an asynchronous and non-hard-bounded
 deletion delay, so it MUST NOT be cited as a retention bound. A contract test compares
 this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not overlap the D-63

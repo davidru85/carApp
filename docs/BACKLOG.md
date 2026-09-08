@@ -1067,11 +1067,13 @@ Closing it requires changing something outside the issuer: the deletion order, a
 pass, or a new server-side marker. Each option has different costs, so the owner selects one, and
 none of them may be described as satisfying the erasure invariant without the crash-safe
 serialization proof that ADR-0150 obliges the accepted option to discharge. ADR-0150 distinguishes
-eventual convergence — a record may be observable for a while and is then cleaned up — from
+eventual convergence — a global property over every interleaving, admitting no partial form — from
 synchronous crash-safe erasure — no record exists at the moment deletion returns success, under any
 crash — and shows with an explicit counterexample that a post-write read-back or a later purge pass
-is not atomic with either the deletion or the authorization creation, so such mechanisms deliver at
-most convergence.
+is not atomic with either the deletion or the authorization creation. Such mechanisms therefore
+deliver neither property: a second purge pass is partial synchronous cleanup of the authorizations
+already visible when it runs, and whatever convergence the system has for the interleavings it
+misses comes solely from the pre-existing, non-hard-bounded Firestore TTL fallback.
 
 Two facts constrain the story and neither may be glossed over. First, the only cleanup that exists
 today for a record that escapes the flow is the Firestore TTL on `expiresAt`: provider-managed
@@ -1089,8 +1091,9 @@ Acceptance criteria (to be finalised once `D-149` is accepted):
 
 - The accepted option discharges the proof obligations of ADR-0150: every interleaving of
   `issueOrphanCleanupTicket` and `deleteAccount` for the same UID, including every crash point, is
-  enumerated, and the evidence states which property holds — eventual convergence with its bound,
-  or synchronous crash-safe erasure — and the mechanism that delivers it.
+  enumerated, and the evidence states which property holds — eventual convergence, synchronous
+  crash-safe erasure, or neither — and attributes each part of the outcome to the mechanism that
+  actually produces it. Partial synchronous cleanup MUST NOT be reported as eventual convergence.
 - If the accepted option provides convergence rather than synchronous erasure, the evidence states
   which records the option itself removes and when, and — for every record it does not remove —
   that the only cleanup is the provider's asynchronous TTL, which supplies no proven maximum. A

@@ -39,8 +39,36 @@
 
 - Date: 2026-09-08
 - Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`.
-- Current phase and latest commit: two rounds of gated-review remediation are complete; the pull
+- Current phase and latest commit: three rounds of gated-review remediation are complete; the pull
   request is returned for the owner's next gated review and MUST NOT be merged.
+
+  **Third gated-review intake (2026-09-08).** The owner's review returned two documentation
+  contradictions left standing by the second round. No production code changed and `D-149` is still
+  undecided. The two findings and their corrections:
+  1. **ADR-0144 claimed unconditionally that `anonymousUid` cannot survive account deletion**, while
+     ADR-0150 documents a concurrent issuance that lands after the purge and survives a successful
+     deletion. The two statements cannot both be true. ADR-0144 now scopes its guarantee exactly:
+     the `D-143` purge removes every matching authorization **visible to it when it runs**, and its
+     zero-retention reading is **conditional** because of that concurrent issuance; closing the race
+     is owned by `D-149` and `E3-15`, not by this purge. A new constraint forbids any document from
+     restating the guarantee unconditionally, and ADR-0150 is added to the references.
+     `D-143` keeps its `Accepted` status and its decision content is unchanged — only the scope of
+     the claim is stated correctly. The same reconciliation is applied to every repetition of the
+     guarantee: `docs/CONTRACTS.md §16`, the `D-143` guardrail row of `docs/DECISION_BOARD.md` and
+     the `D-143` row of `docs/TECHNICAL_PLAN.md §2`.
+  2. **ADR-0150 called option A "Partial P1", which misuses the property.** P1 is quantified over
+     *every* interleaving, so it is global and admits no partial form. The P1 definition now says so
+     explicitly, and option A is described as **partial synchronous cleanup**: it removes only the
+     authorizations already visible when the second purge runs, which is neither P1 nor P2, and the
+     eventual convergence covering the writes it misses comes **solely** from the existing
+     non-hard-bounded Firestore TTL fallback and must be attributed to it. Option B's tail wording
+     ("to reach even partial P1") and the proof obligations are corrected the same way, and the
+     verification clause now requires partial synchronous cleanup to be reported as such and never
+     as P1. The equivalent claims were searched for and corrected across current documentation:
+     `docs/CONTRACTS.md §11.5`, `docs/BACKLOG.md` (`E3-15` and its acceptance criteria), the `D-149`
+     rows of `docs/DECISION_BOARD.md` (registry and awaiting-confirmation) and
+     `docs/TECHNICAL_PLAN.md §2`, and this handoff — from which the stale "bounded residual window"
+     wording is removed.
 
   **Second gated-review intake (2026-09-08).** The owner's review of pull request #63 returned three
   normative findings against the documentation, none against the E3-14 production implementation.
@@ -64,7 +92,8 @@
      documents is neither a guaranteed maximum nor an SLA. Every claim that the residual risk is
      "bounded by the 30-day TTL", that a record is removed "only by its 30-day TTL" at a guaranteed
      time, that the existing TTL proves the maximum time a record survives, or that options A or B
-     obtain a bounded residual window from that TTL, is corrected to the precise statement:
+     obtain a residual window with a proven maximum from that TTL, is corrected to the precise
+     statement:
      provider-managed eventual cleanup after a 30-day expiration horizon, with an asynchronous and
      non-hard-bounded deletion delay. Where a provable maximum retention period is required,
      ADR-0150 and `docs/BACKLOG.md` now say explicitly that `E3-15` needs an **additional
@@ -109,22 +138,24 @@
      starts only the Firestore emulator, so it does not exercise the real Admin Auth gateway. The
      record now distinguishes handler tests (fakes), concrete-gateway unit coverage (stub `Auth`
      client) and Firestore emulator coverage (real Firestore gateways, stubbed Auth).
-- Push and pull-request status: all commits pushed. The second-round correction commit is
-  `92956cd` (`docs(E3-14): set D-149 to Pending, correct TTL semantics and option C`), and this
-  handoff update is the commit immediately after it, which is the branch head at which the
-  protected checks are awaited. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
+- Push and pull-request status: all commits pushed. The second round landed as `92956cd`
+  (`docs(E3-14): set D-149 to Pending, correct TTL semantics and option C`) and `1bee2ca` (this
+  handoff), whose run `34249139403` passed all ten protected checks with no re-run. The third round
+  is the commit that carries this update, which is the branch head at which the protected checks are
+  awaited. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
   The ten protected checks are `android-assemble`, `android-instrumented-tests`,
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`. **The run identifier for
   the final head is recorded in the pull-request description, not here**: a further documentation
   commit made only to write a run ID into the repository would itself trigger a new run and make
   the record stale in the same act. The earlier heads' results stand as history — run `34227983544`
-  on `6743d2f` passed all ten with no re-run, and run `34230198804` on `31ce7e7` hit the documented
+  on `6743d2f` passed all ten with no re-run; run `34230198804` on `31ce7e7` hit the documented
   `E1-14` flake once in `provider-decoupling` (a `:shared` Kotlin/Native test this branch does not
-  touch), passed on the re-run of that job alone, and completed `success` with all ten checks green.
-- Verification evidence and known failures: the second review round changes documentation only, so
-  the executable behaviour under test is identical to the post-fix head `6743d2f`. Re-run locally on
-  the corrected tree: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
+  touch), passed on the re-run of that job alone, and completed `success` with all ten checks green;
+  and run `34249139403` on `1bee2ca` passed all ten with no re-run.
+- Verification evidence and known failures: the second and third review rounds change documentation
+  only, so the executable behaviour under test is identical to the post-fix head `6743d2f`. Re-run
+  locally on the corrected tree after each round: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
   Firestore emulator suite 2 pass, 0 fail, `Script exited successfully (code 0)`; 155 Firestore
   rules tests, 155 pass, 0 fail; the dependency audit exit `0` with the unchanged pre-existing
   moderate `uuid` advisory below the `--audit-level=high` gate; `./gradlew contractCheck
@@ -141,7 +172,7 @@
   `Pending` as "no recommendation yet", and ADR-0150 recommends no option, selects no default and
   leaves the trade entirely to the owner. The remediation explicitly does not decide it and does
   not pre-select an option.
-- Exact next step: the owner's gated review of pull request #63 after this second remediation
+- Exact next step: the owner's gated review of pull request #63 after this third remediation
   round, and the `D-149` decision itself. `D-149` is the only unresolved decision in the
   repository, and `E3-15` stays blocked on it.
 
@@ -164,6 +195,11 @@
   `Pending` across every mirror, the Firestore TTL semantics correction everywhere the rule is
   repeated, the option C retention analysis and the option B P1 wording in ADR-0150, and a second
   append-only `docs/PROJECT_LOG.md` correction entry. No production source file changed.
+- The third gated-review remediation, documentation only: ADR-0144's unconditional erasure claim
+  scoped to the authorizations visible to the purge and reconciled in every repetition, ADR-0150's
+  "Partial P1" corrected to partial synchronous cleanup with P1 stated as a global property, the
+  equivalent claims corrected across current documentation, and a third append-only
+  `docs/PROJECT_LOG.md` correction entry. No production source file changed.
 
 ## Acceptance Evidence
 
@@ -205,8 +241,10 @@
   workaround: the analysis is in the repository and the residual risk is stated in
   `docs/CONTRACTS.md §11.5`.
 - **`D-149` is not decided and no option is pre-selected.** The reworked ADR-0150 names option C as
-  the only candidate with a real serialization point, but the choice between a bounded residual
-  window (options A and B) and that serialization point (option C) is the owner's.
+  the only candidate with a real serialization point, but the choice between a residual window whose
+  only cleanup today is the pre-existing non-hard-bounded TTL fallback (options A and B) and that
+  serialization point, whose marker retention design is itself unresolved (option C), is the
+  owner's.
 - Pull requests #61 and #62 were not touched, and the merged pull request #60 was not modified or
   rewritten.
 - `docs/SECURITY.md` was **not** given an accepted-residual-risk entry. That entry belongs to the
@@ -231,6 +269,8 @@
   semantics in `docs/adr/0142-use-server-issued-orphan-cleanup-tickets.md` and
   `docs/adr/0144-erase-orphan-cleanup-authorizations-on-account-deletion.md`; both keep their
   `Accepted` status and their decisions are unchanged, only the overstated TTL wording is fixed.
+  The third round additionally scopes ADR-0144's erasure claim and adds one constraint to it, again
+  without changing `D-143`'s status or its decision.
 
 ## Decisions Made
 
@@ -242,9 +282,12 @@
   enabled record, and the `disabled !== true` implementation was the defect.
 - `D-149` (ADR-0150, `Pending`, **owner's**): the mechanism that closes the issuance/deletion
   interleaving. **No option is pre-selected and no default is presented.** Option A (a second purge
-  pass) and option B (disabling the Auth user first) converge only eventually — the ADR-0150
+  pass) is partial synchronous cleanup — it removes only the authorizations already visible when it
+  runs — and option B (disabling the Auth user first) is a probability reduction that removes
+  nothing; neither delivers the global eventual-convergence property, and the ADR-0150
   counterexample shows a record outliving success after a crash, after which only the
-  provider-managed asynchronous TTL cleanup removes it, with no proven maximum — while option C (an
+  pre-existing provider-managed asynchronous TTL cleanup removes it, with no proven maximum. Option
+  C (an
   internal `deletedUids` marker collection read inside the issuance transaction) is the only
   candidate whose transaction supplies a real serialization point. Option C is **not** a clean
   solution: its proposed never-expiring marker retains a UID-correlatable key for every deleted
@@ -316,11 +359,12 @@ Post-fix battery, run from the head `6743d2f`:
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
 
-### Second review round, documentation only
+### Second and third review rounds, documentation only
 
-The second gated-review remediation changes only `docs/**`. No production source, test or build
-input outside documentation is touched, so the executable behaviour is byte-identical to the
-post-fix head `6743d2f`. The battery was nevertheless re-run on the corrected tree:
+Both the second and the third gated-review remediation change only `docs/**`. No production source,
+test or build input outside documentation is touched in either, so the executable behaviour is
+byte-identical to the post-fix head `6743d2f`. The battery was nevertheless re-run in full on the
+corrected tree after each round, with identical results:
 
 - `cd functions && npm test`: 78 tests, 76 pass, 0 fail, 2 emulator-gated skips.
 - `cd functions && npm run test:emulator`: 2 tests, 2 pass, 0 fail, `Script exited successfully
@@ -388,8 +432,8 @@ open and documented in `docs/BACKLOG.md`.
 ## Project Log Entry
 
 - [x] Entry appended — one story entry, one decision entry and one correction entry from the
-  original delivery, plus one correction entry per gated-review round (two). `docs/PROJECT_LOG.md`
-  stays append-only: no historical entry was edited or deleted.
+  original delivery, plus one correction entry per gated-review round (three).
+  `docs/PROJECT_LOG.md` stays append-only: no historical entry was edited or deleted.
 
 ## Risks or Follow-ups
 
