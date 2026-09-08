@@ -153,5 +153,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-144 | [ADR-0145](0145-store-the-anonymous-reminder-position-in-a-dedicated-local-table.md) | Store the anonymous reminder position in a dedicated local table. | Accepted |
 | D-145 | [ADR-0146](0146-carry-the-anonymous-reminder-on-a-typed-session-state-field.md) | Carry the anonymous reminder on a typed session state field. | Accepted |
 | D-146 | [ADR-0147](0147-evaluate-the-anonymous-reminder-from-a-host-foreground-intent.md) | Evaluate the anonymous reminder from a host foreground intent. | Accepted |
+| D-147 | [ADR-0148](0148-complete-a-launch-evaluation-when-the-session-resolves.md) | Complete a launch evaluation when the session resolves. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

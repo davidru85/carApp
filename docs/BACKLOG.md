@@ -722,6 +722,36 @@ Acceptance criteria:
   `:feature:session` `presentation` package, preserving the Swift ABI. `SyncStateHolder` remains
   the app-level state holder in `:shared`.
 
+### E2-08 - Anonymous Reminder Launch and Sign-In Race Fixes - S
+
+Close the three non-blocking observations raised in the `E2-07` owner review of pull request #61.
+They are defects in the delivered behaviour, not a change of the schedule: `D-62`, `D-144`, `D-145`
+and `D-146` stay exactly as accepted.
+
+Acceptance criteria:
+
+- A launch evaluation that finds `AuthState.Unknown`, because the provider has not restored the
+  session yet, completes once when that state resolves to an anonymous `SignedIn`, instead of
+  waiting for the next foreground return. It MUST NOT become a new evaluation trigger: a resolution
+  to signed-out or permanent consumes the pending evaluation without running it, a resolution that
+  arrives when no evaluation was requested runs nothing, and no scheduler, alarm or observer beyond
+  the host intents of `D-146` is introduced.
+- A reminder MUST NOT be published for a session that is no longer the anonymous session its index
+  was computed for. A permanent sign-in landing between persisting the index and publishing it
+  leaves `SessionUiState.anonymousReminderIndex` null.
+- The iOS launch evaluation does not depend on `onChange(of: scenePhase)` firing after a cold
+  launch. The host also evaluates on the initial appearance, and the resulting duplicate call is
+  collapsed rather than producing a second notice or a second persisted index.
+- Every fix is covered by a shared test: an evaluation while the auth state is `Unknown` followed by
+  an anonymous `SignedIn`; a permanent sign-in while an evaluation is in flight; and a switch to a
+  different anonymous identity while an evaluation is in flight.
+- The SwiftUI host change is TDD-exempt under `docs/SPECIFICATION.md §11`; its manual verification
+  evidence is recorded in the handoff.
+
+Depends on: E2-07.
+
+Human review required.
+
 ## Phase 3 - Backend and Synchronization
 
 ### E3-01 - Firestore Structure and Security Rules - M
@@ -1336,6 +1366,7 @@ proof after E3-04.
 | E2-06 Local owner adoption (completed) | 2 | M | Yes |
 | E2-04 Account conversion F-4 | 2 | M | Yes |
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |
+| E2-08 Anonymous reminder launch and sign-in race fixes | 2 | S | Yes |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
 | E3-01 Firestore rules (completed) | 3 | M | Yes |
 | E3-10 Account deletion server operation | 3 | M | Yes |

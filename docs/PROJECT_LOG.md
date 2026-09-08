@@ -38,6 +38,82 @@
 
 ## Entries
 
+### 2026-09-08 — E2-08 additional fix binds a published reminder to its anonymous identity
+
+- **Type:** correction
+- **Story / Decision:** `E2-08` / —
+- **Author:** Claude (opencode session), on behalf of David Ruiz
+- **What changed:** the auth-state collector in `SessionStateHolder` carried
+  `anonymousReminderIndex` across any transition into `SessionPhase.ANONYMOUS` with no UID
+  comparison, so a direct move from an anonymous identity that had already published a reminder to a
+  different anonymous identity let the new identity inherit a banner its own schedule had not
+  reached and never persisted. The collector now records the anonymous UID that produced the
+  published index and carries it only across a re-emission of that same identity; every other
+  transition drops it, as a non-anonymous phase already did. `docs/CONTRACTS.md` §11.3 now states
+  the UID-binding rule for the published index explicitly, mirroring the rule the persisted
+  position already had.
+- **Why:** the defect contradicted §11.3's UID scoping and the `SqlDelightAnonymousReminderRepository`
+  semantics, and it presented the escalating copy out of order: identity B inherited A's index 2
+  and only later saw its own index 0. E2-08 had hardened only the in-flight evaluation; the
+  already-published case was still open.
+- **Documents touched:** `shared/.../StateHolders.kt`,
+  `shared/.../AnonymousReminderEvaluationRaceTest.kt`, `docs/CONTRACTS.md` §11.3,
+  `docs/handoff-E2-08.md` and this log.
+- **Verification:** RED commit `88f82e9`: the new class ran 9 tests with 1 failure, the failing one
+  observing the inherited banner (`expected null, but was:<3>`); GREEN commit `1e3e85c`: the class
+  and the full `:shared` Android-host suite pass, ktlint and detekt clean. The full local suite and
+  the parent-commit failure proof are recorded in `docs/handoff-E2-08.md`. No decision was added;
+  `D-62`, `D-144`, `D-145`, `D-146` and `D-147` are untouched.
+- **Follow-ups / risks:** pull request #62 remains stacked on the open `E2-07` branch and awaits its
+  gated owner review. During intake, `docs/handoff-E2-08.md` was found truncated to an empty file
+  by commit `6201d5f` and restored in full from its parent before this fix began.
+
+### 2026-09-07 — E2-08 closes the three E2-07 review observations
+
+- **Type:** story
+- **Story / Decision:** `E2-08` / `D-147`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** a launch evaluation blocked by `AuthState.Unknown` is now remembered and
+  completed once when the session resolves to an anonymous one; a reminder is no longer published
+  for a session that is no longer the anonymous identity its index was computed for; and the iOS
+  host also evaluates on the initial appearance, so the launch moment does not depend on a
+  scene-phase change being delivered after a cold launch.
+- **Why:** the three non-blocking observations of the `E2-07` owner review were real defects in the
+  delivered behaviour. The first delayed a due notice by a whole app session, the second could show
+  a retention banner to a permanently signed-in owner, and the third left the launch moment resting
+  on a SwiftUI delivery guarantee that does not hold for every launch path.
+- **Documents touched:** `docs/BACKLOG.md` (`E2-08`), `docs/CONTRACTS.md §11.3`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/DECISION_BOARD.md`,
+  `docs/adr/0148-complete-a-launch-evaluation-when-the-session-resolves.md`, `docs/adr/README.md`,
+  `docs/handoff-E2-08.md` and this log.
+- **Verification:** the full non-instrumented CI command exits `0` with 148 aligned decisions and
+  ADRs; the iOS app builds and its whole suite passes on an erased simulator; the committed
+  Objective-C golden header is unchanged, because no exported declaration changed.
+- **Follow-ups / risks:** the branch is stacked on the unmerged `E2-07` branch, because pull
+  request #61 is open and `main` contains none of the code under repair; it rebases onto `main`
+  once #61 merges. The iOS launch path still has no automated proof that a *due* reminder is
+  published at launch, which needs an anonymous account older than one day.
+
+### 2026-09-07 — D-147 accepted for the deferred launch evaluation
+
+- **Type:** decision
+- **Story / Decision:** `E2-08` / `D-147`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** an evaluation requested while the auth state is `AuthState.Unknown` is marked
+  pending and completed exactly once by the existing auth-state collector when the state resolves
+  to an anonymous `SignedIn`.
+- **Why:** `docs/CONTRACTS.md §11.1` separates *not yet determined* from *signed out*, and the
+  `E2-07` implementation treated both as nothing to evaluate, so a cold-start launch evaluation was
+  lost until the next foreground return. The rejected alternatives were worse: evaluating on every
+  anonymous emission would make a restored session a trigger, which `§11.3` does not permit, and a
+  retry would introduce the scheduler that `docs/SPECIFICATION.md §3.2` excludes.
+- **Documents touched:** `docs/adr/0148-complete-a-launch-evaluation-when-the-session-resolves.md`,
+  the four decision mirrors, `docs/CONTRACTS.md §11.3` and this log.
+- **Verification:** `contractCheck` reports 148 aligned decisions and ADRs; four shared tests pin
+  the deferral, the one-shot rule, the consuming resolution and the untriggered resolution.
+- **Follow-ups / risks:** the deferral must not be generalised into an observer or a retry loop;
+  the one-shot test fails if it is.
+
 ### 2026-09-07 — E1-17 recurred on a Markdown-only commit in pull request #61
 
 - **Type:** correction
