@@ -39,8 +39,30 @@
 
 - Date: 2026-09-08
 - Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`.
-- Current phase and latest commit: three rounds of gated-review remediation are complete; the pull
+- Current phase and latest commit: four rounds of gated-review remediation are complete; the pull
   request is returned for the owner's next gated review and MUST NOT be merged.
+
+  **Fourth gated-review intake (2026-09-08).** The owner's review returned one normative
+  misattribution left by the third round, plus stale statements in the pull-request description. No
+  production code changed, `E3-15` was not redesigned, no option was selected and `D-149` stays
+  `Pending`.
+  1. **The `E3-15` acceptance criterion could still credit option A or B with global convergence.**
+     It opened with "If the accepted option provides convergence rather than synchronous erasure",
+     which contradicts ADR-0150's finding that options A and B deliver neither P1 nor P2 by
+     themselves. `docs/BACKLOG.md` now phrases it as the accepted **design** leaving the resulting
+     **system** relying on eventual convergence rather than delivering synchronous crash-safe
+     erasure, and states the attribution normatively: partial synchronous cleanup to option A, a
+     probability reduction to option B, and cleanup of every record they miss to the pre-existing
+     asynchronous Firestore TTL with no proven maximum; the evidence MUST NOT credit either option
+     with eventual convergence. The remaining `E3-15` criteria were searched for equivalent wording
+     and none attributes P1 to A or B.
+  2. **The pull-request description carried stale pre-third-round statements.** It is current
+     metadata, not append-only history, so it now presents the final corrected interpretation
+     throughout: the review-round count is right, option A's split no longer says "partial P1,
+     synchronous, no TTL needed" but partial synchronous cleanup that is neither P1 nor P2, the
+     enumerated stale TTL claim no longer reads "bounded residual window", and Scope Completed and
+     the review summaries carry the third round's `D-143` scoping and P1 correction plus this
+     round's criterion fix. No unconditional `D-143` zero-retention claim remains in it.
 
   **Third gated-review intake (2026-09-08).** The owner's review returned two documentation
   contradictions left standing by the second round. No production code changed and `D-149` is still
@@ -141,8 +163,9 @@
 - Push and pull-request status: all commits pushed. The second round landed as `92956cd`
   (`docs(E3-14): set D-149 to Pending, correct TTL semantics and option C`) and `1bee2ca` (this
   handoff), whose run `34249139403` passed all ten protected checks with no re-run. The third round
-  is the commit that carries this update, which is the branch head at which the protected checks are
-  awaited. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
+  landed as `3eb3358`, whose run `34265275290` passed all ten after the documented `E1-17`
+  `ios-simulator-build` flake was re-run on the failed job alone. The fourth round is the commit
+  that carries this update, which is the branch head at which the protected checks are awaited. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
   The ten protected checks are `android-assemble`, `android-instrumented-tests`,
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`. **The run identifier for
@@ -152,10 +175,14 @@
   on `6743d2f` passed all ten with no re-run; run `34230198804` on `31ce7e7` hit the documented
   `E1-14` flake once in `provider-decoupling` (a `:shared` Kotlin/Native test this branch does not
   touch), passed on the re-run of that job alone, and completed `success` with all ten checks green;
-  and run `34249139403` on `1bee2ca` passed all ten with no re-run.
-- Verification evidence and known failures: the second and third review rounds change documentation
-  only, so the executable behaviour under test is identical to the post-fix head `6743d2f`. Re-run
-  locally on the corrected tree after each round: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
+  run `34249139403` on `1bee2ca` passed all ten with no re-run; and run `34265275290` on `3eb3358`
+  passed all ten, with `ios-simulator-build` hitting the documented `E1-17` flake once
+  (`VehicleAndFuelFlowUITests.swift:214`, `Onboarding did not reach vehicle creation before the
+  timeout`) in a test this branch cannot affect — no Kotlin or Swift source differs from `main` —
+  and passing on the re-run of that job alone.
+- Verification evidence and known failures: the second, third and fourth review rounds change
+  documentation only, so the executable behaviour under test is identical to the post-fix head
+  `6743d2f`. Re-run locally on the corrected tree after each round: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
   Firestore emulator suite 2 pass, 0 fail, `Script exited successfully (code 0)`; 155 Firestore
   rules tests, 155 pass, 0 fail; the dependency audit exit `0` with the unchanged pre-existing
   moderate `uuid` advisory below the `--audit-level=high` gate; `./gradlew contractCheck
@@ -172,7 +199,7 @@
   `Pending` as "no recommendation yet", and ADR-0150 recommends no option, selects no default and
   leaves the trade entirely to the owner. The remediation explicitly does not decide it and does
   not pre-select an option.
-- Exact next step: the owner's gated review of pull request #63 after this third remediation
+- Exact next step: the owner's gated review of pull request #63 after this fourth remediation
   round, and the `D-149` decision itself. `D-149` is the only unresolved decision in the
   repository, and `E3-15` stays blocked on it.
 
@@ -199,6 +226,10 @@
   scoped to the authorizations visible to the purge and reconciled in every repetition, ADR-0150's
   "Partial P1" corrected to partial synchronous cleanup with P1 stated as a global property, the
   equivalent claims corrected across current documentation, and a third append-only
+  `docs/PROJECT_LOG.md` correction entry. No production source file changed.
+- The fourth gated-review remediation, documentation only: the `E3-15` acceptance criterion
+  rephrased so it cannot credit option A or B with global convergence, the pull-request description
+  brought up to the final corrected interpretation, and a fourth append-only
   `docs/PROJECT_LOG.md` correction entry. No production source file changed.
 
 ## Acceptance Evidence
@@ -359,12 +390,14 @@ Post-fix battery, run from the head `6743d2f`:
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
 
-### Second and third review rounds, documentation only
+### Second, third and fourth review rounds, documentation only
 
-Both the second and the third gated-review remediation change only `docs/**`. No production source,
-test or build input outside documentation is touched in either, so the executable behaviour is
-byte-identical to the post-fix head `6743d2f`. The battery was nevertheless re-run in full on the
-corrected tree after each round, with identical results:
+The second, third and fourth gated-review remediations change only `docs/**`. No production source,
+test or build input outside documentation is touched in any of them, so the executable behaviour is
+byte-identical to the post-fix head `6743d2f`. The battery was re-run on the corrected tree after
+each round, with identical results (the fourth round, which touches only `docs/BACKLOG.md`, the
+handoff and the log, was verified with `contractCheck :build-logic:convention:test` and the
+`git diff --check` range):
 
 - `cd functions && npm test`: 78 tests, 76 pass, 0 fail, 2 emulator-gated skips.
 - `cd functions && npm run test:emulator`: 2 tests, 2 pass, 0 fail, `Script exited successfully
@@ -432,7 +465,7 @@ open and documented in `docs/BACKLOG.md`.
 ## Project Log Entry
 
 - [x] Entry appended — one story entry, one decision entry and one correction entry from the
-  original delivery, plus one correction entry per gated-review round (three).
+  original delivery, plus one correction entry per gated-review round (four).
   `docs/PROJECT_LOG.md` stays append-only: no historical entry was edited or deleted.
 
 ## Risks or Follow-ups

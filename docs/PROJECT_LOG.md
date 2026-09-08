@@ -38,6 +38,39 @@
 
 ## Entries
 
+### 2026-09-08 — Correction: the E3-15 acceptance criterion could credit option A or B with convergence
+
+- **Type:** correction
+- **Story / Decision:** `E3-15` / `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the fourth gated owner review of pull request #63 found that one `E3-15`
+  acceptance criterion in `docs/BACKLOG.md` still opened with "If the accepted option provides
+  convergence rather than synchronous erasure". After the previous correction established that P1 is
+  a global property and that options A and B deliver neither P1 nor P2 by themselves, that phrasing
+  invites exactly the misattribution the previous round removed. The criterion is now phrased in
+  terms of the accepted **design** leaving the resulting **system** relying on eventual convergence
+  rather than delivering synchronous crash-safe erasure, and it states the attribution normatively:
+  partial synchronous cleanup to option A, a probability reduction to option B, cleanup of every
+  record they miss to the pre-existing asynchronous Firestore TTL with no proven maximum, and an
+  explicit prohibition on crediting either option with eventual convergence. The remaining `E3-15`
+  criteria were searched for equivalent wording and none attributes P1 to A or B. The pull-request
+  description — current metadata rather than append-only history — was brought to the same final
+  interpretation in the same round.
+- **Why:** an acceptance criterion is what `E3-15` will be judged against, so a phrasing that lets a
+  partial mechanism be reported as delivering a globally quantified property would let the story
+  close on evidence covering only the interleavings the mechanism happens to observe.
+- **Documents touched:** `docs/BACKLOG.md` (`E3-15` acceptance criteria), `docs/handoff-E3-14.md`
+  and this log; plus the pull-request description, which is not a repository artifact. This entry
+  corrects the wording of the earlier `E3-15` criterion; per the append-only rule the previous
+  entries are left exactly as written. No production source file changed, `E3-15` was not
+  redesigned, no option was selected, and `D-149` stays `Pending`.
+- **Verification:** `./gradlew contractCheck :build-logic:convention:test` passes with 150 aligned
+  decisions, `D-149` still the one unresolved `Pending` decision with its `Needed by` row;
+  `git diff --check origin/main...HEAD` is clean and the working tree is clean. The protected-check
+  run for the final head is recorded in the pull-request description.
+- **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision and `E3-15` stays Not
+  Ready.
+
 ### 2026-09-08 — Correction: the D-143 erasure guarantee is conditional and option A is not "Partial P1"
 
 - **Type:** correction

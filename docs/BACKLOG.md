@@ -1094,10 +1094,15 @@ Acceptance criteria (to be finalised once `D-149` is accepted):
   enumerated, and the evidence states which property holds — eventual convergence, synchronous
   crash-safe erasure, or neither — and attributes each part of the outcome to the mechanism that
   actually produces it. Partial synchronous cleanup MUST NOT be reported as eventual convergence.
-- If the accepted option provides convergence rather than synchronous erasure, the evidence states
-  which records the option itself removes and when, and — for every record it does not remove —
-  that the only cleanup is the provider's asynchronous TTL, which supplies no proven maximum. A
-  maximum retention time MAY be claimed only if the accepted option adds a deterministic cleanup
+- If the accepted design leaves the resulting system relying on eventual convergence rather than
+  delivering synchronous crash-safe erasure, the evidence attributes every part of that outcome to
+  the mechanism that actually provides it, and **never to the option as a whole**. Option A provides
+  partial synchronous cleanup — it removes only the authorizations already visible when its second
+  purge runs. Option B provides a probability reduction — it refuses issuances whose eligibility
+  read follows the disable and removes nothing. Cleanup of every record those mechanisms miss comes
+  solely from the pre-existing asynchronous Firestore TTL, which supplies no proven maximum. Neither
+  option delivers eventual convergence itself, so the evidence MUST NOT credit either with it. A
+  maximum retention time MAY be claimed only if the accepted design adds a deterministic cleanup
   mechanism that proves it. The residual risk is recorded in `docs/SECURITY.md`.
 - If the accepted option is C, the marker's retention rule is stated and justified against `D-143`:
   either a finite marker lifetime with a safety horizon covering every already-issued
