@@ -70,9 +70,13 @@ a new owner decision covering all three callables.
 - The collision flow gains a required online issuance step before switching accounts.
 - Firestore retains a hashed capability record and anonymous UID until TTL cleanup, which is
   provider-managed and eventual rather than a hard 30-day deletion bound. D-143 (ADR-0144) amends
-  this consequence: account deletion now purges every authorization bound to the deleted UID before
-  Auth deletion, so the TTL is only a fallback for abandoned or completed authorizations, never the
-  normal account-deletion retention path.
+  this consequence: account deletion now purges, before Auth deletion, every authorization bound to
+  the deleted UID **that is visible to the purge when it runs**, so for those records the TTL is no
+  longer the account-deletion retention path but only a fallback for abandoned or completed
+  authorizations. It is **not** the retention path for every record: a concurrent issuance can still
+  write an authorization after the purge has run — the race that D-149 / E3-15 owns — and such a
+  record is left exclusively to the provider-managed asynchronous TTL cleanup, with no proven
+  maximum.
 - A stolen raw ticket remains a bearer capability until it expires or is completed, although it
   cannot select a UID and still requires an authenticated permanent caller.
 - The ticket binds the UID's account state at issuance only. D-142 (ADR-0143) amends this threat

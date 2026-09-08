@@ -868,7 +868,10 @@ Account deletion order is normative:
 2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
 3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
 4. Only after remote document deletion fully succeeds, the server operation purges every internal
-   orphan-cleanup authorization bound to the same UID.
+   orphan-cleanup authorization bound to the same UID that its paged query sees when the purge runs.
+   This stage is the `D-143` mechanism, not a zero-retention guarantee for the account: a concurrent
+   issuance can still write one afterwards, and that race is owned by `D-149` / `E3-15` (see the
+   `D-148` and `D-149` rules below and §16).
 5. Only after the authorization purge fully succeeds, the server operation deletes the Firebase
    Auth user for the same UID.
 6. Only after the server operation returns success, the app clears local data, including `user_settings`.
@@ -1464,15 +1467,19 @@ Internal Firestore collection: orphanCleanupTickets/{ticketHash}
 `orphanCleanupTickets/{ticketHash}` contains exactly `anonymousUid`, `expiresAt` and `status` as
 defined in §11.5. The account-deletion operation MUST query this collection by `anonymousUid` and
 delete every matching record before deleting the Auth user. This purge is idempotent and owns the
-erasure of every authorization visible to it when it runs; the 30-day Firestore TTL remains a
-fallback for abandoned or completed authorizations, not the normal account-deletion retention path.
-The purge is **not** by itself a zero-retention guarantee for the account: `D-149` documents a
-concurrent issuance whose write can land after the purge, and closing that race is `D-149` and
-`E3-15`, not this stage (§11.5). That fallback is provider-managed
-eventual cleanup after the 30-day expiration horizon, with an asynchronous and non-hard-bounded
-deletion delay, so it MUST NOT be cited as a retention bound. A contract test compares
-this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not overlap the D-63
-registry and rejects an undeclared internal collection.
+erasure of every authorization **visible to it when it runs**; for those records the 30-day
+Firestore TTL is not the account-deletion retention path but only a fallback for abandoned or
+completed authorizations.
+
+The purge is **not** by itself a zero-retention guarantee for the account. `D-149` documents a
+concurrent issuance whose write can land after the purge has run; closing that race is `D-149` and
+`E3-15`, not this stage (§11.5). A record written by such an issuance is cleaned up **solely** by
+the Firestore TTL, which is provider-managed eventual cleanup after the 30-day expiration horizon
+with an asynchronous and non-hard-bounded deletion delay, so it MUST NOT be cited as a retention
+bound or as a proven maximum.
+
+A contract test compares this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not
+overlap the D-63 registry and rejects an undeclared internal collection.
 
 The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
 

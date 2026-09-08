@@ -39,8 +39,46 @@
 
 - Date: 2026-09-08
 - Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`.
-- Current phase and latest commit: four rounds of gated-review remediation are complete; the pull
+- Current phase and latest commit: five rounds of gated-review remediation are complete; the pull
   request is returned for the owner's next gated review and MUST NOT be merged.
+
+  **Fifth gated-review intake (2026-09-08).** The owner's review found that ADR-0144's new
+  constraint — *every restatement of `D-143` MUST scope its guarantee to the orphan-cleanup
+  authorizations visible to the purge when it runs and MUST identify `D-149` / `E3-15` as the owner
+  of the remaining concurrent-issuance race* — was not yet satisfied everywhere. This is a
+  documentation-only correction: no production code, test, dependency or `E3-15` design changed,
+  `D-143` stays `Accepted`, `D-149` stays `Pending` with no recommendation and no option selected,
+  and `E3-15` stays Not Ready. The three unqualified restatements, each now carrying the scope, the
+  concurrent write, the `D-149` / `E3-15` race ownership and the TTL-only cleanup with no proven
+  maximum:
+  1. `docs/SPECIFICATION.md` §12, row `D-143`, which said account deletion purges every
+     authorization bound to the UID with no scope and no race owner.
+  2. `docs/adr/0142-use-server-issued-orphan-cleanup-tickets.md`, Negative Consequences, which said
+     `D-143` purges every authorization and made the TTL "never" the normal account-deletion
+     retention path. It now says the TTL stops being that path only for the records the purge sees,
+     and remains the **only** cleanup for a record a concurrent issuance writes afterwards.
+  3. `docs/DECISION_BOARD.md`, row `D-141`, whose amendment clause summarised `D-143` as erasing
+     ticket authorizations on account deletion with no scope or race ownership.
+
+  The sweep of current normative and derived documentation, the ADRs, this handoff and the
+  pull-request description found three further statements repeating the same rule, reconciled in the
+  same change: `docs/CONTRACTS.md` §16 and ADR-0144's own Decision section both carried the
+  unqualified "not/no longer the normal account-deletion retention path" claim, and the `Choice`
+  cells of the `D-143` rows in `docs/DECISION_BOARD.md` and `docs/TECHNICAL_PLAN.md` §2 stated the
+  purge without naming what it can see (their `Guardrail` cells already carried the scope; the cells
+  are now consistent with each other).
+
+  Deliberately **not** changed, with the reason:
+  - `docs/handoff-E3-11.md` and the earlier `docs/PROJECT_LOG.md` entries, which record the state
+    observed when `E3-11` merged. `AGENTS.md` requires handoffs to preserve their historical
+    evidence and the log to stay append-only; both are corrected by the new dated entry, not by a
+    rewrite.
+  - The ADR-0144 file title and its `docs/adr/README.md` index row ("Erase orphan-cleanup
+    authorizations on account deletion"). These name the ADR; they state no guarantee, and renaming
+    the ADR would break the file/index convention that `contractCheck` assertion 3 relies on.
+  - `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md` lines about authorizations
+    "`deleteAccount` had already purged under `D-143`" and the state "`D-143` exists to prevent".
+    Both are context and intent, not claims about the completeness of the purge.
 
   **Fourth gated-review intake (2026-09-08).** The owner's review returned one normative
   misattribution left by the third round, plus stale statements in the pull-request description. No
@@ -164,7 +202,8 @@
   (`docs(E3-14): set D-149 to Pending, correct TTL semantics and option C`) and `1bee2ca` (this
   handoff), whose run `34249139403` passed all ten protected checks with no re-run. The third round
   landed as `3eb3358`, whose run `34265275290` passed all ten after the documented `E1-17`
-  `ios-simulator-build` flake was re-run on the failed job alone. The fourth round is the commit
+  `ios-simulator-build` flake was re-run on the failed job alone. The fourth round landed as
+  `1527da6`, whose run `34272924260` passed all ten with no re-run. The fifth round is the commit
   that carries this update, which is the branch head at which the protected checks are awaited. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
   The ten protected checks are `android-assemble`, `android-instrumented-tests`,
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
@@ -179,10 +218,11 @@
   passed all ten, with `ios-simulator-build` hitting the documented `E1-17` flake once
   (`VehicleAndFuelFlowUITests.swift:214`, `Onboarding did not reach vehicle creation before the
   timeout`) in a test this branch cannot affect — no Kotlin or Swift source differs from `main` —
-  and passing on the re-run of that job alone.
-- Verification evidence and known failures: the second, third and fourth review rounds change
-  documentation only, so the executable behaviour under test is identical to the post-fix head
-  `6743d2f`. Re-run locally on the corrected tree after each round: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
+  and passing on the re-run of that job alone; and run `34272924260` on `1527da6` passed all ten
+  with no re-run.
+- Verification evidence and known failures: the second, third, fourth and fifth review rounds
+  change documentation only, so the executable behaviour under test is identical to the post-fix
+  head `6743d2f`. Re-run locally on the corrected tree after each round: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
   Firestore emulator suite 2 pass, 0 fail, `Script exited successfully (code 0)`; 155 Firestore
   rules tests, 155 pass, 0 fail; the dependency audit exit `0` with the unchanged pre-existing
   moderate `uuid` advisory below the `--audit-level=high` gate; `./gradlew contractCheck
@@ -199,8 +239,10 @@
   `Pending` as "no recommendation yet", and ADR-0150 recommends no option, selects no default and
   leaves the trade entirely to the owner. The remediation explicitly does not decide it and does
   not pre-select an option.
-- Exact next step: the owner's gated review of pull request #63 after this fourth remediation
-  round, and the `D-149` decision itself. `D-149` is the only unresolved decision in the
+- Exact next step: the owner's gated review of pull request #63 after this fifth remediation round,
+  and the `D-149` decision itself. `D-149` is still the only unresolved decision in the repository
+  and `E3-15` stays blocked on it; `docs/SECURITY.md` deliberately carries no accepted-residual-risk
+  entry, because that entry is correct only if the owner explicitly chooses to defer `D-149`. `D-149` is the only unresolved decision in the
   repository, and `E3-15` stays blocked on it.
 
 ## Scope Completed
@@ -230,6 +272,11 @@
 - The fourth gated-review remediation, documentation only: the `E3-15` acceptance criterion
   rephrased so it cannot credit option A or B with global convergence, the pull-request description
   brought up to the final corrected interpretation, and a fourth append-only
+  `docs/PROJECT_LOG.md` correction entry. No production source file changed.
+- The fifth gated-review remediation, documentation only: the three unqualified `D-143`
+  restatements in `docs/SPECIFICATION.md` §12, ADR-0142's Negative Consequences and the `D-141` row
+  of `docs/DECISION_BOARD.md` brought under ADR-0144's scope constraint, the three equivalent
+  statements found by the sweep reconciled with them, and a fifth append-only
   `docs/PROJECT_LOG.md` correction entry. No production source file changed.
 
 ## Acceptance Evidence
@@ -390,14 +437,14 @@ Post-fix battery, run from the head `6743d2f`:
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
 
-### Second, third and fourth review rounds, documentation only
+### Second to fifth review rounds, documentation only
 
-The second, third and fourth gated-review remediations change only `docs/**`. No production source,
-test or build input outside documentation is touched in any of them, so the executable behaviour is
-byte-identical to the post-fix head `6743d2f`. The battery was re-run on the corrected tree after
-each round, with identical results (the fourth round, which touches only `docs/BACKLOG.md`, the
-handoff and the log, was verified with `contractCheck :build-logic:convention:test` and the
-`git diff --check` range):
+The second, third, fourth and fifth gated-review remediations change only `docs/**`. No production
+source, test or build input outside documentation is touched in any of them, so the executable
+behaviour is byte-identical to the post-fix head `6743d2f`. The battery was re-run on the corrected
+tree after each round, with identical results (the fourth and fifth rounds, which touch only
+documentation, were verified with the `rg` restatement sweep, `contractCheck
+:build-logic:convention:test`, the `git diff --check` range and a clean-tree check):
 
 - `cd functions && npm test`: 78 tests, 76 pass, 0 fail, 2 emulator-gated skips.
 - `cd functions && npm run test:emulator`: 2 tests, 2 pass, 0 fail, `Script exited successfully
@@ -465,7 +512,7 @@ open and documented in `docs/BACKLOG.md`.
 ## Project Log Entry
 
 - [x] Entry appended — one story entry, one decision entry and one correction entry from the
-  original delivery, plus one correction entry per gated-review round (four).
+  original delivery, plus one correction entry per gated-review round (five).
   `docs/PROJECT_LOG.md` stays append-only: no historical entry was edited or deleted.
 
 ## Risks or Follow-ups

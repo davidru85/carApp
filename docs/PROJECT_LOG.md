@@ -38,6 +38,53 @@
 
 ## Entries
 
+### 2026-09-08 — Correction: three D-143 restatements did not satisfy ADR-0144's scope constraint
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-141`, `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** ADR-0144 introduced the constraint that every restatement of `D-143` MUST scope
+  its guarantee to the orphan-cleanup authorizations visible to the purge when it runs and MUST
+  identify `D-149` / `E3-15` as the owner of the remaining concurrent-issuance race. The fifth gated
+  owner review of pull request #63 found three current statements that did not satisfy it, now
+  corrected: the `D-143` row of `docs/SPECIFICATION.md` §12, which claimed the purge removes every
+  authorization bound to the UID with no scope and no race owner; the Negative Consequences of
+  `docs/adr/0142-use-server-issued-orphan-cleanup-tickets.md`, which made the TTL "never" the normal
+  account-deletion retention path when a concurrent issuance landing after the purge is in fact left
+  exclusively to it; and the `D-141` row of `docs/DECISION_BOARD.md`, whose amendment clause
+  summarised `D-143` as erasing ticket authorizations on account deletion. Each now limits `D-143`
+  to what the purge sees, states that a concurrent issuance may write afterwards, names `D-149` /
+  `E3-15` as owning that race, and attributes cleanup of a missed record solely to the existing
+  asynchronous Firestore TTL with no proven maximum. The sweep of current documentation reconciled
+  three further repetitions of the same rule in the same change: `docs/CONTRACTS.md` §16 and
+  ADR-0144's own Decision section, which both carried the unqualified "not the normal
+  account-deletion retention path" claim, and the `Choice` cells of the `D-143` rows in
+  `docs/DECISION_BOARD.md` and `docs/TECHNICAL_PLAN.md` §2, whose `Guardrail` cells already carried
+  the scope.
+- **Why:** a normative row that restates the decision without its scope is the reading a later agent
+  will implement against, and `docs/SPECIFICATION.md` §12 and `docs/DECISION_BOARD.md` are exactly
+  the rows an agent consults first. Leaving the TTL described as never being the account-deletion
+  retention path also hides that, for the one record the race can produce, the TTL is the only
+  cleanup there is.
+- **Documents touched:** `docs/SPECIFICATION.md` §12, `docs/adr/0142-...md`,
+  `docs/DECISION_BOARD.md` (rows `D-141` and `D-143`), `docs/CONTRACTS.md` §16,
+  `docs/adr/0144-...md`, `docs/TECHNICAL_PLAN.md` §2, `docs/handoff-E3-14.md` and this log, plus the
+  pull-request description, which is not a repository artifact. `docs/handoff-E3-11.md` and the
+  earlier entries of this log were deliberately left as written: they record the state observed when
+  `E3-11` merged, and this entry corrects their wording without rewriting them. The ADR-0144 title
+  and its `docs/adr/README.md` index row name the ADR rather than stating a guarantee and are
+  unchanged. `D-143` keeps its `Accepted` status, `D-149` stays `Pending` with no recommendation and
+  no option selected, `E3-15` stays Not Ready, no production code, test or dependency changed, and
+  `docs/SECURITY.md` still carries no accepted-residual-risk entry.
+- **Verification:** the `rg` sweep over `AGENTS.md` and `docs` for `D-143` and the equivalent
+  phrasings shows every current restatement carrying the scope and the race owner;
+  `./gradlew contractCheck :build-logic:convention:test` passes with 150 aligned decisions, `D-143`
+  `Accepted` and `D-149` the one unresolved `Pending` decision with its `Needed by` row;
+  `git diff --check origin/main...HEAD` is clean and the working tree is clean. The protected-check
+  run for the final head is recorded in the pull-request description.
+- **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision and `E3-15` stays Not
+  Ready.
+
 ### 2026-09-08 — Correction: the E3-15 acceptance criterion could credit option A or B with convergence
 
 - **Type:** correction

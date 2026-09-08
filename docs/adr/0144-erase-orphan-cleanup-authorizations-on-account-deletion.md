@@ -59,8 +59,10 @@ client-facing application data, and it lives outside the `users/{uid}` subtree. 
 parity test compares the declaration with the registry, proves the two registries do not overlap,
 and fails when a server-only collection is declared in the contract without a registry entry.
 
-The 30-day TTL remains enabled as a fallback for abandoned or completed authorizations; it is no
-longer the normal account-deletion retention path. That fallback is provider-managed **eventual**
+The 30-day TTL remains enabled as a fallback for abandoned or completed authorizations. For the
+authorizations the purge sees, it is no longer the account-deletion retention path; for a record
+written by the concurrent issuance that `D-149` / `E3-15` owns, it remains the **only** cleanup.
+That fallback is provider-managed **eventual**
 cleanup: at `expiresAt` a record becomes eligible for asynchronous deletion, expired records may
 still be queryable, and deletion typically follows within 24 hours of expiration without that being
 a guaranteed maximum or an SLA. The TTL therefore MUST NOT be described as a hard 30-day deletion
