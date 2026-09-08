@@ -67,6 +67,20 @@ test("ticket issuance rejects stale anonymous claims for a deleted account", asy
   assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
 });
 
+test("ticket issuance rejects an anonymous snapshot whose disabled state is unknown", async () => {
+  // The Admin record is the only current answer, and eligibility is a positive fact: a snapshot
+  // that does not carry an explicit `disabled: false` value is not known to be enabled, so the
+  // issuer must fail closed instead of treating an absent value as enabled.
+  const harness = ticketHarness({callerUser: {providerData: []}});
+
+  await assert.rejects(
+    harness.handler(anonymousRequest()),
+    (failure) => failure.code === "failed-precondition",
+  );
+
+  assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+});
+
 test("ticket issuance maps an Admin lookup failure to internal with a redacted stage", async () => {
   const harness = ticketHarness({lookupError: new Error(`admin exploded for ${ORPHAN_UID}`)});
 
