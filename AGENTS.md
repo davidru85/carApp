@@ -115,7 +115,9 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoff-E3-10.md`.
   `E3-11` is also complete; it introduced `D-132` through `D-143` and its evidence lives in
   `docs/handoff-E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
-  `docs/handoff-E2-07.md` holds its acceptance evidence pending the gated owner review.
+  `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
+  `docs/handoff-E2-08.md` holds its acceptance evidence. `E3-14` is implemented on the open pull
+  request #63 awaiting the owner's gated review.
 - **Next:** `E2-04`, the anonymous account conversion, now that `E3-11` has merged. `E2-05` follows
   it.
 - **Remaining Phase 1:** none. The phase is closed.

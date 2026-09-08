@@ -38,14 +38,26 @@
 ## In-Progress Checkpoint
 
 - Date: 2026-09-08
-- Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `7a79fab`.
-- Current phase and latest commit: documentation phase; this handoff and the project log entries are
-  the last change of the story.
-- Push and pull-request status: pushed after this commit; the pull request targets `main`.
+- Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, rebased onto `main` at
+  `112e973`. The original base was `main` at `7a79fab`; pull requests #61 (`E2-07`) and #62
+  (`E2-08`) landed on `main` while this branch was open, which made the branch report as CONFLICTING
+  and required this rebase. Nothing they introduced was changed: their decisions `D-144` through
+  `D-147`, their ADRs 0145 through 0148, their project-log entries and their `AGENTS.md` state
+  survive unchanged, unioned with this branch's `D-148`, `D-149`, ADR-0149, ADR-0150 and the
+  `E3-14` / `E3-15` statements.
+- Current phase and latest commit: documentation phase; the handoff, the project log entries, an
+  owner-requested `AGENTS.md` merge-state correction and this rebase are the last changes of the
+  story.
+- Push and pull-request status: force-pushed after the rebase; the pull request #63 targets `main`
+  and is green on the rebased head.
 - Completed since the previous checkpoint: three red/green pairs, the decision records, the contract
-  updates and the full verification battery.
+  updates, the full verification battery, the `AGENTS.md` correction recording that `E3-11`
+  merged through pull request #60 (merge commit `7a79fab`, 2026-09-07) and that `E3-14` is the
+  open pull request #63, and the rebase onto the `main` head that carries `E2-07` and `E2-08`.
 - Verification evidence and known failures: see **Verification Run**. One `E1-14` flake occurred and
-  is analysed there; no failure attributable to this change.
+  is analysed there; no failure attributable to this change. The `AGENTS.md` correction is
+  documentation-only and re-runs `contractCheck` only. The rebase is documentation-only on the
+  six conflicting files and re-runs the full local suite on the new base.
 - Open decisions or blockers: `D-149` is `Proposed` and is the owner's. `E3-15` MUST NOT start until
   it is resolved.
 - Exact next step: gated owner review, and a decision on `D-149`.
