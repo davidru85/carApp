@@ -6,6 +6,7 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
+import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
@@ -19,6 +20,7 @@ import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.createFuelEntryListStateHolder
+import com.ruizurraca.carapp.feature.session.data.SqlDelightAnonymousReminderRepository
 import com.ruizurraca.carapp.feature.session.data.SqlDelightSettingsRepository
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
@@ -81,6 +83,10 @@ internal class DefaultAppGraph(
                     uuidGenerator = dependencies.uuidGenerator,
                 ),
             adoption = localOwnerAdoption,
+        )
+    private val anonymousReminders =
+        SqlDelightAnonymousReminderRepository(
+            AnonymousReminderDatabaseAccess(databaseHandle.database),
         )
     private val settingsRepository =
         SqlDelightSettingsRepository(
@@ -163,6 +169,8 @@ internal class DefaultAppGraph(
             scope = scope,
             authClient = dependencies.authClient,
             onLocalStartAccepted = localOwnerAdoption::onLocalStartAccepted,
+            clock = dependencies.clock,
+            anonymousReminders = anonymousReminders,
         )
     }
 

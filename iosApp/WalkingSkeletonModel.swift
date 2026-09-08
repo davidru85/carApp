@@ -67,6 +67,16 @@ final class WalkingSkeletonModel: ObservableObject {
         sessionStateHolder.startAnonymousSignIn()
     }
 
+    /// Launch and foreground return are the only evaluation moments of the `D-62` schedule
+    /// (`docs/CONTRACTS.md §11.3`). No scheduler, alarm or user notification is involved.
+    func evaluateAnonymousReminder() {
+        sessionStateHolder.evaluateAnonymousReminder()
+    }
+
+    func dismissAnonymousReminder() {
+        sessionStateHolder.dismissAnonymousReminder()
+    }
+
     func setVehicleName(_ value: String) {
         vehicleFormStateHolder.setName(value: value)
     }

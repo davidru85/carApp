@@ -90,4 +90,10 @@
     <string name="error_future_date">La fecha no puede estar en el futuro.</string>
     <string name="error_money_input">Introduce los dos valores monetarios obligatorios.</string>
     <string name="error_currency">Selecciona una moneda compatible.</string>
+    <string name="anonymous_reminder_title">Tus datos solo existen en este dispositivo</string>
+    <string name="anonymous_reminder_body_1">Inicia sesión con Google para poder recuperar tus vehículos y repostajes. Hasta entonces, esta cuenta pertenece solo a este dispositivo y Firebase la elimina tras 30 días sin uso.</string>
+    <string name="anonymous_reminder_body_2">Tus vehículos y repostajes siguen guardados solo en este dispositivo. Inicia sesión con Google para poder recuperarlos en otro; una cuenta sin vincular se elimina tras 30 días sin uso.</string>
+    <string name="anonymous_reminder_body_3">Esta cuenta sigue sin vincular. Inicia sesión con Google para conservar tus datos recuperables, porque una cuenta sin vincular se elimina tras 30 días sin uso.</string>
+    <string name="anonymous_reminder_body_4">Último aviso: esta cuenta sigue perteneciendo solo a este dispositivo y se elimina tras 30 días sin uso. Inicia sesión con Google para poder recuperar tus vehículos y repostajes.</string>
+    <string name="anonymous_reminder_dismiss">Descartar</string>
 </resources>

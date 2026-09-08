@@ -29,7 +29,17 @@ struct ContentView: View {
             // The authenticated surface is mounted once, and it owns its own unresolved-list
             // indicator. Gating it from here would cover the list from a second observer of the
             // same state holder, which can lag behind the one that decides what to present.
-            VehicleListView(graph: graph, skeletonModel: model)
+            VStack(spacing: 0) {
+                // The notice sits above the product surface instead of over it, so it never gates
+                // a feature.
+                if let reminderIndex = model.sessionState.anonymousReminderIndex {
+                    AnonymousReminderView(
+                        index: reminderIndex.int32Value,
+                        onDismiss: model.dismissAnonymousReminder
+                    )
+                }
+                VehicleListView(graph: graph, skeletonModel: model)
+            }
         }
     }
 }

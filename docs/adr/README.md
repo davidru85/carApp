@@ -150,5 +150,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-141 | [ADR-0142](0142-use-server-issued-orphan-cleanup-tickets.md) | Use server-issued tickets for orphan cleanup authorization. | Accepted |
 | D-142 | [ADR-0143](0143-revalidate-ticket-bound-anonymity-at-consumption.md) | Revalidate ticket-bound anonymity at consumption. | Accepted |
 | D-143 | [ADR-0144](0144-erase-orphan-cleanup-authorizations-on-account-deletion.md) | Erase orphan-cleanup authorizations on account deletion. | Accepted |
+| D-144 | [ADR-0145](0145-store-the-anonymous-reminder-position-in-a-dedicated-local-table.md) | Store the anonymous reminder position in a dedicated local table. | Accepted |
+| D-145 | [ADR-0146](0146-carry-the-anonymous-reminder-on-a-typed-session-state-field.md) | Carry the anonymous reminder on a typed session state field. | Accepted |
+| D-146 | [ADR-0147](0147-evaluate-the-anonymous-reminder-from-a-host-foreground-intent.md) | Evaluate the anonymous reminder from a host foreground intent. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

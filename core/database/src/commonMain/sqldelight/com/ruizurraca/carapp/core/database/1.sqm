@@ -1,0 +1,7 @@
+-- Schema version 2: device-local anonymous sign-in benefit reminder state (`D-62`, `D-144`).
+-- Additive only. No existing table, column or row is touched, so no data can be lost.
+CREATE TABLE anonymous_reminder (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  anonymousUid TEXT NOT NULL,
+  lastShownIndex INTEGER NOT NULL CHECK (lastShownIndex >= 0)
+);

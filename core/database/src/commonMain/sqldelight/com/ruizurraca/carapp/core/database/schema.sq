@@ -98,3 +98,9 @@ CREATE TABLE quarantine (
   createdAt INTEGER NOT NULL,
   UNIQUE(entityType, entityId)
 );
+
+CREATE TABLE anonymous_reminder (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  anonymousUid TEXT NOT NULL,
+  lastShownIndex INTEGER NOT NULL CHECK (lastShownIndex >= 0)
+);

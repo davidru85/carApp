@@ -682,6 +682,8 @@ Human review required.
 
 ### E2-07 - Anonymous Sign-In Benefit Reminders - S
 
+Status: implemented on 2026-09-07, awaiting the gated owner review. See `docs/handoff-E2-07.md`.
+
 Implement the foreground-only anonymous-account retention notices selected by `D-62`.
 
 Acceptance criteria:
@@ -1096,6 +1098,12 @@ Evidence to start from:
   to the class rather than to one test.
 - Each affected test awaits a real emission from a database-backed graph through `state.first { ... }`
   inside `runTest`, with no bounded expectation.
+- The flake is **not** specific to `iosSimulatorArm64`. `shared-tests` failed the same way on
+  `:shared:testAndroidHostTest` in pull request #61 (`E2-07`), on
+  `litersAndPriceDeriveTotalCostWhileTyping` with the same
+  `kotlinx.coroutines.test.UncompletedCoroutinesError`; re-running the identical commit passed all
+  ten required checks, and the same test passed 25 consecutive local `--rerun-tasks` runs on an
+  Apple-silicon host. The fix therefore has to cover both test targets, not only the Native one.
 
 Acceptance criteria:
 
@@ -1156,6 +1164,12 @@ Evidence, all on the same day:
   creation before the timeout". The other two tests in the class passed in the same execution.
 - Re-running that job on the same commit, with nothing changed, passed.
 - Run `34051112907` on `main`, whose product code is identical to that commit, passed the same job.
+- Recurred on 2026-09-07 in run `34143700898`, job `101811041469`, commit `6f15e77` of pull request
+  #61 (`E2-07`): the same test, the same `VehicleAndFuelFlowUITests.swift:214` and the same
+  "Onboarding did not reach vehicle creation before the timeout". That commit changes Markdown only,
+  so the iOS binary was identical to the preceding commit whose `ios-simulator-build` had just
+  passed, and re-running the job on the same commit passed. The flake therefore survives across
+  stories and is unrelated to the change under test.
 
 The helper that fails is the shared onboarding wait at `VehicleAndFuelFlowUITests.swift:194-214`. It
 polls for 30 seconds and taps `welcome_guest` and `add_vehicle` behind the one-shot latches

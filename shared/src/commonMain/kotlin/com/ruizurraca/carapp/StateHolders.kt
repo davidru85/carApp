@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
@@ -13,6 +14,8 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.FuelType
+import com.ruizurraca.carapp.feature.session.domain.AnonymousReminderRepository
+import com.ruizurraca.carapp.feature.session.domain.dueAnonymousReminderIndex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -25,9 +28,12 @@ class SessionStateHolder internal constructor(
     private val authClient: AuthClient? = null,
     // Not exported: the constructor is internal, so this stays out of the Swift-facing surface.
     private val onLocalStartAccepted: () -> Unit = {},
+    private val clock: AppClock? = null,
+    private val anonymousReminders: AnonymousReminderRepository? = null,
 ) {
     private var closed = false
     private var operationJob: Job? = null
+    private var reminderJob: Job? = null
     private var activePermanentProvider: AuthProvider? = null
     private val mutableState =
         MutableStateFlow(authClient?.authState?.value.toSessionUiState())
@@ -36,7 +42,20 @@ class SessionStateHolder internal constructor(
         if (scope != null && authClient != null) {
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 authClient.authState.collect { authState ->
-                    if (!closed) mutableState.value = authState.toSessionUiState()
+                    if (closed) return@collect
+                    val next = authState.toSessionUiState()
+                    // A session that is still the same anonymous one keeps the notice it is
+                    // already showing; every other phase drops it.
+                    mutableState.value =
+                        if (next.phase == SessionPhase.ANONYMOUS) {
+                            next.copy(anonymousReminderIndex = mutableState.value.anonymousReminderIndex)
+                        } else {
+                            next
+                        }
+                    // Permanent sign-in and successful linking end the schedule (§11.3).
+                    if (authState is AuthState.SignedIn && !authState.session.isAnonymous) {
+                        anonymousReminders?.clear()
+                    }
                 }
             }
         } else {
@@ -74,6 +93,7 @@ class SessionStateHolder internal constructor(
                                         code = result.error.code,
                                         confirmation = null,
                                     ),
+                                anonymousReminderIndex = null,
                             )
                         }
                     }
@@ -124,6 +144,26 @@ class SessionStateHolder internal constructor(
             )
     }
 
+    /**
+     * Evaluates the `D-62` reminder schedule on app launch and foreground return
+     * (`docs/CONTRACTS.md §11.3`). It introduces no scheduler, alarm or operating-system
+     * notification: the host calls it from its own foreground lifecycle.
+     */
+    fun evaluateAnonymousReminder() {
+        if (closed || reminderJob?.isActive == true) return
+        val operationScope = scope ?: return
+        val session = (authClient?.authState?.value as? AuthState.SignedIn)?.session ?: return
+        // The schedule is disabled for the sentinel owner, signed-out and permanent sessions.
+        if (!session.isAnonymous) return
+        reminderJob = operationScope.launch { publishDueReminder(session) }
+    }
+
+    /** Dismisses the reminder currently shown. Its index stays consumed. */
+    fun dismissAnonymousReminder() {
+        if (closed) return
+        mutableState.value = mutableState.value.copy(anonymousReminderIndex = null)
+    }
+
     fun startAccountConversion(provider: AuthProvider) = provider.let { Unit }
 
     fun confirmAccountConversion(confirmation: Confirmation) = confirmation.let { Unit }
@@ -146,6 +186,8 @@ class SessionStateHolder internal constructor(
         closed = true
         operationJob?.cancel()
         operationJob = null
+        reminderJob?.cancel()
+        reminderJob = null
         authStateJob?.cancel()
         activePermanentProvider = null
     }
@@ -186,6 +228,35 @@ class SessionStateHolder internal constructor(
             }
     }
 
+    /**
+     * Persisting the index before publishing it is what consumes every lower pending reminder. A
+     * notice shown before its index survived would come back on the next foreground return, and a
+     * failure the owner cannot act on is not worth reporting for a non-blocking notice.
+     */
+    private suspend fun publishDueReminder(session: AuthSession) {
+        val reminders = anonymousReminders ?: return
+        val dueIndex = dueReminderIndexFor(session) ?: return
+        if (reminders.recordShown(session.uid, dueIndex) is Outcome.Err) return
+        if (!closed) {
+            mutableState.value = mutableState.value.copy(anonymousReminderIndex = dueIndex)
+        }
+    }
+
+    private suspend fun dueReminderIndexFor(session: AuthSession): Int? {
+        val accountCreatedAt = session.createdAt
+        val appClock = clock
+        // An identity with no provider creation timestamp has no anchor to measure elapsed days
+        // from, so it is left alone rather than measured from an invented origin.
+        if (accountCreatedAt == null || appClock == null) return null
+        val storedIndex = anonymousReminders?.lastShownIndex(session.uid)
+        if (storedIndex !is Outcome.Ok) return null
+        return dueAnonymousReminderIndex(
+            accountCreatedAt = accountCreatedAt,
+            now = appClock.now(),
+            lastShownIndex = storedIndex.value,
+        )
+    }
+
     private fun publishError(error: AuthError) {
         mutableState.value =
             mutableState.value.copy(
@@ -220,9 +291,9 @@ private fun AuthState?.toSessionUiState(): SessionUiState =
     when (this) {
         null,
         AuthState.Unknown,
-        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null)
+        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null, null)
 
-        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null)
+        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null, null)
 
         is AuthState.SignedIn -> session.toSessionUiState()
     }
@@ -233,6 +304,7 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         providers = AuthProvider.entries.filter(providers::contains),
         isBusy = false,
         message = null,
+        anonymousReminderIndex = null,
     )
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L

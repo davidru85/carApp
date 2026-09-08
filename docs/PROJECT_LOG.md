@@ -38,6 +38,95 @@
 
 ## Entries
 
+### 2026-09-07 — E1-17 recurred on a Markdown-only commit in pull request #61
+
+- **Type:** correction
+- **Story / Decision:** `E1-17` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the `E1-17` evidence in `docs/BACKLOG.md` records a second occurrence, in run
+  `34143700898` on commit `6f15e77` of pull request #61, with the same test, the same
+  `VehicleAndFuelFlowUITests.swift:214` and the same "Onboarding did not reach vehicle creation
+  before the timeout".
+- **Why:** that commit changes Markdown only, so the iOS binary was identical to the preceding
+  commit whose `ios-simulator-build` had just passed. It is the cleanest possible demonstration that
+  the flake is independent of the change under test, and it shows the defect survives across
+  stories rather than being tied to `E1-09` or `E2-03`.
+- **Documents touched:** `docs/BACKLOG.md` (`E1-17`), `docs/handoff-E2-07.md` and this log.
+- **Verification:** re-running the job on the same commit passed, and the ten required checks are
+  green.
+- **Follow-ups / risks:** `E1-14` and `E1-17` together cost `E2-07` two re-runs of jobs that were
+  green on identical code. Until both are fixed, a red `shared-tests` or `ios-simulator-build` is
+  not by itself evidence of a regression, which is exactly the ambiguity `AGENTS.md` warns about.
+
+### 2026-09-07 — E1-14 also fires on the Android host target
+
+- **Type:** correction
+- **Story / Decision:** `E1-14` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the `E1-14` evidence in `docs/BACKLOG.md` now records that the
+  `FuelEntryStateHolderTest` `runTest` timeout also occurs on `:shared:testAndroidHostTest`, not
+  only on `iosSimulatorArm64`. It corrects the scope implied by the entry of 2026-09-06 that opened
+  `E1-14`, which named only the Native target.
+- **Why:** the first `shared-tests` run of pull request #61 failed on
+  `litersAndPriceDeriveTotalCostWhileTyping` with `kotlinx.coroutines.test.UncompletedCoroutinesError`
+  in the JVM target. A fix that hardened only the Native suite would have left a red
+  `shared-tests` ambiguous on the other half.
+- **Documents touched:** `docs/BACKLOG.md` (`E1-14`), `docs/handoff-E2-07.md` and this log.
+- **Verification:** re-running the identical commit turned all ten required checks green, and the
+  same test passed 25 consecutive local `--rerun-tasks` runs on an Apple-silicon host. The failing
+  test builds a Fuel Entry form holder and touches nothing `E2-07` changed.
+- **Follow-ups / risks:** `E1-14` acceptance criteria still name only `:shared:iosSimulatorArm64Test`
+  and MUST be widened to both targets when the story is taken.
+
+### 2026-09-07 — E2-07 anonymous sign-in benefit reminders implemented
+
+- **Type:** story
+- **Story / Decision:** `E2-07` / `D-144`, `D-145`, `D-146`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the `D-62` retention notices are executable end to end. The schedule constant
+  `[1, 3, 8, 18]` and its pure evaluation live in `:feature:session` `domain`; the position is
+  persisted in the new device-local `anonymous_reminder` table (schema version 2, migration
+  `1.sqm`); `SessionStateHolder` gained `evaluateAnonymousReminder()`,
+  `dismissAnonymousReminder()` and the typed `SessionUiState.anonymousReminderIndex`; and both
+  hosts render a dismissible banner from their own foreground lifecycle.
+- **Why:** an unlinked anonymous identity is device-bound and eligible for Firebase cleanup after
+  30 days (`D-60`), so the owner must learn the recovery benefit before losing the data, without a
+  scheduler or an operating-system notification, both of which are out of MVP scope.
+- **Documents touched:** `docs/CONTRACTS.md §11.3` and `§20.10`, `docs/TECHNICAL_PLAN.md §2`
+  and `§6`, `docs/SPECIFICATION.md §12`, `docs/DECISION_BOARD.md`, `docs/adr/0145`–`0147`,
+  `docs/adr/README.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`, `docs/handoff-E2-07.md` and
+  this log.
+- **Verification:** the full non-instrumented CI command exits `0`, including `contractCheck` with
+  147 aligned decisions and ADRs and no `PENDING` assertion;
+  `:androidApp:connectedDebugAndroidTest` runs 17 tests on the D-84 API 36 emulator;
+  `xcodebuild` builds the iOS simulator app and its 40 unit tests pass on an erased simulator; the
+  regenerated Objective-C header matches the committed golden.
+- **Follow-ups / risks:** the notice explains permanent sign-in but offers no action, because the
+  settings entry point that starts it belongs to `E2-04` and `E2-05`. The story is human-review
+  gated and touches `core/database/**`, which it owns for its duration.
+
+### 2026-09-07 — D-144, D-145 and D-146 accepted for the anonymous reminder implementation
+
+- **Type:** decision
+- **Story / Decision:** `E2-07` / `D-144`, `D-145`, `D-146`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `D-144` puts the last-shown reminder index in a dedicated device-local table
+  keyed by the anonymous UID; `D-145` carries the reminder on its own typed `SessionUiState` field
+  instead of the shared `UiMessage` channel; `D-146` triggers evaluation from a host foreground
+  intent instead of a new `AppGraphDependencies` member.
+- **Why:** `D-62` deliberately left the persistence location to this story's intake. The stored
+  position is schedule state rather than a user preference and is only meaningful next to the
+  identity that produced it; the single message channel is already owned by authentication errors,
+  so sharing it would let a notice and an error silently consume each other; and one lifecycle
+  event does not justify changing the canonical graph parameter order of `docs/CONTRACTS.md §11.6`.
+- **Documents touched:** `docs/adr/0145-store-the-anonymous-reminder-position-in-a-dedicated-local-table.md`,
+  `docs/adr/0146-carry-the-anonymous-reminder-on-a-typed-session-state-field.md`,
+  `docs/adr/0147-evaluate-the-anonymous-reminder-from-a-host-foreground-intent.md`, the four
+  decision mirrors, `docs/CONTRACTS.md §11.3`, `docs/TECHNICAL_PLAN.md §6` and this log.
+- **Verification:** `contractCheck` reports 147 aligned decisions and ADRs.
+- **Follow-ups / risks:** `D-144` makes schema version 2 the new migration baseline, so every later
+  schema change extends the chain and ships its own populated previous-version migration test.
+
 ### 2026-09-07 — PR #60 review round 5 resolved the five remaining findings
 
 - **Type:** story
