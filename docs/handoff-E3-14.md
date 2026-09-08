@@ -109,28 +109,41 @@
      starts only the Firestore emulator, so it does not exercise the real Admin Auth gateway. The
      record now distinguishes handler tests (fakes), concrete-gateway unit coverage (stub `Auth`
      client) and Firestore emulator coverage (real Firestore gateways, stubbed Auth).
-- Push and pull-request status: all commits pushed; the head is `31ce7e7` (the follow-up
-  documentation commit `31ce7e7` triggered a further check run; see below). Pull request #63 targets
-  `main`, stays OPEN and MUST NOT be merged. **The ten protected checks pass on the post-fix
-  head**: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
-  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
-  `provider-decoupling` and `shared-tests`. Run `34227983544` on `6743d2f` passed all ten with no
-  re-run; the follow-up commit's run `34230198804` hit the documented `E1-14` flake once in
-  `provider-decoupling` (a `:shared` Kotlin/Native test this branch does not touch — the branch
-  changes no Kotlin source outside `build-logic`), the failed job alone was re-run, and it and the
-  run then completed `success` with all ten checks green on the pull request.
-- Verification evidence and known failures: the full battery is green from the post-fix head
-  (`6743d2f`): 78 Functions unit tests with 76 pass and 2 emulator-gated skips, the emulator suite
-  (2 pass), 155 rules tests, the audit exit 0 with the pre-existing moderate `uuid` advisory,
-  `contractCheck` with 150 aligned decisions and `D-149` the one unresolved, the complete required
-  Gradle command exit 0 (no `E1-14` flake this time), the dry run exit 0, `git diff --check` clean,
-  and the ten protected checks green on run `34227983544` with no re-run.
+- Push and pull-request status: all commits pushed. The second-round correction commit is
+  `92956cd` (`docs(E3-14): set D-149 to Pending, correct TTL semantics and option C`), and this
+  handoff update is the commit immediately after it, which is the branch head at which the
+  protected checks are awaited. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
+  The ten protected checks are `android-assemble`, `android-instrumented-tests`,
+  `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
+  `objc-header-golden-check`, `provider-decoupling` and `shared-tests`. **The run identifier for
+  the final head is recorded in the pull-request description, not here**: a further documentation
+  commit made only to write a run ID into the repository would itself trigger a new run and make
+  the record stale in the same act. The earlier heads' results stand as history — run `34227983544`
+  on `6743d2f` passed all ten with no re-run, and run `34230198804` on `31ce7e7` hit the documented
+  `E1-14` flake once in `provider-decoupling` (a `:shared` Kotlin/Native test this branch does not
+  touch), passed on the re-run of that job alone, and completed `success` with all ten checks green.
+- Verification evidence and known failures: the second review round changes documentation only, so
+  the executable behaviour under test is identical to the post-fix head `6743d2f`. Re-run locally on
+  the corrected tree: 78 Functions unit tests with 76 pass, 0 fail and 2 emulator-gated skips; the
+  Firestore emulator suite 2 pass, 0 fail, `Script exited successfully (code 0)`; 155 Firestore
+  rules tests, 155 pass, 0 fail; the dependency audit exit `0` with the unchanged pre-existing
+  moderate `uuid` advisory below the `--audit-level=high` gate; `./gradlew contractCheck
+  :build-logic:convention:test` all assertions `PASS`, 150 aligned decisions and ADRs, assertion 3
+  matching every ADR status including the corrected `Pending` ADR-0150, assertion 4 reporting
+  `1 listed` (`D-149`) and no `PENDING` assertion; `git diff --check origin/main...HEAD` clean and
+  the working tree clean. **No Auth emulator run is claimed**: `firebase.json` configures only the
+  Firestore emulator and `npm run test:emulator` starts `--only firestore`, so there is no
+  Auth-emulator-backed test in this repository to run. The complete required Gradle command and the
+  Functions and indexes dry run were last run green from `6743d2f`; this round touches no Gradle
+  input other than `docs/**`, and `contract-check` re-runs them in CI.
 - Open decisions or blockers: `D-149` is `Pending` and is the owner's. The second review round
   corrected the status: the repository defines `Proposed` as "a recommendation is on the table" and
   `Pending` as "no recommendation yet", and ADR-0150 recommends no option, selects no default and
   leaves the trade entirely to the owner. The remediation explicitly does not decide it and does
   not pre-select an option.
-- Exact next step: the owner's second gated review of pull request #63, and a decision on `D-149`.
+- Exact next step: the owner's gated review of pull request #63 after this second remediation
+  round, and the `D-149` decision itself. `D-149` is the only unresolved decision in the
+  repository, and `E3-15` stays blocked on it.
 
 ## Scope Completed
 
@@ -302,6 +315,25 @@ Post-fix battery, run from the head `6743d2f`:
   all ten pass with no re-run. `android-assemble`, `android-instrumented-tests`,
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
   `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
+
+### Second review round, documentation only
+
+The second gated-review remediation changes only `docs/**`. No production source, test or build
+input outside documentation is touched, so the executable behaviour is byte-identical to the
+post-fix head `6743d2f`. The battery was nevertheless re-run on the corrected tree:
+
+- `cd functions && npm test`: 78 tests, 76 pass, 0 fail, 2 emulator-gated skips.
+- `cd functions && npm run test:emulator`: 2 tests, 2 pass, 0 fail, `Script exited successfully
+  (code 0)`. This is the Firestore emulator; it stubs Auth, and **no Auth emulator is configured or
+  claimed** — `firebase.json` declares only `firestore`.
+- `npm run test:firestore-rules`: 155 tests, 155 pass, 0 fail.
+- `cd functions && npm run audit`: exit `0`, the same pre-existing moderate `uuid` advisory below
+  the `--audit-level=high` gate.
+- `./gradlew contractCheck :build-logic:convention:test`: `BUILD SUCCESSFUL`, every assertion
+  `PASS`, 150 aligned decisions, 150 ADR statuses matched (assertion 3 accepts the corrected
+  `Pending` status of ADR-0150 against the corrected board row), assertion 4 `1 listed` for the
+  unresolved `D-149`, and the build-logic fixture suite green.
+- `git diff --check origin/main...HEAD`: clean. `git status`: clean.
 
 ### The one flake of the post-fix check run, and its re-run
 
