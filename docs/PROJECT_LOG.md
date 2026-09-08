@@ -38,6 +38,55 @@
 
 ## Entries
 
+### 2026-09-08 — Correction: the D-149 analysis was unsound and two E3-14 records overstated facts
+
+- **Type:** correction
+- **Story / Decision:** `E3-14` / `D-148`, `D-149`
+- **Author:** Claude (opencode session), on behalf of David Ruiz
+- **What changed:** the gated owner review of pull request #63 returned three findings and this
+  entry records their remediation. First, ADR-0150's option-A recommendation — a second
+  authorization purge after Auth deletion plus an issuer post-write read-back — claimed to satisfy
+  the erasure invariant; it did not. The counterexample is modelled in the reworked ADR: the
+  issuer's eligibility read passes, deletion completes its Auth delete and second purge, the
+  issuer's write lands after that purge, deletion returns success, and the issuer crashes before
+  any post-write revalidation or compensating delete — the authorization survives until TTL
+  expiry. A post-write check is not atomic with either the deletion or the authorization
+  creation, so options A and B converge only eventually; option B has the analogous race with the
+  eligibility read preceding the disable. ADR-0150 now distinguishes eventual convergence from
+  synchronous crash-safe erasure, presents the options with the property each can and cannot
+  deliver, names option C as the only candidate with a real serialization point without selecting
+  it, and obliges the accepted option to discharge crash-safe proof obligations. `D-149` stays
+  `Proposed`. Second, `canIssueOrphanCleanupTicket` failed open: it accepted
+  `disabled === undefined` because it tested `disabled !== true`. A RED test
+  (`4208d86`, 1 failing of 78) proves an otherwise anonymous snapshot with no known `disabled`
+  value cannot issue, and the GREEN fix (`fb56b11`, 78 passing) requires the explicit
+  `disabled === false` state. `FirebaseAdminAuthDeletionGateway.getUser` gained direct unit
+  coverage (`8ce1bdf`) pinning that it forwards `disabled` and `providerData` and maps only
+  `auth/user-not-found` to `null`. Third, ADR-0149's verification record claimed the emulator test
+  exercised the real Admin Auth gateway; it does not, because the suite stubs Auth and starts only
+  the Firestore emulator. The record now describes the real coverage: handler tests with fakes,
+  concrete-gateway unit coverage, and Firestore emulator coverage.
+- **Why:** an unsound recommendation cannot ground an owner decision, an eligibility predicate that
+  fails open contradicts the contract that permits issuance only when the record is known to be
+  enabled, and a verification record that claims coverage the suite does not have misleads the
+  review it is meant to support.
+- **Documents touched:** `docs/adr/0150-...md`, `docs/adr/0149-...md`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (`E3-14`, `E3-15`),
+  `docs/CONTRACTS.md` §11.5, `functions/src/auth/anonymousUserEligibility.ts`,
+  `functions/test/orphanedAnonymousAccount.test.mjs`,
+  `functions/test/firebaseAdminDeletionGateways.test.mjs` (new), `docs/handoff-E3-14.md` and this
+  log. This entry corrects the 2026-09-08 entries "D-148 accepted and D-149 proposed for the orphan
+  cleanup ticket" (the option-A recommendation) and "E3-14 hardens ticket issuance and sanitizes the
+  trigger rejection" (the 146-decision count reported before the rebase; the rebased branch reports
+  150), and the ADR-0149 verification claim.
+- **Verification:** the complete Functions unit suite is 78 tests with 76 passing and 2
+  emulator-gated skips; the emulator, rules, audit, contractCheck and Gradle runs are recorded in
+  `docs/handoff-E3-14.md` from the post-fix head. `contractCheck` reports 150 aligned decisions,
+  `D-149` still the one unresolved.
+- **Follow-ups / risks:** `D-149` remains the owner's decision and `E3-15` stays not Ready. The
+  residual risk is unchanged until that decision is taken: one UID-bound authorization can outlive
+  a successful deletion in the ADR-0150 interleaving and is removed only by the 30-day TTL.
+
 ### 2026-09-08 — E2-08 additional fix binds a published reminder to its anonymous identity
 
 - **Type:** correction
