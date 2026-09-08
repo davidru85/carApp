@@ -36,6 +36,10 @@ class SessionStateHolder internal constructor(
     private var reminderJob: Job? = null
     private var awaitingRestoredSession = false
     private var activePermanentProvider: AuthProvider? = null
+
+    // The anonymous UID that produced the published reminder index, so the collector can tell a
+    // re-emission of the same identity from a switch to a different one (§11.3).
+    private var publishedReminderUid: String? = null
     private val mutableState =
         MutableStateFlow(authClient?.authState?.value.toSessionUiState())
     val state: StateFlow<SessionUiState> = mutableState
@@ -45,12 +49,20 @@ class SessionStateHolder internal constructor(
                 authClient.authState.collect { authState ->
                     if (closed) return@collect
                     val next = authState.toSessionUiState()
-                    // A session that is still the same anonymous one keeps the notice it is
-                    // already showing; every other phase drops it.
+                    // A published index belongs to the anonymous UID that produced it. It survives
+                    // a re-emission of that same identity and is dropped by every other transition,
+                    // including a switch to a different anonymous identity (§11.3).
+                    val incomingAnonymousUid =
+                        (authState as? AuthState.SignedIn)
+                            ?.session
+                            ?.takeIf { session -> session.isAnonymous }
+                            ?.uid
+                    val carriesPublishedReminder = publishedReminderUid == incomingAnonymousUid
                     mutableState.value =
-                        if (next.phase == SessionPhase.ANONYMOUS) {
+                        if (carriesPublishedReminder) {
                             next.copy(anonymousReminderIndex = mutableState.value.anonymousReminderIndex)
                         } else {
+                            publishedReminderUid = null
                             next
                         }
                     // Permanent sign-in and successful linking end the schedule (§11.3). The
@@ -164,6 +176,7 @@ class SessionStateHolder internal constructor(
     /** Dismisses the reminder currently shown. Its index stays consumed. */
     fun dismissAnonymousReminder() {
         if (closed) return
+        publishedReminderUid = null
         mutableState.value = mutableState.value.copy(anonymousReminderIndex = null)
     }
 
@@ -272,6 +285,7 @@ class SessionStateHolder internal constructor(
         // dispatcher the session can change while the position is being persisted, and an index
         // computed for an identity that is no longer current would be shown to the wrong owner.
         if (closed || !isCurrentSession(session.uid)) return
+        publishedReminderUid = session.uid
         mutableState.value = mutableState.value.copy(anonymousReminderIndex = dueIndex)
     }
 
