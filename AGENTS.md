@@ -118,8 +118,9 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
   `docs/handoff-E2-08.md` holds its acceptance evidence. `E3-14` is implemented on the open pull
   request #63 awaiting the owner's gated review.
-- **Next:** `E2-04`, the anonymous account conversion, now that `E3-11` has merged. `E2-05` follows
-  it.
+- **Next:** `E2-05`. `E2-04`, the anonymous account conversion, is implemented on an open pull
+  request awaiting the owner's gated review; it introduced `D-151` through `D-154` and its evidence
+  lives in `docs/handoff-E2-04.md`.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-14`, `E1-15`, `E1-16` and `E1-17`, in that order.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
@@ -127,7 +128,7 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
   `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
   until they are fixed, a red required job is not by itself evidence of a regression.
-- **Remaining Phase 2:** `E2-04` and `E2-05`. `E2-07` is merged through pull request #61; `E2-08`,
+- **Remaining Phase 2:** `E2-05`. `E2-04` is implemented and awaiting its gated owner review. `E2-07` is merged through pull request #61; `E2-08`,
   the anonymous reminder launch and race fixes that followed it, merged on 2026-09-08 through pull
   request #62.
 - **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
@@ -150,7 +151,7 @@ build-logic/       convention plugins, an included build
 :core:analytics    AnalyticsTracker and the closed AnalyticsEvent hierarchy
 :core:crash        CrashReporter and its no-op
 :core:testing      deterministic fakes for every Phase 0 abstraction
-:core:database     SQLDelight schema v2, typed queries, mutation facade and bundled SQLite driver
+:core:database     SQLDelight schema v3, typed queries, mutation facade and bundled SQLite driver
 :core:auth         complete provider-free auth contracts, models and auth-backed owner context
 :core:sync         staged sync contracts for the E0-07 application graph
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice

@@ -366,16 +366,25 @@ private fun anonymousVehicleJson(
     ownerId: String = ANONYMOUS_UID,
     includeEntityType: Boolean = true,
 ): String =
-    """{"entityType":"VEHICLE","id":"$id","ownerId":"$ownerId","name":"Roadster","initialOdometerKm":0,"brand":null,"model":null,"fuelType":"GASOLINE","createdAt":1,"updatedAt":2,"deleted":false,"deletedAt":null,"schemaVersion":1}"""
-        .let { if (includeEntityType) it else it.replace("\"entityType\":\"VEHICLE\",", "") }
+    (
+        """{"entityType":"VEHICLE","id":"$id","ownerId":"$ownerId","name":"Roadster",""" +
+            """"initialOdometerKm":0,"brand":null,"model":null,"fuelType":"GASOLINE",""" +
+            """"createdAt":1,"updatedAt":2,"deleted":false,"deletedAt":null,"schemaVersion":1}"""
+    ).let { if (includeEntityType) it else it.replace("\"entityType\":\"VEHICLE\",", "") }
 
 private fun anonymousFuelEntryJson(
     id: String = "anonymous-entry",
     ownerId: String = ANONYMOUS_UID,
     includeEntityType: Boolean = true,
 ): String =
-    """{"entityType":"FUEL_ENTRY","id":"$id","ownerId":"$ownerId","vehicleId":"anonymous-vehicle","date":1,"odometerKm":100,"litersScaled":50000,"pricePerLiterScaled":1500,"totalCostMinor":7500,"currency":"EUR","isFullTank":true,"hasMissedEntries":false,"odometerInconsistent":false,"notes":null,"createdAt":1,"updatedAt":2,"deleted":false,"deletedAt":null,"schemaVersion":1}"""
-        .let { if (includeEntityType) it else it.replace("\"entityType\":\"FUEL_ENTRY\",", "") }
+    (
+        """{"entityType":"FUEL_ENTRY","id":"$id","ownerId":"$ownerId",""" +
+            """"vehicleId":"anonymous-vehicle","date":1,"odometerKm":100,"litersScaled":50000,""" +
+            """"pricePerLiterScaled":1500,"totalCostMinor":7500,"currency":"EUR",""" +
+            """"isFullTank":true,"hasMissedEntries":false,"odometerInconsistent":false,""" +
+            """"notes":null,"createdAt":1,"updatedAt":2,"deleted":false,"deletedAt":null,""" +
+            """"schemaVersion":1}"""
+    ).let { if (includeEntityType) it else it.replace("\"entityType\":\"FUEL_ENTRY\",", "") }
 
 private val CREDENTIAL = NativeAuthCredential.Google("colliding-id-token", null)
 private const val ANONYMOUS_UID = "anonymous-owner"

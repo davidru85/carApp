@@ -38,6 +38,51 @@
 
 ## Entries
 
+### 2026-09-09 — E2-04 anonymous account conversion implemented
+
+- **Type:** story
+- **Story / Decision:** `E2-04` / `D-151`, `D-152`, `D-153`, `D-154`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the F-4 anonymous account conversion is implemented. Normal conversion now links
+  the native permanent credential onto the anonymous session, preserving the UID, and
+  `AuthError.CredentialAlreadyInUse` raises a typed `Confirmation.AdoptExistingAccount` message
+  instead of merging. After confirmation the flow runs the five ordered steps of
+  `docs/CONTRACTS.md §11.3` behind a durable schema v3 marker: it captures the anonymous snapshot and
+  the E3-11 cleanup ticket before the session switch, replaces the permanent account's remote data,
+  rebuilds the local rows and deletes the orphaned anonymous account last. The two E3-11 callables
+  are reached through a new provider-free `OrphanCleanupClient` port in `:core:auth` with a GitLive
+  Firebase Functions adapter in `:integration:firebase-auth`, wired through the test, staged and
+  production graphs. Cancellation leaves the anonymous account and both data sets untouched, and the
+  conversion start, success and failure analytics events are emitted. Four implementation decisions
+  were registered: `D-151` normalized durable marker storage, `D-152` the callable transport,
+  `D-153` client-side destructive replacement ordering and `D-154` the in-memory-only collision
+  credential.
+- **Why:** the operation is destructive and crosses a session switch the app does not control, so
+  correctness depends on being durable and replayable rather than atomic. The marker is normalized
+  because the replacement resumes per entity and records a remote acknowledgement per row, which an
+  opaque blob cannot express without rewriting itself on every push. The replacement stays on the
+  client because `docs/SPECIFICATION.md §3.2` excludes automatic merging and limits Cloud
+  Functions-mediated product writes to the D-23 and D-63 operations. The colliding credential is
+  never persisted: it is a bearer secret, the local database is not encrypted, and every step after
+  the session switch is authorized by the persisted ticket and the permanent session instead.
+- **Documents touched:** `docs/CONTRACTS.md` §11.3 and §11.6, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2 and §6, `docs/BACKLOG.md`, `AGENTS.md`,
+  `docs/adr/README.md`, ADR-0152 to ADR-0155 (new), `docs/handoff-E2-04.md`.
+- **Verification:** the complete non-instrumented CI command of `AGENTS.md` passes, including
+  `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck`, `:build-logic:convention:test`,
+  `koverVerify`, `:androidApp:assembleDebug`, `:androidApp:testDebugUnitTest`, `testAndroidHostTest`
+  and `iosSimulatorArm64Test`. Schema v3 ships the additive `2.sqm` migration with a populated
+  version-two migration test; `AccountConversionCoordinatorTest` replays the operation from all six
+  post-confirmation boundaries. The story was delivered as separate RED, GREEN and REFACTOR commits
+  pushed once at the end, an explicit owner exemption from the per-phase push cadence of
+  `docs/SPECIFICATION.md §11`.
+- **Follow-ups / risks:** the story is gated — it touches `core/auth/**`, `core/database/**`,
+  authentication, the remote backend and normative documents — and awaits the owner's review. The
+  remote replacement is not atomic, so an interruption leaves the permanent account holding a mixture
+  of both data sets until the replay finishes; the MVP one-active-device rule bounds who can observe
+  that window. `D-149` / `E3-15` and `D-150` / `E3-16` remain unresolved owner decisions and are
+  outside this story.
+
 ### 2026-09-09 — Correction: D-148 was overstated; the issuance lookup-to-write window is D-150
 
 - **Type:** correction
