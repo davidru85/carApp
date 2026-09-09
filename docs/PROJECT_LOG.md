@@ -38,6 +38,56 @@
 
 ## Entries
 
+### 2026-09-09 — Correction: D-148 was overstated; the issuance lookup-to-write window is D-150
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-16` / `D-148`, `D-150`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the seventh gated owner review of pull request #63 identified an unmodelled
+  time-of-check/time-of-use limitation in `D-148`. `createOrphanCleanupTicketHandler` performs three
+  separate operations — `auth.getUser`, the `canIssueOrphanCleanupTicket` predicate, and the
+  Firestore `authorizations.issue` write — across two services that share no atomic transaction, so
+  the account can be linked, disabled or deleted after an eligible snapshot has been observed and
+  before the authorization write commits. Every unconditional statement that a stale token "cannot
+  mint" an authorization for a linked, disabled or deleted identity, or that issuance happens "only
+  while" the identity remains eligible, was stronger than the implementation proves. `D-148` is now
+  scoped everywhere it is restated: it guarantees that the Admin record observed by the lookup
+  existed, was explicitly enabled and satisfied the shared `D-134` predicate, and that a token whose
+  identity was **already** linked, disabled, deleted or state-unknown at that instant is rejected
+  without creating an authorization — the fail-closed guarantee, preserved — but it does not prove
+  eligibility holds until the write commits. The new window is registered as `D-150` (ADR-0151),
+  `Pending`, with `E3-16` **Not Ready**; the three interleavings, the options with their privacy and
+  retention implications, and the proof obligations are in ADR-0151. `D-149` / `E3-15` keeps the
+  account-deletion race and was deliberately **not** broadened to cover linking or disabling.
+- **Why:** `D-142` mitigates only part of the consequence. Its consumption-time revalidation refuses
+  the destructive stage for a bound account that has become linked, but it does not prevent the
+  UID-bound authorization from being created or retained, and it does not reject a bound account that
+  stays anonymous and becomes disabled after eligibility was observed — a disabled account still has
+  empty `providerData`. A contract that claims the stronger guarantee would let a later story rest on
+  a property the code never had.
+- **Documents touched:** `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md`,
+  `docs/adr/0151-close-the-issuance-lookup-to-write-window.md` (new), `docs/adr/README.md`,
+  `docs/CONTRACTS.md` §11.5, `docs/DECISION_BOARD.md` (registry rows `D-148` and `D-150`, plus the
+  awaiting-confirmation table), `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
+  `docs/BACKLOG.md` (`E3-14` acceptance criteria, the new `E3-16`, one index row), `AGENTS.md`,
+  `functions/src/auth/anonymousUserEligibility.ts` (the `D-148` doc comment only; no behaviour
+  changed), `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/handoff-E3-14.md` and this log.
+  Earlier entries are left exactly as written; this entry supersedes their wording where they
+  restate the stronger `D-148` guarantee.
+- **Verification:** four tests were added to `functions/test/orphanedAnonymousAccount.test.mjs`.
+  Three are named for `D-150` and pin the **limitation**, not a guarantee: with the account linked,
+  disabled or deleted between the Admin lookup and the authorization write, the authorization is
+  still created and the resulting record no longer satisfies `canIssueOrphanCleanupTicket`. The
+  fourth re-asserts the preserved `D-148` fail-closed behaviour across all four snapshots that are
+  already ineligible at lookup time. The suite is 82 tests, 80 passing, 0 failing, 2 emulator-gated
+  skips; the Firestore emulator suite and the Firestore rules tests pass; `contractCheck` reports
+  **151 aligned decisions and ADRs** and assertion 4 lists **2** unresolved decisions, `D-149` and
+  `D-150`, each with its `Needed by` story. `git diff --check origin/main...HEAD` is clean.
+- **Follow-ups / risks:** `D-150` is a new unresolved owner decision and `E3-16` is Not Ready.
+  `D-143` stays `Accepted`, `D-149` stays `Pending` with no recommendation and no option selected,
+  and `E3-15` stays Not Ready. `docs/SECURITY.md` carries no accepted-residual-risk entry for either
+  decision, because such an entry is correct only if the owner explicitly chooses to defer.
+
 ### 2026-09-09 — Correction: ADR-0144 did not satisfy its own D-143 scope constraint
 
 - **Type:** correction

@@ -948,13 +948,30 @@ Two anonymous-deletion entry points reuse this service:
   current-user check, so an anonymous `sign_in_provider` claim stays true for the rest of that
   token's lifetime after the account is linked, disabled or deleted. Before generating or
   persisting anything, the issuer MUST resolve the caller's current Auth record through the Admin
-  SDK and MUST issue only while that record exists, is known to be enabled — an explicit
-  `disabled === false` state, so a record whose enabled state is unavailable rejects rather than
-  issues — and still satisfies the shared `D-134` eligibility predicate (`D-148`). A linked,
+  SDK and MUST issue only when the snapshot that lookup returns exists, is known to be enabled — an
+  explicit `disabled === false` state, so a record whose enabled state is unavailable rejects rather
+  than issues — and still satisfies the shared `D-134` eligibility predicate (`D-148`). A linked,
   disabled, missing or state-unknown record maps to `failed-precondition` and MUST NOT create an
   authorization; an Admin lookup failure maps to `internal` with the redacted `AUTH_USER` stage
   log. The predicate is the single shared `D-134` definition used by the trigger and by the
   consumption callable.
+- **The scope of `D-148` is the snapshot, not the write.** The requirement above is a fact about the
+  Auth record the lookup returned. Firebase Auth and Firestore share no atomic transaction, so the
+  Admin lookup, the predicate and the authorization write are three separate operations and the
+  account MAY be linked, disabled or deleted between the lookup returning an eligible snapshot and
+  the write committing. In that case a UID-bound authorization is created for an identity that is no
+  longer eligible. `D-148` therefore guarantees exactly that a token whose identity was **already**
+  linked, disabled, deleted or state-unknown when the lookup resolved is rejected without creating
+  an authorization; it does **not** guarantee eligibility at commit time, and no document MAY state
+  otherwise. That window is `D-150`, which is `Pending`, with `E3-16` as its story. `D-142` covers
+  only part of the consequence: consumption-time revalidation refuses the destructive stage for a
+  bound account that has become linked, but it does not prevent the authorization from being created
+  or retained, and it does not reject a bound account that stays anonymous and became disabled after
+  issuance eligibility was observed. A second Admin read, a post-write read-back, a retry or a
+  compensating delete MUST NOT be described as closing this window, because none is atomic with both
+  the Auth transition and the Firestore write. `D-150` is distinct from `D-149`: `D-149` owns the
+  race against the `deleteAccount` server operation's authorization purge, and MUST NOT be broadened
+  to cover linking or disabling.
 - `D-148` does not by itself guarantee that no UID-bound authorization survives a successful
   account deletion. Because the deletion order above purges authorizations before deleting the Auth
   user, an issuance whose eligibility check passes before the purge and whose write lands after it

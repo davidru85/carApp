@@ -39,8 +39,63 @@
 
 - Date: 2026-09-08
 - Branch and base: `story/E3-14-orphan-ticket-issuance-hardening`, based on `main` at `112e973`.
-- Current phase and latest commit: six rounds of gated-review remediation are complete; the pull
+- Current phase and latest commit: seven rounds of gated-review remediation are complete; the pull
   request is returned for the owner's next gated review and MUST NOT be merged.
+
+  **Seventh gated-review intake (2026-09-09).** The owner's review identified an unmodelled
+  time-of-check/time-of-use limitation in `D-148`. `createOrphanCleanupTicketHandler` performs three
+  separate operations — `auth.getUser(anonymousUid)`, `canIssueOrphanCleanupTicket(caller)` and
+  `authorizations.issue(...)` — across Firebase Auth and Firestore, which share no atomic
+  transaction. The account can therefore be linked, disabled or deleted after the lookup returns an
+  eligible snapshot and before the authorization write commits, so every unconditional statement
+  that a stale token "cannot mint" an authorization for a linked, disabled or deleted identity, or
+  that issuance happens "only while" the identity remains eligible, was stronger than the
+  implementation proves.
+
+  **`D-148` is now scoped everywhere it is restated.** It guarantees that the Admin record observed
+  by the lookup existed, was explicitly enabled (`disabled === false`) and satisfied the shared
+  `D-134` predicate; it rejects a token whose identity was **already** linked, disabled, deleted or
+  state-unknown when that lookup resolved, creating no authorization — the useful fail-closed
+  guarantee, preserved unchanged; and it does **not** prove the identity remains eligible until the
+  Firestore write commits. Corrected in ADR-0149, `docs/CONTRACTS.md` §11.5, the `E3-14` acceptance
+  criteria in `docs/BACKLOG.md`, the `D-148` rows of `docs/SPECIFICATION.md` §12,
+  `docs/DECISION_BOARD.md` and `docs/TECHNICAL_PLAN.md` §2, the `D-148` doc comment in
+  `functions/src/auth/anonymousUserEligibility.ts`, this handoff and the pull-request description.
+
+  **The three interleavings are modelled** in the new ADR-0151, in every case as the ordering
+  `I1, I2, T, I3` (lookup, predicate, Auth transition, Firestore write):
+  1. **Linking.** At the write, a UID-bound authorization exists for an identity whose
+     `providerData` is no longer empty. `D-142` refuses the destructive stage at consumption, so the
+     linked account is not cleaned up; it neither prevents the authorization from being created nor
+     removes it.
+  2. **Disabling.** The account stays anonymous, so it still satisfies the `D-142` consumption
+     predicate — `D-142` is an *anonymity* revalidation and a disabled account still has empty
+     `providerData`. Nothing in the current flow rejects it. This is the gap `D-142` does not reach
+     at all.
+  3. **Deletion.** Consumption converges through the `D-142` missing-account idempotency rule, but
+     the record carrying `anonymousUid` is still created and retained.
+
+  **A new owner decision is registered rather than taken:** `D-150` (ADR-0151), `Pending`, no
+  recommendation, no default, no option selected, with `E3-16` added to `docs/BACKLOG.md` as **Not
+  Ready** and blocked on it. ADR-0151 states why a second Admin read, a post-write read-back, a
+  retry and a compensating delete each fail to close the window — none is atomic with both the Auth
+  transition and the Firestore write — presents three non-exclusive options with their privacy and
+  retention implications, and sets the proof obligations. **`D-149` / `E3-15` was deliberately not
+  broadened**: it owns the race against the `deleteAccount` server operation's authorization purge,
+  and folding linking and disabling into it would repurpose a decision framed and reviewed against
+  the deletion flow. ADR-0151 states that boundary explicitly.
+
+  **Test evidence pins the limitation, not a guarantee.** Four tests were added to
+  `functions/test/orphanedAnonymousAccount.test.mjs`. The `ticketHarness` gained a
+  `transitionBeforeWrite` option that mutates the modelled live Auth record inside the
+  `authorizations.issue` fake — that is, after `getUser` has resolved and before the write commits.
+  Three `D-150` tests then assert that an account linked, disabled or deleted in that window **still
+  receives an authorization**, and that the post-transition record no longer satisfies
+  `canIssueOrphanCleanupTicket`. A fourth test re-asserts the preserved `D-148` fail-closed
+  behaviour over all four snapshots that are already ineligible at lookup time. These are test-only
+  additions that pin existing behaviour, so they are green by design and carry no red/green pair;
+  that is stated here rather than hidden. **No production behaviour changed**: the only edit under
+  `functions/src/` is the `D-148` doc comment, which is a comment.
 
   **Sixth gated-review intake (2026-09-09).** The owner's review found that ADR-0144 did not satisfy
   its **own** scope constraint in two operative places, plus one editorial defect in this handoff.
@@ -239,9 +294,9 @@
   `1527da6`, whose run `34272924260` passed all ten with no re-run. The fifth round landed as
   `c1b1520`, whose run `34277733461` reached all ten green after two jobs were re-run: a confirmed
   `E1-17` occurrence in `ios-simulator-build`, and an ambiguous `provider-decoupling` failure
-  consistent with the `E1-14` flake class but not conclusively classified. The sixth round is the
-  commit that carries this update, which is the branch head at which the protected checks are
-  awaited. Per the repository's CI-evidence policy, run identifiers and re-run outcomes are recorded
+  consistent with the `E1-14` flake class but not conclusively classified. The sixth round landed as
+  `84afe64`, whose run `34288765371` passed all ten with no re-run. The seventh round is the commit
+  that carries this update, which is the branch head at which the protected checks are awaited. Per the repository's CI-evidence policy, run identifiers and re-run outcomes are recorded
   in the pull-request description, never in a commit made for that purpose, which would create a new
   head and invalidate the evidence it records. Pull request #63 targets `main`, stays OPEN and MUST NOT be merged.
   The ten protected checks are `android-assemble`, `android-instrumented-tests`,
@@ -274,15 +329,21 @@
   Auth-emulator-backed test in this repository to run. The complete required Gradle command and the
   Functions and indexes dry run were last run green from `6743d2f`; this round touches no Gradle
   input other than `docs/**`, and `contract-check` re-runs them in CI.
-- Open decisions or blockers: `D-149` is `Pending` and is the owner's. The second review round
+- Open decisions or blockers: **two** decisions are `Pending` and both are the owner's. `D-150`
+  (ADR-0151, `E3-16`) is the issuance lookup-to-write window found in the seventh review round; it
+  carries no recommendation and no selected option. `D-149` is the account-deletion race and is
+  unchanged by that addition: it was deliberately not broadened to cover linking or disabling.
+  `D-149` is `Pending` and is the owner's. The second review round
   corrected the status: the repository defines `Proposed` as "a recommendation is on the table" and
   `Pending` as "no recommendation yet", and ADR-0150 recommends no option, selects no default and
   leaves the trade entirely to the owner. The remediation explicitly does not decide it and does
   not pre-select an option.
-- Exact next step: the owner's gated review of pull request #63 after this sixth remediation round,
-  and the `D-149` decision itself. `D-149` is still the only unresolved decision in the repository
-  and `E3-15` stays blocked on it; `docs/SECURITY.md` deliberately carries no accepted-residual-risk
-  entry, because that entry is correct only if the owner explicitly chooses to defer `D-149`.
+- Exact next step: the owner's gated review of pull request #63 after this seventh remediation
+  round, and **two** owner decisions — `D-149` (the account-deletion race, `E3-15`) and `D-150` (the
+  issuance lookup-to-write window, `E3-16`). Both are `Pending`, neither carries a recommendation or
+  a selected option, and both dependent stories are Not Ready. `docs/SECURITY.md` deliberately
+  carries no accepted-residual-risk entry for either, because such an entry is correct only if the
+  owner explicitly chooses to defer that decision.
 
 ## Scope Completed
 
@@ -322,6 +383,11 @@
   with every operational requirement of the purge preserved; the duplicated closing sentence removed
   from this handoff's `Exact next step`; and a sixth append-only `docs/PROJECT_LOG.md` correction
   entry. No production source file changed.
+- The seventh gated-review remediation: `D-148` scoped to the state observed at the Admin lookup
+  everywhere it is restated, the lookup-to-write window registered as `D-150` (ADR-0151, `Pending`)
+  with `E3-16` Not Ready, four deterministic tests pinning the three interleavings and the preserved
+  fail-closed guarantee, the `D-148` doc comment corrected, and a seventh append-only
+  `docs/PROJECT_LOG.md` correction entry. No production behaviour changed.
 
 ## Acceptance Evidence
 
@@ -556,7 +622,7 @@ open and documented in `docs/BACKLOG.md`.
 ## Project Log Entry
 
 - [x] Entry appended — one story entry, one decision entry and one correction entry from the
-  original delivery, plus one correction entry per gated-review round (six).
+  original delivery, plus one correction entry per gated-review round (seven).
   `docs/PROJECT_LOG.md` stays append-only: no historical entry was edited or deleted.
 
 ## Risks or Follow-ups

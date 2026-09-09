@@ -3,6 +3,10 @@ import crypto from "node:crypto";
 import test from "node:test";
 
 import {
+  canIssueOrphanCleanupTicket,
+  isAnonymousAuthUser,
+} from "../lib/auth/anonymousUserEligibility.js";
+import {
   createOrphanCleanupHandler,
   createOrphanCleanupTicketHandler,
 } from "../lib/callable/deleteOrphanedAnonymousAccount.js";
@@ -79,6 +83,78 @@ test("ticket issuance rejects an anonymous snapshot whose disabled state is unkn
   );
 
   assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+});
+
+// D-150: the three interleavings D-148 cannot cover. `auth.getUser` and the Firestore
+// authorization write are separate operations on two services with no shared transaction, so an
+// account can move between them. These tests pin the *current, honest* behaviour — an authorization
+// is created against a snapshot that was eligible when it was read and is not any more — so that no
+// document can claim D-148 prevents it. They are not a safety guarantee; they are the opposite.
+
+test("D-150: an account linked between the Admin lookup and the write still gets an authorization", async () => {
+  const harness = ticketHarness({
+    transitionBeforeWrite: {disabled: false, providerData: [{providerId: "password"}]},
+  });
+
+  const result = await harness.handler(anonymousRequest());
+
+  assert.deepEqual(result, {cleanupTicket: CLEANUP_TICKET});
+  assert.deepEqual(harness.calls, [
+    ["getUser", ORPHAN_UID],
+    ["issueAuthorization", {
+      anonymousUid: ORPHAN_UID,
+      expiresAtMs: NOW_MS + THIRTY_DAYS_MS,
+      status: "PENDING",
+      ticketHash: ticketHash(CLEANUP_TICKET),
+    }],
+  ]);
+  // The record is no longer anonymous once the write has committed, yet the UID-bound
+  // authorization exists. D-142 refuses the destructive stage at consumption; it does not remove
+  // this record.
+  assert.equal(canIssueOrphanCleanupTicket(harness.liveAccount.value), false);
+});
+
+test("D-150: an account disabled between the Admin lookup and the write still gets an authorization", async () => {
+  const harness = ticketHarness({
+    transitionBeforeWrite: {disabled: true, providerData: []},
+  });
+
+  const result = await harness.handler(anonymousRequest());
+
+  assert.deepEqual(result, {cleanupTicket: CLEANUP_TICKET});
+  assert.deepEqual(harness.calls[1][0], "issueAuthorization");
+  // The account stays anonymous, so D-142 consumption revalidation does not reject it either.
+  assert.equal(isAnonymousAuthUser(harness.liveAccount.value), true);
+  assert.equal(canIssueOrphanCleanupTicket(harness.liveAccount.value), false);
+});
+
+test("D-150: an account deleted between the Admin lookup and the write still gets an authorization", async () => {
+  const harness = ticketHarness({transitionBeforeWrite: null});
+
+  const result = await harness.handler(anonymousRequest());
+
+  assert.deepEqual(result, {cleanupTicket: CLEANUP_TICKET});
+  assert.deepEqual(harness.calls[1][0], "issueAuthorization");
+  assert.equal(harness.liveAccount.value, null);
+  assert.equal(canIssueOrphanCleanupTicket(harness.liveAccount.value), false);
+});
+
+test("D-148 still fails closed when the account is already ineligible at lookup time", async () => {
+  for (const callerUser of [
+    {disabled: false, providerData: [{providerId: "password"}]},
+    {disabled: true, providerData: []},
+    {providerData: []},
+    null,
+  ]) {
+    const harness = ticketHarness({callerUser});
+
+    await assert.rejects(
+      harness.handler(anonymousRequest()),
+      (error) => error.code === "failed-precondition",
+    );
+
+    assert.deepEqual(harness.calls, [["getUser", ORPHAN_UID]]);
+  }
 });
 
 test("ticket issuance maps an Admin lookup failure to internal with a redacted stage", async () => {
@@ -439,9 +515,13 @@ function ticketHarness({
   issueError,
   lookupError,
   callerUser = {disabled: false, providerData: []},
+  transitionBeforeWrite,
 } = {}) {
   const calls = [];
   const logs = [];
+  // `liveAccount` models the Firebase Auth record as it exists at each instant, so a test can move
+  // the account between the Admin lookup and the Firestore write and observe what the handler does.
+  const liveAccount = {value: callerUser};
   const handler = createOrphanCleanupTicketHandler({
     auth: {
       async getUser(uid) {
@@ -449,11 +529,16 @@ function ticketHarness({
         if (lookupError !== undefined) {
           throw lookupError;
         }
-        return callerUser;
+        return liveAccount.value;
       },
     },
     authorizations: {
       async issue(authorization) {
+        // The transition lands after `getUser` has resolved and before the authorization write
+        // commits, which is exactly the window `D-148` cannot cover (`D-150`).
+        if (transitionBeforeWrite !== undefined) {
+          liveAccount.value = transitionBeforeWrite;
+        }
         calls.push(["issueAuthorization", authorization]);
         if (issueError !== undefined) {
           throw issueError;
@@ -464,7 +549,7 @@ function ticketHarness({
     logger: testLogger(logs),
     ticketGenerator: () => CLEANUP_TICKET,
   });
-  return {calls, handler, logs};
+  return {calls, handler, liveAccount, logs};
 }
 
 function cleanupHarness({
