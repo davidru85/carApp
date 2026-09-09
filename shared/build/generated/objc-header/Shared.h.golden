@@ -1125,10 +1125,23 @@ __attribute__((swift_name("SessionStateHolder")))
 - (void)evaluateAnonymousReminder __attribute__((swift_name("evaluateAnonymousReminder()")));
 - (void)failSignInReason:(SharedNativeSignInFailure *)reason __attribute__((swift_name("failSignIn(reason:)")));
 - (void)requestDeleteAccount __attribute__((swift_name("requestDeleteAccount()")));
+
+/**
+ * F-5 sign-out. It is offered only to a permanently authenticated user; the eligibility rules,
+ * the pending-sync warning and the local clear live in [AccountDepartureFlow].
+ */
 - (void)requestSignOut __attribute__((swift_name("requestSignOut()")));
 - (void)startAccountConversionProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startAccountConversion(provider:)")));
 - (void)startAnonymousSignIn __attribute__((swift_name("startAnonymousSignIn()")));
 - (void)startPermanentSignInProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startPermanentSignIn(provider:)")));
+
+/**
+ * Submits a fresh credential for a deletion that the provider refused with
+ * `AuthError.RequiresRecentLogin` (`docs/CONTRACTS.md §11.5` step 1). The host acquires the
+ * credential natively and reports it through `completeGoogleSignIn` / `completeAppleSignIn`,
+ * exactly as it does for sign-in; deletion resumes only once re-authentication succeeds.
+ */
+- (void)startReauthenticationProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startReauthentication(provider:)")));
 @end
 
 __attribute__((objc_subclassing_restricted))
@@ -1137,10 +1150,11 @@ __attribute__((swift_name("SessionUiState")))
 @property (readonly) SharedInt * _Nullable anonymousReminderIndex __attribute__((swift_name("anonymousReminderIndex")));
 @property (readonly) BOOL isBusy __attribute__((swift_name("isBusy")));
 @property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
+@property (readonly) SharedInt * _Nullable pendingSyncCount __attribute__((swift_name("pendingSyncCount")));
 @property (readonly) SharedSessionPhase *phase __attribute__((swift_name("phase")));
 @property (readonly) NSArray<SharedAuthProvider *> *providers __attribute__((swift_name("providers")));
-- (instancetype)initWithPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex __attribute__((swift_name("init(phase:providers:isBusy:message:anonymousReminderIndex:)"))) __attribute__((objc_designated_initializer));
-- (SharedSessionUiState *)doCopyPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex __attribute__((swift_name("doCopy(phase:providers:isBusy:message:anonymousReminderIndex:)")));
+- (instancetype)initWithPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex pendingSyncCount:(SharedInt * _Nullable)pendingSyncCount __attribute__((swift_name("init(phase:providers:isBusy:message:anonymousReminderIndex:pendingSyncCount:)"))) __attribute__((objc_designated_initializer));
+- (SharedSessionUiState *)doCopyPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex pendingSyncCount:(SharedInt * _Nullable)pendingSyncCount __attribute__((swift_name("doCopy(phase:providers:isBusy:message:anonymousReminderIndex:pendingSyncCount:)")));
 - (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
 - (NSUInteger)hash __attribute__((swift_name("hash()")));
 - (NSString *)description __attribute__((swift_name("description()")));
@@ -1148,6 +1162,16 @@ __attribute__((swift_name("SessionUiState")))
 /**
  * The zero-based index of the `D-62` anonymous sign-in benefit reminder currently offered, or
  * `null` when no reminder is being shown (`docs/CONTRACTS.md §11.3`).
+ */
+
+/**
+ * The exact number of outbox rows still pending when a sign-out was refused with
+ * `ValidationWarning.PendingSyncBeforeSignOut`, or `null` when no such warning is being
+ * offered (`docs/CONTRACTS.md §20.10`).
+ *
+ * It is a typed value, not display copy: each host formats it into its own string resources
+ * under §14. Carrying it here is what keeps the warning's `pendingCount` from being lost, since
+ * `UiMessage` transports only a code.
  */
 @end
 

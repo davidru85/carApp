@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.ConversionFailureReason
 import com.ruizurraca.carapp.core.analytics.toConversionFailureReason
+import com.ruizurraca.carapp.core.analytics.toDeletionFailureReason
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
@@ -24,9 +25,11 @@ import com.ruizurraca.carapp.feature.session.domain.dueAnonymousReminderIndex
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SessionStateHolder internal constructor(
     private val scope: CoroutineScope? = null,
@@ -37,6 +40,7 @@ class SessionStateHolder internal constructor(
     private val anonymousReminders: AnonymousReminderRepository? = null,
     private val accountConversion: AccountConversionHandler? = null,
     private val analyticsTracker: AnalyticsTracker? = null,
+    private val accountDeparture: AccountDepartureHandler? = null,
 ) {
     private var closed = false
     private var operationJob: Job? = null
@@ -52,11 +56,27 @@ class SessionStateHolder internal constructor(
     private val mutableState =
         MutableStateFlow(authClient?.authState?.value.toSessionUiState())
     val state: StateFlow<SessionUiState> = mutableState
+
+    // The F-5 sign-out and account-deletion state machine (`docs/CONTRACTS.md §11.5`).
+    private val departureFlow =
+        AccountDepartureFlow(
+            scope = scope,
+            authClient = authClient,
+            departure = accountDeparture,
+            analyticsTracker = analyticsTracker,
+            state = mutableState,
+            cancelOtherWork = { operationJob?.cancel() },
+        )
     private val authStateJob =
         if (scope != null && authClient != null) {
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
                 authClient.authState.collect { authState ->
                     if (closed) return@collect
+                    // A departure owns the published state from the moment it starts until it
+                    // settles. Deleting the account signs the provider out, so an unguarded
+                    // collector would publish SIGNED_OUT while the local clear is still pending or
+                    // has just failed, which §11.5 forbids.
+                    if (departureFlow.ownsState()) return@collect
                     val next = authState.toSessionUiState()
                     // A published index belongs to the anonymous UID that produced it. It survives
                     // a re-emission of that same identity and is dropped by every other transition,
@@ -122,6 +142,7 @@ class SessionStateHolder internal constructor(
                                         confirmation = null,
                                     ),
                                 anonymousReminderIndex = null,
+                                pendingSyncCount = null,
                             )
                         }
                     }
@@ -166,6 +187,9 @@ class SessionStateHolder internal constructor(
     fun failSignIn(reason: NativeSignInFailure) {
         if (closed) return
         val cancelledConversion = activeSignInKind == SignInKind.CONVERSION
+        // Backing out of re-authentication abandons the deletion it was unblocking. Nothing local
+        // is touched, and a new confirmation is required before deletion can be attempted again.
+        if (activeSignInKind == SignInKind.REAUTHENTICATION) departureFlow.abandon()
         operationJob?.cancel()
         operationJob = null
         activePermanentProvider = null
@@ -250,27 +274,69 @@ class SessionStateHolder internal constructor(
                             ?: ConversionFailureReason.UNKNOWN,
                     ),
                 )
-                mutableState.value.copy(isBusy = false, message = result.error.toUiMessage())
+                mutableState.value.copy(isBusy = false, message = result.error.toSessionUiMessage())
             }
         }
 
-    fun requestSignOut() = Unit
+    /**
+     * F-5 sign-out. It is offered only to a permanently authenticated user; the eligibility rules,
+     * the pending-sync warning and the local clear live in [AccountDepartureFlow].
+     */
+    fun requestSignOut() {
+        if (closed) return
+        departureFlow.requestSignOut()
+    }
 
-    fun confirmSignOut(confirmation: Confirmation) = confirmation.let { Unit }
+    fun confirmSignOut(confirmation: Confirmation) {
+        if (closed || confirmation != Confirmation.DiscardPendingChanges) return
+        departureFlow.confirmSignOut()
+    }
 
-    fun requestDeleteAccount() = Unit
+    fun requestDeleteAccount() {
+        if (closed) return
+        departureFlow.requestDeleteAccount()
+    }
 
-    fun confirmDeleteAccount(confirmation: Confirmation) = confirmation.let { Unit }
+    fun confirmDeleteAccount(confirmation: Confirmation) {
+        if (closed || confirmation != Confirmation.DeleteAccount) return
+        departureFlow.confirmDeleteAccount()
+    }
+
+    /**
+     * Submits a fresh credential for a deletion that the provider refused with
+     * `AuthError.RequiresRecentLogin` (`docs/CONTRACTS.md §11.5` step 1). The host acquires the
+     * credential natively and reports it through `completeGoogleSignIn` / `completeAppleSignIn`,
+     * exactly as it does for sign-in; deletion resumes only once re-authentication succeeds.
+     */
+    fun startReauthentication(provider: AuthProvider) {
+        if (closed || departureFlow.isRunning) return
+        if (!departureFlow.awaitingReauthentication) return
+        if (!provider.isNativePermanentProvider()) {
+            publishError(AuthError.ProviderUnavailable)
+            return
+        }
+        operationJob?.cancel()
+        clearPendingCollision()
+        activePermanentProvider = provider
+        activeSignInKind = SignInKind.REAUTHENTICATION
+        mutableState.value = mutableState.value.copy(isBusy = true, message = null)
+    }
 
     fun clearMessage() {
         if (closed) return
+        val dismissed = mutableState.value.message?.confirmation
+        // Dismissing a departure prompt withdraws the request behind it, so a later confirmation
+        // has nothing to act on.
+        if (dismissed == Confirmation.DiscardPendingChanges || dismissed == Confirmation.DeleteAccount) {
+            departureFlow.abandon()
+        }
         if (mutableState.value.message?.confirmation == Confirmation.AdoptExistingAccount) {
             clearPendingCollision()
             analyticsTracker?.track(
                 AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
             )
         }
-        mutableState.value = mutableState.value.copy(message = null)
+        mutableState.value = mutableState.value.copy(message = null, pendingSyncCount = null)
     }
 
     fun close() {
@@ -280,6 +346,7 @@ class SessionStateHolder internal constructor(
         operationJob = null
         reminderJob?.cancel()
         reminderJob = null
+        departureFlow.cancel()
         awaitingRestoredSession = false
         authStateJob?.cancel()
         activePermanentProvider = null
@@ -307,17 +374,38 @@ class SessionStateHolder internal constructor(
             return
         }
         operationJob?.cancel()
-        val converting = signInKind == SignInKind.CONVERSION
         operationJob =
             operationScope.launch {
                 val result =
-                    if (converting) {
-                        client.linkCredential(credential)
-                    } else {
-                        client.signInWithCredential(credential)
+                    when (signInKind) {
+                        SignInKind.CONVERSION -> client.linkCredential(credential)
+                        SignInKind.REAUTHENTICATION -> client.reauthenticate(credential)
+                        else -> client.signInWithCredential(credential)
                     }
-                mutableState.value = permanentSignInState(result, converting, credential, client)
+                if (signInKind == SignInKind.REAUTHENTICATION) {
+                    completeReauthentication(result)
+                } else {
+                    mutableState.value =
+                        permanentSignInState(result, signInKind == SignInKind.CONVERSION, credential, client)
+                }
             }
+    }
+
+    /**
+     * A fresh credential unblocks the deletion the provider refused with `RequiresRecentLogin`. A
+     * failure keeps the request so the owner can try again, and never touches local data.
+     */
+    private fun completeReauthentication(result: Outcome<AuthSession, AuthError>) {
+        when (result) {
+            is Outcome.Ok -> {
+                departureFlow.resumeAfterReauthentication()
+            }
+
+            is Outcome.Err -> {
+                mutableState.value =
+                    mutableState.value.copy(isBusy = false, message = result.error.toUiMessage())
+            }
+        }
     }
 
     private fun permanentSignInState(
@@ -429,9 +517,16 @@ class SessionStateHolder internal constructor(
 private enum class SignInKind {
     PERMANENT,
     CONVERSION,
+    REAUTHENTICATION,
 }
 
-/** The anonymous identity and credential a confirmed destructive replacement will act on. */
+/** Internal orchestration seam for the F-5 sign-out and account-deletion flows. */
+internal interface AccountDepartureHandler {
+    suspend fun pendingOutboxCount(): Outcome<Int, AppError>
+
+    suspend fun clearLocalData(): Outcome<Unit, AppError>
+}
+
 private class PendingCollision(
     val anonymousUid: String,
     val credential: NativeAuthCredential,
@@ -471,7 +566,7 @@ private fun AuthError.toUiMessage(): UiMessage =
         confirmation = null,
     )
 
-private fun AppError.toUiMessage(): UiMessage =
+internal fun AppError.toSessionUiMessage(): UiMessage =
     UiMessage(
         id = AUTH_ERROR_MESSAGE_ID,
         kind = UiMessageKind.ERROR,
@@ -487,13 +582,29 @@ private fun destructiveConversionConfirmation(): UiMessage =
         confirmation = Confirmation.AdoptExistingAccount,
     )
 
-private fun AuthState?.toSessionUiState(): SessionUiState =
+internal fun pendingSyncWarning(): UiMessage =
+    UiMessage(
+        id = PENDING_SYNC_CONFIRMATION_MESSAGE_ID,
+        kind = UiMessageKind.WARNING,
+        code = "WARNING.PENDING_SYNC",
+        confirmation = Confirmation.DiscardPendingChanges,
+    )
+
+internal fun deleteAccountConfirmation(): UiMessage =
+    UiMessage(
+        id = DELETE_ACCOUNT_CONFIRMATION_MESSAGE_ID,
+        kind = UiMessageKind.WARNING,
+        code = "CONFIRMATION.DeleteAccount",
+        confirmation = Confirmation.DeleteAccount,
+    )
+
+internal fun AuthState?.toSessionUiState(): SessionUiState =
     when (this) {
         null,
         AuthState.Unknown,
-        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null, null)
+        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null, null, null)
 
-        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null, null)
+        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null, null, null)
 
         is AuthState.SignedIn -> session.toSessionUiState()
     }
@@ -505,11 +616,14 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         isBusy = false,
         message = null,
         anonymousReminderIndex = null,
+        pendingSyncCount = null,
     )
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L
 private const val AUTH_ERROR_MESSAGE_ID = 2L
 private const val ACCOUNT_CONVERSION_CONFIRMATION_MESSAGE_ID = 3L
+private const val PENDING_SYNC_CONFIRMATION_MESSAGE_ID = 4L
+private const val DELETE_ACCOUNT_CONFIRMATION_MESSAGE_ID = 5L
 
 class SyncStateHolder internal constructor() {
     val state: StateFlow<SyncUiState> =
@@ -523,3 +637,13 @@ class SyncStateHolder internal constructor() {
 
     fun close() = Unit
 }
+
+internal fun signedOutSessionState(): SessionUiState =
+    SessionUiState(
+        phase = SessionPhase.SIGNED_OUT,
+        providers = emptyList(),
+        isBusy = false,
+        message = null,
+        anonymousReminderIndex = null,
+        pendingSyncCount = null,
+    )
