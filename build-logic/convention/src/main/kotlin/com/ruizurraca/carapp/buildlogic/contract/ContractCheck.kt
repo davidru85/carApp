@@ -136,7 +136,10 @@ class ContractCheck(
     /** The decision ID set and status are identical across the four mirroring documents. */
     private fun assertion2DecisionParity(): AssertionResult {
         val sources = mapOf(
-            "docs/DECISION_BOARD.md" to decisionsWithStatus(read("docs/DECISION_BOARD.md"), statusColumn = 5),
+            "docs/DECISION_BOARD.md" to decisionsWithStatus(
+                DecisionRegistry.registryOf(read("docs/DECISION_BOARD.md")),
+                statusColumn = 5,
+            ),
             "docs/SPECIFICATION.md §12" to decisionsWithStatus(read("docs/SPECIFICATION.md"), statusColumn = 4),
             "docs/TECHNICAL_PLAN.md §2" to decisionsWithStatus(read("docs/TECHNICAL_PLAN.md"), statusColumn = 4),
             "docs/adr/README.md" to decisionsWithStatus(read("docs/adr/README.md"), statusColumn = 4),
@@ -167,18 +170,8 @@ class ContractCheck(
         ).joinToString("; ")
     }
 
-    /** Only the `ID` and `Status` columns are compared, per assertion 10. */
     private fun decisionsWithStatus(markdown: String, statusColumn: Int): Map<String, String> =
-        markdown.lines()
-            .filter { it.trimStart().startsWith("| D-") }
-            .mapNotNull { line ->
-                val cells = line.trim().trim('|').split('|').map { it.trim() }
-                val id = cells.firstOrNull()?.takeIf { it.startsWith("D-") } ?: return@mapNotNull null
-                val status = cells.getOrNull(statusColumn - 1)?.replace(Regex("""\(.*\)"""), "")?.trim()
-                    ?: return@mapNotNull null
-                id to status
-            }
-            .toMap()
+        DecisionRegistry.decisionsWithStatus(markdown, statusColumn)
 
     // 3 --------------------------------------------------------------------------------------
     private fun assertion3AdrStatuses(): AssertionResult {
@@ -209,7 +202,7 @@ class ContractCheck(
     // 4 --------------------------------------------------------------------------------------
     private fun assertion4AwaitingSection(): AssertionResult {
         val board = read("docs/DECISION_BOARD.md")
-        val unresolved = decisionsWithStatus(board, statusColumn = 5)
+        val unresolved = decisionsWithStatus(DecisionRegistry.registryOf(board), statusColumn = 5)
             .filterValues { it == "Proposed" || it == "Pending" }
         val section = board.substringAfter("## Decisions Awaiting Owner Confirmation")
 

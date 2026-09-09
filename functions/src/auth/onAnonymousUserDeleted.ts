@@ -8,6 +8,8 @@ import {
 } from "../deletion/userDeletionService.js";
 import {isAnonymousAuthUser} from "./anonymousUserEligibility.js";
 
+const ANONYMOUS_CLEANUP_FAILED = "Anonymous cleanup failed";
+
 interface AuthTriggerLogger {
     error(message: string, context: {path: "NATIVE_TRIGGER"}): void;
     info(
@@ -40,9 +42,13 @@ export function createAnonymousDeletionHandler(dependencies: AnonymousDeletionDe
 
         try {
             await deleteUserData({firestore: dependencies.firestore, uid});
-        } catch (failure) {
+        } catch {
             dependencies.logger.error("Anonymous cleanup failed", {path: "NATIVE_TRIGGER"});
-            throw failure;
+            // An uncaught trigger exception is reported verbatim to runtime logging and Error
+            // Reporting, so the provider failure is never rethrown: its message alone can carry a
+            // UID-bearing Firestore path. The rejection itself is what `failurePolicy: true`
+            // retries, so it is preserved as a newly constructed error with no cause.
+            throw new Error(ANONYMOUS_CLEANUP_FAILED);
         }
         dependencies.logger.info("Anonymous cleanup invoked", {path: "NATIVE_TRIGGER"});
     };

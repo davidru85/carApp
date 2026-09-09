@@ -868,7 +868,10 @@ Account deletion order is normative:
 2. Call the Firebase Admin server account deletion operation selected by `D-23`, authenticated with the current Firebase user.
 3. The server operation verifies that the authenticated caller UID equals the target UID, deletes remote documents under `users/{uid}` in this order: `fuelEntries`, then `vehicles`, using Admin privileges outside client Firestore rules.
 4. Only after remote document deletion fully succeeds, the server operation purges every internal
-   orphan-cleanup authorization bound to the same UID.
+   orphan-cleanup authorization bound to the same UID that its paged query sees when the purge runs.
+   This stage is the `D-143` mechanism, not a zero-retention guarantee for the account: a concurrent
+   issuance can still write one afterwards, and that race is owned by `D-149` / `E3-15` (see the
+   `D-148` and `D-149` rules below and §16).
 5. Only after the authorization purge fully succeeds, the server operation deletes the Firebase
    Auth user for the same UID.
 6. Only after the server operation returns success, the app clears local data, including `user_settings`.
@@ -930,13 +933,62 @@ Two anonymous-deletion entry points reuse this service:
   overlap, never as the primary guarantee for that path. The trigger declares
   `region: "europe-west1"` (`D-137`), `memory: "256MB"`, `maxInstances: 2`, `timeoutSeconds: 60`,
   and `failurePolicy: true` (`eventTrigger.retry = true`), ensuring transient Firestore deletion
-  failures are retried by Cloud Functions until completion (`D-138`).
+  failures are retried by Cloud Functions until completion (`D-138`). An uncaught trigger exception
+  is delivered verbatim to runtime logging and Error Reporting, so the trigger MUST NOT rethrow the
+  provider failure: it rejects with a newly constructed error carrying no original message, stack,
+  cause, UID, Firestore path, token or payload. The rejection itself is preserved, because that is
+  what `failurePolicy: true` retries.
 - `issueOrphanCleanupTicket` is a Cloud Functions 2nd gen callable used before account switching
   in the confirmed collision flow. It accepts no client-selected UID, requires authenticated
   callable context with `firebase.sign_in_provider == "anonymous"`, generates 32 cryptographically
   random bytes and returns their canonical 43-character base64url encoding as
   `{ cleanupTicket: String }`. Missing authentication maps to `unauthenticated`, a non-anonymous
   caller maps to `failed-precondition`, and persistence failure maps to `internal`.
+- The claim is necessary but not sufficient. Callable token verification performs no revocation or
+  current-user check, so an anonymous `sign_in_provider` claim stays true for the rest of that
+  token's lifetime after the account is linked, disabled or deleted. Before generating or
+  persisting anything, the issuer MUST resolve the caller's current Auth record through the Admin
+  SDK and MUST issue only when the snapshot that lookup returns exists, is known to be enabled — an
+  explicit `disabled === false` state, so a record whose enabled state is unavailable rejects rather
+  than issues — and still satisfies the shared `D-134` eligibility predicate (`D-148`). A linked,
+  disabled, missing or state-unknown record maps to `failed-precondition` and MUST NOT create an
+  authorization; an Admin lookup failure maps to `internal` with the redacted `AUTH_USER` stage
+  log. The predicate is the single shared `D-134` definition used by the trigger and by the
+  consumption callable.
+- **The scope of `D-148` is the snapshot, not the write.** The requirement above is a fact about the
+  Auth record the lookup returned. Firebase Auth and Firestore share no atomic transaction, so the
+  Admin lookup, the predicate and the authorization write are three separate operations and the
+  account MAY be linked, disabled or deleted between the lookup returning an eligible snapshot and
+  the write committing. In that case a UID-bound authorization is created for an identity that is no
+  longer eligible. `D-148` therefore guarantees exactly that a token whose identity was **already**
+  linked, disabled, deleted or state-unknown when the lookup resolved is rejected without creating
+  an authorization; it does **not** guarantee eligibility at commit time, and no document MAY state
+  otherwise. That window is `D-150`, which is `Pending`, with `E3-16` as its story. `D-142` covers
+  only part of the consequence: consumption-time revalidation refuses the destructive stage for a
+  bound account that has become linked, but it does not prevent the authorization from being created
+  or retained, and it does not reject a bound account that stays anonymous and became disabled after
+  issuance eligibility was observed. A second Admin read, a post-write read-back, a retry or a
+  compensating delete MUST NOT be described as closing this window, because none is atomic with both
+  the Auth transition and the Firestore write. `D-150` is distinct from `D-149`: `D-149` owns the
+  race against the `deleteAccount` server operation's authorization purge, and MUST NOT be broadened
+  to cover linking or disabling.
+- `D-148` does not by itself guarantee that no UID-bound authorization survives a successful
+  account deletion. Because the deletion order above purges authorizations before deleting the Auth
+  user, an issuance whose eligibility check passes before the purge and whose write lands after it
+  outlives that deletion, and no check inside the issuer can close that window. Closing it is
+  `D-149`, which is `Pending` — no recommendation is on the table and the choice is the owner's.
+  Until it is accepted and `E3-15` ships, that single interleaving is a known residual risk whose
+  only cleanup is the pre-existing Firestore TTL on `expiresAt`: provider-managed eventual cleanup
+  after a 30-day expiration horizon, with an asynchronous and non-hard-bounded deletion delay. That
+  TTL MUST NOT be described as bounding the residual risk or as proving the maximum time a record
+  can survive; a provable maximum retention period would require an additional deterministic
+  cleanup mechanism, which is part of the `D-149` decision and is not specified here. `D-149`
+  distinguishes eventual convergence from synchronous crash-safe erasure: a post-write read-back or
+  a later purge pass is not atomic with either the deletion or the authorization creation, so such
+  mechanisms deliver at most a partial synchronous cleanup of the interleavings they observe, never
+  the global convergence property, and MUST NOT be described as guaranteeing zero UID-bound
+  authorizations when deletion returns success; only a mechanism with a proven serialization point
+  may claim that, and the accepted option MUST discharge the proof obligations of ADR-0150.
 - The issuer stores only the ticket's SHA-256 digest as the document ID under
   `orphanCleanupTickets/{ticketHash}`. The server record contains exactly the verified
   `anonymousUid`, `expiresAt` as a server-generated Firestore timestamp 30 days after issuance,
@@ -1432,10 +1484,19 @@ Internal Firestore collection: orphanCleanupTickets/{ticketHash}
 `orphanCleanupTickets/{ticketHash}` contains exactly `anonymousUid`, `expiresAt` and `status` as
 defined in §11.5. The account-deletion operation MUST query this collection by `anonymousUid` and
 delete every matching record before deleting the Auth user. This purge is idempotent and owns the
-account-erasure guarantee; the 30-day Firestore TTL remains a bounded fallback for abandoned or
-completed authorizations, not the normal account-deletion retention path. A contract test compares
-this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not overlap the D-63
-registry and rejects an undeclared internal collection.
+erasure of every authorization **visible to it when it runs**; for those records the 30-day
+Firestore TTL is not the account-deletion retention path but only a fallback for abandoned or
+completed authorizations.
+
+The purge is **not** by itself a zero-retention guarantee for the account. `D-149` documents a
+concurrent issuance whose write can land after the purge has run; closing that race is `D-149` and
+`E3-15`, not this stage (§11.5). A record written by such an issuance is cleaned up **solely** by
+the Firestore TTL, which is provider-managed eventual cleanup after the 30-day expiration horizon
+with an asynchronous and non-hard-bounded deletion delay, so it MUST NOT be cited as a retention
+bound or as a proven maximum.
+
+A contract test compares this declaration with `INTERNAL_SERVER_DATA_LOCATIONS`, proves it does not
+overlap the D-63 registry and rejects an undeclared internal collection.
 
 The remote schema is closed. A remote document MUST contain exactly the required key set for its collection, including nullable fields with explicit `null` values. Extra keys, missing keys, unknown collections and local-only metadata are invalid. This applies equally to active documents and tombstones, because tombstones are full-document updates with `deleted = true`.
 

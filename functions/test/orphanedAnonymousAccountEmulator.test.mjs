@@ -49,6 +49,14 @@ test(
 
     const logs = [];
     const issueTicket = createOrphanCleanupTicketHandler({
+      // The Auth emulator is not part of this suite, so the D-148 eligibility lookup is stubbed
+      // with an eligible anonymous record. What this test exercises is the real Firestore side.
+      auth: {
+        async deleteUser() {},
+        async getUser() {
+          return {disabled: false, providerData: []};
+        },
+      },
       authorizations: authorizationGateway,
       clock: {nowMs: () => Date.now()},
       logger: testLogger(logs),

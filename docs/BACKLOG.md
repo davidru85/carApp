@@ -1009,6 +1009,173 @@ Acceptance criteria:
 
 Depends on: E3-02 or later (whichever sync-engine story first consumes `entityType`).
 
+### E3-14 - Orphan Cleanup Ticket Issuance Hardening - M
+
+Tracked as two post-merge security and privacy findings of the `E3-11` review of pull request #60.
+Both are defects in merged behaviour, not new features.
+
+Finding 1 (partial, the Ready half): `issueOrphanCleanupTicket` trusts `request.auth.uid` and the
+token's `firebase.sign_in_provider` claim without asking the Admin SDK whether that user still
+exists, is enabled and is still anonymous. Callable token verification performs no revocation or
+current-user check, so an ID token minted while the account was anonymous stays valid for the rest
+of its lifetime after the account is linked, disabled or deleted. A stale token can therefore mint
+a cleanup ticket for an identity that is no longer eligible for one.
+
+Finding 2: `createAnonymousDeletionHandler` logs a redacted line and then rethrows the original
+provider exception. An uncaught Cloud Functions exception reaches runtime logging and Error
+Reporting, so the raw Firestore failure text, which can carry a UID-bearing resource path, escapes
+the redaction posture of `docs/CONTRACTS.md §11.5` and `D-128`.
+
+Acceptance criteria:
+
+- `issueOrphanCleanupTicket` resolves the caller's current Auth record through the Admin SDK before
+  it writes anything, and rejects with `failed-precondition` unless the snapshot that lookup returns
+  exists, is known to be enabled and still satisfies the shared `D-134` anonymity predicate. A
+  missing record rejects too, and so does a record whose enabled state is unavailable: eligibility is
+  a positive fact, and the issuer fails closed rather than treating an unknown state as enabled.
+  **This criterion is about the state observed at the lookup.** It is satisfied when a token whose
+  identity was already linked, disabled, deleted or state-unknown at that instant is rejected without
+  creating an authorization. It does **not** require, and this story does not deliver, eligibility
+  holding until the Firestore write commits: Auth and Firestore share no transaction, so that
+  lookup-to-write window is `D-150` / `E3-16` and is deliberately out of scope here.
+- A rejected issuance MUST NOT create an authorization record, and MUST NOT leak the UID, the token,
+  the payload or the raw provider failure into its logs or its error.
+- An Admin lookup failure maps to `internal` with the redacted `AUTH_USER` stage log, distinct from
+  the eligibility rejection.
+- `createAnonymousDeletionHandler` rejects with a newly constructed sanitized error that carries no
+  original message, stack, cause, UID, Firestore path, token or payload. The rejection is preserved,
+  so `failurePolicy: true` still retries the delivery.
+- Existing `E3-10` and `E3-11` behaviour and tests are preserved, including consumption,
+  completion-last semantics and idempotent retries.
+
+Depends on: E3-10, E3-11.
+
+Does **not** close the issuance/deletion interleaving; that is `E3-15`.
+
+Human review required.
+
+### E3-15 - Close the Ticket Issuance and Account Deletion Interleaving - M
+
+**Not Ready.** Blocked on owner decision `D-149`, which is `Pending` in `docs/DECISION_BOARD.md`
+— no recommendation is offered and no option is pre-selected — with its options in
+[ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md).
+
+`E3-14` stops a stale token from minting a ticket, but it cannot by itself guarantee that no
+UID-bound authorization survives a successful account deletion. The normative deletion order of
+`docs/CONTRACTS.md §11.5` is: remote data, then the authorization purge, then the Firebase Auth
+user. An issuance whose Admin eligibility check passes before the purge, and whose Firestore write
+lands after it, leaves an authorization record behind while `deleteAccount` still returns success.
+No amount of checking inside the issuer closes that window, because at the moment of the write the
+Auth user legitimately still exists.
+
+Closing it requires changing something outside the issuer: the deletion order, an additional purge
+pass, or a new server-side marker. Each option has different costs, so the owner selects one, and
+none of them may be described as satisfying the erasure invariant without the crash-safe
+serialization proof that ADR-0150 obliges the accepted option to discharge. ADR-0150 distinguishes
+eventual convergence — a global property over every interleaving, admitting no partial form — from
+synchronous crash-safe erasure — no record exists at the moment deletion returns success, under any
+crash — and shows with an explicit counterexample that a post-write read-back or a later purge pass
+is not atomic with either the deletion or the authorization creation. Such mechanisms therefore
+deliver neither property: a second purge pass is partial synchronous cleanup of the authorizations
+already visible when it runs, and whatever convergence the system has for the interleavings it
+misses comes solely from the pre-existing, non-hard-bounded Firestore TTL fallback.
+
+Two facts constrain the story and neither may be glossed over. First, the only cleanup that exists
+today for a record that escapes the flow is the Firestore TTL on `expiresAt`: provider-managed
+eventual cleanup after a 30-day expiration horizon, with an asynchronous, non-hard-bounded deletion
+delay. It is **not** a hard 30-day deletion bound and MUST NOT be cited as the maximum time a
+record can survive; if the owner requires a provable maximum retention period, the accepted option
+must include an additional deterministic cleanup mechanism, which is itself part of the `D-149`
+decision. Second, option C — the marker collection read inside the issuance transaction — is the
+only candidate whose transaction supplies a real serialization point, but its proposed
+never-expiring marker retains a UID-correlatable key for every deleted account indefinitely, which
+conflicts with `D-143`. Option C is therefore not a clean solution as drafted: its serialization
+half and its retention half are separate, and the retention half is unresolved.
+
+Acceptance criteria (to be finalised once `D-149` is accepted):
+
+- The accepted option discharges the proof obligations of ADR-0150: every interleaving of
+  `issueOrphanCleanupTicket` and `deleteAccount` for the same UID, including every crash point, is
+  enumerated, and the evidence states which property holds — eventual convergence, synchronous
+  crash-safe erasure, or neither — and attributes each part of the outcome to the mechanism that
+  actually produces it. Partial synchronous cleanup MUST NOT be reported as eventual convergence.
+- If the accepted design leaves the resulting system relying on eventual convergence rather than
+  delivering synchronous crash-safe erasure, the evidence attributes every part of that outcome to
+  the mechanism that actually provides it, and **never to the option as a whole**. Option A provides
+  partial synchronous cleanup — it removes only the authorizations already visible when its second
+  purge runs. Option B provides a probability reduction — it refuses issuances whose eligibility
+  read follows the disable and removes nothing. Cleanup of every record those mechanisms miss comes
+  solely from the pre-existing asynchronous Firestore TTL, which supplies no proven maximum. Neither
+  option delivers eventual convergence itself, so the evidence MUST NOT credit either with it. A
+  maximum retention time MAY be claimed only if the accepted design adds a deterministic cleanup
+  mechanism that proves it. The residual risk is recorded in `docs/SECURITY.md`.
+- If the accepted option is C, the marker's retention rule is stated and justified against `D-143`:
+  either a finite marker lifetime with a safety horizon covering every already-issued
+  credential/token, every in-flight callable execution, clock skew and retry behaviour, or a
+  privacy-preserving serialization representation with its own proof.
+- The issuer never returns a ticket whose authorization was concurrently removed and is therefore
+  already unusable.
+- No client-selected UID, JWT verification fallback or weaker authorization path is introduced.
+- Consumption, completion-last semantics and idempotent retries stay intact.
+- The interleavings are proven against the real Firestore emulator, not only against fakes.
+
+Depends on: E3-14, `D-149`.
+
+Human review required.
+
+### E3-16 - Close the Issuance Lookup-to-Write Window - M
+
+**Not Ready.** Blocked on owner decision `D-150`, which is `Pending` in `docs/DECISION_BOARD.md`
+— no recommendation is offered and no option is pre-selected — with its analysis in
+[ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md).
+
+`E3-14` made the issuer resolve the caller's Admin record before writing (`D-148`), which rejects a
+token whose identity was **already** linked, disabled, deleted or state-unknown when that lookup
+resolved. `createOrphanCleanupTicketHandler` then performs three separate operations —
+`auth.getUser`, the `canIssueOrphanCleanupTicket` predicate, and the Firestore
+`authorizations.issue` write — across two services that share no atomic transaction. The account can
+therefore be linked, disabled or deleted after an eligible snapshot has been observed and before the
+authorization write commits, and a UID-bound authorization is created for an identity that is no
+longer eligible.
+
+`D-142` covers only part of the consequence. Its consumption-time revalidation refuses the
+destructive stage for a bound account that has become linked, so such an account is not cleaned up;
+it does not prevent the authorization from being created, it does not remove it, and it does not
+reject a bound account that stays anonymous and became **disabled** after issuance eligibility was
+observed — a disabled account still has empty `providerData`, so it satisfies the consumption
+predicate.
+
+ADR-0151 models the three interleavings (linking, disabling, deletion between the lookup and the
+write), states why a second Admin read, a post-write read-back, a retry and a compensating delete all
+fail to close the window, and presents the options with their privacy and retention implications and
+their proof obligations. **This is a different decision from `D-149`**, which owns the race against
+the `deleteAccount` server operation's authorization purge; `D-149` MUST NOT be broadened to cover
+linking or disabling.
+
+Acceptance criteria (to be finalised once `D-150` is accepted):
+
+- The accepted option discharges the proof obligations of ADR-0151: the orderings of the lookup, the
+  predicate, the write and the Auth-side transition are enumerated for linking, disabling and
+  deletion, including a crash at every point between two consecutive steps, and the evidence states
+  what holds in each and which mechanism delivers it.
+- Every part of the outcome is attributed to the mechanism that actually produces it. A narrowed
+  window MUST NOT be reported as a closed one, and a second Admin read, a post-write read-back, a
+  retry or a compensating delete MUST NOT be presented as closing it.
+- If the accepted option claims serialization, the transaction conflict is demonstrated rather than
+  asserted, and the transition paths that do **not** write the marker are enumerated.
+- What remains retained, and for how long, is stated. Where the answer is the Firestore TTL, the
+  evidence says that this is provider-managed eventual cleanup with no proven maximum.
+- The `D-148` fail-closed guarantee is preserved: a token already ineligible at lookup time is still
+  rejected without creating an authorization, and the existing `D-150` interleaving tests are updated
+  to match the accepted mechanism rather than deleted.
+- Consumption, completion-last semantics and idempotent retries stay intact, and no client-selected
+  UID, JWT verification fallback or weaker authorization path is introduced.
+- `D-149` and `E3-15` are left untouched.
+
+Depends on: E3-14, `D-150`.
+
+Human review required.
+
 ## Phase 4 - MVP Hardening
 
 ### E4-01 - Settings UI - S
@@ -1381,6 +1548,9 @@ proof after E3-04.
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
+| E3-14 Orphan cleanup ticket issuance hardening | 3 | M | Yes |
+| E3-15 Close the ticket issuance and account deletion interleaving | 3 | M | Yes |
+| E3-16 Close the issuance lookup-to-write window | 3 | M | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

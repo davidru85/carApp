@@ -154,5 +154,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-145 | [ADR-0146](0146-carry-the-anonymous-reminder-on-a-typed-session-state-field.md) | Carry the anonymous reminder on a typed session state field. | Accepted |
 | D-146 | [ADR-0147](0147-evaluate-the-anonymous-reminder-from-a-host-foreground-intent.md) | Evaluate the anonymous reminder from a host foreground intent. | Accepted |
 | D-147 | [ADR-0148](0148-complete-a-launch-evaluation-when-the-session-resolves.md) | Complete a launch evaluation when the session resolves. | Accepted |
+| D-148 | [ADR-0149](0149-verify-the-issuing-account-through-the-admin-sdk.md) | Verify the issuing account through the Admin SDK. | Accepted |
+| D-149 | [ADR-0150](0150-close-the-ticket-issuance-and-account-deletion-race.md) | Close the ticket issuance and account deletion race. | Pending |
+| D-150 | [ADR-0151](0151-close-the-issuance-lookup-to-write-window.md) | Close the issuance lookup-to-write window. | Pending |
 
 New ADRs start from [0000-template.md](0000-template.md).

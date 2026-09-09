@@ -4,6 +4,7 @@ import {HttpsError, onCall} from "firebase-functions/v2/https";
 
 import {
     type AuthUserProviderSnapshot,
+    canIssueOrphanCleanupTicket,
     isAnonymousAuthUser,
 } from "../auth/anonymousUserEligibility.js";
 import {firebaseAdminDeletionGateways} from "../deletion/firebaseAdminDeletionGateways.js";
@@ -59,6 +60,7 @@ interface OrphanCleanupLogger {
 }
 
 export interface OrphanCleanupTicketDependencies {
+    auth: OrphanCleanupAuthGateway;
     authorizations: OrphanCleanupAuthorizationGateway;
     clock: {nowMs(): number};
     logger: OrphanCleanupLogger;
@@ -88,6 +90,25 @@ export function createOrphanCleanupTicketHandler(dependencies: OrphanCleanupTick
             throw new HttpsError(
                 "failed-precondition",
                 "The caller must be authenticated with an anonymous account",
+            );
+        }
+
+        // The claim is only evidence of what was true when the token was minted. Callable
+        // verification performs no revocation or current-user check, so the Admin record is the
+        // only current answer to "is this still an anonymous account?" (`D-148`).
+        let caller: AuthUserProviderSnapshot | null;
+        try {
+            caller = await dependencies.auth.getUser(anonymousUid);
+        } catch {
+            dependencies.logger.error("Orphan cleanup ticket issuance failed", {
+                stage: "AUTH_USER",
+            });
+            throw new HttpsError("internal", "Orphan cleanup ticket issuance failed");
+        }
+        if (!canIssueOrphanCleanupTicket(caller)) {
+            throw new HttpsError(
+                "failed-precondition",
+                "The caller is no longer an eligible anonymous account",
             );
         }
 
@@ -216,6 +237,7 @@ export const issueOrphanCleanupTicket = onCall<Record<string, never>>(
     async (request) => {
         const gateways = firebaseAdminDeletionGateways();
         const handler = createOrphanCleanupTicketHandler({
+            auth: gateways.auth,
             authorizations: gateways.orphanCleanupAuthorizations,
             clock: {nowMs: Date.now},
             logger: firebaseLogger,

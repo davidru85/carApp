@@ -38,6 +38,338 @@
 
 ## Entries
 
+### 2026-09-09 — Correction: D-148 was overstated; the issuance lookup-to-write window is D-150
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-16` / `D-148`, `D-150`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the seventh gated owner review of pull request #63 identified an unmodelled
+  time-of-check/time-of-use limitation in `D-148`. `createOrphanCleanupTicketHandler` performs three
+  separate operations — `auth.getUser`, the `canIssueOrphanCleanupTicket` predicate, and the
+  Firestore `authorizations.issue` write — across two services that share no atomic transaction, so
+  the account can be linked, disabled or deleted after an eligible snapshot has been observed and
+  before the authorization write commits. Every unconditional statement that a stale token "cannot
+  mint" an authorization for a linked, disabled or deleted identity, or that issuance happens "only
+  while" the identity remains eligible, was stronger than the implementation proves. `D-148` is now
+  scoped everywhere it is restated: it guarantees that the Admin record observed by the lookup
+  existed, was explicitly enabled and satisfied the shared `D-134` predicate, and that a token whose
+  identity was **already** linked, disabled, deleted or state-unknown at that instant is rejected
+  without creating an authorization — the fail-closed guarantee, preserved — but it does not prove
+  eligibility holds until the write commits. The new window is registered as `D-150` (ADR-0151),
+  `Pending`, with `E3-16` **Not Ready**; the three interleavings, the options with their privacy and
+  retention implications, and the proof obligations are in ADR-0151. `D-149` / `E3-15` keeps the
+  account-deletion race and was deliberately **not** broadened to cover linking or disabling.
+- **Why:** `D-142` mitigates only part of the consequence. Its consumption-time revalidation refuses
+  the destructive stage for a bound account that has become linked, but it does not prevent the
+  UID-bound authorization from being created or retained, and it does not reject a bound account that
+  stays anonymous and becomes disabled after eligibility was observed — a disabled account still has
+  empty `providerData`. A contract that claims the stronger guarantee would let a later story rest on
+  a property the code never had.
+- **Documents touched:** `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md`,
+  `docs/adr/0151-close-the-issuance-lookup-to-write-window.md` (new), `docs/adr/README.md`,
+  `docs/CONTRACTS.md` §11.5, `docs/DECISION_BOARD.md` (registry rows `D-148` and `D-150`, plus the
+  awaiting-confirmation table), `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
+  `docs/BACKLOG.md` (`E3-14` acceptance criteria, the new `E3-16`, one index row), `AGENTS.md`,
+  `functions/src/auth/anonymousUserEligibility.ts` (the `D-148` doc comment only; no behaviour
+  changed), `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/handoff-E3-14.md` and this log.
+  Earlier entries are left exactly as written; this entry supersedes their wording where they
+  restate the stronger `D-148` guarantee.
+- **Verification:** four tests were added to `functions/test/orphanedAnonymousAccount.test.mjs`.
+  Three are named for `D-150` and pin the **limitation**, not a guarantee: with the account linked,
+  disabled or deleted between the Admin lookup and the authorization write, the authorization is
+  still created and the resulting record no longer satisfies `canIssueOrphanCleanupTicket`. The
+  fourth re-asserts the preserved `D-148` fail-closed behaviour across all four snapshots that are
+  already ineligible at lookup time. The suite is 82 tests, 80 passing, 0 failing, 2 emulator-gated
+  skips; the Firestore emulator suite and the Firestore rules tests pass; `contractCheck` reports
+  **151 aligned decisions and ADRs** and assertion 4 lists **2** unresolved decisions, `D-149` and
+  `D-150`, each with its `Needed by` story. `git diff --check origin/main...HEAD` is clean.
+- **Follow-ups / risks:** `D-150` is a new unresolved owner decision and `E3-16` is Not Ready.
+  `D-143` stays `Accepted`, `D-149` stays `Pending` with no recommendation and no option selected,
+  and `E3-15` stays Not Ready. `docs/SECURITY.md` carries no accepted-residual-risk entry for either
+  decision, because such an entry is correct only if the owner explicitly chooses to defer.
+
+### 2026-09-09 — Correction: ADR-0144 did not satisfy its own D-143 scope constraint
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the sixth gated owner review of pull request #63 found that ADR-0144 violated the
+  constraint it defines — every restatement of `D-143` must scope its guarantee to the
+  orphan-cleanup authorizations visible to the paged query when the purge runs and must name
+  `D-149` / `E3-15` as the owner of the remaining concurrent-issuance race — in two operative
+  places. The opening statement of its `Decision` section said the server operation deletes every
+  `orphanCleanupTickets` record whose `anonymousUid` equals the target UID, and the first bullet of
+  its `Constraints Introduced` carried the same unqualified MUST. Both now limit the guarantee to
+  the records the paged query observes while the purge runs, state that a concurrent issuance may
+  write one afterwards, name `D-149` / `E3-15` as the owner of that race, and say a record so
+  produced is left to the existing asynchronous Firestore TTL, which is neither a hard retention
+  bound nor a proven maximum. Every operational requirement is preserved: the purge stays paged in
+  batches of 200 and repeated until no matching records remain, idempotent, bounded to
+  `anonymousUid == target`, run after remote-data deletion and before Auth deletion, and complete
+  for every matching record its query observes. The same round removed a duplicated closing sentence
+  from the `Exact next step` paragraph of `docs/handoff-E3-14.md`.
+- **Why:** the constraint is only enforceable if the ADR that introduces it obeys it. An agent
+  reading ADR-0144's `Decision` opening or its first MUST would otherwise take the unconditional
+  reading the rest of the ADR spends a section refuting.
+- **Documents touched:** `docs/adr/0144-erase-orphan-cleanup-authorizations-on-account-deletion.md`,
+  `docs/handoff-E3-14.md` and this log. The sweep of current, non-historical documentation found no
+  further unqualified restatement. Two deliberate exclusions: ADR-0150's numbered restatement of the
+  `§11.5` deletion order, which quotes the contract's step order to set up the interleaving analysis
+  that ADR-0150 itself owns; and the lines of `docs/handoff-E3-14.md` that quote pre-correction
+  wording in order to describe what was corrected. `docs/handoff-E3-11.md` and the earlier entries
+  of this log were left intact: they record the state observed when `E3-11` merged, and this entry
+  corrects their wording without rewriting them.
+- **Verification:** the `rg` sweep over `AGENTS.md` and `docs`;
+  `./gradlew contractCheck :build-logic:convention:test` passes with 150 aligned decisions, `D-143`
+  `Accepted` and `D-149` the one unresolved `Pending` decision with its `Needed by` row;
+  `git diff --check origin/main...HEAD` clean and a clean working tree. Protected-check evidence for
+  the final head is in the pull-request description, per the CI-evidence policy.
+- **Follow-ups / risks:** unchanged. `D-143` stays `Accepted`, `D-149` remains the owner's decision
+  with no recommendation and no option selected, `E3-15` stays Not Ready, and `docs/SECURITY.md`
+  still carries no accepted-residual-risk entry. `E1-14` and `E1-17` remain open.
+
+### 2026-09-08 — Correction: three D-143 restatements did not satisfy ADR-0144's scope constraint
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-141`, `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** ADR-0144 introduced the constraint that every restatement of `D-143` MUST scope
+  its guarantee to the orphan-cleanup authorizations visible to the purge when it runs and MUST
+  identify `D-149` / `E3-15` as the owner of the remaining concurrent-issuance race. The fifth gated
+  owner review of pull request #63 found three current statements that did not satisfy it, now
+  corrected: the `D-143` row of `docs/SPECIFICATION.md` §12, which claimed the purge removes every
+  authorization bound to the UID with no scope and no race owner; the Negative Consequences of
+  `docs/adr/0142-use-server-issued-orphan-cleanup-tickets.md`, which made the TTL "never" the normal
+  account-deletion retention path when a concurrent issuance landing after the purge is in fact left
+  exclusively to it; and the `D-141` row of `docs/DECISION_BOARD.md`, whose amendment clause
+  summarised `D-143` as erasing ticket authorizations on account deletion. Each now limits `D-143`
+  to what the purge sees, states that a concurrent issuance may write afterwards, names `D-149` /
+  `E3-15` as owning that race, and attributes cleanup of a missed record solely to the existing
+  asynchronous Firestore TTL with no proven maximum. The sweep of current documentation reconciled
+  three further repetitions of the same rule in the same change: `docs/CONTRACTS.md` §16 and
+  ADR-0144's own Decision section, which both carried the unqualified "not the normal
+  account-deletion retention path" claim, and the `Choice` cells of the `D-143` rows in
+  `docs/DECISION_BOARD.md` and `docs/TECHNICAL_PLAN.md` §2, whose `Guardrail` cells already carried
+  the scope.
+- **Why:** a normative row that restates the decision without its scope is the reading a later agent
+  will implement against, and `docs/SPECIFICATION.md` §12 and `docs/DECISION_BOARD.md` are exactly
+  the rows an agent consults first. Leaving the TTL described as never being the account-deletion
+  retention path also hides that, for the one record the race can produce, the TTL is the only
+  cleanup there is.
+- **Documents touched:** `docs/SPECIFICATION.md` §12, `docs/adr/0142-...md`,
+  `docs/DECISION_BOARD.md` (rows `D-141` and `D-143`), `docs/CONTRACTS.md` §16,
+  `docs/adr/0144-...md`, `docs/TECHNICAL_PLAN.md` §2, `docs/handoff-E3-14.md` and this log, plus the
+  pull-request description, which is not a repository artifact. `docs/handoff-E3-11.md` and the
+  earlier entries of this log were deliberately left as written: they record the state observed when
+  `E3-11` merged, and this entry corrects their wording without rewriting them. The ADR-0144 title
+  and its `docs/adr/README.md` index row name the ADR rather than stating a guarantee and are
+  unchanged. `D-143` keeps its `Accepted` status, `D-149` stays `Pending` with no recommendation and
+  no option selected, `E3-15` stays Not Ready, no production code, test or dependency changed, and
+  `docs/SECURITY.md` still carries no accepted-residual-risk entry.
+- **Verification:** the `rg` sweep over `AGENTS.md` and `docs` for `D-143` and the equivalent
+  phrasings shows every current restatement carrying the scope and the race owner;
+  `./gradlew contractCheck :build-logic:convention:test` passes with 150 aligned decisions, `D-143`
+  `Accepted` and `D-149` the one unresolved `Pending` decision with its `Needed by` row;
+  `git diff --check origin/main...HEAD` is clean and the working tree is clean. The protected-check
+  run for the final head is recorded in the pull-request description.
+- **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision and `E3-15` stays Not
+  Ready.
+
+### 2026-09-08 — Correction: the E3-15 acceptance criterion could credit option A or B with convergence
+
+- **Type:** correction
+- **Story / Decision:** `E3-15` / `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the fourth gated owner review of pull request #63 found that one `E3-15`
+  acceptance criterion in `docs/BACKLOG.md` still opened with "If the accepted option provides
+  convergence rather than synchronous erasure". After the previous correction established that P1 is
+  a global property and that options A and B deliver neither P1 nor P2 by themselves, that phrasing
+  invites exactly the misattribution the previous round removed. The criterion is now phrased in
+  terms of the accepted **design** leaving the resulting **system** relying on eventual convergence
+  rather than delivering synchronous crash-safe erasure, and it states the attribution normatively:
+  partial synchronous cleanup to option A, a probability reduction to option B, cleanup of every
+  record they miss to the pre-existing asynchronous Firestore TTL with no proven maximum, and an
+  explicit prohibition on crediting either option with eventual convergence. The remaining `E3-15`
+  criteria were searched for equivalent wording and none attributes P1 to A or B. The pull-request
+  description — current metadata rather than append-only history — was brought to the same final
+  interpretation in the same round.
+- **Why:** an acceptance criterion is what `E3-15` will be judged against, so a phrasing that lets a
+  partial mechanism be reported as delivering a globally quantified property would let the story
+  close on evidence covering only the interleavings the mechanism happens to observe.
+- **Documents touched:** `docs/BACKLOG.md` (`E3-15` acceptance criteria), `docs/handoff-E3-14.md`
+  and this log; plus the pull-request description, which is not a repository artifact. This entry
+  corrects the wording of the earlier `E3-15` criterion; per the append-only rule the previous
+  entries are left exactly as written. No production source file changed, `E3-15` was not
+  redesigned, no option was selected, and `D-149` stays `Pending`.
+- **Verification:** `./gradlew contractCheck :build-logic:convention:test` passes with 150 aligned
+  decisions, `D-149` still the one unresolved `Pending` decision with its `Needed by` row;
+  `git diff --check origin/main...HEAD` is clean and the working tree is clean. The protected-check
+  run for the final head is recorded in the pull-request description.
+- **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision and `E3-15` stays Not
+  Ready.
+
+### 2026-09-08 — Correction: the D-143 erasure guarantee is conditional and option A is not "Partial P1"
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the third gated owner review of pull request #63 found two documentation
+  contradictions left standing by the second round. This entry records their correction; no
+  production code changed and `D-149` is still undecided. (1) **ADR-0144 claimed unconditionally
+  that `anonymousUid` cannot survive account deletion**, while ADR-0150 documents a concurrent
+  issuance whose write lands after the purge and survives a successful deletion — the two cannot
+  both be true. ADR-0144 now scopes the guarantee exactly: the `D-143` purge removes every matching
+  authorization **visible to it when it runs**, and its zero-retention reading is conditional
+  because of that concurrent issuance, whose closure is owned by `D-149` and `E3-15` rather than by
+  this purge. A new constraint forbids restating the guarantee unconditionally anywhere, and the
+  same reconciliation is applied to `docs/CONTRACTS.md §16`, the `D-143` guardrail row of
+  `docs/DECISION_BOARD.md` and the `D-143` row of `docs/TECHNICAL_PLAN.md §2`. **`D-143` keeps its
+  `Accepted` status and its decision content is unchanged**; only the scope of the claim is stated
+  correctly. (2) **ADR-0150 described option A as "Partial P1".** P1 is quantified over every
+  interleaving, so it is a global property and admits no partial form. The P1 definition now states
+  that explicitly, and option A is described as **partial synchronous cleanup**: it removes only the
+  authorizations already visible when the second purge runs, which is neither P1 nor P2, and the
+  eventual convergence covering the writes it misses comes solely from the existing
+  non-hard-bounded Firestore TTL fallback and is attributed to it. Option B's "to reach even partial
+  P1" tail, the proof obligations and the verification clause are corrected the same way, and the
+  equivalent claims were searched for and corrected in `docs/CONTRACTS.md §11.5`, `docs/BACKLOG.md`
+  (`E3-15` and its acceptance criteria), the `D-149` rows of `docs/DECISION_BOARD.md` and
+  `docs/TECHNICAL_PLAN.md §2`, and `docs/handoff-E3-14.md`, from which the stale "bounded residual
+  window" wording is removed.
+- **Why:** a normative document that states a guarantee unconditionally while another normative
+  document documents a counterexample to it leaves the next agent free to pick either reading, and
+  the erasure posture is exactly where that must not happen. Reporting a partial cleanup as a
+  partial form of a globally quantified property would let `E3-15` discharge its proof obligation
+  with evidence that covers only the interleavings the mechanism happens to observe.
+- **Documents touched:** `docs/adr/0144-...md`, `docs/adr/0150-...md`, `docs/CONTRACTS.md` §11.5 and
+  §16, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (`E3-15`),
+  `docs/handoff-E3-14.md` and this log. This entry corrects the wording of the earlier 2026-09-08
+  entries that restate the `D-143` guarantee unconditionally and that describe options A and B as
+  converging eventually. Per the append-only rule those entries are left exactly as written; this
+  entry supersedes their wording. `D-143` and `D-148` keep their `Accepted` status, `D-149` stays
+  `Pending`, and the E3-14 Admin eligibility implementation, the fail-closed `disabled === false`
+  predicate and the concrete Firebase Admin gateway tests are untouched.
+- **Verification:** `cd functions && npm test`, `npm run test:emulator`, `npm run
+  test:firestore-rules` and `./gradlew contractCheck :build-logic:convention:test` all pass on the
+  corrected head; `contractCheck` still reports 150 aligned decisions, `D-143` `Accepted` and
+  `D-149` the one unresolved `Pending` decision with its `Needed by` row. `git diff --check
+  origin/main...HEAD` is clean. The figures and the protected-check run are in
+  `docs/handoff-E3-14.md` and the pull-request description.
+- **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision, `E3-15` stays Not Ready,
+  and until the decision is taken one UID-bound authorization can outlive a successful account
+  deletion with only provider-managed asynchronous Firestore TTL cleanup to remove it.
+
+### 2026-09-08 — Correction: D-149 is Pending, Firestore TTL is not a hard bound, and option C is not clean
+
+- **Type:** correction
+- **Story / Decision:** `E3-14`, `E3-15` / `D-141`, `D-143`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the second gated owner review of pull request #63 returned three normative
+  documentation findings. This entry records their correction; it changes no production code and no
+  decision content. (1) **`D-149` is `Pending`, not `Proposed`.** `docs/DECISION_BOARD.md` defines
+  `Proposed` as "a recommendation is on the table" and `Pending` as "no recommendation yet", and
+  ADR-0150 explicitly recommends no option, selects no default and leaves the trade to the owner.
+  The status is corrected in ADR-0150, the decision registry row and the awaiting-confirmation table
+  of `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/SPECIFICATION.md` §12,
+  `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md`, `docs/CONTRACTS.md` §11.5 and the handoff. No
+  recommendation was introduced to keep the `Proposed` label; `E3-15` stays Not Ready.
+  (2) **Firestore TTL is not a hard 30-day deletion bound.** At `expiresAt` a document becomes
+  eligible for asynchronous deletion; expired documents may remain queryable, and the deletion
+  typically observed within 24 hours of expiration is neither a guaranteed maximum nor an SLA. Every
+  claim that the residual risk is "bounded by the 30-day TTL", that a record is removed "only by its
+  30-day TTL" at a guaranteed time, that the existing TTL proves a maximum survival time, or that
+  options A or B obtain a bounded residual window from that TTL, is replaced by the precise
+  statement: provider-managed eventual cleanup after a 30-day expiration horizon, with an
+  asynchronous and non-hard-bounded deletion delay. Where a provable maximum retention period is
+  wanted, ADR-0150 and `docs/BACKLOG.md` now state that `E3-15` needs an additional deterministic
+  cleanup mechanism selected by the owner, which is deliberately not designed here.
+  (3) **Option C of ADR-0150 is not a clean P2 solution.** Its never-expiring `deletedUids` marker
+  necessarily retains a stable, UID-correlatable key for every deleted account forever, which
+  conflicts with `D-143` (ADR-0144), whose accepted rationale is that retaining an account
+  identifier after deletion violates the project's account-erasure expectation. ADR-0150 now
+  separates option C's serialization point from its unresolved indefinite retention problem and
+  enumerates, without selecting anything, what a valid design would have to prove: a justified
+  safety horizon covering every already-issued credential or token and every in-flight callable
+  execution plus clock skew and retry behaviour for a finite marker lifetime, or an alternative
+  privacy-preserving serialization representation with its own proof. The option B wording is
+  corrected in the same pass: option B is a probability reduction that removes no record and adds no
+  cleanup, so any convergence for a record it misses comes solely from the pre-existing
+  asynchronous TTL fallback and not from the option itself.
+- **Why:** a status label that claims a recommendation the ADR refuses to give misrepresents the
+  decision to the owner who has to take it; an overstated TTL guarantee would let a residual-risk
+  acceptance rest on a bound the provider does not offer; and presenting option C as clean would
+  have hidden that it closes the interleaving by reintroducing, permanently and in another
+  collection, exactly the retention `D-143` was accepted to remove.
+- **Documents touched:** `docs/adr/0150-...md`, `docs/adr/0144-...md`, `docs/adr/0142-...md`,
+  `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md` §12,
+  `docs/TECHNICAL_PLAN.md` §2, `docs/CONTRACTS.md` §11.5 and §16, `docs/BACKLOG.md` (`E3-15`),
+  `docs/handoff-E3-14.md` and this log. This entry corrects the wording of the 2026-09-08 entries
+  "Correction: the D-149 analysis was unsound and two E3-14 records overstated facts", "E3-14
+  hardens ticket issuance and sanitizes the trigger rejection" and "D-148 accepted and D-149
+  proposed for the orphan cleanup ticket", each of which describes `D-149` as `Proposed` and the
+  residual retention as bounded by the 30-day TTL. Per the append-only rule those entries are left
+  exactly as written; this entry supersedes their wording. No production source file changed: the
+  E3-14 Admin eligibility implementation, the fail-closed `disabled === false` predicate and the
+  concrete Firebase Admin gateway tests are untouched.
+- **Verification:** `cd functions && npm test`, the Firestore emulator suite, the Firestore rules
+  tests and `./gradlew contractCheck :build-logic:convention:test` all pass on the corrected head;
+  `contractCheck` still reports `D-149` as the one unresolved decision, now with status `Pending`,
+  and its awaiting-confirmation row. The exact figures and the protected-check run are recorded in
+  `docs/handoff-E3-14.md`.
+- **Follow-ups / risks:** `D-149` remains the owner's decision and `E3-15` stays Not Ready. Until it
+  is taken, one UID-bound authorization can outlive a successful account deletion, and the only
+  cleanup for it is provider-managed asynchronous Firestore TTL after the 30-day expiration horizon,
+  with no proven maximum.
+
+### 2026-09-08 — Correction: the D-149 analysis was unsound and two E3-14 records overstated facts
+
+- **Type:** correction
+- **Story / Decision:** `E3-14` / `D-148`, `D-149`
+- **Author:** Claude (opencode session), on behalf of David Ruiz
+- **What changed:** the gated owner review of pull request #63 returned three findings and this
+  entry records their remediation. First, ADR-0150's option-A recommendation — a second
+  authorization purge after Auth deletion plus an issuer post-write read-back — claimed to satisfy
+  the erasure invariant; it did not. The counterexample is modelled in the reworked ADR: the
+  issuer's eligibility read passes, deletion completes its Auth delete and second purge, the
+  issuer's write lands after that purge, deletion returns success, and the issuer crashes before
+  any post-write revalidation or compensating delete — the authorization survives until TTL
+  expiry. A post-write check is not atomic with either the deletion or the authorization
+  creation, so options A and B converge only eventually; option B has the analogous race with the
+  eligibility read preceding the disable. ADR-0150 now distinguishes eventual convergence from
+  synchronous crash-safe erasure, presents the options with the property each can and cannot
+  deliver, names option C as the only candidate with a real serialization point without selecting
+  it, and obliges the accepted option to discharge crash-safe proof obligations. `D-149` stays
+  `Proposed`. Second, `canIssueOrphanCleanupTicket` failed open: it accepted
+  `disabled === undefined` because it tested `disabled !== true`. A RED test
+  (`4208d86`, 1 failing of 78) proves an otherwise anonymous snapshot with no known `disabled`
+  value cannot issue, and the GREEN fix (`fb56b11`, 78 passing) requires the explicit
+  `disabled === false` state. `FirebaseAdminAuthDeletionGateway.getUser` gained direct unit
+  coverage (`8ce1bdf`) pinning that it forwards `disabled` and `providerData` and maps only
+  `auth/user-not-found` to `null`. Third, ADR-0149's verification record claimed the emulator test
+  exercised the real Admin Auth gateway; it does not, because the suite stubs Auth and starts only
+  the Firestore emulator. The record now describes the real coverage: handler tests with fakes,
+  concrete-gateway unit coverage, and Firestore emulator coverage.
+- **Why:** an unsound recommendation cannot ground an owner decision, an eligibility predicate that
+  fails open contradicts the contract that permits issuance only when the record is known to be
+  enabled, and a verification record that claims coverage the suite does not have misleads the
+  review it is meant to support.
+- **Documents touched:** `docs/adr/0150-...md`, `docs/adr/0149-...md`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (`E3-14`, `E3-15`),
+  `docs/CONTRACTS.md` §11.5, `functions/src/auth/anonymousUserEligibility.ts`,
+  `functions/test/orphanedAnonymousAccount.test.mjs`,
+  `functions/test/firebaseAdminDeletionGateways.test.mjs` (new), `docs/handoff-E3-14.md` and this
+  log. This entry corrects the 2026-09-08 entries "D-148 accepted and D-149 proposed for the orphan
+  cleanup ticket" (the option-A recommendation) and "E3-14 hardens ticket issuance and sanitizes the
+  trigger rejection" (the 146-decision count reported before the rebase; the rebased branch reports
+  150), and the ADR-0149 verification claim.
+- **Verification:** the complete Functions unit suite is 78 tests with 76 passing and 2
+  emulator-gated skips; the emulator, rules, audit, contractCheck and Gradle runs are recorded in
+  `docs/handoff-E3-14.md` from the post-fix head. `contractCheck` reports 150 aligned decisions,
+  `D-149` still the one unresolved.
+- **Follow-ups / risks:** `D-149` remains the owner's decision and `E3-15` stays not Ready. The
+  residual risk is unchanged until that decision is taken: one UID-bound authorization can outlive
+  a successful deletion in the ADR-0150 interleaving and is removed only by the 30-day TTL.
+
 ### 2026-09-08 — E2-08 additional fix binds a published reminder to its anonymous identity
 
 - **Type:** correction
@@ -67,6 +399,77 @@
 - **Follow-ups / risks:** pull request #62 remains stacked on the open `E2-07` branch and awaits its
   gated owner review. During intake, `docs/handoff-E2-08.md` was found truncated to an empty file
   by commit `6201d5f` and restored in full from its parent before this fix began.
+
+### 2026-09-08 — E3-14 hardens ticket issuance and sanitizes the trigger rejection
+
+- **Type:** story
+- **Story / Decision:** `E3-14` / `D-148`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `issueOrphanCleanupTicket` now resolves the caller's current Auth record through
+  the Admin SDK before it writes anything, and issues only while that record exists, is enabled and
+  is still anonymous; `createAnonymousDeletionHandler` rejects with a newly constructed sanitized
+  error instead of rethrowing the provider exception; and `contractCheck` no longer reads the
+  awaiting-confirmation summary as decision registry rows.
+- **Why:** the two post-merge findings of the `E3-11` review of pull request #60. Callable token
+  verification performs no revocation check, so an anonymous claim outlived linking, disabling and
+  deletion, and the issuer trusted it with no Admin call at all. An uncaught trigger exception is
+  delivered verbatim to runtime logging and Error Reporting, so the raw Firestore failure, whose
+  message can carry a UID-bearing path, escaped the redaction posture every neighbouring surface
+  already obeys.
+- **Documents touched:** `docs/BACKLOG.md` (`E3-14`, `E3-15`), `docs/CONTRACTS.md §11.5`,
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
+  `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md`,
+  `docs/adr/0150-close-the-ticket-issuance-and-account-deletion-race.md`, `docs/adr/README.md`,
+  `AGENTS.md`, `docs/handoff-E3-14.md` and this log.
+- **Verification:** the complete Functions suite (73 passing), the Firestore emulator suite, 155
+  Firestore rules tests, the dependency audit, `contractCheck` with 146 aligned decisions, the
+  complete required Gradle command and the Functions and indexes dry-run all pass. One `E1-14`
+  flake occurred on `iosSimulatorArm64` and did not reproduce; this branch changes no Kotlin source
+  outside `build-logic`. The ten protected checks pass on pull request #63 on the first run.
+- **Follow-ups / risks:** the issuance/deletion interleaving is **not** closed. It is `E3-15`,
+  blocked on the `Proposed` `D-149`, and until that decision is taken one UID-bound authorization
+  can outlive a successful account deletion and is removed only by the 30-day TTL.
+
+### 2026-09-08 — D-148 accepted and D-149 proposed for the orphan cleanup ticket
+
+- **Type:** decision
+- **Story / Decision:** `E3-14`, `E3-15` / `D-148`, `D-149`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** `D-148` requires the ticket issuer to verify the caller's current Auth record
+  through the Admin SDK before issuing, using the single shared `D-134` predicate plus a
+  not-disabled requirement. `D-149` is `Proposed` and records the three options that could close
+  the remaining issuance/deletion interleaving, with the second-purge-pass option recommended.
+- **Why:** `D-142` already established that a claim is only evidence of what was true when the token
+  was minted, and applied that at consumption; the issuing side, where the authorization is
+  actually created, had no such check. The interleaving that remains cannot be closed inside the
+  issuer, because at the moment of its write the account legitimately still exists, so closing it
+  changes the normative deletion order or adds a new store. That is the owner's call, not an
+  implementation detail.
+- **Documents touched:** ADR-0149, ADR-0150, the four decision mirrors, the awaiting-confirmation
+  table of `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md §11.5` and this log.
+- **Verification:** `contractCheck` reports 146 aligned decisions and ADRs and lists `D-149` as the
+  one unresolved decision with `E3-15` as its `Needed by` story.
+- **Follow-ups / risks:** `E3-15` MUST NOT start until `D-149` is `Accepted`. If the owner defers
+  instead of deciding, the residual risk MUST be recorded in `docs/SECURITY.md`.
+
+### 2026-09-08 — contractCheck could not express its first unresolved decision
+
+- **Type:** correction
+- **Story / Decision:** `E3-14` / —
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the decision registry parse is scoped to the registry table, so the
+  "Decisions Awaiting Owner Confirmation" summary is no longer read as decision rows.
+- **Why:** assertion 4 requires every unresolved decision to be listed in that summary, and its rows
+  start with a decision ID, but its fifth column is `Consequence if unresolved` rather than a
+  status. The parser scanned the whole board and kept the last match, so the summary silently
+  overrode the real status and assertions 2 and 4 failed together. The defect was latent because the
+  board had never carried a `Proposed` decision; `D-149` is the first.
+- **Documents touched:** `build-logic/convention/.../contract/DecisionRegistry.kt` (new),
+  `.../contract/ContractCheck.kt`, `.../contract/DecisionRegistryTest.kt` (new) and this log.
+- **Verification:** the new fixture test fails against the previous behaviour and passes against the
+  fix; `contractCheck` reports 146 aligned decisions and `1 listed` for assertion 4.
+- **Follow-ups / risks:** none. The parser moved unchanged, so no existing assertion changed
+  meaning.
 
 ### 2026-09-07 — E2-08 closes the three E2-07 review observations
 

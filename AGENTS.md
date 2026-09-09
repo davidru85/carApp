@@ -101,8 +101,9 @@ checks green. Local owner adoption, its automatic triggers and real platform con
 observation on both hosts are therefore live. `E3-10`, the Account Deletion Server Operation,
 merged on 2026-09-07 through pull request #58, after two owner review rounds, with all ten required
 checks green. `E3-11`, the Anonymous Identity Cleanup Entry Points, merged on 2026-09-07 through
-pull request #60, after five owner review rounds. `E2-07`, the Anonymous Sign-In Benefit Reminders,
-is implemented and awaiting its gated owner review.
+pull request #60, after five owner review rounds, with all ten required checks green; its
+post-merge review findings are tracked as `E3-14` and `E3-15`. `E2-07`, the Anonymous Sign-In Benefit
+Reminders, merged on 2026-09-08 through pull request #61, after its gated owner review.
 
 ### Delivery status and remaining work
 
@@ -114,7 +115,9 @@ is implemented and awaiting its gated owner review.
   acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoff-E3-10.md`.
   `E3-11` is also complete; it introduced `D-132` through `D-143` and its evidence lives in
   `docs/handoff-E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
-  `docs/handoff-E2-07.md` holds its acceptance evidence pending the gated owner review.
+  `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
+  `docs/handoff-E2-08.md` holds its acceptance evidence. `E3-14` is implemented on the open pull
+  request #63 awaiting the owner's gated review.
 - **Next:** `E2-04`, the anonymous account conversion, now that `E3-11` has merged. `E2-05` follows
   it.
 - **Remaining Phase 1:** none. The phase is closed.
@@ -124,11 +127,15 @@ is implemented and awaiting its gated owner review.
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
   `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
   until they are fixed, a red required job is not by itself evidence of a regression.
-- **Remaining Phase 2:** `E2-04` and `E2-05`. `E2-07` is implemented and awaiting its gated owner
-  review.
+- **Remaining Phase 2:** `E2-04` and `E2-05`. `E2-07` is merged through pull request #61; `E2-08`,
+  the anonymous reminder launch and race fixes that followed it, merged on 2026-09-08 through pull
+  request #62.
 - **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07`, `E3-09` and `E3-13`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already
-  complete.
+  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-14`, `E3-15` and `E3-16`. `E3-14` and `E3-15` are the two
+  post-merge findings of the `E3-11` review; `E3-14` is implemented on the open pull request #63
+  awaiting the owner's gated review, `E3-15` is **not Ready** until the owner resolves `D-149`, and
+  `E3-16` — the issuance lookup-to-write window found while reviewing that pull request — is **not
+  Ready** until the owner resolves `D-150`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model).
 

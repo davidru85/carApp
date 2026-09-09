@@ -10,19 +10,21 @@ PR #60 introduced the root-level `orphanCleanupTickets` collection (D-141) but d
 anywhere in the `docs/CONTRACTS.md` §16 remote schema, which states that the remote schema is
 closed and that unknown collections are invalid. The D-63 `USER_DATA_LOCATIONS` deletion registry
 consequently did not cover the collection, and the E3-10 `deleteAccount` operation left records
-carrying `anonymousUid` in place for up to 30 days after account deletion.
+carrying `anonymousUid` in place for at least the 30-day `expiresAt` horizon after account
+deletion, and then for however long the provider's asynchronous TTL cleanup took to reach them.
 
 That retention conflicts with the account-erasure expectation of the deletion flow: a deleted
-account's identifier would remain readable in a server-only collection until TTL cleanup. The
-review also required an explicit, documented treatment of internal server-only collections, so a
-future internal collection cannot be introduced silently.
+account's identifier would remain readable in a server-only collection until that eventual TTL
+cleanup removed it, at no guaranteed time. The review also required an explicit, documented
+treatment of internal server-only collections, so a future internal collection cannot be introduced
+silently.
 
 ## Options Considered
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| **Purge UID-bound authorizations during account deletion (accepted)** | The account-erasure guarantee is owned by the deletion flow itself; the 30-day TTL becomes only a bounded fallback; no accepted-retention decision is needed. | Adds one paged query plus batch deletes to every account deletion; a new stage in the normative deletion order. |
-| Accept up to 30 days of TTL-bounded retention with an owner decision | No deletion-flow change. | A deleted account's UID remains stored after erasure; requires an explicit accepted-residual-risk entry and weakens the erasure posture. |
+| **Purge UID-bound authorizations during account deletion (accepted)** | Erasure of the authorizations the purge can see is owned by the deletion flow itself rather than by TTL cleanup; the 30-day TTL becomes only a fallback for abandoned or completed authorizations; no accepted-retention decision is needed. | Adds one paged query plus batch deletes to every account deletion; a new stage in the normative deletion order. |
+| Accept TTL-only retention with an owner decision | No deletion-flow change. | A deleted account's UID remains stored after erasure, for the 30-day expiration horizon plus an asynchronous, non-hard-bounded provider cleanup delay; requires an explicit accepted-residual-risk entry and weakens the erasure posture. |
 | Register the collection in D-63 `USER_DATA_LOCATIONS` | Reuses the existing registry. | The registry drives the `users/{uid}` recursive-delete traversal and the client-facing schema parity test; a root collection outside that subtree does not fit either contract. |
 
 ## Decision
@@ -30,13 +32,27 @@ future internal collection cannot be introduced silently.
 Account deletion purges internal orphan-cleanup authorizations as a normative stage of the
 deletion order in `docs/CONTRACTS.md` §11.5: after registered remote document deletion fully
 succeeds, and before the Firebase Auth user is deleted, the server operation deletes every
-`orphanCleanupTickets` record whose `anonymousUid` equals the target UID. The purge:
+`orphanCleanupTickets` record whose `anonymousUid` equals the target UID **that its paged query
+observes while the purge runs**. A concurrent issuance may still write such a record after the purge
+has run; that remaining race is owned by `D-149` / `E3-15` and is not closed here, and a record it
+produces is left to the existing asynchronous Firestore TTL, which is provider-managed eventual
+cleanup and neither a hard retention bound nor a proven maximum. The purge:
 
 - is paged (batches of 200) and repeated until no matching records remain, so it is complete
   regardless of how many tickets the UID accumulated;
 - is idempotent: an already-purged UID converges;
 - is separately registered: a purge failure returns `internal`, logs the redacted `AUTHORIZATION`
   stage, and prevents Auth deletion, so the deletion flow aborts safely and retries.
+
+**Scope of the guarantee.** The purge removes every matching authorization **that is visible to it
+when it runs**. That is the whole of what this decision guarantees, and it is deliberately not a
+zero-retention guarantee for the account as a whole: `D-149` (ADR-0150) documents a concurrent
+issuance whose eligibility check passes before the purge and whose write lands after it, so one
+UID-bound authorization can still exist when `deleteAccount` returns success. Closing that race is
+outside this decision — it is owned by `D-149` and the story `E3-15`, and it requires a change to
+the deletion order or a new store, not a change to this purge. Until `D-149` is decided and `E3-15`
+ships, the zero-retention reading of this decision is **conditional**, and no document may state it
+unconditionally.
 
 Internal server-only collections are declared in a new "Internal server-only collections"
 subsection of `docs/CONTRACTS.md` §16 with an executable registry
@@ -47,15 +63,25 @@ client-facing application data, and it lives outside the `users/{uid}` subtree. 
 parity test compares the declaration with the registry, proves the two registries do not overlap,
 and fails when a server-only collection is declared in the contract without a registry entry.
 
-The 30-day TTL remains enabled as a bounded fallback for abandoned or completed authorizations;
-it is no longer the normal account-deletion retention path.
+The 30-day TTL remains enabled as a fallback for abandoned or completed authorizations. For the
+authorizations the purge sees, it is no longer the account-deletion retention path; for a record
+written by the concurrent issuance that `D-149` / `E3-15` owns, it remains the **only** cleanup.
+That fallback is provider-managed **eventual**
+cleanup: at `expiresAt` a record becomes eligible for asynchronous deletion, expired records may
+still be queryable, and deletion typically follows within 24 hours of expiration without that being
+a guaranteed maximum or an SLA. The TTL therefore MUST NOT be described as a hard 30-day deletion
+bound, nor cited as proof of the maximum time a record can survive.
 
 ## Consequences
 
 ### Positive
 
-- `anonymousUid` cannot survive account deletion; the erasure guarantee is owned by the deletion
-  flow rather than by asynchronous TTL cleanup.
+- `anonymousUid` does not survive account deletion in any authorization the purge can see: for
+  those records the erasure is owned by the deletion flow rather than by asynchronous TTL cleanup.
+  This is **not** an unconditional guarantee that no `anonymousUid` survives — the ADR-0150
+  interleaving can leave one authorization written after the purge has run, and that record is
+  removed only by provider-managed asynchronous TTL cleanup, with no proven maximum. The
+  unconditional guarantee is `D-149`'s to deliver, not this decision's.
 - The client-facing remote schema stays closed while every server-only collection is explicit and
   executable.
 - The D-63 registry keeps its exact `users/{uid}` meaning; the internal collection cannot leak
@@ -71,8 +97,12 @@ it is no longer the normal account-deletion retention path.
 
 ### Constraints Introduced
 
-- The account-deletion operation MUST purge every internal authorization bound to the target UID
-  after remote data deletion and before Auth deletion.
+- The account-deletion operation MUST purge, after remote data deletion and before Auth deletion,
+  every internal authorization bound to the target UID that its paged query observes while the purge
+  runs, and MUST remove all of them completely. This obligation is bounded by what that query can
+  observe: a concurrent issuance MAY write an authorization after the purge has run, that remaining
+  race is owned by `D-149` / `E3-15`, and such a record is left to the existing asynchronous
+  Firestore TTL, which MUST NOT be presented as a hard retention bound or a proven maximum.
 - The purge MUST be idempotent, paged and bounded to records whose `anonymousUid` equals the
   target UID.
 - A purge failure MUST map to `internal` with the redacted `AUTHORIZATION` stage log and MUST NOT
@@ -80,6 +110,9 @@ it is no longer the normal account-deletion retention path.
 - Every internal server-only collection MUST be declared in the CONTRACTS §16 internal registry
   and in `INTERNAL_SERVER_DATA_LOCATIONS`; the internal parity test MUST fail on an undeclared
   collection or a D-63 overlap.
+- No document MAY state this decision's erasure guarantee unconditionally. Every restatement MUST
+  scope it to the authorizations visible to the purge and MUST name `D-149` / `E3-15` as the owner
+  of the remaining concurrent-issuance race.
 
 ## Verification
 
@@ -97,3 +130,5 @@ it is no longer the normal account-deletion retention path.
 - `docs/CONTRACTS.md` §11.5 (deletion order, registry exclusion), §16 (internal registry)
 - `docs/adr/0142-use-server-issued-orphan-cleanup-tickets.md` (Negative consequences amended)
 - `docs/adr/0130-use-firestore-recursive-delete-per-registered-collection.md` (D-129)
+- `docs/adr/0150-close-the-ticket-issuance-and-account-deletion-race.md` (`D-149`, the concurrent
+  issuance that keeps this decision's zero-retention reading conditional)
