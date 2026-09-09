@@ -631,6 +631,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-152 | Orphan cleanup callable transport | A provider-free `OrphanCleanupClient` port in `:core:auth` with a GitLive `dev.gitlive:firebase-functions` adapter in `:integration:firebase-auth`, at the already-`Accepted` GitLive version and the `europe-west1` region | Accepted |
 | D-153 | Destructive remote replacement ordering | The client performs the replacement itself: push every captured snapshot, then tombstone every remaining remote document, ordered so no fuel entry is ever left referencing a deleted vehicle | Accepted |
 | D-154 | Collision credential lifetime | Hold the colliding native credential in memory only, beside the anonymous UID it belongs to, and never persist it | Accepted |
+| D-155 | Session state holder location | Keep `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types in `:shared` as the app-level authentication orchestrator, beside `SyncStateHolder` | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

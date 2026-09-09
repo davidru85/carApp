@@ -903,7 +903,16 @@ A failed adoption MUST be reported as a typed `AppError`, not thrown across the 
 
 Sign-out is offered only to a permanently authenticated user. For an anonymous session the action is labelled "delete local data" and requires the same two-step destructive confirmation as account deletion. Signing out clears all local rows for that owner, including `SYNCED` ones, and deletes the device-local `user_settings` row; recovery is by re-authenticating and pulling from `RemoteCursor.INITIAL`, while settings are recreated from defaults.
 
-Anonymous "delete local data" clears every local table, including `user_settings`, `outbox`, `sync_cursor` and `quarantine`.
+Anonymous "delete local data" clears every local table, including `user_settings`, `outbox`,
+`sync_cursor` and `quarantine`. It does NOT call the `D-23` server operation; see the `DELETING`
+rules of §20.10.
+
+The clear covers every local table and setting the application owns and runs in a single
+transaction, so a partial clear is never observable and a failure rolls all of it back.
+`local_sequence` is the one exception to "empty the table": it is a single control row that assigns
+`localMutationSeq`, so the clear restores its canonical initial state of `(id = 0, next = 1)`
+(`docs/TECHNICAL_PLAN.md §6`) inside that same transaction. Deleting the row would leave the
+sequence unable to assign a value at all.
 
 Account deletion order is normative:
 
@@ -2798,6 +2807,46 @@ message, which is the owner transition.
 
 `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
 
+`SessionStateHolder.requestSignOut()` is offered only to a permanently authenticated user. It reads the
+pending outbox count; when the outbox is non-empty it publishes a `UiMessage` with
+`code = "WARNING.PENDING_SYNC"` and `confirmation = Confirmation.DiscardPendingChanges` and does not
+sign out. `confirmSignOut(Confirmation.DiscardPendingChanges)` calls `AuthClient.signOut()` and, only
+after it succeeds, clears every local table including `user_settings`; the next settings read
+recreates defaults. A sign-out failure publishes the typed `AuthError` and preserves local data.
+
+`requestSignOut()` for a session that is not permanent is refused with
+`AuthError.ProviderUnavailable` and reads nothing from the database. The pending count is carried to
+the host as the typed `SessionUiState.pendingSyncCount`, because `UiMessage` transports only a code
+and the `ValidationWarning.PendingSyncBeforeSignOut(pendingCount)` payload MUST NOT be lost. A
+failure while counting the outbox or while clearing is published as the `PersistenceError` it is,
+never re-mapped onto the `AuthError` taxonomy.
+
+`confirmSignOut(Confirmation.DiscardPendingChanges)` is accepted only after a pending-sync warning
+that actually counted rows; an unsolicited confirmation is ignored.
+
+`SessionStateHolder.requestDeleteAccount()` publishes a `UiMessage` with
+`code = "CONFIRMATION.DeleteAccount"` and `confirmation = Confirmation.DeleteAccount`, and records
+which of the three `DELETING` operations the current owner is entitled to.
+`confirmDeleteAccount(Confirmation.DeleteAccount)` follows §11.5 and the `DELETING` rules above.
+A server failure maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does not
+report the account as deleted.
+
+A confirmation is accepted only when it answers an active request for the same owner and session. A
+confirmation with no request, a confirmation of the wrong kind, and a request whose owner or session
+changed before it was confirmed all leave every data set untouched. While a departure is running the
+phase is `DELETING` with `isBusy = true`, and reentrant departure intents are refused; the interval
+between a successful remote step and the local clear MUST NOT be interrupted by cancellation. When
+the remote step has succeeded and the local clear has failed, the request is retained so that a
+retry repeats the local clear alone and never calls the server operation a second time.
+
+`AuthError.RequiresRecentLogin` keeps the pending deletion and puts it in a re-authenticating state.
+The host acquires a fresh native credential and submits it through
+`startReauthentication(provider)` followed by `completeGoogleSignIn` / `completeAppleSignIn`, which
+call `AuthClient.reauthenticate()`; deletion resumes only after that succeeds. A failed
+re-authentication keeps the request and preserves local data, and a cancelled one abandons the
+request without deleting anything. `AuthError.ProviderUnavailable` is an infrastructure fault and
+MUST NOT trigger re-authentication.
+
 `SessionStateHolder.startPermanentSignIn(provider)` accepts `GOOGLE` or `APPLE`, retains only that
 provider as the active native attempt and sets `isBusy = true`; it stores no credential primitive.
 `completeGoogleSignIn` is valid only for an active Google attempt and constructs
@@ -2859,7 +2908,24 @@ DELETING -> UNKNOWN
 UNKNOWN -> SIGNED_OUT after local-data clear
 ```
 
-From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+`DELETING` covers three different operations, and only one of them reaches the server.
+`docs/SPECIFICATION.md §7 F-5` is the behavioural authority for the distinction:
+
+- from `LOCAL` it means "clear local data only". There is no Firebase Auth account, so there is
+  nothing to delete remotely;
+- from `ANONYMOUS` it means "clear local data, then end the anonymous session". F-5 gives the
+  anonymous owner "delete local data", not account deletion: the identity is device-bound and
+  unrecoverable, and the `D-23` server operation MUST NOT be called for it. The provider session is
+  ended after the clear so that a recreated `SessionStateHolder` cannot route straight back to
+  `ANONYMOUS` on the same UID and present the deletion as incomplete. The abandoned anonymous
+  identity is then an orphan, which is `E3-11`'s subject, not this flow's;
+- from `PERMANENT` it means "run the `D-23` server operation, then clear local data", in the order
+  of §11.5.
+
+The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the
+local-data clear completes. `UNKNOWN` is therefore the observable state of a departure whose remote
+step succeeded and whose local clear has not: `SIGNED_OUT` and `AnalyticsEvent.AccountDeletionCompleted`
+MUST NOT be published while local data survives. `E2-05` MUST test all three paths.
 
 `SessionUiState.anonymousReminderIndex` is the zero-based index of the `D-62` retention notice
 currently offered, or `null` when none is. It is a typed value, not display copy: each host maps it

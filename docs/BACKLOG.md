@@ -720,9 +720,11 @@ Acceptance criteria:
 - A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
 - Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
 - Account deletion is accessible from settings.
-- Move Session state holders and their `UiState` types from the D-55 `:shared` shells into the
-  `:feature:session` `presentation` package, preserving the Swift ABI. `SyncStateHolder` remains
-  the app-level state holder in `:shared`.
+- `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types remain in `:shared` (the
+  app-level auth orchestrator, alongside `SyncStateHolder`), because `SessionStateHolder` depends on
+  `:core:auth` and `:core:analytics`, which `docs/TECHNICAL_PLAN.md §4` forbids feature
+  `presentation` from reaching. The D-85 move of Session presentation is therefore not applied;
+  `SyncStateHolder` remains the app-level state holder in `:shared`.
 
 ### E2-08 - Anonymous Reminder Launch and Sign-In Race Fixes - S
 

@@ -26,33 +26,217 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: GREEN. The RED specification is commit `5381696`.
-- Push and pull-request status: pull request #65 is open and under the owner's gated review. This
-  branch history is being rebuilt with the owner's explicit approval, because the previous RED commit
-  `6e07e6a` did not compile and so was not the executable behavioural RED `AGENTS.md` requires.
-- Completed since the previous checkpoint: the GREEN implementation — `AccountDepartureFlow`, the
-  typed `AccountDepartureCoordinator`, the complete single-transaction `clearAllLocalData()` with its
-  `local_sequence` reset and supporting queries, and the graph wiring.
-- Verification evidence and known failures: the RED commit compiled and failed for the missing
-  behavior — 4 of 5 `LocalDataClearDatabaseAccessTest` tests and 17 of 23 `SessionDepartureTest`
-  tests; the rest assert that an ineligible or unsolicited intent does nothing, which a
-  behavior-free seam already satisfies. Both suites now pass in GREEN: 5 and 23 tests, 0 failures.
-- Open decisions or blockers: none blocking.
-- Exact next step: REFACTOR, then republish and update pull request #65.
+- Current phase and latest commit: REFACTOR complete, on the reconstructed three-commit history.
+- Push and pull-request status: pushed; pull request #65 is open against `main` and awaiting the
+  owner's gated review. The branch history was rebuilt and republished with
+  `git push --force-with-lease` after the owner explicitly approved the rewrite (see "Decisions
+  Made"). An earlier checkpoint in this file claimed the branch was "not yet pushed"; that was
+  already obsolete when it was written and is corrected here.
+- Completed since the previous checkpoint: the blocking review findings on pull request #65 are
+  fixed — operation eligibility, the complete deletion lifecycle, recent-login recovery, typed
+  failures and warning data, and a complete atomic local clear — together with the documentation
+  reconciliation and the TDD history reconstruction.
+- Verification evidence and known failures: the complete non-instrumented CI command passes, the
+  Objective-C golden header matches its regenerated source, and `git diff --check` is clean. No
+  known failure.
+- Open decisions or blockers: none blocking. One behavioural point is flagged for the owner under
+  "Risks or Follow-ups": ending the provider session as part of anonymous "delete local data".
+- Exact next step: the owner's gated review. Agents MUST NOT merge this pull request.
 
 ## Scope Completed
 
-- Ready Check, branch creation and the RED and GREEN phases.
+- Ready Check, branch creation and a reconstructed RED, GREEN and REFACTOR sequence.
+- `LocalDataClearDatabaseAccess` in `:core:database`: `pendingOutboxCount()`, `localSequenceNext()`
+  and a single-transaction `clearAllLocalData()` that empties every local table the application owns
+  and restores `local_sequence` to its canonical `(id = 0, next = 1)` initial state.
+- `AccountDepartureHandler` seam and its `AccountDepartureCoordinator` implementation, which reports
+  typed `PersistenceError` values rather than an opaque failure.
+- `AccountDepartureFlow`: the F-5 state machine covering eligibility, the pending-sync warning, the
+  three `DELETING` operations, the non-cancellable remote-to-local interval, retry after a failed
+  local clear, and recent-login recovery.
+- `SessionStateHolder` intents delegating to that flow, plus the new `startReauthentication(provider)`
+  host intent and the typed `SessionUiState.pendingSyncCount`.
+- Account-deletion analytics events (`AccountDeletionFailed` / `AccountDeletionCompleted`).
+- `D-155` / ADR-0156 recording the decision to keep the Session state holder in `:shared`.
+- The regenerated Objective-C golden header for the two public-contract additions.
 
 ## Acceptance Evidence
 
-- Pending; the RED specification names the behaviours that will carry it.
+Backlog criteria, each with the test that proves it:
+
+- Sign-out only for permanently authenticated users — `signOutIsRejectedForAnAnonymousSession` and
+  `signOutIsRejectedForALocalOwner` assert the refusal reads nothing from the database;
+  `signOutWithEmptyOutboxSignsOutAndClearsLocalData` covers the permitted path.
+- Anonymous sessions get "delete local data" with two-step confirmation —
+  `anonymousDeletionClearsLocalDataAndEndsTheSessionWithoutTheServerOperation` asserts the typed
+  confirmation, the absence of any server call, and that the session is ended;
+  `anonymousDeletionSurvivesRecreatingTheStateHolder` proves the result is not undone by an
+  unchanged provider state.
+- `ValidationWarning.PendingSyncBeforeSignOut(pendingCount)` then `Confirmation.DiscardPendingChanges`
+  — `signOutWithPendingOutboxPublishesTheExactCountWithoutSigningOut` asserts the code, the
+  confirmation and the exact count of 7 on `SessionUiState.pendingSyncCount`;
+  `confirmingDiscardSignsOutAndClearsLocalData` covers the discard, and
+  `discardIsIgnoredWithoutAPrecedingPendingSyncWarning` covers the unsolicited case.
+- Account deletion follows §11.5 — `permanentDeletionCallsTheServerBeforeClearingLocalData` asserts
+  the observed order `deleteAccount`, then `clearLocalData`, from one shared call log.
+- Outbox rows dropped only after the server operation succeeds — the clear is the step after the
+  server call in that same ordering assertion, and `serverDeletionFailurePreservesLocalDataAndReportsTheError`
+  asserts no clear happens when the server fails.
+- `AuthError.AccountDeletionRemoteFailed` preserves local data and does not report deletion —
+  same test; the phase stays `PERMANENT` and no completion event is published.
+- `user_settings` deleted and recreated from defaults —
+  `clearAllLocalDataEmptiesEveryLocalTableInOneTransaction` asserts `user_settings` is emptied, and
+  `SqlDelightSettingsRepository` recreates defaults on a missing row.
+- Deletion reachable from settings — the `SessionStateHolder` intents are the settings entry point;
+  the Settings surface itself is owned by E4-01.
+- Session state holders stay in `:shared` — `D-155` / ADR-0156.
+
+Review findings, each with the test that closes it:
+
+- Eligibility — the two sign-out refusals above, `localOwnerDeletionClearsLocalDataOnly` (no server
+  call, no sign-out), the anonymous path (no server call), and the permanent path (server first).
+- Confirmation without an active request — `confirmationWithoutAPendingRequestDoesNothing`.
+- Owner or session change between request and confirmation —
+  `aSessionChangeBetweenRequestAndConfirmationDiscardsTheRequest` and
+  `anOwnerKindChangeBetweenRequestAndConfirmationDiscardsTheRequest`.
+- `DELETING` and reentrancy — `deletionEntersDeletingAndRefusesReentrantIntents` holds the server
+  call open on a gate, asserts `DELETING` with `isBusy`, fires three further intents and asserts the
+  server was still called exactly once.
+- Never `SIGNED_OUT` or `AccountDeletionCompleted` on a failed clear —
+  `aLocalClearFailureAfterSignOutNeverPublishesSignedOut` and
+  `aLocalClearFailureAfterRemoteDeletionReportsNoCompletion`.
+- Retry without a second remote deletion — `retryingAfterRemoteSuccessRepeatsOnlyTheLocalClear`
+  asserts one `deleteAccount` call and two `clearLocalData` calls.
+- Recent-login recovery — `aStaleLoginKeepsTheRequestAndResumesAfterReauthentication`,
+  `aFailedReauthenticationKeepsTheRequestAndPreservesLocalData`,
+  `cancellingReauthenticationAbandonsTheDeletionWithoutClearingLocalData` and
+  `reauthenticationIsRejectedWithoutAStaleDeletionRequest`.
+- Typed persistence failures — `aCountingFailurePreservesThePersistenceErrorAndDoesNotSignOut`
+  asserts `PERSISTENCE.DATABASE_UNAVAILABLE` reaches the owner, not `AUTH.UNKNOWN`.
+- Complete and atomic local cleanup — `clearAllLocalDataEmptiesEveryLocalTableInOneTransaction` now
+  seeds `sync_cursor`, `quarantine` and the conversion snapshot as well;
+  `clearAllLocalDataResetsAnAdvancedLocalSequence` and `aFailedClearRollsBackEveryDeletion`, which
+  installs a `BEFORE DELETE` trigger on `quarantine` and asserts every earlier deletion rolled back.
 
 ## Out of Scope / Not Done
 
 - The Settings UI surface (E4-01) that renders the sign-out and deletion controls.
-- The native credential acquisition for re-authentication; the platform picker is host UI (E4-01).
+- The native credential acquisition for re-authentication. The shared holder now owns the intent,
+  the `AuthClient.reauthenticate()` call and the resumption; the platform picker itself is host UI
+  owned by E4-01, exactly as for sign-in.
 - The D-85 / ADR-0086 move of Session presentation into `:feature:session` (superseded by D-155).
+
+## Files Changed
+
+- `core/database/**/LocalDataClearDatabaseAccess.kt` and `database.sq` — the outbox count, the
+  complete single-transaction clear and the `local_sequence` reset.
+- `core/database/**/LocalDataClearDatabaseAccessTest.kt` — complete-cleanup, sequence-reset and
+  transaction-rollback coverage.
+- `shared/**/AccountDepartureFlow.kt` — the F-5 state machine (new).
+- `shared/**/AccountDepartureCoordinator.kt` — the typed local-data seam implementation.
+- `shared/**/StateHolders.kt` — the departure intents, `startReauthentication` and the re-auth
+  routing of the native credential callbacks.
+- `shared/**/UiModels.kt` — `SessionUiState.pendingSyncCount`.
+- `shared/**/AppGraph.kt` — wires the departure coordinator into the session holder.
+- `shared/**/SessionDepartureTest.kt` — the session-holder tests.
+- `androidApp/**/OnboardingFlowTest.kt` — the added `SessionUiState` member.
+- `shared/build/generated/objc-header/Shared.h.golden` — regenerated for the two public additions.
+- `docs/CONTRACTS.md`, `docs/BACKLOG.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/adr/0156-*.md`, `AGENTS.md`,
+  `docs/PROJECT_LOG.md` and this handoff.
+
+## Decisions Made
+
+- `D-155` (ADR-0156): keep `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types in
+  `:shared`, because `SessionStateHolder` depends on `:core:auth` and `:core:analytics`, which
+  `docs/TECHNICAL_PLAN.md §4` forbids feature `presentation` from reaching. This is the owner's
+  decision (option A of the three presented).
+- **TDD history reconstruction, approved by the owner.** The original RED commit `6e07e6a` did not
+  compile: `LocalDataClearDatabaseAccessTest` could not resolve `LocalDataClearDatabaseAccess` and
+  `SessionDepartureTest` could not resolve `accountDeparture` or `AccountDepartureHandler`. A commit
+  that fails to compile is not the executable behavioural RED that `AGENTS.md` requires, and the
+  original GREEN commit had to modify the test file to make it compile, which inverts the TDD order.
+  The owner was shown that evidence and explicitly approved rebuilding the branch into a compiling
+  RED, a GREEN and a REFACTOR commit, republished with `--force-with-lease`. The RED commit contains
+  behavior-free production seams so the tests compile and fail for missing behavior.
+- Anonymous "delete local data" ends the provider session after the local clear. F-5 says the
+  anonymous identity is unrecoverable and that this action is not account deletion, so the `D-23`
+  server operation is not called; but leaving the session behind made the deletion look undone,
+  because a recreated holder routed straight back to `ANONYMOUS` on the same UID. Ending the session
+  locally is the smallest in-scope way to satisfy both. It is flagged for the owner below.
+- The exact pending-outbox count is carried on the new typed `SessionUiState.pendingSyncCount`
+  rather than on `UiMessage`, following the `D-145` precedent for `anonymousReminderIndex`: a typed
+  value each host formats itself, and a change scoped to the session surface rather than to the
+  message channel every feature shares.
+- Rule 0 held for the whole story: every owner-facing reply was in Spanish (es-ES) and every
+  repository artifact is in technical English. No violation occurred.
+
+## Verification Run
+
+- [x] Relevant tests pass
+- [x] Lint passes (ktlint, detekt)
+- [x] Coverage thresholds hold
+- [x] Architecture checks pass
+- [x] Contract check passes
+- [x] Relevant builds pass (Android, iOS simulator, `Shared` framework)
+- [x] Documentation updated if behaviour, decisions or models changed
+
+Commands or checks run:
+
+```text
+git worktree add --detach <tmp> 6e07e6a && ./gradlew :core:database:testAndroidHostTest :shared:testAndroidHostTest
+  EVIDENCE OF THE INVALID RED: compilation failed. LocalDataClearDatabaseAccessTest.kt:28,50,59
+  "Unresolved reference 'LocalDataClearDatabaseAccess'"; SessionDepartureTest.kt:33,56,83,107,137,
+  165,196 "No parameter with name 'accountDeparture'"; SessionDepartureTest.kt:266 "Unresolved
+  reference 'AccountDepartureHandler'". This is what the reconstruction fixes.
+
+./gradlew :core:database:testAndroidHostTest --tests ...LocalDataClearDatabaseAccessTest :shared:testAndroidHostTest --tests ...SessionDepartureTest
+  EXPECTED RED on the reconstructed RED commit: the sources compile and the tests fail for the
+  missing E2-05 behavior. PASS after GREEN: 5 database tests and 23 session tests.
+
+./gradlew :shared:testAndroidHostTest --tests com.ruizurraca.carapp.SessionDepartureTest
+  PASS: 23 tests, 0 failures.
+
+./gradlew :core:database:testAndroidHostTest --tests com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccessTest
+  PASS: 5 tests, 0 failures.
+
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
+  BUILD SUCCESSFUL. An intermediate run reported LargeClass on SessionStateHolder and two
+  ReturnCount findings; they were resolved by extracting AccountDepartureFlow, not suppressed.
+
+./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 && diff -u <golden> <generated>
+  BUILD SUCCESSFUL and no diff. The golden was regenerated for exactly two public additions:
+  SessionUiState.pendingSyncCount and startReauthentication(provider:). Every D-85 / D-97 exact
+  Objective-C name is unchanged.
+
+git diff --check
+  Clean.
+```
+
+## Contract Impact
+
+- Updated `docs/CONTRACTS.md §11.5`: the anonymous clear does not call the `D-23` operation; the
+  clear is complete and atomic; `local_sequence` is reset to its canonical initial state rather than
+  emptied.
+- Updated `docs/CONTRACTS.md §20.10`: the `DELETING` phase is separated into its three operations,
+  resolving the contradiction with the earlier sentence that put the `D-23` server operation on the
+  anonymous path, with `docs/SPECIFICATION.md §7 F-5` as the behavioural authority. The departure
+  contract now also states sign-out eligibility, the typed `pendingSyncCount`, typed persistence
+  failures, request/confirmation pairing, the non-cancellable remote-to-local interval, retry after a
+  failed clear, and the re-authentication intent.
+
+## Decision Board Impact
+
+- Updated `docs/DECISION_BOARD.md` with `D-155` (`Accepted`) and ADR-0156, mirrored identically in
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+
+## Shared-Write Modules Touched
+
+- `:core:database` — expected for the local-data-clear operation; no concurrent agent is active.
+
+## Project Log Entry
+
+- [x] Entry appended to `docs/PROJECT_LOG.md`.
 
 ## Human Review Gate
 

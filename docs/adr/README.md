@@ -161,5 +161,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-152 | [ADR-0153](0153-reach-the-orphan-cleanup-callables-through-a-provider-free-port.md) | Reach the orphan cleanup callables through a provider-free port. | Accepted |
 | D-153 | [ADR-0154](0154-replace-the-permanent-account-data-from-the-client.md) | Replace the permanent account data from the client. | Accepted |
 | D-154 | [ADR-0155](0155-keep-the-collision-credential-in-memory-only.md) | Keep the collision credential in memory only. | Accepted |
+| D-155 | [ADR-0156](0156-keep-the-session-state-holder-in-shared.md) | Keep the session state holder in `:shared`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

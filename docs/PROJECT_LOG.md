@@ -38,6 +38,52 @@
 
 ## Entries
 
+### 2026-09-10 — E2-05 sign-out and account deletion implemented
+
+- **Type:** story
+- **Story / Decision:** `E2-05` / `D-155`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the F-5 sign-out and account-deletion flows are implemented on pull request #65,
+  which is awaiting the owner's gated review and is not merged. Sign-out is offered only to a
+  permanently authenticated user and is refused for anonymous and local owners without reading the
+  database. When the outbox is non-empty it publishes `WARNING.PENDING_SYNC` with
+  `Confirmation.DiscardPendingChanges` and carries the exact row count on the new typed
+  `SessionUiState.pendingSyncCount`, so the `ValidationWarning.PendingSyncBeforeSignOut(pendingCount)`
+  payload is not lost. `DELETING` is separated into its three operations: a local owner clears local
+  data only; an anonymous owner clears local data and then ends the provider session, without the
+  `D-23` server operation; a permanent owner runs the server operation first, in the §11.5 order.
+  The departure is a resumable state machine (`AccountDepartureFlow`): a confirmation authorises only
+  an active request for the same owner and session, reentrant intents are refused, the interval
+  between a successful remote step and the local clear is not cancellable, `SIGNED_OUT` and
+  `AccountDeletionCompleted` are never published while local data survives, and a failed clear keeps
+  the request so a retry repeats the clear alone. `AuthError.RequiresRecentLogin` now has a recovery
+  path: the new `startReauthentication(provider)` intent, `AuthClient.reauthenticate()` and
+  resumption on success. The local clear covers every table the application owns and resets
+  `local_sequence` to its canonical initial state in the same transaction. `D-155` keeps
+  `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types in `:shared`.
+- **Why:** the flows are destructive and cross a provider boundary, so correctness depends on which
+  operation each owner is entitled to, on never reporting success while data survives, and on being
+  resumable rather than atomic. `docs/SPECIFICATION.md §7 F-5` is the authority that anonymous
+  "delete local data" is not account deletion, which resolved a contradiction in
+  `docs/CONTRACTS.md §20.10` where an older sentence put the `D-23` server operation on the anonymous
+  path. The count travels as a typed field rather than on `UiMessage`, following the `D-145`
+  precedent, because the message channel transports only a code and is shared by every feature.
+- **Documents touched:** `docs/CONTRACTS.md` §11.5 and §20.10, `docs/BACKLOG.md`,
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
+  `docs/adr/README.md`, ADR-0156 (new), `AGENTS.md`, `docs/handoff-E2-05.md`.
+- **Verification:** the complete non-instrumented CI command passes; `SessionDepartureTest` (23
+  tests) and `LocalDataClearDatabaseAccessTest` (5 tests) pass; the Objective-C golden header was
+  regenerated for exactly two public additions, `SessionUiState.pendingSyncCount` and
+  `startReauthentication(provider:)`, with every D-85 / D-97 exact name unchanged; `git diff --check`
+  is clean.
+- **Follow-ups / risks:** the branch history was rebuilt with the owner's explicit approval, because
+  the original RED commit did not compile and so was not the executable behavioural RED that
+  `AGENTS.md` requires. Ending the provider session as part of anonymous "delete local data" is
+  flagged for the owner in `docs/handoff-E2-05.md`. A local clear that fails after a successful
+  remote step leaves local data for an account already deleted remotely; the request is retained for
+  retry, but a process death at that point loses it. The Settings surface and the native credential
+  picker remain owned by E4-01.
+
 ### 2026-09-09 — E2-04 anonymous account conversion implemented
 
 - **Type:** story
