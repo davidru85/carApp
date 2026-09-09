@@ -28,6 +28,8 @@ func localizedUiMessage(for code: String) -> String {
         key = "error_money_input"
     case "VALIDATION.INVALID_UNIT":
         key = "error_currency"
+    case "CONFIRMATION.AdoptExistingAccount":
+        key = "confirm_replace_existing_account"
     case "PERSISTENCE.DATABASE_UNAVAILABLE",
          "PERSISTENCE.TRANSACTION_FAILED",
          "PERSISTENCE.MIGRATION_FAILED",

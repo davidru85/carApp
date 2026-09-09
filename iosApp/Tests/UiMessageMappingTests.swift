@@ -37,6 +37,40 @@ final class UiMessageMappingTests: XCTestCase {
         )
     }
 
+    func testAccountCollisionConfirmationExplainsTheDestructiveReplacement() {
+        let message = localizedUiMessage(for: "CONFIRMATION.AdoptExistingAccount")
+
+        XCTAssertEqual(message, String(localized: "confirm_replace_existing_account"))
+
+        // The copy MUST state both the replacement and its irreversibility in every shipped
+        // language. Each bundle is read directly, because asserting the running locale's copy
+        // would make the test pass or fail on the simulator's language rather than on the copy.
+        let required = [
+            "en": ["permanently replaces", "cannot be undone"],
+            "es": ["sustituye permanentemente", "No se puede deshacer"],
+        ]
+
+        for (language, phrases) in required {
+            let copy = localizedCopy("confirm_replace_existing_account", language: language)
+            for phrase in phrases {
+                XCTAssertTrue(copy.contains(phrase), "The \(language) copy must contain \"\(phrase)\".")
+            }
+        }
+    }
+
+    private func localizedCopy(_ key: String, language: String) -> String {
+        for candidate in [Bundle.main, Bundle(for: type(of: self))] {
+            if
+                let path = candidate.path(forResource: language, ofType: "lproj"),
+                let bundle = Bundle(path: path)
+            {
+                return bundle.localizedString(forKey: key, value: nil, table: nil)
+            }
+        }
+        XCTFail("Missing \(language).lproj for \(key)")
+        return ""
+    }
+
     func testConsumptionInvalidReasonExplanation() {
         let reasons: [ConsumptionInvalidReason?] = [
             .noPreviousFullTank,

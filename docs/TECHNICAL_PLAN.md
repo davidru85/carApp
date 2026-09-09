@@ -165,6 +165,10 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-148 | Admin verification at ticket issuance | Resolve the caller's Auth record before any write and issue only when it exists, is known to be enabled (explicit `disabled === false`, failing closed when unavailable) and satisfies the shared D-134 predicate | Accepted | Callable verification performs no revocation check, so an anonymous claim outlives linking, disabling and deletion; the issuing side now applies the same current-state rule D-142 already applies at consumption, and eligibility is a positive fact that rejects rather than issues on an unknown state. Scope: the guarantee covers the snapshot the lookup returned — an already linked, disabled, deleted or state-unknown identity is rejected and creates no authorization — not the instant the Firestore write commits; that lookup-to-write window is D-150 / E3-16. |
 | D-149 | Ticket issuance and account deletion race | Undecided; no recommendation is offered and no option is pre-selected. Options A and B deliver neither eventual convergence nor crash-safe erasure on their own — A is partial synchronous cleanup of the authorizations already visible when its second pass runs, B is a probability reduction that removes nothing — and a write landing after their last step plus an issuer crash leaves a record that only the pre-existing provider-managed TTL cleanup ever removes, eventually and without a hard bound, per the ADR-0150 counterexample; option C is the only candidate with a real serialization point, but its never-expiring `deletedUids` marker is an unresolved indefinite UID-linked retention problem that conflicts with D-143 | Pending | The normative §11.5 order purges before deleting the Auth user, so an issuance whose eligibility check precedes the purge and whose write follows it survives a successful deletion; no check inside the issuer, and no read-back or later purge pass, is atomic with either the deletion or the authorization creation. The owner chooses between a residual window with no proven maximum retention time and a serialization point whose marker retention design is still open; the accepted option discharges the proof obligations of ADR-0150. A provable maximum retention period requires an additional deterministic cleanup mechanism selected by the owner, not designed here. Needed by `E3-15`. |
 | D-150 | Issuance lookup-to-write window | Undecided; no recommendation is offered and no option is pre-selected. Auth and Firestore share no transaction, so the account can be linked, disabled or deleted between the D-148 Admin lookup and the Firestore authorization write; options are accepting the residual window, extending the D-142 consumption revalidation to the disabled state, or serializing against an Auth-lifecycle marker that inherits the ADR-0150 option C retention conflict with D-143 | Pending | D-142 refuses destructive cleanup of a bound account that has become linked, but it does not prevent the UID-bound authorization from being created and retained, and it does not reject an account that stays anonymous and becomes disabled after eligibility was observed. A second Admin read, a post-write read-back, a retry or a compensating delete may not be described as closing the window, and D-149 may not be broadened to cover it. Needed by `E3-16`. |
+| D-151 | Durable conversion marker storage | Two normalized schema v3 tables: a single-row `account_conversion_operation` holding the anonymous UID, the permanent UID, the cleanup ticket and a resume `phase`, plus `account_conversion_snapshot` keyed by `(entityType, entityId)` | Accepted | The replacement resumes per entity and records a remote acknowledgement per row, which an opaque blob cannot express without rewriting the whole marker on every push. Closed `CHECK` constraints make an unknown phase or entity type a database error rather than a silent branch. |
+| D-152 | Orphan cleanup callable transport | A provider-free `OrphanCleanupClient` port in `:core:auth` with a GitLive `dev.gitlive:firebase-functions` adapter in `:integration:firebase-auth`, at the already-`Accepted` GitLive version and the `europe-west1` region | Accepted | Keeps the two E3-11 callables behind one Kotlin-pure port so `:shared` stays free of Firebase and GitLive, and reuses the accepted GitLive release instead of introducing a transport of its own. |
+| D-153 | Destructive remote replacement ordering | The client performs the replacement itself: push every captured snapshot, then tombstone every remaining remote document, ordered so no fuel entry is ever left referencing a deleted vehicle | Accepted | Merging is out of MVP scope and a new callable would widen the server surface the specification deliberately limits, while the durable snapshot already gives the client everything an idempotent, dependency-ordered replacement needs. |
+| D-154 | Collision credential lifetime | Hold the colliding native credential in memory only, beside the anonymous UID it belongs to, and never persist it | Accepted | Persisting a bearer credential to an unencrypted local database to save one provider reacquisition, in a window where nothing destructive has happened yet, is the wrong trade. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -310,7 +314,7 @@ Synchronized entity control columns:
 | `localMutationSeq` | Monotonic database-local mutation order, shared across synchronized entity tables. |
 | `schemaVersion` | Payload schema version. |
 
-Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`, `anonymous_reminder`.
+Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`, `anonymous_reminder`, `account_conversion_operation`, `account_conversion_snapshot`.
 
 There is **no enforced foreign key** from `fuel_entry` to `vehicle`: sync can legitimately deliver an entry before its vehicle, and a constraint failure inside a pull transaction would stall the cursor permanently.
 
@@ -393,7 +397,41 @@ The table holds the device-local position of the `D-62` reminder schedule (`docs
 
 Future columns MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
-SQLDelight configuration: committed `.sq` files are the canonical schema and query source, asynchronous generation and `verifyMigrations` are enabled, and system-SQLite linking is disabled for the bundled Native driver. Destructive schema recreation is FORBIDDEN. Every version bump ships a committed `.sqm` migration plus a test that migrates a populated previous-version database and asserts row preservation. Schema v1 is covered by create, constraint and close/reopen persistence tests on Android and iOS. Schema v2 is the `D-144` `anonymous_reminder` table, added by the committed `1.sqm` migration and covered by a populated version-one migration test.
+Account conversion schema (`D-151`, schema version 3):
+
+```sql
+CREATE TABLE account_conversion_operation (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  anonymousUid TEXT NOT NULL,
+  permanentUid TEXT,
+  cleanupTicket TEXT,
+  phase TEXT NOT NULL CHECK (
+    phase IN ('SNAPSHOT_CAPTURED', 'SESSION_SWITCHED', 'REMOTE_REPLACED', 'LOCAL_REPLACED')
+  )
+);
+
+CREATE TABLE account_conversion_snapshot (
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE', 'FUEL_ENTRY')),
+  entityId TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  localRevision INTEGER NOT NULL,
+  localMutationSeq INTEGER NOT NULL,
+  remoteServerUpdatedAt INTEGER,
+  PRIMARY KEY (entityType, entityId)
+);
+```
+
+The pair holds the durable marker of the confirmed collision replacement (`docs/CONTRACTS.md §11.3`).
+Both tables are device-local: never synchronized, never enqueued in the outbox and absent from the
+closed remote schema of `docs/CONTRACTS.md §16`. The `id = 0` constraint allows at most one
+conversion in flight. `phase` is the resume point and advances only after the step it names has
+completed, so a replay repeats at most one finished step and never skips one, and the whole marker is
+cleared only after the orphan account deletion returns. `remoteServerUpdatedAt` is written back per
+row as each captured snapshot is acknowledged remotely, which is why the snapshot is a table rather
+than a serialized blob. In line with the rule above, the colliding provider credential is NOT stored
+here and is held in memory only (`D-154`).
+
+SQLDelight configuration: committed `.sq` files are the canonical schema and query source, asynchronous generation and `verifyMigrations` are enabled, and system-SQLite linking is disabled for the bundled Native driver. Destructive schema recreation is FORBIDDEN. Every version bump ships a committed `.sqm` migration plus a test that migrates a populated previous-version database and asserts row preservation. Schema v1 is covered by create, constraint and close/reopen persistence tests on Android and iOS. Schema v2 is the `D-144` `anonymous_reminder` table, added by the committed `1.sqm` migration and covered by a populated version-one migration test. Schema v3 is the `D-151` `account_conversion_operation` and `account_conversion_snapshot` pair, added by the committed `2.sqm` migration and covered by a populated version-two migration test.
 
 ## 7. Firestore Design
 

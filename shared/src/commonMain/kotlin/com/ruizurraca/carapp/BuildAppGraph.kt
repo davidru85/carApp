@@ -14,6 +14,7 @@ fun buildAppGraph(
         AppGraphDependencies(
             databaseFactory = providers.databaseFactory,
             authClient = providers.authClient,
+            orphanCleanupClient = providers.orphanCleanupClient,
             tokenProvider = providers.tokenProvider,
             ownerContext = providers.ownerContext,
             remoteSyncSource = providers.remoteSyncSource,

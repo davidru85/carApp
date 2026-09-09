@@ -24,6 +24,8 @@ class SchemaV1Test {
 
             assertEquals(
                 listOf(
+                    "account_conversion_operation",
+                    "account_conversion_snapshot",
                     "anonymous_reminder",
                     "fuel_entry",
                     "local_sequence",

@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.shared.testing
 import com.ruizurraca.carapp.AppGraphDependencies
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.auth.AuthClient
+import com.ruizurraca.carapp.core.auth.OrphanCleanupClient
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
@@ -20,6 +21,7 @@ import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeAuthClient
 import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
+import com.ruizurraca.carapp.core.testing.FakeOrphanCleanupClient
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import com.ruizurraca.carapp.core.testing.FakeRemoteSyncSource
 import com.ruizurraca.carapp.core.testing.FakeTokenProvider
@@ -42,6 +44,7 @@ import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 fun testAppGraphDependencies(
     databaseFactory: DatabaseFactory = InMemoryDatabaseFactory(),
     authClient: AuthClient = FakeAuthClient(),
+    orphanCleanupClient: OrphanCleanupClient = FakeOrphanCleanupClient(),
     tokenProvider: TokenProvider = FakeTokenProvider(),
     ownerContext: OwnerContext = FakeOwnerContext(),
     remoteSyncSource: RemoteSyncSource = FakeRemoteSyncSource(),
@@ -59,6 +62,7 @@ fun testAppGraphDependencies(
     AppGraphDependencies(
         databaseFactory = databaseFactory,
         authClient = authClient,
+        orphanCleanupClient = orphanCleanupClient,
         tokenProvider = tokenProvider,
         ownerContext = ownerContext,
         remoteSyncSource = remoteSyncSource,

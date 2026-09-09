@@ -1,10 +1,15 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
+import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
+import com.ruizurraca.carapp.core.analytics.ConversionFailureReason
+import com.ruizurraca.carapp.core.analytics.toConversionFailureReason
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
@@ -30,12 +35,16 @@ class SessionStateHolder internal constructor(
     private val onLocalStartAccepted: () -> Unit = {},
     private val clock: AppClock? = null,
     private val anonymousReminders: AnonymousReminderRepository? = null,
+    private val accountConversion: AccountConversionHandler? = null,
+    private val analyticsTracker: AnalyticsTracker? = null,
 ) {
     private var closed = false
     private var operationJob: Job? = null
     private var reminderJob: Job? = null
     private var awaitingRestoredSession = false
     private var activePermanentProvider: AuthProvider? = null
+    private var activeSignInKind: SignInKind? = null
+    private var pendingCollision: PendingCollision? = null
 
     // The anonymous UID that produced the published reminder index, so the collector can tell a
     // re-emission of the same identity from a switch to a different one (§11.3).
@@ -85,6 +94,8 @@ class SessionStateHolder internal constructor(
         val client = authClient ?: return
         operationJob?.cancel()
         activePermanentProvider = null
+        activeSignInKind = null
+        clearPendingCollision()
         mutableState.value = mutableState.value.copy(isBusy = true, message = null)
         operationJob =
             operationScope.launch {
@@ -120,12 +131,15 @@ class SessionStateHolder internal constructor(
     fun startPermanentSignIn(provider: AuthProvider) {
         if (closed) return
         operationJob?.cancel()
-        if (provider != AuthProvider.GOOGLE && provider != AuthProvider.APPLE) {
+        if (!provider.isNativePermanentProvider()) {
             activePermanentProvider = null
+            activeSignInKind = null
             publishError(AuthError.ProviderUnavailable)
             return
         }
+        clearPendingCollision()
         activePermanentProvider = provider
+        activeSignInKind = SignInKind.PERMANENT
         mutableState.value = mutableState.value.copy(isBusy = true, message = null)
     }
 
@@ -151,14 +165,24 @@ class SessionStateHolder internal constructor(
 
     fun failSignIn(reason: NativeSignInFailure) {
         if (closed) return
+        val cancelledConversion = activeSignInKind == SignInKind.CONVERSION
         operationJob?.cancel()
         operationJob = null
         activePermanentProvider = null
+        activeSignInKind = null
+        clearPendingCollision()
         mutableState.value =
             mutableState.value.copy(
                 isBusy = false,
                 message = reason.toReportableAuthError()?.toUiMessage(),
             )
+        if (cancelledConversion) {
+            analyticsTracker?.track(
+                AnalyticsEvent.AccountConversionFailed(
+                    reason.toReportableAuthError()?.toConversionFailureReason() ?: ConversionFailureReason.CANCELLED,
+                ),
+            )
+        }
     }
 
     /**
@@ -180,9 +204,55 @@ class SessionStateHolder internal constructor(
         mutableState.value = mutableState.value.copy(anonymousReminderIndex = null)
     }
 
-    fun startAccountConversion(provider: AuthProvider) = provider.let { Unit }
+    fun startAccountConversion(provider: AuthProvider) {
+        if (closed) return
+        operationJob?.cancel()
+        val session = (authClient?.authState?.value as? AuthState.SignedIn)?.session
+        if (!provider.isNativePermanentProvider() || session?.isAnonymous != true) {
+            activePermanentProvider = null
+            activeSignInKind = null
+            publishError(AuthError.ProviderUnavailable)
+            return
+        }
+        clearPendingCollision()
+        activePermanentProvider = provider
+        activeSignInKind = SignInKind.CONVERSION
+        mutableState.value = mutableState.value.copy(isBusy = true, message = null)
+        analyticsTracker?.track(AnalyticsEvent.AccountConversionStarted)
+    }
 
-    fun confirmAccountConversion(confirmation: Confirmation) = confirmation.let { Unit }
+    fun confirmAccountConversion(confirmation: Confirmation) {
+        if (closed || confirmation != Confirmation.AdoptExistingAccount) return
+        val pending = pendingCollision ?: return
+        val operationScope = scope ?: return
+        val conversion = accountConversion ?: return
+        clearPendingCollision()
+        mutableState.value = mutableState.value.copy(isBusy = true, message = null)
+        operationJob?.cancel()
+        operationJob =
+            operationScope.launch {
+                mutableState.value =
+                    confirmedConversionState(conversion.confirm(pending.anonymousUid, pending.credential))
+            }
+    }
+
+    private fun confirmedConversionState(result: Outcome<AuthSession, AppError>): SessionUiState =
+        when (result) {
+            is Outcome.Ok -> {
+                analyticsTracker?.track(AnalyticsEvent.AccountConversionCompleted)
+                result.value.toSessionUiState()
+            }
+
+            is Outcome.Err -> {
+                analyticsTracker?.track(
+                    AnalyticsEvent.AccountConversionFailed(
+                        (result.error as? AuthError)?.toConversionFailureReason()
+                            ?: ConversionFailureReason.UNKNOWN,
+                    ),
+                )
+                mutableState.value.copy(isBusy = false, message = result.error.toUiMessage())
+            }
+        }
 
     fun requestSignOut() = Unit
 
@@ -194,6 +264,12 @@ class SessionStateHolder internal constructor(
 
     fun clearMessage() {
         if (closed) return
+        if (mutableState.value.message?.confirmation == Confirmation.AdoptExistingAccount) {
+            clearPendingCollision()
+            analyticsTracker?.track(
+                AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
+            )
+        }
         mutableState.value = mutableState.value.copy(message = null)
     }
 
@@ -207,6 +283,8 @@ class SessionStateHolder internal constructor(
         awaitingRestoredSession = false
         authStateJob?.cancel()
         activePermanentProvider = null
+        activeSignInKind = null
+        clearPendingCollision()
     }
 
     private fun completePermanentSignIn(
@@ -219,7 +297,9 @@ class SessionStateHolder internal constructor(
             publishError(AuthError.ProviderUnavailable)
             return
         }
+        val signInKind = activeSignInKind
         activePermanentProvider = null
+        activeSignInKind = null
         val operationScope = scope
         val client = authClient
         if (operationScope == null || client == null) {
@@ -227,22 +307,50 @@ class SessionStateHolder internal constructor(
             return
         }
         operationJob?.cancel()
+        val converting = signInKind == SignInKind.CONVERSION
         operationJob =
             operationScope.launch {
-                mutableState.value =
-                    when (val result = client.signInWithCredential(credential)) {
-                        is Outcome.Ok -> {
-                            result.value.toSessionUiState()
-                        }
-
-                        is Outcome.Err -> {
-                            mutableState.value.copy(
-                                isBusy = false,
-                                message = result.error.toUiMessage(),
-                            )
-                        }
+                val result =
+                    if (converting) {
+                        client.linkCredential(credential)
+                    } else {
+                        client.signInWithCredential(credential)
                     }
+                mutableState.value = permanentSignInState(result, converting, credential, client)
             }
+    }
+
+    private fun permanentSignInState(
+        result: Outcome<AuthSession, AuthError>,
+        converting: Boolean,
+        credential: NativeAuthCredential,
+        client: AuthClient,
+    ): SessionUiState =
+        when (result) {
+            is Outcome.Ok -> {
+                if (converting) {
+                    analyticsTracker?.track(AnalyticsEvent.AccountConversionCompleted)
+                }
+                result.value.toSessionUiState()
+            }
+
+            is Outcome.Err -> {
+                if (converting && result.error == AuthError.CredentialAlreadyInUse) {
+                    pendingCollision = client.anonymousCollision(credential)
+                    mutableState.value.copy(isBusy = false, message = destructiveConversionConfirmation())
+                } else {
+                    if (converting) {
+                        analyticsTracker?.track(
+                            AnalyticsEvent.AccountConversionFailed(result.error.toConversionFailureReason()),
+                        )
+                    }
+                    mutableState.value.copy(isBusy = false, message = result.error.toUiMessage())
+                }
+            }
+        }
+
+    private fun clearPendingCollision() {
+        pendingCollision = null
     }
 
     /**
@@ -318,6 +426,30 @@ class SessionStateHolder internal constructor(
     }
 }
 
+private enum class SignInKind {
+    PERMANENT,
+    CONVERSION,
+}
+
+/** The anonymous identity and credential a confirmed destructive replacement will act on. */
+private class PendingCollision(
+    val anonymousUid: String,
+    val credential: NativeAuthCredential,
+)
+
+/**
+ * The collision is actionable only while the anonymous identity that produced it is still the
+ * current session, so a session that is absent or already permanent yields nothing to confirm.
+ */
+private fun AuthClient.anonymousCollision(credential: NativeAuthCredential): PendingCollision? =
+    (authState.value as? AuthState.SignedIn)
+        ?.session
+        ?.takeIf { it.isAnonymous }
+        ?.let { PendingCollision(it.uid, credential) }
+
+private fun AuthProvider.isNativePermanentProvider(): Boolean =
+    this == AuthProvider.GOOGLE || this == AuthProvider.APPLE
+
 /**
  * A user-driven cancellation is a recoverable retry state, not a failure to report, so it maps to no
  * message. Every other closed native failure maps to the error the owner must see.
@@ -337,6 +469,22 @@ private fun AuthError.toUiMessage(): UiMessage =
         kind = UiMessageKind.ERROR,
         code = code,
         confirmation = null,
+    )
+
+private fun AppError.toUiMessage(): UiMessage =
+    UiMessage(
+        id = AUTH_ERROR_MESSAGE_ID,
+        kind = UiMessageKind.ERROR,
+        code = code,
+        confirmation = null,
+    )
+
+private fun destructiveConversionConfirmation(): UiMessage =
+    UiMessage(
+        id = ACCOUNT_CONVERSION_CONFIRMATION_MESSAGE_ID,
+        kind = UiMessageKind.WARNING,
+        code = "CONFIRMATION.AdoptExistingAccount",
+        confirmation = Confirmation.AdoptExistingAccount,
     )
 
 private fun AuthState?.toSessionUiState(): SessionUiState =
@@ -361,6 +509,7 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L
 private const val AUTH_ERROR_MESSAGE_ID = 2L
+private const val ACCOUNT_CONVERSION_CONFIRMATION_MESSAGE_ID = 3L
 
 class SyncStateHolder internal constructor() {
     val state: StateFlow<SyncUiState> =

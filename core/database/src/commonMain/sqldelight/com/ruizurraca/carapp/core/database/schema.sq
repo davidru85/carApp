@@ -104,3 +104,23 @@ CREATE TABLE anonymous_reminder (
   anonymousUid TEXT NOT NULL,
   lastShownIndex INTEGER NOT NULL CHECK (lastShownIndex >= 0)
 );
+
+CREATE TABLE account_conversion_operation (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  anonymousUid TEXT NOT NULL,
+  permanentUid TEXT,
+  cleanupTicket TEXT,
+  phase TEXT NOT NULL CHECK (
+    phase IN ('SNAPSHOT_CAPTURED', 'SESSION_SWITCHED', 'REMOTE_REPLACED', 'LOCAL_REPLACED')
+  )
+);
+
+CREATE TABLE account_conversion_snapshot (
+  entityType TEXT NOT NULL CHECK (entityType IN ('VEHICLE', 'FUEL_ENTRY')),
+  entityId TEXT NOT NULL,
+  payload TEXT NOT NULL,
+  localRevision INTEGER NOT NULL,
+  localMutationSeq INTEGER NOT NULL,
+  remoteServerUpdatedAt INTEGER,
+  PRIMARY KEY (entityType, entityId)
+);

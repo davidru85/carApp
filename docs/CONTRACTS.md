@@ -775,6 +775,49 @@ After confirmation, the operation is ordered as follows:
    Firebase Auth account, directly invokes the D-63 user-data deletion service for the anonymous
    UID, and marks the authorization completed last.
 
+#### The orphan cleanup port
+
+The two E3-11 callable operations reach `:shared` through one provider-free port in `:core:auth`,
+so no Firebase or GitLive type crosses the integration boundary (`D-152`):
+
+```kotlin
+data class OrphanCleanupTicket(val value: String)
+
+interface OrphanCleanupClient {
+    suspend fun issueOrphanCleanupTicket(): Outcome<OrphanCleanupTicket, AuthError>
+
+    suspend fun deleteOrphanedAnonymousAccount(ticket: OrphanCleanupTicket): Outcome<Unit, AuthError>
+}
+```
+
+`issueOrphanCleanupTicket` reads the raw ticket from the `cleanupTicket` key of the callable
+response, which is the key the deployed function returns; `deleteOrphanedAnonymousAccount` sends it
+back under the same key. Both map a provider failure to the §8 `AuthError` taxonomy and MUST NOT
+leak the raw provider error, the ticket or the UID. The port and its ticket type are hidden from
+the generated Objective-C header, exactly like the rest of the §11.6 construction API.
+
+#### The durable operation marker
+
+The marker of steps 1 to 5 is device-local, never synchronized, never enqueued in the outbox, and
+absent from the closed remote schema of §16. It is two normalized schema v3 tables rather than one
+serialized blob (`D-151`): `account_conversion_operation`, a single row pinned to `id = 0` holding
+`anonymousUid`, the nullable `permanentUid`, the nullable `cleanupTicket` and a `phase` restricted
+to `SNAPSHOT_CAPTURED`, `SESSION_SWITCHED`, `REMOTE_REPLACED` and `LOCAL_REPLACED`; and
+`account_conversion_snapshot`, keyed by `(entityType, entityId)` and holding the captured `payload`,
+its `localRevision`, its `localMutationSeq` and the nullable `remoteServerUpdatedAt` written back as
+each snapshot is acknowledged remotely.
+
+`phase` is the resume point, and it advances only after the work it names has completed, so a replay
+repeats at most one already-completed step and never skips one. The marker is cleared only after the
+orphan account deletion of step 5 returns, which is what makes step 5 the completion boundary rather
+than the local rebuild of step 4.
+
+The colliding credential itself is NOT part of the marker and is held in memory only (`D-154`). A
+restart before the step 2 session switch therefore requires the owner to reacquire the credential
+from the native provider, while a restart after it resumes from the marker with no owner
+interaction, because every remaining step is authorized by the persisted `cleanupTicket` and the
+permanent session rather than by the credential.
+
 Retry after any interruption MUST converge on the same permanent-account snapshot and the same
 deleted anonymous identity. It MUST NOT re-enter normal recovery pull while the replacement marker
 exists. Exact backend idempotency and deletion semantics are in §11.5.
@@ -1042,6 +1085,7 @@ complete dependency container used internally by graph construction:
 data class AppGraphDependencies(
     val databaseFactory: DatabaseFactory,
     val authClient: AuthClient,
+    val orphanCleanupClient: OrphanCleanupClient,
     val tokenProvider: TokenProvider,
     val ownerContext: OwnerContext,
     val remoteSyncSource: RemoteSyncSource,
@@ -1060,6 +1104,7 @@ data class AppGraphDependencies(
 interface AppProviders {
     val databaseFactory: DatabaseFactory
     val authClient: AuthClient
+    val orphanCleanupClient: OrphanCleanupClient
     val tokenProvider: TokenProvider
     val ownerContext: OwnerContext
     val remoteSyncSource: RemoteSyncSource
@@ -1093,7 +1138,7 @@ Rules:
 - `DatabaseFactory` is imported from `:core:database` (`§20.3.2`), not `:core:common`; `:core:common` is forbidden from depending on SQLDelight or SQLite. `:core:database` is a `:core:*` module, so `:shared` may depend on it.
 - Koin may construct `AppProviders` implementations only in wiring and platform composition.
 - It MUST contain abstractions only. Firebase, GitLive, Koin, Ktor, Android and iOS concrete types MUST NOT appear in it.
-- Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
+- Its parameter order is canonical and MUST match the code block above exactly: `databaseFactory, authClient, orphanCleanupClient, tokenProvider, ownerContext, remoteSyncSource, analyticsTracker, crashReporter, clock, dispatchers, uuidGenerator, logger, isDebugBuild, localeProvider, connectivityObserver, syncTriggerAdapter`.
 - Tests provide fakes without starting Koin through the `:shared:testing` factory
   `testAppGraphDependencies(...)`, whose implementation reuses the generic fakes from
   `:core:testing`. Every parameter is defaulted. Adding a member REQUIRES updating that factory in

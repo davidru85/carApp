@@ -110,3 +110,4 @@
 "anonymous_reminder_body_3" = "Esta cuenta sigue sin vincular. Inicia sesión con Google o Apple para conservar tus datos recuperables, porque una cuenta sin vincular se elimina tras 30 días sin uso.";
 "anonymous_reminder_body_4" = "Último aviso: esta cuenta sigue perteneciendo solo a este dispositivo y se elimina tras 30 días sin uso. Inicia sesión con Google o Apple para poder recuperar tus vehículos y repostajes.";
 "anonymous_reminder_dismiss" = "Descartar";
+"confirm_replace_existing_account" = "Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer.";

@@ -19,8 +19,8 @@ import kotlin.test.assertNull
  */
 class AnonymousReminderMigrationTest {
     @Test
-    fun theSchemaVersionIsTwo() {
-        assertEquals(2L, AppDatabase.Schema.version)
+    fun theSchemaVersionIsThree() {
+        assertEquals(3L, AppDatabase.Schema.version)
     }
 
     @Test
@@ -79,6 +79,54 @@ class AnonymousReminderMigrationTest {
                 assertNull(AnonymousReminderDatabaseAccess(testDatabase.database).selectReminder())
             } finally {
                 testDatabase.close()
+            }
+        }
+
+    @Test
+    fun migratingAPopulatedVersionTwoDatabasePreservesRowsAndAddsTheConversionStore() =
+        runTest {
+            val driver = versionOneDriver()
+            try {
+                driver.insertVehicle(deleted = 0, deletedAt = null)
+                driver.insertFuelEntry(deleted = 0, deletedAt = null)
+                AppDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = 2).await()
+                driver
+                    .execute(
+                        identifier = null,
+                        sql =
+                            "INSERT INTO anonymous_reminder(id, anonymousUid, lastShownIndex) " +
+                                "VALUES (0, 'anonymous-uid', 2)",
+                        parameters = 0,
+                    ).await()
+
+                AppDatabase.Schema.migrate(driver, oldVersion = 2, newVersion = 3).await()
+
+                assertEquals(1L, driver.nullableLong("SELECT COUNT(*) FROM vehicle"))
+                assertEquals(1L, driver.nullableLong("SELECT COUNT(*) FROM fuel_entry"))
+                assertEquals(2L, driver.nullableLong("SELECT lastShownIndex FROM anonymous_reminder WHERE id = 0"))
+                assertEquals(0L, driver.nullableLong("SELECT COUNT(*) FROM account_conversion_operation"))
+                assertEquals(0L, driver.nullableLong("SELECT COUNT(*) FROM account_conversion_snapshot"))
+            } finally {
+                driver.close()
+            }
+        }
+
+    @Test
+    fun migratingDirectlyFromVersionOneToVersionThreeAppliesEveryIntermediateMigration() =
+        runTest {
+            val driver = versionOneDriver()
+            try {
+                driver.insertVehicle(deleted = 0, deletedAt = null)
+                driver.insertFuelEntry(deleted = 0, deletedAt = null)
+
+                AppDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = 3).await()
+
+                assertEquals(1L, driver.nullableLong("SELECT COUNT(*) FROM vehicle"))
+                assertEquals(1L, driver.nullableLong("SELECT COUNT(*) FROM fuel_entry"))
+                assertEquals(0L, driver.nullableLong("SELECT COUNT(*) FROM anonymous_reminder"))
+                assertEquals(0L, driver.nullableLong("SELECT COUNT(*) FROM account_conversion_operation"))
+            } finally {
+                driver.close()
             }
         }
 

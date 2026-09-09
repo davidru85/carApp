@@ -334,7 +334,30 @@ private fun DocumentSnapshot.toFirestoreDocument(entityType: EntityType): Firest
         }
 
         EntityType.FUEL_ENTRY -> {
-            throw IllegalArgumentException("FuelEntry pull belongs to E3-02")
+            FirestoreDocument(
+                id = id,
+                fields =
+                    mapOf(
+                        ID_FIELD to FirestoreString(get(ID_FIELD)),
+                        OWNER_ID_FIELD to FirestoreString(get(OWNER_ID_FIELD)),
+                        "vehicleId" to FirestoreString(get("vehicleId")),
+                        "date" to getTimestamp("date"),
+                        "odometerKm" to FirestoreLong(get("odometerKm")),
+                        "litersScaled" to FirestoreLong(get("litersScaled")),
+                        "pricePerLiterScaled" to FirestoreLong(get("pricePerLiterScaled")),
+                        "totalCostMinor" to FirestoreLong(get("totalCostMinor")),
+                        "currency" to FirestoreString(get("currency")),
+                        "isFullTank" to FirestoreBoolean(get("isFullTank")),
+                        "hasMissedEntries" to FirestoreBoolean(get("hasMissedEntries")),
+                        "odometerInconsistent" to FirestoreBoolean(get("odometerInconsistent")),
+                        "notes" to getNullableString("notes"),
+                        "createdAt" to getTimestamp("createdAt"),
+                        UPDATED_AT_FIELD to getTimestamp(UPDATED_AT_FIELD),
+                        DELETED_FIELD to FirestoreBoolean(get(DELETED_FIELD)),
+                        "deletedAt" to getNullableTimestamp("deletedAt"),
+                        SCHEMA_VERSION_FIELD to FirestoreLong(get(SCHEMA_VERSION_FIELD)),
+                    ),
+            )
         }
     }
 

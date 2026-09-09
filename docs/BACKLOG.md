@@ -674,6 +674,8 @@ Acceptance criteria:
   session switch; retry resumes the captured replacement instead of pulling over it.
 - After replacement, the flow calls the E3-11 2nd gen callable to delete the orphaned anonymous
   identity. It does not depend on an Auth deletion trigger.
+- Both E3-11 callables are reached through the provider-free `OrphanCleanupClient` port, so no
+  Firebase or GitLive type leaves `:integration:*`.
 - Automatic merge is not implemented.
 
 Depends on: E2-02, E3-11.

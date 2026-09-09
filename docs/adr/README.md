@@ -157,5 +157,9 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-148 | [ADR-0149](0149-verify-the-issuing-account-through-the-admin-sdk.md) | Verify the issuing account through the Admin SDK. | Accepted |
 | D-149 | [ADR-0150](0150-close-the-ticket-issuance-and-account-deletion-race.md) | Close the ticket issuance and account deletion race. | Pending |
 | D-150 | [ADR-0151](0151-close-the-issuance-lookup-to-write-window.md) | Close the issuance lookup-to-write window. | Pending |
+| D-151 | [ADR-0152](0152-store-the-conversion-marker-in-normalized-tables.md) | Store the conversion marker in normalized tables. | Accepted |
+| D-152 | [ADR-0153](0153-reach-the-orphan-cleanup-callables-through-a-provider-free-port.md) | Reach the orphan cleanup callables through a provider-free port. | Accepted |
+| D-153 | [ADR-0154](0154-replace-the-permanent-account-data-from-the-client.md) | Replace the permanent account data from the client. | Accepted |
+| D-154 | [ADR-0155](0155-keep-the-collision-credential-in-memory-only.md) | Keep the collision credential in memory only. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
