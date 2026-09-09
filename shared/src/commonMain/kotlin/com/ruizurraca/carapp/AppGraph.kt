@@ -10,6 +10,7 @@ import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
 import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
+import com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
@@ -81,6 +82,10 @@ internal class DefaultAppGraph(
             remoteSyncSource = dependencies.remoteSyncSource,
             store = AccountConversionDatabaseAccess(databaseHandle.database),
             clock = dependencies.clock,
+        )
+    private val accountDeparture =
+        AccountDepartureCoordinator(
+            databaseAccess = LocalDataClearDatabaseAccess(databaseHandle.database),
         )
     private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
     private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
@@ -191,6 +196,7 @@ internal class DefaultAppGraph(
             anonymousReminders = anonymousReminders,
             accountConversion = accountConversion,
             analyticsTracker = dependencies.analyticsTracker,
+            accountDeparture = accountDeparture,
         )
     }
 

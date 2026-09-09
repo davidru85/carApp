@@ -26,23 +26,23 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: RED. This commit is the executable specification.
+- Current phase and latest commit: GREEN. The RED specification is commit `5381696`.
 - Push and pull-request status: pull request #65 is open and under the owner's gated review. This
   branch history is being rebuilt with the owner's explicit approval, because the previous RED commit
   `6e07e6a` did not compile and so was not the executable behavioural RED `AGENTS.md` requires.
-- Completed since the previous checkpoint: the RED specification for sign-out eligibility, the three
-  `DELETING` operations, the departure lifecycle, recent-login recovery, typed failures and warning
-  data, and a complete atomic local clear. The new production declarations are behavior-free seams.
-- Verification evidence and known failures: EXPECTED RED. The sources compile and the tests fail for
-  the missing behavior — 4 of 5 `LocalDataClearDatabaseAccessTest` tests and 17 of 23
-  `SessionDepartureTest` tests. The rest assert that an ineligible or unsolicited intent does
-  nothing, which a behavior-free seam already satisfies.
+- Completed since the previous checkpoint: the GREEN implementation — `AccountDepartureFlow`, the
+  typed `AccountDepartureCoordinator`, the complete single-transaction `clearAllLocalData()` with its
+  `local_sequence` reset and supporting queries, and the graph wiring.
+- Verification evidence and known failures: the RED commit compiled and failed for the missing
+  behavior — 4 of 5 `LocalDataClearDatabaseAccessTest` tests and 17 of 23 `SessionDepartureTest`
+  tests; the rest assert that an ineligible or unsolicited intent does nothing, which a
+  behavior-free seam already satisfies. Both suites now pass in GREEN: 5 and 23 tests, 0 failures.
 - Open decisions or blockers: none blocking.
-- Exact next step: GREEN, then REFACTOR, then republish and update pull request #65.
+- Exact next step: REFACTOR, then republish and update pull request #65.
 
 ## Scope Completed
 
-- Ready Check, branch creation and the RED phase.
+- Ready Check, branch creation and the RED and GREEN phases.
 
 ## Acceptance Evidence
 
