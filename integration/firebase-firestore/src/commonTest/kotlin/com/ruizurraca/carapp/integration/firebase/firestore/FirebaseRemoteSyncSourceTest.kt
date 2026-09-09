@@ -99,6 +99,38 @@ class FirebaseRemoteSyncSourceTest {
                 gateway.queries.single(),
             )
         }
+
+    @Test
+    fun fuelEntryPullReturnsTheCompleteClosedRemoteSnapshot() =
+        runTest {
+            val entityId = EntityId("123e4567-e89b-42d3-a456-426614174001")
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            val gateway =
+                RecordingFirestoreGateway(
+                    documents = listOf(fuelEntryDocument(entityId.value, serverUpdatedAt)),
+                )
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result =
+                source.pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.FUEL_ENTRY,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 50,
+                )
+
+            val item = assertIs<Outcome.Ok<RemotePage>>(result).value.items.single()
+            assertEquals(EntityType.FUEL_ENTRY, item.entityType)
+            assertEquals(entityId, item.entityId)
+            assertEquals(serverUpdatedAt, item.serverUpdatedAt)
+            assertEquals(
+                Json.parseToJsonElement(
+                    fuelEntryRemoteJson(entityId.value, serverUpdatedAt.toEpochMilliseconds()),
+                ),
+                Json.parseToJsonElement(item.json),
+            )
+            assertEquals("users/anonymous-owner/fuelEntries", gateway.queries.single().path)
+        }
 }
 
 internal class RecordingFirestoreGateway(
@@ -161,6 +193,62 @@ private fun vehicleJson(
       "brand":null,
       "model":null,
       "fuelType":"GASOLINE",
+      "createdAt":1700000000000,
+      "updatedAt":$updatedAt,
+      "deleted":false,
+      "deletedAt":null,
+      "schemaVersion":1
+    }
+    """.trimIndent()
+
+private fun fuelEntryDocument(
+    id: String,
+    serverUpdatedAt: Instant,
+): FirestoreDocument =
+    FirestoreDocument(
+        id = id,
+        fields =
+            mapOf(
+                "id" to FirestoreString(id),
+                "ownerId" to FirestoreString("anonymous-owner"),
+                "vehicleId" to FirestoreString("123e4567-e89b-42d3-a456-426614174000"),
+                "date" to FirestoreTimestamp(1_700_000_000_000L),
+                "odometerKm" to FirestoreLong(100),
+                "litersScaled" to FirestoreLong(50_000),
+                "pricePerLiterScaled" to FirestoreLong(1_500),
+                "totalCostMinor" to FirestoreLong(7_500),
+                "currency" to FirestoreString("EUR"),
+                "isFullTank" to FirestoreBoolean(true),
+                "hasMissedEntries" to FirestoreBoolean(false),
+                "odometerInconsistent" to FirestoreBoolean(false),
+                "notes" to FirestoreNull,
+                "createdAt" to FirestoreTimestamp(1_700_000_000_000L),
+                "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
+                "deleted" to FirestoreBoolean(false),
+                "deletedAt" to FirestoreNull,
+                "schemaVersion" to FirestoreLong(1),
+            ),
+    )
+
+private fun fuelEntryRemoteJson(
+    id: String,
+    updatedAt: Long,
+): String =
+    """
+    {
+      "id":"$id",
+      "ownerId":"anonymous-owner",
+      "vehicleId":"123e4567-e89b-42d3-a456-426614174000",
+      "date":1700000000000,
+      "odometerKm":100,
+      "litersScaled":50000,
+      "pricePerLiterScaled":1500,
+      "totalCostMinor":7500,
+      "currency":"EUR",
+      "isFullTank":true,
+      "hasMissedEntries":false,
+      "odometerInconsistent":false,
+      "notes":null,
       "createdAt":1700000000000,
       "updatedAt":$updatedAt,
       "deleted":false,

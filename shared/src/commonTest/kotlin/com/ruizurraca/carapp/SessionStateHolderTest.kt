@@ -1,13 +1,18 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
+import com.ruizurraca.carapp.core.analytics.ConversionFailureReason
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.testing.FakeAuthClient
+import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -241,7 +246,243 @@ class SessionStateHolderTest {
             )
             stateHolder.close()
         }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun googleAccountConversionLinksTheCredentialWithoutSigningIntoAnotherUid() =
+        runTest {
+            val anonymous = anonymousSession()
+            val linked = anonymous.copy(isAnonymous = false, providers = setOf(AuthProvider.GOOGLE))
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymous),
+                    linkResult = Outcome.Ok(linked),
+                )
+            val stateHolder = SessionStateHolder(scope = this, authClient = authClient)
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn("google-id-token", "google-access-token")
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf<NativeAuthCredential>(
+                    NativeAuthCredential.Google("google-id-token", "google-access-token"),
+                ),
+                authClient.linkedCredentials,
+            )
+            assertTrue(authClient.credentials.isEmpty(), "normal conversion must not sign into another account")
+            assertEquals(anonymous.uid, linked.uid)
+            assertEquals(SessionPhase.PERMANENT, stateHolder.state.value.phase)
+            assertFalse(stateHolder.state.value.isBusy)
+            assertNull(stateHolder.state.value.message)
+            stateHolder.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun credentialCollisionPublishesOnlyTheTypedDestructiveConfirmation() =
+        runTest {
+            val anonymous = anonymousSession()
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymous),
+                    linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
+                )
+            val stateHolder = SessionStateHolder(scope = this, authClient = authClient)
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn("colliding-id-token", null)
+            advanceUntilIdle()
+
+            assertEquals(SessionPhase.ANONYMOUS, stateHolder.state.value.phase)
+            assertEquals(
+                Confirmation.AdoptExistingAccount,
+                stateHolder.state.value.message
+                    ?.confirmation,
+            )
+            assertEquals(
+                "CONFIRMATION.AdoptExistingAccount",
+                stateHolder.state.value.message
+                    ?.code,
+            )
+            assertFalse(stateHolder.state.value.isBusy)
+            assertTrue(authClient.credentials.isEmpty(), "a collision cannot switch sessions before confirmation")
+            stateHolder.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun cancellingTheCollisionLeavesTheAnonymousSessionAndCredentialUnused() =
+        runTest {
+            val anonymous = anonymousSession()
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymous),
+                    linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
+                )
+            val conversion = RecordingAccountConversion()
+            val stateHolder =
+                SessionStateHolder(
+                    scope = this,
+                    authClient = authClient,
+                    accountConversion = conversion,
+                )
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn("colliding-id-token", null)
+            advanceUntilIdle()
+            stateHolder.clearMessage()
+            stateHolder.confirmAccountConversion(Confirmation.AdoptExistingAccount)
+            advanceUntilIdle()
+
+            assertEquals(AuthState.SignedIn(anonymous), authClient.authState.value)
+            assertTrue(authClient.credentials.isEmpty())
+            assertTrue(conversion.calls.isEmpty(), "dismissal destroys the ephemeral collision credential")
+            assertNull(stateHolder.state.value.message)
+            stateHolder.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun confirmationDelegatesTheCollisionWithTheAnonymousUidAndEphemeralCredential() =
+        runTest {
+            val anonymous = anonymousSession()
+            val permanent = permanentSession(AuthProvider.GOOGLE)
+            val credential = NativeAuthCredential.Google("colliding-id-token", null)
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymous),
+                    linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
+                )
+            val conversion = RecordingAccountConversion(Outcome.Ok(permanent))
+            val stateHolder =
+                SessionStateHolder(
+                    scope = this,
+                    authClient = authClient,
+                    accountConversion = conversion,
+                )
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn(credential.idToken, credential.accessToken)
+            advanceUntilIdle()
+            stateHolder.confirmAccountConversion(Confirmation.AdoptExistingAccount)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf<Pair<String, NativeAuthCredential>>(anonymous.uid to credential),
+                conversion.calls,
+            )
+            assertEquals(SessionPhase.PERMANENT, stateHolder.state.value.phase)
+            assertFalse(stateHolder.state.value.isBusy)
+            stateHolder.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aDifferentConfirmationCannotStartTheDestructiveCollisionFlow() =
+        runTest {
+            val anonymous = anonymousSession()
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymous),
+                    linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
+                )
+            val conversion = RecordingAccountConversion()
+            val stateHolder =
+                SessionStateHolder(
+                    scope = this,
+                    authClient = authClient,
+                    accountConversion = conversion,
+                )
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn("colliding-id-token", null)
+            advanceUntilIdle()
+            stateHolder.confirmAccountConversion(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+
+            assertTrue(conversion.calls.isEmpty())
+            assertEquals(
+                Confirmation.AdoptExistingAccount,
+                stateHolder.state.value.message
+                    ?.confirmation,
+            )
+            assertEquals(SessionPhase.ANONYMOUS, stateHolder.state.value.phase)
+            stateHolder.close()
+        }
+
+    @Test
+    fun accountConversionStartTracksTheClosedStartedEvent() =
+        runTest {
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient = RecordingAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
+            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
+            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
+            val stateHolder = graph.sessionStateHolder()
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+
+            assertEquals(listOf(AnalyticsEvent.AccountConversionStarted), tracker.events)
+            graph.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun successfulAccountLinkTracksTheClosedCompletedEvent() =
+        runTest {
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val anonymous = anonymousSession()
+            val linked = anonymous.copy(isAnonymous = false, providers = setOf(AuthProvider.GOOGLE))
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymous),
+                    linkResult = Outcome.Ok(linked),
+                )
+            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
+            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
+            val stateHolder = graph.sessionStateHolder()
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn("id-token", null)
+            advanceUntilIdle()
+
+            assertEquals(AnalyticsEvent.AccountConversionCompleted, tracker.events.last())
+            graph.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun dismissingACollisionTracksTheClosedCancelledFailure() =
+        runTest {
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient =
+                RecordingAuthClient(
+                    initialState = AuthState.SignedIn(anonymousSession()),
+                    linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
+                )
+            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
+            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
+            val stateHolder = graph.sessionStateHolder()
+
+            stateHolder.startAccountConversion(AuthProvider.GOOGLE)
+            stateHolder.completeGoogleSignIn("colliding-id-token", null)
+            advanceUntilIdle()
+            stateHolder.clearMessage()
+
+            assertEquals(
+                AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
+                tracker.events.last(),
+            )
+            graph.close()
+        }
 }
+
+private fun anonymousSession(): AuthSession =
+    AuthSession(
+        uid = "anonymous-owner",
+        isAnonymous = true,
+        providers = setOf(AuthProvider.ANONYMOUS),
+    )
 
 private fun permanentSession(provider: AuthProvider): AuthSession =
     AuthSession(
@@ -254,9 +495,11 @@ private class RecordingAuthClient(
     initialState: AuthState = AuthState.SignedOut,
     private var anonymousResult: Outcome<AuthSession, AuthError> = Outcome.Err(AuthError.ProviderUnavailable),
     private var credentialResult: Outcome<AuthSession, AuthError> = Outcome.Err(AuthError.ProviderUnavailable),
+    private var linkResult: Outcome<AuthSession, AuthError> = Outcome.Err(AuthError.ProviderUnavailable),
 ) : AuthClient {
     private val mutableAuthState = MutableStateFlow(initialState)
     val credentials = mutableListOf<NativeAuthCredential>()
+    val linkedCredentials = mutableListOf<NativeAuthCredential>()
 
     override val authState: StateFlow<AuthState> = mutableAuthState
 
@@ -275,7 +518,7 @@ private class RecordingAuthClient(
     }
 
     override suspend fun linkCredential(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
-        Outcome.Err(AuthError.ProviderUnavailable)
+        linkResult.also { linkedCredentials += credential }
 
     override suspend fun reauthenticate(credential: NativeAuthCredential): Outcome<AuthSession, AuthError> =
         Outcome.Err(AuthError.ProviderUnavailable)
@@ -283,4 +526,15 @@ private class RecordingAuthClient(
     override suspend fun signOut(): Outcome<Unit, AuthError> = Outcome.Err(AuthError.ProviderUnavailable)
 
     override suspend fun deleteAccount(): Outcome<Unit, AuthError> = Outcome.Err(AuthError.ProviderUnavailable)
+}
+
+private class RecordingAccountConversion(
+    private val result: Outcome<AuthSession, AppError> = Outcome.Err(AuthError.ProviderUnavailable),
+) : AccountConversionHandler {
+    val calls = mutableListOf<Pair<String, NativeAuthCredential>>()
+
+    override suspend fun confirm(
+        anonymousUid: String,
+        credential: NativeAuthCredential,
+    ): Outcome<AuthSession, AppError> = result.also { calls += anonymousUid to credential }
 }

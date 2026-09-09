@@ -30,6 +30,7 @@ class SessionStateHolder internal constructor(
     private val onLocalStartAccepted: () -> Unit = {},
     private val clock: AppClock? = null,
     private val anonymousReminders: AnonymousReminderRepository? = null,
+    private val accountConversion: AccountConversionHandler? = null,
 ) {
     private var closed = false
     private var operationJob: Job? = null
