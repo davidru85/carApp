@@ -383,3 +383,66 @@ ON CONFLICT(id) DO UPDATE SET
 deleteAnonymousReminder:
 DELETE FROM anonymous_reminder
 WHERE id = 0;
+
+selectAccountConversionOperation:
+SELECT anonymousUid, permanentUid, cleanupTicket, phase
+FROM account_conversion_operation
+WHERE id = 0;
+
+selectAccountConversionSnapshots:
+SELECT entityType, entityId, payload, localRevision, localMutationSeq, remoteServerUpdatedAt
+FROM account_conversion_snapshot
+ORDER BY CASE entityType WHEN 'VEHICLE' THEN 0 ELSE 1 END, localMutationSeq ASC, entityId ASC;
+
+insertAccountConversionOperation:
+INSERT INTO account_conversion_operation(id, anonymousUid, permanentUid, cleanupTicket, phase)
+VALUES (0, :anonymousUid, NULL, NULL, 'SNAPSHOT_CAPTURED');
+
+insertAccountConversionSnapshot:
+INSERT INTO account_conversion_snapshot(
+  entityType, entityId, payload, localRevision, localMutationSeq, remoteServerUpdatedAt
+)
+VALUES (:entityType, :entityId, :payload, :localRevision, :localMutationSeq, NULL);
+
+saveAccountConversionCleanupTicket:
+UPDATE account_conversion_operation
+SET cleanupTicket = :cleanupTicket
+WHERE id = 0;
+
+saveAccountConversionPermanentUid:
+UPDATE account_conversion_operation
+SET permanentUid = :permanentUid,
+  phase = 'SESSION_SWITCHED'
+WHERE id = 0;
+
+saveAccountConversionRemoteAck:
+UPDATE account_conversion_snapshot
+SET remoteServerUpdatedAt = :remoteServerUpdatedAt
+WHERE entityType = :entityType AND entityId = :entityId;
+
+setAccountConversionPhase:
+UPDATE account_conversion_operation
+SET phase = :phase
+WHERE id = 0;
+
+deleteAccountConversionSnapshots:
+DELETE FROM account_conversion_snapshot;
+
+deleteAccountConversionOperation:
+DELETE FROM account_conversion_operation
+WHERE id = 0;
+
+deleteAllFuelEntriesForAccountConversion:
+DELETE FROM fuel_entry;
+
+deleteAllVehiclesForAccountConversion:
+DELETE FROM vehicle;
+
+deleteAllOutboxForAccountConversion:
+DELETE FROM outbox;
+
+deleteAllSyncCursorsForAccountConversion:
+DELETE FROM sync_cursor;
+
+deleteAllQuarantineForAccountConversion:
+DELETE FROM quarantine;

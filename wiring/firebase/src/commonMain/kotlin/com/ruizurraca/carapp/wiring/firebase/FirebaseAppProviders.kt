@@ -10,6 +10,8 @@ import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.AuthToken
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.auth.OrphanCleanupClient
+import com.ruizurraca.carapp.core.auth.OrphanCleanupTicket
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AuthError
@@ -37,6 +39,7 @@ import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
+import com.ruizurraca.carapp.integration.firebase.auth.FirebaseOrphanCleanupClient
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +59,7 @@ fun firebaseAppProviders(): AppProviders {
     return firebaseAppProviders(
         databaseFactory = createStagedDatabaseFactory(),
         authClient = stagedAuthClient(authState),
+        orphanCleanupClient = stagedOrphanCleanupClient(),
         tokenProvider = stagedTokenProvider(),
         remoteSyncSource = stagedRemoteSyncSource(),
     )
@@ -73,6 +77,7 @@ fun firebaseAppProviders(
     return firebaseAppProviders(
         databaseFactory = createPersistentDatabaseFactory(databaseFilePath),
         authClient = authClient,
+        orphanCleanupClient = FirebaseOrphanCleanupClient(),
         tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
         localeProvider = localeProvider,
@@ -84,6 +89,7 @@ fun firebaseAppProviders(
 internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
     authClient: AuthClient,
+    orphanCleanupClient: OrphanCleanupClient = stagedOrphanCleanupClient(),
     tokenProvider: TokenProvider,
     remoteSyncSource: RemoteSyncSource,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
@@ -96,6 +102,7 @@ internal fun firebaseAppProviders(
     object : AppProviders {
         override val databaseFactory = databaseFactory
         override val authClient = authClient
+        override val orphanCleanupClient = orphanCleanupClient
         override val tokenProvider = tokenProvider
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
@@ -135,6 +142,14 @@ private fun stagedAuthClient(authState: StateFlow<AuthState>): AuthClient =
 private fun stagedTokenProvider(): TokenProvider =
     object : TokenProvider {
         override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = providerUnavailable()
+    }
+
+private fun stagedOrphanCleanupClient(): OrphanCleanupClient =
+    object : OrphanCleanupClient {
+        override suspend fun issueOrphanCleanupTicket(): Outcome<OrphanCleanupTicket, AuthError> = providerUnavailable()
+
+        override suspend fun deleteOrphanedAnonymousAccount(ticket: OrphanCleanupTicket): Outcome<Unit, AuthError> =
+            providerUnavailable()
     }
 
 private fun stagedRemoteSyncSource(): RemoteSyncSource =

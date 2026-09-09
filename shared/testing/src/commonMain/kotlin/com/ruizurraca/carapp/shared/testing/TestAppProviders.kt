@@ -8,6 +8,7 @@ fun testAppProviders(dependencies: AppGraphDependencies = testAppGraphDependenci
     object : AppProviders {
         override val databaseFactory = dependencies.databaseFactory
         override val authClient = dependencies.authClient
+        override val orphanCleanupClient = dependencies.orphanCleanupClient
         override val tokenProvider = dependencies.tokenProvider
         override val ownerContext = dependencies.ownerContext
         override val remoteSyncSource = dependencies.remoteSyncSource

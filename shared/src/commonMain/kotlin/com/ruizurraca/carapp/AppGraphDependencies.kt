@@ -2,6 +2,7 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.auth.AuthClient
+import com.ruizurraca.carapp.core.auth.OrphanCleanupClient
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
@@ -24,6 +25,7 @@ import kotlin.native.HiddenFromObjC
 data class AppGraphDependencies(
     val databaseFactory: DatabaseFactory,
     val authClient: AuthClient,
+    val orphanCleanupClient: OrphanCleanupClient,
     val tokenProvider: TokenProvider,
     val ownerContext: OwnerContext,
     val remoteSyncSource: RemoteSyncSource,

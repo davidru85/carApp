@@ -81,6 +81,7 @@ firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appch
 firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
 gitlive-firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitlive" }
 gitlive-firebase-auth = { module = "dev.gitlive:firebase-auth", version.ref = "gitlive" }
+gitlive-firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitlive" }
 
 # Android native authentication (D-112)
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "credentials" }

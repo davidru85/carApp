@@ -2,10 +2,12 @@
 
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
+import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
 import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
@@ -31,6 +33,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
@@ -71,6 +74,14 @@ internal class DefaultAppGraph(
     private var closed = false
     private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
+    private val accountConversion =
+        AccountConversionCoordinator(
+            authClient = dependencies.authClient,
+            orphanCleanupClient = dependencies.orphanCleanupClient,
+            remoteSyncSource = dependencies.remoteSyncSource,
+            store = AccountConversionDatabaseAccess(databaseHandle.database),
+            clock = dependencies.clock,
+        )
     private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
     private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
     private val fuelRepository: FuelEntryRepository =
@@ -99,6 +110,13 @@ internal class DefaultAppGraph(
         // Keep these eager launches after every property they touch. Adoption is automatic by
         // contract (§11.2, §11.4): nothing in the UI starts it.
         graphScope.launch { bootstrapSettings() }
+        graphScope.launch {
+            dependencies.authClient.authState
+                .filterIsInstance<AuthState.SignedIn>()
+                .collect { state ->
+                    if (!state.session.isAnonymous) accountConversion.resumePending()
+                }
+        }
         localOwnerAdoption.launchIn(graphScope)
     }
 
@@ -171,6 +189,8 @@ internal class DefaultAppGraph(
             onLocalStartAccepted = localOwnerAdoption::onLocalStartAccepted,
             clock = dependencies.clock,
             anonymousReminders = anonymousReminders,
+            accountConversion = accountConversion,
+            analyticsTracker = dependencies.analyticsTracker,
         )
     }
 

@@ -37,6 +37,14 @@ final class UiMessageMappingTests: XCTestCase {
         )
     }
 
+    func testAccountCollisionConfirmationExplainsTheDestructiveReplacement() {
+        let message = localizedUiMessage(for: "CONFIRMATION.AdoptExistingAccount")
+
+        XCTAssertEqual(message, String(localized: "confirm_replace_existing_account"))
+        XCTAssertTrue(message.contains("permanently replaces"))
+        XCTAssertTrue(message.contains("cannot be undone"))
+    }
+
     func testConsumptionInvalidReasonExplanation() {
         let reasons: [ConsumptionInvalidReason?] = [
             .noPreviousFullTank,

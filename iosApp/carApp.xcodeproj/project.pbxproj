@@ -14,10 +14,11 @@
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
+		3EC77D959C5B1B210F562663 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
 		4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */; };
-		50E658A3BCF6B028487ABB8C /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
+		50E658A3BCF6B028487ABB8C /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = FFE99D9E34273E411857F7D2 /* FirebaseFunctions */; };
 		5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */; };
 		5DD3FA0766D149AEDEB1E011 /* VehicleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B896BC0A600D06C316462EF0 /* VehicleFormView.swift */; };
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
@@ -118,7 +119,8 @@
 				40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */,
 				EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */,
 				9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */,
-				50E658A3BCF6B028487ABB8C /* GoogleSignIn in Frameworks */,
+				50E658A3BCF6B028487ABB8C /* FirebaseFunctions in Frameworks */,
+				3EC77D959C5B1B210F562663 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,6 +270,7 @@
 				F238BDE0A677C628F5355C5C /* FirebaseAuth */,
 				CFC5898F3BD999E550ABDB6E /* FirebaseCore */,
 				63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */,
+				FFE99D9E34273E411857F7D2 /* FirebaseFunctions */,
 				D5592966EFE660C6BBBA6814 /* GoogleSignIn */,
 			);
 			productName = carApp;
@@ -755,6 +758,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAppCheck;
+		};
+		FFE99D9E34273E411857F7D2 /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

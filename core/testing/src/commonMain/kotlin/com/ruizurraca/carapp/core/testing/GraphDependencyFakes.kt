@@ -1,3 +1,5 @@
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package com.ruizurraca.carapp.core.testing
 
 import com.ruizurraca.carapp.core.auth.AuthClient
@@ -5,6 +7,8 @@ import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.AuthToken
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
+import com.ruizurraca.carapp.core.auth.OrphanCleanupClient
+import com.ruizurraca.carapp.core.auth.OrphanCleanupTicket
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.Outcome
@@ -20,6 +24,7 @@ import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.native.HiddenFromObjC
 
 /** Creates isolated SQLDelight databases backed by the bundled in-memory SQLite driver. */
 expect class InMemoryDatabaseFactory() : DatabaseFactory {
@@ -65,6 +70,18 @@ class FakeTokenProvider(
     var result: Outcome<AuthToken, AuthError> = Outcome.Err(AuthError.TokenExpired),
 ) : TokenProvider {
     override suspend fun getIdToken(forceRefresh: Boolean): Outcome<AuthToken, AuthError> = result
+}
+
+/** Orphan-cleanup fake whose results are explicitly controlled by the test. */
+@HiddenFromObjC
+class FakeOrphanCleanupClient(
+    var issueResult: Outcome<OrphanCleanupTicket, AuthError> = Outcome.Err(AuthError.ProviderUnavailable),
+    var deleteResult: Outcome<Unit, AuthError> = Outcome.Err(AuthError.ProviderUnavailable),
+) : OrphanCleanupClient {
+    override suspend fun issueOrphanCleanupTicket(): Outcome<OrphanCleanupTicket, AuthError> = issueResult
+
+    override suspend fun deleteOrphanedAnonymousAccount(ticket: OrphanCleanupTicket): Outcome<Unit, AuthError> =
+        deleteResult
 }
 
 /** Remote fake with an empty successful pull and an unavailable push by default. */

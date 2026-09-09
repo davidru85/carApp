@@ -52,6 +52,8 @@ targets:
         product: FirebaseCore
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseFunctions
       - package: GoogleSignIn
         product: GoogleSignIn
     preBuildScripts:

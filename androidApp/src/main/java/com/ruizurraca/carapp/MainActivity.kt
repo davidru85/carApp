@@ -969,6 +969,8 @@ private fun nonAuthStringResource(code: String): Int =
 
         "VALIDATION.ENTITY_NOT_FOUND" -> R.string.vehicle_not_found
 
+        "CONFIRMATION.AdoptExistingAccount" -> R.string.confirm_replace_existing_account
+
         "PERSISTENCE.DATABASE_UNAVAILABLE",
         "PERSISTENCE.TRANSACTION_FAILED",
         "PERSISTENCE.MIGRATION_FAILED",
