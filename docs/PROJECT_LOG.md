@@ -38,6 +38,30 @@
 
 ## Entries
 
+### 2026-09-10 — D-164 defers three departure integrity findings to post-MVP
+
+- **Type:** decision
+- **Story / Decision:** `E2-05`, `E5-02`, `E5-03`, `E5-04` / `D-164`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** the fourth owner review of pull request #65 accepted three low-probability E2-05
+  concurrency and lifecycle gaps for the MVP: departure work is not atomically bound to its
+  captured owner, graph close does not keep the mandatory tail's dependencies alive, and an auth
+  transition consumed during the asynchronous outbox count is not guaranteed to be reconciled.
+  `E5-02`, `E5-03` and `E5-04` now own those improvements in the post-MVP backlog.
+- **Why:** the owner chose not to broaden E2-05 or the MVP for edge cases outside the normal
+  single-owner foreground path, while requiring them to stay explicit and discoverable as future
+  work. ADR-0165 records that selection and the documentation no longer overstates the current
+  guarantees.
+- **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md` §7 F-5 and §12,
+  `docs/CONTRACTS.md` §11.5 and §20.10, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md` §2,
+  `docs/BACKLOG.md`, `docs/SECURITY.md`, `docs/adr/README.md`, ADR-0165, this log and
+  `docs/handoff-E2-05.md`.
+- **Verification:** documentation-only change; `contractCheck` passes with 165 aligned decisions
+  and ADR statuses. No product source, test or exported declaration changed.
+- **Follow-ups / risks:** the three accepted windows remain until `E5-02`, `E5-03` and `E5-04` run.
+  They do not block PR #65 or MVP completion. `E2-09` independently owns the existing process-death
+  recovery gap under `D-163`.
+
 ### 2026-09-10 — Correction: departure integrity findings of the third E2-05 review
 
 - **Type:** correction

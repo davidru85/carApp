@@ -170,5 +170,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-161 | [ADR-0162](0162-report-account-deletion-analytics-for-the-permanent-path.md) | Report account-deletion analytics for the permanent path. | Accepted |
 | D-162 | [ADR-0163](0163-scope-the-e2-05-settings-criterion-to-the-contract.md) | Scope the E2-05 settings criterion to the contract. | Accepted |
 | D-163 | [ADR-0164](0164-accept-the-departure-process-death-window.md) | Accept the departure process-death window. | Accepted |
+| D-164 | [ADR-0165](0165-defer-departure-integrity-hardening-to-post-mvp.md) | Defer departure integrity hardening to post-MVP. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

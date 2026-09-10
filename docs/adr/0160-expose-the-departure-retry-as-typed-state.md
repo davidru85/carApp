@@ -32,6 +32,11 @@ local clear succeeded. `LOCAL_CLEAR` means the local clear is next. The value is
 is callable, including while a stale login awaits re-authentication. `retryDeparture()` repeats
 exactly the published step, re-checking neither owner nor session.
 
+`D-164` later accepted the low-probability consequence of that MVP behavior: if a different owner
+becomes active before the retained step runs, the provider operation or local clear is not
+atomically bound to the captured owner. `E5-02` owns that serialization and its deterministic race
+coverage. This qualification does not change the typed retry surface selected here.
+
 An earlier revision described `SESSION_CLEANUP` as belonging to the permanent `D-23` path alone and
 derived retained work from the local clear only. That was too narrow: it left a failed sign-out and a
 failed anonymous session cleanup reporting `LOCAL_CLEAR`, and the anonymous case with no retry at
@@ -47,6 +52,7 @@ all. This is a correction of the same accepted decision, not a change of scope.
 ### Negative
 
 - Two more exported declarations, and one more state field to keep clear.
+- Until `E5-02`, a retained retry is not atomically bound to its captured owner (`D-164`).
 
 ### Constraints Introduced
 

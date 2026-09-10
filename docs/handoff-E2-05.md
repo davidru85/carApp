@@ -26,10 +26,10 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: REFACTOR for the third owner review round. That round is RED
-  `ab2cda3` and GREEN `bbb995d`, appended on the reviewed head `fe7d367`. Published history is not
-  rewritten and nothing is force-pushed.
-- Push and pull-request status: pull request #65 is open and under the owner's gated review.
+- Current phase and latest commit: documentation-only scope decision after the fourth owner review,
+  on implementation head `9b4758e`. Published history is not rewritten and nothing is force-pushed.
+- Push and pull-request status: pull request #65 is open and the `D-164` documentation update is
+  being added to the same branch before gated review resumes.
 - Completed since the previous checkpoint: the six third-round findings are fixed.
   `PendingDeparture` now models the required steps per departure kind and separates authorisation
   from evaluation, the tail after a destructive step runs under `NonCancellable`, the two request
@@ -49,12 +49,11 @@
   correctly and are kept as regression cover. All 14 now pass, and so do the surrounding suites:
   `:shared` 142, `:core:database` 51, `:integration:firebase-auth` 48 and `:androidApp` 31 tests, 0
   failures.
-- Open decisions or blockers: none. The round is a correction of the accepted semantics of `D-156`
-  to `D-163`; no new owner decision is introduced, and the four mirroring tables are unchanged
-  because the `D-159` and `D-161` rows already stated the corrected rule. `docs/CONTRACTS.md`
-  §11.5 and §20.10, ADR-0160, ADR-0161 and ADR-0162 are corrected in place, and the exported
-  contract is unchanged so the Objective-C golden header needed no regeneration.
-- Exact next step: the owner's gated review. Agents MUST NOT merge this pull request.
+- Open decisions or blockers: none. The owner accepted `D-164`, which records three low-probability
+  MVP residual windows and assigns them to post-MVP stories `E5-02`, `E5-03` and `E5-04`. No product
+  code or exported declaration changes, so the Objective-C golden header needs no regeneration.
+- Exact next step: commit and push the documentation update, then return PR #65 to the owner's gated
+  review. Agents MUST NOT merge this pull request.
 
 ## Scope Completed
 
@@ -173,6 +172,10 @@ Third review round, each finding with the test that closes it:
   argument-free departure confirmations are mapped in both hosts by this story.
 - Durable recovery of an interrupted departure across a process death. `D-163` accepts that residual
   risk, `docs/SECURITY.md` records it and `E2-09` closes it.
+- The three low-probability departure concurrency and lifecycle gaps accepted by `D-164`:
+  owner-bound provider and retry operations (`E5-02`), graph-owned completion of the mandatory tail
+  (`E5-03`), and auth-state reconciliation after asynchronous outbox evaluation (`E5-04`). They are
+  deferred post-MVP work and do not block PR #65 or MVP completion.
 - The D-85 / ADR-0086 move of Session presentation into `:feature:session` (superseded by D-155).
 
 ## Files Changed
@@ -297,6 +300,8 @@ re-run. That is the documented E1-14 flake, not a regression from this work.
 - `docs/DECISION_BOARD.md` gains `D-156` through `D-163`, all `Accepted`, with ADR-0157 to ADR-0164,
   mirrored identically in `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
   `docs/adr/README.md`. `contractCheck` asserts the four tables agree.
+- The fourth owner review adds `D-164` / ADR-0165, accepting three low-probability MVP residual
+  windows and assigning them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`.
 - ADR-0156 is corrected: it claimed the Objective-C golden header was unchanged, which was false.
 
 ## Shared-Write Modules Touched
@@ -314,6 +319,11 @@ re-run. That is the documented E1-14 flake, not a regression from this work.
 
 ## Risks or Follow-ups
 
+- **`E5-02`, `E5-03` and `E5-04` own the fourth-review findings.** `D-164` accepts for the MVP the
+  lack of atomic owner binding for delayed/retained departure work, the graph-close dependency
+  window around the non-cancellable tail, and the missing reconciliation of an auth transition
+  consumed during the asynchronous outbox count. `docs/CONTRACTS.md` states each limit and
+  `docs/SECURITY.md` records the residual risks. They do not block PR #65 or MVP completion.
 - **`E2-09` owns the process-death window.** A departure that dies between a successful remote step
   and a completed local clear leaves local data for an account that no longer exists remotely, and
   the retained retry dies with the process. `D-163` accepts this, `docs/SECURITY.md` records it, and

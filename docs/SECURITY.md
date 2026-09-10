@@ -73,6 +73,17 @@ Requirements:
 
 ## Accepted Residual Risks
 
+- **Three low-probability departure concurrency and lifecycle windows remain in the MVP**
+  (`D-164`). First, delayed provider work and retained retries are not atomically bound to the owner
+  that created the request, so a session switch in the remaining check-to-use window can make work
+  act on a different active owner; `E5-02` owns the fix. Second, `NonCancellable` keeps the coroutine
+  tail alive but a host graph close can dispose the auth client or database before the tail finishes,
+  leaving provider-session cleanup or local clearing incomplete; `E5-03` owns graph-lifecycle
+  completion. Third, an auth transition consumed while the outbox count suppresses presentation
+  updates may not be reconciled afterwards, leaving stale session state or `isBusy`; `E5-04` owns
+  reconciliation. These windows are outside the normal single-owner foreground flow and do not
+  block PR #65 or MVP completion. No document may describe any of the three guarantees as complete
+  until its executable follow-up closes it.
 - **Local data can outlive a deleted account across a process death** (`D-163`). The F-5 departure
   runs the `D-23` server operation, then ends the provider session, then clears local data, and it
   retains its unfinished work so a retry repeats only the part that failed. That retained request

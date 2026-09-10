@@ -66,12 +66,21 @@ This settings list is the single source. `README.md`, `docs/DEFINITION.md` and `
 - Remote synchronization of user settings.
 - Platform backup or synchronization of settings through Google Play services, Android backup or iCloud.
 - Electric and hybrid energy modelling, including kWh input, mixed energy units and non-L/100 km consumption.
+- Departure hardening beyond the normal single-owner foreground flow: atomic owner binding for
+  delayed and retained work, graph-lifecycle ownership of the post-destructive tail, and replay of
+  auth transitions suppressed during outbox evaluation (`D-164`, `E5-02` through `E5-04`).
 
 Rule for agents: any work touching out-of-scope functionality MUST be rejected or escalated. MVP scope changes require updating this specification and are a human review gate.
 
 ### 3.3 Post-MVP Roadmap Notes
 
 Future scope may add electric and hybrid vehicles through a dedicated energy model. That work requires a new story or ADR covering `FuelType` expansion, kWh and mixed-unit input, consumption display units, validation, Firestore rules, local migrations and remote schema compatibility. Agents MUST NOT introduce `ELECTRIC` or `HYBRID` as MVP enum values.
+
+Future scope includes the three departure integrity improvements accepted for deferral by `D-164`.
+`E5-02` atomically binds delayed and retained departure work to its captured owner, `E5-03` keeps
+the mandatory tail's dependencies alive through graph closure, and `E5-04` reconciles auth changes
+observed during asynchronous outbox evaluation. Agents MUST NOT fold them into an MVP story unless
+the owner supersedes `D-164`.
 
 Future scope may add settings synchronization through platform mechanisms such as Google Play services / Android backup on Android and iCloud on iOS. That work requires a new story or ADR covering user consent, platform API choice, conflict resolution, privacy wording, backup exclusion rules, test strategy and interaction with app account deletion. Agents MUST NOT add settings sync or platform backup APIs in the MVP. No platform API surface for settings sync — including entitlements, manifest keys, capabilities or dependencies — may be added to Android or iOS app projects in the MVP; adding an entitlement without using it is still a contract violation.
 
@@ -270,6 +279,13 @@ Sign-out is offered only to a permanently authenticated user. If the outbox is n
 For an anonymous session there is no sign-out. The equivalent action is "delete local data" and requires the same two-step destructive confirmation, because the identity cannot be recovered. It clears all local app data, including settings.
 
 Account deletion is required for store compliance. It re-authenticates if needed, requests the server/Admin account deletion operation selected by `D-23`, waits for that operation to delete remote data and the Firebase Auth account, then clears local data. The exact order and failure semantics are in `docs/CONTRACTS.md §11.5`.
+
+The MVP accepts three low-probability departure concurrency and lifecycle gaps (`D-164`): delayed or
+retained work is not atomically bound to its captured owner, graph closure does not wait for a
+non-cancellable post-destructive tail to release its dependencies, and an auth transition during
+the asynchronous outbox count is not guaranteed to be reconciled into presentation state. They are
+deferred to `E5-02`, `E5-03`, and `E5-04` and do not block MVP completion. The exact limits are in
+`docs/CONTRACTS.md §11.5` and §20.10.
 
 ## 8. Technical Architecture
 
@@ -640,6 +656,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-161 | Account-deletion analytics boundary | Emit `AnalyticsEvent.AccountDeletionStarted` when a permanent account deletion is confirmed and the `D-23` call is about to run; never for a local or anonymous local-data deletion | Accepted |
 | D-162 | E2-05 settings acceptance scope | "Account deletion is accessible from settings" means E2-05 delivers the callable Settings-facing application contract; the host Settings surface is `E4-01` | Accepted |
 | D-163 | Departure process-death residual risk | Accept the process-death window between a successful remote step and the completed local clear, record it in `docs/SECURITY.md`, and track the durable recovery marker as the separately scoped `E2-09` | Accepted |
+| D-164 | Post-MVP departure integrity hardening | Accept the three low-probability E2-05 concurrency and lifecycle gaps for the MVP and track owner-bound departure operations, graph-close tail completion, and auth-state reconciliation as post-MVP stories `E5-02`, `E5-03`, and `E5-04` | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

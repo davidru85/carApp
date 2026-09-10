@@ -122,9 +122,11 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   through pull request #64; it introduced `D-151` through `D-154` and its evidence lives in
   `docs/handoff-E2-04.md`. `E2-05`, sign-out and account deletion, is **implemented on the open pull
   request #65 and awaiting the owner's gated review**; it is not complete until that pull request
-  merges. It introduced `D-155` through `D-163` and its evidence lives in `docs/handoff-E2-05.md`.
+  merges. It introduced `D-155` through `D-164` and its evidence lives in `docs/handoff-E2-05.md`.
   `E2-09`, the durable departure recovery marker, is the follow-up `D-163` created for the residual
-  risk E2-05 accepted; it is Ready and depends on E2-05.
+  risk E2-05 accepted; it is Ready and depends on E2-05. The fourth owner review accepted the three
+  low-probability departure concurrency and lifecycle gaps as `D-164` and deferred them to the
+  post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block PR #65 or MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-14`, `E1-15`, `E1-16` and `E1-17`, in that order.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
@@ -143,7 +145,9 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   `E3-16` — the issuance lookup-to-write window found while reviewing that pull request — is **not
   Ready** until the owner resolves `D-150`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
-- **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model).
+- **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
+  Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
+  Auth-State Reconciliation).
 
 `docs/BACKLOG.md` contains the acceptance criteria and dependency order for every remaining story.
 

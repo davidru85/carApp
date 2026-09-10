@@ -945,6 +945,13 @@ provider session, or uncleared local data, for an account that is already gone. 
 cleanup an anonymous local-data deletion owes after its clear has succeeded is likewise not
 cancellable, for the same reason.
 
+That non-cancellable guarantee applies to coroutine and holder cancellation while the dependencies
+remain open. The MVP graph close does not wait for the tail: Android and iOS can dispose the auth
+client and database while the coroutine still needs them. This low-probability lifecycle window is
+accepted by `D-164` and owned by `E5-03`; until that story supplies graph-level lifecycle ownership
+and executable coverage, the departure MUST NOT be described as guaranteed to complete across an
+ordinary graph close.
+
 That retained request lives in memory only, and being non-cancellable says nothing about surviving a
 process death. A process death between a successful step 2 and a completed step 7 leaves local data
 for an account that no longer exists remotely, and the retry is lost with it. This residual risk is accepted and recorded in `docs/SECURITY.md` (`D-163`); the flow
@@ -2889,27 +2896,36 @@ whose local clear already succeeded. `LOCAL_CLEAR` means the local clear is the 
 value is `null` whenever no retry is callable, including while a stale login is waiting for
 re-authentication, which is the host's re-authentication flow rather than a retry.
 
-A retry MUST NOT repeat a `D-23` server deletion that already succeeded, MUST NOT repeat a local
-clear that already succeeded, and MUST NOT re-check the owner or session, because the retained work
-exists precisely when the original session is legitimately gone. `pendingDepartureRetry` MUST be
-`null` once the departure completes or is withdrawn, and `retryDeparture()` MUST do nothing when it
-is `null`. The host reads this from typed state; it MUST NOT be asked to remember it itself.
+A retry MUST NOT repeat a `D-23` server deletion that already succeeded and MUST NOT repeat a local
+clear that already succeeded. In the MVP it repeats the retained step without re-checking the owner
+or session. That is safe in the normal single-owner flow, where the original session may
+legitimately be gone, but it is not an atomic owner binding: a different session becoming active can
+make the retained provider operation or local clear act on that newer owner. `D-164` accepts this
+low-probability window and `E5-02` owns the owner-bound serialization and deterministic race
+coverage. `pendingDepartureRetry` MUST be `null` once the departure completes or is withdrawn, and
+`retryDeparture()` MUST do nothing when it is `null`. The host reads this from typed state; it MUST
+NOT be asked to remember it itself.
 
 Retained destructive work begins only when the owner has authorised a destructive step and that step
 has started. Counting the outbox to decide whether to warn is not such a step: while a pending-sync
-warning is unanswered the request is still re-checked against the current owner and session, the
-auth-state collector is not suppressed, and there is nothing to retry. Because the count is
-asynchronous, the owner is re-checked after it returns and before the first authorised step, so a
-request raised for one owner can never sign out another. `clearMessage()` withdraws any unanswered
-departure confirmation, after which a later confirmation of it acts on nothing.
+warning is unanswered after publication, the request is still re-checked against the current owner
+and session, the auth-state collector is not suppressed, and there is nothing to retry. While the
+asynchronous count itself runs, departure presentation temporarily suppresses auth-state updates.
+The owner is re-checked after a zero count returns and before the first authorised step, which
+narrows the session-switch window but does not atomically bind the later provider call. An auth
+transition consumed during that count is also not guaranteed to be reconciled into `SessionUiState`
+when the evaluation exits. `D-164` accepts those low-probability MVP limits; `E5-02` owns the atomic
+owner binding and `E5-04` owns presentation reconciliation. `clearMessage()` withdraws any
+unanswered departure confirmation, after which a later confirmation of it acts on nothing.
 
 A confirmation is accepted only when it answers an active request for the same owner and session. A
 confirmation with no request, a confirmation of the wrong kind, and a request whose owner or session
 changed before it was confirmed all leave every data set untouched. While a departure is running the
 phase is `DELETING` with `isBusy = true`, and reentrant departure intents are refused; the interval
-between a successful remote step and the local clear MUST NOT be interrupted by cancellation. When
-the remote step has succeeded and the local clear has failed, the request is retained so that a
-retry repeats the local clear alone and never calls the server operation a second time.
+between a successful remote step and the local clear is protected from coroutine cancellation while
+its graph-owned dependencies remain open. The `D-164` / `E5-03` graph-close limit above still
+applies. When the remote step has succeeded and the local clear has failed, the request is retained
+so that a retry repeats the local clear alone and never calls the server operation a second time.
 
 `AuthError.RequiresRecentLogin` keeps the pending deletion and puts it in a re-authenticating state.
 The host acquires a fresh native credential and submits it through

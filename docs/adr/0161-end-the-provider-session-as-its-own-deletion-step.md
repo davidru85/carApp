@@ -46,7 +46,8 @@ records its own success, and a retry resumes from the first step that has not.
 - A failure in the session cleanup or the local clear MUST NOT repeat the server operation.
 - Once the server operation has succeeded, the session cleanup and the local clear form one tail
   that ordinary cancellation, including `SessionStateHolder.close()`, MUST NOT interrupt. This is
-  about cancellation, not process death, which remains `E2-09`.
+  about coroutine and holder cancellation while graph-owned dependencies remain open. `D-164`
+  records the graph-close dependency window owned by `E5-03`; process death remains `E2-09`.
 - Any test double for `AuthClient` MUST NOT publish `SignedOut` from `deleteAccount()`.
 
 ## Verification
