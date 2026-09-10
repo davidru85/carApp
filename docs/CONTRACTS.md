@@ -926,7 +926,23 @@ Account deletion order is normative:
    `D-148` and `D-149` rules below and §16).
 5. Only after the authorization purge fully succeeds, the server operation deletes the Firebase
    Auth user for the same UID.
-6. Only after the server operation returns success, the app clears local data, including `user_settings`.
+6. Only after the server operation returns success, the app ends the persisted Firebase client
+   session. `AuthClient.deleteAccount()` deletes the server-side account and returns; it does NOT
+   sign out and does NOT publish `AuthState.SignedOut`, so the client session outlives it and
+   ending it is an explicit step of the app flow (`D-160`). Without it a relaunch reads a session
+   for an account that no longer exists and routes the owner back to `PERMANENT`.
+7. Only after the session has been ended, the app clears local data, including `user_settings`.
+
+Steps 2, 6 and 7 each record their own success. A failure in step 6 or 7 MUST NOT repeat step 2:
+the server operation is not idempotent from the owner's point of view once the account is gone, and
+repeating it would report a failure for an account that was already deleted. The unfinished part is
+retained and retryable through `SessionUiState.pendingDepartureRetry` and
+`SessionStateHolder.retryDeparture()` (`D-159`).
+
+That retained request lives in memory only. A process death between a successful step 2 and a
+completed step 7 leaves local data for an account that no longer exists remotely, and the retry is
+lost with it. This residual risk is accepted and recorded in `docs/SECURITY.md` (`D-163`); the flow
+MUST NOT be described as recoverable across process death until an executable recovery proves it.
 
 The server operation is the Cloud Functions 2nd gen callable `deleteAccount`. Its request payload
 contains `targetUid: String`; the callable-verified Firebase caller UID MUST equal that value. A
@@ -2092,7 +2108,7 @@ data class UnexpectedError(
 ) : AppError { override val code = "UNEXPECTED" }
 
 @ObjCName(name = "SharedConfirmation", swiftName = "Confirmation", exact = true)
-enum class Confirmation { OdometerInconsistent, DiscardPendingChanges, DeleteAccount, AdoptExistingAccount }
+enum class Confirmation { OdometerInconsistent, DiscardPendingChanges, DeleteAccount, DeleteLocalData, AdoptExistingAccount }
 ```
 
 `UnexpectedError.origin` is the Gradle module path that converted the failure, for example `":integration:firebase-firestore"`.
@@ -2102,8 +2118,9 @@ A confirmation is required by the use case, not by the UI. The UI MUST NOT proce
 | Confirmation | Flow |
 |--------------|------|
 | `OdometerInconsistent` | Odometer warning override in fuel-entry create/update. |
-| `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. |
-| `DeleteAccount` | Account deletion destructive confirmation. |
+| `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. It answers the pending-sync warning only; for a local-data deletion the destructive step still follows (`D-158`). |
+| `DeleteAccount` | Account deletion destructive confirmation. It answers **only** the deletion of an actual account, never the clearing of local data. |
+| `DeleteLocalData` | Local-data deletion destructive confirmation, for a local owner or an anonymous session (`D-158`). |
 | `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user confirms that the current anonymous-session snapshot replaces the existing permanent-account data. |
 
 ### 20.3 Platform abstractions — `:core:common`
@@ -2542,6 +2559,7 @@ sealed interface AnalyticsEvent {
     data object AccountConversionStarted : AnalyticsEvent
     data object AccountConversionCompleted : AnalyticsEvent
     data class AccountConversionFailed(val reason: ConversionFailureReason) : AnalyticsEvent
+    // The account-deletion trio reports the permanent D-23 path only (`D-161`).
     data object AccountDeletionStarted : AnalyticsEvent
     data object AccountDeletionCompleted : AnalyticsEvent
     data class AccountDeletionFailed(val reason: DeletionFailureReason) : AnalyticsEvent
@@ -2665,6 +2683,8 @@ class SessionStateHolder {
     fun confirmSignOut(confirmation: Confirmation)
     fun requestDeleteAccount()
     fun confirmDeleteAccount(confirmation: Confirmation)
+    fun retryDeparture()
+    fun startReauthentication(provider: AuthProvider)
     fun clearMessage()
     fun close()
 }
@@ -2758,7 +2778,11 @@ data class SessionUiState(
     val isBusy: Boolean,
     val message: UiMessage?,
     val anonymousReminderIndex: Int?,
+    val pendingSyncCount: Int?,
+    val pendingDepartureRetry: DepartureRetry?,
 )
+
+enum class DepartureRetry { SESSION_CLEANUP, LOCAL_CLEAR }
 
 data class SyncUiState(
     val status: SyncStatus,
@@ -2824,12 +2848,38 @@ never re-mapped onto the `AuthError` taxonomy.
 `confirmSignOut(Confirmation.DiscardPendingChanges)` is accepted only after a pending-sync warning
 that actually counted rows; an unsolicited confirmation is ignored.
 
-`SessionStateHolder.requestDeleteAccount()` publishes a `UiMessage` with
-`code = "CONFIRMATION.DeleteAccount"` and `confirmation = Confirmation.DeleteAccount`, and records
-which of the three `DELETING` operations the current owner is entitled to.
+`SessionStateHolder.requestDeleteAccount()` records which of the three `DELETING` operations the
+current owner is entitled to, and asks for the confirmation that operation actually needs (`D-158`):
+
+- a permanent owner is asked with `code = "CONFIRMATION.DeleteAccount"` and
+  `confirmation = Confirmation.DeleteAccount`;
+- a local or anonymous owner is a local-data deletion, so it first counts the outbox. With pending
+  rows it publishes the `WARNING.PENDING_SYNC` / `Confirmation.DiscardPendingChanges` pair of §20.2
+  and the exact `pendingSyncCount`; `confirmDeleteAccount(Confirmation.DiscardPendingChanges)` then
+  advances to the destructive step. With an empty outbox it goes straight there. The destructive
+  step is `code = "CONFIRMATION.DeleteLocalData"` with `confirmation = Confirmation.DeleteLocalData`,
+  and `confirmDeleteAccount(Confirmation.DeleteLocalData)` runs it.
+
+A confirmation of the wrong kind acts on nothing: `DeleteAccount` never authorises a local-data
+deletion and `DeleteLocalData` never authorises an account deletion. `DeleteLocalData` is refused
+while a pending-sync warning is still unanswered.
+
 `confirmDeleteAccount(Confirmation.DeleteAccount)` follows §11.5 and the `DELETING` rules above.
 A server failure maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does not
 report the account as deleted.
+
+Only the permanent path deletes an account, so only it reports the account-deletion analytics
+lifecycle (`D-161`): `AnalyticsEvent.AccountDeletionStarted` when that deletion is confirmed and the
+D-23 call is about to run, then `AccountDeletionCompleted` or `AccountDeletionFailed`. A local or
+anonymous local-data deletion reports none of the three.
+
+`SessionUiState.pendingDepartureRetry` reports the unfinished part of a departure, or `null` when
+there is none, and `SessionStateHolder.retryDeparture()` repeats exactly that part (`D-159`).
+`SESSION_CLEANUP` means the D-23 deletion succeeded and the provider session is still alive;
+`LOCAL_CLEAR` means the remote side is done and only the local clear remains. A retry MUST NOT
+repeat a server deletion that already succeeded, and MUST NOT re-check the owner or session, because
+the retained work exists precisely when the original session is legitimately gone. The host reads
+this from typed state; it MUST NOT be asked to remember it itself.
 
 A confirmation is accepted only when it answers an active request for the same owner and session. A
 confirmation with no request, a confirmation of the wrong kind, and a request whose owner or session
@@ -2960,7 +3010,7 @@ from the Objective-C header.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
 
-`VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`).
+`VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `DeleteLocalData`, `AdoptExistingAccount`).
 
 The Kotlin-facing `AppGraph`, `AppProviders`, `AppGraphDependencies` and
 `buildAppGraph(isDebugBuild, providers)` MUST be absent from the Objective-C header.

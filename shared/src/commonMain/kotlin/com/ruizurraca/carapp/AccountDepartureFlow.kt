@@ -135,10 +135,16 @@ internal class AccountDepartureFlow(
         if (requested.kind == DepartureKind.DELETE_PERMANENT) {
             requested.readyToDelete = true
             askFor(deleteAccountConfirmation())
-            return
+        } else {
+            countOutboxBeforeLocalDataDeletion(requested)
         }
-        // Local-data deletion inspects the outbox first: §20.2 assigns `DiscardPendingChanges` to
-        // exactly that case, and the destructive step only follows once those rows are discarded.
+    }
+
+    /**
+     * Local-data deletion inspects the outbox first: §20.2 assigns `DiscardPendingChanges` to
+     * exactly that case, and the destructive step only follows once those rows are discarded.
+     */
+    private fun countOutboxBeforeLocalDataDeletion(requested: PendingDeparture) {
         val departureHandler = departure ?: return
         val operationScope = scope ?: return
         running = true
@@ -339,37 +345,54 @@ internal class AccountDepartureFlow(
             return
         }
         when (candidate.kind) {
-            // Nothing remote exists for a local owner, so there is no handover to publish.
-            DepartureKind.DELETE_LOCAL -> {
-                if (clearLocalData(candidate, departureHandler)) complete(candidate)
-            }
-
-            // The anonymous identity is unrecoverable and has no `D-23` server deletion. Its local
-            // data goes first; the provider session is ended afterwards so a recreated holder
-            // cannot route straight back to `ANONYMOUS` on the same UID.
-            DepartureKind.DELETE_ANONYMOUS -> {
-                if (clearLocalData(candidate, departureHandler) && endProviderSession(candidate)) {
-                    complete(candidate)
-                }
-            }
-
-            DepartureKind.SIGN_OUT -> {
-                if (candidate.sessionEnded || endProviderSession(candidate)) {
-                    settle(candidate, departureHandler)
-                }
-            }
-
-            // `D-160`: the D-23 operation removes the server-side account but leaves the persisted
-            // client session alive, so ending it is an explicit step of its own. Each step carries
-            // its own flag, which is what stops a later failure from repeating the server call.
-            DepartureKind.DELETE_PERMANENT -> {
-                if (candidate.remoteDone || deleteRemoteAccount(candidate)) {
-                    if (candidate.sessionEnded || endProviderSession(candidate)) {
-                        settle(candidate, departureHandler)
-                    }
-                }
-            }
+            DepartureKind.DELETE_LOCAL -> runLocalDeletion(candidate, departureHandler)
+            DepartureKind.DELETE_ANONYMOUS -> runAnonymousDeletion(candidate, departureHandler)
+            DepartureKind.SIGN_OUT -> runSignOut(candidate, departureHandler)
+            DepartureKind.DELETE_PERMANENT -> runAccountDeletion(candidate, departureHandler)
         }
+    }
+
+    /** Nothing remote exists for a local owner, so there is no handover to publish. */
+    private suspend fun runLocalDeletion(
+        candidate: PendingDeparture,
+        departureHandler: AccountDepartureHandler,
+    ) {
+        if (clearLocalData(candidate, departureHandler)) complete(candidate)
+    }
+
+    /**
+     * The anonymous identity is unrecoverable and has no `D-23` server deletion. Its local data
+     * goes first; the provider session is ended afterwards so a recreated holder cannot route
+     * straight back to `ANONYMOUS` on the same UID (`D-156`).
+     */
+    private suspend fun runAnonymousDeletion(
+        candidate: PendingDeparture,
+        departureHandler: AccountDepartureHandler,
+    ) {
+        if (!clearLocalData(candidate, departureHandler)) return
+        if (endProviderSession(candidate)) complete(candidate)
+    }
+
+    private suspend fun runSignOut(
+        candidate: PendingDeparture,
+        departureHandler: AccountDepartureHandler,
+    ) {
+        if (!candidate.sessionEnded && !endProviderSession(candidate)) return
+        settle(candidate, departureHandler)
+    }
+
+    /**
+     * `D-160`: the D-23 operation removes the server-side account but leaves the persisted client
+     * session alive, so ending it is an explicit step of its own. Each step carries its own flag,
+     * which is what stops a later failure from repeating the server call.
+     */
+    private suspend fun runAccountDeletion(
+        candidate: PendingDeparture,
+        departureHandler: AccountDepartureHandler,
+    ) {
+        if (!candidate.remoteDone && !deleteRemoteAccount(candidate)) return
+        if (!candidate.sessionEnded && !endProviderSession(candidate)) return
+        settle(candidate, departureHandler)
     }
 
     /** Hands over from the completed remote steps to the local clear, then settles the departure. */

@@ -39,7 +39,9 @@ in place.
 - No change to the dependency table that generates `architectureCheck`.
 - The authentication orchestrator keeps its access to `:core:auth` and `:core:analytics` without a
   special-case rule.
-- The Swift-facing ABI does not move, so the committed Objective-C golden header is unchanged.
+- No Swift-facing declaration moves module, so no exported name is renamed by a module change.
+  E2-05 does add members to the session surface, so the committed Objective-C golden header does
+  change; what `D-155` preserves is that none of those changes is a move-induced rename.
 
 ### Negative
 
@@ -56,7 +58,12 @@ in place.
 ## Verification
 
 - `architectureCheck` passes with no change to the dependency table.
-- The Objective-C golden header is unchanged after the E2-05 implementation.
+- The regenerated Objective-C golden header contains no renamed or relocated declaration. It does
+  contain the members E2-05 adds — `SessionUiState.pendingSyncCount`,
+  `SessionUiState.pendingDepartureRetry`, `DepartureRetry`, `startReauthentication(provider:)`
+  and `retryDeparture()` — which are additions under `D-157`, `D-159` and the re-authentication
+  flow, not consequences of where the state holder lives. An earlier revision of this ADR claimed
+  the header was unchanged; that was false and is corrected here.
 
 ## References
 

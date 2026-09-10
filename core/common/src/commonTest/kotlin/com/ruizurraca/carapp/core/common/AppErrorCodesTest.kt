@@ -125,15 +125,18 @@ class AppErrorCodesTest {
     }
 
     @Test
-    fun confirmationCoversExactlyTheFourDocumentedFlows() {
+    fun confirmationCoversExactlyTheFiveDocumentedFlows() {
         assertEquals(
             listOf(
                 Confirmation.OdometerInconsistent,
                 Confirmation.DiscardPendingChanges,
                 Confirmation.DeleteAccount,
+                Confirmation.DeleteLocalData,
                 Confirmation.AdoptExistingAccount,
             ),
             Confirmation.entries.toList(),
+            "docs/CONTRACTS.md §20.2: DeleteAccount answers the deletion of an actual account and " +
+                "DeleteLocalData the clearing of this device (`D-158`); they are not interchangeable",
         )
     }
 

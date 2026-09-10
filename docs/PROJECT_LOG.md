@@ -38,6 +38,48 @@
 
 ## Entries
 
+### 2026-09-10 — Correction: the E2-05 departure lifecycle and its missing decision records
+
+- **Type:** correction
+- **Story / Decision:** `E2-05`, `E2-09` / `D-155` through `D-163`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the second gated owner review of pull request #65 found that a successful
+  permanent deletion published `SIGNED_OUT` without ending the persisted Firebase client session.
+  `AuthClient.deleteAccount()` runs the `D-23` Admin operation and returns without signing out, and
+  the test double masked that by publishing `SignedOut` itself, so a recreated `SessionStateHolder`
+  would have returned to `PERMANENT`. Ending the session is now an explicit flow step with its own
+  flag (`D-160`), and `FirebaseAuthClientTest` pins the adapter contract. The review also found that
+  retained local-clear work was unreachable from the public contract, that `CONFIRMATION.DeleteAccount`
+  was being used for local-data deletion against `docs/CONTRACTS.md §20.2`, and that
+  `AccountDeletionCompleted` was emitted for departures that delete no account. These are fixed by
+  `D-159` (a typed `pendingDepartureRetry` plus `retryDeparture()`), `D-158` (a new
+  `Confirmation.DeleteLocalData` and an ordered outbox-first protocol) and `D-161` (the
+  account-deletion trio reports the permanent path only). Two decisions already implemented without
+  records were ratified: `D-156` for ending the anonymous provider session and `D-157` for the typed
+  `pendingSyncCount`. `D-162` scopes the E2-05 settings criterion to the callable application
+  contract, with the surface and the store-compliance obligation owned by `E4-01`. `D-163` accepts
+  the process-death window between a successful remote step and a completed local clear, records it
+  in `docs/SECURITY.md`, and creates `E2-09` to close it with a durable recovery marker.
+- **Why:** the previous round's documentation asserted properties the code did not have — an ended
+  session, a retryable clear, a resumable flow — and the canonical `§20.2` confirmation table had
+  been contradicted rather than followed. This entry corrects the *2026-09-10 — E2-05 sign-out and
+  account deletion implemented* entry, which described the departure as resumable and reported the
+  settings criterion without qualification. ADR-0156 also claimed the Objective-C golden header was
+  unchanged, which was false; it is corrected in place.
+- **Documents touched:** `docs/CONTRACTS.md` §11.5, §20.2, §20.9 and §20.10, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (E2-05 criterion and
+  the new `E2-09`), `docs/SECURITY.md`, `docs/adr/README.md`, ADR-0156 (corrected), ADR-0157 to
+  ADR-0164 (new), `AGENTS.md`, `docs/handoff-E2-05.md`.
+- **Verification:** the complete non-instrumented CI command passes; the Objective-C golden header was
+  regenerated and compared; `git diff --check` is clean. `SessionDepartureTest` and
+  `SessionDepartureLifecycleTest` cover the three departure kinds, the confirmation protocol, the
+  retry paths and the analytics scope; `FirebaseAuthClientTest` pins that `deleteAccount()` leaves the
+  client session for the caller to end.
+- **Follow-ups / risks:** `E2-09` owns the durable recovery marker; until it lands, the residual risk
+  recorded in `docs/SECURITY.md` stands and no document may describe the departure as recoverable
+  across process death. `E4-01` owns the Settings surface and the store-compliance obligation, and
+  the `WARNING.PENDING_SYNC` copy, which needs the count formatted into it.
+
 ### 2026-09-10 — E2-05 sign-out and account deletion implemented
 
 - **Type:** story

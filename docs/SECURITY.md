@@ -73,6 +73,18 @@ Requirements:
 
 ## Accepted Residual Risks
 
+- **Local data can outlive a deleted account across a process death** (`D-163`). The F-5 departure
+  runs the `D-23` server operation, then ends the provider session, then clears local data, and it
+  retains its unfinished work so a retry repeats only the part that failed. That retained request
+  lives in memory. If the process dies between a successful remote step and a completed local clear,
+  the vehicles, refuels and settings of an account that no longer exists remotely stay on the device,
+  and the retry offered through `SessionUiState.pendingDepartureRetry` is lost with the process. The
+  data is device-local, is no longer reachable from any account, and is removed by the next
+  successful departure or by uninstalling the app; no remote copy survives, because the server
+  deletion had already completed. The window is bounded by a single local transaction, so it is
+  narrow, but it is not closed. `E2-09` closes it with a durable recovery marker, after which this
+  entry is removed. Until then no document may describe the departure as recoverable across process
+  death.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the

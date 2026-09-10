@@ -719,12 +719,40 @@ Acceptance criteria:
 - Account deletion drops any pending outbox rows only after the server operation succeeds and local data is cleared.
 - A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
 - Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
-- Account deletion is accessible from settings.
+- Account deletion is accessible from settings **as a callable application contract**: E2-05
+  delivers the `SessionStateHolder` intents and typed state that a Settings screen invokes, and
+  `E4-01` delivers that screen (`D-162`). This criterion MUST NOT be reported as satisfied by a
+  host surface E2-05 does not ship, and the store-compliance obligation that depends on the
+  surface belongs to `E4-01`.
 - `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types remain in `:shared` (the
   app-level auth orchestrator, alongside `SyncStateHolder`), because `SessionStateHolder` depends on
   `:core:auth` and `:core:analytics`, which `docs/TECHNICAL_PLAN.md §4` forbids feature
   `presentation` from reaching. The D-85 move of Session presentation is therefore not applied;
   `SyncStateHolder` remains the app-level state holder in `:shared`.
+
+### E2-09 - Durable Departure Recovery Marker - S
+
+Close the process-death window that `D-163` accepted as a residual risk in `E2-05`.
+
+A departure retains its unfinished work in memory only. If the process dies between a successful
+remote step — the `D-23` account deletion or the provider sign-out — and a completed local clear,
+local data survives for an account that no longer exists remotely, and the retry offered through
+`SessionUiState.pendingDepartureRetry` is lost with the process.
+
+Acceptance criteria:
+
+- The departure operation and the steps that already succeeded are persisted before the first
+  destructive step, in the manner of the `D-151` conversion marker.
+- A relaunch that finds an unfinished departure resumes it, repeating only the steps that had not
+  succeeded, and never repeating the `D-23` server operation.
+- The schema bump ships a committed `.sqm` migration and a populated previous-version migration test.
+- An executable test proves recovery across a simulated process restart, so the documentation may
+  describe the flow as recoverable; until then `docs/CONTRACTS.md §11.5` MUST NOT say it is.
+- `docs/SECURITY.md` drops the accepted residual risk once the recovery is executable.
+
+Depends on: E2-05.
+
+Human review required.
 
 ### E2-08 - Anonymous Reminder Launch and Sign-In Race Fixes - S
 

@@ -632,6 +632,14 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-153 | Destructive remote replacement ordering | The client performs the replacement itself: push every captured snapshot, then tombstone every remaining remote document, ordered so no fuel entry is ever left referencing a deleted vehicle | Accepted |
 | D-154 | Collision credential lifetime | Hold the colliding native credential in memory only, beside the anonymous UID it belongs to, and never persist it | Accepted |
 | D-155 | Session state holder location | Keep `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types in `:shared` as the app-level authentication orchestrator, beside `SyncStateHolder` | Accepted |
+| D-156 | Anonymous provider-session termination | Anonymous "delete local data" clears the local tables and then ends the Firebase client session, without calling the `D-23` server operation | Accepted |
+| D-157 | Pending-sync count representation | Carry the exact outbox count on the typed `SessionUiState.pendingSyncCount`, not on `UiMessage` | Accepted |
+| D-158 | Local-data deletion confirmation protocol | Add `Confirmation.DeleteLocalData` and order the local and anonymous paths: count the outbox, ask `DiscardPendingChanges` first when rows are pending, then ask `DeleteLocalData` | Accepted |
+| D-159 | Departure retry surface | Publish `SessionUiState.pendingDepartureRetry: DepartureRetry?` and add `SessionStateHolder.retryDeparture()`, which repeats only the unfinished part | Accepted |
+| D-160 | Permanent provider-session cleanup | `AccountDepartureFlow` ends the provider session as its own step after a successful `D-23` deletion, with its own success flag | Accepted |
+| D-161 | Account-deletion analytics boundary | Emit `AnalyticsEvent.AccountDeletionStarted` when a permanent account deletion is confirmed and the `D-23` call is about to run; never for a local or anonymous local-data deletion | Accepted |
+| D-162 | E2-05 settings acceptance scope | "Account deletion is accessible from settings" means E2-05 delivers the callable Settings-facing application contract; the host Settings surface is `E4-01` | Accepted |
+| D-163 | Departure process-death residual risk | Accept the process-death window between a successful remote step and the completed local clear, record it in `docs/SECURITY.md`, and track the durable recovery marker as the separately scoped `E2-09` | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

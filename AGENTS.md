@@ -122,7 +122,9 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   through pull request #64; it introduced `D-151` through `D-154` and its evidence lives in
   `docs/handoff-E2-04.md`. `E2-05`, sign-out and account deletion, is **implemented on the open pull
   request #65 and awaiting the owner's gated review**; it is not complete until that pull request
-  merges. It introduced `D-155` and its evidence lives in `docs/handoff-E2-05.md`.
+  merges. It introduced `D-155` through `D-163` and its evidence lives in `docs/handoff-E2-05.md`.
+  `E2-09`, the durable departure recovery marker, is the follow-up `D-163` created for the residual
+  risk E2-05 accepted; it is Ready and depends on E2-05.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-14`, `E1-15`, `E1-16` and `E1-17`, in that order.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
@@ -130,8 +132,8 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
   `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
   until they are fixed, a red required job is not by itself evidence of a regression.
-- **Remaining Phase 2:** `E2-05` only, and only until pull request #65 is reviewed and merged; it
-  is implemented but MUST NOT be recorded as complete before then. `E2-04` merged through pull
+- **Remaining Phase 2:** `E2-05`, only until pull request #65 is reviewed and merged — it is
+  implemented but MUST NOT be recorded as complete before then — and `E2-09`, which follows it. `E2-04` merged through pull
   request #64. `E2-07` is merged through pull request #61; `E2-08`, the anonymous reminder launch
   and race fixes that followed it, merged on 2026-09-08 through pull request #62.
 - **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
