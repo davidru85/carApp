@@ -719,10 +719,16 @@ Acceptance criteria:
 - Account deletion drops any pending outbox rows only after the server operation succeeds and local data is cleared.
 - A failure in the server/Admin operation maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does NOT report the account as deleted.
 - Sign-out, anonymous "delete local data" and account deletion delete `user_settings`; the next settings read recreates defaults.
-- Account deletion is accessible from settings.
-- Move Session state holders and their `UiState` types from the D-55 `:shared` shells into the
-  `:feature:session` `presentation` package, preserving the Swift ABI. `SyncStateHolder` remains
-  the app-level state holder in `:shared`.
+- Account deletion is accessible from settings **as a callable application contract**: E2-05
+  delivers the `SessionStateHolder` intents and typed state that a Settings screen invokes, and
+  `E4-01` delivers that screen (`D-162`). This criterion MUST NOT be reported as satisfied by a
+  host surface E2-05 does not ship, and the store-compliance obligation that depends on the
+  surface belongs to `E4-01`.
+- `SessionStateHolder` and its `SessionUiState` / `SessionPhase` types remain in `:shared` (the
+  app-level auth orchestrator, alongside `SyncStateHolder`), because `SessionStateHolder` depends on
+  `:core:auth` and `:core:analytics`, which `docs/TECHNICAL_PLAN.md §4` forbids feature
+  `presentation` from reaching. The D-85 move of Session presentation is therefore not applied;
+  `SyncStateHolder` remains the app-level state holder in `:shared`.
 
 ### E2-08 - Anonymous Reminder Launch and Sign-In Race Fixes - S
 
@@ -1250,6 +1256,79 @@ Scope & Prerequisites:
 - Expand consumption calculation use cases to handle electric charging and hybrid consumption.
 - Update Vehicle and Fuel/Energy Entry creation/edit UI on Android and iOS with dynamic unit and field presentation based on powertrain.
 
+### E5-02 - Owner-Bound Departure Operations - M
+
+Status: Deferred / Post-MVP (`D-164`); not Ready until an implementation ADR selects the
+owner-binding and serialization mechanism.
+
+Close the E2-05 check-to-use and retained-retry window by binding every provider operation and local
+clear to the owner captured by the original departure request.
+
+Acceptance criteria:
+
+- A sign-out, local-data deletion or account deletion created for owner A cannot call a provider
+  operation for owner B and cannot clear data after owner B becomes active.
+- The owner binding covers the interval between validation and the asynchronously launched provider
+  call; adding another non-atomic pre-call check is not sufficient.
+- A retry after a failed first step validates or serializes the captured owner instead of bypassing
+  identity safety merely because work was retained.
+- Cleanup after an irreversible step may continue when the captured session is still active or has
+  legitimately ended, but a different active owner stops it without touching that owner.
+- A successful `D-23` deletion and every already-completed local step remain exactly-once.
+- Deterministic tests cover a session switch before the initial provider call and before each
+  retained retry kind.
+
+Depends on: E2-05.
+
+Human review required.
+
+### E5-03 - Departure Tail Graph-Lifecycle Ownership - M
+
+Status: Deferred / Post-MVP (`D-164`); not Ready until an implementation ADR selects graph-lifecycle
+ownership for the tail.
+
+Keep the dependencies of a mandatory post-destructive departure tail alive until the tail has
+finished, including when Android or iOS closes its application graph.
+
+Acceptance criteria:
+
+- Ordinary holder and graph closure cannot dispose the auth client or database while a mandatory
+  session-cleanup or local-clear step still needs it.
+- A graph close after a successful `D-23` operation still ends the provider session and clears local
+  data exactly once.
+- A graph close after an anonymous local clear still ends the provider session exactly once.
+- Production-shaped Android graph and `SwiftAppGraph` lifecycle tests prove completion without
+  access to a closed dependency; fake-only holder closure is not sufficient evidence.
+- Process-death recovery is delivered by `E2-05` under `D-165`; this story neither duplicates nor weakens its
+  durable-marker contract.
+
+Depends on: E2-05.
+
+Human review required.
+
+### E5-04 - Departure Evaluation Auth-State Reconciliation - S
+
+Status: Deferred / Post-MVP (`D-164`); not Ready until an implementation ADR defines the
+auth-transition reconciliation rule.
+
+Reconcile the latest authentication state after the asynchronous outbox evaluation temporarily
+owns departure presentation state.
+
+Acceptance criteria:
+
+- An auth transition observed while the outbox count runs is applied when evaluation exits; it is
+  never permanently consumed by the departure-state suppression guard.
+- If the owner changes while counting, the old departure is abandoned and no warning or error for
+  that owner is published against the new session.
+- The final `SessionUiState` has the latest phase and providers, clears `isBusy`, and carries no
+  stale departure message, count or retry.
+- Deterministic gated tests cover transitions to signed out, another permanent owner and an
+  anonymous owner across zero-count, pending-count and count-error outcomes.
+
+Depends on: E2-05.
+
+Human review required.
+
 ## Follow-Ups Outside the Phase Milestones
 
 Goal: hold work that was created **after** its phase closed, so that a closed milestone stays
@@ -1558,5 +1637,8 @@ proof after E3-04.
 | E4-03 Performance hardening | 4 | M | — |
 | E4-04 Release preparation | 4 | M | — |
 | E5-01 Electric and hybrid vehicle energy model | 5 (Post-MVP) | L | Yes |
+| E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
+| E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |
+| E5-04 Departure evaluation auth-state reconciliation | 5 (Post-MVP) | S | Yes |
 
 Human review gates are defined canonically in `AGENTS.md`. The column above is a convenience index, not a second source.

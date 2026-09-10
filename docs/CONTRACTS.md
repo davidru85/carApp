@@ -903,7 +903,16 @@ A failed adoption MUST be reported as a typed `AppError`, not thrown across the 
 
 Sign-out is offered only to a permanently authenticated user. For an anonymous session the action is labelled "delete local data" and requires the same two-step destructive confirmation as account deletion. Signing out clears all local rows for that owner, including `SYNCED` ones, and deletes the device-local `user_settings` row; recovery is by re-authenticating and pulling from `RemoteCursor.INITIAL`, while settings are recreated from defaults.
 
-Anonymous "delete local data" clears every local table, including `user_settings`, `outbox`, `sync_cursor` and `quarantine`.
+Anonymous "delete local data" clears every local table, including `user_settings`, `outbox`,
+`sync_cursor` and `quarantine`. It does NOT call the `D-23` server operation; see the `DELETING`
+rules of §20.10.
+
+The clear covers every local table and setting the application owns and runs in a single
+transaction, so a partial clear is never observable and a failure rolls all of it back.
+`local_sequence` is the one exception to "empty the table": it is a single control row that assigns
+`localMutationSeq`, so the clear restores its canonical initial state of `(id = 0, next = 1)`
+(`docs/TECHNICAL_PLAN.md §6`) inside that same transaction. Deleting the row would leave the
+sequence unable to assign a value at all.
 
 Account deletion order is normative:
 
@@ -917,7 +926,47 @@ Account deletion order is normative:
    `D-148` and `D-149` rules below and §16).
 5. Only after the authorization purge fully succeeds, the server operation deletes the Firebase
    Auth user for the same UID.
-6. Only after the server operation returns success, the app clears local data, including `user_settings`.
+6. Only after the server operation returns success, the app ends the persisted Firebase client
+   session. `AuthClient.deleteAccount()` deletes the server-side account and returns; it does NOT
+   sign out and does NOT publish `AuthState.SignedOut`, so the client session outlives it and
+   ending it is an explicit step of the app flow (`D-160`). Without it a relaunch reads a session
+   for an account that no longer exists and routes the owner back to `PERMANENT`.
+7. Only after the session has been ended, the app clears local data, including `user_settings`.
+
+Steps 2, 6 and 7 each record their own success. A failure in step 6 or 7 MUST NOT repeat step 2:
+the server operation is not idempotent from the owner's point of view once the account is gone, and
+repeating it would report a failure for an account that was already deleted. The unfinished part is
+retained and retryable through `SessionUiState.pendingDepartureRetry` and
+`SessionStateHolder.retryDeparture()` (`D-159`).
+
+Once step 2 has succeeded, steps 6 and 7 form one tail that ordinary coroutine cancellation MUST
+NOT interrupt, including `SessionStateHolder.close()`: the device must never be left holding a live
+provider session, or uncleared local data, for an account that is already gone. The provider-session
+cleanup an anonymous local-data deletion owes after its clear has succeeded is likewise not
+cancellable, for the same reason.
+
+That non-cancellable guarantee applies to coroutine and holder cancellation while the dependencies
+remain open. The MVP graph close does not wait for the tail: Android and iOS can dispose the auth
+client and database while the coroutine still needs them. This low-probability lifecycle window is
+accepted by `D-164` and owned by `E5-03`; until that story supplies graph-level lifecycle ownership
+and executable coverage, the departure MUST NOT be described as guaranteed to complete across an
+ordinary graph close.
+
+The departure is also durable across a process death (`D-165`). Before its first destructive step it
+writes the `account_departure_operation` marker of `D-166`, and it records each step as that step
+succeeds. The marker survives the local clear, because an anonymous local-data deletion clears first
+and ends the provider session afterwards. At the next launch the app graph finishes what was
+interrupted (`D-167`): only the steps the marker does not record as done, in the order that kind
+performs them, with no owner interaction, and it never repeats the `D-23` operation.
+
+Two limits are normative. A permanent deletion whose `D-23` call never recorded success is dropped
+rather than resumed, because repeating that call is forbidden and starting it would need a
+confirmation nobody gave; the owner keeps both account and data. And the recovery covers every step
+the marker records, not the instant between the server operation returning success and that success
+being written locally: Firebase Auth and SQLite share no transaction, so a process death inside that
+instant still leaves local data for an account that is already gone. That remaining instant is the
+residual risk recorded in `docs/SECURITY.md`, and no document MAY claim the departure is fully
+recoverable across process death.
 
 The server operation is the Cloud Functions 2nd gen callable `deleteAccount`. Its request payload
 contains `targetUid: String`; the callable-verified Firebase caller UID MUST equal that value. A
@@ -2083,7 +2132,7 @@ data class UnexpectedError(
 ) : AppError { override val code = "UNEXPECTED" }
 
 @ObjCName(name = "SharedConfirmation", swiftName = "Confirmation", exact = true)
-enum class Confirmation { OdometerInconsistent, DiscardPendingChanges, DeleteAccount, AdoptExistingAccount }
+enum class Confirmation { OdometerInconsistent, DiscardPendingChanges, DeleteAccount, DeleteLocalData, AdoptExistingAccount }
 ```
 
 `UnexpectedError.origin` is the Gradle module path that converted the failure, for example `":integration:firebase-firestore"`.
@@ -2093,8 +2142,9 @@ A confirmation is required by the use case, not by the UI. The UI MUST NOT proce
 | Confirmation | Flow |
 |--------------|------|
 | `OdometerInconsistent` | Odometer warning override in fuel-entry create/update. |
-| `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. |
-| `DeleteAccount` | Account deletion destructive confirmation. |
+| `DiscardPendingChanges` | Sign-out or local-data deletion with pending outbox rows. It answers the pending-sync warning only; for a local-data deletion the destructive step still follows (`D-158`). |
+| `DeleteAccount` | Account deletion destructive confirmation. It answers **only** the deletion of an actual account, never the clearing of local data. |
+| `DeleteLocalData` | Local-data deletion destructive confirmation, for a local owner or an anonymous session (`D-158`). |
 | `AdoptExistingAccount` | Anonymous-to-permanent credential collision where the user confirms that the current anonymous-session snapshot replaces the existing permanent-account data. |
 
 ### 20.3 Platform abstractions — `:core:common`
@@ -2533,6 +2583,7 @@ sealed interface AnalyticsEvent {
     data object AccountConversionStarted : AnalyticsEvent
     data object AccountConversionCompleted : AnalyticsEvent
     data class AccountConversionFailed(val reason: ConversionFailureReason) : AnalyticsEvent
+    // The account-deletion trio reports the permanent D-23 path only (`D-161`).
     data object AccountDeletionStarted : AnalyticsEvent
     data object AccountDeletionCompleted : AnalyticsEvent
     data class AccountDeletionFailed(val reason: DeletionFailureReason) : AnalyticsEvent
@@ -2656,6 +2707,8 @@ class SessionStateHolder {
     fun confirmSignOut(confirmation: Confirmation)
     fun requestDeleteAccount()
     fun confirmDeleteAccount(confirmation: Confirmation)
+    fun retryDeparture()
+    fun startReauthentication(provider: AuthProvider)
     fun clearMessage()
     fun close()
 }
@@ -2749,7 +2802,11 @@ data class SessionUiState(
     val isBusy: Boolean,
     val message: UiMessage?,
     val anonymousReminderIndex: Int?,
+    val pendingSyncCount: Int?,
+    val pendingDepartureRetry: DepartureRetry?,
 )
+
+enum class DepartureRetry { SESSION_CLEANUP, LOCAL_CLEAR }
 
 data class SyncUiState(
     val status: SyncStatus,
@@ -2797,6 +2854,97 @@ message, which is the owner transition.
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
 
 `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
+
+`SessionStateHolder.requestSignOut()` is offered only to a permanently authenticated user. It reads the
+pending outbox count; when the outbox is non-empty it publishes a `UiMessage` with
+`code = "WARNING.PENDING_SYNC"` and `confirmation = Confirmation.DiscardPendingChanges` and does not
+sign out. `confirmSignOut(Confirmation.DiscardPendingChanges)` calls `AuthClient.signOut()` and, only
+after it succeeds, clears every local table including `user_settings`; the next settings read
+recreates defaults. A sign-out failure publishes the typed `AuthError` and preserves local data.
+
+`requestSignOut()` for a session that is not permanent is refused with
+`AuthError.ProviderUnavailable` and reads nothing from the database. The pending count is carried to
+the host as the typed `SessionUiState.pendingSyncCount`, because `UiMessage` transports only a code
+and the `ValidationWarning.PendingSyncBeforeSignOut(pendingCount)` payload MUST NOT be lost. A
+failure while counting the outbox or while clearing is published as the `PersistenceError` it is,
+never re-mapped onto the `AuthError` taxonomy.
+
+`confirmSignOut(Confirmation.DiscardPendingChanges)` is accepted only after a pending-sync warning
+that actually counted rows; an unsolicited confirmation is ignored.
+
+`SessionStateHolder.requestDeleteAccount()` records which of the three `DELETING` operations the
+current owner is entitled to, and asks for the confirmation that operation actually needs (`D-158`):
+
+- a permanent owner is asked with `code = "CONFIRMATION.DeleteAccount"` and
+  `confirmation = Confirmation.DeleteAccount`;
+- a local or anonymous owner is a local-data deletion, so it first counts the outbox. With pending
+  rows it publishes the `WARNING.PENDING_SYNC` / `Confirmation.DiscardPendingChanges` pair of §20.2
+  and the exact `pendingSyncCount`; `confirmDeleteAccount(Confirmation.DiscardPendingChanges)` then
+  advances to the destructive step. With an empty outbox it goes straight there. The destructive
+  step is `code = "CONFIRMATION.DeleteLocalData"` with `confirmation = Confirmation.DeleteLocalData`,
+  and `confirmDeleteAccount(Confirmation.DeleteLocalData)` runs it.
+
+A confirmation of the wrong kind acts on nothing: `DeleteAccount` never authorises a local-data
+deletion and `DeleteLocalData` never authorises an account deletion. `DeleteLocalData` is refused
+while a pending-sync warning is still unanswered.
+
+`confirmDeleteAccount(Confirmation.DeleteAccount)` follows §11.5 and the `DELETING` rules above.
+A server failure maps to `AuthError.AccountDeletionRemoteFailed`, preserves local data and does not
+report the account as deleted.
+
+Only the permanent path deletes an account, so only it reports the account-deletion analytics
+lifecycle (`D-161`): `AnalyticsEvent.AccountDeletionStarted` when that deletion is confirmed and the
+D-23 call is about to run, then `AccountDeletionCompleted` or `AccountDeletionFailed`. A local or
+anonymous local-data deletion reports none of the three.
+
+`SessionUiState.pendingDepartureRetry` reports the unfinished part of a departure, or `null` when
+there is none, and `SessionStateHolder.retryDeparture()` repeats exactly that part (`D-159`).
+The value is the first required step the departure still owes, in the order that departure kind
+performs them, and it is therefore not limited to the permanent path. `SESSION_CLEANUP` means the
+provider-session cleanup is the next step owed: for a permanent deletion whose `D-23` call already
+succeeded, for a sign-out whose provider sign-out failed, and for an anonymous local-data deletion
+whose local clear already succeeded. `LOCAL_CLEAR` means the local clear is the next step owed. The
+value is `null` whenever no retry is callable, including while a stale login is waiting for
+re-authentication, which is the host's re-authentication flow rather than a retry.
+
+A retry MUST NOT repeat a `D-23` server deletion that already succeeded and MUST NOT repeat a local
+clear that already succeeded. In the MVP it repeats the retained step without re-checking the owner
+or session. That is safe in the normal single-owner flow, where the original session may
+legitimately be gone, but it is not an atomic owner binding: a different session becoming active can
+make the retained provider operation or local clear act on that newer owner. `D-164` accepts this
+low-probability window and `E5-02` owns the owner-bound serialization and deterministic race
+coverage. `pendingDepartureRetry` MUST be `null` once the departure completes or is withdrawn, and
+`retryDeparture()` MUST do nothing when it is `null`. The host reads this from typed state; it MUST
+NOT be asked to remember it itself.
+
+Retained destructive work begins only when the owner has authorised a destructive step and that step
+has started. Counting the outbox to decide whether to warn is not such a step: while a pending-sync
+warning is unanswered after publication, the request is still re-checked against the current owner
+and session, the auth-state collector is not suppressed, and there is nothing to retry. While the
+asynchronous count itself runs, departure presentation temporarily suppresses auth-state updates.
+The owner is re-checked after a zero count returns and before the first authorised step, which
+narrows the session-switch window but does not atomically bind the later provider call. An auth
+transition consumed during that count is also not guaranteed to be reconciled into `SessionUiState`
+when the evaluation exits. `D-164` accepts those low-probability MVP limits; `E5-02` owns the atomic
+owner binding and `E5-04` owns presentation reconciliation. `clearMessage()` withdraws any
+unanswered departure confirmation, after which a later confirmation of it acts on nothing.
+
+A confirmation is accepted only when it answers an active request for the same owner and session. A
+confirmation with no request, a confirmation of the wrong kind, and a request whose owner or session
+changed before it was confirmed all leave every data set untouched. While a departure is running the
+phase is `DELETING` with `isBusy = true`, and reentrant departure intents are refused; the interval
+between a successful remote step and the local clear is protected from coroutine cancellation while
+its graph-owned dependencies remain open. The `D-164` / `E5-03` graph-close limit above still
+applies. When the remote step has succeeded and the local clear has failed, the request is retained
+so that a retry repeats the local clear alone and never calls the server operation a second time.
+
+`AuthError.RequiresRecentLogin` keeps the pending deletion and puts it in a re-authenticating state.
+The host acquires a fresh native credential and submits it through
+`startReauthentication(provider)` followed by `completeGoogleSignIn` / `completeAppleSignIn`, which
+call `AuthClient.reauthenticate()`; deletion resumes only after that succeeds. A failed
+re-authentication keeps the request and preserves local data, and a cancelled one abandons the
+request without deleting anything. `AuthError.ProviderUnavailable` is an infrastructure fault and
+MUST NOT trigger re-authentication.
 
 `SessionStateHolder.startPermanentSignIn(provider)` accepts `GOOGLE` or `APPLE`, retains only that
 provider as the active native attempt and sets `isBusy = true`; it stores no credential primitive.
@@ -2859,7 +3007,24 @@ DELETING -> UNKNOWN
 UNKNOWN -> SIGNED_OUT after local-data clear
 ```
 
-From `LOCAL`, `DELETING` means "clearing local data only" (no server operation, because there is no Firebase Auth account); from `ANONYMOUS` or `PERMANENT`, `DELETING` means "running the `D-23` server operation then clearing local data". The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the local-data clear completes. `E2-05` MUST test both paths.
+`DELETING` covers three different operations, and only one of them reaches the server.
+`docs/SPECIFICATION.md §7 F-5` is the behavioural authority for the distinction:
+
+- from `LOCAL` it means "clear local data only". There is no Firebase Auth account, so there is
+  nothing to delete remotely;
+- from `ANONYMOUS` it means "clear local data, then end the anonymous session". F-5 gives the
+  anonymous owner "delete local data", not account deletion: the identity is device-bound and
+  unrecoverable, and the `D-23` server operation MUST NOT be called for it. The provider session is
+  ended after the clear so that a recreated `SessionStateHolder` cannot route straight back to
+  `ANONYMOUS` on the same UID and present the deletion as incomplete. The abandoned anonymous
+  identity is then an orphan, which is `E3-11`'s subject, not this flow's;
+- from `PERMANENT` it means "run the `D-23` server operation, then clear local data", in the order
+  of §11.5.
+
+The `DELETING -> UNKNOWN` transition is followed by `UNKNOWN -> SIGNED_OUT` only after the
+local-data clear completes. `UNKNOWN` is therefore the observable state of a departure whose remote
+step succeeded and whose local clear has not: `SIGNED_OUT` and `AnalyticsEvent.AccountDeletionCompleted`
+MUST NOT be published while local data survives. `E2-05` MUST test all three paths.
 
 `SessionUiState.anonymousReminderIndex` is the zero-based index of the `D-62` retention notice
 currently offered, or `null` when none is. It is a typed value, not display copy: each host maps it
@@ -2894,7 +3059,7 @@ from the Objective-C header.
 
 `VehicleListUiState.selectedVehicleId` is the navigation source for the vehicle detail screen; `null` means no vehicle is selected.
 
-`VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `AdoptExistingAccount`).
+`VehicleListStateHolder.confirmDelete(vehicleId)` and `FuelEntryListStateHolder.confirmDelete(entryId)` take no `Confirmation` argument: entity deletion is a direct action, not a typed-warning confirmation. If a pending-sync warning applies (e.g. deleting a vehicle with unsynced fuel entries), it is surfaced through `UiMessage` before the destructive action, not through `Confirmation`. The `Confirmation` enum is reserved for typed warnings that require an explicit override (`OdometerInconsistent`, `DiscardPendingChanges`, `DeleteAccount`, `DeleteLocalData`, `AdoptExistingAccount`).
 
 The Kotlin-facing `AppGraph`, `AppProviders`, `AppGraphDependencies` and
 `buildAppGraph(isDebugBuild, providers)` MUST be absent from the Objective-C header.

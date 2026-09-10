@@ -58,6 +58,26 @@ final class UiMessageMappingTests: XCTestCase {
         }
     }
 
+    func testDepartureConfirmationsHaveTheirOwnDestructiveCopy() {
+        let deleteAccount = localizedUiMessage(for: "CONFIRMATION.DeleteAccount")
+        let deleteLocalData = localizedUiMessage(for: "CONFIRMATION.DeleteLocalData")
+
+        XCTAssertEqual(deleteAccount, String(localized: "confirm_delete_account"))
+        XCTAssertEqual(deleteLocalData, String(localized: "confirm_delete_local_data"))
+        // Deleting an account and clearing this device are different consequences and must not
+        // share copy, which is why they no longer share a confirmation either.
+        XCTAssertNotEqual(deleteAccount, deleteLocalData)
+
+        let required = [
+            "en": ["cannot be undone", "cannot be undone"],
+            "es": ["No se puede deshacer", "no se puede deshacer"],
+        ]
+        for (language, phrases) in required {
+            XCTAssertTrue(localizedCopy("confirm_delete_account", language: language).contains(phrases[0]))
+            XCTAssertTrue(localizedCopy("confirm_delete_local_data", language: language).contains(phrases[1]))
+        }
+    }
+
     private func localizedCopy(_ key: String, language: String) -> String {
         for candidate in [Bundle.main, Bundle(for: type(of: self))] {
             if

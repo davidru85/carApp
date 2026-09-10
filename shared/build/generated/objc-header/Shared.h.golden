@@ -6,7 +6,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSValue.h>
 
-@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedNativeSignInFailure, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
+@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedNativeSignInFailure, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedDepartureRetry, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
 
 @protocol SharedSkie_DispatcherDelegate, SharedKotlinx_coroutines_coreStateFlow, SharedKotlinx_coroutines_coreSharedFlow, SharedKotlinx_coroutines_coreRunnable, SharedKotlinx_coroutines_coreMutableStateFlow, SharedKotlinx_coroutines_coreMutableSharedFlow, SharedKotlinx_coroutines_coreFlowCollector, SharedKotlinx_coroutines_coreFlow, SharedKotlinIterator, SharedKotlinComparable, NSCopying;
 
@@ -1071,6 +1071,30 @@ __attribute__((swift_name("KotlinEnum")))
 - (NSString *)description __attribute__((swift_name("description()")));
 @end
 
+
+/**
+ * The unfinished part of a departure that `SessionStateHolder.retryDeparture()` would repeat, or
+ * `null` when there is nothing to retry (`docs/CONTRACTS.md §20.10`). A retry never repeats a
+ * remote step that already succeeded.
+ */
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("DepartureRetry")))
+@interface SharedDepartureRetry : SharedKotlinEnum<SharedDepartureRetry *>
+@property (class, readonly) SharedDepartureRetry *sessionCleanup __attribute__((swift_name("sessionCleanup")));
+@property (class, readonly) SharedDepartureRetry *localClear __attribute__((swift_name("localClear")));
+@property (class, readonly) NSArray<SharedDepartureRetry *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
+
+/**
+ * The unfinished part of a departure that `SessionStateHolder.retryDeparture()` would repeat, or
+ * `null` when there is nothing to retry (`docs/CONTRACTS.md §20.10`). A retry never repeats a
+ * remote step that already succeeded.
+ */
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedDepartureRetry *> *)values __attribute__((swift_name("values()")));
+@end
+
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("NativeSignInFailure")))
 @interface SharedNativeSignInFailure : SharedKotlinEnum<SharedNativeSignInFailure *>
@@ -1125,10 +1149,30 @@ __attribute__((swift_name("SessionStateHolder")))
 - (void)evaluateAnonymousReminder __attribute__((swift_name("evaluateAnonymousReminder()")));
 - (void)failSignInReason:(SharedNativeSignInFailure *)reason __attribute__((swift_name("failSignIn(reason:)")));
 - (void)requestDeleteAccount __attribute__((swift_name("requestDeleteAccount()")));
+
+/**
+ * F-5 sign-out. It is offered only to a permanently authenticated user; the eligibility rules,
+ * the pending-sync warning and the local clear live in [AccountDepartureFlow].
+ */
 - (void)requestSignOut __attribute__((swift_name("requestSignOut()")));
+
+/**
+ * Repeats the unfinished part of a departure that `SessionUiState.pendingDepartureRetry`
+ * reports, and only that part: a remote step that already succeeded is never repeated
+ * (`docs/CONTRACTS.md §20.10`).
+ */
+- (void)retryDeparture __attribute__((swift_name("retryDeparture()")));
 - (void)startAccountConversionProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startAccountConversion(provider:)")));
 - (void)startAnonymousSignIn __attribute__((swift_name("startAnonymousSignIn()")));
 - (void)startPermanentSignInProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startPermanentSignIn(provider:)")));
+
+/**
+ * Submits a fresh credential for a deletion that the provider refused with
+ * `AuthError.RequiresRecentLogin` (`docs/CONTRACTS.md §11.5` step 1). The host acquires the
+ * credential natively and reports it through `completeGoogleSignIn` / `completeAppleSignIn`,
+ * exactly as it does for sign-in; deletion resumes only once re-authentication succeeds.
+ */
+- (void)startReauthenticationProvider:(SharedAuthProvider *)provider __attribute__((swift_name("startReauthentication(provider:)")));
 @end
 
 __attribute__((objc_subclassing_restricted))
@@ -1137,10 +1181,12 @@ __attribute__((swift_name("SessionUiState")))
 @property (readonly) SharedInt * _Nullable anonymousReminderIndex __attribute__((swift_name("anonymousReminderIndex")));
 @property (readonly) BOOL isBusy __attribute__((swift_name("isBusy")));
 @property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
+@property (readonly) SharedDepartureRetry * _Nullable pendingDepartureRetry __attribute__((swift_name("pendingDepartureRetry")));
+@property (readonly) SharedInt * _Nullable pendingSyncCount __attribute__((swift_name("pendingSyncCount")));
 @property (readonly) SharedSessionPhase *phase __attribute__((swift_name("phase")));
 @property (readonly) NSArray<SharedAuthProvider *> *providers __attribute__((swift_name("providers")));
-- (instancetype)initWithPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex __attribute__((swift_name("init(phase:providers:isBusy:message:anonymousReminderIndex:)"))) __attribute__((objc_designated_initializer));
-- (SharedSessionUiState *)doCopyPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex __attribute__((swift_name("doCopy(phase:providers:isBusy:message:anonymousReminderIndex:)")));
+- (instancetype)initWithPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex pendingSyncCount:(SharedInt * _Nullable)pendingSyncCount pendingDepartureRetry:(SharedDepartureRetry * _Nullable)pendingDepartureRetry __attribute__((swift_name("init(phase:providers:isBusy:message:anonymousReminderIndex:pendingSyncCount:pendingDepartureRetry:)"))) __attribute__((objc_designated_initializer));
+- (SharedSessionUiState *)doCopyPhase:(SharedSessionPhase *)phase providers:(NSArray<SharedAuthProvider *> *)providers isBusy:(BOOL)isBusy message:(SharedUiMessage * _Nullable)message anonymousReminderIndex:(SharedInt * _Nullable)anonymousReminderIndex pendingSyncCount:(SharedInt * _Nullable)pendingSyncCount pendingDepartureRetry:(SharedDepartureRetry * _Nullable)pendingDepartureRetry __attribute__((swift_name("doCopy(phase:providers:isBusy:message:anonymousReminderIndex:pendingSyncCount:pendingDepartureRetry:)")));
 - (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
 - (NSUInteger)hash __attribute__((swift_name("hash()")));
 - (NSString *)description __attribute__((swift_name("description()")));
@@ -1148,6 +1194,21 @@ __attribute__((swift_name("SessionUiState")))
 /**
  * The zero-based index of the `D-62` anonymous sign-in benefit reminder currently offered, or
  * `null` when no reminder is being shown (`docs/CONTRACTS.md §11.3`).
+ */
+
+/**
+ * The unfinished departure work a `retryDeparture()` would repeat, or `null` when there is
+ * none. It is typed state rather than something the host must remember for itself.
+ */
+
+/**
+ * The exact number of outbox rows still pending when a sign-out was refused with
+ * `ValidationWarning.PendingSyncBeforeSignOut`, or `null` when no such warning is being
+ * offered (`docs/CONTRACTS.md §20.10`).
+ *
+ * It is a typed value, not display copy: each host formats it into its own string resources
+ * under §14. Carrying it here is what keeps the warning's `pendingCount` from being lost, since
+ * `UiMessage` transports only a code.
  */
 @end
 
@@ -1235,6 +1296,7 @@ __attribute__((swift_name("Confirmation")))
 @property (class, readonly) SharedConfirmation *odometerinconsistent __attribute__((swift_name("odometerinconsistent")));
 @property (class, readonly) SharedConfirmation *discardpendingchanges __attribute__((swift_name("discardpendingchanges")));
 @property (class, readonly) SharedConfirmation *deleteaccount __attribute__((swift_name("deleteaccount")));
+@property (class, readonly) SharedConfirmation *deletelocaldata __attribute__((swift_name("deletelocaldata")));
 @property (class, readonly) SharedConfirmation *adoptexistingaccount __attribute__((swift_name("adoptexistingaccount")));
 @property (class, readonly) NSArray<SharedConfirmation *> *entries __attribute__((swift_name("entries")));
 + (instancetype)alloc __attribute__((unavailable));

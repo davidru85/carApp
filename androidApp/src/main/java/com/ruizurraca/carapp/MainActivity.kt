@@ -951,7 +951,22 @@ internal fun UiMessage.stringResource(): Int =
         nonAuthStringResource(code)
     }
 
+/**
+ * The typed destructive confirmations of `docs/CONTRACTS.md §20.2`. They are mapped apart from the
+ * error codes because each one states a different consequence the owner is agreeing to.
+ */
+private fun confirmationStringResource(code: String): Int? =
+    when (code) {
+        "CONFIRMATION.AdoptExistingAccount" -> R.string.confirm_replace_existing_account
+        "CONFIRMATION.DeleteAccount" -> R.string.confirm_delete_account
+        "CONFIRMATION.DeleteLocalData" -> R.string.confirm_delete_local_data
+        else -> null
+    }
+
 private fun nonAuthStringResource(code: String): Int =
+    confirmationStringResource(code) ?: nonConfirmationStringResource(code)
+
+private fun nonConfirmationStringResource(code: String): Int =
     when (code) {
         "VALIDATION.REQUIRED_FIELD" -> R.string.error_required_field
 
@@ -968,8 +983,6 @@ private fun nonAuthStringResource(code: String): Int =
         "VALIDATION.ENTITY_DELETED" -> R.string.error_vehicle_deleted
 
         "VALIDATION.ENTITY_NOT_FOUND" -> R.string.vehicle_not_found
-
-        "CONFIRMATION.AdoptExistingAccount" -> R.string.confirm_replace_existing_account
 
         "PERSISTENCE.DATABASE_UNAVAILABLE",
         "PERSISTENCE.TRANSACTION_FAILED",

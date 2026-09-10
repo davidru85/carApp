@@ -304,5 +304,6 @@ enum class Confirmation {
     OdometerInconsistent,
     DiscardPendingChanges,
     DeleteAccount,
+    DeleteLocalData,
     AdoptExistingAccount,
 }

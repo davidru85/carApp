@@ -8,8 +8,10 @@ import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
+import com.ruizurraca.carapp.core.database.AccountDepartureDatabaseAccess
 import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
+import com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
@@ -82,6 +84,12 @@ internal class DefaultAppGraph(
             store = AccountConversionDatabaseAccess(databaseHandle.database),
             clock = dependencies.clock,
         )
+    private val accountDeparture =
+        AccountDepartureCoordinator(
+            databaseAccess = LocalDataClearDatabaseAccess(databaseHandle.database),
+            departureAccess = AccountDepartureDatabaseAccess(databaseHandle.database),
+            authClient = dependencies.authClient,
+        )
     private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
     private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
     private val fuelRepository: FuelEntryRepository =
@@ -110,6 +118,9 @@ internal class DefaultAppGraph(
         // Keep these eager launches after every property they touch. Adoption is automatic by
         // contract (§11.2, §11.4): nothing in the UI starts it.
         graphScope.launch { bootstrapSettings() }
+        // `D-167`: a departure interrupted by a process death is finished at the next launch, before
+        // anything can observe local data belonging to an account that is already gone.
+        graphScope.launch { accountDeparture.resumePending() }
         graphScope.launch {
             dependencies.authClient.authState
                 .filterIsInstance<AuthState.SignedIn>()
@@ -191,6 +202,7 @@ internal class DefaultAppGraph(
             anonymousReminders = anonymousReminders,
             accountConversion = accountConversion,
             analyticsTracker = dependencies.analyticsTracker,
+            accountDeparture = accountDeparture,
         )
     }
 

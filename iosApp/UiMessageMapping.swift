@@ -30,6 +30,10 @@ func localizedUiMessage(for code: String) -> String {
         key = "error_currency"
     case "CONFIRMATION.AdoptExistingAccount":
         key = "confirm_replace_existing_account"
+    case "CONFIRMATION.DeleteAccount":
+        key = "confirm_delete_account"
+    case "CONFIRMATION.DeleteLocalData":
+        key = "confirm_delete_local_data"
     case "PERSISTENCE.DATABASE_UNAVAILABLE",
          "PERSISTENCE.TRANSACTION_FAILED",
          "PERSISTENCE.MIGRATION_FAILED",

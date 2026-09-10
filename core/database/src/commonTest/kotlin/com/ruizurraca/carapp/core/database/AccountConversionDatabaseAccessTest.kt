@@ -10,8 +10,8 @@ import kotlin.test.assertNull
 
 class AccountConversionDatabaseAccessTest {
     @Test
-    fun schemaVersionThreeOwnsTheDurableConversionMarker() {
-        assertEquals(3L, AppDatabase.Schema.version)
+    fun theSchemaVersionCarriesTheDurableConversionMarker() {
+        assertEquals(4L, AppDatabase.Schema.version)
     }
 
     @Test

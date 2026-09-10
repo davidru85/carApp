@@ -73,6 +73,31 @@ Requirements:
 
 ## Accepted Residual Risks
 
+- **Three low-probability departure concurrency and lifecycle windows remain in the MVP**
+  (`D-164`). First, delayed provider work and retained retries are not atomically bound to the owner
+  that created the request, so a session switch in the remaining check-to-use window can make work
+  act on a different active owner; `E5-02` owns the fix. Second, `NonCancellable` keeps the coroutine
+  tail alive but a host graph close can dispose the auth client or database before the tail finishes,
+  leaving provider-session cleanup or local clearing incomplete; `E5-03` owns graph-lifecycle
+  completion. Third, an auth transition consumed while the outbox count suppresses presentation
+  updates may not be reconciled afterwards, leaving stale session state or `isBusy`; `E5-04` owns
+  reconciliation. These windows are outside the normal single-owner foreground flow and do not
+  block PR #65 or MVP completion. No document may describe any of the three guarantees as complete
+  until its executable follow-up closes it.
+- **Local data can outlive a deleted account if the process dies while the server operation is
+  returning** (`D-165`, narrowing `D-163`). The F-5 departure now persists a durable marker before
+  its first destructive step and records each step as it succeeds, and the app graph finishes an
+  interrupted departure at the next launch, so a process death at any point the marker covers is
+  recovered. One instant is not covered: between the `D-23` server operation returning success and
+  that success being written to the local database. Firebase Auth and Cloud Firestore share no
+  transaction with SQLite, so the two writes cannot be made atomic — the same class of limit as
+  `D-150`. A process death inside that instant leaves the vehicles, refuels and settings of an
+  account that no longer exists remotely on the device, and the next launch drops the marker rather
+  than resuming, because it cannot tell whether the server call ran and MUST NOT repeat it. The data
+  is device-local, is no longer reachable from any account, and is removed by the next successful
+  departure or by uninstalling the app; no remote copy survives. The window is now a single
+  round-trip completion rather than a whole tail of network and database work, but it is not zero,
+  and no document may describe the departure as fully recoverable across process death.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the

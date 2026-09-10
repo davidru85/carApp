@@ -161,5 +161,18 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-152 | [ADR-0153](0153-reach-the-orphan-cleanup-callables-through-a-provider-free-port.md) | Reach the orphan cleanup callables through a provider-free port. | Accepted |
 | D-153 | [ADR-0154](0154-replace-the-permanent-account-data-from-the-client.md) | Replace the permanent account data from the client. | Accepted |
 | D-154 | [ADR-0155](0155-keep-the-collision-credential-in-memory-only.md) | Keep the collision credential in memory only. | Accepted |
+| D-155 | [ADR-0156](0156-keep-the-session-state-holder-in-shared.md) | Keep the session state holder in `:shared`. | Accepted |
+| D-156 | [ADR-0157](0157-end-the-anonymous-provider-session-after-clearing.md) | End the anonymous provider session after clearing. | Accepted |
+| D-157 | [ADR-0158](0158-carry-the-pending-sync-count-as-typed-session-state.md) | Carry the pending-sync count as typed session state. | Accepted |
+| D-158 | [ADR-0159](0159-give-local-data-deletion-its-own-confirmation.md) | Give local-data deletion its own confirmation. | Accepted |
+| D-159 | [ADR-0160](0160-expose-the-departure-retry-as-typed-state.md) | Expose the departure retry as typed state. | Accepted |
+| D-160 | [ADR-0161](0161-end-the-provider-session-as-its-own-deletion-step.md) | End the provider session as its own deletion step. | Accepted |
+| D-161 | [ADR-0162](0162-report-account-deletion-analytics-for-the-permanent-path.md) | Report account-deletion analytics for the permanent path. | Accepted |
+| D-162 | [ADR-0163](0163-scope-the-e2-05-settings-criterion-to-the-contract.md) | Scope the E2-05 settings criterion to the contract. | Accepted |
+| D-163 | [ADR-0164](0164-accept-the-departure-process-death-window.md) | Accept the departure process-death window. | Superseded |
+| D-164 | [ADR-0165](0165-defer-departure-integrity-hardening-to-post-mvp.md) | Defer departure integrity hardening to post-MVP. | Accepted |
+| D-165 | [ADR-0166](0166-close-the-departure-process-death-window-in-e2-05.md) | Close the departure process-death window in E2-05. | Accepted |
+| D-166 | [ADR-0167](0167-store-the-departure-marker-in-a-single-row-table.md) | Store the departure marker in a single-row table. | Accepted |
+| D-167 | [ADR-0168](0168-resume-an-interrupted-departure-at-graph-construction.md) | Resume an interrupted departure at graph construction. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

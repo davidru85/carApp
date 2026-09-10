@@ -1,0 +1,12 @@
+-- Schema version 4: durable F-5 departure recovery marker (`D-166`).
+-- Additive only. No product row is touched.
+CREATE TABLE account_departure_operation (
+  id INTEGER NOT NULL PRIMARY KEY CHECK (id = 0),
+  kind TEXT NOT NULL CHECK (
+    kind IN ('SIGN_OUT', 'DELETE_LOCAL', 'DELETE_ANONYMOUS', 'DELETE_PERMANENT')
+  ),
+  ownerUid TEXT,
+  remoteDone INTEGER NOT NULL DEFAULT 0 CHECK (remoteDone IN (0, 1)),
+  sessionEnded INTEGER NOT NULL DEFAULT 0 CHECK (sessionEnded IN (0, 1)),
+  localDone INTEGER NOT NULL DEFAULT 0 CHECK (localDone IN (0, 1))
+);

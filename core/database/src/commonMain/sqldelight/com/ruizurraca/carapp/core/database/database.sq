@@ -446,3 +446,74 @@ DELETE FROM sync_cursor;
 
 deleteAllQuarantineForAccountConversion:
 DELETE FROM quarantine;
+
+countOutboxRows:
+SELECT COUNT(*)
+FROM outbox;
+
+deleteAllFuelEntries:
+DELETE FROM fuel_entry;
+
+deleteAllVehicles:
+DELETE FROM vehicle;
+
+deleteAllOutbox:
+DELETE FROM outbox;
+
+deleteAllSyncCursors:
+DELETE FROM sync_cursor;
+
+deleteAllQuarantine:
+DELETE FROM quarantine;
+
+-- `local_sequence` is a single control row, not owner data, so the clear restores its canonical
+-- initial state instead of deleting it. `docs/TECHNICAL_PLAN.md §6` defines that state as
+-- (id = 0, next = 1), which is what a freshly created database holds.
+resetLocalSequence:
+UPDATE local_sequence
+SET next = 1
+WHERE id = 0;
+
+restoreLocalSequenceRow:
+INSERT OR IGNORE INTO local_sequence(id, next)
+VALUES (0, 1);
+
+selectLocalSequenceNext:
+SELECT next
+FROM local_sequence
+WHERE id = 0;
+
+selectAccountDepartureOperation:
+SELECT kind, ownerUid, remoteDone, sessionEnded, localDone
+FROM account_departure_operation
+WHERE id = 0;
+
+-- Starting a departure replaces any stale marker outright: at most one departure is ever in flight,
+-- and a new one owes all of its steps again.
+startAccountDepartureOperation:
+INSERT INTO account_departure_operation(id, kind, ownerUid, remoteDone, sessionEnded, localDone)
+VALUES (0, :kind, :ownerUid, 0, 0, 0)
+ON CONFLICT(id) DO UPDATE SET
+  kind = excluded.kind,
+  ownerUid = excluded.ownerUid,
+  remoteDone = 0,
+  sessionEnded = 0,
+  localDone = 0;
+
+markAccountDepartureRemoteDeletion:
+UPDATE account_departure_operation
+SET remoteDone = 1
+WHERE id = 0;
+
+markAccountDepartureSessionCleanup:
+UPDATE account_departure_operation
+SET sessionEnded = 1
+WHERE id = 0;
+
+markAccountDepartureLocalClear:
+UPDATE account_departure_operation
+SET localDone = 1
+WHERE id = 0;
+
+deleteAccountDepartureOperation:
+DELETE FROM account_departure_operation;
