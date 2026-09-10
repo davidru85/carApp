@@ -18,7 +18,6 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -53,7 +52,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.first { state -> !state.isSaving }
+                holder.state.awaitState("vehicle creation finished") { state -> !state.isSaving }
 
                 val vehicle =
                     database.databaseQueries
@@ -101,7 +100,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.first { state -> !state.isSaving }
+                holder.state.awaitState("vehicle validation finished") { state -> !state.isSaving }
 
                 val outbox =
                     database.databaseQueries
@@ -170,7 +169,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.first { state -> !state.isSaving }
+                holder.state.awaitState("anonymous vehicle creation finished") { state -> !state.isSaving }
 
                 val call = remote.pushCalls.single()
                 assertEquals("anonymous-user", call.first.value)
@@ -211,7 +210,7 @@ class VehicleFormStateHolderTest {
                 val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
                 holder.save()
-                holder.state.first { state -> !state.isSaving }
+                holder.state.awaitState("backup failure save finished") { state -> !state.isSaving }
 
                 val snapshot = remote.pushCalls.single().second
                 val json = Json.parseToJsonElement(snapshot.json).jsonObject
@@ -248,7 +247,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.first { state -> !state.isSaving }
+                holder.state.awaitState("vehicle edit finished") { state -> !state.isSaving }
 
                 val vehicle =
                     database.databaseQueries
@@ -296,7 +295,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Offline Roadster")
 
                 holder.save()
-                holder.state.first { state -> !state.isSaving }
+                holder.state.awaitState("invalid vehicle edit finished") { state -> !state.isSaving }
 
                 val vehicle =
                     database.databaseQueries

@@ -24,7 +24,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -81,7 +80,7 @@ class LocalOwnerAdoptionTriggerTest {
             )
 
             authClient.setAuthState(AuthState.SignedOut)
-            authClient.authState.first { state -> state is AuthState.SignedIn }
+            authClient.authState.awaitState("anonymous session acquired after auth resolution") { state -> state is AuthState.SignedIn }
 
             assertEquals(
                 1,
@@ -199,7 +198,7 @@ class LocalOwnerAdoptionTriggerTest {
                 form.setPricePerLiterScaled(1_500L)
                 form.save()
 
-                authClient.authState.first { state -> state is AuthState.SignedIn }
+                authClient.authState.awaitState("anonymous session acquired after fuel write") { state -> state is AuthState.SignedIn }
                 while (database.sentinelRowCount() > 0L) yield()
 
                 assertEquals(2, authClient.anonymousSignInCalls, "the fuel entry write re-evaluated acquisition")

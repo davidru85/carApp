@@ -30,7 +30,6 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.runTest
@@ -90,14 +89,14 @@ class LocalOwnerAdoptionFailureTest {
                 )
 
             try {
-                val failed = holder.state.first { state -> state.message != null }
+                val failed = holder.state.awaitState("adoption error published") { state -> state.message != null }
                 assertTrue(failed.isLoading, "an unreadable list is not known, which is what D-116 means")
                 assertTrue(failed.vehicles.isEmpty(), "and it is never published as a confirmed empty list")
 
                 // The owner retries. The gate runs again, so the retry is real and not a redraw.
                 fault.failing = false
                 holder.refresh()
-                val recovered = holder.state.first { state -> !state.isLoading }
+                val recovered = holder.state.awaitState("vehicle list recovered after retry") { state -> !state.isLoading }
 
                 assertEquals(1, recovered.vehicles.size, "the retry adopts and the list resolves")
                 assertEquals(0L, database.localOwnerRowCount())
@@ -151,7 +150,7 @@ class LocalOwnerAdoptionFailureTest {
 
             adoption.launchIn(backgroundScope)
 
-            authClient.authState.first { state -> state is AuthState.SignedIn }
+            authClient.authState.awaitState("anonymous acquisition retried") { state -> state is AuthState.SignedIn }
             assertEquals(1, authClient.anonymousSignInCalls, "the connectivity trigger outlives the owner observer")
         }
 

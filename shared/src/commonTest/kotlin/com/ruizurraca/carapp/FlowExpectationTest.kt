@@ -132,6 +132,7 @@ class FlowExpectationTest {
                     flow<Int> { throw cause }.awaitState("value from source") { true }
                 }
 
-            assertSame(cause, failure)
+            // JVM coroutine stack recovery can copy the exception and retain the original as its cause.
+            assertSame(cause, generateSequence<Throwable>(failure) { it.cause }.last())
         }
 }

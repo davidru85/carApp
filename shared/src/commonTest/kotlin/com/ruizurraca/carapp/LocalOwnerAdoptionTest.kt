@@ -20,7 +20,6 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -192,13 +191,13 @@ class LocalOwnerAdoptionTest {
                 assertEquals(
                     1,
                     holder.state
-                        .first { state -> !state.isLoading }
+                        .awaitState("local vehicle list loaded") { state -> !state.isLoading }
                         .vehicles.size,
                 )
 
                 // Authentication is the only thing that happens here. No UI action follows it.
                 ownerContext.set(OwnerId(ADOPTING_UID))
-                val adopted = holder.state.first { state -> !state.isLoading }
+                val adopted = holder.state.awaitState("adopted vehicle list loaded") { state -> !state.isLoading }
 
                 // Without the gate this list resolves empty first, and a host reading D-116 would
                 // open mandatory first-run creation over data one transaction away from arriving.
@@ -224,9 +223,9 @@ class LocalOwnerAdoptionTest {
                 val form = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 form.setName("Roadster")
                 form.save()
-                form.state.first { state -> !state.isSaving }
+                form.state.awaitState("local vehicle save finished") { state -> !state.isSaving }
 
-                authClient.authState.first { state -> state is AuthState.SignedIn }
+                authClient.authState.awaitState("anonymous session acquired after write") { state -> state is AuthState.SignedIn }
                 assertEquals(1, authClient.anonymousSignInCalls, "the first local write re-evaluates acquisition")
             } finally {
                 harness.close()
@@ -245,10 +244,10 @@ class LocalOwnerAdoptionTest {
             try {
                 val session = graph.sessionStateHolder(harness.scope)
                 session.startAnonymousSignIn()
-                session.state.first { state -> state.message != null }
+                session.state.awaitState("offline session failure") { state -> state.message != null }
 
                 connectivity.set(true)
-                authClient.authState.first { state -> state is AuthState.SignedIn }
+                authClient.authState.awaitState("anonymous session acquired after reconnect") { state -> state is AuthState.SignedIn }
 
                 assertEquals(
                     2,

@@ -29,15 +29,20 @@
 
 - Date: 2026-09-10.
 - Branch and base: `story/E1-14-bounded-state-expectations`, origin/main at `eb52daf` (merged PR #65).
-- Current phase and latest commit: RED verified; this RED commit follows base `eb52daf`.
+- Current phase and latest commit: GREEN verified; RED commit `e8cb797`; GREEN commit is this checkpoint.
 - Push and pull-request status: not pushed; no PR.
-- Completed since the previous checkpoint: read requirements and historical evidence; audited
-  unbounded flow waits; confirmed a clean checkout and created the story branch.
+- Completed since the previous checkpoint: implemented the real-time bound while preserving the caller collection
+  context; migrated all 37 raw flow-predicate waits across seven test files.
 - Verification evidence and known failures: focused helper suite compiled and executed: 7 tests, 2 expected failures.
   Both forced-starvation fixtures received the outer TimeoutCancellationException instead of the
   required diagnostic assertion; the other 5 tests passed. Local log: `/tmp/e1-14-red.log`.
+- GREEN evidence: both shared targets passed (`/tmp/e1-14-green-tests.log`). The first lint
+  attempt found 17 overlong lines from descriptive expectation labels; formatting is next.
+  The JVM cause-identity assertion now follows coroutine stack-recovery cause chains, which
+  preserve the original error while allowing the runtime to copy its stack.
 - Open decisions or blockers: none. The helper implements the mechanism already required by E1-14.
-- Exact next step: commit RED, then implement the bounded expectation and migrate graph-backed waits.
+- Exact next step: commit GREEN; refactor helper documentation and formatting, then run repeated
+  stability checks and the complete repository verification.
 
 ## Scope Completed
 
@@ -64,6 +69,7 @@
 
 ## Verification Run
 
+- GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test` passed.
 - RED: `./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.FlowExpectationTest'`
   failed as expected (7 tests, 2 assertion failures caused by missing expectation timeout).
 - `./gradlew --version`: Gradle 9.7.1, JDK 21.0.11, macOS aarch64.

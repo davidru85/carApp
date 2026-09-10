@@ -22,7 +22,6 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -55,8 +54,8 @@ class VehicleListStateHolderTest {
                 form.setName("Roadster")
 
                 form.save()
-                form.state.first { state -> !state.isSaving }
-                val publishedState = list.state.first { state -> state.vehicles.isNotEmpty() }
+                form.state.awaitState("vehicle save finished") { state -> !state.isSaving }
+                val publishedState = list.state.awaitState("saved vehicle listed") { state -> state.vehicles.isNotEmpty() }
 
                 assertEquals(
                     listOf(
@@ -100,7 +99,7 @@ class VehicleListStateHolderTest {
                 val list = graph.vehicleListStateHolder(harness.scope)
 
                 list.refresh()
-                list.state.first { state -> !state.isLoading }
+                list.state.awaitState("vehicle recovery finished") { state -> !state.isLoading }
 
                 val recovered =
                     database.databaseQueries
@@ -112,7 +111,7 @@ class VehicleListStateHolderTest {
                 assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
                 assertEquals(0L, recovered.localRevision)
                 assertEquals(0L, recovered.localMutationSeq)
-                val publishedState = list.state.first { state -> state.vehicles.isNotEmpty() }
+                val publishedState = list.state.awaitState("recovered vehicle listed") { state -> state.vehicles.isNotEmpty() }
                 assertEquals(
                     "Recovered Roadster",
                     publishedState.vehicles.single().name,
