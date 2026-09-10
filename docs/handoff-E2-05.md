@@ -26,22 +26,22 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: REFACTOR complete, on the reconstructed three-commit history.
-- Push and pull-request status: pushed; pull request #65 is open against `main` and awaiting the
-  owner's gated review. The branch history was rebuilt and republished with
-  `git push --force-with-lease` after the owner explicitly approved the rewrite (see "Decisions
-  Made"). An earlier checkpoint in this file claimed the branch was "not yet pushed"; that was
-  already obsolete when it was written and is corrected here.
-- Completed since the previous checkpoint: the blocking review findings on pull request #65 are
-  fixed — operation eligibility, the complete deletion lifecycle, recent-login recovery, typed
-  failures and warning data, and a complete atomic local clear — together with the documentation
-  reconciliation and the TDD history reconstruction.
-- Verification evidence and known failures: the complete non-instrumented CI command passes, the
-  Objective-C golden header matches its regenerated source, and `git diff --check` is clean. No
-  known failure.
-- Open decisions or blockers: none blocking. One behavioural point is flagged for the owner under
-  "Risks or Follow-ups": ending the provider session as part of anonymous "delete local data".
-- Exact next step: the owner's gated review. Agents MUST NOT merge this pull request.
+- Current phase and latest commit: RED for the second owner review round, on top of the reviewed head
+  `2230346`. Published history is not rewritten; this round appends commits.
+- Push and pull-request status: pull request #65 is open and under the owner's gated review.
+- Completed since the previous checkpoint: the owner resolved seven decisions (see "Decisions
+  Made"). This commit adds the executable RED coverage for them: the provider session ended after a
+  successful D-23 deletion, the server operation never repeated, a typed retry surface, the
+  local-data confirmation protocol, and account-deletion analytics restricted to the permanent path.
+- Verification evidence and known failures: EXPECTED RED. The sources compile and 16 of 38
+  `SessionDepartureTest` tests fail for the missing behavior. `FirebaseAuthClientTest`'s new
+  `deleteAccountLeavesTheClientSessionForTheCallerToEnd` passes by design: it is a regression pin on
+  the existing production behavior that the old test double masked by publishing `SignedOut` from
+  `deleteAccount()`.
+- Open decisions or blockers: none; the seven owner decisions are taken and are registered during
+  REFACTOR.
+- Exact next step: GREEN, then REFACTOR with the decision records and the documentation
+  reconciliation.
 
 ## Scope Completed
 

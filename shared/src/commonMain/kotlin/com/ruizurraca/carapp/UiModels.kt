@@ -10,6 +10,14 @@ import kotlin.native.ObjCName
 
 enum class SessionPhase { UNKNOWN, LOCAL, ANONYMOUS, PERMANENT, SIGNED_OUT, DELETING }
 
+/**
+ * The unfinished part of a departure that `SessionStateHolder.retryDeparture()` would repeat, or
+ * `null` when there is nothing to retry (`docs/CONTRACTS.md §20.10`). A retry never repeats a
+ * remote step that already succeeded.
+ */
+@ObjCName(name = "SharedDepartureRetry", swiftName = "DepartureRetry", exact = true)
+enum class DepartureRetry { LOCAL_CLEAR, }
+
 @ObjCName(name = "SharedNativeSignInFailure", swiftName = "NativeSignInFailure", exact = true)
 enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, NO_ACCOUNT_AVAILABLE, UNKNOWN }
 
@@ -33,6 +41,11 @@ data class SessionUiState(
      * `UiMessage` transports only a code.
      */
     val pendingSyncCount: Int?,
+    /**
+     * The unfinished departure work a `retryDeparture()` would repeat, or `null` when there is
+     * none. It is typed state rather than something the host must remember for itself.
+     */
+    val pendingDepartureRetry: DepartureRetry?,
 )
 
 data class SyncUiState(

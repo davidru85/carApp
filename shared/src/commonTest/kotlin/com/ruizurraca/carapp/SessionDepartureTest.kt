@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
@@ -10,6 +11,7 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
+import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -175,7 +177,7 @@ class SessionDepartureTest {
 
             holder.requestDeleteAccount()
             advanceUntilIdle()
-            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
             advanceUntilIdle()
 
             assertEquals(1, departure.clearCalls)
@@ -200,7 +202,7 @@ class SessionDepartureTest {
                     ?.confirmation,
             )
 
-            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
             advanceUntilIdle()
 
             assertEquals(1, departure.clearCalls)
@@ -221,7 +223,7 @@ class SessionDepartureTest {
 
             holder.requestDeleteAccount()
             advanceUntilIdle()
-            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
             advanceUntilIdle()
             holder.close()
 
@@ -328,11 +330,366 @@ class SessionDepartureTest {
             // The anonymous identity was converted before the owner confirmed.
             authClient.emit(AuthState.SignedIn(permanentSession(uid = "anonymous-owner")))
             advanceUntilIdle()
-            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
             advanceUntilIdle()
 
             assertEquals(0, departure.clearCalls)
             assertEquals(0, authClient.deleteAccountCalls)
+            holder.close()
+        }
+
+    // ------------------------------------------- provider session after deletion
+
+    @Test
+    fun permanentDeletionEndsTheProviderSessionBeforeClearingLocalData() =
+        runTest {
+            val log = mutableListOf<String>()
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()), log = log)
+            val departure = RecordingDeparture(pendingCount = 0, log = log)
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+
+            // The D-23 operation does not end the client session, so the flow owes that cleanup.
+            assertEquals(listOf("deleteAccount", "signOut", "clearLocalData"), log)
+            assertEquals(AuthState.SignedOut, authClient.authState.value)
+            assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
+            holder.close()
+        }
+
+    @Test
+    fun permanentDeletionSurvivesRecreatingTheStateHolder() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()))
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+            holder.close()
+
+            val recreated = holder(authClient, RecordingDeparture(pendingCount = 0))
+            advanceUntilIdle()
+
+            assertFalse(recreated.state.value.phase == SessionPhase.PERMANENT)
+            assertEquals(SessionPhase.SIGNED_OUT, recreated.state.value.phase)
+            recreated.close()
+        }
+
+    @Test
+    fun aProviderSignOutFailureAfterRemoteDeletionNeverRepeatsTheServerOperation() =
+        runTest {
+            val authClient =
+                DepartureAuthClient(
+                    AuthState.SignedIn(permanentSession()),
+                    signOutResult = Outcome.Err(AuthError.NetworkUnavailable),
+                )
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+
+            assertEquals(1, authClient.deleteAccountCalls)
+            assertEquals(0, departure.clearCalls)
+            assertFalse(holder.state.value.phase == SessionPhase.SIGNED_OUT)
+
+            authClient.signOutResult = Outcome.Ok(Unit)
+            holder.retryDeparture()
+            advanceUntilIdle()
+
+            assertEquals(1, authClient.deleteAccountCalls)
+            assertEquals(1, departure.clearCalls)
+            assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
+            holder.close()
+        }
+
+    // --------------------------------------------------------- retryable clear
+
+    @Test
+    fun aLocalClearFailureOffersATypedRetry() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()))
+            val departure =
+                RecordingDeparture(
+                    pendingCount = 0,
+                    clearResult = Outcome.Err(PersistenceError.TransactionFailed),
+                )
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+
+            assertEquals(DepartureRetry.LOCAL_CLEAR, holder.state.value.pendingDepartureRetry)
+            holder.close()
+        }
+
+    @Test
+    fun retryDepartureRepeatsOnlyTheLocalClearAfterASignOut() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()))
+            val departure =
+                RecordingDeparture(
+                    pendingCount = 0,
+                    clearResult = Outcome.Err(PersistenceError.TransactionFailed),
+                )
+            val holder = holder(authClient, departure)
+
+            holder.requestSignOut()
+            advanceUntilIdle()
+            assertEquals(1, authClient.signOutCalls)
+            assertEquals(DepartureRetry.LOCAL_CLEAR, holder.state.value.pendingDepartureRetry)
+
+            departure.clearResult = Outcome.Ok(Unit)
+            holder.retryDeparture()
+            advanceUntilIdle()
+
+            // The provider sign-out already succeeded and MUST NOT be repeated.
+            assertEquals(1, authClient.signOutCalls)
+            assertEquals(2, departure.clearCalls)
+            assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
+            assertNull(holder.state.value.pendingDepartureRetry)
+            holder.close()
+        }
+
+    @Test
+    fun retryDepartureRepeatsTheLocalClearForALocalOwner() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedOut)
+            val departure =
+                RecordingDeparture(
+                    pendingCount = 0,
+                    clearResult = Outcome.Err(PersistenceError.TransactionFailed),
+                )
+            val holder = localOwnerHolder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
+            advanceUntilIdle()
+            assertEquals(DepartureRetry.LOCAL_CLEAR, holder.state.value.pendingDepartureRetry)
+
+            departure.clearResult = Outcome.Ok(Unit)
+            holder.retryDeparture()
+            advanceUntilIdle()
+
+            assertEquals(2, departure.clearCalls)
+            assertEquals(0, authClient.deleteAccountCalls)
+            assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
+            holder.close()
+        }
+
+    @Test
+    fun retryDepartureNeverRepeatsAServerDeletionThatSucceeded() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()))
+            val departure =
+                RecordingDeparture(
+                    pendingCount = 0,
+                    clearResult = Outcome.Err(PersistenceError.TransactionFailed),
+                )
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+
+            departure.clearResult = Outcome.Ok(Unit)
+            holder.retryDeparture()
+            advanceUntilIdle()
+
+            assertEquals(1, authClient.deleteAccountCalls)
+            assertEquals(2, departure.clearCalls)
+            assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
+            holder.close()
+        }
+
+    @Test
+    fun retryDepartureDoesNothingWithoutRetainedWork() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()))
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = holder(authClient, departure)
+
+            holder.retryDeparture()
+            advanceUntilIdle()
+
+            assertEquals(0, departure.clearCalls)
+            assertEquals(0, authClient.deleteAccountCalls)
+            assertNull(holder.state.value.pendingDepartureRetry)
+            holder.close()
+        }
+
+    // ------------------------------------------------ confirmation semantics
+
+    @Test
+    fun localOwnerDeletionAsksForTheLocalDataConfirmation() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedOut)
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = localOwnerHolder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+
+            // §20.2 reserves DeleteAccount for actual account deletion.
+            assertEquals(
+                Confirmation.DeleteLocalData,
+                holder.state.value.message
+                    ?.confirmation,
+            )
+            assertEquals(
+                "CONFIRMATION.DeleteLocalData",
+                holder.state.value.message
+                    ?.code,
+            )
+            holder.close()
+        }
+
+    @Test
+    fun anonymousDeletionAsksForTheLocalDataConfirmation() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(anonymousSession()))
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+
+            assertEquals(
+                Confirmation.DeleteLocalData,
+                holder.state.value.message
+                    ?.confirmation,
+            )
+            assertEquals(
+                "CONFIRMATION.DeleteLocalData",
+                holder.state.value.message
+                    ?.code,
+            )
+            holder.close()
+        }
+
+    @Test
+    fun localDataDeletionWithPendingOutboxDiscardsFirstThenConfirmsDestructively() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(anonymousSession()))
+            val departure = RecordingDeparture(pendingCount = 4)
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+
+            // §20.2 assigns DiscardPendingChanges to local-data deletion with pending outbox rows.
+            assertEquals(
+                Confirmation.DiscardPendingChanges,
+                holder.state.value.message
+                    ?.confirmation,
+            )
+            assertEquals(4, holder.state.value.pendingSyncCount)
+            assertEquals(0, departure.clearCalls)
+
+            holder.confirmDeleteAccount(Confirmation.DiscardPendingChanges)
+            advanceUntilIdle()
+
+            assertEquals(
+                Confirmation.DeleteLocalData,
+                holder.state.value.message
+                    ?.confirmation,
+            )
+            assertEquals(0, departure.clearCalls)
+
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
+            advanceUntilIdle()
+
+            assertEquals(1, departure.clearCalls)
+            assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
+            holder.close()
+        }
+
+    @Test
+    fun theDestructiveLocalDataConfirmationIsNotAcceptedBeforeTheDiscard() =
+        runTest {
+            val authClient = DepartureAuthClient(AuthState.SignedIn(anonymousSession()))
+            val departure = RecordingDeparture(pendingCount = 4)
+            val holder = holder(authClient, departure)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
+            advanceUntilIdle()
+
+            assertEquals(0, departure.clearCalls)
+            holder.close()
+        }
+
+    // ------------------------------------------------------------- analytics
+
+    @Test
+    fun permanentDeletionEmitsTheAccountDeletionLifecycle() =
+        runTest {
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient = DepartureAuthClient(AuthState.SignedIn(permanentSession()))
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = holder(authClient, departure, tracker)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteAccount)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(AnalyticsEvent.AccountDeletionStarted, AnalyticsEvent.AccountDeletionCompleted),
+                tracker.events,
+            )
+            holder.close()
+        }
+
+    @Test
+    fun localOwnerDeletionEmitsNoAccountDeletionAnalytics() =
+        runTest {
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient = DepartureAuthClient(AuthState.SignedOut)
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = localOwnerHolder(authClient, departure, tracker)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
+            advanceUntilIdle()
+
+            assertEquals(1, departure.clearCalls)
+            // Clearing local data is not account deletion, so it reports none of its events.
+            assertTrue(tracker.events.none { it is AnalyticsEvent.AccountDeletionCompleted })
+            assertTrue(tracker.events.none { it is AnalyticsEvent.AccountDeletionStarted })
+            holder.close()
+        }
+
+    @Test
+    fun anonymousDeletionEmitsNoAccountDeletionAnalytics() =
+        runTest {
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient = DepartureAuthClient(AuthState.SignedIn(anonymousSession()))
+            val departure = RecordingDeparture(pendingCount = 0)
+            val holder = holder(authClient, departure, tracker)
+
+            holder.requestDeleteAccount()
+            advanceUntilIdle()
+            holder.confirmDeleteAccount(Confirmation.DeleteLocalData)
+            advanceUntilIdle()
+
+            assertEquals(1, departure.clearCalls)
+            assertTrue(tracker.events.none { it is AnalyticsEvent.AccountDeletionCompleted })
+            assertTrue(tracker.events.none { it is AnalyticsEvent.AccountDeletionStarted })
             holder.close()
         }
 
@@ -565,7 +922,14 @@ private fun permanentSession(uid: String = "permanent-owner"): AuthSession =
 private fun kotlinx.coroutines.CoroutineScope.holder(
     authClient: DepartureAuthClient,
     departure: RecordingDeparture,
-): SessionStateHolder = SessionStateHolder(scope = this, authClient = authClient, accountDeparture = departure)
+    analyticsTracker: RecordingAnalyticsTracker? = null,
+): SessionStateHolder =
+    SessionStateHolder(
+        scope = this,
+        authClient = authClient,
+        accountDeparture = departure,
+        analyticsTracker = analyticsTracker,
+    )
 
 /**
  * A local owner is the published `SessionPhase.LOCAL`, which only a refused anonymous sign-in can
@@ -575,8 +939,15 @@ private fun kotlinx.coroutines.CoroutineScope.holder(
 private suspend fun kotlinx.coroutines.test.TestScope.localOwnerHolder(
     authClient: DepartureAuthClient,
     departure: RecordingDeparture,
+    analyticsTracker: RecordingAnalyticsTracker? = null,
 ): SessionStateHolder {
-    val holder = SessionStateHolder(scope = this, authClient = authClient, accountDeparture = departure)
+    val holder =
+        SessionStateHolder(
+            scope = this,
+            authClient = authClient,
+            accountDeparture = departure,
+            analyticsTracker = analyticsTracker,
+        )
     holder.startAnonymousSignIn()
     advanceUntilIdle()
     check(holder.state.value.phase == SessionPhase.LOCAL) { "expected a local owner" }
@@ -587,6 +958,7 @@ private class DepartureAuthClient(
     initialState: AuthState,
     var deleteResult: Outcome<Unit, AuthError> = Outcome.Ok(Unit),
     var reauthenticateResult: Outcome<AuthSession, AuthError> = Outcome.Ok(permanentSession()),
+    var signOutResult: Outcome<Unit, AuthError> = Outcome.Ok(Unit),
     private val log: MutableList<String> = mutableListOf(),
 ) : AuthClient {
     private val mutableAuthState = MutableStateFlow(initialState)
@@ -620,15 +992,18 @@ private class DepartureAuthClient(
     override suspend fun signOut(): Outcome<Unit, AuthError> {
         signOutCalls += 1
         log += "signOut"
-        mutableAuthState.value = AuthState.SignedOut
-        return Outcome.Ok(Unit)
+        val result = signOutResult
+        if (result is Outcome.Ok) mutableAuthState.value = AuthState.SignedOut
+        return result
     }
 
+    // Production-faithful: FirebaseAuthClient.deleteAccount() calls the D-23 Admin operation and
+    // returns Ok. It does NOT sign out and does NOT publish SignedOut, so the persisted client
+    // session outlives it. Emitting SignedOut here would hide the cleanup the flow owes.
     override suspend fun deleteAccount(): Outcome<Unit, AuthError> {
         deleteAccountCalls += 1
         log += "deleteAccount"
         deleteGate?.await()
-        if (deleteResult is Outcome.Ok) mutableAuthState.value = AuthState.SignedOut
         return deleteResult
     }
 }

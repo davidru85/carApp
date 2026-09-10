@@ -143,6 +143,7 @@ class SessionStateHolder internal constructor(
                                     ),
                                 anonymousReminderIndex = null,
                                 pendingSyncCount = null,
+                                pendingDepartureRetry = null,
                             )
                         }
                     }
@@ -300,6 +301,16 @@ class SessionStateHolder internal constructor(
     fun confirmDeleteAccount(confirmation: Confirmation) {
         if (closed || confirmation != Confirmation.DeleteAccount) return
         departureFlow.confirmDeleteAccount()
+    }
+
+    /**
+     * Repeats the unfinished part of a departure that `SessionUiState.pendingDepartureRetry`
+     * reports, and only that part: a remote step that already succeeded is never repeated
+     * (`docs/CONTRACTS.md §20.10`).
+     */
+    fun retryDeparture() {
+        if (closed) return
+        departureFlow.retryDeparture()
     }
 
     /**
@@ -602,9 +613,9 @@ internal fun AuthState?.toSessionUiState(): SessionUiState =
     when (this) {
         null,
         AuthState.Unknown,
-        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null, null, null)
+        -> SessionUiState(SessionPhase.UNKNOWN, emptyList(), false, null, null, null, null)
 
-        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null, null, null)
+        AuthState.SignedOut -> SessionUiState(SessionPhase.SIGNED_OUT, emptyList(), false, null, null, null, null)
 
         is AuthState.SignedIn -> session.toSessionUiState()
     }
@@ -617,6 +628,7 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         message = null,
         anonymousReminderIndex = null,
         pendingSyncCount = null,
+        pendingDepartureRetry = null,
     )
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L
@@ -646,4 +658,5 @@ internal fun signedOutSessionState(): SessionUiState =
         message = null,
         anonymousReminderIndex = null,
         pendingSyncCount = null,
+        pendingDepartureRetry = null,
     )

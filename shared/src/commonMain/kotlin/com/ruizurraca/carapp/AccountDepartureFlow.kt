@@ -128,6 +128,8 @@ internal class AccountDepartureFlow(
         resume(accepted, phase = SessionPhase.DELETING)
     }
 
+    fun retryDeparture() = Unit
+
     fun resumeAfterReauthentication() {
         val accepted = pending ?: return
         accepted.awaitingReauthentication = false

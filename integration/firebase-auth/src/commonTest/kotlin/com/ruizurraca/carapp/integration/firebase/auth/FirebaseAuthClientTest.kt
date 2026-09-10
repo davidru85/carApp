@@ -419,6 +419,29 @@ class FirebaseAuthClientTest {
         }
 
     @Test
+    fun deleteAccountLeavesTheClientSessionForTheCallerToEnd() =
+        runTest {
+            val user = anonymousUser("to-delete-user")
+            val issuedAt = Instant.fromEpochMilliseconds(1_000_000L)
+            val nowInstant = issuedAt.plus(kotlin.time.Duration.parse("60s"))
+            val token = AuthToken("fresh-id-token", issuedAt, issuedAt.plus(kotlin.time.Duration.parse("1h")))
+
+            val gateway = FakeFirebaseAuthGateway(currentUser = user, idTokenResult = token)
+            val clock = AppClock { nowInstant }
+            val client = FirebaseAuthClient(gateway = gateway, clock = clock, coroutineScope = backgroundScope)
+
+            val result = client.deleteAccount()
+
+            // `D-160`: the D-23 Admin operation removes the server-side account, but the persisted
+            // client session survives it. Ending that session is the caller's explicit step, so this
+            // pins the contract the shared departure flow compensates for. A test double that
+            // published SignedOut here would hide the gap.
+            assertIs<Outcome.Ok<Unit>>(result)
+            assertFalse(gateway.signOutCalled)
+            assertIs<AuthState.SignedIn>(client.authState.value)
+        }
+
+    @Test
     fun deleteAccountWithStaleTokenProducesRequiresRecentLoginWithoutCallingServer() =
         runTest {
             val user = anonymousUser("stale-user")
