@@ -338,7 +338,11 @@ class SessionStateHolder internal constructor(
         val dismissed = mutableState.value.message?.confirmation
         // Dismissing a departure prompt withdraws the request behind it, so a later confirmation
         // has nothing to act on.
-        if (dismissed == Confirmation.DiscardPendingChanges || dismissed == Confirmation.DeleteAccount) {
+        // Every departure prompt is withdrawn by dismissing it, so a later stale confirmation has
+        // nothing to act on.
+        if (dismissed != null && dismissed != Confirmation.AdoptExistingAccount &&
+            dismissed != Confirmation.OdometerInconsistent
+        ) {
             departureFlow.abandon()
         }
         if (mutableState.value.message?.confirmation == Confirmation.AdoptExistingAccount) {

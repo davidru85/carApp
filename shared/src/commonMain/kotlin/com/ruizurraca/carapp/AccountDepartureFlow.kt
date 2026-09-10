@@ -35,21 +35,55 @@ internal class PendingDeparture(
     val ownerUid: String?,
     var warned: Boolean = false,
     var readyToDelete: Boolean = false,
-    var started: Boolean = false,
+    /**
+     * `true` once the owner has authorised a destructive step and it has begun. Counting the outbox
+     * for a warning nobody has confirmed is NOT an authorised step: until this flips, the request is
+     * still re-checked against the current owner and session, and nothing is retained.
+     */
+    var authorized: Boolean = false,
     var remoteDone: Boolean = false,
     var sessionEnded: Boolean = false,
     var localDone: Boolean = false,
     var awaitingReauthentication: Boolean = false,
 ) {
-    /** `true` once a step has been attempted and something is still owed, so a retry is meaningful. */
-    val hasRetainedWork: Boolean get() = started && !localDone
+    /** Only the permanent path deletes an account through the `D-23` server operation. */
+    private val remoteOwed: Boolean get() = kind == DepartureKind.DELETE_PERMANENT && !remoteDone
+
+    /** Every kind but a local owner's ends the provider session; a local owner has none. */
+    private val sessionOwed: Boolean get() = kind != DepartureKind.DELETE_LOCAL && !sessionEnded
+
+    private val localOwed: Boolean get() = !localDone
+
+    /** Retained destructive work: an authorised step has begun and a required step is still owed. */
+    val hasRetainedWork: Boolean get() = authorized && (remoteOwed || sessionOwed || localOwed)
 
     /**
-     * What a retry would repeat. A D-23 deletion that already succeeded is never among it, so a
-     * departure whose server call is done but whose session is still alive reports the session step.
+     * The first required step still owed, in the order this kind performs them, or `null` when
+     * there is nothing a retry could repeat. A `D-23` deletion is never among it: one that already
+     * succeeded MUST NOT run again, and one that never ran leaves nothing destructive to resume —
+     * that case is re-authentication's, not a retry's.
      */
-    val retry: DepartureRetry
-        get() = if (remoteDone && !sessionEnded) DepartureRetry.SESSION_CLEANUP else DepartureRetry.LOCAL_CLEAR
+    val retry: DepartureRetry?
+        get() =
+            when {
+                !hasRetainedWork || remoteOwed -> {
+                    null
+                }
+
+                // An anonymous deletion clears local data first, so its session cleanup is only
+                // the next step once that clear has succeeded.
+                sessionOwed && (kind != DepartureKind.DELETE_ANONYMOUS || localDone) -> {
+                    DepartureRetry.SESSION_CLEANUP
+                }
+
+                localOwed -> {
+                    DepartureRetry.LOCAL_CLEAR
+                }
+
+                else -> {
+                    DepartureRetry.SESSION_CLEANUP
+                }
+            }
 }
 
 /**
@@ -104,7 +138,7 @@ internal class AccountDepartureFlow(
     // ------------------------------------------------------------------ intents
 
     fun requestSignOut() {
-        if (running) return
+        if (running || retainsWork()) return
         val departureHandler = departure ?: return
         val session = currentSession()
         // F-5: sign-out is offered only to a permanently authenticated user. An anonymous session
@@ -114,7 +148,7 @@ internal class AccountDepartureFlow(
             return
         }
         val operationScope = scope ?: return
-        begin(PendingDeparture(DepartureKind.SIGN_OUT, session.uid), phase = null)
+        beginEvaluation(PendingDeparture(DepartureKind.SIGN_OUT, session.uid))
         job = operationScope.launch { evaluatePendingSync(departureHandler) }
     }
 
@@ -125,7 +159,7 @@ internal class AccountDepartureFlow(
     }
 
     fun requestDeleteAccount() {
-        if (running) return
+        if (running || retainsWork()) return
         val requested = currentDeletionRequest()
         if (requested == null) {
             publish(AuthError.ProviderUnavailable)
@@ -147,9 +181,7 @@ internal class AccountDepartureFlow(
     private fun countOutboxBeforeLocalDataDeletion(requested: PendingDeparture) {
         val departureHandler = departure ?: return
         val operationScope = scope ?: return
-        running = true
-        cancelOtherWork()
-        state.value = state.value.copy(isBusy = true, message = null, pendingSyncCount = null)
+        beginEvaluation(requested)
         job = operationScope.launch { offerLocalDataDeletion(requested, departureHandler) }
     }
 
@@ -171,9 +203,17 @@ internal class AccountDepartureFlow(
     fun retryDeparture() {
         if (running) return
         val candidate = pending ?: return
-        if (!candidate.hasRetainedWork) return
+        // The intent follows the published value exactly: no value, no retry.
+        if (candidate.retry == null) return
         resume(candidate, phase = SessionPhase.DELETING)
     }
+
+    /**
+     * A departure that still owes a required step keeps its request. A new one would restart the
+     * step model, and for a permanent deletion that means calling the `D-23` operation a second
+     * time for an account that is already gone. The retry is the only way forward.
+     */
+    private fun retainsWork(): Boolean = pending?.hasRetainedWork == true
 
     private fun askFor(message: UiMessage) {
         state.value = state.value.copy(isBusy = false, message = message, pendingSyncCount = null)
@@ -229,6 +269,12 @@ internal class AccountDepartureFlow(
     fun resumeAfterReauthentication() {
         val accepted = pending ?: return
         accepted.awaitingReauthentication = false
+        // `D-161` / ADR-0162: started attempts equal completed plus failed attempts. The stale-login
+        // refusal already reported a failed attempt, so the resumed `D-23` call is a new attempt and
+        // reports its own start.
+        if (accepted.kind == DepartureKind.DELETE_PERMANENT && !accepted.remoteDone) {
+            analyticsTracker?.track(AnalyticsEvent.AccountDeletionStarted)
+        }
         resume(accepted, phase = SessionPhase.DELETING)
     }
 
@@ -276,7 +322,21 @@ internal class AccountDepartureFlow(
     private fun discard() {
         pending = null
         running = false
-        state.value = state.value.copy(message = null, pendingSyncCount = null)
+        state.value = state.value.copy(message = null, pendingSyncCount = null, pendingDepartureRetry = null)
+    }
+
+    /** Starts the outbox count. Nothing is authorised yet, so nothing is retained. */
+    private fun beginEvaluation(candidate: PendingDeparture) {
+        pending = candidate
+        running = true
+        cancelOtherWork()
+        state.value =
+            state.value.copy(
+                isBusy = true,
+                message = null,
+                pendingSyncCount = null,
+                pendingDepartureRetry = null,
+            )
     }
 
     private fun begin(
@@ -285,7 +345,7 @@ internal class AccountDepartureFlow(
     ) {
         pending = candidate
         running = true
-        candidate.started = true
+        candidate.authorized = true
         cancelOtherWork()
         val current = state.value
         state.value =
@@ -294,6 +354,7 @@ internal class AccountDepartureFlow(
                 isBusy = true,
                 message = null,
                 pendingSyncCount = null,
+                pendingDepartureRetry = null,
             )
     }
 
@@ -317,10 +378,24 @@ internal class AccountDepartureFlow(
                 if (counted.value > 0) {
                     warn(candidate, counted.value)
                 } else {
-                    run(candidate)
+                    signOutAfterAnEmptyCount(candidate)
                 }
             }
         }
+    }
+
+    /**
+     * The count is asynchronous, so the provider may have switched session while it ran. A request
+     * raised for owner A MUST NOT sign out owner B, so the owner is re-checked here, immediately
+     * before the first authorised step.
+     */
+    private suspend fun signOutAfterAnEmptyCount(candidate: PendingDeparture) {
+        if (!ownerStillMatches(candidate)) {
+            discard()
+            return
+        }
+        candidate.authorized = true
+        run(candidate)
     }
 
     /**
@@ -370,7 +445,11 @@ internal class AccountDepartureFlow(
         departureHandler: AccountDepartureHandler,
     ) {
         if (!clearLocalData(candidate, departureHandler)) return
-        if (endProviderSession(candidate)) complete(candidate)
+        // The local data is already gone. Leaving the anonymous session alive would make the
+        // deletion look undone on the next launch, so ordinary cancellation MUST NOT lose this.
+        withContext(NonCancellable) {
+            if (endProviderSession(candidate)) complete(candidate)
+        }
     }
 
     private suspend fun runSignOut(
@@ -391,8 +470,13 @@ internal class AccountDepartureFlow(
         departureHandler: AccountDepartureHandler,
     ) {
         if (!candidate.remoteDone && !deleteRemoteAccount(candidate)) return
-        if (!candidate.sessionEnded && !endProviderSession(candidate)) return
-        settle(candidate, departureHandler)
+        // The account is gone remotely. Ending the session and clearing local data is one tail that
+        // ordinary cancellation, including `SessionStateHolder.close()`, MUST NOT interrupt. This
+        // says nothing about process death, which stays `E2-09`.
+        withContext(NonCancellable) {
+            if (!candidate.sessionEnded && !endProviderSession(candidate)) return@withContext
+            settle(candidate, departureHandler)
+        }
     }
 
     /** Hands over from the completed remote steps to the local clear, then settles the departure. */
@@ -498,7 +582,13 @@ internal class AccountDepartureFlow(
     }
 
     private fun publish(error: AppError) {
-        state.value = state.value.copy(isBusy = false, message = error.toSessionUiMessage(), pendingSyncCount = null)
+        state.value =
+            state.value.copy(
+                isBusy = false,
+                message = error.toSessionUiMessage(),
+                pendingSyncCount = null,
+                pendingDepartureRetry = null,
+            )
     }
 
     private fun fail(error: AppError) {

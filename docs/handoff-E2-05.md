@@ -26,24 +26,33 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: RED for the third owner review round, appended on the reviewed
-  head `fe7d367`. Published history is not rewritten and nothing is force-pushed.
+- Current phase and latest commit: GREEN for the third owner review round. The RED commit is
+  `ab2cda3`, appended on the reviewed head `fe7d367`. Published history is not rewritten and nothing
+  is force-pushed.
 - Push and pull-request status: pull request #65 is open and under the owner's gated review.
-- Completed since the previous checkpoint: executable RED coverage for the six third-round findings —
+- Completed since the previous checkpoint: the six third-round findings are fixed.
+  `PendingDeparture` now models the required steps per departure kind and separates authorisation
+  from evaluation, the tail after a destructive step runs under `NonCancellable`, the two request
+  intents refuse to replace retained work, `DepartureRetry` reports the first step actually owed,
+  `clearMessage()` withdraws every departure confirmation, and a deletion resumed after
+  re-authentication reports its own `AccountDeletionStarted`. The RED commit had added executable
+  coverage for all six —
   an unconfirmed pending-sync warning being treated as retained destructive work, the cancellable
   tail after a destructive step, retained work being replaceable by a new request, `DepartureRetry`
   being untruthful for the sign-out and anonymous kinds, `clearMessage()` not withdrawing a
   `DeleteLocalData` request, and the broken account-deletion analytics identity after
   re-authentication. The test doubles gained controllable gates on `signOut()` and the outbox count.
-- Verification evidence and known failures: EXPECTED RED. `SessionDepartureIntegrityTest` compiles
-  and 12 of its 14 tests fail on assertions, one per finding. The clearest is
-  `aNewRequestCannotReplaceRetainedWorkOrRepeatTheServerDeletion`, which observes two `deleteAccount`
-  calls where the contract allows exactly one. The two passing tests are the cases that already
-  behaved correctly, kept as regression cover.
+- Verification evidence and known failures: the RED commit compiled and 12 of the 14
+  `SessionDepartureIntegrityTest` tests failed on assertions, one per finding. The clearest was
+  `aNewRequestCannotReplaceRetainedWorkOrRepeatTheServerDeletion`, which observed two `deleteAccount`
+  calls where the contract allows exactly one; the other two tests were cases that already behaved
+  correctly and are kept as regression cover. All 14 now pass, and so do the surrounding suites:
+  `:shared` 142, `:core:database` 51, `:integration:firebase-auth` 48 and `:androidApp` 31 tests, 0
+  failures.
 - Open decisions or blockers: none. The round is a correction of the accepted semantics of `D-156`
   to `D-163`; no new owner decision is introduced.
-- Exact next step: GREEN, then the documentation reconciliation of `D-159` / ADR-0160, ADR-0162 and
-  `docs/CONTRACTS.md §20.10`.
+- Exact next step: the documentation reconciliation of `D-159` / ADR-0160, ADR-0162 and
+  `docs/CONTRACTS.md §20.10`, then the complete verification.
 
 ## Scope Completed
 
