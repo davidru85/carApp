@@ -38,6 +38,49 @@
 
 ## Entries
 
+### 2026-09-10 — Correction: departure integrity findings of the third E2-05 review
+
+- **Type:** correction
+- **Story / Decision:** `E2-05` / `D-156` through `D-163`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the third gated owner review of pull request #65 found six integrity defects in
+  the F-5 departure, all fixed here without any new owner decision. `PendingDeparture.started` was
+  set while the outbox count for an unconfirmed pending-sync warning was still running, so an
+  unanswered warning counted as retained destructive work: it suppressed auth-state changes, bypassed
+  the owner check and made `retryDeparture()` callable before anything had been authorised.
+  Authorisation is now separate from evaluation, and the owner is re-checked after the asynchronous
+  count and before the first authorised step, so a request raised for one owner can never sign out
+  another. The tail after a destructive step was cancellable, so an ordinary cancellation could
+  strand a deleted remote account with a live provider session and uncleared local data, or lose the
+  session cleanup an anonymous deletion still owed; both tails now run under `NonCancellable`. A new
+  `requestSignOut()` or `requestDeleteAccount()` could replace retained work and call the `D-23`
+  operation a second time; both now refuse. `DepartureRetry` derived retained work from the local
+  clear alone, so a failed sign-out and a failed anonymous session cleanup reported `LOCAL_CLEAR`,
+  and the anonymous case offered no retry at all; it now reports the first required step still owed
+  for every kind. `clearMessage()` did not withdraw a `DeleteLocalData` request. And a deletion
+  resumed after re-authentication completed without a matching `AccountDeletionStarted`, breaking the
+  ADR-0162 identity that started attempts equal completed plus failed attempts.
+- **Why:** each defect made a documented guarantee untrue rather than merely incomplete. The most
+  serious was the second `D-23` call, because the server operation is not idempotent from the
+  owner's point of view once the account is gone. The `SESSION_CLEANUP` semantics of `D-159` and the
+  analytics boundary of `D-161` were described too narrowly when they were accepted; both are
+  corrected in place as the same decisions, not widened. This entry corrects the *2026-09-10 —
+  Correction: the E2-05 departure lifecycle and its missing decision records* entry, which described
+  the retry surface and the analytics lifecycle as complete.
+- **Documents touched:** `docs/CONTRACTS.md` §11.5 and §20.10, `docs/adr/0160-expose-the-departure-retry-as-typed-state.md`,
+  `docs/adr/0161-end-the-provider-session-as-its-own-deletion-step.md`,
+  `docs/adr/0162-report-account-deletion-analytics-for-the-permanent-path.md`,
+  `docs/handoff-E2-05.md`. The `D-159` and `D-161` rows in the four mirroring tables already stated
+  the corrected rule and are unchanged.
+- **Verification:** RED commit `ab2cda3` compiled with 12 of 14 `SessionDepartureIntegrityTest` tests
+  failing on assertions, one per finding; GREEN commit `bbb995d` turns all 14 green. `:shared` 142,
+  `:core:database` 51, `:integration:firebase-auth` 48 and `:androidApp` 31 tests pass. The complete
+  non-instrumented CI command passes, the Objective-C golden header is unchanged because no exported
+  declaration changed, and `git diff --check` is clean.
+- **Follow-ups / risks:** the non-cancellable tail covers coroutine cancellation and
+  `SessionStateHolder.close()` only. Process death remains the accepted `D-163` residual risk
+  recorded in `docs/SECURITY.md`, and `E2-09` still owns the durable recovery marker.
+
 ### 2026-09-10 — Correction: the E2-05 departure lifecycle and its missing decision records
 
 - **Type:** correction

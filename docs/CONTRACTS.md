@@ -939,9 +939,15 @@ repeating it would report a failure for an account that was already deleted. The
 retained and retryable through `SessionUiState.pendingDepartureRetry` and
 `SessionStateHolder.retryDeparture()` (`D-159`).
 
-That retained request lives in memory only. A process death between a successful step 2 and a
-completed step 7 leaves local data for an account that no longer exists remotely, and the retry is
-lost with it. This residual risk is accepted and recorded in `docs/SECURITY.md` (`D-163`); the flow
+Once step 2 has succeeded, steps 6 and 7 form one tail that ordinary coroutine cancellation MUST
+NOT interrupt, including `SessionStateHolder.close()`: the device must never be left holding a live
+provider session, or uncleared local data, for an account that is already gone. The provider-session
+cleanup an anonymous local-data deletion owes after its clear has succeeded is likewise not
+cancellable, for the same reason.
+
+That retained request lives in memory only, and being non-cancellable says nothing about surviving a
+process death. A process death between a successful step 2 and a completed step 7 leaves local data
+for an account that no longer exists remotely, and the retry is lost with it. This residual risk is accepted and recorded in `docs/SECURITY.md` (`D-163`); the flow
 MUST NOT be described as recoverable across process death until an executable recovery proves it.
 
 The server operation is the Cloud Functions 2nd gen callable `deleteAccount`. Its request payload
@@ -2875,11 +2881,27 @@ anonymous local-data deletion reports none of the three.
 
 `SessionUiState.pendingDepartureRetry` reports the unfinished part of a departure, or `null` when
 there is none, and `SessionStateHolder.retryDeparture()` repeats exactly that part (`D-159`).
-`SESSION_CLEANUP` means the D-23 deletion succeeded and the provider session is still alive;
-`LOCAL_CLEAR` means the remote side is done and only the local clear remains. A retry MUST NOT
-repeat a server deletion that already succeeded, and MUST NOT re-check the owner or session, because
-the retained work exists precisely when the original session is legitimately gone. The host reads
-this from typed state; it MUST NOT be asked to remember it itself.
+The value is the first required step the departure still owes, in the order that departure kind
+performs them, and it is therefore not limited to the permanent path. `SESSION_CLEANUP` means the
+provider-session cleanup is the next step owed: for a permanent deletion whose `D-23` call already
+succeeded, for a sign-out whose provider sign-out failed, and for an anonymous local-data deletion
+whose local clear already succeeded. `LOCAL_CLEAR` means the local clear is the next step owed. The
+value is `null` whenever no retry is callable, including while a stale login is waiting for
+re-authentication, which is the host's re-authentication flow rather than a retry.
+
+A retry MUST NOT repeat a `D-23` server deletion that already succeeded, MUST NOT repeat a local
+clear that already succeeded, and MUST NOT re-check the owner or session, because the retained work
+exists precisely when the original session is legitimately gone. `pendingDepartureRetry` MUST be
+`null` once the departure completes or is withdrawn, and `retryDeparture()` MUST do nothing when it
+is `null`. The host reads this from typed state; it MUST NOT be asked to remember it itself.
+
+Retained destructive work begins only when the owner has authorised a destructive step and that step
+has started. Counting the outbox to decide whether to warn is not such a step: while a pending-sync
+warning is unanswered the request is still re-checked against the current owner and session, the
+auth-state collector is not suppressed, and there is nothing to retry. Because the count is
+asynchronous, the owner is re-checked after it returns and before the first authorised step, so a
+request raised for one owner can never sign out another. `clearMessage()` withdraws any unanswered
+departure confirmation, after which a later confirmation of it acts on nothing.
 
 A confirmation is accepted only when it answers an active request for the same owner and session. A
 confirmation with no request, a confirmation of the wrong kind, and a request whose owner or session

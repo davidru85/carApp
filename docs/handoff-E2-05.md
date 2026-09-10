@@ -26,9 +26,9 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: GREEN for the third owner review round. The RED commit is
-  `ab2cda3`, appended on the reviewed head `fe7d367`. Published history is not rewritten and nothing
-  is force-pushed.
+- Current phase and latest commit: REFACTOR for the third owner review round. That round is RED
+  `ab2cda3` and GREEN `bbb995d`, appended on the reviewed head `fe7d367`. Published history is not
+  rewritten and nothing is force-pushed.
 - Push and pull-request status: pull request #65 is open and under the owner's gated review.
 - Completed since the previous checkpoint: the six third-round findings are fixed.
   `PendingDeparture` now models the required steps per departure kind and separates authorisation
@@ -50,9 +50,11 @@
   `:shared` 142, `:core:database` 51, `:integration:firebase-auth` 48 and `:androidApp` 31 tests, 0
   failures.
 - Open decisions or blockers: none. The round is a correction of the accepted semantics of `D-156`
-  to `D-163`; no new owner decision is introduced.
-- Exact next step: the documentation reconciliation of `D-159` / ADR-0160, ADR-0162 and
-  `docs/CONTRACTS.md §20.10`, then the complete verification.
+  to `D-163`; no new owner decision is introduced, and the four mirroring tables are unchanged
+  because the `D-159` and `D-161` rows already stated the corrected rule. `docs/CONTRACTS.md`
+  §11.5 and §20.10, ADR-0160, ADR-0161 and ADR-0162 are corrected in place, and the exported
+  contract is unchanged so the Objective-C golden header needed no regeneration.
+- Exact next step: the owner's gated review. Agents MUST NOT merge this pull request.
 
 ## Scope Completed
 
@@ -126,6 +128,39 @@ Second review round, each finding with the test that closes it:
 - Analytics scope — `permanentDeletionEmitsTheAccountDeletionLifecycle` asserts the ordered pair
   `AccountDeletionStarted`, `AccountDeletionCompleted`; `localOwnerDeletionEmitsNoAccountDeletionAnalytics`
   and `anonymousDeletionEmitsNoAccountDeletionAnalytics` assert neither event on the other two kinds.
+
+Third review round, each finding with the test that closes it:
+
+- An unconfirmed pending-sync warning is not retained destructive work —
+  `anUnconfirmedPendingSyncWarningOffersNoRetry`,
+  `anUnconfirmedPendingSyncWarningDoesNotSuppressAuthStateChanges` and
+  `aSessionChangeAfterAPendingSyncWarningRefusesTheDiscard`, which asserts that a request raised for
+  one owner signs out nobody after the provider switches session.
+- The owner is re-checked after the asynchronous outbox count —
+  `aSessionChangeWhileCountingAnEmptyOutboxAbortsTheSignOut` holds the count open on a gate, changes
+  the session while it runs, and asserts no sign-out and no clear.
+- The post-destructive tail is not cancellable —
+  `cancellationAfterRemoteDeletionStillEndsTheSessionAndClears` and
+  `cancellationAfterAnAnonymousClearStillEndsTheSession` hold `signOut()` open on a gate, call
+  `close()`, release the gate and assert the tail still finished. Both cover coroutine cancellation
+  only; process death remains `E2-09`.
+- Retained work is protected from new requests —
+  `aNewRequestCannotReplaceRetainedWorkOrRepeatTheServerDeletion` completes the `D-23` call once,
+  fails the session cleanup, fires all four ordinary request and confirmation intents again, and
+  asserts exactly one `deleteAccount` call with the original retry still offered.
+- `DepartureRetry` is truthful for every kind —
+  `aPermanentDeletionWhoseSessionCleanupFailsRetriesOnlyThatStep`,
+  `aSignOutWhoseSessionCleanupFailsOffersASessionCleanupRetry`,
+  `anAnonymousDeletionWhoseSessionCleanupFailsRetriesOnlyTheSessionCleanup` — which asserts the
+  already successful local clear is not repeated — and `aLocalOwnerClearFailureOffersALocalClearRetry`.
+  Each asserts `pendingDepartureRetry` is null again after the retry succeeds.
+- A dismissed local-data confirmation is withdrawn —
+  `dismissingTheLocalDataConfirmationWithdrawsALocalOwnerRequest` and
+  `dismissingTheLocalDataConfirmationWithdrawsAnAnonymousRequest`.
+- The account-deletion analytics identity holds —
+  `aDeletionResumedAfterReauthenticationEmitsANewStarted` asserts the exact ordered sequence
+  `Started`, `Failed(REQUIRES_RECENT_LOGIN)`, `Started`, `Completed`, while the local and anonymous
+  paths still emit none of the three.
 
 ## Out of Scope / Not Done
 

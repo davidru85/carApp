@@ -26,6 +26,14 @@ The selected option is **A**.
 The three account-deletion events describe the permanent `D-23` path only. A local or anonymous
 local-data deletion reports none of them.
 
+A `D-23` attempt refused with `AuthError.RequiresRecentLogin` is a failed attempt and reports
+`AccountDeletionFailed`. Resuming after a successful re-authentication runs the `D-23` call again, so
+it is a new attempt and reports its own `AccountDeletionStarted`. The full sequence for that path is
+`Started`, `Failed(REQUIRES_RECENT_LOGIN)`, `Started`, then `Completed` or `Failed`. Without the
+second `Started` the identity would not hold, which is what an earlier revision of this flow got
+wrong. A retry that repeats only a session cleanup or a local clear does NOT report a start, because
+it makes no new `D-23` attempt.
+
 ## Consequences
 
 ### Positive
@@ -45,6 +53,8 @@ local-data deletion reports none of them.
 ## Verification
 
 - `permanentDeletionEmitsTheAccountDeletionLifecycle` asserts the exact ordered pair.
+- `aDeletionResumedAfterReauthenticationEmitsANewStarted` asserts the exact ordered four-event
+  sequence of the stale-login path.
 - `localOwnerDeletionEmitsNoAccountDeletionAnalytics` and `anonymousDeletionEmitsNoAccountDeletionAnalytics`.
 
 ## References

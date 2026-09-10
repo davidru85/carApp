@@ -25,9 +25,17 @@ request instead of retrying it.
 
 The selected option is **A**.
 
-`SESSION_CLEANUP` means the `D-23` deletion succeeded and the provider session is still alive;
-`LOCAL_CLEAR` means the remote side is done and only the local clear remains. `retryDeparture()`
-repeats exactly that, re-checking neither owner nor session.
+The value is the first required step the departure still owes, in the order its kind performs them.
+`SESSION_CLEANUP` means the provider-session cleanup is next: after a `D-23` deletion that succeeded,
+after a sign-out whose provider sign-out failed, and after an anonymous local-data deletion whose
+local clear succeeded. `LOCAL_CLEAR` means the local clear is next. The value is `null` when no retry
+is callable, including while a stale login awaits re-authentication. `retryDeparture()` repeats
+exactly the published step, re-checking neither owner nor session.
+
+An earlier revision described `SESSION_CLEANUP` as belonging to the permanent `D-23` path alone and
+derived retained work from the local clear only. That was too narrow: it left a failed sign-out and a
+failed anonymous session cleanup reporting `LOCAL_CLEAR`, and the anonymous case with no retry at
+all. This is a correction of the same accepted decision, not a change of scope.
 
 ## Consequences
 
