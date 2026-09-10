@@ -730,30 +730,6 @@ Acceptance criteria:
   `presentation` from reaching. The D-85 move of Session presentation is therefore not applied;
   `SyncStateHolder` remains the app-level state holder in `:shared`.
 
-### E2-09 - Durable Departure Recovery Marker - S
-
-Close the process-death window that `D-163` accepted as a residual risk in `E2-05`.
-
-A departure retains its unfinished work in memory only. If the process dies between a successful
-remote step — the `D-23` account deletion or the provider sign-out — and a completed local clear,
-local data survives for an account that no longer exists remotely, and the retry offered through
-`SessionUiState.pendingDepartureRetry` is lost with the process.
-
-Acceptance criteria:
-
-- The departure operation and the steps that already succeeded are persisted before the first
-  destructive step, in the manner of the `D-151` conversion marker.
-- A relaunch that finds an unfinished departure resumes it, repeating only the steps that had not
-  succeeded, and never repeating the `D-23` server operation.
-- The schema bump ships a committed `.sqm` migration and a populated previous-version migration test.
-- An executable test proves recovery across a simulated process restart, so the documentation may
-  describe the flow as recoverable; until then `docs/CONTRACTS.md §11.5` MUST NOT say it is.
-- `docs/SECURITY.md` drops the accepted residual risk once the recovery is executable.
-
-Depends on: E2-05.
-
-Human review required.
-
 ### E2-08 - Anonymous Reminder Launch and Sign-In Race Fixes - S
 
 Close the three non-blocking observations raised in the `E2-07` owner review of pull request #61.
@@ -1323,10 +1299,10 @@ Acceptance criteria:
 - A graph close after an anonymous local clear still ends the provider session exactly once.
 - Production-shaped Android graph and `SwiftAppGraph` lifecycle tests prove completion without
   access to a closed dependency; fake-only holder closure is not sufficient evidence.
-- Process-death recovery remains owned by `E2-09`; this story neither duplicates nor weakens its
+- Process-death recovery is delivered by `E2-05` under `D-165`; this story neither duplicates nor weakens its
   durable-marker contract.
 
-Depends on: E2-05. Coordinate with E2-09 if it has already been implemented.
+Depends on: E2-05.
 
 Human review required.
 

@@ -952,10 +952,21 @@ accepted by `D-164` and owned by `E5-03`; until that story supplies graph-level 
 and executable coverage, the departure MUST NOT be described as guaranteed to complete across an
 ordinary graph close.
 
-That retained request lives in memory only, and being non-cancellable says nothing about surviving a
-process death. A process death between a successful step 2 and a completed step 7 leaves local data
-for an account that no longer exists remotely, and the retry is lost with it. This residual risk is accepted and recorded in `docs/SECURITY.md` (`D-163`); the flow
-MUST NOT be described as recoverable across process death until an executable recovery proves it.
+The departure is also durable across a process death (`D-165`). Before its first destructive step it
+writes the `account_departure_operation` marker of `D-166`, and it records each step as that step
+succeeds. The marker survives the local clear, because an anonymous local-data deletion clears first
+and ends the provider session afterwards. At the next launch the app graph finishes what was
+interrupted (`D-167`): only the steps the marker does not record as done, in the order that kind
+performs them, with no owner interaction, and it never repeats the `D-23` operation.
+
+Two limits are normative. A permanent deletion whose `D-23` call never recorded success is dropped
+rather than resumed, because repeating that call is forbidden and starting it would need a
+confirmation nobody gave; the owner keeps both account and data. And the recovery covers every step
+the marker records, not the instant between the server operation returning success and that success
+being written locally: Firebase Auth and SQLite share no transaction, so a process death inside that
+instant still leaves local data for an account that is already gone. That remaining instant is the
+residual risk recorded in `docs/SECURITY.md`, and no document MAY claim the departure is fully
+recoverable across process death.
 
 The server operation is the Cloud Functions 2nd gen callable `deleteAccount`. Its request payload
 contains `targetUid: String`; the callable-verified Firebase caller UID MUST equal that value. A

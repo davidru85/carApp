@@ -26,8 +26,9 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: GREEN for the durable departure recovery marker. The RED commit
-  is `05c1117`, appended on `92930ca`. Published history is not rewritten and nothing is force-pushed.
+- Current phase and latest commit: REFACTOR for the durable departure recovery marker. That work is
+  RED `05c1117` and GREEN `4e42e04`, appended on `92930ca`. Published history is not rewritten and
+  nothing is force-pushed.
 - Push and pull-request status: pull request #65 is open and under the owner's gated review.
 - Completed since the previous checkpoint: the owner decided to close the `D-163` process-death
   window inside this pull request rather than in the separate `E2-09` story that `D-163` created.
@@ -45,8 +46,7 @@
 - Open decisions or blockers: none blocking. Three decisions are registered during REFACTOR: closing
   the window inside E2-05 and superseding `D-163`, the durable marker representation and why the
   local clear must not remove it, and where an interrupted departure is resumed.
-- Exact next step: REFACTOR — register the three decisions with their ADRs and mirrors, and
-  reconcile the contract, the security register, the backlog and `AGENTS.md`.
+- Exact next step: the owner's gated review. Agents MUST NOT merge this pull request.
 
 ## Scope Completed
 
@@ -135,7 +135,8 @@ Third review round, each finding with the test that closes it:
   `cancellationAfterRemoteDeletionStillEndsTheSessionAndClears` and
   `cancellationAfterAnAnonymousClearStillEndsTheSession` hold `signOut()` open on a gate, call
   `close()`, release the gate and assert the tail still finished. Both cover coroutine cancellation
-  only; process death remains `E2-09`.
+  only. Process death is now covered by the `D-165` durable marker, except for the single instant
+  `docs/SECURITY.md` still records.
 - Retained work is protected from new requests —
   `aNewRequestCannotReplaceRetainedWorkOrRepeatTheServerDeletion` completes the `D-23` call once,
   fails the session cleanup, fires all four ordinary request and confirmation intents again, and
@@ -154,6 +155,29 @@ Third review round, each finding with the test that closes it:
   `Started`, `Failed(REQUIRES_RECENT_LOGIN)`, `Started`, `Completed`, while the local and anonymous
   paths still emit none of the three.
 
+Durable departure recovery (`D-165` to `D-167`), each with the test that proves it:
+
+- The marker exists before the first destructive step and every step is recorded —
+  `aDepartureIsPersistedBeforeItsFirstDestructiveStepAndClearedOnSuccess` pins the exact write order
+  `startPersistedDeparture`, `deleteAccount`, `REMOTE_DELETION`, `signOut`, `SESSION_CLEANUP`,
+  `clearLocalData`, `LOCAL_CLEAR`, `clearPersistedDeparture`.
+- The marker survives the local clear — `theDepartureMarkerSurvivesTheLocalDataClear`, which is what
+  makes an anonymous deletion resumable for its session cleanup.
+- A relaunch finishes what was interrupted, for every kind —
+  `aRelaunchFinishesAnInterruptedPermanentDeletionWithoutRepeatingTheServerCall`,
+  `aRelaunchFinishesAnInterruptedAnonymousDeletionByEndingTheSession`,
+  `aRelaunchFinishesAnInterruptedSignOutByClearingLocalData` (which asserts the already successful
+  provider sign-out is not repeated) and `aRelaunchFinishesAnInterruptedLocalOwnerDeletion`. Each
+  builds a fresh coordinator over the same database, exactly as the app graph does at launch.
+- The `D-23` operation is never repeated or started by a relaunch —
+  `aRelaunchDropsAPermanentDeletionWhoseServerCallNeverSucceeded` asserts no server call, no clear
+  and a dropped marker, and `aRelaunchWithNoInterruptedDepartureDoesNothing` covers the normal case.
+- The marker's own behaviour — `AccountDepartureDatabaseAccessTest` covers the round trip, per-step
+  recording, replacement of a stale marker, a local owner's absent UID and schema version 4.
+- The migration — `migratingAPopulatedVersionThreeDatabaseAddsTheEmptyDepartureMarker` and
+  `migratingDirectlyFromVersionOneToVersionFourAppliesEveryIntermediateMigration` assert row
+  preservation and the new empty table, with `verifyMigrations` enabled in CI.
+
 ## Out of Scope / Not Done
 
 - The Settings UI surface (E4-01) that renders the sign-out and deletion controls.
@@ -163,8 +187,9 @@ Third review round, each finding with the test that closes it:
 - The `WARNING.PENDING_SYNC` host copy. Its text needs the count formatted into it, which only the
   rendering surface can do, so it belongs to `E4-01` together with the Settings screen. The two
   argument-free departure confirmations are mapped in both hosts by this story.
-- Durable recovery of an interrupted departure across a process death. `D-163` accepts that residual
-  risk, `docs/SECURITY.md` records it and `E2-09` closes it.
+- Full recovery across a process death. `D-165` closes the window the marker covers; the instant
+  between the `D-23` call returning success and that success being written locally is not covered and
+  stays recorded in `docs/SECURITY.md`.
 - The three low-probability departure concurrency and lifecycle gaps accepted by `D-164`:
   owner-bound provider and retry operations (`E5-02`), graph-owned completion of the mandatory tail
   (`E5-03`), and auth-state reconciliation after asynchronous outbox evaluation (`E5-04`). They are
@@ -222,7 +247,18 @@ Second round, all seven presented to the owner and selected by the owner before 
 - `D-162` (ADR-0163): E2-05's settings criterion is the callable application contract; the surface
   and the store-compliance obligation belong to `E4-01`.
 - `D-163` (ADR-0164): accept the process-death window, record it in `docs/SECURITY.md`, and close it
-  in the new `E2-09`.
+  in a separate story. `D-165` later superseded it: the marker is delivered in this pull request and
+  `E2-09` was removed from the backlog.
+
+Durable recovery round, all three registered after the owner chose to close the window here:
+
+- `D-165` (ADR-0166): close the `D-163` process-death window inside `E2-05`. `D-163` is `Superseded`
+  and `E2-09` is removed from the backlog, its criteria delivered here. The window is narrowed, not
+  eliminated, and `docs/SECURITY.md` keeps an entry scoped to what remains.
+- `D-166` (ADR-0167): a single-row schema v4 `account_departure_operation` table with one flag per
+  step, added by the additive `3.sqm` migration and deliberately excluded from the local clear.
+- `D-167` (ADR-0168): resume once at app-graph construction, finishing only the steps the marker does
+  not record as done, with no owner interaction and never touching the `D-23` operation.
 
 - Rule 0 held for the whole story: every owner-facing reply was in Spanish (es-ES) and every
   repository artifact is in technical English. No violation occurred.
@@ -317,11 +353,12 @@ re-run. That is the documented E1-14 flake, not a regression from this work.
   window around the non-cancellable tail, and the missing reconciliation of an auth transition
   consumed during the asynchronous outbox count. `docs/CONTRACTS.md` states each limit and
   `docs/SECURITY.md` records the residual risks. They do not block PR #65 or MVP completion.
-- **`E2-09` owns the process-death window.** A departure that dies between a successful remote step
-  and a completed local clear leaves local data for an account that no longer exists remotely, and
-  the retained retry dies with the process. `D-163` accepts this, `docs/SECURITY.md` records it, and
-  no document may describe the departure as recoverable across process death until `E2-09` proves it
-  with an executable recovery.
+- **A single instant of the process-death window remains open.** `D-165` closes everything the
+  durable marker covers, but not the instant between the `D-23` operation returning success and that
+  success being written locally: Firebase Auth and SQLite share no transaction. A process death there
+  leaves local data for an account that is already gone, and the next launch drops the marker rather
+  than resuming, because it cannot tell whether the call ran and MUST NOT repeat it. This is recorded
+  in `docs/SECURITY.md` and no document claims the departure is fully recoverable.
 - **`E4-01` owns the Settings surface**, and therefore the store-compliance obligation that depends
   on it (`D-162`), plus the `WARNING.PENDING_SYNC` copy, whose text needs `pendingSyncCount`
   formatted into it.

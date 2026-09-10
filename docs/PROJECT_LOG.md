@@ -38,6 +38,43 @@
 
 ## Entries
 
+### 2026-09-10 — E2-05 closes the departure process-death window, superseding D-163
+
+- **Type:** decision
+- **Story / Decision:** `E2-05` / `D-163`, `D-165`, `D-166`, `D-167`
+- **Author:** Claude Opus 5, on behalf of David Ruiz
+- **What changed:** the owner chose to close the process-death window inside pull request #65 rather
+  than accept it and deliver the marker in the separate `E2-09` story. `D-163` is therefore
+  `Superseded` by `D-165`, and `E2-09` is removed from `docs/BACKLOG.md` because its acceptance
+  criteria are delivered here. Schema version 4 adds the single-row `account_departure_operation`
+  marker through the additive `3.sqm` migration (`D-166`): the departure writes it before its first
+  destructive step and records each step as that step succeeds. The local clear deliberately leaves
+  it alone, because an anonymous local-data deletion clears first and ends the provider session
+  afterwards, so wiping the marker inside the clear would make the very operation performing it
+  unrecoverable. `AccountDepartureCoordinator.resumePending()` runs once at app-graph construction
+  (`D-167`) and finishes what a process death interrupted, repeating only the steps the marker does
+  not record as done and reporting nothing to the owner, because the departure was already
+  authorised. A permanent deletion whose `D-23` call never recorded success is dropped rather than
+  resumed: repeating that call is forbidden and starting it would need a confirmation nobody gave.
+- **Why:** the window was accepted only because closing it needed a schema bump, a migration and
+  launch-time resumption, which `D-163` judged a story of its own. The owner preferred one merged
+  story with no accepted risk behind it. The window is narrowed rather than eliminated, and the
+  documentation says so: what remains is the instant between the `D-23` operation returning success
+  and that success being written locally, because Firebase Auth and SQLite share no transaction —
+  the same class of limit as `D-150`.
+- **Documents touched:** `docs/CONTRACTS.md` §11.5, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (E2-09 removed),
+  `docs/SECURITY.md` (risk narrowed, not dropped), `docs/adr/README.md`, ADR-0164 (superseded),
+  ADR-0166 to ADR-0168 (new), `AGENTS.md`, `docs/handoff-E2-05.md`.
+- **Verification:** RED commit `05c1117` compiled with 6 of 8 `AccountDepartureDatabaseAccessTest`
+  and 5 of 7 `AccountDepartureRecoveryTest` tests failing on assertions; GREEN commit `4e42e04`
+  turns all of them green. `:shared` 149, `:core:database` 60, `:integration:firebase-auth` 48 and
+  `:androidApp` 31 tests pass. The populated version-three to version-four migration test asserts row
+  preservation and the new empty table, with `verifyMigrations` enabled.
+- **Follow-ups / risks:** `docs/SECURITY.md` keeps a residual-risk entry scoped to the remaining
+  instant; it is not dropped. The three `D-164` gaps remain deferred to `E5-02`, `E5-03` and `E5-04`
+  and are untouched by this change.
+
 ### 2026-09-10 — D-164 defers three departure integrity findings to post-MVP
 
 - **Type:** decision

@@ -84,18 +84,20 @@ Requirements:
   reconciliation. These windows are outside the normal single-owner foreground flow and do not
   block PR #65 or MVP completion. No document may describe any of the three guarantees as complete
   until its executable follow-up closes it.
-- **Local data can outlive a deleted account across a process death** (`D-163`). The F-5 departure
-  runs the `D-23` server operation, then ends the provider session, then clears local data, and it
-  retains its unfinished work so a retry repeats only the part that failed. That retained request
-  lives in memory. If the process dies between a successful remote step and a completed local clear,
-  the vehicles, refuels and settings of an account that no longer exists remotely stay on the device,
-  and the retry offered through `SessionUiState.pendingDepartureRetry` is lost with the process. The
-  data is device-local, is no longer reachable from any account, and is removed by the next
-  successful departure or by uninstalling the app; no remote copy survives, because the server
-  deletion had already completed. The window is bounded by a single local transaction, so it is
-  narrow, but it is not closed. `E2-09` closes it with a durable recovery marker, after which this
-  entry is removed. Until then no document may describe the departure as recoverable across process
-  death.
+- **Local data can outlive a deleted account if the process dies while the server operation is
+  returning** (`D-165`, narrowing `D-163`). The F-5 departure now persists a durable marker before
+  its first destructive step and records each step as it succeeds, and the app graph finishes an
+  interrupted departure at the next launch, so a process death at any point the marker covers is
+  recovered. One instant is not covered: between the `D-23` server operation returning success and
+  that success being written to the local database. Firebase Auth and Cloud Firestore share no
+  transaction with SQLite, so the two writes cannot be made atomic — the same class of limit as
+  `D-150`. A process death inside that instant leaves the vehicles, refuels and settings of an
+  account that no longer exists remotely on the device, and the next launch drops the marker rather
+  than resuming, because it cannot tell whether the server call ran and MUST NOT repeat it. The data
+  is device-local, is no longer reachable from any account, and is removed by the next successful
+  departure or by uninstalling the app; no remote copy survives. The window is now a single
+  round-trip completion rather than a whole tail of network and database work, but it is not zero,
+  and no document may describe the departure as fully recoverable across process death.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the

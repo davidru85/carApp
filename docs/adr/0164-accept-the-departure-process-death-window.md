@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0166](0166-close-the-departure-process-death-window-in-e2-05.md) (`D-165`).
+
+The owner chose to close the window inside `E2-05` with a durable recovery marker rather than
+accept it and defer the marker to a separate story. The analysis below stands as the record of
+why the window existed and what it cost; the acceptance it recommended no longer holds, and the
+`E2-09` story it created has been removed from the backlog because its criteria are delivered
+in `E2-05`.
 
 ## Context
 
