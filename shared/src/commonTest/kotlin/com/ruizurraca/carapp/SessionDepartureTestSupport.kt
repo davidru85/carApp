@@ -83,7 +83,12 @@ internal class DepartureAuthClient(
     var signOutCalls = 0
     var deleteAccountCalls = 0
     var reauthenticateCalls = 0
+
+    /** Holds `deleteAccount()` open so a test can observe or interrupt the step that follows it. */
     var deleteGate: CompletableDeferred<Unit>? = null
+
+    /** Holds `signOut()` open after it has been entered, for the cancellation tests of `D-160`. */
+    var signOutGate: CompletableDeferred<Unit>? = null
 
     fun emit(state: AuthState) {
         mutableAuthState.value = state
@@ -108,6 +113,7 @@ internal class DepartureAuthClient(
     override suspend fun signOut(): Outcome<Unit, AuthError> {
         signOutCalls += 1
         log += "signOut"
+        signOutGate?.await()
         val result = signOutResult
         if (result is Outcome.Ok) mutableAuthState.value = AuthState.SignedOut
         return result
@@ -133,8 +139,12 @@ internal class RecordingDeparture(
     var clearCalls = 0
     var countCalls = 0
 
+    /** Holds the outbox count open so a test can change the session while it is in flight. */
+    var countGate: CompletableDeferred<Unit>? = null
+
     override suspend fun pendingOutboxCount(): Outcome<Int, AppError> {
         countCalls += 1
+        countGate?.await()
         return countResult ?: Outcome.Ok(pendingCount)
     }
 

@@ -26,25 +26,24 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: REFACTOR for the second owner review round. That round is RED
-  `1add7ea`, GREEN `2b497a2` and this commit, appended on the reviewed head `2230346`. Published
-  history was not rewritten.
-- Push and pull-request status: every commit is pushed; pull request #65 is open against `main` and
-  awaiting the owner's gated review. It is NOT merged.
-- Completed since the previous checkpoint: the four detekt findings were resolved by refactoring, not
-  suppression — the departure steps were split per kind, `requestDeleteAccount` had its outbox count
-  extracted, the Android message map separates the typed confirmations, and the departure tests were
-  split into `SessionDepartureTest` and `SessionDepartureLifecycleTest`. `D-156` through `D-163` were
-  registered with ADR-0157 to ADR-0164 and their four mirroring rows each, ADR-0156's false claim
-  about the golden header was corrected, the canonical `§20.2`, `§20.9`, `§20.10` and `§11.5`
-  declarations were reconciled, `E2-09` was added to the backlog, and the accepted residual risk was
-  recorded in `docs/SECURITY.md`.
-- Verification evidence and known failures: the complete non-instrumented CI command passes; the
-  Objective-C golden header was regenerated and matches; `git diff --check` is clean. One flake was
-  observed and is the documented `E1-14`: `FuelEntryStateHolderTest` failed once on a `runTest`
-  timeout and passed on a clean re-run, which is exactly what that story describes.
-- Open decisions or blockers: none. All seven owner decisions of this round are taken and recorded.
-- Exact next step: the owner's gated review. Agents MUST NOT merge this pull request.
+- Current phase and latest commit: RED for the third owner review round, appended on the reviewed
+  head `fe7d367`. Published history is not rewritten and nothing is force-pushed.
+- Push and pull-request status: pull request #65 is open and under the owner's gated review.
+- Completed since the previous checkpoint: executable RED coverage for the six third-round findings —
+  an unconfirmed pending-sync warning being treated as retained destructive work, the cancellable
+  tail after a destructive step, retained work being replaceable by a new request, `DepartureRetry`
+  being untruthful for the sign-out and anonymous kinds, `clearMessage()` not withdrawing a
+  `DeleteLocalData` request, and the broken account-deletion analytics identity after
+  re-authentication. The test doubles gained controllable gates on `signOut()` and the outbox count.
+- Verification evidence and known failures: EXPECTED RED. `SessionDepartureIntegrityTest` compiles
+  and 12 of its 14 tests fail on assertions, one per finding. The clearest is
+  `aNewRequestCannotReplaceRetainedWorkOrRepeatTheServerDeletion`, which observes two `deleteAccount`
+  calls where the contract allows exactly one. The two passing tests are the cases that already
+  behaved correctly, kept as regression cover.
+- Open decisions or blockers: none. The round is a correction of the accepted semantics of `D-156`
+  to `D-163`; no new owner decision is introduced.
+- Exact next step: GREEN, then the documentation reconciliation of `D-159` / ADR-0160, ADR-0162 and
+  `docs/CONTRACTS.md §20.10`.
 
 ## Scope Completed
 
