@@ -8,7 +8,9 @@ import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
+import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.UiMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -32,10 +34,23 @@ internal class PendingDeparture(
     val kind: DepartureKind,
     val ownerUid: String?,
     var warned: Boolean = false,
+    var readyToDelete: Boolean = false,
+    var started: Boolean = false,
     var remoteDone: Boolean = false,
+    var sessionEnded: Boolean = false,
     var localDone: Boolean = false,
     var awaitingReauthentication: Boolean = false,
-)
+) {
+    /** `true` once a step has been attempted and something is still owed, so a retry is meaningful. */
+    val hasRetainedWork: Boolean get() = started && !localDone
+
+    /**
+     * What a retry would repeat. A D-23 deletion that already succeeded is never among it, so a
+     * departure whose server call is done but whose session is still alive reports the session step.
+     */
+    val retry: DepartureRetry
+        get() = if (remoteDone && !sessionEnded) DepartureRetry.SESSION_CLEANUP else DepartureRetry.LOCAL_CLEAR
+}
 
 /**
  * The F-5 sign-out and account-deletion flows of `docs/SPECIFICATION.md §7 F-5` and
@@ -69,7 +84,7 @@ internal class AccountDepartureFlow(
      * auth-state collector must not overwrite it: deleting the account signs the provider out, and
      * an unguarded collector would publish `SIGNED_OUT` while the local clear is still pending.
      */
-    fun ownsState(): Boolean = running || pending?.remoteDone == true || pending?.awaitingReauthentication == true
+    fun ownsState(): Boolean = running || pending?.hasRetainedWork == true || pending?.awaitingReauthentication == true
 
     fun cancel() {
         job?.cancel()
@@ -117,18 +132,93 @@ internal class AccountDepartureFlow(
             return
         }
         pending = requested
-        state.value = state.value.copy(isBusy = false, message = deleteAccountConfirmation(), pendingSyncCount = null)
+        if (requested.kind == DepartureKind.DELETE_PERMANENT) {
+            requested.readyToDelete = true
+            askFor(deleteAccountConfirmation())
+            return
+        }
+        // Local-data deletion inspects the outbox first: §20.2 assigns `DiscardPendingChanges` to
+        // exactly that case, and the destructive step only follows once those rows are discarded.
+        val departureHandler = departure ?: return
+        val operationScope = scope ?: return
+        running = true
+        cancelOtherWork()
+        state.value = state.value.copy(isBusy = true, message = null, pendingSyncCount = null)
+        job = operationScope.launch { offerLocalDataDeletion(requested, departureHandler) }
     }
 
-    fun confirmDeleteAccount() {
+    fun confirmDeleteAccount(confirmation: Confirmation) {
         if (running) return
-        // Re-authentication is a separate, host-driven step; the confirmation cannot skip it.
+        when (confirmation) {
+            Confirmation.DiscardPendingChanges -> acceptDiscardBeforeLocalDataDeletion()
+            Confirmation.DeleteLocalData -> startDeletion(permanent = false)
+            Confirmation.DeleteAccount -> startDeletion(permanent = true)
+            else -> Unit
+        }
+    }
+
+    /**
+     * Repeats the unfinished part of a departure and only that part. A D-23 deletion that already
+     * succeeded is never repeated, and the owner and session are not re-checked: the work is
+     * retained precisely because the original session may legitimately be gone by then.
+     */
+    fun retryDeparture() {
+        if (running) return
+        val candidate = pending ?: return
+        if (!candidate.hasRetainedWork) return
+        resume(candidate, phase = SessionPhase.DELETING)
+    }
+
+    private fun askFor(message: UiMessage) {
+        state.value = state.value.copy(isBusy = false, message = message, pendingSyncCount = null)
+    }
+
+    private suspend fun offerLocalDataDeletion(
+        candidate: PendingDeparture,
+        departureHandler: AccountDepartureHandler,
+    ) {
+        when (val counted = departureHandler.pendingOutboxCount()) {
+            is Outcome.Err -> {
+                fail(counted.error)
+            }
+
+            is Outcome.Ok -> {
+                if (counted.value > 0) {
+                    warn(candidate, counted.value)
+                } else {
+                    candidate.readyToDelete = true
+                    running = false
+                    askFor(deleteLocalDataConfirmation())
+                }
+            }
+        }
+    }
+
+    private fun acceptDiscardBeforeLocalDataDeletion() {
         val accepted =
-            acceptedDeparture { it.kind != DepartureKind.SIGN_OUT && !it.awaitingReauthentication } ?: return
+            acceptedDeparture {
+                it.kind != DepartureKind.SIGN_OUT && it.warned && !it.readyToDelete
+            } ?: return
+        accepted.readyToDelete = true
+        askFor(deleteLocalDataConfirmation())
+    }
+
+    /**
+     * `DeleteAccount` answers only an account deletion and `DeleteLocalData` only a local-data one,
+     * so a confirmation of the wrong kind acts on nothing. Re-authentication is a separate,
+     * host-driven step that the confirmation cannot skip.
+     */
+    private fun startDeletion(permanent: Boolean) {
+        val accepted =
+            acceptedDeparture {
+                it.kind != DepartureKind.SIGN_OUT &&
+                    (it.kind == DepartureKind.DELETE_PERMANENT) == permanent &&
+                    it.readyToDelete &&
+                    !it.awaitingReauthentication
+            } ?: return
+        if (permanent) analyticsTracker?.track(AnalyticsEvent.AccountDeletionStarted)
         resume(accepted, phase = SessionPhase.DELETING)
     }
-
-    fun retryDeparture() = Unit
 
     fun resumeAfterReauthentication() {
         val accepted = pending ?: return
@@ -166,7 +256,7 @@ internal class AccountDepartureFlow(
      * owes a local clear is not re-checked against it.
      */
     private fun ownerStillMatches(candidate: PendingDeparture): Boolean {
-        if (candidate.remoteDone) return true
+        if (candidate.hasRetainedWork) return true
         val session = currentSession()
         if (candidate.kind == DepartureKind.DELETE_LOCAL) {
             return session == null && state.value.phase == SessionPhase.LOCAL
@@ -189,6 +279,7 @@ internal class AccountDepartureFlow(
     ) {
         pending = candidate
         running = true
+        candidate.started = true
         cancelOtherWork()
         val current = state.value
         state.value =
@@ -248,8 +339,9 @@ internal class AccountDepartureFlow(
             return
         }
         when (candidate.kind) {
+            // Nothing remote exists for a local owner, so there is no handover to publish.
             DepartureKind.DELETE_LOCAL -> {
-                settle(candidate, departureHandler)
+                if (clearLocalData(candidate, departureHandler)) complete(candidate)
             }
 
             // The anonymous identity is unrecoverable and has no `D-23` server deletion. Its local
@@ -262,20 +354,25 @@ internal class AccountDepartureFlow(
             }
 
             DepartureKind.SIGN_OUT -> {
-                if (candidate.remoteDone || endProviderSession(candidate)) {
+                if (candidate.sessionEnded || endProviderSession(candidate)) {
                     settle(candidate, departureHandler)
                 }
             }
 
+            // `D-160`: the D-23 operation removes the server-side account but leaves the persisted
+            // client session alive, so ending it is an explicit step of its own. Each step carries
+            // its own flag, which is what stops a later failure from repeating the server call.
             DepartureKind.DELETE_PERMANENT -> {
                 if (candidate.remoteDone || deleteRemoteAccount(candidate)) {
-                    settle(candidate, departureHandler)
+                    if (candidate.sessionEnded || endProviderSession(candidate)) {
+                        settle(candidate, departureHandler)
+                    }
                 }
             }
         }
     }
 
-    /** Hands over from the completed remote step to the local clear, then settles the departure. */
+    /** Hands over from the completed remote steps to the local clear, then settles the departure. */
     private suspend fun settle(
         candidate: PendingDeparture,
         departureHandler: AccountDepartureHandler,
@@ -298,7 +395,7 @@ internal class AccountDepartureFlow(
             // The remote side may already be done, so the request is retained: a retry redoes the
             // clear alone. Neither SIGNED_OUT nor the completion event may be published here.
             is Outcome.Err -> {
-                fail(cleared.error)
+                failDeparture(candidate, cleared.error)
                 false
             }
 
@@ -317,12 +414,12 @@ internal class AccountDepartureFlow(
         }
         return when (val result = client.signOut()) {
             is Outcome.Err -> {
-                fail(result.error)
+                failDeparture(candidate, result.error)
                 false
             }
 
             is Outcome.Ok -> {
-                candidate.remoteDone = true
+                candidate.sessionEnded = true
                 true
             }
         }
@@ -364,8 +461,12 @@ internal class AccountDepartureFlow(
             )
     }
 
+    /**
+     * Only the permanent path deletes an account, so only it reports the account-deletion
+     * lifecycle. Clearing local data for a local or anonymous owner is not account deletion.
+     */
     private fun complete(candidate: PendingDeparture) {
-        if (candidate.kind != DepartureKind.SIGN_OUT) {
+        if (candidate.kind == DepartureKind.DELETE_PERMANENT) {
             analyticsTracker?.track(AnalyticsEvent.AccountDeletionCompleted)
         }
         pending = null
@@ -379,7 +480,26 @@ internal class AccountDepartureFlow(
 
     private fun fail(error: AppError) {
         running = false
+        pending = null
         publish(error)
+    }
+
+    /**
+     * A departure that already attempted a step keeps its request and publishes what a retry would
+     * repeat, so the host offers the retry from typed state instead of remembering it itself.
+     */
+    private fun failDeparture(
+        candidate: PendingDeparture,
+        error: AppError,
+    ) {
+        running = false
+        state.value =
+            state.value.copy(
+                isBusy = false,
+                message = error.toSessionUiMessage(),
+                pendingSyncCount = null,
+                pendingDepartureRetry = candidate.retry,
+            )
     }
 
     /**

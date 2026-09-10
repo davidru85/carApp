@@ -26,22 +26,25 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: RED for the second owner review round, on top of the reviewed head
-  `2230346`. Published history is not rewritten; this round appends commits.
+- Current phase and latest commit: GREEN for the second owner review round. The RED commit is
+  `1add7ea`, on top of the reviewed head `2230346`. Published history is not rewritten.
 - Push and pull-request status: pull request #65 is open and under the owner's gated review.
 - Completed since the previous checkpoint: the owner resolved seven decisions (see "Decisions
   Made"). This commit adds the executable RED coverage for them: the provider session ended after a
   successful D-23 deletion, the server operation never repeated, a typed retry surface, the
   local-data confirmation protocol, and account-deletion analytics restricted to the permanent path.
-- Verification evidence and known failures: EXPECTED RED. The sources compile and 16 of 38
-  `SessionDepartureTest` tests fail for the missing behavior. `FirebaseAuthClientTest`'s new
+- Verification evidence and known failures: the RED commit compiled and 16 of 38
+  `SessionDepartureTest` tests failed for the missing behavior. `FirebaseAuthClientTest`'s new
   `deleteAccountLeavesTheClientSessionForTheCallerToEnd` passes by design: it is a regression pin on
   the existing production behavior that the old test double masked by publishing `SignedOut` from
-  `deleteAccount()`.
+  `deleteAccount()`. All host suites now pass in GREEN: `:shared` 128, `:core:database` 51,
+  `:integration:firebase-auth` 48 and `:androidApp` 31 tests, 0 failures. `:shared:detekt` and
+  `:androidApp:detekt` report four findings — two `CyclomaticComplexMethod`, one `LargeClass` on the
+  test class and one `ReturnCount` — which are the declared REFACTOR work.
 - Open decisions or blockers: none; the seven owner decisions are taken and are registered during
   REFACTOR.
-- Exact next step: GREEN, then REFACTOR with the decision records and the documentation
-  reconciliation.
+- Exact next step: REFACTOR — resolve the four detekt findings, register the seven owner decisions
+  with their ADRs and mirrors, and reconcile the canonical documentation.
 
 ## Scope Completed
 

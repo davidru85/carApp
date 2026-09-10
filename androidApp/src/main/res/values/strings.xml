@@ -96,5 +96,7 @@
     <string name="anonymous_reminder_body_3">This account is still not linked. Sign in with Google to keep your data recoverable, because an unlinked account is deleted after 30 days without use.</string>
     <string name="anonymous_reminder_body_4">Last reminder: this account still belongs to this device only and is deleted after 30 days without use. Sign in with Google to keep your vehicles and refuels recoverable.</string>
     <string name="anonymous_reminder_dismiss">Dismiss</string>
+    <string name="confirm_delete_account">This permanently deletes your account and every vehicle and refuel in it, on this device and in the backup. This cannot be undone.</string>
+    <string name="confirm_delete_local_data">This permanently deletes every vehicle and refuel on this device. There is no account to recover them from, so this cannot be undone.</string>
     <string name="confirm_replace_existing_account">This permanently replaces every vehicle and refuel in the existing account with the data on this device. This cannot be undone.</string>
 </resources>

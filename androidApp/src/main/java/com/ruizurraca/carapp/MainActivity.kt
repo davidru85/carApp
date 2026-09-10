@@ -971,6 +971,10 @@ private fun nonAuthStringResource(code: String): Int =
 
         "CONFIRMATION.AdoptExistingAccount" -> R.string.confirm_replace_existing_account
 
+        "CONFIRMATION.DeleteAccount" -> R.string.confirm_delete_account
+
+        "CONFIRMATION.DeleteLocalData" -> R.string.confirm_delete_local_data
+
         "PERSISTENCE.DATABASE_UNAVAILABLE",
         "PERSISTENCE.TRANSACTION_FAILED",
         "PERSISTENCE.MIGRATION_FAILED",

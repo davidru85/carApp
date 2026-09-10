@@ -16,7 +16,7 @@ enum class SessionPhase { UNKNOWN, LOCAL, ANONYMOUS, PERMANENT, SIGNED_OUT, DELE
  * remote step that already succeeded.
  */
 @ObjCName(name = "SharedDepartureRetry", swiftName = "DepartureRetry", exact = true)
-enum class DepartureRetry { LOCAL_CLEAR, }
+enum class DepartureRetry { SESSION_CLEANUP, LOCAL_CLEAR }
 
 @ObjCName(name = "SharedNativeSignInFailure", swiftName = "NativeSignInFailure", exact = true)
 enum class NativeSignInFailure { CANCELLED, NETWORK, CONFIGURATION, NO_ACCOUNT_AVAILABLE, UNKNOWN }

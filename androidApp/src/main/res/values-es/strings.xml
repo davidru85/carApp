@@ -96,5 +96,7 @@
     <string name="anonymous_reminder_body_3">Esta cuenta sigue sin vincular. Inicia sesión con Google para conservar tus datos recuperables, porque una cuenta sin vincular se elimina tras 30 días sin uso.</string>
     <string name="anonymous_reminder_body_4">Último aviso: esta cuenta sigue perteneciendo solo a este dispositivo y se elimina tras 30 días sin uso. Inicia sesión con Google para poder recuperar tus vehículos y repostajes.</string>
     <string name="anonymous_reminder_dismiss">Descartar</string>
+    <string name="confirm_delete_account">Esto elimina permanentemente tu cuenta y todos los vehículos y repostajes que contiene, en este dispositivo y en la copia de seguridad. No se puede deshacer.</string>
+    <string name="confirm_delete_local_data">Esto elimina permanentemente todos los vehículos y repostajes de este dispositivo. No hay ninguna cuenta desde la que recuperarlos, así que no se puede deshacer.</string>
     <string name="confirm_replace_existing_account">Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer.</string>
 </resources>

@@ -299,8 +299,8 @@ class SessionStateHolder internal constructor(
     }
 
     fun confirmDeleteAccount(confirmation: Confirmation) {
-        if (closed || confirmation != Confirmation.DeleteAccount) return
-        departureFlow.confirmDeleteAccount()
+        if (closed) return
+        departureFlow.confirmDeleteAccount(confirmation)
     }
 
     /**
@@ -601,6 +601,14 @@ internal fun pendingSyncWarning(): UiMessage =
         confirmation = Confirmation.DiscardPendingChanges,
     )
 
+internal fun deleteLocalDataConfirmation(): UiMessage =
+    UiMessage(
+        id = DELETE_LOCAL_DATA_CONFIRMATION_MESSAGE_ID,
+        kind = UiMessageKind.WARNING,
+        code = "CONFIRMATION.DeleteLocalData",
+        confirmation = Confirmation.DeleteLocalData,
+    )
+
 internal fun deleteAccountConfirmation(): UiMessage =
     UiMessage(
         id = DELETE_ACCOUNT_CONFIRMATION_MESSAGE_ID,
@@ -636,6 +644,7 @@ private const val AUTH_ERROR_MESSAGE_ID = 2L
 private const val ACCOUNT_CONVERSION_CONFIRMATION_MESSAGE_ID = 3L
 private const val PENDING_SYNC_CONFIRMATION_MESSAGE_ID = 4L
 private const val DELETE_ACCOUNT_CONFIRMATION_MESSAGE_ID = 5L
+private const val DELETE_LOCAL_DATA_CONFIRMATION_MESSAGE_ID = 6L
 
 class SyncStateHolder internal constructor() {
     val state: StateFlow<SyncUiState> =

@@ -197,7 +197,7 @@ class SessionDepartureTest {
             holder.requestDeleteAccount()
             advanceUntilIdle()
             assertEquals(
-                Confirmation.DeleteAccount,
+                Confirmation.DeleteLocalData,
                 holder.state.value.message
                     ?.confirmation,
             )
@@ -247,7 +247,8 @@ class SessionDepartureTest {
             holder.confirmDeleteAccount(Confirmation.DeleteAccount)
             advanceUntilIdle()
 
-            assertEquals(listOf("deleteAccount", "clearLocalData"), log)
+            // `D-160` inserts the provider-session cleanup between the two.
+            assertEquals(listOf("deleteAccount", "signOut", "clearLocalData"), log)
             assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
             holder.close()
         }
