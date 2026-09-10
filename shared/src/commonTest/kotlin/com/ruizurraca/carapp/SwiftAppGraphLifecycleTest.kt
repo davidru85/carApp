@@ -40,7 +40,10 @@ class SwiftAppGraphLifecycleTest {
                 assertSame(first, swiftGraph.vehicleFormStateHolder(vehicleId = null))
                 first.setName("First vehicle")
                 first.save()
-                first.state.awaitState("first Swift vehicle saved") { state -> state.savedVehicleId != null && !state.isSaving }
+                first.state.awaitState("first Swift vehicle saved") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 swiftGraph.releaseVehicleFormStateHolder(vehicleId = null)
 
@@ -56,7 +59,10 @@ class SwiftAppGraphLifecycleTest {
                 assertEquals(0, second.state.value.initialOdometerKm)
                 second.setName("Second vehicle")
                 second.save()
-                second.state.awaitState("second Swift vehicle saved") { state -> state.savedVehicleId != null && !state.isSaving }
+                second.state.awaitState("second Swift vehicle saved") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 assertEquals(
                     listOf("First vehicle", "Second vehicle"),

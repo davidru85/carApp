@@ -225,7 +225,9 @@ class LocalOwnerAdoptionTest {
                 form.save()
                 form.state.awaitState("local vehicle save finished") { state -> !state.isSaving }
 
-                authClient.authState.awaitState("anonymous session acquired after write") { state -> state is AuthState.SignedIn }
+                authClient.authState.awaitState(
+                    "anonymous session acquired after write",
+                ) { state -> state is AuthState.SignedIn }
                 assertEquals(1, authClient.anonymousSignInCalls, "the first local write re-evaluates acquisition")
             } finally {
                 harness.close()
@@ -247,7 +249,9 @@ class LocalOwnerAdoptionTest {
                 session.state.awaitState("offline session failure") { state -> state.message != null }
 
                 connectivity.set(true)
-                authClient.authState.awaitState("anonymous session acquired after reconnect") { state -> state is AuthState.SignedIn }
+                authClient.authState.awaitState(
+                    "anonymous session acquired after reconnect",
+                ) { state -> state is AuthState.SignedIn }
 
                 assertEquals(
                     2,

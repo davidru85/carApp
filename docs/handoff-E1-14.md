@@ -28,29 +28,66 @@
 ## In-Progress Checkpoint
 
 - Date: 2026-09-10.
-- Branch and base: `story/E1-14-bounded-state-expectations`, origin/main at `eb52daf` (merged PR #65).
-- Current phase and latest commit: GREEN verified; RED commit `e8cb797`; GREEN commit is this checkpoint.
+- Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf`.
+- Current phase and latest commit: bounded-expectation cycle RED `e8cb797`, GREEN `9bcec1c`,
+  REFACTOR is this checkpoint. The helper's seven regression tests pass; suite stability is not done.
 - Push and pull-request status: not pushed; no PR.
-- Completed since the previous checkpoint: implemented the real-time bound while preserving the caller collection
-  context; migrated all 37 raw flow-predicate waits across seven test files.
-- Verification evidence and known failures: focused helper suite compiled and executed: 7 tests, 2 expected failures.
-  Both forced-starvation fixtures received the outer TimeoutCancellationException instead of the
-  required diagnostic assertion; the other 5 tests passed. Local log: `/tmp/e1-14-red.log`.
-- GREEN evidence: both shared targets passed (`/tmp/e1-14-green-tests.log`). The first lint
-  attempt found 17 overlong lines from descriptive expectation labels; formatting is next.
-  The JVM cause-identity assertion now follows coroutine stack-recovery cause chains, which
-  preserve the original error while allowing the runtime to copy its stack.
-- Open decisions or blockers: none. The helper implements the mechanism already required by E1-14.
-- Exact next step: commit GREEN; refactor helper documentation and formatting, then run repeated
-  stability checks and the complete repository verification.
+- Completed since the previous checkpoint: extracted the deadline constant, documented collection
+  context and cancellation, formatted all migrated calls. Investigated two diagnostic failures.
+- Verification evidence and known failures: the initial bound-only batch passed 24 complete
+  iterations and then failed on Android at `saveFullEntry`, with a loaded but empty list. An
+  uncommitted UnconfinedTestDispatcher experiment passed 28 Android and 27 Native iterations,
+  then Native `litersAndPriceDeriveTotalCostWhileTyping` reported `litersScaled=null`,
+  `pricePerLiterScaled=1789`, `totalCostMinor=null`. This is lost input, not slow SQLite work.
+  UnconfinedTestDispatcher still allows undispatched continuation delivery and does not serialize
+  fixture main work. That experiment was removed; its evidence is preserved in this handoff.
+  The completed helper behavior is green, but the fuel fixture needs its own deterministic
+  regression and scheduler refactoring before E1-14 can be submitted.
+- Open decisions or blockers: no owner decision. Production uses a confined main dispatcher;
+  the test-only unconfined fixture violates that premise. No production change is planned.
+- Exact next step: begin a second RED/GREEN/REFACTOR cycle that proves graph main work must wait
+  for the test scheduler, then inject StandardTestDispatcher and repeat final stability verification.
 
 ## Scope Completed
 
-- Intake and initial source audit.
+- Added `Flow<T>.awaitState(expectation, timeout, predicate)` in shared commonTest, with a default
+  five-second real-time deadline, a mandatory description and last-emission diagnostics.
+- Kept collection on the caller context and cancellation structured; no production dispatcher changed.
+- Migrated all 37 raw predicate flow waits in seven files, including direct database settings and
+  auth-flow waits adjacent to graph-backed holder tests.
+- Added seven focused helper tests, including two independently bounded starvation fixtures.
+- Audited all 11 graph-mounting test files plus the directly constructed adoption-failure holder.
 
 ## Acceptance Evidence
 
-- Pending RED/GREEN/REFACTOR verification.
+- Both forced-starvation fixtures compiled and failed against the raw `first(predicate)` RED helper.
+  GREEN uses a 20 ms expectation deadline and produces its diagnostic assertion before the independent two-second
+  outer bound. One fixture also proves the collector has stopped before the assertion is returned.
+- Helper tests cover first matching value, matching null, a virtual one-day delayed emission,
+  cancellation propagation/collector completion, and preservation of the original upstream cause.
+- Shared GREEN reports: Android host 156 tests; iOS simulator 164 tests; 0 failures and 0 skipped.
+- Audit (paths below are relative to `shared/src/commonTest/kotlin/com/ruizurraca/carapp/`):
+
+| Audited file | Finding and treatment |
+|---|---|
+| `FuelEntryStateHolderTest.kt` | 14 waits migrated, including graph bootstrap and shared save helpers; harness teardown retained. |
+| `VehicleFormStateHolderTest.kt` | 6 save-completion state waits migrated. |
+| `VehicleListStateHolderTest.kt` | 4 save/list/recovery waits migrated. |
+| `SwiftAppGraphLifecycleTest.kt` | 2 saved-vehicle waits migrated; Swift-owned lifecycle retained. |
+| `LocalOwnerAdoptionTest.kt` | 6 list/save/session/auth waits migrated. |
+| `LocalOwnerAdoptionTriggerTest.kt` | 2 auth waits migrated, including the graph-backed fuel-write case. |
+| `AppGraphTestHarnessTest.kt` | No state predicate wait; deliberate awaitCancellation collector is cancelled and joined by the harness. |
+| `AppGraphCloseTest.kt` | No state predicate wait; lifecycle/bootstrap tests use explicit cancellation and immediate assertions. |
+| `AppGraphContractTest.kt` | No wait; checks the returned holder types. |
+| `BuildAppGraphTest.kt` | No wait; checks graph dependency mapping. |
+| `SessionStateHolderTest.kt` | Graph-backed session state is inspected after scheduler advancement; no predicate wait. |
+| `LocalOwnerAdoptionFailureTest.kt` | Additional audit of a database-backed holder constructed without an AppGraph: 3 error/retry/auth waits migrated. |
+
+The remaining shared test files construct coordinators or holders with controlled doubles rather
+than mounting a graph, or cover static contracts/platform adapters. None imports `flow.first`.
+The only remaining predicate `first` in shared test sources is encapsulated in `FlowExpectation.kt`.
+Finite `flowOf(...).toList()` in the odometer-suggestion test is not an unbounded state expectation.
+The pre-existing non-flow adoption polling loops remain outside this state-emission fix.
 
 ## Out of Scope / Not Done
 
@@ -58,7 +95,10 @@
 
 ## Files Changed
 
-- `docs/handoff-E1-14.md`; test files will be listed after implementation.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FlowExpectation.kt` and `FlowExpectationTest.kt`.
+- The seven migrated files listed in the audit above.
+- `docs/handoff-E1-14.md`; repository status and historical-follow-up pointers will be updated after
+  stability verification.
 
 ## Decisions Made
 
@@ -69,6 +109,7 @@
 
 ## Verification Run
 
+- REFACTOR lint: `./gradlew :shared:ktlintCheck :shared:detekt` passed after formatting.
 - GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test` passed.
 - RED: `./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.FlowExpectationTest'`
   failed as expected (7 tests, 2 assertion failures caused by missing expectation timeout).
@@ -96,4 +137,5 @@
 
 ## Human Review Gate
 
-- Owner review before merge if gated repository-status documentation is updated; no merge requested.
+- Applies: `AGENTS.md` is a gated path. The change only updates repository status; the owner
+  reviews and merges the PR. No product contract or runtime path is changed.

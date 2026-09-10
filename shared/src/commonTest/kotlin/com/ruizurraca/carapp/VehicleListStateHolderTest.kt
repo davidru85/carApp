@@ -55,7 +55,10 @@ class VehicleListStateHolderTest {
 
                 form.save()
                 form.state.awaitState("vehicle save finished") { state -> !state.isSaving }
-                val publishedState = list.state.awaitState("saved vehicle listed") { state -> state.vehicles.isNotEmpty() }
+                val publishedState =
+                    list.state.awaitState(
+                        "saved vehicle listed",
+                    ) { state -> state.vehicles.isNotEmpty() }
 
                 assertEquals(
                     listOf(
@@ -111,7 +114,10 @@ class VehicleListStateHolderTest {
                 assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
                 assertEquals(0L, recovered.localRevision)
                 assertEquals(0L, recovered.localMutationSeq)
-                val publishedState = list.state.awaitState("recovered vehicle listed") { state -> state.vehicles.isNotEmpty() }
+                val publishedState =
+                    list.state.awaitState(
+                        "recovered vehicle listed",
+                    ) { state -> state.vehicles.isNotEmpty() }
                 assertEquals(
                     "Recovered Roadster",
                     publishedState.vehicles.single().name,

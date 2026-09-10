@@ -1355,6 +1355,9 @@ run adjacently, in that order, so those two screens are opened once rather than 
 
 ### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
 
+Status: in progress on `story/E1-14-bounded-state-expectations`. See `docs/handoff-E1-14.md`
+for the TDD commits, audit and repeated-run evidence. Not complete until the pull request merges.
+
 Tracked as a follow-up found while verifying `E2-03`, recorded under `Risks or Follow-ups` in
 `docs/handoff-E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
 same class and not a production defect: no production path depends on the timing these tests assume.

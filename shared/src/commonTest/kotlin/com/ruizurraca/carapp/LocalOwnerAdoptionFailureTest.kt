@@ -96,7 +96,10 @@ class LocalOwnerAdoptionFailureTest {
                 // The owner retries. The gate runs again, so the retry is real and not a redraw.
                 fault.failing = false
                 holder.refresh()
-                val recovered = holder.state.awaitState("vehicle list recovered after retry") { state -> !state.isLoading }
+                val recovered =
+                    holder.state.awaitState(
+                        "vehicle list recovered after retry",
+                    ) { state -> !state.isLoading }
 
                 assertEquals(1, recovered.vehicles.size, "the retry adopts and the list resolves")
                 assertEquals(0L, database.localOwnerRowCount())
