@@ -26,34 +26,23 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: documentation-only scope decision after the fourth owner review,
-  committed as `520fe09` on implementation head `9b4758e`. Published history was not rewritten and
-  nothing was force-pushed.
-- Push and pull-request status: pull request #65 remains open; the `D-164` documentation commit and
-  this checkpoint are on its existing branch.
-- Completed since the previous checkpoint: the six third-round findings are fixed.
-  `PendingDeparture` now models the required steps per departure kind and separates authorisation
-  from evaluation, the tail after a destructive step runs under `NonCancellable`, the two request
-  intents refuse to replace retained work, `DepartureRetry` reports the first step actually owed,
-  `clearMessage()` withdraws every departure confirmation, and a deletion resumed after
-  re-authentication reports its own `AccountDeletionStarted`. The RED commit had added executable
-  coverage for all six —
-  an unconfirmed pending-sync warning being treated as retained destructive work, the cancellable
-  tail after a destructive step, retained work being replaceable by a new request, `DepartureRetry`
-  being untruthful for the sign-out and anonymous kinds, `clearMessage()` not withdrawing a
-  `DeleteLocalData` request, and the broken account-deletion analytics identity after
-  re-authentication. The test doubles gained controllable gates on `signOut()` and the outbox count.
-- Verification evidence and known failures: the RED commit compiled and 12 of the 14
-  `SessionDepartureIntegrityTest` tests failed on assertions, one per finding. The clearest was
-  `aNewRequestCannotReplaceRetainedWorkOrRepeatTheServerDeletion`, which observed two `deleteAccount`
-  calls where the contract allows exactly one; the other two tests were cases that already behaved
-  correctly and are kept as regression cover. All 14 now pass, and so do the surrounding suites:
-  `:shared` 142, `:core:database` 51, `:integration:firebase-auth` 48 and `:androidApp` 31 tests, 0
-  failures.
-- Open decisions or blockers: none. The owner accepted `D-164`, which records three low-probability
-  MVP residual windows and assigns them to post-MVP stories `E5-02`, `E5-03` and `E5-04`. No product
-  code or exported declaration changes, so the Objective-C golden header needs no regeneration.
-- Exact next step: the owner's gated review of PR #65. Agents MUST NOT merge this pull request.
+- Current phase and latest commit: RED for the durable departure recovery marker, appended on
+  `92930ca`. Published history is not rewritten and nothing is force-pushed.
+- Push and pull-request status: pull request #65 is open and under the owner's gated review.
+- Completed since the previous checkpoint: the owner decided to close the `D-163` process-death
+  window inside this pull request rather than in the separate `E2-09` story that `D-163` created.
+  That supersedes `D-163` and is registered during REFACTOR. This commit adds the executable RED
+  coverage: a schema v4 durable departure marker that survives the local clear, and a relaunch that
+  finishes an interrupted departure without ever repeating the `D-23` server operation.
+- Verification evidence and known failures: EXPECTED RED. The sources compile and 6 of 8
+  `AccountDepartureDatabaseAccessTest` tests and 5 of 7 `AccountDepartureRecoveryTest` tests fail for
+  the missing behavior. The passing ones assert that an absent marker changes nothing, which a
+  behavior-free seam already satisfies.
+- Open decisions or blockers: none blocking. Three decisions are registered during REFACTOR: closing
+  the window inside E2-05 and superseding `D-163`, the durable marker representation and why the
+  local clear must not remove it, and where an interrupted departure is resumed.
+- Exact next step: GREEN — the schema v4 table, its `3.sqm` migration, the typed access, the marker
+  writes in the departure flow and the relaunch recovery in the coordinator.
 
 ## Scope Completed
 

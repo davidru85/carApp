@@ -19,6 +19,8 @@ import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
+import com.ruizurraca.carapp.core.database.DepartureOperationKind
+import com.ruizurraca.carapp.core.database.DepartureOperationStep
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.feature.session.domain.AnonymousReminderRepository
 import com.ruizurraca.carapp.feature.session.domain.dueAnonymousReminderIndex
@@ -540,6 +542,18 @@ internal interface AccountDepartureHandler {
     suspend fun pendingOutboxCount(): Outcome<Int, AppError>
 
     suspend fun clearLocalData(): Outcome<Unit, AppError>
+
+    /** Persists the departure before its first destructive step, so a relaunch can finish it. */
+    suspend fun startPersistedDeparture(
+        kind: DepartureOperationKind,
+        ownerUid: String?,
+    ): Outcome<Unit, AppError>
+
+    /** Records a step that has just succeeded, so a relaunch never repeats it. */
+    suspend fun markDepartureStep(step: DepartureOperationStep): Outcome<Unit, AppError>
+
+    /** Removes the marker once the departure has finished, or was withdrawn before turning destructive. */
+    suspend fun clearPersistedDeparture(): Outcome<Unit, AppError>
 }
 
 private class PendingCollision(

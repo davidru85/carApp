@@ -8,6 +8,7 @@ import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
+import com.ruizurraca.carapp.core.database.AccountDepartureDatabaseAccess
 import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccess
@@ -86,6 +87,8 @@ internal class DefaultAppGraph(
     private val accountDeparture =
         AccountDepartureCoordinator(
             databaseAccess = LocalDataClearDatabaseAccess(databaseHandle.database),
+            departureAccess = AccountDepartureDatabaseAccess(databaseHandle.database),
+            authClient = dependencies.authClient,
         )
     private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
     private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)

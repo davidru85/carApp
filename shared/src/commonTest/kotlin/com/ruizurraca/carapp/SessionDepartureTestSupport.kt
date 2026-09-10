@@ -11,6 +11,8 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
+import com.ruizurraca.carapp.core.database.DepartureOperationKind
+import com.ruizurraca.carapp.core.database.DepartureOperationStep
 import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -138,6 +140,9 @@ internal class RecordingDeparture(
 ) : AccountDepartureHandler {
     var clearCalls = 0
     var countCalls = 0
+    val startedDepartures = mutableListOf<DepartureOperationKind>()
+    val markedSteps = mutableListOf<DepartureOperationStep>()
+    var clearedDepartures = 0
 
     /** Holds the outbox count open so a test can change the session while it is in flight. */
     var countGate: CompletableDeferred<Unit>? = null
@@ -152,5 +157,26 @@ internal class RecordingDeparture(
         clearCalls += 1
         log += "clearLocalData"
         return clearResult
+    }
+
+    override suspend fun startPersistedDeparture(
+        kind: DepartureOperationKind,
+        ownerUid: String?,
+    ): Outcome<Unit, AppError> {
+        startedDepartures += kind
+        log += "startPersistedDeparture"
+        return Outcome.Ok(Unit)
+    }
+
+    override suspend fun markDepartureStep(step: DepartureOperationStep): Outcome<Unit, AppError> {
+        markedSteps += step
+        log += "markDepartureStep:$step"
+        return Outcome.Ok(Unit)
+    }
+
+    override suspend fun clearPersistedDeparture(): Outcome<Unit, AppError> {
+        clearedDepartures += 1
+        log += "clearPersistedDeparture"
+        return Outcome.Ok(Unit)
     }
 }
