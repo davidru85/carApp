@@ -27,9 +27,10 @@
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
 - Current phase and latest commit: documentation-only scope decision after the fourth owner review,
-  on implementation head `9b4758e`. Published history is not rewritten and nothing is force-pushed.
-- Push and pull-request status: pull request #65 is open and the `D-164` documentation update is
-  being added to the same branch before gated review resumes.
+  committed as `520fe09` on implementation head `9b4758e`. Published history was not rewritten and
+  nothing was force-pushed.
+- Push and pull-request status: pull request #65 remains open; the `D-164` documentation commit and
+  this checkpoint are on its existing branch.
 - Completed since the previous checkpoint: the six third-round findings are fixed.
   `PendingDeparture` now models the required steps per departure kind and separates authorisation
   from evaluation, the tail after a destructive step runs under `NonCancellable`, the two request
@@ -52,8 +53,7 @@
 - Open decisions or blockers: none. The owner accepted `D-164`, which records three low-probability
   MVP residual windows and assigns them to post-MVP stories `E5-02`, `E5-03` and `E5-04`. No product
   code or exported declaration changes, so the Objective-C golden header needs no regeneration.
-- Exact next step: commit and push the documentation update, then return PR #65 to the owner's gated
-  review. Agents MUST NOT merge this pull request.
+- Exact next step: the owner's gated review of PR #65. Agents MUST NOT merge this pull request.
 
 ## Scope Completed
 
