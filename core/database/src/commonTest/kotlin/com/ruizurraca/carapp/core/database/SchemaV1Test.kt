@@ -26,6 +26,7 @@ class SchemaV1Test {
                 listOf(
                     "account_conversion_operation",
                     "account_conversion_snapshot",
+                    "account_departure_operation",
                     "anonymous_reminder",
                     "fuel_entry",
                     "local_sequence",

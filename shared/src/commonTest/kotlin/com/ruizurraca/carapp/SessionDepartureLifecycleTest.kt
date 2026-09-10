@@ -45,8 +45,11 @@ class SessionDepartureLifecycleTest {
             holder.confirmDeleteAccount(Confirmation.DeleteAccount)
             advanceUntilIdle()
 
+            // The durable marker writes share this log; this assertion is about the destructive
+            // steps and their order. `AccountDepartureRecoveryTest` pins the marker writes.
+            val destructive = log.filter { it == "deleteAccount" || it == "signOut" || it == "clearLocalData" }
             // The D-23 operation does not end the client session, so the flow owes that cleanup.
-            assertEquals(listOf("deleteAccount", "signOut", "clearLocalData"), log)
+            assertEquals(listOf("deleteAccount", "signOut", "clearLocalData"), destructive)
             assertEquals(AuthState.SignedOut, authClient.authState.value)
             assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
             holder.close()

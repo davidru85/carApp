@@ -482,3 +482,38 @@ selectLocalSequenceNext:
 SELECT next
 FROM local_sequence
 WHERE id = 0;
+
+selectAccountDepartureOperation:
+SELECT kind, ownerUid, remoteDone, sessionEnded, localDone
+FROM account_departure_operation
+WHERE id = 0;
+
+-- Starting a departure replaces any stale marker outright: at most one departure is ever in flight,
+-- and a new one owes all of its steps again.
+startAccountDepartureOperation:
+INSERT INTO account_departure_operation(id, kind, ownerUid, remoteDone, sessionEnded, localDone)
+VALUES (0, :kind, :ownerUid, 0, 0, 0)
+ON CONFLICT(id) DO UPDATE SET
+  kind = excluded.kind,
+  ownerUid = excluded.ownerUid,
+  remoteDone = 0,
+  sessionEnded = 0,
+  localDone = 0;
+
+markAccountDepartureRemoteDeletion:
+UPDATE account_departure_operation
+SET remoteDone = 1
+WHERE id = 0;
+
+markAccountDepartureSessionCleanup:
+UPDATE account_departure_operation
+SET sessionEnded = 1
+WHERE id = 0;
+
+markAccountDepartureLocalClear:
+UPDATE account_departure_operation
+SET localDone = 1
+WHERE id = 0;
+
+deleteAccountDepartureOperation:
+DELETE FROM account_departure_operation;

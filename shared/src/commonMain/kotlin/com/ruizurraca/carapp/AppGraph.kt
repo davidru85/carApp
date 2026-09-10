@@ -118,6 +118,9 @@ internal class DefaultAppGraph(
         // Keep these eager launches after every property they touch. Adoption is automatic by
         // contract (§11.2, §11.4): nothing in the UI starts it.
         graphScope.launch { bootstrapSettings() }
+        // `D-167`: a departure interrupted by a process death is finished at the next launch, before
+        // anything can observe local data belonging to an account that is already gone.
+        graphScope.launch { accountDeparture.resumePending() }
         graphScope.launch {
             dependencies.authClient.authState
                 .filterIsInstance<AuthState.SignedIn>()

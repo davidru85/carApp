@@ -11,6 +11,8 @@ import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.core.database.DepartureOperationKind
+import com.ruizurraca.carapp.core.database.DepartureOperationStep
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -45,7 +47,18 @@ internal class PendingDeparture(
     var sessionEnded: Boolean = false,
     var localDone: Boolean = false,
     var awaitingReauthentication: Boolean = false,
+    /** `true` once the durable marker exists, so a retry never resets the steps already recorded. */
+    var persisted: Boolean = false,
 ) {
+    val operationKind: DepartureOperationKind
+        get() =
+            when (kind) {
+                DepartureKind.SIGN_OUT -> DepartureOperationKind.SIGN_OUT
+                DepartureKind.DELETE_LOCAL -> DepartureOperationKind.DELETE_LOCAL
+                DepartureKind.DELETE_ANONYMOUS -> DepartureOperationKind.DELETE_ANONYMOUS
+                DepartureKind.DELETE_PERMANENT -> DepartureOperationKind.DELETE_PERMANENT
+            }
+
     /** Only the permanent path deletes an account through the `D-23` server operation. */
     private val remoteOwed: Boolean get() = kind == DepartureKind.DELETE_PERMANENT && !remoteDone
 
@@ -419,6 +432,16 @@ internal class AccountDepartureFlow(
             fail(AuthError.ProviderUnavailable)
             return
         }
+        // `D-166`: the marker exists before the first destructive step, so a process death from here
+        // on leaves a record the next launch can finish.
+        if (!candidate.persisted) {
+            val started = departureHandler.startPersistedDeparture(candidate.operationKind, candidate.ownerUid)
+            if (started is Outcome.Err) {
+                failDeparture(candidate, started.error)
+                return
+            }
+            candidate.persisted = true
+        }
         when (candidate.kind) {
             DepartureKind.DELETE_LOCAL -> runLocalDeletion(candidate, departureHandler)
             DepartureKind.DELETE_ANONYMOUS -> runAnonymousDeletion(candidate, departureHandler)
@@ -508,6 +531,7 @@ internal class AccountDepartureFlow(
 
             is Outcome.Ok -> {
                 candidate.localDone = true
+                departureHandler.markDepartureStep(DepartureOperationStep.LOCAL_CLEAR)
                 true
             }
         }
@@ -527,6 +551,7 @@ internal class AccountDepartureFlow(
 
             is Outcome.Ok -> {
                 candidate.sessionEnded = true
+                departure?.markDepartureStep(DepartureOperationStep.SESSION_CLEANUP)
                 true
             }
         }
@@ -546,6 +571,7 @@ internal class AccountDepartureFlow(
 
             is Outcome.Ok -> {
                 candidate.remoteDone = true
+                departure?.markDepartureStep(DepartureOperationStep.REMOTE_DELETION)
                 true
             }
         }
@@ -572,7 +598,8 @@ internal class AccountDepartureFlow(
      * Only the permanent path deletes an account, so only it reports the account-deletion
      * lifecycle. Clearing local data for a local or anonymous owner is not account deletion.
      */
-    private fun complete(candidate: PendingDeparture) {
+    private suspend fun complete(candidate: PendingDeparture) {
+        departure?.clearPersistedDeparture()
         if (candidate.kind == DepartureKind.DELETE_PERMANENT) {
             analyticsTracker?.track(AnalyticsEvent.AccountDeletionCompleted)
         }

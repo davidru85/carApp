@@ -26,23 +26,27 @@
 
 - Date: 2026-09-10
 - Branch and base: `story/E2-05-sign-out-and-account-deletion` from `origin/main` at `b521bda`
-- Current phase and latest commit: RED for the durable departure recovery marker, appended on
-  `92930ca`. Published history is not rewritten and nothing is force-pushed.
+- Current phase and latest commit: GREEN for the durable departure recovery marker. The RED commit
+  is `05c1117`, appended on `92930ca`. Published history is not rewritten and nothing is force-pushed.
 - Push and pull-request status: pull request #65 is open and under the owner's gated review.
 - Completed since the previous checkpoint: the owner decided to close the `D-163` process-death
   window inside this pull request rather than in the separate `E2-09` story that `D-163` created.
   That supersedes `D-163` and is registered during REFACTOR. This commit adds the executable RED
   coverage: a schema v4 durable departure marker that survives the local clear, and a relaunch that
   finishes an interrupted departure without ever repeating the `D-23` server operation.
-- Verification evidence and known failures: EXPECTED RED. The sources compile and 6 of 8
-  `AccountDepartureDatabaseAccessTest` tests and 5 of 7 `AccountDepartureRecoveryTest` tests fail for
-  the missing behavior. The passing ones assert that an absent marker changes nothing, which a
-  behavior-free seam already satisfies.
+- Verification evidence and known failures: the RED commit compiled and 6 of 8
+  `AccountDepartureDatabaseAccessTest` tests and 5 of 7 `AccountDepartureRecoveryTest` tests failed
+  for the missing behavior; the passing ones assert that an absent marker changes nothing, which a
+  behavior-free seam already satisfies. All pass in GREEN, and so do the surrounding suites:
+  `:shared` 149, `:core:database` 60, `:integration:firebase-auth` 48 and `:androidApp` 31 tests, 0
+  failures. Two existing assertions on the shared call log were scoped to the destructive steps,
+  because the durable-marker writes now share that log; the full ordering including the marker is
+  pinned by `aDepartureIsPersistedBeforeItsFirstDestructiveStepAndClearedOnSuccess`.
 - Open decisions or blockers: none blocking. Three decisions are registered during REFACTOR: closing
   the window inside E2-05 and superseding `D-163`, the durable marker representation and why the
   local clear must not remove it, and where an interrupted departure is resumed.
-- Exact next step: GREEN — the schema v4 table, its `3.sqm` migration, the typed access, the marker
-  writes in the departure flow and the relaunch recovery in the coordinator.
+- Exact next step: REFACTOR — register the three decisions with their ADRs and mirrors, and
+  reconcile the contract, the security register, the backlog and `AGENTS.md`.
 
 ## Scope Completed
 

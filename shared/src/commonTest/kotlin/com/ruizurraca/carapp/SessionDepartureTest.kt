@@ -247,8 +247,11 @@ class SessionDepartureTest {
             holder.confirmDeleteAccount(Confirmation.DeleteAccount)
             advanceUntilIdle()
 
+            // The durable marker writes share this log; this assertion is about the destructive
+            // steps and their order. `AccountDepartureRecoveryTest` pins the marker writes.
+            val destructive = log.filter { it == "deleteAccount" || it == "signOut" || it == "clearLocalData" }
             // `D-160` inserts the provider-session cleanup between the two.
-            assertEquals(listOf("deleteAccount", "signOut", "clearLocalData"), log)
+            assertEquals(listOf("deleteAccount", "signOut", "clearLocalData"), destructive)
             assertEquals(SessionPhase.SIGNED_OUT, holder.state.value.phase)
             holder.close()
         }
