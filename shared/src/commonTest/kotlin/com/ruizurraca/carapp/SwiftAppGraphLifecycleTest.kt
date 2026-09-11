@@ -43,8 +43,7 @@ class SwiftAppGraphLifecycleTest {
                 first.setName("First vehicle")
                 first.save()
                 first.state.awaitState("first Swift vehicle saved") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 swiftGraph.releaseVehicleFormStateHolder(vehicleId = null)
@@ -62,8 +61,7 @@ class SwiftAppGraphLifecycleTest {
                 second.setName("Second vehicle")
                 second.save()
                 second.state.awaitState("second Swift vehicle saved") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 assertEquals(

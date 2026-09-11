@@ -52,8 +52,7 @@ class VehicleFormStateHolderTest {
 
                 holder.save()
                 holder.state.awaitState("vehicle creation finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 val vehicle =
@@ -103,8 +102,7 @@ class VehicleFormStateHolderTest {
 
                 holder.save()
                 holder.state.awaitState("vehicle validation finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 val outbox =
@@ -175,8 +173,7 @@ class VehicleFormStateHolderTest {
 
                 holder.save()
                 holder.state.awaitState("anonymous vehicle creation finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 val call = remote.pushCalls.single()
@@ -219,8 +216,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
                 holder.save()
                 holder.state.awaitState("backup failure save finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 val snapshot = remote.pushCalls.single().second
@@ -259,8 +255,7 @@ class VehicleFormStateHolderTest {
 
                 holder.save()
                 holder.state.awaitState("vehicle edit finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 val vehicle =
@@ -310,8 +305,7 @@ class VehicleFormStateHolderTest {
 
                 holder.save()
                 holder.state.awaitState("invalid vehicle edit finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 val vehicle =

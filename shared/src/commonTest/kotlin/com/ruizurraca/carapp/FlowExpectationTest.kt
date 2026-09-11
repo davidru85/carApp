@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -171,7 +172,7 @@ class FlowExpectationTest {
                 }
 
             assertTrue(
-                kotlinx.coroutines.currentCoroutineContext().isActive,
+                currentCoroutineContext().isActive,
                 "an upstream cancellation must not cancel the caller",
             )
             assertTrue(failure.message.orEmpty().contains("source value"))

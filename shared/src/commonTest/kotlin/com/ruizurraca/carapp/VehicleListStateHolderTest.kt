@@ -54,8 +54,7 @@ class VehicleListStateHolderTest {
 
                 form.save()
                 form.state.awaitState("vehicle save finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
                 val publishedState =
                     list.state.awaitState("saved vehicle listed") { state -> state.vehicles.isNotEmpty() }
@@ -103,8 +102,7 @@ class VehicleListStateHolderTest {
 
                 list.refresh()
                 list.state.awaitState("vehicle recovery finished") { state ->
-                    !state.isLoading &&
-                        state.vehicles.isNotEmpty()
+                    !state.isLoading && state.vehicles.isNotEmpty()
                 }
 
                 val recovered =

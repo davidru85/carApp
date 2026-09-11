@@ -227,8 +227,7 @@ class LocalOwnerAdoptionTest {
                 form.setName("Roadster")
                 form.save()
                 form.state.awaitState("local vehicle save finished") { state ->
-                    state.savedVehicleId != null &&
-                        !state.isSaving
+                    state.savedVehicleId != null && !state.isSaving
                 }
 
                 authClient.authState.awaitState(
