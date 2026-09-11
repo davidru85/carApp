@@ -1,10 +1,13 @@
 package com.ruizurraca.carapp
 
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -38,19 +41,33 @@ internal suspend fun <T> Flow<T>.awaitState(
         val emission =
             async(start = CoroutineStart.UNDISPATCHED) {
                 // Result distinguishes a matching null from timeout and preserves upstream failures.
-                runCatching {
+                try {
+                    Result.success(
                     first { value ->
                         lastEmission.value = value.toString()
                         predicate(value)
                     }
+                    )
+                } catch (cancellation: CancellationException) {
+                    Result.failure(cancellation)
+                } catch (failure: Throwable) {
+                    Result.failure(failure)
                 }
             }
         try {
             val result =
                 withContext(Dispatchers.Default) {
                     withTimeoutOrNull(timeout) { emission.await() }
-                }
+            }
             if (result == null) fail("Timed out after $timeout waiting for $expectation. Last value: ${lastEmission.value}")
+            val upstreamFailure = result.exceptionOrNull()
+            if (upstreamFailure is CancellationException) {
+                currentCoroutineContext().ensureActive()
+                throw AssertionError(
+                    "Flow cancelled while waiting for $expectation. Last value: ${lastEmission.value}",
+                    upstreamFailure,
+                )
+            }
             result.getOrThrow()
         } finally {
             emission.cancelAndJoin()
