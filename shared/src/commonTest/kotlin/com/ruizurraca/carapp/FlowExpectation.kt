@@ -20,6 +20,8 @@ import kotlin.time.Duration.Companion.seconds
  *
  * Collection stays on the caller's context, so test-scheduler work can still run. Only the timeout
  * uses a real dispatcher: a virtual-time timeout can expire before SQLite's real work gets CPU time.
+ * The latest emission is stored in a volatile holder because collection and assertion can run on
+ * different workers.
  * The collector is a structured child and is cancelled and joined before graph teardown can proceed.
  * This join is intentionally unbounded: abandoning the collector could close SQLite while it is
  * still in use. Extreme CPU starvation or non-cooperative cleanup can therefore delay the assertion

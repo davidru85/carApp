@@ -29,10 +29,13 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: review item 1 GREEN verified; RED `49ddee8`, GREEN `2ccd328`; REFACTOR (see the previous commit); item 2 documentation applied, uncommitted; latest published `9974eae`.
+- Current phase and latest commit: review items 1 and 2 complete; item 3 GREEN verified with RED
+  `e6bc4fa` and GREEN `c50d427`; item 3 refactor documentation is uncommitted; latest published
+  `c50d427`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
-- Completed since the previous checkpoint: read all six review items, confirmed the clean branch,
-  and audited fixture construction sites. Items will be addressed in the requested order.
+- Completed since the previous checkpoint: committed the ordered-cleanup limitation, added the
+  cross-thread last-emission holder and host metadata guard, and verified the off-caller diagnostic.
+  Items continue in the requested order.
 - Verification evidence and known failures: previous 157/165 counts and 30-run evidence below
   describe the pre-review version. The owner independently reproduced them and neutralized the
   three existing regressions. New/modified regressions will receive fresh RED proof.
@@ -50,8 +53,13 @@
   both GraphTestDependenciesTest cases and the fuel factory scheduling guard. The source was
   restored automatically, then all three regressions and shared lint passed.
   Logs: `/tmp/e1-14-review-fixtures-neutralized.log`, `/tmp/e1-14-review-fixtures-refactor.log`.
-- Exact next step: commit the item 2 documentation clarification, then begin item 3 RED for
-  safely published diagnostic capture. Items 3–6 and final repeated/full verification remain.
+- Item 3 RED evidence: the host metadata guard failed because `LastEmission.value` was not volatile;
+  the off-caller diagnostic test was added in the same RED commit.
+- Item 3 GREEN evidence: host `FlowExpectationTest` off-caller diagnostic and
+  `LastEmissionVisibilityTest` passed after `@kotlin.concurrent.Volatile` and holder integration.
+  Neutralizing the assignment made the off-caller diagnostic test fail, then the source was restored.
+- Exact next step: commit the item 3 refactor documentation, then begin item 4 RED for independent
+  upstream `CancellationException` handling. Items 4–6 and final repeated/full verification remain.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
@@ -89,12 +97,15 @@ historical until the final follow-up verification finishes.
    runTest's timeout. The existing starvation test proves cooperative suspended-collector teardown,
    not an absolute wall-clock bound on all possible cleanup. The owner explicitly permits this
    choice; it does not require a new owner decision or changes outside test code/docs.
-3. **Publish last emission safely — not started.** Replace the captured mutable String with a
+3. **Publish last emission safely — RED/GREEN complete; REFACTOR in progress.** Replaced the captured mutable String with a
    small common-code holder whose property is `@kotlin.concurrent.Volatile`. Add a diagnostic
    test with emissions originating off the caller thread. Prove its assertions non-vacuous;
    do not claim a timing-based test can deterministically establish the absence of a JVM/native
    memory-visibility race. A deterministic JVM volatile-field metadata regression is an option
-   if needed to prove removing the publication guarantee is RED. No implementation selected yet.
+   if needed to prove removing the publication guarantee is RED. The deterministic Android-host
+   volatile-field metadata test is the publication guarantee; the common off-caller flow test
+   exercises the diagnostic path. The assignment-neutralized run failed that common test, and the
+   correct source is restored. Commit the KDoc refactor before item 4.
 4. **Cancellation handling — not started.** Replace `runCatching` in async with explicit catches:
    rethrow CancellationException unchanged and capture only other Throwables in Result.failure.
    Add a case for a source that throws CancellationException independently of caller cancellation.
