@@ -59,6 +59,8 @@
   lock attempt exited before tests and is retained in the handoff as an infrastructure attempt.
 - **Follow-ups / risks:** PR #66 remains open for owner review and required CI; merge is not performed.
   The cleanup join remains intentionally unbounded to preserve E1-12 database lifetime ordering.
+  The branch push succeeded, but refreshing the PR body was blocked by the GitHub API sandbox and
+  automatic approval usage limit; the exact command and prepared body are recorded in the handoff.
 
 ### 2026-09-11 — E1-14 bounded state expectations and deterministic fuel test fixtures
 

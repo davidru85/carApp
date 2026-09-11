@@ -32,7 +32,8 @@
 - Current phase and latest commit: all six review items are implemented; shared verification and the
   forced repetition campaign passed; the final documentation/log checkpoint is uncommitted; latest
   published `d52ce8d`.
-- Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
+- Push and pull-request status: PR #66 remains open; all follow-up commits are pushed through
+  `043653b`; the remote PR description refresh is pending network approval.
 - Completed since the previous checkpoint: committed the timeout, fixture-reuse, AGENTS.md wrap and
   final helper cleanup. Full shared verification passes with 162 Android-host and 169
   Native-simulator tests, zero failures and zero skips. Thirty fresh repetitions per target also
@@ -67,6 +68,11 @@
 - Item 6 evidence: shared ktlint/detekt passed after the timeout, fixture-reuse and AGENTS.md wrap
   cleanup. Exact next step: append the review correction to PROJECT_LOG.md, commit this final
   checkpoint, then push the branch and refresh PR #66. CI review remains open; do not merge.
+- Publishing checkpoint: the complete follow-up branch is pushed through `043653b`. The prepared PR
+  body is `/tmp/e1-14-pr.md`. `gh pr edit 66 --repo davidru85/carApp --body-file /tmp/e1-14-pr.md`
+  failed first on the sandbox GitHub API connection; its escalated retry was rejected by the
+  automatic approval reviewer because the account usage limit was reached. A successor with network
+  approval should run that exact command and then inspect PR checks; no code work remains.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
