@@ -78,14 +78,11 @@ final class OnboardingFlowUITests: XCTestCase {
         app.launch()
         addTeardownBlock { app.terminate() }
 
-        let guestButton = app.buttons["welcome_guest"]
-        if guestButton.waitForExistence(timeout: 10), guestButton.isHittable {
-            guestButton.tap()
-        }
-
-        XCTAssertTrue(
-            app.textFields["vehicle_name"].waitForExistence(timeout: timeout),
-            "Mandatory first-vehicle creation must be presented"
+        let vehicleNameField = app.textFields["vehicle_name"]
+        waitForOnboarding(
+            in: app,
+            destination: "first-vehicle creation",
+            isComplete: { vehicleNameField.exists }
         )
         return app
     }
