@@ -133,7 +133,7 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   inside a reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127`
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
   `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous.
-  `E1-14` is implemented on `story/E1-14-bounded-state-expectations`, awaiting PR review; its bounded
+  `E1-14` is implemented on open pull request #66, awaiting owner review and required CI; its bounded
   expectations, deterministic fuel fixture and 30/30 repeated-run evidence per target live in
   `docs/handoff-E1-14.md`. Until that work
   merges and `E1-17` is fixed, a red required job is not by itself evidence of a regression.

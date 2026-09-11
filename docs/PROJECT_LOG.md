@@ -46,7 +46,8 @@
 - **What changed:** implemented a reusable, diagnostic real-time bound for 37 graph-backed flow
   waits in shared tests. Fuel graph fixtures now use StandardTestDispatcher on the caller test
   scheduler, preventing unconfined initialization from racing test-thread form edits. Implementation
-  is ready for PR review; the story is not complete until merge.
+  is on [pull request #66](https://github.com/davidru85/carApp/pull/66) for review; the story is not
+  complete until merge.
 - **Why:** the bounded helper exposed two historical lost-input failures that generic runTest
   timeouts had hidden. An UnconfinedTestDispatcher experiment remained flaky; a second deterministic
   RED/GREEN/REFACTOR cycle established queued fixture execution instead. Production code is unchanged.

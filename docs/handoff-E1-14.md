@@ -31,11 +31,14 @@
 - Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf` (merged PR #65).
 - Current phase and latest commit: implementation and local verification complete. First cycle:
   RED `e8cb797`, GREEN `9bcec1c`, REFACTOR `001ab63`. Second cycle: RED `f93c37e`, GREEN `8430c91`;
-  the second REFACTOR is the commit containing this checkpoint.
-- Push and pull-request status: all phase commits are local; push and PR creation are next.
+  second REFACTOR `52d58f1`. The latest commit is this documentation-only PR continuity checkpoint.
+- Push and pull-request status: all six TDD phase commits were pushed together, then PR #66 was
+  created: https://github.com/davidru85/carApp/pull/66. This documentation-only checkpoint is also
+  pushed; the PR stays open and is not merged.
 - Completed since the previous checkpoint: final graph fixture uses StandardTestDispatcher tied
   to runTest; all 30 final repetitions passed; the full repository command passed; audit, acceptance
-  evidence, historical failed attempts and project log are recorded.
+  evidence, historical failed attempts and project log are recorded. PR #66 has been created and
+  its URL is now linked from the backlog and repository status.
 - Verification evidence and known failures: final code passed 30/30 complete forced runs per target
   on Apple Silicon (157 Android-host tests and 165 Native-simulator tests each, no failures/skips).
   Full non-instrumented verification passed: 636 tasks, 41 executed, 595 up-to-date. Contract check
@@ -44,8 +47,12 @@
   are retained under Acceptance Evidence; neither is counted as final-code evidence.
 - Open decisions or blockers: no technical decision or local verification blocker. Owner review
   and the PR's ten required CI checks remain before merge. E1-14 is implemented, not yet merged.
-- Exact next step: commit the second REFACTOR, push all commits once, create the PR, then record
-  its URL and CI status in a documentation-only continuity checkpoint. Do not merge.
+- CI checkpoint: initial run https://github.com/davidru85/carApp/actions/runs/34578260010 on code
+  HEAD `52d58f1` has ktlint, detekt and android-assemble green; the other seven jobs were running
+  at observation time, with no failed required check. The documentation-only push triggers a new
+  run on identical test/product code; the PR is the live source for that final run's status.
+- Exact next step: owner reviews PR #66 and its ten required checks before merge. The agent has
+  completed implementation, local verification, push and PR creation; no merge was requested.
 
 ## Scope Completed
 
@@ -167,7 +174,7 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 - Source audit: `rg -n 'kotlinx.coroutines.flow.first|\.first\s*\{' shared/src/commonTest
   shared/src/iosTest` — only the encapsulated call/import in `FlowExpectation.kt` remains.
 - `git diff --check` — clean.
-- CI: the ten required jobs are triggered by PR creation; their results are tracked in the PR.
+- CI: PR #66 triggered all ten required jobs; their live results are tracked in the PR.
   This test-only change does not alter the iOS application or Shared public framework surface.
 
 ## Contract Impact
