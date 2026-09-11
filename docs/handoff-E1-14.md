@@ -27,10 +27,10 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-10.
+- Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf`.
 - Current phase and latest commit: bounded-expectation cycle RED `e8cb797`, GREEN `9bcec1c`,
-  REFACTOR is this checkpoint. The helper's seven regression tests pass; suite stability is not done.
+  REFACTOR `001ab63`. The second cycle is RED, recorded by this checkpoint.
 - Push and pull-request status: not pushed; no PR.
 - Completed since the previous checkpoint: extracted the deadline constant, documented collection
   context and cancellation, formatted all migrated calls. Investigated two diagnostic failures.
@@ -45,8 +45,12 @@
   regression and scheduler refactoring before E1-14 can be submitted.
 - Open decisions or blockers: no owner decision. Production uses a confined main dispatcher;
   the test-only unconfined fixture violates that premise. No production change is planned.
-- Exact next step: begin a second RED/GREEN/REFACTOR cycle that proves graph main work must wait
-  for the test scheduler, then inject StandardTestDispatcher and repeat final stability verification.
+- Second RED evidence: `graphFixtureWorkWaitsForTheCallerTestScheduler` compiled and failed:
+  expected no work before advancing the scheduler, observed `[main, io, default]`.
+  The fixture factory extraction is behavior-preserving; the test constructs dependencies without
+  opening a database, so its failure is deterministic and independent of SQLite timing.
+- Exact next step: commit the second RED, inject StandardTestDispatcher(testScheduler) in the
+  fuel fixture factory, then run shared suites and commit the second GREEN.
 
 ## Scope Completed
 

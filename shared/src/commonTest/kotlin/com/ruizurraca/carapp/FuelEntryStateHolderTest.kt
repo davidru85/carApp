@@ -24,8 +24,11 @@ import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -36,6 +39,22 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FuelEntryStateHolderTest {
+    @Test
+    fun graphFixtureWorkWaitsForTheCallerTestScheduler() =
+        runTest {
+            val dispatchers = fuelGraphDependencies().dispatchers
+            val completed = mutableListOf<String>()
+
+            listOf("main" to dispatchers.main, "io" to dispatchers.io, "default" to dispatchers.default)
+                .forEach { (name, dispatcher) ->
+                    backgroundScope.launch(dispatcher) { completed += name }
+                }
+
+            assertEquals(emptyList(), completed, "graph work must be queued on the caller test scheduler")
+            runCurrent()
+            assertEquals(setOf("main", "io", "default"), completed.toSet())
+        }
+
     @Test
     fun graphBootstrapCreatesSettingsWithoutAConsumer() =
         runTest {
@@ -167,7 +186,7 @@ class FuelEntryStateHolderTest {
     fun persistedSettingsCurrencyOverridesTheCurrentLocaleForNewEntries() =
         runTest {
             val dependencies =
-                testAppGraphDependencies(
+                fuelGraphDependencies(
                     localeProvider =
                         FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
                 )
@@ -437,15 +456,11 @@ class FuelEntryStateHolderTest {
         holder.close()
     }
 
-    private fun buildFuelGraph(
+    private fun TestScope.buildFuelGraph(
         clock: FakeAppClock = FakeAppClock(),
         localeProvider: FakeLocaleProvider = FakeLocaleProvider(),
     ): AppGraph {
-        val defaultDependencies =
-            testAppGraphDependencies(
-                clock = clock,
-                localeProvider = localeProvider,
-            )
+        val defaultDependencies = fuelGraphDependencies(clock, localeProvider)
         val databaseHandle = defaultDependencies.databaseFactory.create()
         return buildAppGraph(
             isDebugBuild = true,
@@ -457,6 +472,15 @@ class FuelEntryStateHolderTest {
                 ),
         )
     }
+
+    private fun TestScope.fuelGraphDependencies(
+        clock: FakeAppClock = FakeAppClock(),
+        localeProvider: FakeLocaleProvider = FakeLocaleProvider(),
+    ): AppGraphDependencies =
+        testAppGraphDependencies(
+            clock = clock,
+            localeProvider = localeProvider,
+        )
 
     private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =
         object : DatabaseFactory {
