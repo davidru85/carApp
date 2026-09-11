@@ -89,8 +89,10 @@ struct OnboardingTapPosition: Equatable {
 }
 
 /// Absolute wall-clock budget for a single onboarding wait. It does not restart on a step change,
-/// so a reappearing affordance cannot push the total runtime out. The value is justified by the CI
-/// distribution recorded in `docs/handoff-E1-17.md`.
+/// so a reappearing affordance cannot push the total runtime out. CI run `34641152156` measured the
+/// guest step alone at 62.090 seconds on the pre-fix helper; this cap is that worst case plus a
+/// stated margin (see `docs/handoff-E1-17.md`). The story's acceptance criterion requires the
+/// deadline to rest on a CI measurement, so it MUST NOT be tightened without new CI evidence.
 enum OnboardingWaitBudget {
     static let absoluteLimit: TimeInterval = 120
 

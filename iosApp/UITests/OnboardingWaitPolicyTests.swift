@@ -84,6 +84,19 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         XCTAssertEqual(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(500)), true)
     }
 
+    /// The tap action must not retain an `XCUIElement` that can disappear before the tap; it carries
+    /// a snapshotted application-relative position instead.
+    func testOnboardingWaitCarriesTheSnapshottedTapPosition() {
+        let guestPosition = OnboardingTapPosition(dx: 0.25, dy: 0.75)
+        var waitState = OnboardingWaitState()
+
+        XCTAssertEqual(
+            waitState.nextAction(destinationReached: false, positions: [.guest: guestPosition]),
+            .tap(.guest, at: guestPosition),
+            "The tap action must not retain an XCUIElement that can disappear before the tap"
+        )
+    }
+
     func testOnboardingWaitNamesGuestSessionTimeout() {
         var guestState = OnboardingWaitState()
         _ = guestState.nextAction(destinationReached: false, positions: [.guest: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
