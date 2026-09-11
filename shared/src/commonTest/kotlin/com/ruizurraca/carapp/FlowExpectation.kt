@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.fail
+import kotlin.concurrent.Volatile
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -31,13 +32,13 @@ internal suspend fun <T> Flow<T>.awaitState(
     predicate: (T) -> Boolean,
 ): T =
     coroutineScope {
-        var lastValue = "<no emissions>"
+        val lastEmission = LastEmission()
         val emission =
             async(start = CoroutineStart.UNDISPATCHED) {
                 // Result distinguishes a matching null from timeout and preserves upstream failures.
                 runCatching {
                     first { value ->
-                        lastValue = value.toString()
+                        lastEmission.value = value.toString()
                         predicate(value)
                     }
                 }
@@ -47,7 +48,7 @@ internal suspend fun <T> Flow<T>.awaitState(
                 withContext(Dispatchers.Default) {
                     withTimeoutOrNull(timeout) { emission.await() }
                 }
-            if (result == null) fail("Timed out after $timeout waiting for $expectation. Last value: $lastValue")
+            if (result == null) fail("Timed out after $timeout waiting for $expectation. Last value: ${lastEmission.value}")
             result.getOrThrow()
         } finally {
             emission.cancelAndJoin()
