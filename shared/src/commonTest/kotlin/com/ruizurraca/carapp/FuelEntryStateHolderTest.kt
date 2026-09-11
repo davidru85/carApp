@@ -478,6 +478,7 @@ class FuelEntryStateHolderTest {
         localeProvider: FakeLocaleProvider = FakeLocaleProvider(),
     ): AppGraphDependencies =
         testAppGraphDependencies(
+            dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
             clock = clock,
             localeProvider = localeProvider,
         )

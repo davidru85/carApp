@@ -30,7 +30,7 @@
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf`.
 - Current phase and latest commit: bounded-expectation cycle RED `e8cb797`, GREEN `9bcec1c`,
-  REFACTOR `001ab63`. The second cycle is RED, recorded by this checkpoint.
+  REFACTOR `001ab63`. The second cycle is GREEN, after RED `f93c37e`; this checkpoint records GREEN.
 - Push and pull-request status: not pushed; no PR.
 - Completed since the previous checkpoint: extracted the deadline constant, documented collection
   context and cancellation, formatted all migrated calls. Investigated two diagnostic failures.
@@ -49,8 +49,11 @@
   expected no work before advancing the scheduler, observed `[main, io, default]`.
   The fixture factory extraction is behavior-preserving; the test constructs dependencies without
   opening a database, so its failure is deterministic and independent of SQLite timing.
-- Exact next step: commit the second RED, inject StandardTestDispatcher(testScheduler) in the
-  fuel fixture factory, then run shared suites and commit the second GREEN.
+- Second GREEN evidence: StandardTestDispatcher(testScheduler) now queues all fixture dispatchers.
+  `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test :shared:ktlintCheck
+  :shared:detekt` passed: Android host 157 tests, Native 165 tests, no failures/skips.
+- Exact next step: commit the second GREEN, finish fixture documentation and execute 30 forced
+  repetitions of the final code before the complete repository verification and REFACTOR commit.
 
 ## Scope Completed
 
