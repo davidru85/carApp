@@ -35,16 +35,18 @@
   section is rewritten as past-tense evidence and the AGENTS.md fixture sentence is corrected.
   Shared verification passed with 162 Android-host / 169 Native tests. Latest published `2f18edd`.
 - Push and pull-request status: the second-pass test commit `dc9b48b` and the documentation commits
-  are pushed. PR #66 is open, `MERGEABLE`, and its body was refreshed to the final state. All ten
-  required checks passed on run 34592642389 (`edef077`) and again on run 34594176104 (`0e20173`).
-  The later documentation-only commit `4b30528` produced run 34595706047, whose `ios-simulator-build`
-  job failed on the pre-existing `E1-17` flake rather than on this change: the failing tests are
+  are pushed. PR #66 is open, `MERGEABLE`, and its body was refreshed to the final state. Every run
+  whose code matched this branch passed all ten required checks, including run 34592642389
+  (`edef077`), run 34594176104 (`0e20173`) and the final observed run 34599603577 (`50b7d21`). One
+  intermediate documentation-only run, 34595706047, hit the pre-existing `E1-17` flake on its
+  `ios-simulator-build` job rather than failing on this change: the failing tests were
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` at
-  `iosApp/UITests/OnboardingFlowUITests.swift:86` and `:36`, and on the rerun
+  `iosApp/UITests/OnboardingFlowUITests.swift:86` and `:36`, and on rerun
   `VehicleAndFuelFlowUITests.testVehicleSwipeDeleteShowsConfirmationDialog` at
   `iosApp/UITests/VehicleAndFuelFlowUITests.swift:214` with "Onboarding did not reach vehicle
-  creation before the timeout". Both failures already exist on `main` (run 34221494080, 2026-09-08,
-  same lines and messages) and the E1-14 diff touches no file under `iosApp/`.
+  creation before the timeout". Both already exist on `main` (run 34221494080, 2026-09-08, same
+  lines and messages), the E1-14 diff touches no file under `iosApp/`, and the flake did not recur
+  on the next run.
 - Completed since the previous checkpoint: applied the second review pass. `FlowExpectation.kt` and
   `FuelEntryStateHolderTest.kt` lost their three dead imports. All eleven strengthened completion
   predicates now sit on one line. `assertQueuedGraphWork` moved into `GraphTestDependencies.kt` and
@@ -63,7 +65,7 @@
   --body-file /tmp/e1-14-pr.md` refreshed the PR body. The live required-check status is:
   android-assemble, android-instrumented-tests, architecture-check, contract-check, detekt,
   ios-simulator-build, ktlint, objc-header-golden-check, provider-decoupling and shared-tests, all
-  passing on run 34594176104.
+  passing on the latest observed run.
 
 
 ## Owner Review Follow-up — 2026-09-11

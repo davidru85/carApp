@@ -60,16 +60,15 @@
   targets reported 162 Android-host and 169 Native tests with zero failures and zero skips; the full
   non-instrumented `AGENTS.md` command passed (638 actionable tasks, 39 executed). No production
   code, schema, contract, architecture rule, decision ID, library or version changed.
-- **Follow-ups / risks:** PR #66 was pushed at head `4b30528`, its body refreshed to the final
-  state, and all ten required checks passed on run 34592642389 (`edef077`) and again on run
-  34594176104 (`0e20173`). The final documentation-only commit `4b30528` produced run 34595706047,
-  whose `ios-simulator-build` job failed on the pre-existing `E1-17` iOS onboarding UI flake
-  (`OnboardingFlowUITests.swift:86/:36` and, on rerun, `VehicleAndFuelFlowUITests.swift:214`), not on
-  this change; the same failures exist on `main` (run 34221494080) and the E1-14 diff touches no file
-  under `iosApp/`. The PR stays open and is not merged. The Kotlin/Native volatile publication
-  guarantee still rests on the compiler honouring `@Volatile` and has no executable guard, as
-  recorded in the handoff. The cleanup join remains intentionally unbounded to preserve E1-12
-  database lifetime ordering.
+- **Follow-ups / risks:** PR #66 was pushed, its body refreshed to the final state, and every run
+  whose code matched the branch passed all ten required checks (runs 34592642389, 34594176104 and
+  34599603577). One intermediate documentation-only run, 34595706047, hit the pre-existing `E1-17`
+  iOS onboarding UI flake on `ios-simulator-build` (`OnboardingFlowUITests.swift:86/:36` and, on
+  rerun, `VehicleAndFuelFlowUITests.swift:214`); the same failures exist on `main` (run 34221494080)
+  and the E1-14 diff touches no file under `iosApp/`, so it is not a regression from this story.
+  The PR stays open and is not merged. The Kotlin/Native volatile publication guarantee still rests
+  on the compiler honouring `@Volatile` and has no executable guard, as recorded in the handoff. The
+  cleanup join remains intentionally unbounded to preserve E1-12 database lifetime ordering.
 
 ### 2026-09-11 — E1-14 review follow-up corrections
 
