@@ -29,7 +29,7 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: review item 1 RED verified; latest published commit `9974eae`; this RED commit is next.
+- Current phase and latest commit: review item 1 GREEN verified; RED `49ddee8`, GREEN is this commit; latest published `9974eae`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
 - Completed since the previous checkpoint: read all six review items, confirmed the clean branch,
   and audited fixture construction sites. Items will be addressed in the requested order.
@@ -42,11 +42,12 @@
 - RED evidence: `./gradlew :shared:testAndroidHostTest --tests
   'com.ruizurraca.carapp.GraphTestDependenciesTest'` compiled and ran two tests; both failed on
   expected queued execution versus immediate `[main, io, default]`. Log:
-  `/tmp/e1-14-review-fixtures-red.log`. The stub `confinedGraphDependencies` still returns its
-  input unchanged, so there is no GREEN implementation yet.
-- Exact next step: commit this RED, implement `confinedGraphDependencies` with
-  `dependencies.copy(dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)))`,
-  migrate the consumers listed below, verify GREEN, commit, then refactor and commit before item 2.
+  `/tmp/e1-14-review-fixtures-red.log`. In the RED commit, `confinedGraphDependencies` returned its input unchanged.
+  The uncommitted GREEN implementation now installs the caller-scheduler dispatcher.
+- GREEN evidence: both shared targets and shared ktlint/detekt passed: 159 Android-host and
+  167 Native-simulator tests, zero failures/skips. Log: `/tmp/e1-14-review-fixtures-green.log`.
+- Exact next step: commit item 1 GREEN, add the per-file confinement audit and fixture KDoc in
+  REFACTOR, then continue items 2–6. No final repetition batch has started.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
@@ -57,10 +58,14 @@ three regressions. These follow-ups are non-blocking correctness improvements, e
 This section and the checkpoint are authoritative for continuation; earlier acceptance counts are
 historical until the final follow-up verification finishes.
 
-1. **Shared graph confinement — RED verified, GREEN not implemented.** New files:
+1. **Shared graph confinement — RED and GREEN verified.** New files:
    `GraphTestDependencies.kt` and `GraphTestDependenciesTest.kt` in shared commonTest. The two
    tests cover default dependencies and customized doubles; both assert no main/io/default work
-   runs before `runCurrent()`, then all queued work runs. The helper is intentionally a RED stub.
+   runs before `runCurrent()`, then all queued work runs. The helper now copies a StandardTestDispatcher(testScheduler) into supplied dependencies.
+   Its six editor/adoption consumer files have been migrated. The first full GREEN attempt
+   exposed five VehicleFormStateHolderTest assertions that read the initial idle state before save
+   actually completed (null row or empty push list). Save expectations now also require a non-null
+   savedVehicleId; vehicle recovery now requires a nonempty list. These changes passed 159/167 tests plus lint and are included in this GREEN commit.
    Extend this single confined fixture to `VehicleFormStateHolderTest`,
    `VehicleListStateHolderTest`, `SwiftAppGraphLifecycleTest`, graph construction in
    `LocalOwnerAdoptionTest`, and the graph-backed fuel-write case of
@@ -111,9 +116,10 @@ leave it open and do not merge. Maintain separate RED/GREEN/REFACTOR commits and
 production changes, schemas, contracts, architecture rules, decision IDs, libraries or versions.
 
 Resume by checking `git status --short --branch`, `git log -10 --oneline`, this checkpoint, and
-these two new test files. No repeat-run process is currently running. Only the RED invocation
-above has run during this review follow-up; all previous repetition evidence belongs to the
-initial delivery, not to the follow-up.
+these two new test files. No repeat-run process is currently running. RED passed its intended failure proof; the first
+full GREEN attempt failed on five premature Vehicle save assertions. The stronger completion
+predicates are pending re-verification. Logs are `/tmp/e1-14-review-fixtures-red.log` and
+`/tmp/e1-14-review-fixtures-green.log`. Previous repetition evidence belongs to initial delivery.
 
 ## Scope Completed
 

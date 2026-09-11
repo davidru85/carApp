@@ -23,8 +23,10 @@ class SwiftAppGraphLifecycleTest {
             val owningFactory = InMemoryDatabaseFactory()
             val databaseHandle = owningFactory.create()
             val dependencies =
-                testAppGraphDependencies(
-                    databaseFactory = fixedDatabaseFactory(databaseHandle),
+                confinedGraphDependencies(
+                    testAppGraphDependencies(
+                        databaseFactory = fixedDatabaseFactory(databaseHandle),
+                    ),
                 )
             val recordingGraph =
                 RecordingVehicleFormScopesAppGraph(

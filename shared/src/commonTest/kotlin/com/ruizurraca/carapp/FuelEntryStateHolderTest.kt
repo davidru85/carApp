@@ -479,10 +479,11 @@ class FuelEntryStateHolderTest {
         clock: FakeAppClock = FakeAppClock(),
         localeProvider: FakeLocaleProvider = FakeLocaleProvider(),
     ): AppGraphDependencies =
-        testAppGraphDependencies(
-            dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
-            clock = clock,
-            localeProvider = localeProvider,
+        confinedGraphDependencies(
+            testAppGraphDependencies(
+                clock = clock,
+                localeProvider = localeProvider,
+            ),
         )
 
     private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =

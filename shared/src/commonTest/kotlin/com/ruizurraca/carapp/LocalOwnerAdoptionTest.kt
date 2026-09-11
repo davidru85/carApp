@@ -20,6 +20,7 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -176,10 +177,12 @@ class LocalOwnerAdoptionTest {
                     isDebugBuild = true,
                     providers =
                         testAppProviders(
-                            testAppGraphDependencies(
-                                databaseFactory = SingleHandleDatabaseFactory(database),
-                                authClient = AdoptingAuthClient(ADOPTING_UID),
-                                ownerContext = ownerContext,
+                            confinedGraphDependencies(
+                                testAppGraphDependencies(
+                                    databaseFactory = SingleHandleDatabaseFactory(database),
+                                    authClient = AdoptingAuthClient(ADOPTING_UID),
+                                    ownerContext = ownerContext,
+                                ),
                             ),
                         ),
                 )
@@ -223,7 +226,10 @@ class LocalOwnerAdoptionTest {
                 val form = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 form.setName("Roadster")
                 form.save()
-                form.state.awaitState("local vehicle save finished") { state -> !state.isSaving }
+                form.state.awaitState("local vehicle save finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 authClient.authState.awaitState(
                     "anonymous session acquired after write",
@@ -263,7 +269,7 @@ class LocalOwnerAdoptionTest {
             }
         }
 
-    private fun graphOver(
+    private fun TestScope.graphOver(
         database: AppDatabase,
         authClient: AuthClient,
         ownerContext: FakeOwnerContext,
@@ -273,11 +279,13 @@ class LocalOwnerAdoptionTest {
             isDebugBuild = true,
             providers =
                 testAppProviders(
-                    testAppGraphDependencies(
-                        databaseFactory = SingleHandleDatabaseFactory(database),
-                        authClient = authClient,
-                        ownerContext = ownerContext,
-                        connectivityObserver = connectivity,
+                    confinedGraphDependencies(
+                        testAppGraphDependencies(
+                            databaseFactory = SingleHandleDatabaseFactory(database),
+                            authClient = authClient,
+                            ownerContext = ownerContext,
+                            connectivityObserver = connectivity,
+                        ),
                     ),
                 ),
         )

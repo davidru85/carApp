@@ -18,7 +18,6 @@ import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
-import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +31,7 @@ class VehicleListStateHolderTest {
     @Test
     fun listPublishesVehiclesPersistedThroughTheSharedForm() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val graph =
@@ -54,7 +53,10 @@ class VehicleListStateHolderTest {
                 form.setName("Roadster")
 
                 form.save()
-                form.state.awaitState("vehicle save finished") { state -> !state.isSaving }
+                form.state.awaitState("vehicle save finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
                 val publishedState =
                     list.state.awaitState(
                         "saved vehicle listed",
@@ -80,7 +82,7 @@ class VehicleListStateHolderTest {
     @Test
     fun refreshRestoresRemoteVehicleIntoEmptyLocalDatabaseForTheSameOwner() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val remote = PullOnlyRemoteSyncSource(remoteVehicleSnapshot())
@@ -102,7 +104,10 @@ class VehicleListStateHolderTest {
                 val list = graph.vehicleListStateHolder(harness.scope)
 
                 list.refresh()
-                list.state.awaitState("vehicle recovery finished") { state -> !state.isLoading }
+                list.state.awaitState("vehicle recovery finished") { state ->
+                    !state.isLoading &&
+                        state.vehicles.isNotEmpty()
+                }
 
                 val recovered =
                     database.databaseQueries

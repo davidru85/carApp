@@ -14,7 +14,6 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
-import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +30,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun savePersistsACompletePendingVehicleForTheCurrentOwner() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val graph =
@@ -52,7 +51,10 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("vehicle creation finished") { state -> !state.isSaving }
+                holder.state.awaitState("vehicle creation finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 val vehicle =
                     database.databaseQueries
@@ -79,7 +81,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun saveEnqueuesTheClosedRemoteVehicleSnapshot() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val graph =
@@ -100,7 +102,10 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("vehicle validation finished") { state -> !state.isSaving }
+                holder.state.awaitState("vehicle validation finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 val outbox =
                     database.databaseQueries
@@ -138,7 +143,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val remote =
@@ -169,7 +174,10 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("anonymous vehicle creation finished") { state -> !state.isSaving }
+                holder.state.awaitState("anonymous vehicle creation finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 val call = remote.pushCalls.single()
                 assertEquals("anonymous-user", call.first.value)
@@ -184,7 +192,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun vehicleOutboxPayloadWithEntityTypeReachesRemoteSyncSourceAsAValidSnapshot() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val remote =
                 RecordingRemoteSyncSource { _, snapshot ->
@@ -210,7 +218,10 @@ class VehicleFormStateHolderTest {
                 val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
                 holder.save()
-                holder.state.awaitState("backup failure save finished") { state -> !state.isSaving }
+                holder.state.awaitState("backup failure save finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 val snapshot = remote.pushCalls.single().second
                 val json = Json.parseToJsonElement(snapshot.json).jsonObject
@@ -224,7 +235,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun successfulRemoteAckMarksTheVehicleSyncedAndClearsItsOutboxRow() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val remote = RecordingRemoteSyncSource { _, _ -> }
@@ -247,7 +258,10 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("vehicle edit finished") { state -> !state.isSaving }
+                holder.state.awaitState("vehicle edit finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 val vehicle =
                     database.databaseQueries
@@ -272,7 +286,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun localOwnerSavePersistsPendingVehicleWithoutOutboxOrRemotePush() =
         runTest {
-            val defaultDependencies = testAppGraphDependencies()
+            val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
             val remote = RecordingRemoteSyncSource { _, _ -> }
@@ -295,7 +309,10 @@ class VehicleFormStateHolderTest {
                 holder.setName("Offline Roadster")
 
                 holder.save()
-                holder.state.awaitState("invalid vehicle edit finished") { state -> !state.isSaving }
+                holder.state.awaitState("invalid vehicle edit finished") { state ->
+                    state.savedVehicleId != null &&
+                        !state.isSaving
+                }
 
                 val vehicle =
                     database.databaseQueries

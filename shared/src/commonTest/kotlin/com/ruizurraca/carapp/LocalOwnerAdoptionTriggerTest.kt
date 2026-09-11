@@ -180,11 +180,13 @@ class LocalOwnerAdoptionTriggerTest {
                     isDebugBuild = true,
                     providers =
                         testAppProviders(
-                            testAppGraphDependencies(
-                                databaseFactory = TriggerDatabaseFactory(database),
-                                authClient = authClient,
-                                ownerContext = AuthOwnerContext(authClient.authState),
-                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = true),
+                            confinedGraphDependencies(
+                                testAppGraphDependencies(
+                                    databaseFactory = TriggerDatabaseFactory(database),
+                                    authClient = authClient,
+                                    ownerContext = AuthOwnerContext(authClient.authState),
+                                    connectivityObserver = FakeConnectivityObserver(initiallyOnline = true),
+                                ),
                             ),
                         ),
                 )
