@@ -11,7 +11,7 @@ enum OnboardingTapTarget: CaseIterable, Equatable {
         case .guest:
             return "welcome_guest"
         case .addVehicle:
-            return "welcome_guest"
+            return "add_vehicle"
         }
     }
 
@@ -74,7 +74,7 @@ struct OnboardingTapPosition: Equatable {
 
     /// Pure availability policy, separated so the disabled-element exclusion is directly testable.
     static func isAvailable(exists: Bool, isEnabled: Bool, isHittable: Bool) -> Bool {
-        exists && isHittable
+        exists && isEnabled && isHittable
     }
 
     func tap(in app: XCUIApplication) {
@@ -89,7 +89,7 @@ enum OnboardingWaitBudget {
     static let absoluteLimit: TimeInterval = 120
 
     static func hasReachedDeadline(startedAt: Date, now: Date) -> Bool {
-        false
+        now.timeIntervalSince(startedAt) >= absoluteLimit
     }
 }
 
@@ -107,15 +107,29 @@ struct OnboardingWaitState {
         if destinationReached {
             return .complete
         }
-        if let position = positions[.guest] {
-            step = .startingGuestSession
-            guestTapAttempts += 1
-            return .tap(.guest, at: position)
-        }
-        if let position = positions[.addVehicle] {
-            step = .openingVehicleCreation
-            addVehicleTapAttempts += 1
-            return .tap(.addVehicle, at: position)
+        switch step {
+        case .waitingForAffordance, .startingGuestSession:
+            if let position = positions[.guest] {
+                step = .startingGuestSession
+                guestTapAttempts += 1
+                return .tap(.guest, at: position)
+            }
+            if let position = positions[.addVehicle] {
+                step = .openingVehicleCreation
+                addVehicleTapAttempts += 1
+                return .tap(.addVehicle, at: position)
+            }
+        case .openingVehicleCreation:
+            // The step never moves backwards. A guest affordance that reappears after the vehicle
+            // list was reached is retried, but it does not reset the step (and with it the budget).
+            if let position = positions[.addVehicle] {
+                addVehicleTapAttempts += 1
+                return .tap(.addVehicle, at: position)
+            }
+            if let position = positions[.guest] {
+                guestTapAttempts += 1
+                return .tap(.guest, at: position)
+            }
         }
         return .wait
     }
