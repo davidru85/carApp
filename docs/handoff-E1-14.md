@@ -29,16 +29,19 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: the third review round is implemented on the working tree; the
-  five misleading `awaitState` descriptions in `VehicleFormStateHolderTest.kt` are corrected, with
-  the diagnostic proven correct by a temporary predicate negation. The second review pass is also
-  present: dead imports removed, eleven completion predicates joined, shared scheduling assertion,
-  explicit `currentCoroutineContext` import, rewritten follow-up section and corrected AGENTS.md
-  fixture sentence. Shared verification passed with 162 Android-host / 169 Native tests.
-- Push and pull-request status: the second-pass test commit `dc9b48b` and the documentation commits
-  are pushed. PR #66 is open, `MERGEABLE`, and its body was refreshed to the final state. Every run
-  whose code matched this branch passed all ten required checks, including run 34592642389
-  (`edef077`), run 34594176104 (`0e20173`) and the final observed run 34599603577 (`50b7d21`). One
+- Current phase and latest commit: the third review round is complete and committed. The five
+  misleading `awaitState` descriptions in `VehicleFormStateHolderTest.kt` were corrected in
+  `16f6094`, with the diagnostic proven correct by a temporary predicate negation, and its
+  documentation was recorded in `bb4abfe`. The working tree is clean and the branch is pushed. The
+  second review pass is also present: dead imports removed, eleven completion predicates joined,
+  shared scheduling assertion, explicit `currentCoroutineContext` import, rewritten follow-up
+  section and corrected AGENTS.md fixture sentence. Shared verification passed with 162 Android-host
+  / 169 Native tests.
+- Push and pull-request status: the second-pass test commit `dc9b48b`, the third-round refactor
+  `16f6094` and the documentation commits are pushed through `bb4abfe`. PR #66 is open and
+  `MERGEABLE`, and its body was refreshed to the final state. GitHub Actions run 34629655221
+  completed successfully on `bb4abfe` with all ten required checks green. Earlier runs whose code
+  matched this branch also passed every check (runs 34592642389, 34594176104 and 34599603577). One
   intermediate documentation-only run, 34595706047, hit the pre-existing `E1-17` flake on its
   `ios-simulator-build` job rather than failing on this change: the failing tests were
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` at
@@ -47,26 +50,26 @@
   `iosApp/UITests/VehicleAndFuelFlowUITests.swift:214` with "Onboarding did not reach vehicle
   creation before the timeout". Both already exist on `main` (run 34221494080, 2026-09-08, same
   lines and messages), the E1-14 diff touches no file under `iosApp/`, and the flake did not recur
-  on the next run. The third-round description correction is not yet committed or pushed.
+  on the following runs.
 - Completed since the previous checkpoint: corrected the five misleading expectation descriptions
   in `VehicleFormStateHolderTest.kt`; re-checked the whole file and confirmed every remaining
   description, including line 54, is accurate; ran shared ktlint/detekt, the forced re-run of both
-  shared targets and the full non-instrumented repository command; and captured the corrected
-  timeout diagnostic by temporarily negating the line-104 predicate.
+  shared targets and the full non-instrumented repository command; captured the corrected timeout
+  diagnostic by temporarily negating the line-104 predicate; and committed and pushed the change
+  and its documentation.
 - Verification evidence and known failures: full shared GREEN with the final code is 162
   Android-host and 169 Native-simulator tests, zero failures and zero skips. The full
-  non-instrumented repository command passed. Only the pre-existing expect/actual Beta warnings
-  remain.
+  non-instrumented repository command passed, and run 34629655221 confirms all ten required checks
+  green on `bb4abfe`. Only the pre-existing expect/actual Beta warnings remain.
 - Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
   decision changes; no merge. Ordered collector teardown and its explicitly documented residual
   unbounded join are retained.
-- Exact next step: commit the description correction, push the branch and report the required-check
-  results. Owner reviews PR #66; no merge was requested.
-- Publishing checkpoint: the follow-up branch is pushed, and `gh pr edit 66 --repo davidru85/carApp
-  --body-file /tmp/e1-14-pr.md` refreshed the PR body. The live required-check status is:
-  android-assemble, android-instrumented-tests, architecture-check, contract-check, detekt,
-  ios-simulator-build, ktlint, objc-header-golden-check, provider-decoupling and shared-tests, all
-  passing on the latest observed run.
+- Exact next step: owner manual review and merge of PR #66; the agent does not merge.
+- Publishing checkpoint: the branch is pushed through `bb4abfe`, and
+  `gh pr edit 66 --repo davidru85/carApp --body-file /tmp/e1-14-pr.md` refreshed the PR body. The
+  live required-check status on run 34629655221 is: android-assemble, android-instrumented-tests,
+  architecture-check, contract-check, detekt, ios-simulator-build, ktlint, objc-header-golden-check,
+  provider-decoupling and shared-tests, all passing.
 
 
 ## Owner Review Follow-up — 2026-09-11
