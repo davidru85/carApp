@@ -2,9 +2,38 @@ import XCTest
 
 private enum OnboardingWaitAction: Equatable {
     case complete
-    case tapGuest
-    case tapAddVehicle
+    case tapGuest(at: OnboardingTapPosition)
+    case tapAddVehicle(at: OnboardingTapPosition)
     case wait
+}
+
+private struct OnboardingTapPosition: Equatable {
+    let dx: CGFloat
+    let dy: CGFloat
+
+    init(dx: CGFloat, dy: CGFloat) {
+        self.dx = dx
+        self.dy = dy
+    }
+
+    init?(element: XCUIElement, in app: XCUIApplication) {
+        guard element.exists, element.isHittable else {
+            return nil
+        }
+        let appFrame = app.frame
+        let elementFrame = element.frame
+        guard appFrame.width > 0, appFrame.height > 0, !elementFrame.isEmpty else {
+            return nil
+        }
+        self.init(
+            dx: (elementFrame.midX - appFrame.minX) / appFrame.width,
+            dy: (elementFrame.midY - appFrame.minY) / appFrame.height
+        )
+    }
+
+    func tap(in app: XCUIApplication) {
+        app.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: dy)).tap()
+    }
 }
 
 private enum OnboardingWaitStep {
@@ -40,21 +69,21 @@ private struct OnboardingWaitState {
 
     mutating func nextAction(
         vehicleNameExists: Bool,
-        guestAvailable: Bool,
-        addVehicleAvailable: Bool
+        guestPosition: OnboardingTapPosition?,
+        addVehiclePosition: OnboardingTapPosition?
     ) -> OnboardingWaitAction {
         if vehicleNameExists {
             return .complete
         }
-        if guestAvailable {
+        if let guestPosition {
             step = .startingGuestSession
             guestTapAttempts += 1
-            return .tapGuest
+            return .tapGuest(at: guestPosition)
         }
-        if addVehicleAvailable {
+        if let addVehiclePosition {
             step = .openingVehicleCreation
             addVehicleTapAttempts += 1
-            return .tapAddVehicle
+            return .tapAddVehicle(at: addVehiclePosition)
         }
         return .wait
     }
@@ -255,26 +284,28 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
     }
 
     func testOnboardingWaitRetriesEachAffordanceThatRemainsAvailable() {
+        let guestPosition = OnboardingTapPosition(dx: 0.5, dy: 0.5)
         var guestState = OnboardingWaitState()
 
         XCTAssertEqual(
-            guestState.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false),
-            .tapGuest
+            guestState.nextAction(vehicleNameExists: false, guestPosition: guestPosition, addVehiclePosition: nil),
+            .tapGuest(at: guestPosition)
         )
         XCTAssertEqual(
-            guestState.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false),
-            .tapGuest,
+            guestState.nextAction(vehicleNameExists: false, guestPosition: guestPosition, addVehiclePosition: nil),
+            .tapGuest(at: guestPosition),
             "A visible and hittable affordance must be retried after an ineffective tap"
         )
 
+        let addVehiclePosition = OnboardingTapPosition(dx: 0.5, dy: 0.5)
         var vehicleState = OnboardingWaitState()
         XCTAssertEqual(
-            vehicleState.nextAction(vehicleNameExists: false, guestAvailable: false, addVehicleAvailable: true),
-            .tapAddVehicle
+            vehicleState.nextAction(vehicleNameExists: false, guestPosition: nil, addVehiclePosition: addVehiclePosition),
+            .tapAddVehicle(at: addVehiclePosition)
         )
         XCTAssertEqual(
-            vehicleState.nextAction(vehicleNameExists: false, guestAvailable: false, addVehicleAvailable: true),
-            .tapAddVehicle,
+            vehicleState.nextAction(vehicleNameExists: false, guestPosition: nil, addVehiclePosition: addVehiclePosition),
+            .tapAddVehicle(at: addVehiclePosition),
             "A visible and hittable affordance must be retried after an ineffective tap"
         )
     }
@@ -296,7 +327,11 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
 
     func testOnboardingWaitNamesGuestSessionTimeout() {
         var guestState = OnboardingWaitState()
-        _ = guestState.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false)
+        _ = guestState.nextAction(
+            vehicleNameExists: false,
+            guestPosition: OnboardingTapPosition(dx: 0.5, dy: 0.5),
+            addVehiclePosition: nil
+        )
         XCTAssertEqual(guestState.step.timeout, 60)
         XCTAssertEqual(
             guestState.timeoutMessage,
@@ -306,7 +341,11 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
 
     func testOnboardingWaitNamesVehicleCreationTimeout() {
         var vehicleState = OnboardingWaitState()
-        _ = vehicleState.nextAction(vehicleNameExists: false, guestAvailable: false, addVehicleAvailable: true)
+        _ = vehicleState.nextAction(
+            vehicleNameExists: false,
+            guestPosition: nil,
+            addVehiclePosition: OnboardingTapPosition(dx: 0.5, dy: 0.5)
+        )
         XCTAssertEqual(vehicleState.step.timeout, 10)
         XCTAssertEqual(
             vehicleState.timeoutMessage,
@@ -326,8 +365,8 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
             let previousStep = waitState.step
             switch waitState.nextAction(
                 vehicleNameExists: vehicleNameField.exists,
-                guestAvailable: guestButton.exists && guestButton.isHittable,
-                addVehicleAvailable: addVehicleButton.exists && addVehicleButton.isHittable
+                guestPosition: OnboardingTapPosition(element: guestButton, in: app),
+                addVehiclePosition: OnboardingTapPosition(element: addVehicleButton, in: app)
             ) {
             case .complete:
                 let elapsed = String(format: "%.3f", Date().timeIntervalSince(startedAt))
@@ -337,10 +376,8 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
                         "\(waitState.addVehicleTapAttempts) add_vehicle tap attempts"
                 )
                 return
-            case .tapGuest:
-                guestButton.tap()
-            case .tapAddVehicle:
-                addVehicleButton.tap()
+            case let .tapGuest(position), let .tapAddVehicle(position):
+                position.tap(in: app)
             case .wait:
                 break
             }
