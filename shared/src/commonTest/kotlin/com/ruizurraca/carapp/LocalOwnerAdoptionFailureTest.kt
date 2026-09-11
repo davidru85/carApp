@@ -97,9 +97,7 @@ class LocalOwnerAdoptionFailureTest {
                 fault.failing = false
                 holder.refresh()
                 val recovered =
-                    holder.state.awaitState(
-                        "vehicle list recovered after retry",
-                    ) { state -> !state.isLoading }
+                    holder.state.awaitState("vehicle list recovered after retry") { state -> !state.isLoading }
 
                 assertEquals(1, recovered.vehicles.size, "the retry adopts and the list resolves")
                 assertEquals(0L, database.localOwnerRowCount())

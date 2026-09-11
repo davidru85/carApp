@@ -142,10 +142,7 @@ class FuelEntryStateHolderTest {
                 harness.collect(holder.state)
 
                 val state =
-                    holder.state.awaitState("vehicle odometer suggestion") { value ->
-                        value.odometerKm ==
-                            12_345L
-                    }
+                    holder.state.awaitState("vehicle odometer suggestion") { value -> value.odometerKm == 12_345L }
                 assertEquals(now.toEpochMilliseconds(), state.dateEpochMillis)
                 assertEquals(12_345L, state.odometerKm)
                 assertEquals("USD", state.currencyCode)
@@ -239,10 +236,7 @@ class FuelEntryStateHolderTest {
                 holder.setLitersScaled(45_123L)
                 holder.setPricePerLiterScaled(1_789L)
                 val derivedState =
-                    holder.state.awaitState("total cost derived from liters and price") { state ->
-                        state.totalCostMinor ==
-                            8_073L
-                    }
+                    holder.state.awaitState("total cost derived from liters and price") { state -> state.totalCostMinor == 8_073L }
 
                 assertEquals(8_073L, derivedState.totalCostMinor)
                 assertNull(derivedState.message)
@@ -329,9 +323,7 @@ class FuelEntryStateHolderTest {
 
                 form.confirmSave(Confirmation.OdometerInconsistent)
                 val publishedState =
-                    list.state.awaitState(
-                        "confirmed fuel entry published",
-                    ) { state -> state.entries.isNotEmpty() }
+                    list.state.awaitState("confirmed fuel entry published") { state -> state.entries.isNotEmpty() }
 
                 val row = publishedState.entries.single()
                 assertFalse(row.isFullTank)
@@ -389,17 +381,12 @@ class FuelEntryStateHolderTest {
                 harness.collect(list.state)
                 saveFullEntry(harness, list, vehicleId, odometerKm = 100L, expectedCount = 1)
                 val populatedState =
-                    list.state.awaitState(
-                        "saved fuel entry listed",
-                    ) { state -> state.entries.isNotEmpty() }
+                    list.state.awaitState("saved fuel entry listed") { state -> state.entries.isNotEmpty() }
                 val entryId = populatedState.entries.single().id
 
                 list.requestDelete(entryId)
                 val confirmationState =
-                    list.state.awaitState("fuel deletion confirmation") { state ->
-                        state.message !=
-                            null
-                    }
+                    list.state.awaitState("fuel deletion confirmation") { state -> state.message != null }
 
                 assertEquals(
                     "INFO.CONFIRM_DELETE_FUEL_ENTRY",
@@ -410,10 +397,7 @@ class FuelEntryStateHolderTest {
 
                 list.confirmDelete(entryId)
                 val deletedState =
-                    list.state.awaitState("fuel entry removed") { state ->
-                        !state.isLoading &&
-                            state.entries.isEmpty()
-                    }
+                    list.state.awaitState("fuel entry removed") { state -> !state.isLoading && state.entries.isEmpty() }
 
                 assertTrue(deletedState.entries.isEmpty())
             } finally {
@@ -431,9 +415,7 @@ class FuelEntryStateHolderTest {
         holder.setInitialOdometerKm(initialOdometerKm)
         holder.save()
         val state =
-            holder.state.awaitState(
-                "vehicle saved",
-            ) { value -> value.savedVehicleId != null && !value.isSaving }
+            holder.state.awaitState("vehicle saved") { value -> value.savedVehicleId != null && !value.isSaving }
         holder.close()
         return requireNotNull(state.savedVehicleId)
     }

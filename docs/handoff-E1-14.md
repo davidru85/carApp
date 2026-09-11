@@ -116,7 +116,7 @@ historical until the final follow-up verification finishes.
    test failed when an independent source `CancellationException` escaped as caller cancellation;
    GREEN now reports an `AssertionError` with the original cause while caller cancellation still
    reaches the existing propagation test unchanged. Commit the refactor comments before item 5.
-5. **Readability — not started.** Join short predicates in FuelEntryStateHolderTest (odometer,
+5. **Readability — complete.** Joined short predicates in FuelEntryStateHolderTest (odometer,
    total cost, message, deleted entry) and short awaitState calls for confirmed fuel entry,
    saved fuel entry and saved vehicle; VehicleListStateHolderTest saved/recovered vehicle calls;
    LocalOwnerAdoptionFailureTest recovered-after-retry call. Preserve the genuinely long wrapped
