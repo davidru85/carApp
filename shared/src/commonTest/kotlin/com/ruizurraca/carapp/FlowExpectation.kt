@@ -41,6 +41,7 @@ internal suspend fun <T> Flow<T>.awaitState(
         val emission =
             async(start = CoroutineStart.UNDISPATCHED) {
                 // Result distinguishes a matching null from timeout and preserves upstream failures.
+                // A source cancellation is captured here so it cannot cancel the caller implicitly.
                 try {
                     Result.success(
                     first { value ->
@@ -62,6 +63,7 @@ internal suspend fun <T> Flow<T>.awaitState(
             if (result == null) fail("Timed out after $timeout waiting for $expectation. Last value: ${lastEmission.value}")
             val upstreamFailure = result.exceptionOrNull()
             if (upstreamFailure is CancellationException) {
+                // A caller cancellation reaches emission.await() directly and bypasses this branch.
                 currentCoroutineContext().ensureActive()
                 throw AssertionError(
                     "Flow cancelled while waiting for $expectation. Last value: ${lastEmission.value}",

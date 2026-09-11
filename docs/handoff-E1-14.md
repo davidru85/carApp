@@ -106,13 +106,16 @@ historical until the final follow-up verification finishes.
    volatile-field metadata test is the publication guarantee; the common off-caller flow test
    exercises the diagnostic path. The assignment-neutralized run failed that common test, and the
    correct source is restored. Commit the KDoc refactor before item 4.
-4. **Cancellation handling — not started.** Replace `runCatching` in async with explicit catches:
+4. **Cancellation handling — RED/GREEN complete; REFACTOR in progress.** Replaced `runCatching` in async with explicit catches:
    rethrow CancellationException unchanged and capture only other Throwables in Result.failure.
    Add a case for a source that throws CancellationException independently of caller cancellation.
    Preserve the existing cancellation/collector-stop test. Check the observable upstream-cancel
    result carefully: blindly forwarding it from await can still cancel the caller silently;
    do not report that as corrected without an executable assertion. Keep external cancellation
-   distinct from upstream cancellation and retain the original cause in any diagnostic.
+   distinct from upstream cancellation and retain the original cause in any diagnostic. The RED
+   test failed when an independent source `CancellationException` escaped as caller cancellation;
+   GREEN now reports an `AssertionError` with the original cause while caller cancellation still
+   reaches the existing propagation test unchanged. Commit the refactor comments before item 5.
 5. **Readability — not started.** Join short predicates in FuelEntryStateHolderTest (odometer,
    total cost, message, deleted entry) and short awaitState calls for confirmed fuel entry,
    saved fuel entry and saved vehicle; VehicleListStateHolderTest saved/recovered vehicle calls;
