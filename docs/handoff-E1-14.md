@@ -29,12 +29,12 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: review items 1–5 complete; item 6 cleanup is implemented and
-  lint-verified but uncommitted; latest published `e7c4d4e`.
+- Current phase and latest commit: all six review items are implemented; shared verification passed
+  at `25a9694`; the forced repetition campaign is pending; latest published `e7c4d4e`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
-- Completed since the previous checkpoint: separated upstream and caller cancellation, joined the
-  requested short predicates, moved the timeout constant, reused the fuel fixture and repaired the
-  status-document wrap. Item 6 is ready to commit.
+- Completed since the previous checkpoint: committed the timeout, fixture-reuse, AGENTS.md wrap and
+  final helper cleanup. Full shared verification now passes with 162 Android-host and 169
+  Native-simulator tests, zero failures and zero skips.
 - Verification evidence and known failures: previous 157/165 counts and 30-run evidence below
   describe the pre-review version. The owner independently reproduced them and neutralized the
   three existing regressions. New/modified regressions will receive fresh RED proof.
@@ -62,7 +62,8 @@
 - Item 5 evidence: requested short predicates and expectation calls are joined while all changed
   lines remain within the repository style limit.
 - Item 6 evidence: shared ktlint/detekt passed after the timeout, fixture-reuse and AGENTS.md wrap
-  cleanup. Exact next step: commit item 6, then run full shared verification and forced repetitions.
+  cleanup. Exact next step: run the complete non-instrumented command, then execute 30 fresh forced
+  repetitions for each shared target and record the actual counts.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
