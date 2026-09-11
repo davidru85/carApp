@@ -7,9 +7,36 @@ private enum OnboardingWaitAction: Equatable {
     case wait
 }
 
+private enum OnboardingWaitStep {
+    case waitingForAffordance
+    case startingGuestSession
+    case openingVehicleCreation
+
+    var timeout: TimeInterval {
+        switch self {
+        case .waitingForAffordance, .openingVehicleCreation:
+            return 10
+        case .startingGuestSession:
+            return 60
+        }
+    }
+
+    var timeoutMessage: String {
+        switch self {
+        case .waitingForAffordance:
+            return "Onboarding did not expose welcome_guest or add_vehicle before the 10-second timeout"
+        case .startingGuestSession:
+            return "Guest session did not reach the vehicle list after retrying welcome_guest for 60 seconds"
+        case .openingVehicleCreation:
+            return "Vehicle creation did not open after retrying add_vehicle for 10 seconds"
+        }
+    }
+}
+
 private struct OnboardingWaitState {
-    private var startedGuestSession = false
-    private var requestedVehicleCreation = false
+    private(set) var step = OnboardingWaitStep.waitingForAffordance
+    private(set) var guestTapAttempts = 0
+    private(set) var addVehicleTapAttempts = 0
 
     mutating func nextAction(
         vehicleNameExists: Bool,
@@ -19,19 +46,21 @@ private struct OnboardingWaitState {
         if vehicleNameExists {
             return .complete
         }
-        if !startedGuestSession, guestAvailable {
-            startedGuestSession = true
+        if guestAvailable {
+            step = .startingGuestSession
+            guestTapAttempts += 1
             return .tapGuest
         }
-        if !requestedVehicleCreation, addVehicleAvailable {
-            requestedVehicleCreation = true
+        if addVehicleAvailable {
+            step = .openingVehicleCreation
+            addVehicleTapAttempts += 1
             return .tapAddVehicle
         }
         return .wait
     }
 
     func timeoutMessage() -> String {
-        "Onboarding did not reach vehicle creation before the timeout"
+        step.timeoutMessage
     }
 }
 
@@ -261,16 +290,23 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         let guestButton = app.buttons["welcome_guest"]
         let addVehicleButton = app.buttons["add_vehicle"]
         let vehicleNameField = app.textFields["vehicle_name"]
-        let deadline = Date().addingTimeInterval(30)
+        let startedAt = Date()
         var waitState = OnboardingWaitState()
+        var deadline = Date().addingTimeInterval(waitState.step.timeout)
 
         while Date() < deadline {
+            let previousStep = waitState.step
             switch waitState.nextAction(
                 vehicleNameExists: vehicleNameField.exists,
                 guestAvailable: guestButton.exists && guestButton.isHittable,
                 addVehicleAvailable: addVehicleButton.exists && addVehicleButton.isHittable
             ) {
             case .complete:
+                print(
+                    "E1-17 onboarding reached vehicle creation in \(Date().timeIntervalSince(startedAt)) seconds " +
+                        "after \(waitState.guestTapAttempts) welcome_guest and " +
+                        "\(waitState.addVehicleTapAttempts) add_vehicle tap attempts"
+                )
                 return
             case .tapGuest:
                 guestButton.tap()
@@ -279,7 +315,10 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
             case .wait:
                 break
             }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            if waitState.step != previousStep {
+                deadline = Date().addingTimeInterval(waitState.step.timeout)
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
         }
         XCTFail(waitState.timeoutMessage())
     }

@@ -37,23 +37,33 @@
 - Date: 2026-09-11.
 - Branch and base: `story/E1-17-ios-onboarding-ui-test-flake`, based on synchronized `main` at
   `4207b05` after pull request #66 merged.
-- Current phase and latest commit: RED complete; the RED commit is the next action.
+- Current phase and latest commit: GREEN complete. RED is `7b7ff63`; the GREEN commit is the next
+  action.
 - Push and pull-request status: branch is local; nothing pushed; no pull request exists.
 - Completed since the previous checkpoint: Ready Check completed. Four consecutive successful CI
   executions of the affected test on the pre-fix helper were measured at 27.021, 33.219, 21.143 and
   25.836 seconds for the entire test. The slowest whole-test duration, 33.219 seconds, is an upper
   bound for its onboarding segment and establishes the baseline for the new network-bearing bound.
-  A test-only `OnboardingWaitState` now drives the unchanged one-shot helper policy so its defect can
-  be exercised without relying on a tap being lost by chance.
+  A test-only `OnboardingWaitState` now drives the helper policy so its defect can be exercised
+  without relying on a tap being lost by chance. GREEN removed the one-shot latches: every visible,
+  hittable onboarding affordance is retried at 0.5-second observation intervals. Entering the guest
+  step starts a 60-second deadline; entering vehicle creation starts a separate 10-second deadline;
+  the failure message is owned by that step. The helper prints elapsed time and tap-attempt counts so
+  the final CI runs provide direct measurements.
 - Verification evidence and known failures: the focused RED run compiled and executed three tests;
   all three failed on the intended assertions. A second available simulator reported retry action
   `wait` instead of `tapGuest`, the generic timeout instead of the guest-session diagnostic, and the
   same generic timeout instead of the vehicle-creation diagnostic. An intervening attempt on the
   first simulator failed before test execution with `Application failed preflight checks` / `Busy`;
-  it is recorded as simulator infrastructure noise and is not RED evidence.
+  it is recorded as simulator infrastructure noise and is not RED evidence. In GREEN, all three
+  focused tests passed. The first isolated end-to-end run reached vehicle creation in 1.245 seconds
+  but then failed at the unrelated swipe-delete assertion because a fresh simulator took the
+  mandatory first-vehicle route, whose save opens detail instead of returning to a list row. Repeating
+  with the test's normal non-empty-list precondition reached vehicle creation in 3.248 seconds after
+  one `welcome_guest` and one `add_vehicle` tap, then passed the complete swipe-delete test.
 - Open decisions or blockers: none.
-- Exact next step: commit RED, then implement repeated affordance actions, step-owned deadlines and
-  diagnostic messages in GREEN.
+- Exact next step: commit GREEN, then refactor the policy and tests for clarity, run repeated local
+  and complete verification, and finalize the handoff and project records.
 
 ## Scope Completed
 
