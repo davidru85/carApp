@@ -29,129 +29,123 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: all six review items are implemented; shared verification and the
-  forced repetition campaign passed; the final documentation/log checkpoint is uncommitted; latest
-  published `d52ce8d`.
-- Push and pull-request status: PR #66 remains open; all follow-up commits are pushed through
-  `043653b`; the remote PR description refresh is pending network approval.
-- Completed since the previous checkpoint: committed the timeout, fixture-reuse, AGENTS.md wrap and
-  final helper cleanup. Full shared verification passes with 162 Android-host and 169
-  Native-simulator tests, zero failures and zero skips. Thirty fresh repetitions per target also
-  pass with those counts.
-- Verification evidence and known failures: previous 157/165 counts and 30-run evidence below
-  describe the pre-review version. The owner independently reproduced them and neutralized the
-  three existing regressions. The review version now has fresh 162/169 evidence; one preliminary
-  wrapper-lock attempt exited before running tests and is recorded separately.
+- Current phase and latest commit: the second review pass is implemented on the working tree; the
+  three dead imports are removed, the eleven completion predicates are joined, the scheduling
+  assertion is shared, the `currentCoroutineContext` import is explicit, the Owner Review Follow-up
+  section is rewritten as past-tense evidence and the AGENTS.md fixture sentence is corrected.
+  Shared verification passed with 162 Android-host / 169 Native tests. Latest published `2f18edd`.
+- Push and pull-request status: PR #66 remains open; the second-pass commit and PR refresh are
+  pending. The remote PR description is stale and is being refreshed to the final state.
+- Completed since the previous checkpoint: applied the second review pass. `FlowExpectation.kt` and
+  `FuelEntryStateHolderTest.kt` lost their three dead imports. All eleven strengthened completion
+  predicates now sit on one line. `assertQueuedGraphWork` moved into `GraphTestDependencies.kt` and
+  is shared by `GraphTestDependenciesTest` and the fuel wrapper test. `currentCoroutineContext` is
+  imported in `FlowExpectationTest`. Documentation was rewritten and AGENTS.md corrected.
+- Verification evidence and known failures: full shared GREEN with the final code is 162
+  Android-host and 169 Native-simulator tests, zero failures and zero skips. The full
+  non-instrumented repository command passed (638 actionable tasks, 39 executed) and shared
+  ktlint/detekt passed. Only the pre-existing expect/actual Beta warnings remain.
 - Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
-  decision changes; no merge. Retain ordered collector teardown and explicitly document its residual
-  unbounded join, as permitted by review item 2.
-- RED evidence: `./gradlew :shared:testAndroidHostTest --tests
-  'com.ruizurraca.carapp.GraphTestDependenciesTest'` compiled and ran two tests; both failed on
-  expected queued execution versus immediate `[main, io, default]`. Log:
-  `/tmp/e1-14-review-fixtures-red.log`. In the RED commit, `confinedGraphDependencies` returned its input unchanged.
-  The uncommitted GREEN implementation now installs the caller-scheduler dispatcher.
-- GREEN evidence: both shared targets and shared ktlint/detekt passed: 162 Android-host and
-  169 Native-simulator tests, zero failures/skips. Log: `/tmp/e1-14-review-fixtures-green.log`.
-- Non-vacuity proof: neutralizing the shared dispatcher copy produced three intended failures:
-  both GraphTestDependenciesTest cases and the fuel factory scheduling guard. The source was
-  restored automatically, then all three regressions and shared lint passed.
-  Logs: `/tmp/e1-14-review-fixtures-neutralized.log`, `/tmp/e1-14-review-fixtures-refactor.log`.
-- Item 3 RED evidence: the host metadata guard failed because `LastEmission.value` was not volatile;
-  the off-caller diagnostic test was added in the same RED commit.
-- Item 3 GREEN evidence: host `FlowExpectationTest` off-caller diagnostic and
-  `LastEmissionVisibilityTest` passed after `@kotlin.concurrent.Volatile` and holder integration.
-  Neutralizing the assignment made the off-caller diagnostic test fail, then the source was restored.
-- Item 4 RED/GREEN evidence: the independent upstream cancellation test failed before the explicit
-  catch and passed after it; the existing caller-cancellation test also passes unchanged.
-- Item 5 evidence: requested short predicates and expectation calls are joined while all changed
-  lines remain within the repository style limit.
-- Item 6 evidence: shared ktlint/detekt passed after the timeout, fixture-reuse and AGENTS.md wrap
-  cleanup. Exact next step: append the review correction to PROJECT_LOG.md, commit this final
-  checkpoint, then push the branch and refresh PR #66. CI review remains open; do not merge.
-- Publishing checkpoint: the complete follow-up branch is pushed through `043653b`. The prepared PR
-  body is `/tmp/e1-14-pr.md`. `gh pr edit 66 --repo davidru85/carApp --body-file /tmp/e1-14-pr.md`
-  failed first on the sandbox GitHub API connection; its escalated retry was rejected by the
-  automatic approval reviewer because the account usage limit was reached. A successor with network
-  approval should run that exact command and then inspect PR checks; no code work remains.
+  decision changes; no merge. Ordered collector teardown and its explicitly documented residual
+  unbounded join are retained.
+- Exact next step: append the second-pass outcome to PROJECT_LOG.md, commit this checkpoint, push the
+  branch and refresh PR #66 with the prepared body. CI review remains open; do not merge.
+- Publishing checkpoint: the earlier follow-up branch is pushed through `043653b`, and the
+  documentation-only blocker commit `2f18edd` is pushed. The prepared PR body is `/tmp/e1-14-pr.md`
+  and is being updated to the final state. `gh pr edit 66 --repo davidru85/carApp --body-file
+  /tmp/e1-14-pr.md` is the command to run after the push.
 
 
-## Owner Review Follow-up — 2026-09-11 (Active)
+## Owner Review Follow-up — 2026-09-11
 
-The owner independently verified the initial 157/165 tests, 37 migrated waits and non-vacuity of
-three regressions. These follow-ups are non-blocking correctness improvements, explicitly ordered
-1 through 6. The owner also explicitly requested continuously recoverable repository documentation.
-This section and the checkpoint are authoritative for continuation; earlier acceptance counts are
-historical until the final follow-up verification finishes.
+The owner independently verified the initial 157/165 tests, the 37 migrated waits and the
+non-vacuity of three regressions, and then ordered six non-blocking follow-ups. All six were
+implemented and verified. The owner also required continuously recoverable repository
+documentation, which is why this section and the checkpoint are the authoritative continuation
+record while the earlier acceptance counts remain historical.
 
-1. **Shared graph confinement — RED/GREEN/REFACTOR complete.** New files:
-   `GraphTestDependencies.kt` and `GraphTestDependenciesTest.kt` in shared commonTest. The two
-   tests cover default dependencies and customized doubles; both assert no main/io/default work
-   runs before `runCurrent()`, then all queued work runs. The helper now copies a StandardTestDispatcher(testScheduler) into supplied dependencies.
-   Its six editor/adoption consumer files have been migrated. The first full GREEN attempt
-   exposed five VehicleFormStateHolderTest assertions that read the initial idle state before save
-   actually completed (null row or empty push list). Save expectations now also require a non-null
-   savedVehicleId; vehicle recovery now requires a nonempty list. These changes passed 159/167 tests plus lint and are included in this GREEN commit.
-   Extend this single confined fixture to `VehicleFormStateHolderTest`,
-   `VehicleListStateHolderTest`, `SwiftAppGraphLifecycleTest`, graph construction in
-   `LocalOwnerAdoptionTest`, and the graph-backed fuel-write case of
-   `LocalOwnerAdoptionTriggerTest`. Reuse it from `FuelEntryStateHolderTest` as well. Preserve
-   customized database/owner/auth doubles by wrapping existing `testAppGraphDependencies(...)`
-   in `confinedGraphDependencies(...)`. Helpers such as `LocalOwnerAdoptionTest.graphOver` will
-   need a `TestScope` receiver. Keep deliberately ordered, directly constructed adoption
-   coordinator fixtures separate and explain their lack of editable graph state. Audit every
-   remaining graph-mounting file and record a concrete reason if it remains unconfined.
-   Watch immediate `.state.value` assertions and initial `!isSaving` predicates after switching
-   scheduling; wait for actual save completion rather than an initial idle state if necessary.
-2. **Unbounded cleanup join — documentation option applied.** Retain structured
-   cancellation and join before graph/database teardown. A bounded join alone cannot bound an
-   enclosing coroutineScope, which still waits for its children; detaching a stuck collector could
-   restore the E1-12 database-close race. State explicitly in helper KDoc and Acceptance Evidence
-   that extreme CPU starvation or non-cooperative collector cleanup can delay the diagnostic past
-   runTest's timeout. The existing starvation test proves cooperative suspended-collector teardown,
-   not an absolute wall-clock bound on all possible cleanup. The owner explicitly permits this
-   choice; it does not require a new owner decision or changes outside test code/docs.
-3. **Publish last emission safely — RED/GREEN/REFACTOR complete.** Replaced the captured mutable String with a
-   small common-code holder whose property is `@kotlin.concurrent.Volatile`. Add a diagnostic
-   test with emissions originating off the caller thread. Prove its assertions non-vacuous;
-   do not claim a timing-based test can deterministically establish the absence of a JVM/native
-   memory-visibility race. A deterministic JVM volatile-field metadata regression is an option
-   if needed to prove removing the publication guarantee is RED. The deterministic Android-host
-   volatile-field metadata test is the publication guarantee; the common off-caller flow test
-   exercises the diagnostic path. The assignment-neutralized run failed that common test, and the
-   correct source is restored.
-4. **Cancellation handling — RED/GREEN/REFACTOR complete.** Replaced `runCatching` in async with explicit catches:
-   rethrow CancellationException unchanged and capture only other Throwables in Result.failure.
-   Add a case for a source that throws CancellationException independently of caller cancellation.
-   Preserve the existing cancellation/collector-stop test. Check the observable upstream-cancel
-   result carefully: blindly forwarding it from await can still cancel the caller silently;
-   do not report that as corrected without an executable assertion. Keep external cancellation
-   distinct from upstream cancellation and retain the original cause in any diagnostic. The RED
-   test failed when an independent source `CancellationException` escaped as caller cancellation;
-   GREEN now reports an `AssertionError` with the original cause while caller cancellation still
-   reaches the existing propagation test unchanged.
-5. **Readability — complete.** Joined short predicates in FuelEntryStateHolderTest (odometer,
-   total cost, message, deleted entry) and short awaitState calls for confirmed fuel entry,
-   saved fuel entry and saved vehicle; VehicleListStateHolderTest saved/recovered vehicle calls;
-   LocalOwnerAdoptionFailureTest recovered-after-retry call. Preserve the genuinely long wrapped
-   SwiftAppGraphLifecycleTest predicates. The owner measured the requested joined forms below
-   120 columns. Do not reintroduce gratuitous breaks through indiscriminate formatting.
-6. **Small cleanup — complete.** Moved GRAPH_STATE_EXPECTATION_TIMEOUT above awaitState; reused
-  fuelGraphDependencies in graphBootstrapCreatesSettingsWithoutAConsumer; repaired the AGENTS.md
-  "Until that work merges" wrap.
+1. **Shared graph confinement — completed.** `GraphTestDependencies.kt` and
+   `GraphTestDependenciesTest.kt` were added in shared commonTest. The two tests cover the default
+   dependencies and the customized doubles; both assert that no main/io/default work runs before
+   `runCurrent()` and that all queued work then runs. `confinedGraphDependencies` copies a
+   `StandardTestDispatcher(testScheduler)` into the supplied dependencies, preserving the
+   customized database, owner and auth doubles. Six editor/adoption consumer files were migrated:
+   `VehicleFormStateHolderTest`, `VehicleListStateHolderTest`, `SwiftAppGraphLifecycleTest`, the
+   graph construction in `LocalOwnerAdoptionTest`, the graph-backed fuel-write case of
+   `LocalOwnerAdoptionTriggerTest`, and `FuelEntryStateHolderTest` (through its
+   `fuelGraphDependencies` wrapper). The first full GREEN attempt exposed five
+   `VehicleFormStateHolderTest` assertions that read the initial idle state before the save had
+   completed (a null row or an empty push list); the completion predicates were strengthened so
+   that saves also require a non-null `savedVehicleId` and vehicle recovery requires a nonempty
+   list. No assertion was removed or weakened. The decision to confine was driven by the
+   demonstrated race: an unconfined fixture resumes initialization after a SQLite suspension on a
+   worker thread while test intents execute on the test thread, and both copy the mutable form
+   input, so edits can be lost. The deliberately ordered, directly constructed adoption
+   coordinator fixtures were left unconfined because they execute and await a single adoption
+   operation and never construct an editable form holder whose initialization can overwrite test
+   edits. The concrete criterion that keeps those remaining `testAppGraphDependencies(...)` call
+   sites unconfined is that each one constructs `LocalOwnerAdoption(...)` directly, with no
+   AppGraph and no editable form holder; this covers the direct-construction helpers in
+   `LocalOwnerAdoptionTest`, `LocalOwnerAdoptionTriggerTest` and `LocalOwnerAdoptionFailureTest`.
+   The other graph-mounting files that still call `testAppGraphDependencies(...)`
+   (`BuildAppGraphTest`, `AppGraphContractTest`, `AppGraphTestHarnessTest`, `AppGraphCloseTest`,
+   `SessionStateHolderTest` and `TestAppGraphDependenciesTest`) remain unconfined for their own
+   per-file reasons recorded in the confinement table below; none of them creates an editable form
+   holder that a database-backed initialization could overwrite.
+2. **Unbounded cleanup join — documented, not changed.** Structured cancellation and joining
+   before graph/database teardown were retained. The decision was that a bounded join alone cannot
+   bound an enclosing `coroutineScope`, which still waits for its children, and that detaching a
+   stuck collector could restore the E1-12 database-close race. The helper KDoc and Acceptance
+   Evidence therefore state explicitly that extreme CPU starvation or non-cooperative collector
+   cleanup can delay the diagnostic past `runTest`'s timeout. The starvation regression proves
+   cooperative suspended-collector teardown, not an absolute wall-clock bound on all cleanup. The
+   owner explicitly permitted this choice; it required no owner decision and no change outside
+   test code and documentation.
+3. **Last emission published safely — completed.** The captured mutable `String` was replaced by
+   a small common-code holder whose property is `@kotlin.concurrent.Volatile`. A diagnostic test
+   with emissions originating off the caller thread was added, and its assertions were proven
+   non-vacuous by neutralizing the assignment. No claim was made that a timing-based test can
+   deterministically establish the absence of a JVM/native memory-visibility race. The
+   deterministic JVM volatile-field metadata regression is the executable publication guarantee;
+   the common off-caller flow test exercises the diagnostic path. `LastEmissionVisibilityTest`
+   lives in `androidHostTest` and proves the publication guarantee through JVM field metadata
+   only, so the Kotlin/Native side rests on the compiler honouring `@Volatile` and is not covered
+   by an executable guard.
+4. **Cancellation handling — completed.** `runCatching` in the async collector was replaced by
+   explicit catches that rethrow `CancellationException` unchanged and capture only other
+   `Throwable`s in `Result.failure`. A case for a source that throws `CancellationException`
+   independently of caller cancellation was added, and the existing cancellation/collector-stop
+   test was preserved. The observable upstream-cancel result was checked carefully: blindly
+   forwarding it from `await` can still cancel the caller silently, so the RED test asserted that
+   an independent source `CancellationException` must not cancel the caller. GREEN now reports an
+   `AssertionError` with the original cause, while external caller cancellation still reaches the
+   existing propagation test unchanged.
+5. **Readability — completed.** Short predicates in `FuelEntryStateHolderTest` (odometer, total
+   cost, message, deleted entry) and short `awaitState` calls for confirmed fuel entry, saved
+   fuel entry and saved vehicle were joined; the same was done for the `VehicleListStateHolderTest`
+   saved/recovered vehicle calls and the `LocalOwnerAdoptionFailureTest` recovered-after-retry
+   call. The genuinely long wrapped SwiftAppGraphLifecycleTest predicates were preserved at the
+   time, and the later review confirmed that the eleven completion predicates that had been left
+   wrapped fit within the 120-column limit and could be joined as well. The four-condition
+   weighted-consumption predicate in `FuelEntryStateHolderTest` remains wrapped because it is
+   genuinely long.
+6. **Small cleanup — completed.** `GRAPH_STATE_EXPECTATION_TIMEOUT` was moved above `awaitState`;
+   `fuelGraphDependencies` was reused in `graphBootstrapCreatesSettingsWithoutAConsumer`; and the
+   `AGENTS.md` "Until that work merges" wrap was repaired.
 
-After all items: run the full AGENTS.md non-instrumented command plus shared ktlint/detekt;
-repeat both shared targets with --rerun-tasks at least 30 times and report actual counts, including
-failed attempts. Update Acceptance Evidence, this checkpoint, Files Changed, and append a new
-PROJECT_LOG entry without editing the prior story entry. Push existing branch, refresh PR #66,
-leave it open and do not merge. Maintain separate RED/GREEN/REFACTOR commits and do not add
-production changes, schemas, contracts, architecture rules, decision IDs, libraries or versions.
+After the six items, the full `AGENTS.md` non-instrumented command plus shared ktlint/detekt were
+run, both shared targets were repeated with `--rerun-tasks` at least 30 times with actual counts
+reported including failed attempts, Acceptance Evidence, this checkpoint, Files Changed and a new
+PROJECT_LOG entry were updated without editing the prior story entry, and the existing branch was
+pushed. Separate RED/GREEN/REFACTOR commits were maintained. No production change, schema,
+contract, architecture rule, decision ID, library or version was added.
 
 Final review evidence: the full command passed, and 30/30 fresh direct repetitions passed per
-target, each executing 162 Android-host and 169 Native-simulator tests with zero failures/skips.
-The first scripted attempt exited before tests because the wrapper lock was inaccessible; it is
-retained as a non-executed infrastructure attempt. The earlier five premature-save failures were
-resolved by stronger completion predicates and the subsequent 162/169 suite passed. Logs for the
-fixture phase remain `/tmp/e1-14-review-fixtures-red.log` and
+target, each executing 162 Android-host and 169 Native-simulator tests with zero failures and zero
+skips. The first scripted attempt exited before tests because the wrapper lock was inaccessible;
+it is retained as a non-executed infrastructure attempt. The earlier five premature-save failures
+were resolved by stronger completion predicates, and the subsequent 162/169 suite passed. Logs for
+the fixture phase remain `/tmp/e1-14-review-fixtures-red.log` and
 `/tmp/e1-14-review-fixtures-green.log`.
 
 ## Scope Completed
@@ -186,17 +180,24 @@ cooperatively suspended collector is cancelled and stopped before its assertion 
 It does not prove a hard bound for arbitrary cleanup, and its assertions remain unchanged.
 This limit is now stated in the helper KDoc as well as here.
 
-### Review item 1: confinement coverage (current follow-up)
+### Review item 1: confinement coverage
 
 The shared `confinedGraphDependencies` helper preserves customized doubles and replaces only the
 injected dispatchers. GraphTestDependenciesTest guards both its default and customized call paths;
 the existing fuel-factory scheduling test also exercises its actual delegating factory. The affected
 call sites all use one of these two guarded paths, including the direct graph-backed fuel-write case
-outside FuelEntryStateHolderTest. Explicit bootstrap duplication is retained only until review item 6.
+outside FuelEntryStateHolderTest. The bootstrap case now reuses the same fuel factory, so the
+earlier explicit bootstrap duplication no longer exists.
+
+The scheduling-contract assertion is shared: `GraphTestDependencies.kt` exposes
+`TestScope.assertQueuedGraphWork(dependencies)`, which both `GraphTestDependenciesTest` and
+`FuelEntryStateHolderTest.graphFixtureWorkWaitsForTheCallerTestScheduler` call. The fuel test is
+therefore an assertion that its `fuelGraphDependencies()` wrapper delegates to the confined fixture
+rather than a second copy of the scheduling proof.
 
 | File | Confinement disposition and concrete exposure analysis |
 |---|---|
-| `FuelEntryStateHolderTest.kt` | Its factory delegates to the shared confined helper. The bootstrap case already uses StandardTestDispatcher and will reuse that factory in item 6. SQLite-backed currency/odometer initialization can otherwise compete with form edits. |
+| `FuelEntryStateHolderTest.kt` | Its factory delegates to the shared confined helper, and the bootstrap case now reuses that same factory. SQLite-backed currency/odometer initialization can otherwise compete with form edits. |
 | `VehicleFormStateHolderTest.kt` | All six current creation tests use the confined helper. Their success waits require savedVehicleId as well as !isSaving, so initial idle state cannot masquerade as completion. The fixture also protects future edit/load interleavings. |
 | `VehicleListStateHolderTest.kt` | Both graph fixtures use the helper. Creation waits for savedVehicleId; recovery waits for a nonempty loaded list before asserting database/remote evidence. |
 | `SwiftAppGraphLifecycleTest.kt` | Customized database dependencies are confined before constructing the real graph and Swift wrapper; both Swift forms therefore use the same scheduler as test intents. |
@@ -212,6 +213,26 @@ outside FuelEntryStateHolderTest. Explicit bootstrap duplication is retained onl
 The first confined-suite attempt exposed five premature-save assertions (null database rows or
 empty push recordings). Those assertions were fixed to wait for actual successful completion;
 none was removed. Subsequent shared tests and lint passed: 159 Android-host / 167 Native tests.
+
+Review RED/GREEN evidence, retained from the follow-up checkpoint:
+
+- Confinement RED: `./gradlew :shared:testAndroidHostTest --tests
+  'com.ruizurraca.carapp.GraphTestDependenciesTest'` compiled and ran two tests; both failed on
+  expected queued execution versus immediate `[main, io, default]`. In the RED commit,
+  `confinedGraphDependencies` returned its input unchanged. Log:
+  `/tmp/e1-14-review-fixtures-red.log`.
+- Confinement GREEN: both shared targets and shared ktlint/detekt passed with 162 Android-host and
+  169 Native tests. Log: `/tmp/e1-14-review-fixtures-green.log`.
+- Non-vacuity: neutralizing the shared dispatcher copy produced three intended failures (both
+  `GraphTestDependenciesTest` cases and the fuel factory scheduling guard); the source was restored
+  and all three regressions plus shared lint passed. Logs:
+  `/tmp/e1-14-review-fixtures-neutralized.log`, `/tmp/e1-14-review-fixtures-refactor.log`.
+- Publication RED/GREEN: the host metadata guard failed while `LastEmission.value` was not volatile;
+  the off-caller diagnostic test was added in the same RED commit. Both passed after
+  `@kotlin.concurrent.Volatile` and holder integration, and neutralizing the assignment made the
+  off-caller diagnostic test fail before the source was restored.
+- Cancellation RED/GREEN: the independent upstream cancellation test failed before the explicit
+  catch and passed after it; the existing caller-cancellation test still passes unchanged.
 
 
 - Both forced-starvation fixtures compiled and failed against the raw `first(predicate)` RED helper.
@@ -274,6 +295,12 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 - `shared/src/androidHostTest/kotlin/com/ruizurraca/carapp/LastEmissionVisibilityTest.kt`.
 - The seven migrated files listed in the audit above.
 - `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` and `docs/handoff-E1-14.md`.
+- Second review pass: dead imports removed from `FlowExpectation.kt` and
+  `FuelEntryStateHolderTest.kt`; the shared `assertQueuedGraphWork` assertion moved into
+  `GraphTestDependencies.kt`; eleven completion predicates joined across
+  `VehicleFormStateHolderTest.kt`, `VehicleListStateHolderTest.kt`, `LocalOwnerAdoptionTest.kt` and
+  `SwiftAppGraphLifecycleTest.kt`; explicit `currentCoroutineContext` import in
+  `FlowExpectationTest.kt`. No new files.
 
 ## Decisions Made
 
@@ -320,6 +347,14 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 ```bash
 ./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
 ```
+
+- Second review pass: after removing the dead imports, joining the eleven predicates and sharing
+  `assertQueuedGraphWork`, `./gradlew :shared:ktlintCheck :shared:detekt` and
+  `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --rerun-tasks` both passed.
+  The forced re-run reported 162 Android-host and 169 Native tests, zero failures and zero skips.
+  The full non-instrumented command above was re-run on the same final code and passed (638
+  actionable tasks, 39 executed). The only remaining warnings are the pre-existing expect/actual
+  Beta notices.
 
 - Source audit: `rg -n 'kotlinx.coroutines.flow.first|\.first\s*\{' shared/src/commonTest
   shared/src/iosTest` — only the encapsulated call/import in `FlowExpectation.kt` remains.

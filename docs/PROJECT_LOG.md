@@ -38,6 +38,33 @@
 
 ## Entries
 
+### 2026-09-11 — E1-14 second review pass
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the owner's second review pass on pull request #66. Removed three dead
+  imports (`FlowExpectation.kt`, `FuelEntryStateHolderTest.kt`); joined the eleven strengthened
+  completion predicates onto single lines across four test files; moved the shared
+  `assertQueuedGraphWork` assertion into `GraphTestDependencies.kt` so the fuel wrapper test proves
+  delegation instead of duplicating the scheduling check; imported `currentCoroutineContext`
+  explicitly; rewrote the handoff "Owner Review Follow-up" section as past-tense evidence; and
+  corrected the `AGENTS.md` fixture sentence from "deterministic fuel fixture" to the shared
+  confined graph fixture.
+- **Why:** The second pass found no correctness defect. It removed dead imports the compiler and
+  ktlint do not flag, eliminated gratuitous line breaks reintroduced by the stronger predicates,
+  removed a near-verbatim duplicated assertion, and separated recorded evidence from outstanding
+  instructions so a later reader cannot mistake a record for a task.
+- **Documents touched:** `AGENTS.md`, `docs/handoff-E1-14.md`, this log.
+- **Verification:** shared ktlint and detekt passed; a forced `--rerun-tasks` run of both shared
+  targets reported 162 Android-host and 169 Native tests with zero failures and zero skips; the full
+  non-instrumented `AGENTS.md` command passed (638 actionable tasks, 39 executed). No production
+  code, schema, contract, architecture rule, decision ID, library or version changed.
+- **Follow-ups / risks:** PR #66 remains open for owner review and required CI; merge is not
+  performed. The Kotlin/Native volatile publication guarantee still rests on the compiler honouring
+  `@Volatile` and has no executable guard, as recorded in the handoff. The cleanup join remains
+  intentionally unbounded to preserve E1-12 database lifetime ordering.
+
 ### 2026-09-11 — E1-14 review follow-up corrections
 
 - **Type:** correction
