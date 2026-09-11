@@ -28,31 +28,92 @@
 ## In-Progress Checkpoint
 
 - Date: 2026-09-11.
-- Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf` (merged PR #65).
-- Current phase and latest commit: implementation and local verification complete. First cycle:
-  RED `e8cb797`, GREEN `9bcec1c`, REFACTOR `001ab63`. Second cycle: RED `f93c37e`, GREEN `8430c91`;
-  second REFACTOR `52d58f1`. The latest commit is this documentation-only PR continuity checkpoint.
-- Push and pull-request status: all six TDD phase commits were pushed together, then PR #66 was
-  created: https://github.com/davidru85/carApp/pull/66. This documentation-only checkpoint is also
-  pushed; the PR stays open and is not merged.
-- Completed since the previous checkpoint: final graph fixture uses StandardTestDispatcher tied
-  to runTest; all 30 final repetitions passed; the full repository command passed; audit, acceptance
-  evidence, historical failed attempts and project log are recorded. PR #66 has been created and
-  its URL is now linked from the backlog and repository status.
-- Verification evidence and known failures: final code passed 30/30 complete forced runs per target
-  on Apple Silicon (157 Android-host tests and 165 Native-simulator tests each, no failures/skips).
-  Full non-instrumented verification passed: 636 tasks, 41 executed, 595 up-to-date. Contract check
-  reports all assertions PASS, 168 aligned decisions/ADRs, two unrelated pending decisions tracked
-  by their own stories, and no PENDING executable assertions. Earlier failed stability experiments
-  are retained under Acceptance Evidence; neither is counted as final-code evidence.
-- Open decisions or blockers: no technical decision or local verification blocker. Owner review
-  and the PR's ten required CI checks remain before merge. E1-14 is implemented, not yet merged.
-- CI checkpoint: initial run https://github.com/davidru85/carApp/actions/runs/34578260010 on code
-  HEAD `52d58f1` has ktlint, detekt and android-assemble green; the other seven jobs were running
-  at observation time, with no failed required check. The documentation-only push triggers a new
-  run on identical test/product code; the PR is the live source for that final run's status.
-- Exact next step: owner reviews PR #66 and its ten required checks before merge. The agent has
-  completed implementation, local verification, push and PR creation; no merge was requested.
+- Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
+- Current phase and latest commit: review item 1 RED verified; latest published commit `9974eae`; this RED commit is next.
+- Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
+- Completed since the previous checkpoint: read all six review items, confirmed the clean branch,
+  and audited fixture construction sites. Items will be addressed in the requested order.
+- Verification evidence and known failures: previous 157/165 counts and 30-run evidence below
+  describe the pre-review version. The owner independently reproduced them and neutralized the
+  three existing regressions. New/modified regressions will receive fresh RED proof.
+- Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
+  decision changes; no merge. Retain ordered collector teardown and explicitly document its residual
+  unbounded join, as permitted by review item 2.
+- RED evidence: `./gradlew :shared:testAndroidHostTest --tests
+  'com.ruizurraca.carapp.GraphTestDependenciesTest'` compiled and ran two tests; both failed on
+  expected queued execution versus immediate `[main, io, default]`. Log:
+  `/tmp/e1-14-review-fixtures-red.log`. The stub `confinedGraphDependencies` still returns its
+  input unchanged, so there is no GREEN implementation yet.
+- Exact next step: commit this RED, implement `confinedGraphDependencies` with
+  `dependencies.copy(dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)))`,
+  migrate the consumers listed below, verify GREEN, commit, then refactor and commit before item 2.
+
+
+## Owner Review Follow-up — 2026-09-11 (Active)
+
+The owner independently verified the initial 157/165 tests, 37 migrated waits and non-vacuity of
+three regressions. These follow-ups are non-blocking correctness improvements, explicitly ordered
+1 through 6. The owner also explicitly requested continuously recoverable repository documentation.
+This section and the checkpoint are authoritative for continuation; earlier acceptance counts are
+historical until the final follow-up verification finishes.
+
+1. **Shared graph confinement — RED verified, GREEN not implemented.** New files:
+   `GraphTestDependencies.kt` and `GraphTestDependenciesTest.kt` in shared commonTest. The two
+   tests cover default dependencies and customized doubles; both assert no main/io/default work
+   runs before `runCurrent()`, then all queued work runs. The helper is intentionally a RED stub.
+   Extend this single confined fixture to `VehicleFormStateHolderTest`,
+   `VehicleListStateHolderTest`, `SwiftAppGraphLifecycleTest`, graph construction in
+   `LocalOwnerAdoptionTest`, and the graph-backed fuel-write case of
+   `LocalOwnerAdoptionTriggerTest`. Reuse it from `FuelEntryStateHolderTest` as well. Preserve
+   customized database/owner/auth doubles by wrapping existing `testAppGraphDependencies(...)`
+   in `confinedGraphDependencies(...)`. Helpers such as `LocalOwnerAdoptionTest.graphOver` will
+   need a `TestScope` receiver. Keep deliberately ordered, directly constructed adoption
+   coordinator fixtures separate and explain their lack of editable graph state. Audit every
+   remaining graph-mounting file and record a concrete reason if it remains unconfined.
+   Watch immediate `.state.value` assertions and initial `!isSaving` predicates after switching
+   scheduling; wait for actual save completion rather than an initial idle state if necessary.
+2. **Unbounded cleanup join — selected documentation option, not applied yet.** Retain structured
+   cancellation and join before graph/database teardown. A bounded join alone cannot bound an
+   enclosing coroutineScope, which still waits for its children; detaching a stuck collector could
+   restore the E1-12 database-close race. State explicitly in helper KDoc and Acceptance Evidence
+   that extreme CPU starvation or non-cooperative collector cleanup can delay the diagnostic past
+   runTest's timeout. The existing starvation test proves cooperative suspended-collector teardown,
+   not an absolute wall-clock bound on all possible cleanup. The owner explicitly permits this
+   choice; it does not require a new owner decision or changes outside test code/docs.
+3. **Publish last emission safely — not started.** Replace the captured mutable String with a
+   small common-code holder whose property is `@kotlin.concurrent.Volatile`. Add a diagnostic
+   test with emissions originating off the caller thread. Prove its assertions non-vacuous;
+   do not claim a timing-based test can deterministically establish the absence of a JVM/native
+   memory-visibility race. A deterministic JVM volatile-field metadata regression is an option
+   if needed to prove removing the publication guarantee is RED. No implementation selected yet.
+4. **Cancellation handling — not started.** Replace `runCatching` in async with explicit catches:
+   rethrow CancellationException unchanged and capture only other Throwables in Result.failure.
+   Add a case for a source that throws CancellationException independently of caller cancellation.
+   Preserve the existing cancellation/collector-stop test. Check the observable upstream-cancel
+   result carefully: blindly forwarding it from await can still cancel the caller silently;
+   do not report that as corrected without an executable assertion. Keep external cancellation
+   distinct from upstream cancellation and retain the original cause in any diagnostic.
+5. **Readability — not started.** Join short predicates in FuelEntryStateHolderTest (odometer,
+   total cost, message, deleted entry) and short awaitState calls for confirmed fuel entry,
+   saved fuel entry and saved vehicle; VehicleListStateHolderTest saved/recovered vehicle calls;
+   LocalOwnerAdoptionFailureTest recovered-after-retry call. Preserve the genuinely long wrapped
+   SwiftAppGraphLifecycleTest predicates. The owner measured the requested joined forms below
+   120 columns. Do not reintroduce gratuitous breaks through indiscriminate formatting.
+6. **Small cleanup — not started.** Move GRAPH_STATE_EXPECTATION_TIMEOUT above awaitState; reuse
+   fuelGraphDependencies in graphBootstrapCreatesSettingsWithoutAConsumer; repair the AGENTS.md
+   ragged "Until that work / merges" wrap.
+
+After all items: run the full AGENTS.md non-instrumented command plus shared ktlint/detekt;
+repeat both shared targets with --rerun-tasks at least 30 times and report actual counts, including
+failed attempts. Update Acceptance Evidence, this checkpoint, Files Changed, and append a new
+PROJECT_LOG entry without editing the prior story entry. Push existing branch, refresh PR #66,
+leave it open and do not merge. Maintain separate RED/GREEN/REFACTOR commits and do not add
+production changes, schemas, contracts, architecture rules, decision IDs, libraries or versions.
+
+Resume by checking `git status --short --branch`, `git log -10 --oneline`, this checkpoint, and
+these two new test files. No repeat-run process is currently running. Only the RED invocation
+above has run during this review follow-up; all previous repetition evidence belongs to the
+initial delivery, not to the follow-up.
 
 ## Scope Completed
 
