@@ -29,7 +29,7 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: review item 1 GREEN verified; RED `49ddee8`, GREEN is this commit; latest published `9974eae`.
+- Current phase and latest commit: review item 1 GREEN verified; RED `49ddee8`, GREEN `2ccd328`; REFACTOR complete in this commit; latest published `9974eae`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
 - Completed since the previous checkpoint: read all six review items, confirmed the clean branch,
   and audited fixture construction sites. Items will be addressed in the requested order.
@@ -46,8 +46,12 @@
   The uncommitted GREEN implementation now installs the caller-scheduler dispatcher.
 - GREEN evidence: both shared targets and shared ktlint/detekt passed: 159 Android-host and
   167 Native-simulator tests, zero failures/skips. Log: `/tmp/e1-14-review-fixtures-green.log`.
-- Exact next step: commit item 1 GREEN, add the per-file confinement audit and fixture KDoc in
-  REFACTOR, then continue items 2–6. No final repetition batch has started.
+- Non-vacuity proof: neutralizing the shared dispatcher copy produced three intended failures:
+  both GraphTestDependenciesTest cases and the fuel factory scheduling guard. The source was
+  restored automatically, then all three regressions and shared lint passed.
+  Logs: `/tmp/e1-14-review-fixtures-neutralized.log`, `/tmp/e1-14-review-fixtures-refactor.log`.
+- Exact next step: commit item 1 REFACTOR; apply item 2 KDoc/residual-risk documentation, then
+  start item 3's safely published diagnostic capture with its own RED/GREEN/REFACTOR cycle.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
@@ -58,7 +62,7 @@ three regressions. These follow-ups are non-blocking correctness improvements, e
 This section and the checkpoint are authoritative for continuation; earlier acceptance counts are
 historical until the final follow-up verification finishes.
 
-1. **Shared graph confinement — RED and GREEN verified.** New files:
+1. **Shared graph confinement — RED/GREEN/REFACTOR complete.** New files:
    `GraphTestDependencies.kt` and `GraphTestDependenciesTest.kt` in shared commonTest. The two
    tests cover default dependencies and customized doubles; both assert no main/io/default work
    runs before `runCurrent()`, then all queued work runs. The helper now copies a StandardTestDispatcher(testScheduler) into supplied dependencies.
@@ -136,6 +140,34 @@ predicates are pending re-verification. Logs are `/tmp/e1-14-review-fixtures-red
 - Audited all 11 graph-mounting test files plus the directly constructed adoption-failure holder.
 
 ## Acceptance Evidence
+
+### Review item 1: confinement coverage (current follow-up)
+
+The shared `confinedGraphDependencies` helper preserves customized doubles and replaces only the
+injected dispatchers. GraphTestDependenciesTest guards both its default and customized call paths;
+the existing fuel-factory scheduling test also exercises its actual delegating factory. The affected
+call sites all use one of these two guarded paths, including the direct graph-backed fuel-write case
+outside FuelEntryStateHolderTest. Explicit bootstrap duplication is retained only until review item 6.
+
+| File | Confinement disposition and concrete exposure analysis |
+|---|---|
+| `FuelEntryStateHolderTest.kt` | Its factory delegates to the shared confined helper. The bootstrap case already uses StandardTestDispatcher and will reuse that factory in item 6. SQLite-backed currency/odometer initialization can otherwise compete with form edits. |
+| `VehicleFormStateHolderTest.kt` | All six current creation tests use the confined helper. Their success waits require savedVehicleId as well as !isSaving, so initial idle state cannot masquerade as completion. The fixture also protects future edit/load interleavings. |
+| `VehicleListStateHolderTest.kt` | Both graph fixtures use the helper. Creation waits for savedVehicleId; recovery waits for a nonempty loaded list before asserting database/remote evidence. |
+| `SwiftAppGraphLifecycleTest.kt` | Customized database dependencies are confined before constructing the real graph and Swift wrapper; both Swift forms therefore use the same scheduler as test intents. |
+| `LocalOwnerAdoptionTest.kt` | Both graph-construction paths use the helper, including the TestScope.graphOver factory. Direct coordinator-only tests retain their controlled unconfined doubles: they execute and await one adoption operation and never construct an editable holder whose initialization can overwrite test edits. |
+| `LocalOwnerAdoptionTriggerTest.kt` | The graph-backed fuel-write test uses the helper. The separate direct-coordinator trigger fixtures intentionally model inline owner/auth/connectivity ordering, have no editable graph form, and are not converted to deferred dispatch. |
+| `BuildAppGraphTest.kt` | Left unchanged: constructs a graph only to compare supplied and retained dependencies, invokes no holder/edit intent, then closes it. There is no shared mutable form input for initialization to overwrite. |
+| `AppGraphContractTest.kt` | Left unchanged: only constructs a list holder and a new vehicle form to assert their types. It never invokes setters, save or an existing-vehicle load. No concurrent editor mutation exists. |
+| `AppGraphTestHarnessTest.kt` | Left unchanged: checks cancellation order, collector eagerness and invalid parent-scheduler construction. It does not create editable holders or mutate form input; changing its deliberately non-test parent would invalidate its rejection fixture. |
+| `AppGraphCloseTest.kt` | Left unchanged: directly checks close/bootstrap/auth-observer ownership without constructing a form or issuing edit/save intents. In particular its immediate-close/bootstrap test must preserve the lifecycle condition it was written to exercise. |
+| `SessionStateHolderTest.kt` | Left unchanged: graph-backed cases exercise fake auth transitions and conversion analytics, not SQLite-backed editable form initialization. Auth replies are controlled/synchronous and session intents do not mutate a vehicle/fuel FormInputs snapshot that a database callback also copies. This is not a claim of blanket thread safety for arbitrary future session tests. |
+| `LocalOwnerAdoptionFailureTest.kt` | No AppGraph: constructs a read-only vehicle list against a fault-injected adoption gate. Its retry toggles a fault and awaits error/recovery states, without an editable form or concurrent initialization/edit copies. |
+
+The first confined-suite attempt exposed five premature-save assertions (null database rows or
+empty push recordings). Those assertions were fixed to wait for actual successful completion;
+none was removed. Subsequent shared tests and lint passed: 159 Android-host / 167 Native tests.
+
 
 - Both forced-starvation fixtures compiled and failed against the raw `first(predicate)` RED helper.
   GREEN uses a 20 ms expectation deadline and produces its diagnostic assertion before the independent two-second
