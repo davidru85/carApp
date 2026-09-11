@@ -1,7 +1,7 @@
 package com.ruizurraca.carapp
 
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
@@ -12,10 +12,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlin.test.fail
 import kotlin.concurrent.Volatile
+import kotlin.test.fail
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+
+private val GRAPH_STATE_EXPECTATION_TIMEOUT = 5.seconds
 
 /**
  * Use for every graph-backed flow expectation in shared tests instead of a raw `first` wait.
@@ -44,10 +46,10 @@ internal suspend fun <T> Flow<T>.awaitState(
                 // A source cancellation is captured here so it cannot cancel the caller implicitly.
                 try {
                     Result.success(
-                    first { value ->
-                        lastEmission.value = value.toString()
-                        predicate(value)
-                    }
+                        first { value ->
+                            lastEmission.value = value.toString()
+                            predicate(value)
+                        },
                     )
                 } catch (cancellation: CancellationException) {
                     Result.failure(cancellation)
@@ -59,8 +61,10 @@ internal suspend fun <T> Flow<T>.awaitState(
             val result =
                 withContext(Dispatchers.Default) {
                     withTimeoutOrNull(timeout) { emission.await() }
+                }
+            if (result == null) {
+                fail("Timed out after $timeout waiting for $expectation. Last value: ${lastEmission.value}")
             }
-            if (result == null) fail("Timed out after $timeout waiting for $expectation. Last value: ${lastEmission.value}")
             val upstreamFailure = result.exceptionOrNull()
             if (upstreamFailure is CancellationException) {
                 // A caller cancellation reaches emission.await() directly and bypasses this branch.
@@ -75,5 +79,3 @@ internal suspend fun <T> Flow<T>.awaitState(
             emission.cancelAndJoin()
         }
     }
-
-private val GRAPH_STATE_EXPECTATION_TIMEOUT = 5.seconds

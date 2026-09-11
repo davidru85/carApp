@@ -29,13 +29,12 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: review items 1 and 2 complete; item 3 GREEN verified with RED
-  `e6bc4fa` and GREEN `c50d427`; item 3 refactor documentation is uncommitted; latest published
-  `c50d427`.
+- Current phase and latest commit: review items 1–5 complete; item 6 cleanup is implemented and
+  lint-verified but uncommitted; latest published `e7c4d4e`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
-- Completed since the previous checkpoint: committed the ordered-cleanup limitation, added the
-  cross-thread last-emission holder and host metadata guard, and verified the off-caller diagnostic.
-  Items continue in the requested order.
+- Completed since the previous checkpoint: separated upstream and caller cancellation, joined the
+  requested short predicates, moved the timeout constant, reused the fuel fixture and repaired the
+  status-document wrap. Item 6 is ready to commit.
 - Verification evidence and known failures: previous 157/165 counts and 30-run evidence below
   describe the pre-review version. The owner independently reproduced them and neutralized the
   three existing regressions. New/modified regressions will receive fresh RED proof.
@@ -58,8 +57,12 @@
 - Item 3 GREEN evidence: host `FlowExpectationTest` off-caller diagnostic and
   `LastEmissionVisibilityTest` passed after `@kotlin.concurrent.Volatile` and holder integration.
   Neutralizing the assignment made the off-caller diagnostic test fail, then the source was restored.
-- Exact next step: commit the item 3 refactor documentation, then begin item 4 RED for independent
-  upstream `CancellationException` handling. Items 4–6 and final repeated/full verification remain.
+- Item 4 RED/GREEN evidence: the independent upstream cancellation test failed before the explicit
+  catch and passed after it; the existing caller-cancellation test also passes unchanged.
+- Item 5 evidence: requested short predicates and expectation calls are joined while all changed
+  lines remain within the repository style limit.
+- Item 6 evidence: shared ktlint/detekt passed after the timeout, fixture-reuse and AGENTS.md wrap
+  cleanup. Exact next step: commit item 6, then run full shared verification and forced repetitions.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
@@ -122,9 +125,9 @@ historical until the final follow-up verification finishes.
    LocalOwnerAdoptionFailureTest recovered-after-retry call. Preserve the genuinely long wrapped
    SwiftAppGraphLifecycleTest predicates. The owner measured the requested joined forms below
    120 columns. Do not reintroduce gratuitous breaks through indiscriminate formatting.
-6. **Small cleanup — not started.** Move GRAPH_STATE_EXPECTATION_TIMEOUT above awaitState; reuse
-   fuelGraphDependencies in graphBootstrapCreatesSettingsWithoutAConsumer; repair the AGENTS.md
-   ragged "Until that work / merges" wrap.
+6. **Small cleanup — complete.** Moved GRAPH_STATE_EXPECTATION_TIMEOUT above awaitState; reused
+  fuelGraphDependencies in graphBootstrapCreatesSettingsWithoutAConsumer; repaired the AGENTS.md
+  "Until that work merges" wrap.
 
 After all items: run the full AGENTS.md non-instrumented command plus shared ktlint/detekt;
 repeat both shared targets with --rerun-tasks at least 30 times and report actual counts, including

@@ -59,10 +59,8 @@ class FuelEntryStateHolderTest {
     fun graphBootstrapCreatesSettingsWithoutAConsumer() =
         runTest {
             val dependencies =
-                testAppGraphDependencies(
-                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
-                    localeProvider =
-                        FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+                fuelGraphDependencies(
+                    localeProvider = FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
                 )
             val databaseHandle = dependencies.databaseFactory.create()
             val harness =
@@ -236,7 +234,9 @@ class FuelEntryStateHolderTest {
                 holder.setLitersScaled(45_123L)
                 holder.setPricePerLiterScaled(1_789L)
                 val derivedState =
-                    holder.state.awaitState("total cost derived from liters and price") { state -> state.totalCostMinor == 8_073L }
+                    holder.state.awaitState(
+                        "total cost derived from liters and price",
+                    ) { state -> state.totalCostMinor == 8_073L }
 
                 assertEquals(8_073L, derivedState.totalCostMinor)
                 assertNull(derivedState.message)

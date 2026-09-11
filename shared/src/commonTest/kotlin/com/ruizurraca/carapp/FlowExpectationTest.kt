@@ -7,9 +7,8 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -171,7 +170,10 @@ class FlowExpectationTest {
                     flow<Int> { throw cause }.awaitState("source value") { true }
                 }
 
-            assertTrue(currentCoroutineContext().isActive, "an upstream cancellation must not cancel the caller")
+            assertTrue(
+                kotlinx.coroutines.currentCoroutineContext().isActive,
+                "an upstream cancellation must not cancel the caller",
+            )
             assertTrue(failure.message.orEmpty().contains("source value"))
             assertSame(cause, generateSequence<Throwable>(failure) { it.cause }.last())
         }
