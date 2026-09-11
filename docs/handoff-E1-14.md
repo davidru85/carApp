@@ -29,7 +29,7 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: review item 1 GREEN verified; RED `49ddee8`, GREEN `2ccd328`; REFACTOR complete in this commit; latest published `9974eae`.
+- Current phase and latest commit: review item 1 GREEN verified; RED `49ddee8`, GREEN `2ccd328`; REFACTOR (see the previous commit); item 2 documentation applied, uncommitted; latest published `9974eae`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
 - Completed since the previous checkpoint: read all six review items, confirmed the clean branch,
   and audited fixture construction sites. Items will be addressed in the requested order.
@@ -50,8 +50,8 @@
   both GraphTestDependenciesTest cases and the fuel factory scheduling guard. The source was
   restored automatically, then all three regressions and shared lint passed.
   Logs: `/tmp/e1-14-review-fixtures-neutralized.log`, `/tmp/e1-14-review-fixtures-refactor.log`.
-- Exact next step: commit item 1 REFACTOR; apply item 2 KDoc/residual-risk documentation, then
-  start item 3's safely published diagnostic capture with its own RED/GREEN/REFACTOR cycle.
+- Exact next step: commit the item 2 documentation clarification, then begin item 3 RED for
+  safely published diagnostic capture. Items 3–6 and final repeated/full verification remain.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
@@ -81,7 +81,7 @@ historical until the final follow-up verification finishes.
    remaining graph-mounting file and record a concrete reason if it remains unconfined.
    Watch immediate `.state.value` assertions and initial `!isSaving` predicates after switching
    scheduling; wait for actual save completion rather than an initial idle state if necessary.
-2. **Unbounded cleanup join — selected documentation option, not applied yet.** Retain structured
+2. **Unbounded cleanup join — documentation option applied.** Retain structured
    cancellation and join before graph/database teardown. A bounded join alone cannot bound an
    enclosing coroutineScope, which still waits for its children; detaching a stuck collector could
    restore the E1-12 database-close race. State explicitly in helper KDoc and Acceptance Evidence
@@ -140,6 +140,22 @@ predicates are pending re-verification. Logs are `/tmp/e1-14-review-fixtures-red
 - Audited all 11 graph-mounting test files plus the directly constructed adoption-failure holder.
 
 ## Acceptance Evidence
+
+### Review item 2: ordered cleanup and its explicit residual risk
+
+The helper deliberately retains the unbounded cancelAndJoin and its structured child scope.
+Returning after a secondary join timeout would either still wait at coroutineScope exit, or require
+detaching a live collector and allowing graph/database close while it can still execute. The latter
+would reintroduce the E1-12 resource-lifetime hazard. The ordered-teardown guarantee is preferred
+for these database-backed fixtures; this is the documentation option explicitly allowed by the owner.
+
+The five-second deadline bounds waiting for a matching emission, not total helper return time.
+Extreme CPU starvation or non-cooperative collector cleanup can delay the diagnostic beyond
+runTest's 60-second default and still yield UncompletedCoroutinesError. The existing
+starvedEmissionFailsWithTheExpectationAndLastValueBeforeTheOuterDeadline test proves that a
+cooperatively suspended collector is cancelled and stopped before its assertion is returned.
+It does not prove a hard bound for arbitrary cleanup, and its assertions remain unchanged.
+This limit is now stated in the helper KDoc as well as here.
 
 ### Review item 1: confinement coverage (current follow-up)
 

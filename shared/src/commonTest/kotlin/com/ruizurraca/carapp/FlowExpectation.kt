@@ -20,6 +20,10 @@ import kotlin.time.Duration.Companion.seconds
  * Collection stays on the caller's context, so test-scheduler work can still run. Only the timeout
  * uses a real dispatcher: a virtual-time timeout can expire before SQLite's real work gets CPU time.
  * The collector is a structured child and is cancelled and joined before graph teardown can proceed.
+ * This join is intentionally unbounded: abandoning the collector could close SQLite while it is
+ * still in use. Extreme CPU starvation or non-cooperative cleanup can therefore delay the assertion
+ * beyond runTest's timeout. The starvation regression proves ordered cleanup of a cooperatively
+ * suspended collector, not an absolute deadline for arbitrary cleanup.
  */
 internal suspend fun <T> Flow<T>.awaitState(
     expectation: String,
