@@ -7,6 +7,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -70,6 +71,28 @@ class FlowExpectationTest {
 
             assertNotNull(failure)
             assertTrue(failure.message.orEmpty().contains("no emissions"))
+        }
+
+    @Test
+    fun diagnosticCapturesAnEmissionProducedOffTheCallerThread() =
+        runTest {
+            val source =
+                flow {
+                    emit("worker emission")
+                    awaitCancellation()
+                }.flowOn(Dispatchers.Default)
+
+            val failure =
+                withContext(Dispatchers.Default) {
+                    withTimeoutOrNull(2.seconds) {
+                        assertFailsWith<AssertionError> {
+                            source.awaitState("worker value", timeout = 1.seconds) { it == "caller value" }
+                        }
+                    }
+                }
+
+            assertNotNull(failure)
+            assertTrue(failure.message.orEmpty().contains("worker emission"))
         }
 
     @Test
