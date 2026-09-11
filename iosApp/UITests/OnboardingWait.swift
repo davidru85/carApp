@@ -58,7 +58,13 @@ struct OnboardingTapPosition: Equatable {
     }
 
     init?(element: XCUIElement, in app: XCUIApplication) {
-        guard OnboardingTapPosition.isAvailable(exists: element.exists, isEnabled: element.isEnabled, isHittable: element.isHittable) else {
+        // `isEnabled` and `isHittable` raise when there is no matching snapshot, so `exists` must
+        // short-circuit before either is read.
+        let exists = element.exists
+        guard exists else {
+            return nil
+        }
+        guard OnboardingTapPosition.isAvailable(exists: exists, isEnabled: element.isEnabled, isHittable: element.isHittable) else {
             return nil
         }
         let appFrame = app.frame
