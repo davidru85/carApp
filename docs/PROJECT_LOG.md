@@ -60,10 +60,11 @@
   targets reported 162 Android-host and 169 Native tests with zero failures and zero skips; the full
   non-instrumented `AGENTS.md` command passed (638 actionable tasks, 39 executed). No production
   code, schema, contract, architecture rule, decision ID, library or version changed.
-- **Follow-ups / risks:** PR #66 remains open for owner review and required CI; merge is not
-  performed. The Kotlin/Native volatile publication guarantee still rests on the compiler honouring
-  `@Volatile` and has no executable guard, as recorded in the handoff. The cleanup join remains
-  intentionally unbounded to preserve E1-12 database lifetime ordering.
+- **Follow-ups / risks:** PR #66 was pushed at head `edef077`, its body refreshed to the final
+  state, and all ten required checks passed on run 34592642389; the PR stays open and is not merged.
+  The Kotlin/Native volatile publication guarantee still rests on the compiler honouring `@Volatile`
+  and has no executable guard, as recorded in the handoff. The cleanup join remains intentionally
+  unbounded to preserve E1-12 database lifetime ordering.
 
 ### 2026-09-11 — E1-14 review follow-up corrections
 

@@ -34,8 +34,10 @@
   assertion is shared, the `currentCoroutineContext` import is explicit, the Owner Review Follow-up
   section is rewritten as past-tense evidence and the AGENTS.md fixture sentence is corrected.
   Shared verification passed with 162 Android-host / 169 Native tests. Latest published `2f18edd`.
-- Push and pull-request status: PR #66 remains open; the second-pass commit and PR refresh are
-  pending. The remote PR description is stale and is being refreshed to the final state.
+- Push and pull-request status: the second-pass commits `dc9b48b` (test refactor) and `edef077`
+  (documentation) are pushed. PR #66 is open, `MERGEABLE`, head `edef077`, and its body was
+  refreshed to the final state. All ten required checks passed on run 34592642389 at head
+  `edef077`.
 - Completed since the previous checkpoint: applied the second review pass. `FlowExpectation.kt` and
   `FuelEntryStateHolderTest.kt` lost their three dead imports. All eleven strengthened completion
   predicates now sit on one line. `assertQueuedGraphWork` moved into `GraphTestDependencies.kt` and
@@ -48,12 +50,13 @@
 - Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
   decision changes; no merge. Ordered collector teardown and its explicitly documented residual
   unbounded join are retained.
-- Exact next step: append the second-pass outcome to PROJECT_LOG.md, commit this checkpoint, push the
-  branch and refresh PR #66 with the prepared body. CI review remains open; do not merge.
-- Publishing checkpoint: the earlier follow-up branch is pushed through `043653b`, and the
-  documentation-only blocker commit `2f18edd` is pushed. The prepared PR body is `/tmp/e1-14-pr.md`
-  and is being updated to the final state. `gh pr edit 66 --repo davidru85/carApp --body-file
-  /tmp/e1-14-pr.md` is the command to run after the push.
+- Exact next step: owner reviews PR #66 at head `edef077`. All ten required checks are green and the
+  PR body matches the branch; no merge was requested.
+- Publishing checkpoint: the follow-up branch is pushed through `edef077`, and
+  `gh pr edit 66 --repo davidru85/carApp --body-file /tmp/e1-14-pr.md` refreshed the PR body. The
+  live required-check status at head `edef077` is: android-assemble, android-instrumented-tests,
+  architecture-check, contract-check, detekt, ios-simulator-build, ktlint, objc-header-golden-check,
+  provider-decoupling and shared-tests, all passing on run 34592642389.
 
 
 ## Owner Review Follow-up — 2026-09-11
