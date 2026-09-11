@@ -116,8 +116,9 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   `E3-11` is also complete; it introduced `D-132` through `D-143` and its evidence lives in
   `docs/handoff-E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
   `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
-  `docs/handoff-E2-08.md` holds its acceptance evidence. `E3-14` is implemented on the open pull
-  request #63 awaiting the owner's gated review.
+  `docs/handoff-E2-08.md` holds its acceptance evidence. `E1-14` merged through pull request #66;
+  its evidence lives in `docs/handoff-E1-14.md`. `E3-14` is implemented on the open pull request
+  #63 awaiting the owner's gated review.
 - **Next:** Phase 2 has no unstarted story. `E2-04`, the anonymous account conversion, merged
   through pull request #64; it introduced `D-151` through `D-154` and its evidence lives in
   `docs/handoff-E2-04.md`. `E2-05`, sign-out and account deletion, is **implemented on the open pull
@@ -128,15 +129,14 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   low-probability departure concurrency and lifecycle gaps as `D-164` and deferred them to the
   post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block PR #65 or MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-14`, `E1-15`, `E1-16` and `E1-17`, in that order.
+- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16` and `E1-17`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127`
-  superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
-  `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous.
-  `E1-14` is implemented on open pull request #66, awaiting owner review and required CI; its bounded
-  expectations, shared confined graph fixture and 30/30 repeated-run evidence per target live in
-  `docs/handoff-E1-14.md`. Until that work merges and `E1-17` is fixed, a red required job is not
-  by itself evidence of a regression.
+  superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` is complete
+  after pull request #66 merged. `E1-17` is implemented on open pull request #67, awaiting owner
+  review and required CI; its retry policy, diagnostic bounds and repeated-run evidence live in
+  `docs/handoff-E1-17.md`. Until that work merges, a red `ios-simulator-build` job is not by itself
+  evidence of a regression.
 - **Remaining Phase 2:** `E2-05` only, and only until pull request #65 is reviewed and merged; it
   is implemented but MUST NOT be recorded as complete before then. `E2-04` merged through pull
   request #64. `E2-07` is merged through pull request #61; `E2-08`, the anonymous reminder launch

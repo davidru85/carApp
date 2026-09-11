@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-11 — E1-17 iOS onboarding UI-test stabilization
+
+- **Type:** story
+- **Story / Decision:** `E1-17`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Replaced the iOS UI suite's one-shot onboarding taps with a shared, step-aware
+  retry policy, per-step diagnostics and an absolute wait budget. The retry gate now requires
+  `isEnabled` in addition to `exists`/`isHittable`, each tap action carries its accessibility
+  identifier, the step is monotonic, and one helper in `iosApp/UITests/OnboardingWait.swift` drives
+  all three UITest files. The earlier 60-second justification was retracted and replaced with a
+  120-second cap measured from CI. Implementation is on
+  [pull request #67](https://github.com/davidru85/carApp/pull/67) for review; the story is not
+  complete until merge.
+- **Why:** CI run `34641152156` failed `ios-simulator-build`: the previous helper retried
+  `welcome_guest` 50 times over 62.090 seconds, but those taps were no-ops because the button
+  reports `isHittable == true` while disabled, and the real Firebase anonymous sign-in round trip
+  was the dominant constraint. The previous 60-second bound rested on whole-test durations, not on
+  the onboarding segment, and was therefore wrong.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-17.md`, this log.
+- **Verification:** Policy RED produced four intended failures against the corrected policy; policy
+  GREEN passed 9/9; seven affected end-to-end tests passed locally; the complete non-instrumented
+  command passed. Consecutive green `ios-simulator-build` runs on the final head are recorded in
+  `docs/handoff-E1-17.md` after the push.
+- **Follow-ups / risks:** The real network path remains, so the flake is rarer but not eliminated.
+  Option (b), a Debug-only launch-environment seam that removes the network round trip, is escalated
+  to the owner and not implemented. An unrelated local partial-refuel badge failure remains outside
+  E1-17.
+
 ### 2026-09-11 — E1-14 expectation description correction
 
 - **Type:** correction
