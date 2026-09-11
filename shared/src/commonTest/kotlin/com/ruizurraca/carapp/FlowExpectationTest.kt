@@ -9,6 +9,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
@@ -156,6 +158,21 @@ class FlowExpectationTest {
                 }
 
             // JVM coroutine stack recovery can copy the exception and retain the original as its cause.
+            assertSame(cause, generateSequence<Throwable>(failure) { it.cause }.last())
+        }
+
+    @Test
+    fun independentUpstreamCancellationBecomesAValueDiagnostic() =
+        runTest {
+            val cause = CancellationException("source stopped")
+
+            val failure =
+                assertFailsWith<AssertionError> {
+                    flow<Int> { throw cause }.awaitState("source value") { true }
+                }
+
+            assertTrue(currentCoroutineContext().isActive, "an upstream cancellation must not cancel the caller")
+            assertTrue(failure.message.orEmpty().contains("source value"))
             assertSame(cause, generateSequence<Throwable>(failure) { it.cause }.last())
         }
 }
