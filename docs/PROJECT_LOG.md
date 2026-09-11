@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-09-11 — E1-14 review follow-up corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Addressed all six follow-up findings on pull request #66. Shared graph fixtures
+  now use the caller test scheduler across every editable graph-backed case; expectation diagnostics
+  publish their last emission through a volatile holder; upstream cancellation is diagnosed without
+  cancelling the caller; short predicates and the helper layout were cleaned up. Ordered collector
+  cancellation and joining remains documented as an intentional teardown guarantee with an explicit
+  residual risk under extreme starvation or non-cooperative cleanup.
+- **Why:** The review found no product-correctness blocker, but identified scheduler races,
+  cross-thread diagnostic publication, cancellation ambiguity and readability gaps that could make a
+  red required job difficult to interpret.
+- **Documents touched:** `AGENTS.md`, `docs/handoff-E1-14.md`, this log.
+- **Verification:** RED/GREEN/REFACTOR commits are preserved for each behavioral follow-up. The full
+  non-instrumented command passed. Thirty fresh direct repetitions per target passed, each with 162
+  Android-host and 169 Native-simulator tests, zero failures and zero skips. One preliminary wrapper
+  lock attempt exited before tests and is retained in the handoff as an infrastructure attempt.
+- **Follow-ups / risks:** PR #66 remains open for owner review and required CI; merge is not performed.
+  The cleanup join remains intentionally unbounded to preserve E1-12 database lifetime ordering.
+
 ### 2026-09-11 — E1-14 bounded state expectations and deterministic fuel test fixtures
 
 - **Type:** story

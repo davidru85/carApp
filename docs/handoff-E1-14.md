@@ -29,15 +29,18 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: all six review items are implemented; shared verification passed
-  at `25a9694`; the forced repetition campaign is pending; latest published `e7c4d4e`.
+- Current phase and latest commit: all six review items are implemented; shared verification and the
+  forced repetition campaign passed; the final documentation/log checkpoint is uncommitted; latest
+  published `d52ce8d`.
 - Push and pull-request status: PR #66 remains open; follow-up changes are not pushed yet.
 - Completed since the previous checkpoint: committed the timeout, fixture-reuse, AGENTS.md wrap and
-  final helper cleanup. Full shared verification now passes with 162 Android-host and 169
-  Native-simulator tests, zero failures and zero skips.
+  final helper cleanup. Full shared verification passes with 162 Android-host and 169
+  Native-simulator tests, zero failures and zero skips. Thirty fresh repetitions per target also
+  pass with those counts.
 - Verification evidence and known failures: previous 157/165 counts and 30-run evidence below
   describe the pre-review version. The owner independently reproduced them and neutralized the
-  three existing regressions. New/modified regressions will receive fresh RED proof.
+  three existing regressions. The review version now has fresh 162/169 evidence; one preliminary
+  wrapper-lock attempt exited before running tests and is recorded separately.
 - Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
   decision changes; no merge. Retain ordered collector teardown and explicitly document its residual
   unbounded join, as permitted by review item 2.
@@ -46,8 +49,8 @@
   expected queued execution versus immediate `[main, io, default]`. Log:
   `/tmp/e1-14-review-fixtures-red.log`. In the RED commit, `confinedGraphDependencies` returned its input unchanged.
   The uncommitted GREEN implementation now installs the caller-scheduler dispatcher.
-- GREEN evidence: both shared targets and shared ktlint/detekt passed: 159 Android-host and
-  167 Native-simulator tests, zero failures/skips. Log: `/tmp/e1-14-review-fixtures-green.log`.
+- GREEN evidence: both shared targets and shared ktlint/detekt passed: 162 Android-host and
+  169 Native-simulator tests, zero failures/skips. Log: `/tmp/e1-14-review-fixtures-green.log`.
 - Non-vacuity proof: neutralizing the shared dispatcher copy produced three intended failures:
   both GraphTestDependenciesTest cases and the fuel factory scheduling guard. The source was
   restored automatically, then all three regressions and shared lint passed.
@@ -62,8 +65,8 @@
 - Item 5 evidence: requested short predicates and expectation calls are joined while all changed
   lines remain within the repository style limit.
 - Item 6 evidence: shared ktlint/detekt passed after the timeout, fixture-reuse and AGENTS.md wrap
-  cleanup. Exact next step: run the complete non-instrumented command, then execute 30 fresh forced
-  repetitions for each shared target and record the actual counts.
+  cleanup. Exact next step: append the review correction to PROJECT_LOG.md, commit this final
+  checkpoint, then push the branch and refresh PR #66. CI review remains open; do not merge.
 
 
 ## Owner Review Follow-up — 2026-09-11 (Active)
@@ -101,7 +104,7 @@ historical until the final follow-up verification finishes.
    runTest's timeout. The existing starvation test proves cooperative suspended-collector teardown,
    not an absolute wall-clock bound on all possible cleanup. The owner explicitly permits this
    choice; it does not require a new owner decision or changes outside test code/docs.
-3. **Publish last emission safely — RED/GREEN complete; REFACTOR in progress.** Replaced the captured mutable String with a
+3. **Publish last emission safely — RED/GREEN/REFACTOR complete.** Replaced the captured mutable String with a
    small common-code holder whose property is `@kotlin.concurrent.Volatile`. Add a diagnostic
    test with emissions originating off the caller thread. Prove its assertions non-vacuous;
    do not claim a timing-based test can deterministically establish the absence of a JVM/native
@@ -109,8 +112,8 @@ historical until the final follow-up verification finishes.
    if needed to prove removing the publication guarantee is RED. The deterministic Android-host
    volatile-field metadata test is the publication guarantee; the common off-caller flow test
    exercises the diagnostic path. The assignment-neutralized run failed that common test, and the
-   correct source is restored. Commit the KDoc refactor before item 4.
-4. **Cancellation handling — RED/GREEN complete; REFACTOR in progress.** Replaced `runCatching` in async with explicit catches:
+   correct source is restored.
+4. **Cancellation handling — RED/GREEN/REFACTOR complete.** Replaced `runCatching` in async with explicit catches:
    rethrow CancellationException unchanged and capture only other Throwables in Result.failure.
    Add a case for a source that throws CancellationException independently of caller cancellation.
    Preserve the existing cancellation/collector-stop test. Check the observable upstream-cancel
@@ -119,7 +122,7 @@ historical until the final follow-up verification finishes.
    distinct from upstream cancellation and retain the original cause in any diagnostic. The RED
    test failed when an independent source `CancellationException` escaped as caller cancellation;
    GREEN now reports an `AssertionError` with the original cause while caller cancellation still
-   reaches the existing propagation test unchanged. Commit the refactor comments before item 5.
+   reaches the existing propagation test unchanged.
 5. **Readability — complete.** Joined short predicates in FuelEntryStateHolderTest (odometer,
    total cost, message, deleted entry) and short awaitState calls for confirmed fuel entry,
    saved fuel entry and saved vehicle; VehicleListStateHolderTest saved/recovered vehicle calls;
@@ -137,11 +140,13 @@ PROJECT_LOG entry without editing the prior story entry. Push existing branch, r
 leave it open and do not merge. Maintain separate RED/GREEN/REFACTOR commits and do not add
 production changes, schemas, contracts, architecture rules, decision IDs, libraries or versions.
 
-Resume by checking `git status --short --branch`, `git log -10 --oneline`, this checkpoint, and
-these two new test files. No repeat-run process is currently running. RED passed its intended failure proof; the first
-full GREEN attempt failed on five premature Vehicle save assertions. The stronger completion
-predicates are pending re-verification. Logs are `/tmp/e1-14-review-fixtures-red.log` and
-`/tmp/e1-14-review-fixtures-green.log`. Previous repetition evidence belongs to initial delivery.
+Final review evidence: the full command passed, and 30/30 fresh direct repetitions passed per
+target, each executing 162 Android-host and 169 Native-simulator tests with zero failures/skips.
+The first scripted attempt exited before tests because the wrapper lock was inaccessible; it is
+retained as a non-executed infrastructure attempt. The earlier five premature-save failures were
+resolved by stronger completion predicates and the subsequent 162/169 suite passed. Logs for the
+fixture phase remain `/tmp/e1-14-review-fixtures-red.log` and
+`/tmp/e1-14-review-fixtures-green.log`.
 
 ## Scope Completed
 
@@ -208,11 +213,12 @@ none was removed. Subsequent shared tests and lint passed: 159 Android-host / 16
   outer bound. One fixture also proves the collector has stopped before the assertion is returned.
 - Helper tests cover first matching value, matching null, a virtual one-day delayed emission,
   cancellation propagation/collector completion, and preservation of the original upstream cause.
-- Final stability: 30/30 forced complete runs per target on macOS 26.6.2 aarch64 (Apple Silicon),
-  zero failures and zero skips. Each run executed 157 Android-host tests and 165 Native-simulator
-  tests, including the eight new regressions. This exceeds the historical approximately 1-in-17
-  occurrence rate; it is observed stability, not a claim that arbitrary machine starvation is impossible.
-- Final shared GREEN reports: Android host 157 tests; iOS simulator 165 tests; 0 failures and 0 skipped.
+- Final review stability: 30/30 forced complete runs per target on macOS 26.6.2 aarch64 (Apple
+  Silicon), zero failures and zero skips. Each run executed 162 Android-host tests and 169
+  Native-simulator tests, including the review regressions. This exceeds the historical approximately
+  1-in-17 occurrence rate; it is observed stability, not a claim that arbitrary machine starvation
+  is impossible. One preliminary wrapper-lock invocation exited before tests and is not counted.
+- Final shared GREEN reports: Android host 162 tests; iOS simulator 169 tests; 0 failures and 0 skipped.
 - `graphFixtureWorkWaitsForTheCallerTestScheduler` failed before the dispatcher change with
   `expected: [] but was: [main, io, default]`. After the fix, no graph work runs until `runCurrent()`,
   and then all three dispatchers complete their queued work.
@@ -257,7 +263,9 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 
 ## Files Changed
 
-- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FlowExpectation.kt` and `FlowExpectationTest.kt`.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FlowExpectation.kt`, `FlowExpectationTest.kt`,
+  `LastEmission.kt`, `GraphTestDependencies.kt` and `GraphTestDependenciesTest.kt`.
+- `shared/src/androidHostTest/kotlin/com/ruizurraca/carapp/LastEmissionVisibilityTest.kt`.
 - The seven migrated files listed in the audit above.
 - `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` and `docs/handoff-E1-14.md`.
 
@@ -285,18 +293,21 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 - Second RED: `./gradlew :shared:testAndroidHostTest --tests
   'com.ruizurraca.carapp.FuelEntryStateHolderTest.graphFixtureWorkWaitsForTheCallerTestScheduler'`
   — expected assertion failure, `expected: [] but was: [main, io, default]`.
-- Second GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test
-  :shared:ktlintCheck :shared:detekt` — passed, 157 Android-host / 165 Native tests.
+- Review RED/GREEN: the volatile metadata guard and independent upstream-cancellation expectation
+  each failed before their corresponding fixes; both now pass. Neutralizing the last-emission
+  assignment also failed the off-caller diagnostic test, then the source was restored.
+- Final shared verification: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test
+  :shared:ktlintCheck :shared:detekt` — passed, 162 Android-host / 169 Native tests.
 - Final REFACTOR stability: the following command was executed 30 consecutive times, stopping on
   any nonzero exit; every invocation returned zero. Both target reports were inspected after each
-  successful invocation: 157 / 165 tests, no failures or skips, on every run.
+  successful invocation: 162 / 169 tests, no failures or skips, on every run.
 
 ```bash
 ./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --rerun-tasks --quiet
 ```
 
-- Full non-instrumented repository verification — BUILD SUCCESSFUL in 6s, 636 actionable tasks
-  (41 executed, 595 up-to-date). Covers lint, coverage, architecture and its failing fixtures,
+- Full non-instrumented repository verification — BUILD SUCCESSFUL in 6s, 638 actionable tasks
+  (39 executed, 599 up-to-date). Covers lint, coverage, architecture and its failing fixtures,
   contracts, Android assembly/unit tests, and the shared host/Native graph with the exact D-75
   exclusions. No PENDING contract assertions.
 
