@@ -28,41 +28,37 @@
 ## In-Progress Checkpoint
 
 - Date: 2026-09-11.
-- Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf`.
-- Current phase and latest commit: bounded-expectation cycle RED `e8cb797`, GREEN `9bcec1c`,
-  REFACTOR `001ab63`. The second cycle is GREEN, after RED `f93c37e`; this checkpoint records GREEN.
-- Push and pull-request status: not pushed; no PR.
-- Completed since the previous checkpoint: extracted the deadline constant, documented collection
-  context and cancellation, formatted all migrated calls. Investigated two diagnostic failures.
-- Verification evidence and known failures: the initial bound-only batch passed 24 complete
-  iterations and then failed on Android at `saveFullEntry`, with a loaded but empty list. An
-  uncommitted UnconfinedTestDispatcher experiment passed 28 Android and 27 Native iterations,
-  then Native `litersAndPriceDeriveTotalCostWhileTyping` reported `litersScaled=null`,
-  `pricePerLiterScaled=1789`, `totalCostMinor=null`. This is lost input, not slow SQLite work.
-  UnconfinedTestDispatcher still allows undispatched continuation delivery and does not serialize
-  fixture main work. That experiment was removed; its evidence is preserved in this handoff.
-  The completed helper behavior is green, but the fuel fixture needs its own deterministic
-  regression and scheduler refactoring before E1-14 can be submitted.
-- Open decisions or blockers: no owner decision. Production uses a confined main dispatcher;
-  the test-only unconfined fixture violates that premise. No production change is planned.
-- Second RED evidence: `graphFixtureWorkWaitsForTheCallerTestScheduler` compiled and failed:
-  expected no work before advancing the scheduler, observed `[main, io, default]`.
-  The fixture factory extraction is behavior-preserving; the test constructs dependencies without
-  opening a database, so its failure is deterministic and independent of SQLite timing.
-- Second GREEN evidence: StandardTestDispatcher(testScheduler) now queues all fixture dispatchers.
-  `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test :shared:ktlintCheck
-  :shared:detekt` passed: Android host 157 tests, Native 165 tests, no failures/skips.
-- Exact next step: commit the second GREEN, finish fixture documentation and execute 30 forced
-  repetitions of the final code before the complete repository verification and REFACTOR commit.
+- Branch and base: `story/E1-14-bounded-state-expectations`, origin/main `eb52daf` (merged PR #65).
+- Current phase and latest commit: implementation and local verification complete. First cycle:
+  RED `e8cb797`, GREEN `9bcec1c`, REFACTOR `001ab63`. Second cycle: RED `f93c37e`, GREEN `8430c91`;
+  the second REFACTOR is the commit containing this checkpoint.
+- Push and pull-request status: all phase commits are local; push and PR creation are next.
+- Completed since the previous checkpoint: final graph fixture uses StandardTestDispatcher tied
+  to runTest; all 30 final repetitions passed; the full repository command passed; audit, acceptance
+  evidence, historical failed attempts and project log are recorded.
+- Verification evidence and known failures: final code passed 30/30 complete forced runs per target
+  on Apple Silicon (157 Android-host tests and 165 Native-simulator tests each, no failures/skips).
+  Full non-instrumented verification passed: 636 tasks, 41 executed, 595 up-to-date. Contract check
+  reports all assertions PASS, 168 aligned decisions/ADRs, two unrelated pending decisions tracked
+  by their own stories, and no PENDING executable assertions. Earlier failed stability experiments
+  are retained under Acceptance Evidence; neither is counted as final-code evidence.
+- Open decisions or blockers: no technical decision or local verification blocker. Owner review
+  and the PR's ten required CI checks remain before merge. E1-14 is implemented, not yet merged.
+- Exact next step: commit the second REFACTOR, push all commits once, create the PR, then record
+  its URL and CI status in a documentation-only continuity checkpoint. Do not merge.
 
 ## Scope Completed
 
 - Added `Flow<T>.awaitState(expectation, timeout, predicate)` in shared commonTest, with a default
   five-second real-time deadline, a mandatory description and last-emission diagnostics.
 - Kept collection on the caller context and cancellation structured; no production dispatcher changed.
+- Confined the fuel graph fixtures to StandardTestDispatcher(testScheduler), including persisted
+  settings setup. The graph-bootstrap test already used that dispatcher. A deterministic fixture
+  test prevents replacing it with an eagerly executing unconfined dispatcher.
 - Migrated all 37 raw predicate flow waits in seven files, including direct database settings and
   auth-flow waits adjacent to graph-backed holder tests.
-- Added seven focused helper tests, including two independently bounded starvation fixtures.
+- Added seven focused helper tests, including two independently bounded starvation fixtures,
+  and one deterministic graph-fixture scheduling regression.
 - Audited all 11 graph-mounting test files plus the directly constructed adoption-failure holder.
 
 ## Acceptance Evidence
@@ -72,7 +68,26 @@
   outer bound. One fixture also proves the collector has stopped before the assertion is returned.
 - Helper tests cover first matching value, matching null, a virtual one-day delayed emission,
   cancellation propagation/collector completion, and preservation of the original upstream cause.
-- Shared GREEN reports: Android host 156 tests; iOS simulator 164 tests; 0 failures and 0 skipped.
+- Final stability: 30/30 forced complete runs per target on macOS 26.6.2 aarch64 (Apple Silicon),
+  zero failures and zero skips. Each run executed 157 Android-host tests and 165 Native-simulator
+  tests, including the eight new regressions. This exceeds the historical approximately 1-in-17
+  occurrence rate; it is observed stability, not a claim that arbitrary machine starvation is impossible.
+- Final shared GREEN reports: Android host 157 tests; iOS simulator 165 tests; 0 failures and 0 skipped.
+- `graphFixtureWorkWaitsForTheCallerTestScheduler` failed before the dispatcher change with
+  `expected: [] but was: [main, io, default]`. After the fix, no graph work runs until `runCurrent()`,
+  and then all three dispatchers complete their queued work.
+- Historical stability attempts, deliberately retained rather than discarded:
+
+| Version | Android host | Native simulator | Diagnostic |
+|---|---|---|---|
+| Bounded waits only | 24 pass, 1 fail | 24 pass; iteration 25 not executed | Empty fuel list after save; five-second assertion fired. |
+| Uncommitted UnconfinedTestDispatcher experiment | 28 pass, 0 fail | 27 pass, 1 fail | Liters overwritten to null while price remained 1789; five-second assertion fired. |
+
+Unconfined execution can resume initialization after SQLite suspension on a worker thread while
+form intents execute on the test thread. Both initialization and edits copy mutable form input,
+so the fixture permits lost updates that the product's confined main dispatcher prevents.
+Merely adding a timeout or substituting UnconfinedTestDispatcher did not remove that test race.
+The final fixture uses StandardTestDispatcher on the caller scheduler and leaves product code intact.
 - Audit (paths below are relative to `shared/src/commonTest/kotlin/com/ruizurraca/carapp/`):
 
 | Audited file | Finding and treatment |
@@ -104,8 +119,7 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FlowExpectation.kt` and `FlowExpectationTest.kt`.
 - The seven migrated files listed in the audit above.
-- `docs/handoff-E1-14.md`; repository status and historical-follow-up pointers will be updated after
-  stability verification.
+- `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` and `docs/handoff-E1-14.md`.
 
 ## Decisions Made
 
@@ -113,14 +127,48 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
   push cadence for this story. Separate RED, GREEN and REFACTOR commits are retained.
 - No technical decision introduced: E1-14 already requires a reusable bounded expectation in tests.
   No new library, product behavior or normative policy is needed.
+- Two TDD cycles were needed: the first makes unbounded waits diagnostic; repetition then exposed
+  the independent test-fixture scheduling defect, which received its own deterministic RED test,
+  GREEN implementation and REFACTOR verification. All cycle commits remain local until the final
+  push requested by the owner. No TDD exemption or force push is used.
 
 ## Verification Run
 
-- REFACTOR lint: `./gradlew :shared:ktlintCheck :shared:detekt` passed after formatting.
-- GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test` passed.
-- RED: `./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.FlowExpectationTest'`
-  failed as expected (7 tests, 2 assertion failures caused by missing expectation timeout).
-- `./gradlew --version`: Gradle 9.7.1, JDK 21.0.11, macOS aarch64.
+- First RED: `./gradlew :shared:testAndroidHostTest --tests
+  'com.ruizurraca.carapp.FlowExpectationTest'` — 7 compiled tests, 2 expected failures. The unbounded
+  helper reached the independent two-second deadline instead of returning the required assertion.
+- First GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test` — passed
+  (156 Android-host / 164 Native tests before the scheduling regression was added).
+- First REFACTOR: `./gradlew :shared:testAndroidHostTest --tests
+  'com.ruizurraca.carapp.FlowExpectationTest' :shared:ktlintCheck :shared:detekt` — passed. The
+  separate fixture flake found during repetition is recorded above and was not waved through.
+- Second RED: `./gradlew :shared:testAndroidHostTest --tests
+  'com.ruizurraca.carapp.FuelEntryStateHolderTest.graphFixtureWorkWaitsForTheCallerTestScheduler'`
+  — expected assertion failure, `expected: [] but was: [main, io, default]`.
+- Second GREEN: `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test
+  :shared:ktlintCheck :shared:detekt` — passed, 157 Android-host / 165 Native tests.
+- Final REFACTOR stability: the following command was executed 30 consecutive times, stopping on
+  any nonzero exit; every invocation returned zero. Both target reports were inspected after each
+  successful invocation: 157 / 165 tests, no failures or skips, on every run.
+
+```bash
+./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --rerun-tasks --quiet
+```
+
+- Full non-instrumented repository verification — BUILD SUCCESSFUL in 6s, 636 actionable tasks
+  (41 executed, 595 up-to-date). Covers lint, coverage, architecture and its failing fixtures,
+  contracts, Android assembly/unit tests, and the shared host/Native graph with the exact D-75
+  exclusions. No PENDING contract assertions.
+
+```bash
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
+```
+
+- Source audit: `rg -n 'kotlinx.coroutines.flow.first|\.first\s*\{' shared/src/commonTest
+  shared/src/iosTest` — only the encapsulated call/import in `FlowExpectation.kt` remains.
+- `git diff --check` — clean.
+- CI: the ten required jobs are triggered by PR creation; their results are tracked in the PR.
+  This test-only change does not alter the iOS application or Shared public framework surface.
 
 ## Contract Impact
 
@@ -136,11 +184,14 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
 
 ## Project Log Entry
 
-- [ ] Entry appended
+- [x] Entry appended
 
 ## Risks or Follow-ups
 
-- Repetition establishes observed stability, not a proof that arbitrary host starvation is impossible.
+- The five-second bound is a real-time test expectation, not a product deadline. Under extreme host
+  starvation, it can deliberately fail with a diagnostic assertion; it does not silently retry.
+- E1-17 iOS host UI flakes and the historical D-89 production graph-close follow-up remain separate.
+- Ordinary runtime warnings about Gradle 10 deprecations and expect/actual beta classes are unchanged.
 
 ## Human Review Gate
 

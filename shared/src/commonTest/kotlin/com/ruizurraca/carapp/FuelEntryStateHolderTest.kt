@@ -473,6 +473,8 @@ class FuelEntryStateHolderTest {
         )
     }
 
+    // Keep graph work on the same scheduler as test intents. Unconfined dispatchers can resume
+    // initialization on a SQLite worker and overwrite form edits made by the test thread.
     private fun TestScope.fuelGraphDependencies(
         clock: FakeAppClock = FakeAppClock(),
         localeProvider: FakeLocaleProvider = FakeLocaleProvider(),

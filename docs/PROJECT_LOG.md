@@ -38,6 +38,27 @@
 
 ## Entries
 
+### 2026-09-11 — E1-14 bounded state expectations and deterministic fuel test fixtures
+
+- **Type:** story
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented a reusable, diagnostic real-time bound for 37 graph-backed flow
+  waits in shared tests. Fuel graph fixtures now use StandardTestDispatcher on the caller test
+  scheduler, preventing unconfined initialization from racing test-thread form edits. Implementation
+  is ready for PR review; the story is not complete until merge.
+- **Why:** the bounded helper exposed two historical lost-input failures that generic runTest
+  timeouts had hidden. An UnconfinedTestDispatcher experiment remained flaky; a second deterministic
+  RED/GREEN/REFACTOR cycle established queued fixture execution instead. Production code is unchanged.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-14.md`, this log.
+- **Verification:** both RED phases compiled and failed on the intended assertions. Final code
+  passed 30 forced full shared-suite repetitions on Apple Silicon per target: 157 Android-host
+  tests and 165 Native-simulator tests per run, zero failures/skips. The full non-instrumented
+  repository command passed, including coverage, architecture, contracts, lint and Android assembly.
+  The handoff preserves the failed preliminary attempts and the audit of all graph-mounting files.
+- **Follow-ups / risks:** owner review is required for the AGENTS.md status update; CI and merge
+  remain PR steps. E1-17 and the independent production graph-close follow-up are not changed.
+
 ### 2026-09-10 — E2-05 closes the departure process-death window, superseding D-163
 
 - **Type:** decision
