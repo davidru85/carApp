@@ -34,10 +34,10 @@
   assertion is shared, the `currentCoroutineContext` import is explicit, the Owner Review Follow-up
   section is rewritten as past-tense evidence and the AGENTS.md fixture sentence is corrected.
   Shared verification passed with 162 Android-host / 169 Native tests. Latest published `2f18edd`.
-- Push and pull-request status: the second-pass commits `dc9b48b` (test refactor) and `edef077`
-  (documentation) are pushed. PR #66 is open, `MERGEABLE`, head `edef077`, and its body was
-  refreshed to the final state. All ten required checks passed on run 34592642389 at head
-  `edef077`.
+- Push and pull-request status: the second-pass test commit `dc9b48b` and the documentation commits
+  are pushed. PR #66 is open, `MERGEABLE`, and its body was refreshed to the final state. All ten
+  required checks passed on run 34592642389 and again on run 34594176104 after the documentation
+  follow-up.
 - Completed since the previous checkpoint: applied the second review pass. `FlowExpectation.kt` and
   `FuelEntryStateHolderTest.kt` lost their three dead imports. All eleven strengthened completion
   predicates now sit on one line. `assertQueuedGraphWork` moved into `GraphTestDependencies.kt` and
@@ -50,13 +50,13 @@
 - Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
   decision changes; no merge. Ordered collector teardown and its explicitly documented residual
   unbounded join are retained.
-- Exact next step: owner reviews PR #66 at head `edef077`. All ten required checks are green and the
-  PR body matches the branch; no merge was requested.
-- Publishing checkpoint: the follow-up branch is pushed through `edef077`, and
-  `gh pr edit 66 --repo davidru85/carApp --body-file /tmp/e1-14-pr.md` refreshed the PR body. The
-  live required-check status at head `edef077` is: android-assemble, android-instrumented-tests,
-  architecture-check, contract-check, detekt, ios-simulator-build, ktlint, objc-header-golden-check,
-  provider-decoupling and shared-tests, all passing on run 34592642389.
+- Exact next step: owner reviews PR #66. All ten required checks are green and the PR body matches
+  the branch; no merge was requested.
+- Publishing checkpoint: the follow-up branch is pushed, and `gh pr edit 66 --repo davidru85/carApp
+  --body-file /tmp/e1-14-pr.md` refreshed the PR body. The live required-check status is:
+  android-assemble, android-instrumented-tests, architecture-check, contract-check, detekt,
+  ios-simulator-build, ktlint, objc-header-golden-check, provider-decoupling and shared-tests, all
+  passing on run 34594176104.
 
 
 ## Owner Review Follow-up — 2026-09-11
