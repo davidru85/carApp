@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-11 — E1-14 expectation description correction
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Corrected five `awaitState` description strings in
+  `VehicleFormStateHolderTest.kt` that named behavior their enclosing tests do not exercise
+  (`vehicle validation finished`, `anonymous vehicle creation finished`, `backup failure save
+  finished`, `vehicle edit finished`, `invalid vehicle edit finished`). They now name the state each
+  test actually waits for: `vehicle outbox snapshot saved`, `vehicle local commit finished`,
+  `vehicle outbox payload saved`, `vehicle remote ack applied` and `local owner vehicle save
+  finished`. Only the strings changed; no predicate, timeout, assertion, fixture, import or other
+  file was touched.
+- **Why:** The `expectation` argument is the only human-readable part of the E1-14 timeout
+  diagnostic. The five stale descriptions would have pointed a reader at the wrong behavior, which
+  defeats the story's purpose of making a graph-backed wait fail with an actionable message.
+- **Documents touched:** `docs/handoff-E1-14.md` and this log. `AGENTS.md` and `docs/BACKLOG.md`
+  were deliberately left unchanged: E1-14 stays implemented on open pull request #66.
+- **Verification:** shared ktlint/detekt passed; `:shared:testAndroidHostTest` and
+  `:shared:iosSimulatorArm64Test` were forced to re-execute and reported 162 Android-host and 169
+  Native tests with zero failures and zero skips; the full non-instrumented `AGENTS.md` command
+  passed. The corrected diagnostic was proven by temporarily negating the line-104 predicate,
+  capturing `Timed out after 5s waiting for vehicle outbox snapshot saved. Last value:
+  VehicleFormUiState(...)`, restoring the source and re-running the test green.
+- **Follow-ups / risks:** No behavioral change and no RED test required; isolated in a single
+  `refactor(E1-14): correct expectation descriptions in the vehicle form fixtures` commit. PR #66
+  stays open and is not merged.
+
 ### 2026-09-11 — E1-14 second review pass
 
 - **Type:** correction

@@ -29,11 +29,12 @@
 
 - Date: 2026-09-11.
 - Branch and base: `story/E1-14-bounded-state-expectations`, base `eb52daf`.
-- Current phase and latest commit: the second review pass is implemented on the working tree; the
-  three dead imports are removed, the eleven completion predicates are joined, the scheduling
-  assertion is shared, the `currentCoroutineContext` import is explicit, the Owner Review Follow-up
-  section is rewritten as past-tense evidence and the AGENTS.md fixture sentence is corrected.
-  Shared verification passed with 162 Android-host / 169 Native tests. Latest published `2f18edd`.
+- Current phase and latest commit: the third review round is implemented on the working tree; the
+  five misleading `awaitState` descriptions in `VehicleFormStateHolderTest.kt` are corrected, with
+  the diagnostic proven correct by a temporary predicate negation. The second review pass is also
+  present: dead imports removed, eleven completion predicates joined, shared scheduling assertion,
+  explicit `currentCoroutineContext` import, rewritten follow-up section and corrected AGENTS.md
+  fixture sentence. Shared verification passed with 162 Android-host / 169 Native tests.
 - Push and pull-request status: the second-pass test commit `dc9b48b` and the documentation commits
   are pushed. PR #66 is open, `MERGEABLE`, and its body was refreshed to the final state. Every run
   whose code matched this branch passed all ten required checks, including run 34592642389
@@ -46,21 +47,21 @@
   `iosApp/UITests/VehicleAndFuelFlowUITests.swift:214` with "Onboarding did not reach vehicle
   creation before the timeout". Both already exist on `main` (run 34221494080, 2026-09-08, same
   lines and messages), the E1-14 diff touches no file under `iosApp/`, and the flake did not recur
-  on the next run.
-- Completed since the previous checkpoint: applied the second review pass. `FlowExpectation.kt` and
-  `FuelEntryStateHolderTest.kt` lost their three dead imports. All eleven strengthened completion
-  predicates now sit on one line. `assertQueuedGraphWork` moved into `GraphTestDependencies.kt` and
-  is shared by `GraphTestDependenciesTest` and the fuel wrapper test. `currentCoroutineContext` is
-  imported in `FlowExpectationTest`. Documentation was rewritten and AGENTS.md corrected.
+  on the next run. The third-round description correction is not yet committed or pushed.
+- Completed since the previous checkpoint: corrected the five misleading expectation descriptions
+  in `VehicleFormStateHolderTest.kt`; re-checked the whole file and confirmed every remaining
+  description, including line 54, is accurate; ran shared ktlint/detekt, the forced re-run of both
+  shared targets and the full non-instrumented repository command; and captured the corrected
+  timeout diagnostic by temporarily negating the line-104 predicate.
 - Verification evidence and known failures: full shared GREEN with the final code is 162
   Android-host and 169 Native-simulator tests, zero failures and zero skips. The full
-  non-instrumented repository command passed (638 actionable tasks, 39 executed) and shared
-  ktlint/detekt passed. Only the pre-existing expect/actual Beta warnings remain.
+  non-instrumented repository command passed. Only the pre-existing expect/actual Beta warnings
+  remain.
 - Open decisions or blockers: none. Test-only scope, no production/schema/contract/architecture or
   decision changes; no merge. Ordered collector teardown and its explicitly documented residual
   unbounded join are retained.
-- Exact next step: owner reviews PR #66. All ten required checks are green and the PR body matches
-  the branch; no merge was requested.
+- Exact next step: commit the description correction, push the branch and report the required-check
+  results. Owner reviews PR #66; no merge was requested.
 - Publishing checkpoint: the follow-up branch is pushed, and `gh pr edit 66 --repo davidru85/carApp
   --body-file /tmp/e1-14-pr.md` refreshed the PR body. The live required-check status is:
   android-assemble, android-instrumented-tests, architecture-check, contract-check, detekt,
@@ -159,6 +160,45 @@ it is retained as a non-executed infrastructure attempt. The earlier five premat
 were resolved by stronger completion predicates, and the subsequent 162/169 suite passed. Logs for
 the fixture phase remain `/tmp/e1-14-review-fixtures-red.log` and
 `/tmp/e1-14-review-fixtures-green.log`.
+
+## Expectation Description Correction — 2026-09-11
+
+The owner's third review round found that five `awaitState` descriptions in
+`VehicleFormStateHolderTest.kt` named behavior their enclosing test does not exercise. Because the
+`expectation` argument is the only human-readable part of the timeout diagnostic
+(`Timed out after $timeout waiting for $expectation. Last value: ...`), a timeout at those sites
+would have pointed the reader at the wrong behavior, defeating the actionable-diagnostic purpose of
+E1-14. The five strings had the shape of text copied from another suite and were corrected to name
+the state each test actually waits for:
+
+| Line | Test | Previous description | Corrected description |
+|---|---|---|---|
+| 104 | `saveEnqueuesTheClosedRemoteVehicleSnapshot` | `vehicle validation finished` | `vehicle outbox snapshot saved` |
+| 175 | `savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits` | `anonymous vehicle creation finished` | `vehicle local commit finished` |
+| 218 | `vehicleOutboxPayloadWithEntityTypeReachesRemoteSyncSourceAsAValidSnapshot` | `backup failure save finished` | `vehicle outbox payload saved` |
+| 257 | `successfulRemoteAckMarksTheVehicleSyncedAndClearsItsOutboxRow` | `vehicle edit finished` | `vehicle remote ack applied` |
+| 307 | `localOwnerSavePersistsPendingVehicleWithoutOutboxOrRemotePush` | `invalid vehicle edit finished` | `local owner vehicle save finished` |
+
+Only the five description strings changed. No predicate, timeout, assertion, fixture, import or
+other file was touched, and the strengthened `savedVehicleId != null && !state.isSaving` predicates
+were left exactly as they were. The descriptions use lowercase technical English consistent with
+the 43 correct descriptions in the other six migrated files, and line 54
+(`vehicle creation finished`, in `savePersistsACompletePendingVehicleForTheCurrentOwner`) was
+re-checked and is already accurate.
+
+Diagnostic evidence: the predicate at line 104 was temporarily negated to `{ false }`, the test was
+run on the Android host target, and the captured assertion message was:
+
+```text
+java.lang.AssertionError: Timed out after 5s waiting for vehicle outbox snapshot saved. Last value: VehicleFormUiState(vehicleId=null, savedVehicleId=00000000-0000-4000-8000-000000000001, name=, initialOdometerKm=0, brand=null, model=null, fuelType=GASOLINE, canEditInitialOdometer=true, isSaving=false, message=null)
+```
+
+The message names the behavior the test exercises (`vehicle outbox snapshot saved`) and includes the
+last observed state. The source was then restored and the test re-run green, with the final forced
+re-run of both targets still reporting 162 Android-host and 169 Native tests, zero failures and zero
+skips. This is a diagnostic-message correction with no behavioral change, so it required no RED
+test and was isolated in a single `refactor(E1-14): correct expectation descriptions in the vehicle
+form fixtures` commit, consistent with the earlier readability-only changes in this story.
 
 ## Scope Completed
 
@@ -313,6 +353,8 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
   `VehicleFormStateHolderTest.kt`, `VehicleListStateHolderTest.kt`, `LocalOwnerAdoptionTest.kt` and
   `SwiftAppGraphLifecycleTest.kt`; explicit `currentCoroutineContext` import in
   `FlowExpectationTest.kt`. No new files.
+- Third review round: five `awaitState` description strings corrected in
+  `VehicleFormStateHolderTest.kt` only. No other file changed.
 
 ## Decisions Made
 
@@ -367,6 +409,14 @@ The pre-existing non-flow adoption polling loops remain outside this state-emiss
   The full non-instrumented command above was re-run on the same final code and passed (638
   actionable tasks, 39 executed). The only remaining warnings are the pre-existing expect/actual
   Beta notices.
+
+- Third review round: `./gradlew :shared:ktlintCheck :shared:detekt` passed;
+  `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --rerun-tasks` executed both
+  tasks (not UP-TO-DATE) and reported 162 Android-host and 169 Native tests with zero failures and
+  zero skips; the full non-instrumented command above passed on the same code. The corrected
+  diagnostic was proven by temporarily negating the line-104 predicate and capturing
+  `Timed out after 5s waiting for vehicle outbox snapshot saved. Last value: VehicleFormUiState(...)`,
+  then restoring the source and re-running the test green.
 
 - Source audit: `rg -n 'kotlinx.coroutines.flow.first|\.first\s*\{' shared/src/commonTest
   shared/src/iosTest` — only the encapsulated call/import in `FlowExpectation.kt` remains.
