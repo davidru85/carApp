@@ -279,6 +279,21 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         )
     }
 
+    func testOnboardingWaitCarriesTheSnapshottedTapPosition() {
+        let guestPosition = OnboardingTapPosition(dx: 0.25, dy: 0.75)
+        var waitState = OnboardingWaitState()
+
+        XCTAssertEqual(
+            waitState.nextAction(
+                vehicleNameExists: false,
+                guestPosition: guestPosition,
+                addVehiclePosition: nil
+            ),
+            .tapGuest(at: guestPosition),
+            "The tap action must not retain an XCUIElement that can disappear before the tap"
+        )
+    }
+
     func testOnboardingWaitNamesGuestSessionTimeout() {
         var guestState = OnboardingWaitState()
         _ = guestState.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false)
