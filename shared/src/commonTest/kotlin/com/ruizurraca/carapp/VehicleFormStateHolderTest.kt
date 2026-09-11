@@ -101,7 +101,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("vehicle validation finished") { state ->
+                holder.state.awaitState("vehicle outbox snapshot saved") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
 
@@ -172,7 +172,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("anonymous vehicle creation finished") { state ->
+                holder.state.awaitState("vehicle local commit finished") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
 
@@ -215,7 +215,7 @@ class VehicleFormStateHolderTest {
                 val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
                 holder.setName("Roadster")
                 holder.save()
-                holder.state.awaitState("backup failure save finished") { state ->
+                holder.state.awaitState("vehicle outbox payload saved") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
 
@@ -254,7 +254,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Roadster")
 
                 holder.save()
-                holder.state.awaitState("vehicle edit finished") { state ->
+                holder.state.awaitState("vehicle remote ack applied") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
 
@@ -304,7 +304,7 @@ class VehicleFormStateHolderTest {
                 holder.setName("Offline Roadster")
 
                 holder.save()
-                holder.state.awaitState("invalid vehicle edit finished") { state ->
+                holder.state.awaitState("local owner vehicle save finished") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
 
