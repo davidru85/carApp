@@ -36,8 +36,15 @@
   Shared verification passed with 162 Android-host / 169 Native tests. Latest published `2f18edd`.
 - Push and pull-request status: the second-pass test commit `dc9b48b` and the documentation commits
   are pushed. PR #66 is open, `MERGEABLE`, and its body was refreshed to the final state. All ten
-  required checks passed on run 34592642389 and again on run 34594176104 after the documentation
-  follow-up.
+  required checks passed on run 34592642389 (`edef077`) and again on run 34594176104 (`0e20173`).
+  The later documentation-only commit `4b30528` produced run 34595706047, whose `ios-simulator-build`
+  job failed on the pre-existing `E1-17` flake rather than on this change: the failing tests are
+  `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` at
+  `iosApp/UITests/OnboardingFlowUITests.swift:86` and `:36`, and on the rerun
+  `VehicleAndFuelFlowUITests.testVehicleSwipeDeleteShowsConfirmationDialog` at
+  `iosApp/UITests/VehicleAndFuelFlowUITests.swift:214` with "Onboarding did not reach vehicle
+  creation before the timeout". Both failures already exist on `main` (run 34221494080, 2026-09-08,
+  same lines and messages) and the E1-14 diff touches no file under `iosApp/`.
 - Completed since the previous checkpoint: applied the second review pass. `FlowExpectation.kt` and
   `FuelEntryStateHolderTest.kt` lost their three dead imports. All eleven strengthened completion
   predicates now sit on one line. `assertQueuedGraphWork` moved into `GraphTestDependencies.kt` and
