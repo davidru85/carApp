@@ -9,7 +9,6 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,8 +23,10 @@ class SwiftAppGraphLifecycleTest {
             val owningFactory = InMemoryDatabaseFactory()
             val databaseHandle = owningFactory.create()
             val dependencies =
-                testAppGraphDependencies(
-                    databaseFactory = fixedDatabaseFactory(databaseHandle),
+                confinedGraphDependencies(
+                    testAppGraphDependencies(
+                        databaseFactory = fixedDatabaseFactory(databaseHandle),
+                    ),
                 )
             val recordingGraph =
                 RecordingVehicleFormScopesAppGraph(
@@ -41,7 +42,9 @@ class SwiftAppGraphLifecycleTest {
                 assertSame(first, swiftGraph.vehicleFormStateHolder(vehicleId = null))
                 first.setName("First vehicle")
                 first.save()
-                first.state.first { state -> state.savedVehicleId != null && !state.isSaving }
+                first.state.awaitState("first Swift vehicle saved") { state ->
+                    state.savedVehicleId != null && !state.isSaving
+                }
 
                 swiftGraph.releaseVehicleFormStateHolder(vehicleId = null)
 
@@ -57,7 +60,9 @@ class SwiftAppGraphLifecycleTest {
                 assertEquals(0, second.state.value.initialOdometerKm)
                 second.setName("Second vehicle")
                 second.save()
-                second.state.first { state -> state.savedVehicleId != null && !state.isSaving }
+                second.state.awaitState("second Swift vehicle saved") { state ->
+                    state.savedVehicleId != null && !state.isSaving
+                }
 
                 assertEquals(
                     listOf("First vehicle", "Second vehicle"),

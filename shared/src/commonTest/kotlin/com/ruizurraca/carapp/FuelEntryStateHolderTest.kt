@@ -17,15 +17,13 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeLocaleProvider
-import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -38,13 +36,17 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class FuelEntryStateHolderTest {
     @Test
+    fun graphFixtureWorkWaitsForTheCallerTestScheduler() =
+        runTest {
+            assertQueuedGraphWork(fuelGraphDependencies())
+        }
+
+    @Test
     fun graphBootstrapCreatesSettingsWithoutAConsumer() =
         runTest {
             val dependencies =
-                testAppGraphDependencies(
-                    dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
-                    localeProvider =
-                        FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
+                fuelGraphDependencies(
+                    localeProvider = FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
                 )
             val databaseHandle = dependencies.databaseFactory.create()
             val harness =
@@ -64,7 +66,7 @@ class FuelEntryStateHolderTest {
                 val persisted =
                     SettingsDatabaseAccess(databaseHandle.database)
                         .observeSettings()
-                        .first { row -> row != null }
+                        .awaitState("default settings persisted") { row -> row != null }
 
                 assertEquals(
                     SettingsDatabaseRow("USD", "KM", "LITER", analyticsEnabled = false),
@@ -123,7 +125,8 @@ class FuelEntryStateHolderTest {
                 val holder = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
                 harness.collect(holder.state)
 
-                val state = holder.state.first { value -> value.odometerKm == 12_345L }
+                val state =
+                    holder.state.awaitState("vehicle odometer suggestion") { value -> value.odometerKm == 12_345L }
                 assertEquals(now.toEpochMilliseconds(), state.dateEpochMillis)
                 assertEquals(12_345L, state.odometerKm)
                 assertEquals("USD", state.currencyCode)
@@ -164,7 +167,7 @@ class FuelEntryStateHolderTest {
     fun persistedSettingsCurrencyOverridesTheCurrentLocaleForNewEntries() =
         runTest {
             val dependencies =
-                testAppGraphDependencies(
+                fuelGraphDependencies(
                     localeProvider =
                         FakeLocaleProvider(LocaleInfo("en-US", "US", CurrencyCode("USD"))),
                 )
@@ -194,7 +197,10 @@ class FuelEntryStateHolderTest {
             harness.collect(holder.state)
 
             try {
-                assertEquals("GBP", holder.state.first { it.currencyCode == "GBP" }.currencyCode)
+                assertEquals(
+                    "GBP",
+                    holder.state.awaitState("persisted GBP currency") { it.currencyCode == "GBP" }.currencyCode,
+                )
             } finally {
                 harness.close()
             }
@@ -213,7 +219,10 @@ class FuelEntryStateHolderTest {
 
                 holder.setLitersScaled(45_123L)
                 holder.setPricePerLiterScaled(1_789L)
-                val derivedState = holder.state.first { state -> state.totalCostMinor == 8_073L }
+                val derivedState =
+                    holder.state.awaitState(
+                        "total cost derived from liters and price",
+                    ) { state -> state.totalCostMinor == 8_073L }
 
                 assertEquals(8_073L, derivedState.totalCostMinor)
                 assertNull(derivedState.message)
@@ -236,7 +245,7 @@ class FuelEntryStateHolderTest {
                 holder.setLitersScaled(40_000L)
                 holder.setPricePerLiterScaled(1_000_000L)
                 val liveState =
-                    holder.state.first { state ->
+                    holder.state.awaitState("invalid money inputs published") { state ->
                         state.litersScaled == 40_000L && state.pricePerLiterScaled == 1_000_000L
                     }
 
@@ -246,7 +255,7 @@ class FuelEntryStateHolderTest {
                 assertNull(liveState.message)
 
                 holder.save()
-                val savedState = holder.state.first { state -> state.message != null }
+                val savedState = holder.state.awaitState("money validation error") { state -> state.message != null }
 
                 assertEquals(
                     "VALIDATION.OUT_OF_RANGE",
@@ -281,7 +290,7 @@ class FuelEntryStateHolderTest {
                 form.setFullTank(false)
                 form.setMissedEntries(true)
                 form.save()
-                val warningState = form.state.first { state -> state.message != null }
+                val warningState = form.state.awaitState("odometer warning") { state -> state.message != null }
 
                 assertEquals(
                     "WARNING.ODOMETER_INCONSISTENT",
@@ -299,7 +308,8 @@ class FuelEntryStateHolderTest {
                 )
 
                 form.confirmSave(Confirmation.OdometerInconsistent)
-                val publishedState = list.state.first { state -> state.entries.isNotEmpty() }
+                val publishedState =
+                    list.state.awaitState("confirmed fuel entry published") { state -> state.entries.isNotEmpty() }
 
                 val row = publishedState.entries.single()
                 assertFalse(row.isFullTank)
@@ -329,7 +339,7 @@ class FuelEntryStateHolderTest {
                 saveFullEntry(harness, list, vehicleId, odometerKm = 900L, expectedCount = 3)
 
                 val state =
-                    list.state.first { value ->
+                    list.state.awaitState("weighted consumption summary") { value ->
                         value.entries.size == 3 &&
                             value.consumptionAverageScaled == 1_000L &&
                             value.validConsumptionSegmentCount == 2 &&
@@ -356,11 +366,13 @@ class FuelEntryStateHolderTest {
                 val list = graph.fuelEntryListStateHolder(harness.scope, vehicleId)
                 harness.collect(list.state)
                 saveFullEntry(harness, list, vehicleId, odometerKm = 100L, expectedCount = 1)
-                val populatedState = list.state.first { state -> state.entries.isNotEmpty() }
+                val populatedState =
+                    list.state.awaitState("saved fuel entry listed") { state -> state.entries.isNotEmpty() }
                 val entryId = populatedState.entries.single().id
 
                 list.requestDelete(entryId)
-                val confirmationState = list.state.first { state -> state.message != null }
+                val confirmationState =
+                    list.state.awaitState("fuel deletion confirmation") { state -> state.message != null }
 
                 assertEquals(
                     "INFO.CONFIRM_DELETE_FUEL_ENTRY",
@@ -370,7 +382,8 @@ class FuelEntryStateHolderTest {
                 assertEquals(1, confirmationState.entries.size)
 
                 list.confirmDelete(entryId)
-                val deletedState = list.state.first { state -> !state.isLoading && state.entries.isEmpty() }
+                val deletedState =
+                    list.state.awaitState("fuel entry removed") { state -> !state.isLoading && state.entries.isEmpty() }
 
                 assertTrue(deletedState.entries.isEmpty())
             } finally {
@@ -387,7 +400,8 @@ class FuelEntryStateHolderTest {
         holder.setName("Roadster")
         holder.setInitialOdometerKm(initialOdometerKm)
         holder.save()
-        val state = holder.state.first { value -> value.savedVehicleId != null && !value.isSaving }
+        val state =
+            holder.state.awaitState("vehicle saved") { value -> value.savedVehicleId != null && !value.isSaving }
         holder.close()
         return requireNotNull(state.savedVehicleId)
     }
@@ -405,20 +419,16 @@ class FuelEntryStateHolderTest {
         holder.setLitersScaled(40_000L)
         holder.setPricePerLiterScaled(1_500L)
         holder.save()
-        list.state.first { state -> state.entries.size == expectedCount }
+        list.state.awaitState("expected fuel entry count") { state -> state.entries.size == expectedCount }
         assertNull(holder.state.value.message)
         holder.close()
     }
 
-    private fun buildFuelGraph(
+    private fun TestScope.buildFuelGraph(
         clock: FakeAppClock = FakeAppClock(),
         localeProvider: FakeLocaleProvider = FakeLocaleProvider(),
     ): AppGraph {
-        val defaultDependencies =
-            testAppGraphDependencies(
-                clock = clock,
-                localeProvider = localeProvider,
-            )
+        val defaultDependencies = fuelGraphDependencies(clock, localeProvider)
         val databaseHandle = defaultDependencies.databaseFactory.create()
         return buildAppGraph(
             isDebugBuild = true,
@@ -430,6 +440,19 @@ class FuelEntryStateHolderTest {
                 ),
         )
     }
+
+    // Keep graph work on the same scheduler as test intents. Unconfined dispatchers can resume
+    // initialization on a SQLite worker and overwrite form edits made by the test thread.
+    private fun TestScope.fuelGraphDependencies(
+        clock: FakeAppClock = FakeAppClock(),
+        localeProvider: FakeLocaleProvider = FakeLocaleProvider(),
+    ): AppGraphDependencies =
+        confinedGraphDependencies(
+            testAppGraphDependencies(
+                clock = clock,
+                localeProvider = localeProvider,
+            ),
+        )
 
     private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =
         object : DatabaseFactory {

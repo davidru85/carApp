@@ -132,8 +132,11 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127`
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` and
-  `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous;
-  until they are fixed, a red required job is not by itself evidence of a regression.
+  `E1-17` are the two flakes that make a red `shared-tests` or `ios-simulator-build` ambiguous.
+  `E1-14` is implemented on open pull request #66, awaiting owner review and required CI; its bounded
+  expectations, shared confined graph fixture and 30/30 repeated-run evidence per target live in
+  `docs/handoff-E1-14.md`. Until that work merges and `E1-17` is fixed, a red required job is not
+  by itself evidence of a regression.
 - **Remaining Phase 2:** `E2-05` only, and only until pull request #65 is reviewed and merged; it
   is implemented but MUST NOT be recorded as complete before then. `E2-04` merged through pull
   request #64. `E2-07` is merged through pull request #61; `E2-08`, the anonymous reminder launch

@@ -38,6 +38,112 @@
 
 ## Entries
 
+### 2026-09-11 — E1-14 expectation description correction
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Corrected five `awaitState` description strings in
+  `VehicleFormStateHolderTest.kt` that named behavior their enclosing tests do not exercise
+  (`vehicle validation finished`, `anonymous vehicle creation finished`, `backup failure save
+  finished`, `vehicle edit finished`, `invalid vehicle edit finished`). They now name the state each
+  test actually waits for: `vehicle outbox snapshot saved`, `vehicle local commit finished`,
+  `vehicle outbox payload saved`, `vehicle remote ack applied` and `local owner vehicle save
+  finished`. Only the strings changed; no predicate, timeout, assertion, fixture, import or other
+  file was touched.
+- **Why:** The `expectation` argument is the only human-readable part of the E1-14 timeout
+  diagnostic. The five stale descriptions would have pointed a reader at the wrong behavior, which
+  defeats the story's purpose of making a graph-backed wait fail with an actionable message.
+- **Documents touched:** `docs/handoff-E1-14.md` and this log. `AGENTS.md` and `docs/BACKLOG.md`
+  were deliberately left unchanged: E1-14 stays implemented on open pull request #66.
+- **Verification:** shared ktlint/detekt passed; `:shared:testAndroidHostTest` and
+  `:shared:iosSimulatorArm64Test` were forced to re-execute and reported 162 Android-host and 169
+  Native tests with zero failures and zero skips; the full non-instrumented `AGENTS.md` command
+  passed. The corrected diagnostic was proven by temporarily negating the line-104 predicate,
+  capturing `Timed out after 5s waiting for vehicle outbox snapshot saved. Last value:
+  VehicleFormUiState(...)`, restoring the source and re-running the test green.
+- **Follow-ups / risks:** No behavioral change and no RED test required; isolated in a single
+  `refactor(E1-14): correct expectation descriptions in the vehicle form fixtures` commit. PR #66
+  stays open and is not merged.
+
+### 2026-09-11 — E1-14 second review pass
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the owner's second review pass on pull request #66. Removed three dead
+  imports (`FlowExpectation.kt`, `FuelEntryStateHolderTest.kt`); joined the eleven strengthened
+  completion predicates onto single lines across four test files; moved the shared
+  `assertQueuedGraphWork` assertion into `GraphTestDependencies.kt` so the fuel wrapper test proves
+  delegation instead of duplicating the scheduling check; imported `currentCoroutineContext`
+  explicitly; rewrote the handoff "Owner Review Follow-up" section as past-tense evidence; and
+  corrected the `AGENTS.md` fixture sentence from "deterministic fuel fixture" to the shared
+  confined graph fixture.
+- **Why:** The second pass found no correctness defect. It removed dead imports the compiler and
+  ktlint do not flag, eliminated gratuitous line breaks reintroduced by the stronger predicates,
+  removed a near-verbatim duplicated assertion, and separated recorded evidence from outstanding
+  instructions so a later reader cannot mistake a record for a task.
+- **Documents touched:** `AGENTS.md`, `docs/handoff-E1-14.md`, this log.
+- **Verification:** shared ktlint and detekt passed; a forced `--rerun-tasks` run of both shared
+  targets reported 162 Android-host and 169 Native tests with zero failures and zero skips; the full
+  non-instrumented `AGENTS.md` command passed (638 actionable tasks, 39 executed). No production
+  code, schema, contract, architecture rule, decision ID, library or version changed.
+- **Follow-ups / risks:** PR #66 was pushed, its body refreshed to the final state, and every run
+  whose code matched the branch passed all ten required checks (runs 34592642389, 34594176104 and
+  34599603577). One intermediate documentation-only run, 34595706047, hit the pre-existing `E1-17`
+  iOS onboarding UI flake on `ios-simulator-build` (`OnboardingFlowUITests.swift:86/:36` and, on
+  rerun, `VehicleAndFuelFlowUITests.swift:214`); the same failures exist on `main` (run 34221494080)
+  and the E1-14 diff touches no file under `iosApp/`, so it is not a regression from this story.
+  The PR stays open and is not merged. The Kotlin/Native volatile publication guarantee still rests
+  on the compiler honouring `@Volatile` and has no executable guard, as recorded in the handoff. The
+  cleanup join remains intentionally unbounded to preserve E1-12 database lifetime ordering.
+
+### 2026-09-11 — E1-14 review follow-up corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Addressed all six follow-up findings on pull request #66. Shared graph fixtures
+  now use the caller test scheduler across every editable graph-backed case; expectation diagnostics
+  publish their last emission through a volatile holder; upstream cancellation is diagnosed without
+  cancelling the caller; short predicates and the helper layout were cleaned up. Ordered collector
+  cancellation and joining remains documented as an intentional teardown guarantee with an explicit
+  residual risk under extreme starvation or non-cooperative cleanup.
+- **Why:** The review found no product-correctness blocker, but identified scheduler races,
+  cross-thread diagnostic publication, cancellation ambiguity and readability gaps that could make a
+  red required job difficult to interpret.
+- **Documents touched:** `AGENTS.md`, `docs/handoff-E1-14.md`, this log.
+- **Verification:** RED/GREEN/REFACTOR commits are preserved for each behavioral follow-up. The full
+  non-instrumented command passed. Thirty fresh direct repetitions per target passed, each with 162
+  Android-host and 169 Native-simulator tests, zero failures and zero skips. One preliminary wrapper
+  lock attempt exited before tests and is retained in the handoff as an infrastructure attempt.
+- **Follow-ups / risks:** PR #66 remains open for owner review and required CI; merge is not performed.
+  The cleanup join remains intentionally unbounded to preserve E1-12 database lifetime ordering.
+  The branch push succeeded, but refreshing the PR body was blocked by the GitHub API sandbox and
+  automatic approval usage limit; the exact command and prepared body are recorded in the handoff.
+
+### 2026-09-11 — E1-14 bounded state expectations and deterministic fuel test fixtures
+
+- **Type:** story
+- **Story / Decision:** `E1-14`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** implemented a reusable, diagnostic real-time bound for 37 graph-backed flow
+  waits in shared tests. Fuel graph fixtures now use StandardTestDispatcher on the caller test
+  scheduler, preventing unconfined initialization from racing test-thread form edits. Implementation
+  is on [pull request #66](https://github.com/davidru85/carApp/pull/66) for review; the story is not
+  complete until merge.
+- **Why:** the bounded helper exposed two historical lost-input failures that generic runTest
+  timeouts had hidden. An UnconfinedTestDispatcher experiment remained flaky; a second deterministic
+  RED/GREEN/REFACTOR cycle established queued fixture execution instead. Production code is unchanged.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-14.md`, this log.
+- **Verification:** both RED phases compiled and failed on the intended assertions. Final code
+  passed 30 forced full shared-suite repetitions on Apple Silicon per target: 157 Android-host
+  tests and 165 Native-simulator tests per run, zero failures/skips. The full non-instrumented
+  repository command passed, including coverage, architecture, contracts, lint and Android assembly.
+  The handoff preserves the failed preliminary attempts and the audit of all graph-mounting files.
+- **Follow-ups / risks:** owner review is required for the AGENTS.md status update; CI and merge
+  remain PR steps. E1-17 and the independent production graph-close follow-up are not changed.
+
 ### 2026-09-10 — E2-05 closes the departure process-death window, superseding D-163
 
 - **Type:** decision
