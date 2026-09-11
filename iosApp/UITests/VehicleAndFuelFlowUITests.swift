@@ -1,5 +1,40 @@
 import XCTest
 
+private enum OnboardingWaitAction: Equatable {
+    case complete
+    case tapGuest
+    case tapAddVehicle
+    case wait
+}
+
+private struct OnboardingWaitState {
+    private var startedGuestSession = false
+    private var requestedVehicleCreation = false
+
+    mutating func nextAction(
+        vehicleNameExists: Bool,
+        guestAvailable: Bool,
+        addVehicleAvailable: Bool
+    ) -> OnboardingWaitAction {
+        if vehicleNameExists {
+            return .complete
+        }
+        if !startedGuestSession, guestAvailable {
+            startedGuestSession = true
+            return .tapGuest
+        }
+        if !requestedVehicleCreation, addVehicleAvailable {
+            requestedVehicleCreation = true
+            return .tapAddVehicle
+        }
+        return .wait
+    }
+
+    func timeoutMessage() -> String {
+        "Onboarding did not reach vehicle creation before the timeout"
+    }
+}
+
 final class VehicleAndFuelFlowUITests: XCTestCase {
     private let timeout: TimeInterval = 10
 
@@ -190,27 +225,62 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         )
     }
 
+    func testOnboardingWaitRetriesAnAffordanceThatRemainsAvailable() {
+        var state = OnboardingWaitState()
+
+        XCTAssertEqual(
+            state.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false),
+            .tapGuest
+        )
+        XCTAssertEqual(
+            state.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false),
+            .tapGuest,
+            "A visible and hittable affordance must be retried after an ineffective tap"
+        )
+    }
+
+    func testOnboardingWaitNamesGuestSessionTimeout() {
+        var guestState = OnboardingWaitState()
+        _ = guestState.nextAction(vehicleNameExists: false, guestAvailable: true, addVehicleAvailable: false)
+        XCTAssertEqual(
+            guestState.timeoutMessage(),
+            "Guest session did not reach the vehicle list after retrying welcome_guest for 60 seconds"
+        )
+    }
+
+    func testOnboardingWaitNamesVehicleCreationTimeout() {
+        var vehicleState = OnboardingWaitState()
+        _ = vehicleState.nextAction(vehicleNameExists: false, guestAvailable: false, addVehicleAvailable: true)
+        XCTAssertEqual(
+            vehicleState.timeoutMessage(),
+            "Vehicle creation did not open after retrying add_vehicle for 10 seconds"
+        )
+    }
+
     private func openVehicleCreation(in app: XCUIApplication) {
         let guestButton = app.buttons["welcome_guest"]
         let addVehicleButton = app.buttons["add_vehicle"]
         let vehicleNameField = app.textFields["vehicle_name"]
         let deadline = Date().addingTimeInterval(30)
-        var startedGuestSession = false
-        var requestedVehicleCreation = false
+        var waitState = OnboardingWaitState()
 
         while Date() < deadline {
-            if vehicleNameField.exists {
+            switch waitState.nextAction(
+                vehicleNameExists: vehicleNameField.exists,
+                guestAvailable: guestButton.exists && guestButton.isHittable,
+                addVehicleAvailable: addVehicleButton.exists && addVehicleButton.isHittable
+            ) {
+            case .complete:
                 return
-            }
-            if !startedGuestSession, guestButton.exists, guestButton.isHittable {
+            case .tapGuest:
                 guestButton.tap()
-                startedGuestSession = true
-            } else if !requestedVehicleCreation, addVehicleButton.exists, addVehicleButton.isHittable {
+            case .tapAddVehicle:
                 addVehicleButton.tap()
-                requestedVehicleCreation = true
+            case .wait:
+                break
             }
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         }
-        XCTFail("Onboarding did not reach vehicle creation before the timeout")
+        XCTFail(waitState.timeoutMessage())
     }
 }
