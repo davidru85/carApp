@@ -56,13 +56,14 @@ final class CarAppKeychainPersistenceUITests: XCTestCase {
             isComplete: { diagnosticsButton.exists },
             handleVehicleForm: {
                 guard !createdFirstVehicle, vehicleNameField.exists else {
-                    return
+                    return false
                 }
                 createdFirstVehicle = true
                 vehicleNameField.tap()
                 vehicleNameField.typeText("Keychain persistence vehicle")
                 XCTAssertTrue(saveVehicleButton.isEnabled)
                 saveVehicleButton.tap()
+                return true
             }
         )
     }

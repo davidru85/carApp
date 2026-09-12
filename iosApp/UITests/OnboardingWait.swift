@@ -30,12 +30,13 @@ enum OnboardingTapTarget: CaseIterable, Equatable {
     }
 }
 
-/// The onboarding segment the wait is currently in. It only ever moves forward.
+/// The onboarding segment the wait is currently in. It only ever moves forward and it stays on the
+/// affordance ladder: seeing the vehicle form is a diagnostic observation tracked separately, not a
+/// terminal step that could suppress a later retry.
 enum OnboardingWaitStep: Hashable, Comparable {
     case waitingForAffordance
     case startingGuestSession
     case openingVehicleCreation
-    case submittingVehicleForm
 
     /// Monotonic rank used to reject a backwards transition.
     private var rank: Int {
@@ -46,8 +47,6 @@ enum OnboardingWaitStep: Hashable, Comparable {
             return 1
         case .openingVehicleCreation:
             return 2
-        case .submittingVehicleForm:
-            return 3
         }
     }
 
@@ -141,13 +140,23 @@ struct OnboardingWaitState {
     private(set) var step = OnboardingWaitStep.waitingForAffordance
     private(set) var guestTapAttempts = 0
     private(set) var addVehicleTapAttempts = 0
-    private(set) var vehicleFormSubmissionAttempts = 0
+    private(set) var vehicleFormVisibleIterations = 0
+    private(set) var vehicleFormSubmissions = 0
 
-    /// Records that the vehicle form was visible and the handler ran. The form never advances the
-    /// step through an affordance tap, so without this the timeout would blame the guest step.
-    mutating func noteVehicleFormVisible() {
-        vehicleFormSubmissionAttempts += 1
-        step = OnboardingWaitStep.submittingVehicleForm
+    /// True once the vehicle form has been observed at least once.
+    var vehicleFormWasSeen: Bool { vehicleFormVisibleIterations > 0 }
+
+    /// Records that the vehicle form was visible on this iteration. `handlerActed` is true only when
+    /// the caller's handler actually performed a submission; the two counts are kept separate
+    /// because a self-latching handler leaves the form visible for many iterations after one real
+    /// submission, and counting iterations as submissions would repeat the inflated-counter defect
+    /// this story already diagnosed for `guestTapAttempts`. Seeing the form is a diagnostic
+    /// observation: it does not move `step`, so the affordance-retry policy still runs.
+    mutating func noteVehicleFormVisible(handlerActed: Bool) {
+        vehicleFormVisibleIterations += 1
+        if handlerActed {
+            vehicleFormSubmissions += 1
+        }
     }
 
     /// Advances the step only forward, so a reappearing affordance cannot reset the step (and with
@@ -184,13 +193,15 @@ struct OnboardingWaitState {
                 guestTapAttempts += 1
                 return .tap(.guest, at: position)
             }
-        case .submittingVehicleForm:
-            break
         }
         return .wait
     }
 
     var timeoutMessage: String {
+        if vehicleFormWasSeen {
+            return "The vehicle form stayed visible for \(vehicleFormVisibleIterations) iteration(s) " +
+                "after \(vehicleFormSubmissions) real submission(s) and never dismissed"
+        }
         switch step {
         case .waitingForAffordance:
             return "Onboarding did not expose an enabled welcome_guest or add_vehicle affordance before the timeout"
@@ -198,9 +209,6 @@ struct OnboardingWaitState {
             return "Guest session did not reach the vehicle list before the timeout"
         case .openingVehicleCreation:
             return "Vehicle creation did not open before the timeout"
-        case .submittingVehicleForm:
-            return "The vehicle form was visible but never dismissed after " +
-                "\(vehicleFormSubmissionAttempts) submission attempt(s)"
         }
     }
 }
@@ -212,15 +220,16 @@ struct OnboardingWaitReport {
     let stepDurations: [OnboardingWaitStep: TimeInterval]
     let guestTapAttempts: Int
     let addVehicleTapAttempts: Int
-    let vehicleFormSubmissionAttempts: Int
+    let vehicleFormVisibleIterations: Int
+    let vehicleFormSubmissions: Int
 
     var summary: String {
         "E1-17 onboarding reached \(destination) in \(Self.format(total)) seconds " +
             "(waitingForAffordance=\(Self.format(duration(.waitingForAffordance))) " +
             "startingGuestSession=\(Self.format(duration(.startingGuestSession))) " +
             "openingVehicleCreation=\(Self.format(duration(.openingVehicleCreation))) " +
-            "submittingVehicleForm=\(Self.format(duration(.submittingVehicleForm))) " +
-            "vehicleFormSubmissions=\(vehicleFormSubmissionAttempts)) " +
+            "vehicleFormVisibleIterations=\(vehicleFormVisibleIterations) " +
+            "vehicleFormSubmissions=\(vehicleFormSubmissions)) " +
             "after \(guestTapAttempts) welcome_guest and \(addVehicleTapAttempts) add_vehicle tap attempts"
     }
 
@@ -240,13 +249,14 @@ struct OnboardingWaitReport {
 /// `handleVehicleForm` is optional and lets a caller that must also create the first vehicle fill
 /// and submit the mandatory form instead of waiting for it. It runs whenever the vehicle-name field
 /// is present and the destination has not been reached, and is responsible for its own one-shot
-/// latch if it must only act once.
+/// latch if it must only act once. It returns `true` only when it actually performed a submission,
+/// so the two form counters distinguish iterations from real submissions.
 @discardableResult
 func waitForOnboarding(
     in app: XCUIApplication,
     destination: String,
     isComplete: () -> Bool,
-    handleVehicleForm: (() -> Void)? = nil,
+    handleVehicleForm: (() -> Bool)? = nil,
     absoluteLimit: TimeInterval = OnboardingWaitBudget.absoluteLimit,
     file: StaticString = #filePath,
     line: UInt = #line
@@ -263,26 +273,12 @@ func waitForOnboarding(
     ) {
         if isComplete() {
             stepDurations[waitState.step, default: 0] += Date().timeIntervalSince(stepStartedAt)
-            let report = OnboardingWaitReport(
-                destination: destination,
-                total: Date().timeIntervalSince(startedAt),
-                stepDurations: stepDurations,
-                guestTapAttempts: waitState.guestTapAttempts,
-                addVehicleTapAttempts: waitState.addVehicleTapAttempts,
-                vehicleFormSubmissionAttempts: waitState.vehicleFormSubmissionAttempts
-            )
-            print(report.summary)
-            return report
+            return finishOnboarding(destination: destination, startedAt: startedAt, stepDurations: stepDurations, waitState: waitState)
         }
 
         if let handleVehicleForm, app.textFields[OnboardingIdentifiers.vehicleName].exists {
-            let previousStep = waitState.step
-            waitState.noteVehicleFormVisible()
-            if waitState.step != previousStep {
-                stepDurations[previousStep, default: 0] += Date().timeIntervalSince(stepStartedAt)
-                stepStartedAt = Date()
-            }
-            handleVehicleForm()
+            let acted = handleVehicleForm()
+            waitState.noteVehicleFormVisible(handlerActed: acted)
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
             continue
         }
@@ -311,18 +307,38 @@ func waitForOnboarding(
     XCTFail(
         "\(waitState.timeoutMessage) within the \(OnboardingWaitReport.format(absoluteLimit))-second absolute cap. " +
             "Last step: \(waitState.step). Vehicle form visible at timeout: \(formWasVisible). " +
-            "handleVehicleForm ran \(waitState.vehicleFormSubmissionAttempts) time(s).",
+            "Vehicle form iterations: \(waitState.vehicleFormVisibleIterations), " +
+            "real submissions: \(waitState.vehicleFormSubmissions).",
         file: file,
         line: line
     )
-    return OnboardingWaitReport(
+    return finishOnboarding(
+        destination: destination,
+        startedAt: startedAt,
+        stepDurations: stepDurations,
+        waitState: waitState
+    )
+}
+
+/// Builds and prints the completion report. Shared by the success and timeout exits so both carry
+/// the same measurements.
+private func finishOnboarding(
+    destination: String,
+    startedAt: Date,
+    stepDurations: [OnboardingWaitStep: TimeInterval],
+    waitState: OnboardingWaitState
+) -> OnboardingWaitReport {
+    let report = OnboardingWaitReport(
         destination: destination,
         total: Date().timeIntervalSince(startedAt),
         stepDurations: stepDurations,
         guestTapAttempts: waitState.guestTapAttempts,
         addVehicleTapAttempts: waitState.addVehicleTapAttempts,
-        vehicleFormSubmissionAttempts: waitState.vehicleFormSubmissionAttempts
+        vehicleFormVisibleIterations: waitState.vehicleFormVisibleIterations,
+        vehicleFormSubmissions: waitState.vehicleFormSubmissions
     )
+    print(report.summary)
+    return report
 }
 
 /// The accessibility identifiers the shared onboarding wait drives.
