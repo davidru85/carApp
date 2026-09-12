@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.integration.firebase.firestore
 
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -131,13 +132,172 @@ class FirebaseRemoteSyncSourceTest {
             )
             assertEquals("users/anonymous-owner/fuelEntries", gateway.queries.single().path)
         }
+
+    @Test
+    fun unauthenticatedPushRefreshesTheTokenAndRetriesOnce() =
+        runTest {
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            val gateway =
+                RecordingFirestoreGateway(
+                    serverUpdatedAt = serverUpdatedAt,
+                    writeFailures = mutableListOf(FirestoreGatewayFailure.UNAUTHENTICATED),
+                )
+            val source = FirebaseRemoteSyncSource(gateway)
+            val snapshot = vehicleSnapshot()
+
+            val result = source.pushSnapshot(OwnerId("anonymous-owner"), snapshot)
+
+            assertEquals(
+                RemoteAck(snapshot.entityType, snapshot.entityId, serverUpdatedAt),
+                assertIs<Outcome.Ok<RemoteAck>>(result).value,
+            )
+            assertEquals(1, gateway.tokenRefreshCount)
+            assertEquals(2, gateway.writes.size)
+        }
+
+    @Test
+    fun secondUnauthenticatedPushReturnsUnauthenticatedWithoutAnotherRetry() =
+        runTest {
+            val gateway =
+                RecordingFirestoreGateway(
+                    writeFailures =
+                        mutableListOf(
+                            FirestoreGatewayFailure.UNAUTHENTICATED,
+                            FirestoreGatewayFailure.UNAUTHENTICATED,
+                        ),
+                )
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result = source.pushSnapshot(OwnerId("anonymous-owner"), vehicleSnapshot())
+
+            assertEquals(
+                RemoteError.Unauthenticated,
+                assertIs<Outcome.Err<RemoteError>>(result).error,
+            )
+            assertEquals(1, gateway.tokenRefreshCount)
+            assertEquals(2, gateway.writes.size)
+        }
+
+    @Test
+    fun unauthenticatedPullRefreshesTheTokenAndRetriesOnce() =
+        runTest {
+            val entityId = EntityId("123e4567-e89b-42d3-a456-426614174000")
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            val gateway =
+                RecordingFirestoreGateway(
+                    documents = listOf(vehicleDocument(entityId.value, serverUpdatedAt)),
+                    queryFailures = mutableListOf(FirestoreGatewayFailure.UNAUTHENTICATED),
+                )
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result =
+                source.pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor(Instant.fromEpochMilliseconds(0), null),
+                    limit = 50,
+                )
+
+            assertEquals(
+                entityId,
+                assertIs<Outcome.Ok<RemotePage>>(result)
+                    .value
+                    .items
+                    .single()
+                    .entityId,
+            )
+            assertEquals(1, gateway.tokenRefreshCount)
+            assertEquals(2, gateway.queries.size)
+        }
+
+    @Test
+    fun firestoreFailuresMapToTheExactRemoteErrorLeaves() =
+        runTest {
+            val cases =
+                listOf(
+                    FirestoreGatewayFailure.UNAVAILABLE to RemoteError.Unavailable,
+                    FirestoreGatewayFailure.DEADLINE_EXCEEDED to RemoteError.DeadlineExceeded,
+                    FirestoreGatewayFailure.PERMISSION_DENIED to RemoteError.PermissionDenied,
+                    FirestoreGatewayFailure.INVALID_ARGUMENT to RemoteError.InvalidArgument,
+                    FirestoreGatewayFailure.NOT_FOUND to RemoteError.NotFound,
+                    FirestoreGatewayFailure.UNKNOWN to RemoteError.Unknown,
+                )
+
+            cases.forEach { (failure, expected) ->
+                val gateway = RecordingFirestoreGateway(writeFailures = mutableListOf(failure))
+
+                val result =
+                    FirebaseRemoteSyncSource(gateway)
+                        .pushSnapshot(OwnerId("anonymous-owner"), vehicleSnapshot())
+
+                assertEquals(expected, assertIs<Outcome.Err<RemoteError>>(result).error)
+            }
+        }
+
+    @Test
+    fun emptyPullKeepsTheInputCursorAndReportsNoMoreItems() =
+        runTest {
+            val cursor =
+                RemoteCursor(
+                    lastServerUpdatedAt = Instant.fromEpochMilliseconds(1_700_000_030_000L),
+                    lastDocumentId = EntityId("123e4567-e89b-42d3-a456-426614174000"),
+                )
+
+            val page =
+                assertIs<Outcome.Ok<RemotePage>>(
+                    FirebaseRemoteSyncSource(RecordingFirestoreGateway()).pullChanges(
+                        ownerId = OwnerId("anonymous-owner"),
+                        entityType = EntityType.VEHICLE,
+                        cursor = cursor,
+                        limit = 200,
+                    ),
+                ).value
+
+            assertEquals(emptyList(), page.items)
+            assertEquals(cursor, page.nextCursor)
+            assertEquals(false, page.hasMore)
+        }
+
+    @Test
+    fun nonEmptyPullUsesTheLastItemAsCursorWhenTheFirstItemSharesTheInputTimestamp() =
+        runTest {
+            val sharedTimestamp = Instant.fromEpochMilliseconds(1_700_000_030_000L)
+            val inputId = EntityId("123e4567-e89b-42d3-a456-426614174000")
+            val firstId = EntityId("123e4567-e89b-42d3-a456-426614174001")
+            val lastId = EntityId("123e4567-e89b-42d3-a456-426614174002")
+            val gateway =
+                RecordingFirestoreGateway(
+                    documents =
+                        listOf(
+                            vehicleDocument(firstId.value, sharedTimestamp),
+                            vehicleDocument(lastId.value, sharedTimestamp),
+                        ),
+                )
+
+            val page =
+                assertIs<Outcome.Ok<RemotePage>>(
+                    FirebaseRemoteSyncSource(gateway).pullChanges(
+                        ownerId = OwnerId("anonymous-owner"),
+                        entityType = EntityType.VEHICLE,
+                        cursor = RemoteCursor(sharedTimestamp, inputId),
+                        limit = 2,
+                    ),
+                ).value
+
+            assertEquals(RemoteCursor(sharedTimestamp, lastId), page.nextCursor)
+            assertEquals(true, page.hasMore)
+            assertEquals(inputId.value, gateway.queries.single().afterDocumentId)
+        }
 }
 
 internal class RecordingFirestoreGateway(
     private val serverUpdatedAt: Instant = Instant.fromEpochMilliseconds(0),
     private val documents: List<FirestoreDocument> = emptyList(),
+    private val writeFailures: MutableList<FirestoreGatewayFailure> = mutableListOf(),
+    private val queryFailures: MutableList<FirestoreGatewayFailure> = mutableListOf(),
 ) : FirestoreGateway {
     var memoryOnlyConfigurationCount = 0
+    var tokenRefreshCount = 0
     val writes = mutableListOf<FirestoreWrite>()
     val queries = mutableListOf<FirestoreQuery>()
 
@@ -147,13 +307,33 @@ internal class RecordingFirestoreGateway(
 
     override suspend fun writeDocument(write: FirestoreWrite): Instant {
         writes += write
+        writeFailures.removeFirstOrNull()?.let { failure ->
+            throw FirestoreGatewayException(failure)
+        }
         return serverUpdatedAt
     }
 
     override suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument> {
         queries += query
+        queryFailures.removeFirstOrNull()?.let { failure ->
+            throw FirestoreGatewayException(failure)
+        }
         return documents
     }
+
+    override suspend fun refreshAuthToken() {
+        tokenRefreshCount += 1
+    }
+}
+
+private fun vehicleSnapshot(): EntitySnapshot {
+    val entityId = EntityId("123e4567-e89b-42d3-a456-426614174000")
+    return EntitySnapshot(
+        entityType = EntityType.VEHICLE,
+        entityId = entityId,
+        schemaVersion = 1,
+        json = vehicleJson(entityId.value),
+    )
 }
 
 private fun vehicleDocument(

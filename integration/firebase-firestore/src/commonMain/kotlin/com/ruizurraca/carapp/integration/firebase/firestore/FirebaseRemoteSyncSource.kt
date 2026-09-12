@@ -116,7 +116,23 @@ internal interface FirestoreGateway {
     suspend fun writeDocument(write: FirestoreWrite): Instant
 
     suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument>
+
+    suspend fun refreshAuthToken() = Unit
 }
+
+internal enum class FirestoreGatewayFailure {
+    UNAVAILABLE,
+    DEADLINE_EXCEEDED,
+    PERMISSION_DENIED,
+    UNAUTHENTICATED,
+    INVALID_ARGUMENT,
+    NOT_FOUND,
+    UNKNOWN,
+}
+
+internal class FirestoreGatewayException(
+    val failure: FirestoreGatewayFailure,
+) : RuntimeException()
 
 internal data class FirestoreWrite(
     val path: String,
