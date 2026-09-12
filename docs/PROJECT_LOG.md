@@ -60,8 +60,9 @@
 - **Documents touched:** `docs/handoff-E1-17.md`, this log.
 - **Verification:** Three RED cycles produced 4, 4 and 2 intended failures against the evolving
   policy; the final suite passes 20/20. The affected end-to-end tests passed locally on an erased
-  simulator with a pinned device id, and the complete non-instrumented command passed. Repeated
-  `ios-simulator-build` runs for the final head are recorded in `docs/handoff-E1-17.md`.
+  simulator with a pinned device id, and the complete non-instrumented command passed.
+  `ios-simulator-build` passed 3 of 3 consecutive runs on the final head `2ebd8a1` (run
+  `34690649797` plus two same-head reruns); run `34689361543` was also green on head `942df87`.
 - **Follow-ups / risks:** The stale 2026-09-11 story entry below still says "policy GREEN passed
   9/9", "four intended failures" and head `4ac8e85`; those figures are superseded by this entry and
   by `docs/handoff-E1-17.md`. `CarAppKeychainPersistenceUITests` is the only caller that passes

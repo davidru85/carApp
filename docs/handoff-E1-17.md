@@ -57,14 +57,12 @@
   catchability claim.
 - Verification evidence and known failures: twenty policy tests pass on a booted iOS 26.5
   simulator; the affected end-to-end tests pass locally on an erased simulator with a pinned device
-  id (`56F1AD0C-42E0-499C-9469-DC91CDD8AD21`); the full non-instrumented command passes. Repeated
-  `ios-simulator-build` runs on the current head are recorded under Verification Run once they
-  finish.
+  id (`56F1AD0C-42E0-499C-9469-DC91CDD8AD21`); the full non-instrumented command passes; and
+  `ios-simulator-build` passed 3 of 3 consecutive runs on the current head `2ebd8a1`.
 - Open decisions or blockers: option (b), a Debug-only launch-environment seam to remove the real
   Firebase anonymous sign-in from the UI tests, requires an owner decision and is recorded under
   "Owner Decision Required" below. No other blocker.
-- Exact next step: record repeated `ios-simulator-build` runs on the new head, then await the
-  owner's manual review; the agent does not merge the pull request.
+- Exact next step: await the owner's manual review; the agent does not merge the pull request.
 
 ## Owner Decision Required (escalated, not taken)
 
@@ -302,9 +300,13 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   passed all ten required checks; onboarding reached its destinations in 3.838–7.860 seconds.
 - `ios-simulator-build` on the second owner-review head `942df87`: **green**. Run `34689361543`
   passed all ten required checks.
-- Repeated `ios-simulator-build` runs on the third owner-review head (the current iOS binary): the
-  count is recorded here once the runs finish. The head changes iOS test source, so it cannot
-  inherit the `4ac8e85`, `7a65d03` or `942df87` results.
+- Repeated `ios-simulator-build` runs on the third owner-review head `2ebd8a1`: **3 of 3**. Run
+  `34690649797` passed on its first execution and on two same-head reruns, all three completing the
+  full iOS unit and UI suite with zero failures. The onboarding waits on the first execution reached
+  their destinations in 2.439–7.302 seconds with one guest and one add-vehicle tap attempt, and the
+  new `vehicleFormVisibleIterations`/`vehicleFormSubmissions` counters stayed at 0 because no run
+  left the form open. The head changes iOS test source, so it does not inherit the `4ac8e85`,
+  `7a65d03` or `942df87` results.
 
 ## Contract Impact
 
