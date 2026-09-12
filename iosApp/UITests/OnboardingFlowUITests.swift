@@ -3,6 +3,10 @@ import XCTest
 final class OnboardingFlowUITests: XCTestCase {
     private let timeout: TimeInterval = 30
 
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
     func testIOSWelcomeOffersExactlyAppleGoogleAndGuest() {
         let app = XCUIApplication()
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
