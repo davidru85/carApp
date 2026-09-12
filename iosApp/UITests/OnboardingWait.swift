@@ -57,30 +57,35 @@ struct OnboardingTapPosition: Equatable {
         self.dy = dy
     }
 
-    init?(element: XCUIElement, in app: XCUIApplication) {
-        // `isEnabled` and `isHittable` raise when there is no matching snapshot, so `exists` must
-        // short-circuit before either is read.
-        let exists = element.exists
-        guard exists else {
-            return nil
-        }
-        guard OnboardingTapPosition.isAvailable(exists: exists, isEnabled: element.isEnabled, isHittable: element.isHittable) else {
-            return nil
-        }
-        let appFrame = app.frame
-        let elementFrame = element.frame
-        guard appFrame.width > 0, appFrame.height > 0, !elementFrame.isEmpty else {
-            return nil
-        }
-        self.init(
-            dx: (elementFrame.midX - appFrame.minX) / appFrame.width,
-            dy: (elementFrame.midY - appFrame.minY) / appFrame.height
-        )
-    }
-
     /// Pure availability policy, separated so the disabled-element exclusion is directly testable.
     static func isAvailable(exists: Bool, isEnabled: Bool, isHittable: Bool) -> Bool {
         exists && isEnabled && isHittable
+    }
+
+    /// Resolves the element to a position, or `nil` when XCTest cannot take a snapshot. Reading
+    /// several properties separately leaves windows in which a SwiftUI transition removes the
+    /// element and XCTest fails with "Failed to get matching snapshot"; `exists` short-circuits and
+    /// a single `snapshot()` supplies enabled/frame while hittability is read once, all inside a
+    /// throwing scope so a vanished element yields `nil` instead of failing the test.
+    static func resolve(_ element: XCUIElement, in app: XCUIApplication) -> OnboardingTapPosition? {
+        guard element.exists else {
+            return nil
+        }
+        guard let snapshot = try? element.snapshot(), let hittable = try? element.isHittable else {
+            return nil
+        }
+        guard isAvailable(exists: true, isEnabled: snapshot.isEnabled, isHittable: hittable) else {
+            return nil
+        }
+        let appFrame = app.frame
+        let elementFrame = snapshot.frame
+        guard appFrame.width > 0, appFrame.height > 0, !elementFrame.isEmpty else {
+            return nil
+        }
+        return OnboardingTapPosition(
+            dx: (elementFrame.midX - appFrame.minX) / appFrame.width,
+            dy: (elementFrame.midY - appFrame.minY) / appFrame.height
+        )
     }
 
     func tap(in app: XCUIApplication) {
@@ -89,12 +94,16 @@ struct OnboardingTapPosition: Equatable {
 }
 
 /// Absolute wall-clock budget for a single onboarding wait. It does not restart on a step change,
-/// so a reappearing affordance cannot push the total runtime out. CI run `34641152156` measured the
-/// guest step alone at 62.090 seconds on the pre-fix helper; this cap is that worst case plus a
-/// stated margin (see `docs/handoff-E1-17.md`). The story's acceptance criterion requires the
-/// deadline to rest on a CI measurement, so it MUST NOT be tightened without new CI evidence.
+/// so a reappearing affordance cannot push the total runtime out.
+///
+/// CI evidence behind the value: the pre-fix helper reached the vehicle list after a guest step
+/// measured at 62.090 seconds (run `34641152156`), and a same-head rerun of the corrected helper
+/// exceeded a 120-second cap on a rate-limited runner. 180 seconds is the observed successful worst
+/// case plus a large margin. It is a pragmatic bound, not a guarantee: the real Firebase anonymous
+/// sign-in remains in the path, which is why the Debug-only seam is recommended to the owner in
+/// `docs/handoff-E1-17.md`.
 enum OnboardingWaitBudget {
-    static let absoluteLimit: TimeInterval = 120
+    static let absoluteLimit: TimeInterval = 180
 
     static func hasReachedDeadline(startedAt: Date, now: Date) -> Bool {
         now.timeIntervalSince(startedAt) >= absoluteLimit
@@ -225,7 +234,7 @@ func waitForOnboarding(
 
         var positions: [OnboardingTapTarget: OnboardingTapPosition] = [:]
         for target in OnboardingTapTarget.allCases {
-            positions[target] = OnboardingTapPosition(element: target.element(in: app), in: app)
+            positions[target] = OnboardingTapPosition.resolve(target.element(in: app), in: app)
         }
 
         let previousStep = waitState.step

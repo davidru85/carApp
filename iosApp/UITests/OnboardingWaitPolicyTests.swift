@@ -79,9 +79,10 @@ final class OnboardingWaitPolicyTests: XCTestCase {
     /// transitions, so total runtime is bounded.
     func testOnboardingAbsoluteCapDoesNotResetOnStepChange() {
         let start = Date(timeIntervalSince1970: 1_000_000)
-        XCTAssertFalse(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(119.999)))
-        XCTAssertTrue(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(120)))
-        XCTAssertEqual(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(500)), true)
+        let limit = OnboardingWaitBudget.absoluteLimit
+        XCTAssertFalse(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(limit - 0.001)))
+        XCTAssertTrue(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(limit)))
+        XCTAssertTrue(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(limit * 4)))
     }
 
     /// The tap action must not retain an `XCUIElement` that can disappear before the tap; it carries
