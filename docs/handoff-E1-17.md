@@ -240,6 +240,15 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
 - **The flake is made rarer, not eliminated.** The real Firebase anonymous sign-in is still in the
   path, so a provider response slower than the 180-second cap can still fail the job. Option (b)
   removes that risk and is recommended to the owner.
+- **A separate, pre-existing unit-test race can still redden `ios-simulator-build`.** The first
+  documentation-only head after the implementation passed the E1-17 UI tests but failed
+  `ViewModelLifecycleTests.testFuelEntryFormViewModelModeDerivations` in `tearDown` with the
+  Kotlin/Native `AndroidxDriverConnectionPool.close() called while 2 reader connection(s) still
+  checked out` exception. That is the D-89 production graph-close race recorded in
+  `docs/handoff-E1-12.md` and `docs/handoff-E1-14.md`; the same test passed in all three green
+  implementation-head runs. It is outside E1-17 scope, which is confined to `iosApp/UITests`, and it
+  does not touch the changed helper. It is recorded here so the red job is not mistaken for an E1-17
+  regression.
 - The local partial-refuel badge assertion is outside E1-17 scope. If it reproduces on CI it needs
   classification rather than absorption.
 - Local CoreSimulator intermittently refused to start the XCUITest runner as `Busy`; restarting the
