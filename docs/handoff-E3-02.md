@@ -37,27 +37,31 @@
 
 - Date: 2026-09-12
 - Branch and base: `story/E3-02-firestore-remote-sync-source` from `origin/main` at `12c12c7`.
-- Current phase and latest commit: RED complete and not yet committed; latest commit is base
-  `12c12c7`.
-- Push and pull-request status: branch is local only; no pull request exists.
-- Completed since the previous checkpoint: added focused retry, retry-ceiling, exact error-mapping,
-  empty-page and shared-timestamp cursor tests; added the minimal gateway failure/refresh test seam;
-  and added the resumed-cycle Firestore emulator test.
+- Current phase and latest commit: GREEN complete and not yet committed; latest commit is RED
+  `0dfa7a2`.
+- Push and pull-request status: RED is pushed to
+  `origin/story/E3-02-firestore-remote-sync-source`; no pull request exists.
+- Completed since the previous checkpoint: committed and pushed RED; added one forced Firebase Auth
+  token refresh after an unauthenticated Firestore operation; retried the same operation exactly
+  once; converted provider failures to an internal closed failure vocabulary; mapped that vocabulary
+  to the exact `RemoteError` leaves; and added the already accepted GitLive Firebase Auth artifact to
+  the Firestore integration module so the refresh remains inside the module.
 - Verification evidence and known failures:
-  `./gradlew :integration:firebase-firestore:testAndroidHostTest --rerun-tasks --stacktrace`
-  compiled and executed 15 tests with the intended four failures: both refresh/retry behaviors and
-  exact gateway-error mapping throw the new unhandled `FirestoreGatewayException`. The ten existing
-  tests and the two new page-semantics tests pass. `npm run test:firestore-rules` passed 156 tests,
-  including the new resumed-cycle overlap case. The first emulator attempt was blocked by sandbox
-  port permissions before any test ran; the approved local-emulator rerun passed.
-- Open decisions or blockers: none. The token-refresh composition mechanism is an implementation
-  decision to record if the RED/GREEN evidence confirms the proposed boundary.
-- Exact next step: commit and push RED, then implement the minimum gateway classification and
-  single token-refresh retry needed to make the four intended failures pass.
+  The RED run compiled and executed 15 tests with the intended four failures. The first GREEN run
+  exposed an Android-host SDK initialization failure caused by a direct enum `when`; no behavior
+  assertion failed. Mapping the provider enum through its stable `name` avoided loading Android's
+  unmocked `SparseArray`, and the repeated focused suite passed all 15 tests. The emulator suite
+  remains green at 156 tests.
+- Open decisions or blockers: none. The direct same-module GitLive Auth refresh is decision D-168
+  to record in the REFACTOR/documentation phase with its alternatives and consequences.
+- Exact next step: run focused lint and static analysis, commit and push GREEN, then refactor the
+  result mapping/classification and complete the decision and story records.
 
 ## Scope Completed
 
-- In progress.
+- Implemented the missing `Unauthenticated` recovery path with one forced token refresh and exactly
+  one operation retry.
+- Mapped the closed Firestore failure vocabulary to the exact `RemoteError` leaves.
 
 ## Acceptance Evidence
 
@@ -77,7 +81,9 @@
 
 ## Decisions Made
 
-- None yet.
+- D-168 (to be recorded): perform the forced token refresh through the same module's GitLive
+  Firebase Auth client. This keeps the complete retry protocol inside `:integration:firebase-firestore`
+  without widening the provider-free contracts or moving retry behavior into wiring.
 
 ## Verification Run
 
@@ -86,6 +92,11 @@
 - `./gradlew :integration:firebase-firestore:testAndroidHostTest --rerun-tasks --stacktrace` — RED,
   15 tests executed and four failed for the intended missing behaviors.
 - `npm run test:firestore-rules` — passed 156 tests, including the new resumed-cycle test.
+- `./gradlew :integration:firebase-firestore:testAndroidHostTest --rerun-tasks --stacktrace` — GREEN,
+  all 15 tests passed after the provider-enum host-isolation correction.
+- `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt
+  :integration:firebase-firestore:testAndroidHostTest --rerun-tasks --stacktrace` — GREEN after the
+  implementation-format correction; all focused quality and behavior checks passed.
 
 ## Contract Impact
 
@@ -94,7 +105,7 @@
 
 ## Decision Board Impact
 
-- No decision changes yet.
+- D-168 must be mirrored with its ADR during REFACTOR before the story is complete.
 
 ## Shared-Write Modules Touched
 
