@@ -124,18 +124,58 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         )
     }
 
-    /// A vehicle form that never dismisses burns the budget without ever advancing the step, so the
-    /// timeout must name that waiting state and count how many times the handler ran. Reporting the
-    /// guest step instead described the wrong failure.
+    /// A vehicle form that never dismisses burns the budget without advancing the step, so the
+    /// timeout must name the form and distinguish the iterations it stayed visible from the
+    /// submissions the handler actually performed. Reporting the guest step instead, or counting
+    /// iterations as submissions, described the wrong failure.
     func testOnboardingWaitDistinguishesAVehicleFormThatNeverDismisses() {
         var state = OnboardingWaitState()
-        state.noteVehicleFormVisible()
-        state.noteVehicleFormVisible()
+        state.noteVehicleFormVisible(handlerActed: true)
+        state.noteVehicleFormVisible(handlerActed: false)
+        state.noteVehicleFormVisible(handlerActed: false)
 
-        XCTAssertEqual(state.step, .submittingVehicleForm)
-        XCTAssertEqual(state.vehicleFormSubmissionAttempts, 2)
+        XCTAssertEqual(
+            state.step,
+            .waitingForAffordance,
+            "Seeing the form is a non-terminal observation and must not move the affordance ladder"
+        )
+        XCTAssertTrue(state.vehicleFormWasSeen)
+        XCTAssertEqual(state.vehicleFormVisibleIterations, 3)
+        XCTAssertEqual(state.vehicleFormSubmissions, 1)
         XCTAssertTrue(state.timeoutMessage.contains("vehicle form"), state.timeoutMessage)
-        XCTAssertTrue(state.timeoutMessage.contains("2"), state.timeoutMessage)
+        XCTAssertTrue(state.timeoutMessage.contains("1 real submission"), state.timeoutMessage)
+    }
+
+    /// The handler self-latches after one real submission, so the form stays visible for hundreds of
+    /// iterations. The submission count must track the handler acting, not the iteration count.
+    func testOnboardingFormSubmissionsTrackRealSubmissionsNotIterations() {
+        var state = OnboardingWaitState()
+        for _ in 0..<360 {
+            state.noteVehicleFormVisible(handlerActed: false)
+        }
+
+        XCTAssertEqual(state.vehicleFormVisibleIterations, 360)
+        XCTAssertEqual(
+            state.vehicleFormSubmissions,
+            0,
+            "Iterations where the handler did not act must not count as submissions"
+        )
+    }
+
+    /// Seeing the vehicle form is a diagnostic observation, not a terminal step. If the form
+    /// dismisses without the destination being reached (a save that fails and returns to the list),
+    /// the retry policy must still tap a reappearing `add_vehicle` rather than idling to the cap.
+    func testOnboardingWaitStillRetriesAddVehicleAfterTheFormWasSeen() {
+        let addVehiclePosition = OnboardingTapPosition(dx: 0.4, dy: 0.6)
+        var state = OnboardingWaitState()
+        state.noteVehicleFormVisible(handlerActed: true)
+
+        let action = state.nextAction(positions: [.addVehicle: addVehiclePosition])
+        XCTAssertEqual(
+            action,
+            .tap(.addVehicle, at: addVehiclePosition),
+            "A dismissed vehicle form must not strand the retry policy"
+        )
     }
 
     /// The tap action must not retain an `XCUIElement` that can disappear before the tap; it carries
