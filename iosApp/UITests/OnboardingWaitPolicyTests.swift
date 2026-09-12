@@ -7,22 +7,22 @@ final class OnboardingWaitPolicyTests: XCTestCase {
 
         var guestState = OnboardingWaitState()
         XCTAssertEqual(
-            guestState.nextAction(destinationReached: false, positions: [.guest: guestPosition]),
+            guestState.nextAction(positions: [.guest: guestPosition]),
             .tap(.guest, at: guestPosition)
         )
         XCTAssertEqual(
-            guestState.nextAction(destinationReached: false, positions: [.guest: guestPosition]),
+            guestState.nextAction(positions: [.guest: guestPosition]),
             .tap(.guest, at: guestPosition),
             "An enabled, hittable affordance must be retried after an ineffective tap"
         )
 
         var vehicleState = OnboardingWaitState()
         XCTAssertEqual(
-            vehicleState.nextAction(destinationReached: false, positions: [.addVehicle: addVehiclePosition]),
+            vehicleState.nextAction(positions: [.addVehicle: addVehiclePosition]),
             .tap(.addVehicle, at: addVehiclePosition)
         )
         XCTAssertEqual(
-            vehicleState.nextAction(destinationReached: false, positions: [.addVehicle: addVehiclePosition]),
+            vehicleState.nextAction(positions: [.addVehicle: addVehiclePosition]),
             .tap(.addVehicle, at: addVehiclePosition),
             "An enabled, hittable affordance must be retried after an ineffective tap"
         )
@@ -64,25 +64,78 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         let addVehiclePosition = OnboardingTapPosition(dx: 0.4, dy: 0.6)
         var state = OnboardingWaitState()
 
-        _ = state.nextAction(destinationReached: false, positions: [.guest: guestPosition])
+        _ = state.nextAction(positions: [.guest: guestPosition])
         XCTAssertEqual(state.step, .startingGuestSession)
 
-        _ = state.nextAction(destinationReached: false, positions: [.addVehicle: addVehiclePosition])
+        _ = state.nextAction(positions: [.addVehicle: addVehiclePosition])
         XCTAssertEqual(state.step, .openingVehicleCreation)
 
-        let action = state.nextAction(destinationReached: false, positions: [.guest: guestPosition, .addVehicle: addVehiclePosition])
+        let action = state.nextAction(positions: [.guest: guestPosition, .addVehicle: addVehiclePosition])
         XCTAssertEqual(state.step, .openingVehicleCreation, "The step must not regress to a previous step")
         XCTAssertEqual(action, .tap(.addVehicle, at: addVehiclePosition))
     }
 
     /// The budget is a single absolute interval measured from the start, independent of step
-    /// transitions, so total runtime is bounded.
+    /// transitions, so total runtime is bounded. It accepts the effective limit so the driver can
+    /// call the same function the test exercises instead of re-implementing the comparison.
     func testOnboardingAbsoluteCapDoesNotResetOnStepChange() {
         let start = Date(timeIntervalSince1970: 1_000_000)
         let limit = OnboardingWaitBudget.absoluteLimit
-        XCTAssertFalse(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(limit - 0.001)))
-        XCTAssertTrue(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(limit)))
-        XCTAssertTrue(OnboardingWaitBudget.hasReachedDeadline(startedAt: start, now: start.addingTimeInterval(limit * 4)))
+        XCTAssertFalse(
+            OnboardingWaitBudget.hasReachedDeadline(
+                effectiveLimit: limit,
+                startedAt: start,
+                now: start.addingTimeInterval(limit - 0.001)
+            )
+        )
+        XCTAssertTrue(
+            OnboardingWaitBudget.hasReachedDeadline(
+                effectiveLimit: limit,
+                startedAt: start,
+                now: start.addingTimeInterval(limit)
+            )
+        )
+        XCTAssertTrue(
+            OnboardingWaitBudget.hasReachedDeadline(
+                effectiveLimit: limit,
+                startedAt: start,
+                now: start.addingTimeInterval(limit * 4)
+            )
+        )
+    }
+
+    /// A caller-supplied effective limit is honoured, so the driver's loop condition and the test
+    /// use one implementation.
+    func testOnboardingAbsoluteCapHonoursTheEffectiveLimit() {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        XCTAssertFalse(
+            OnboardingWaitBudget.hasReachedDeadline(
+                effectiveLimit: 5,
+                startedAt: start,
+                now: start.addingTimeInterval(4.999)
+            )
+        )
+        XCTAssertTrue(
+            OnboardingWaitBudget.hasReachedDeadline(
+                effectiveLimit: 5,
+                startedAt: start,
+                now: start.addingTimeInterval(5)
+            )
+        )
+    }
+
+    /// A vehicle form that never dismisses burns the budget without ever advancing the step, so the
+    /// timeout must name that waiting state and count how many times the handler ran. Reporting the
+    /// guest step instead described the wrong failure.
+    func testOnboardingWaitDistinguishesAVehicleFormThatNeverDismisses() {
+        var state = OnboardingWaitState()
+        state.noteVehicleFormVisible()
+        state.noteVehicleFormVisible()
+
+        XCTAssertEqual(state.step, .submittingVehicleForm)
+        XCTAssertEqual(state.vehicleFormSubmissionAttempts, 2)
+        XCTAssertTrue(state.timeoutMessage.contains("vehicle form"), state.timeoutMessage)
+        XCTAssertTrue(state.timeoutMessage.contains("2"), state.timeoutMessage)
     }
 
     /// The tap action must not retain an `XCUIElement` that can disappear before the tap; it carries
@@ -92,7 +145,7 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         var waitState = OnboardingWaitState()
 
         XCTAssertEqual(
-            waitState.nextAction(destinationReached: false, positions: [.guest: guestPosition]),
+            waitState.nextAction(positions: [.guest: guestPosition]),
             .tap(.guest, at: guestPosition),
             "The tap action must not retain an XCUIElement that can disappear before the tap"
         )
@@ -100,20 +153,37 @@ final class OnboardingWaitPolicyTests: XCTestCase {
 
     func testOnboardingWaitNamesGuestSessionTimeout() {
         var guestState = OnboardingWaitState()
-        _ = guestState.nextAction(destinationReached: false, positions: [.guest: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
+        _ = guestState.nextAction(positions: [.guest: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
         XCTAssertEqual(guestState.step, .startingGuestSession)
         XCTAssertTrue(guestState.timeoutMessage.contains("vehicle list"), guestState.timeoutMessage)
     }
 
     func testOnboardingWaitNamesVehicleCreationTimeout() {
         var vehicleState = OnboardingWaitState()
-        _ = vehicleState.nextAction(destinationReached: false, positions: [.addVehicle: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
+        _ = vehicleState.nextAction(positions: [.addVehicle: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
         XCTAssertEqual(vehicleState.step, .openingVehicleCreation)
         XCTAssertTrue(vehicleState.timeoutMessage.contains("Vehicle creation"), vehicleState.timeoutMessage)
     }
 
-    func testOnboardingWaitCompletesWhenTheDestinationIsReached() {
+    /// Completion is owned solely by the caller's `isComplete` closure: `nextAction` has no
+    /// completion case, so there is exactly one completion path.
+    func testOnboardingNextActionNeverCompletesOnItsOwn() {
         var state = OnboardingWaitState()
-        XCTAssertEqual(state.nextAction(destinationReached: true, positions: [:]), .complete)
+        XCTAssertEqual(state.nextAction(positions: [:]), .wait)
+        XCTAssertEqual(state.nextAction(positions: [.guest: OnboardingTapPosition(dx: 0.5, dy: 0.5)]), .tap(.guest, at: OnboardingTapPosition(dx: 0.5, dy: 0.5)))
+    }
+
+    /// `enteredStep` is the single source of the step each target advances into, so the assertion
+    /// in `testOnboardingTapTargetsMapToTheirAccessibilityIdentifiers` protects the driver.
+    func testOnboardingEnteredStepIsWiredIntoNextAction() {
+        let guestPosition = OnboardingTapPosition(dx: 0.5, dy: 0.5)
+        var guestState = OnboardingWaitState()
+        _ = guestState.nextAction(positions: [.guest: guestPosition])
+        XCTAssertEqual(guestState.step, OnboardingTapTarget.guest.enteredStep)
+
+        let addVehiclePosition = OnboardingTapPosition(dx: 0.4, dy: 0.6)
+        var vehicleState = OnboardingWaitState()
+        _ = vehicleState.nextAction(positions: [.addVehicle: addVehiclePosition])
+        XCTAssertEqual(vehicleState.step, OnboardingTapTarget.addVehicle.enteredStep)
     }
 }
