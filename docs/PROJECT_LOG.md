@@ -46,21 +46,24 @@
 - **What changed:** Replaced the iOS UI suite's one-shot onboarding taps with a shared, step-aware
   retry policy, per-step diagnostics and an absolute wait budget. The retry gate now requires
   `isEnabled` in addition to `exists`/`isHittable`, each tap action carries its accessibility
-  identifier, the step is monotonic, and one helper in `iosApp/UITests/OnboardingWait.swift` drives
-  all three UITest files. The earlier 60-second justification was retracted and replaced with a
-  120-second cap measured from CI. Implementation is on
-  [pull request #67](https://github.com/davidru85/carApp/pull/67) for review; the story is not
-  complete until merge.
+  identifier, the step is monotonic, each affordance is resolved through one guarded snapshot, and
+  one helper in `iosApp/UITests/OnboardingWait.swift` drives all three UITest files. The earlier
+  60-second justification was retracted and replaced with a 180-second cap measured from CI.
+  Implementation is on [pull request #67](https://github.com/davidru85/carApp/pull/67) for review;
+  the story is not complete until merge.
 - **Why:** CI run `34641152156` failed `ios-simulator-build`: the previous helper retried
   `welcome_guest` 50 times over 62.090 seconds, but those taps were no-ops because the button
   reports `isHittable == true` while disabled, and the real Firebase anonymous sign-in round trip
   was the dominant constraint. The previous 60-second bound rested on whole-test durations, not on
-  the onboarding segment, and was therefore wrong.
+  the onboarding segment, and was therefore wrong. A same-head rerun of the first corrected version
+  then exceeded a 120-second cap and exposed an element-resolution race, so the cap became 180
+  seconds and resolution was hardened.
 - **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-17.md`, this log.
 - **Verification:** Policy RED produced four intended failures against the corrected policy; policy
-  GREEN passed 9/9; seven affected end-to-end tests passed locally; the complete non-instrumented
-  command passed. Consecutive green `ios-simulator-build` runs on the final head are recorded in
-  `docs/handoff-E1-17.md` after the push.
+  GREEN passed 9/9; the affected end-to-end tests passed locally; the complete non-instrumented
+  command passed. `ios-simulator-build` passed 3 of 3 consecutive runs on the implementation head
+  `4ac8e85` (run `34682336801` plus two same-head reruns), each completing the full iOS suite with
+  zero failures. The full count and per-step measurements are in `docs/handoff-E1-17.md`.
 - **Follow-ups / risks:** The real network path remains, so the flake is rarer but not eliminated.
   Option (b), a Debug-only launch-environment seam that removes the network round trip, is escalated
   to the owner and not implemented. An unrelated local partial-refuel badge failure remains outside

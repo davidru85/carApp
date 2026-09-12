@@ -152,8 +152,9 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
 - All changes remain under `iosApp/UITests` plus the regenerated Xcode project and documentation;
   production code, shared state, contracts, Swift-facing ABI, schema, migrations and decisions are
   unchanged.
-- Consecutive green `ios-simulator-build` runs on the final head are recorded in the Project Log /
-  Verification Run after the push (see below).
+- Consecutive green `ios-simulator-build` runs on the final implementation head: 3 of 3 (run
+  `34682336801` first execution plus two same-head reruns), all completing the full iOS suite with
+  zero failures. Documentation commits after that head change no iOS source.
 
 ## Out of Scope / Not Done
 
@@ -209,9 +210,13 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   contract, architecture, lint, coverage, Android build, Android-host and eligible Native checks
   passed.
 - `git diff --check`: clean.
-- Consecutive green `ios-simulator-build` runs on the final head: **pending**, recorded in this
-  section once the final documentation head has run repeatedly. The acceptance criterion requires a
-  count, not a single green run, so this is left open deliberately rather than claimed.
+- Consecutive green `ios-simulator-build` runs on the final implementation head `4ac8e85`:
+  **3 of 3**. Run `34682336801` passed on its first execution and on two further same-head reruns,
+  all three completing the full iOS unit and UI suite with zero failures. The per-step values on the
+  first execution were `startingGuestSession=1.675–4.327` seconds across the five onboarding waits,
+  and the affected swipe-delete test reached vehicle creation in `3.466` seconds. The count is on the
+  implementation head; the documentation commits after it change no iOS source, so the iOS binary is
+  identical.
 
 ## Contract Impact
 
