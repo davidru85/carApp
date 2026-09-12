@@ -191,26 +191,11 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
     }
 
     private func openVehicleCreation(in app: XCUIApplication) {
-        let guestButton = app.buttons["welcome_guest"]
-        let addVehicleButton = app.buttons["add_vehicle"]
         let vehicleNameField = app.textFields["vehicle_name"]
-        let deadline = Date().addingTimeInterval(30)
-        var startedGuestSession = false
-        var requestedVehicleCreation = false
-
-        while Date() < deadline {
-            if vehicleNameField.exists {
-                return
-            }
-            if !startedGuestSession, guestButton.exists, guestButton.isHittable {
-                guestButton.tap()
-                startedGuestSession = true
-            } else if !requestedVehicleCreation, addVehicleButton.exists, addVehicleButton.isHittable {
-                addVehicleButton.tap()
-                requestedVehicleCreation = true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        XCTFail("Onboarding did not reach vehicle creation before the timeout")
+        waitForOnboarding(
+            in: app,
+            destination: "vehicle creation",
+            isComplete: { vehicleNameField.exists }
+        )
     }
 }

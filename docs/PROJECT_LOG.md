@@ -38,6 +38,68 @@
 
 ## Entries
 
+### 2026-09-12 — E1-17 second and third owner-review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-17`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied two further owner-review rounds on
+  [pull request #67](https://github.com/davidru85/carApp/pull/67). The vehicle-form observation is
+  now non-terminal (a `vehicleFormWasSeen` flag plus `vehicleFormVisibleIterations` and
+  `vehicleFormSubmissions` counters) instead of a step, so a dismissed form still retries
+  `add_vehicle`; the submission counter advances only when the handler reports it acted. The
+  timeout message now keys off the form being visible at the timeout, so a form seen earlier and
+  dismissed names the step that was never reached. The wait report records an explicit outcome
+  (reached or timed out), closes the step that consumed the budget, and re-checks completion after
+  the deadline. Hittability is derived from the snapshot frame, removing the inert `try?` and the
+  false claim that it was catchable.
+- **Why:** The first form diagnostic reintroduced the one-shot-latch class this story exists to
+  remove and inflated its counter the same way as the earlier `guestTapAttempts`. The timeout
+  message and the report were also dishonest once the form was dismissed, and the inert `try?`
+  produced a compiler warning and overclaimed safety.
+- **Documents touched:** `docs/handoff-E1-17.md`, this log.
+- **Verification:** Three RED cycles produced 4, 4 and 2 intended failures against the evolving
+  policy; the final suite passes 20/20. The affected end-to-end tests passed locally on an erased
+  simulator with a pinned device id, and the complete non-instrumented command passed.
+  `ios-simulator-build` passed 3 of 3 consecutive runs on the final head `2ebd8a1` (run
+  `34690649797` plus two same-head reruns); run `34689361543` was also green on head `942df87`.
+- **Follow-ups / risks:** The stale 2026-09-11 story entry below still says "policy GREEN passed
+  9/9", "four intended failures" and head `4ac8e85`; those figures are superseded by this entry and
+  by `docs/handoff-E1-17.md`. `CarAppKeychainPersistenceUITests` is the only caller that passes
+  `handleVehicleForm` and it `XCTSkip`s without the App Check debug token, so green CI is not
+  evidence for that path.
+
+### 2026-09-11 — E1-17 iOS onboarding UI-test stabilization
+
+- **Type:** story
+- **Story / Decision:** `E1-17`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Replaced the iOS UI suite's one-shot onboarding taps with a shared, step-aware
+  retry policy, per-step diagnostics and an absolute wait budget. The retry gate now requires
+  `isEnabled` in addition to `exists`/`isHittable`, each tap action carries its accessibility
+  identifier, the step is monotonic, each affordance is resolved through one guarded snapshot, and
+  one helper in `iosApp/UITests/OnboardingWait.swift` drives all three UITest files. The earlier
+  60-second justification was retracted and replaced with a 180-second cap measured from CI.
+  Implementation is on [pull request #67](https://github.com/davidru85/carApp/pull/67) for review;
+  the story is not complete until merge.
+- **Why:** CI run `34641152156` failed `ios-simulator-build`: the previous helper retried
+  `welcome_guest` 50 times over 62.090 seconds, but those taps were no-ops because the button
+  reports `isHittable == true` while disabled, and the real Firebase anonymous sign-in round trip
+  was the dominant constraint. The previous 60-second bound rested on whole-test durations, not on
+  the onboarding segment, and was therefore wrong. A same-head rerun of the first corrected version
+  then exceeded a 120-second cap and exposed an element-resolution race, so the cap became 180
+  seconds and resolution was hardened.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-17.md`, this log.
+- **Verification:** Policy RED produced four intended failures against the corrected policy; policy
+  GREEN passed 9/9; the affected end-to-end tests passed locally; the complete non-instrumented
+  command passed. `ios-simulator-build` passed 3 of 3 consecutive runs on the implementation head
+  `4ac8e85` (run `34682336801` plus two same-head reruns), each completing the full iOS suite with
+  zero failures. The full count and per-step measurements are in `docs/handoff-E1-17.md`.
+- **Follow-ups / risks:** The real network path remains, so the flake is rarer but not eliminated.
+  Option (b), a Debug-only launch-environment seam that removes the network round trip, is escalated
+  to the owner and not implemented. An unrelated local partial-refuel badge failure remains outside
+  E1-17.
+
 ### 2026-09-11 — E1-14 expectation description correction
 
 - **Type:** correction

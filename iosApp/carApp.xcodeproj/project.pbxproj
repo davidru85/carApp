@@ -17,6 +17,7 @@
 		3EC77D959C5B1B210F562663 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
 		4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */; };
+		4BC8A1097F15EE75D459464C /* OnboardingWaitPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */; };
 		50E658A3BCF6B028487ABB8C /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = FFE99D9E34273E411857F7D2 /* FirebaseFunctions */; };
 		5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */; };
@@ -26,6 +27,7 @@
 		71B2BC3A80BE759D783D438F /* OnboardingRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
+		91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */; };
 		93C089A2C96E7E5816107AC5 /* NativeSignInFailureMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */; };
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
 		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
@@ -97,6 +99,8 @@
 		950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
 		96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayTests.swift; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWaitPolicyTests.swift; sourceTree = "<group>"; };
+		AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWait.swift; sourceTree = "<group>"; };
 		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
 		F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -160,6 +164,8 @@
 			children = (
 				93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */,
 				8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */,
+				AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */,
+				A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */,
 				88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */,
 			);
 			path = UITests;
@@ -403,6 +409,8 @@
 			files = (
 				F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */,
 				E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */,
+				91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */,
+				4BC8A1097F15EE75D459464C /* OnboardingWaitPolicyTests.swift in Sources */,
 				F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

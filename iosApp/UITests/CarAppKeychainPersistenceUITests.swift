@@ -45,30 +45,26 @@ final class CarAppKeychainPersistenceUITests: XCTestCase {
     }
 
     private func reachAnonymousMainShell(in app: XCUIApplication) {
-        let guestButton = app.buttons["welcome_guest"]
         let diagnosticsButton = app.buttons["diagnostics_button"]
         let vehicleNameField = app.textFields["vehicle_name"]
         let saveVehicleButton = app.buttons["save_vehicle"]
-        let deadline = Date().addingTimeInterval(timeout)
-        var startedGuestSession = false
         var createdFirstVehicle = false
 
-        while Date() < deadline {
-            if diagnosticsButton.exists {
-                return
-            }
-            if !startedGuestSession, guestButton.exists, guestButton.isHittable {
-                guestButton.tap()
-                startedGuestSession = true
-            } else if !createdFirstVehicle, vehicleNameField.exists {
+        waitForOnboarding(
+            in: app,
+            destination: "the authenticated main shell",
+            isComplete: { diagnosticsButton.exists },
+            handleVehicleForm: {
+                guard !createdFirstVehicle, vehicleNameField.exists else {
+                    return false
+                }
+                createdFirstVehicle = true
                 vehicleNameField.tap()
                 vehicleNameField.typeText("Keychain persistence vehicle")
                 XCTAssertTrue(saveVehicleButton.isEnabled)
                 saveVehicleButton.tap()
-                createdFirstVehicle = true
+                return true
             }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        XCTFail("Onboarding did not reach the authenticated main shell before the timeout")
+        )
     }
 }

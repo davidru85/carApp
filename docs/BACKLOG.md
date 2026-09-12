@@ -1355,9 +1355,9 @@ run adjacently, in that order, so those two screens are opened once rather than 
 
 ### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
 
-Status: implemented on [pull request #66](https://github.com/davidru85/carApp/pull/66), awaiting
-owner review and required CI. See `docs/handoff-E1-14.md`
-for the TDD commits, audit and repeated-run evidence. Not complete until the pull request merges.
+Status: completed on 2026-09-11 through
+[pull request #66](https://github.com/davidru85/carApp/pull/66). See `docs/handoff-E1-14.md` for the
+TDD commits, audit and repeated-run evidence.
 
 Tracked as a follow-up found while verifying `E2-03`, recorded under `Risks or Follow-ups` in
 `docs/handoff-E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
@@ -1434,6 +1434,10 @@ Acceptance criteria:
   to be required, the story stops and escalates instead of taking it.
 
 ### E1-17 - iOS Onboarding UI Test Flake in `ios-simulator-build` - S
+
+Status: implemented on [pull request #67](https://github.com/davidru85/carApp/pull/67), awaiting
+owner review and required CI. See `docs/handoff-E1-17.md` for the TDD commits, timing justification
+and repeated-run evidence. Not complete until the pull request merges.
 
 Tracked as a defect observed on 2026-09-06 while merging `main` into pull request #57. It is a
 test-infrastructure defect in `iosApp/UITests`, not a product defect.
@@ -1608,7 +1612,7 @@ proof after E3-04.
 | E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
-| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake | follow-up | S | — |
+| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake (completed) | follow-up | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
 | E1-16 Vehicle UI fuel type selector | follow-up | S | — |
 | E1-17 iOS onboarding UI test flake | follow-up | S | — |
