@@ -39,30 +39,30 @@
 - Date: 2026-09-12.
 - Branch and base: `story/E1-17-ios-onboarding-ui-test-flake`, based on synchronized `main` at
   `4207b05` after pull request #66 merged.
-- Current phase and latest commit: the owner-review corrections are implemented and committed. The
-  prior RED/GREEN/REFACTOR sequence is at `7b7ff63`, `7d40b9e` and `984fbba`; the stale-element
-  cycle is `2f80204` and `66f4552`; the CI-failure correction is `20ceff6`, `4ee4f1b`, `12d9308`,
-  `bd481c5` and `32fcca4`; the snapshot/cap hardening is `f3e362e`; and the owner-review correction
-  is `93d31e5` (RED), `753c103` (GREEN) and `2b8326b` (flow-test alignment).
-- Push and pull-request status: pull request #67 is open. All commits through the owner-review
-  correction are pushed; the pull-request body was refreshed to the merged design.
-- Completed since the previous checkpoint: applied the owner review findings without changing the
-  accepted design. The driver loop condition now calls `OnboardingWaitBudget.hasReachedDeadline`
-  (effective limit accepted), so the tested budget policy is the one that runs; `nextAction` routes
-  through `OnboardingTapTarget.enteredStep`; the unreachable completion case was removed so the
-  caller's `isComplete` closure is the single completion path; a distinct `submittingVehicleForm`
-  step names the form and its submission count on timeout; and `OnboardingFlowUITests` now sets
-  `continueAfterFailure = false`.
-- Verification evidence and known failures: twelve policy tests pass on a booted iOS 26.5 simulator;
-  the affected end-to-end tests pass locally (the only local failure is the pre-existing
-  swipe-to-delete `visible frame is empty` flake, outside E1-17); the full non-instrumented command
-  passes. `ios-simulator-build` passed 3 of 3 consecutive runs on the prior implementation head
-  `4ac8e85` (run `34682336801` plus two same-head reruns). A final `ios-simulator-build` run on the
-  owner-review head is recorded under Verification Run once it completes.
+- Current phase and latest commit: the second owner-review corrections are implemented and
+  committed. The prior sequence is `7b7ff63`/`7d40b9e`/`984fbba`; the stale-element cycle is
+  `2f80204`/`66f4552`; the CI-failure correction is `20ceff6`/`4ee4f1b`/`12d9308`/`bd481c5`/
+  `32fcca4`; the snapshot/cap hardening is `f3e362e`; the first owner-review correction is
+  `93d31e5`/`753c103`/`2b8326b`; and the second owner-review correction is `0c3a554` (RED) and
+  `73f943d` (GREEN).
+- Push and pull-request status: pull request #67 is open. All implementation commits through the
+  second owner-review correction are pushed; the pull-request body was refreshed to the merged
+  design and its repetition evidence is being aligned to the current iOS binary.
+- Completed since the previous checkpoint: fixed the two defects the `submittingVehicleForm`
+  diagnostic introduced, without changing the accepted design. Seeing the vehicle form is now a
+  non-terminal diagnostic observation tracked by a flag and two counters, so the step stays on the
+  affordance ladder and a dismissed form still retries `add_vehicle`; `handleVehicleForm` returns
+  whether it acted, so `vehicleFormVisibleIterations` and `vehicleFormSubmissions` are distinct and
+  a self-latching handler no longer inflates the submission count; and the observation no longer
+  bypasses the `enter()` guard because it never assigns `step`.
+- Verification evidence and known failures: fourteen policy tests pass on a booted iOS 26.5
+  simulator; the affected end-to-end tests pass locally (the only local failure is the pre-existing
+  swipe-to-delete flake, outside E1-17); the full non-instrumented command passes.
 - Open decisions or blockers: option (b), a Debug-only launch-environment seam to remove the real
   Firebase anonymous sign-in from the UI tests, requires an owner decision and is recorded under
   "Owner Decision Required" below. No other blocker.
-- Exact next step: await the owner's manual review; the agent does not merge the pull request.
+- Exact next step: record repeated `ios-simulator-build` runs on the new head, then await the
+  owner's manual review; the agent does not merge the pull request.
 
 ## Owner Decision Required (escalated, not taken)
 
@@ -104,14 +104,19 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
 - Added a pure availability policy (`exists && isEnabled && isHittable`) and a pure retry policy,
   both exercised without driving the UI.
 - Recorded per-step onboarding timings (`waitingForAffordance`, `startingGuestSession`,
-  `openingVehicleCreation`, `submittingVehicleForm`) and tap/submission counts for direct CI
+  `openingVehicleCreation`) and tap, form-iteration and real-submission counts for direct CI
   measurement.
-- Owner-review correction: the driver loop condition calls `OnboardingWaitBudget.hasReachedDeadline`
-  (effective limit accepted) instead of re-implementing the comparison; `nextAction` routes through
-  `OnboardingTapTarget.enteredStep`; the unreachable completion case was removed so the caller's
-  `isComplete` closure is the single completion path; a distinct `submittingVehicleForm` step names
-  the form and its submission count on timeout; and `OnboardingFlowUITests` sets
-  `continueAfterFailure = false`.
+- First owner-review correction: the driver loop condition calls
+  `OnboardingWaitBudget.hasReachedDeadline` (effective limit accepted) instead of re-implementing the
+  comparison; `nextAction` routes through `OnboardingTapTarget.enteredStep`; the unreachable
+  completion case was removed so the caller's `isComplete` closure is the single completion path;
+  and `OnboardingFlowUITests` sets `continueAfterFailure = false`.
+- Second owner-review correction: seeing the vehicle form is a non-terminal diagnostic observation
+  (a `vehicleFormWasSeen` flag plus `vehicleFormVisibleIterations` and `vehicleFormSubmissions`
+  counters) rather than a step, so the step stays on the affordance ladder and a dismissed form
+  still retries `add_vehicle`; `handleVehicleForm` returns `Bool` and the submission counter tracks
+  real handler actions, not iterations. The form observation no longer assigns `step`, so it cannot
+  bypass the `enter()` monotonic guard.
 
 ## Acceptance Evidence
 
@@ -152,20 +157,24 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   `testOnboardingTapTargetsMapToTheirAccessibilityIdentifiers`,
   `testOnboardingStepNeverMovesBackwardsWhenAGuestReappears`,
   `testOnboardingAbsoluteCapDoesNotResetOnStepChange`) each failed before the fix and pass after it.
-  The owner-review cycle added `testOnboardingAbsoluteCapHonoursTheEffectiveLimit`,
+  The first owner-review cycle added `testOnboardingAbsoluteCapHonoursTheEffectiveLimit`,
   `testOnboardingWaitDistinguishesAVehicleFormThatNeverDismisses`,
   `testOnboardingNextActionNeverCompletesOnItsOwn` and
-  `testOnboardingEnteredStepIsWiredIntoNextAction`; all four failed to compile or assert against the
-  previous driver and pass after the correction. Twelve tests, zero failures.
+  `testOnboardingEnteredStepIsWiredIntoNextAction`.
+  The second owner-review cycle added
+  `testOnboardingWaitStillRetriesAddVehicleAfterTheFormWasSeen` and
+  `testOnboardingFormSubmissionsTrackRealSubmissionsNotIterations`; both failed to compile or assert
+  against the previous diagnostic and pass after the correction. Fourteen tests, zero failures.
 - **Budget policy is now wired.** `waitForOnboarding`'s loop condition calls
   `OnboardingWaitBudget.hasReachedDeadline(effectiveLimit:startedAt:now:)`. Reintroducing a per-step
   deadline reset would now change the function whose test
   `testOnboardingAbsoluteCapHonoursTheEffectiveLimit` exercises, so the single-absolute-interval
   acceptance criterion is protected by an executable test rather than by an inline comparison.
-- **Form diagnostic.** When the vehicle-name field stays visible, the loop records
-  `submittingVehicleForm` and increments the submission count; on timeout the message names the form
-  and the count instead of blaming the guest step, and the `XCTFail` text also reports whether the
-  form was visible at timeout and how many times the handler ran.
+- **Form diagnostic is non-terminal and honest.** Seeing the vehicle form records a flag and two
+  counters without moving `step`, so a dismissed form still taps a reappearing `add_vehicle`. The
+  timeout message names the form, the iterations it stayed visible, and the real submissions; the
+  submission counter advances only when `handleVehicleForm` returns `true`, so a self-latching
+  handler no longer reports roughly 360 submissions after one real one.
 - **Local end-to-end.** The affected onboarding tests pass locally; onboarding reached vehicle
   creation with one guest and one add-vehicle tap attempt. The only local failure is the pre-existing
   swipe-to-delete `visible frame is empty` flake in `testVehicleSwipeDeleteShowsConfirmationDialog`,
@@ -183,16 +192,26 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   records are outside this test-infrastructure story. Option (b) is therefore **not implemented**;
   it is escalated.
 - The unrelated local partial-refuel badge assertion is not widened into E1-17.
+- `CarAppKeychainPersistenceUITests` is the only caller that passes `handleVehicleForm`, and it
+  `XCTSkip`s unless `CARAPP_IOS_APP_CHECK_DEBUG_TOKEN` is set. That token is not defined in any
+  tracked file (the scheme reads `CARAPP_XCUITEST_APP_CHECK_DEBUG_TOKEN`, which no repository file
+  sets), so the test skips on CI and green CI is **not** evidence that the vehicle-form path works.
+  It remains to run that test locally with the token set; it could not be done in this session
+  because no token is available in the environment.
 
 ## Files Changed
 
 - `iosApp/UITests/OnboardingWait.swift` (new): shared availability/retry policy, absolute budget,
-  snapshotted tap positions, per-step measurement and the `waitForOnboarding` function.
-- `iosApp/UITests/OnboardingWaitPolicyTests.swift` (new): deterministic policy and wiring tests.
+  snapshotted tap positions, per-step measurement, the non-terminal vehicle-form diagnostic and the
+  `waitForOnboarding` function.
+- `iosApp/UITests/OnboardingWaitPolicyTests.swift` (new): deterministic policy, wiring and
+  diagnostic tests.
 - `iosApp/UITests/VehicleAndFuelFlowUITests.swift`: routed through the shared helper; local policy
   types removed.
-- `iosApp/UITests/OnboardingFlowUITests.swift`: first-vehicle launch routed through the helper.
-- `iosApp/UITests/CarAppKeychainPersistenceUITests.swift`: one-shot latches replaced by the helper.
+- `iosApp/UITests/OnboardingFlowUITests.swift`: first-vehicle launch routed through the helper;
+  `continueAfterFailure = false` aligned.
+- `iosApp/UITests/CarAppKeychainPersistenceUITests.swift`: one-shot latches replaced by the helper;
+  its form handler now reports whether it acted.
 - `iosApp/carApp.xcodeproj/project.pbxproj`: regenerated by `generate-project.sh` for the two new
   files.
 - `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` and `docs/handoff-E1-17.md`: delivery status
@@ -219,10 +238,13 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
 - Policy RED: `xcodebuild ... -only-testing:carAppUITests/OnboardingWaitPolicyTests test` — four
   intended failures (`isEnabled`, identifier mapping, step monotonicity, absolute cap).
 - Policy GREEN: the same command — 9 executed, 0 failures, `TEST SUCCEEDED`.
-- Owner-review RED: the same command — the four new tests failed to compile or assert against the
-  previous driver (effective-limit overload, `submittingVehicleForm` step, single completion path,
-  `enteredStep` wiring).
-- Owner-review GREEN: the same command — 12 executed, 0 failures, `TEST SUCCEEDED`.
+- First owner-review RED: the same command — the four new tests failed to compile or assert against
+  the previous driver (effective-limit overload, `submittingVehicleForm` step, single completion
+  path, `enteredStep` wiring).
+- First owner-review GREEN: the same command — 12 executed, 0 failures, `TEST SUCCEEDED`.
+- Second owner-review RED: the same command — the two new tests failed against the previous
+  diagnostic (`noteVehicleFormVisible` arity and the terminal-form retry assertion).
+- Second owner-review GREEN: the same command — 14 executed, 0 failures, `TEST SUCCEEDED`.
 - Affected end-to-end GREEN (local): `-only-testing:carAppUITests/OnboardingFlowUITests
   -only-testing:carAppUITests/VehicleAndFuelFlowUITests test` — all onboarding tests pass; the only
   failure is the pre-existing swipe-to-delete `visible frame is empty` flake.
@@ -240,12 +262,11 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   completing the full iOS unit and UI suite with zero failures. The per-step values on the first
   execution were `startingGuestSession=1.675–4.327` seconds across the five onboarding waits, and
   the affected swipe-delete test reached vehicle creation in `3.466` seconds.
-- Final `ios-simulator-build` run on the owner-review head: **green**. Run `34687150348` passed on
-  head `7a65d03` with all ten required checks green. The onboarding waits reached their destinations
-  in 3.838–7.860 seconds with one guest and one add-vehicle tap attempt each, and the new
-  `submittingVehicleForm` step stayed at `0.000` because no run left the form open. The
-  owner-review commits change iOS test source, so this head carries its own result rather than
-  inheriting the `4ac8e85` count.
+- `ios-simulator-build` on the first owner-review head `7a65d03`: **green**. Run `34687150348`
+  passed all ten required checks; onboarding reached its destinations in 3.838–7.860 seconds.
+- Repeated `ios-simulator-build` runs on the second owner-review head (the current iOS binary): the
+  count is recorded here once the runs finish. The head changes iOS test source, so it cannot
+  inherit the `4ac8e85` or `7a65d03` results.
 
 ## Contract Impact
 
