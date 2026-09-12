@@ -38,6 +38,29 @@
 
 ## Entries
 
+### 2026-09-12 — E3-02 Firestore remote sync integration
+
+- **Type:** story
+- **Story / Decision:** `E3-02` / `D-168`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Completed the GitLive-backed `FirebaseRemoteSyncSource` with client-ID writes,
+  server timestamps, deterministic two-field pagination, epoch-millisecond boundary conversion,
+  exact error mapping and a single forced-refresh retry for unauthenticated operations. Added a
+  resumed-cycle Firestore emulator test and recorded same-module retry ownership in D-168 and
+  ADR-0169. The implementation branch awaits its owner-gated pull request and is not complete until
+  merge.
+- **Why:** The staged E0-07 adapter lacked the closed retry and failure semantics required before the
+  sync engine can safely consume it. Keeping the provider refresh inside the Firestore integration
+  completes the transaction without widening provider-free core or graph contracts.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, ADR-0169, `docs/handoff-E3-02.md`, this log.
+- **Verification:** RED executed 15 tests with the intended four failures; GREEN and REFACTOR pass
+  16 focused tests, Android lint and static analysis, iOS simulator compilation, all 169 decision
+  consistency checks, 156 Firestore emulator assertions and the complete 638-task non-instrumented
+  repository command.
+- **Follow-ups / risks:** Owner review and all ten required pull-request checks remain mandatory.
+  E3-03 must consume the provider-free boundary without moving Firebase or GitLive types into core.
+
 ### 2026-09-12 — E1-17 second and third owner-review corrections
 
 - **Type:** correction

@@ -37,35 +37,50 @@
 
 - Date: 2026-09-12
 - Branch and base: `story/E3-02-firestore-remote-sync-source` from `origin/main` at `12c12c7`.
-- Current phase and latest commit: GREEN complete and not yet committed; latest commit is RED
-  `0dfa7a2`.
-- Push and pull-request status: RED is pushed to
+- Current phase and latest commit: REFACTOR complete and not yet committed; latest commit is GREEN
+  `4feda04`.
+- Push and pull-request status: RED and GREEN are pushed to
   `origin/story/E3-02-firestore-remote-sync-source`; no pull request exists.
-- Completed since the previous checkpoint: committed and pushed RED; added one forced Firebase Auth
-  token refresh after an unauthenticated Firestore operation; retried the same operation exactly
-  once; converted provider failures to an internal closed failure vocabulary; mapped that vocabulary
-  to the exact `RemoteError` leaves; and added the already accepted GitLive Firebase Auth artifact to
-  the Firestore integration module so the refresh remains inside the module.
+- Completed since the previous checkpoint: committed and pushed GREEN; isolated provider code-name
+  translation behind a host-safe internal function; added direct coverage for every mapped provider
+  code and the unknown fallback; recorded D-168 and ADR-0169 with all three alternatives; and
+  completed the focused, emulator and repository-wide verification.
 - Verification evidence and known failures:
   The RED run compiled and executed 15 tests with the intended four failures. The first GREEN run
   exposed an Android-host SDK initialization failure caused by a direct enum `when`; no behavior
   assertion failed. Mapping the provider enum through its stable `name` avoided loading Android's
   unmocked `SparseArray`, and the repeated focused suite passed all 15 tests. The emulator suite
-  remains green at 156 tests.
-- Open decisions or blockers: none. The direct same-module GitLive Auth refresh is decision D-168
-  to record in the REFACTOR/documentation phase with its alternatives and consequences.
-- Exact next step: run focused lint and static analysis, commit and push GREEN, then refactor the
-  result mapping/classification and complete the decision and story records.
+  remains green at 156 tests. The final focused suite passes 16 tests, the iOS simulator target
+  compiles, `contractCheck` passes all 169 mirrored decisions, and the complete non-instrumented
+  repository command passes 638 tasks.
+- Open decisions or blockers: none. D-168 is recorded as `Accepted`; owner review remains required
+  before merge because Firestore and normative decision paths are gated.
+- Exact next step: commit and push REFACTOR, then create the owner-gated pull request.
 
 ## Scope Completed
 
 - Implemented the missing `Unauthenticated` recovery path with one forced token refresh and exactly
   one operation retry.
 - Mapped the closed Firestore failure vocabulary to the exact `RemoteError` leaves.
+- Preserved client-generated document IDs and server timestamps for writes.
+- Implemented deterministic first-page `startAt` and later-page two-field `startAfter` queries.
+- Converted provider timestamps to epoch milliseconds before returning remote snapshots.
+- Preserved the input cursor for empty pages and advanced non-empty pages to the last returned item.
+- Kept every Firebase and GitLive type behind the integration boundary.
 
 ## Acceptance Evidence
 
-- In progress.
+- `vehiclePushUsesTheOwnerPathAndReturnsTheServerTimestamp` proves the owner path, client document ID
+  and server-timestamp acknowledgement.
+- `vehiclePullReturnsOrderedRemoteSnapshotsWithoutProviderTypes` and
+  `fuelEntryPullReturnsTheCompleteClosedRemoteSnapshot` prove boundary conversion and the closed
+  remote shapes.
+- The push and pull authentication tests prove one forced refresh, one retry and the retry ceiling.
+- `firestoreFailuresMapToTheExactRemoteErrorLeaves` and
+  `providerFailureNamesMapWithoutLoadingProviderEnumConstants` prove the closed error translation.
+- The empty-page and shared-timestamp tests prove both cursor edge cases.
+- `a resumed cycle applies startAt to the overlap after a non-empty pull` passes against the
+  Firestore emulator and proves the resumed-cycle overlap behavior.
 
 ## Out of Scope / Not Done
 
@@ -74,16 +89,24 @@
 
 ## Files Changed
 
-- `docs/handoff-E3-02.md` — ready check and live continuity record.
-- `integration/firebase-firestore/.../FirebaseRemoteSyncSource.kt` — minimal RED test seam only.
+- `integration/firebase-firestore/build.gradle.kts` — accepted GitLive Auth artifact used for the
+  same-module forced refresh.
+- `integration/firebase-firestore/.../FirebaseRemoteSyncSource.kt` — complete provider adapter,
+  retry protocol, pagination, timestamp conversion and closed error mapping.
 - `integration/firebase-firestore/.../FirebaseRemoteSyncSourceTest.kt` — focused source tests.
 - `firestore/tests/firestore.rules.test.mjs` — resumed-cycle emulator test.
+- `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md` and
+  `docs/adr/README.md` — mirrored D-168 decision record.
+- `docs/adr/0169-keep-firestore-authentication-retry-inside-the-integration.md` — decision context,
+  three options, consequences and verification.
+- `docs/handoff-E3-02.md` and `docs/PROJECT_LOG.md` — story evidence and continuity records.
 
 ## Decisions Made
 
-- D-168 (to be recorded): perform the forced token refresh through the same module's GitLive
-  Firebase Auth client. This keeps the complete retry protocol inside `:integration:firebase-firestore`
-  without widening the provider-free contracts or moving retry behavior into wiring.
+- D-168: perform the forced token refresh through the same module's GitLive Firebase Auth client.
+  This keeps the complete retry protocol inside `:integration:firebase-firestore` without widening
+  provider-free contracts or moving retry behavior into wiring. The two rejected alternatives and
+  their trade-offs are recorded in ADR-0169.
 
 ## Verification Run
 
@@ -97,15 +120,24 @@
 - `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt
   :integration:firebase-firestore:testAndroidHostTest --rerun-tasks --stacktrace` — GREEN after the
   implementation-format correction; all focused quality and behavior checks passed.
+- `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt
+  :integration:firebase-firestore:testAndroidHostTest
+  :integration:firebase-firestore:compileKotlinIosSimulatorArm64 contractCheck --rerun-tasks
+  --stacktrace` — passed 16 focused tests, Android quality gates, iOS compilation and all 169
+  mirrored-decision checks.
+- `npm run test:firestore-rules` — final run passed all 156 emulator assertions.
+- Complete non-instrumented command from `AGENTS.md` — passed 638 tasks (48 executed, 590
+  up-to-date), including lint, static analysis, architecture, contracts, convention tests, coverage,
+  Android assembly and unit tests, Android-host shared tests and eligible iOS simulator tests.
 
 ## Contract Impact
 
-- No contract changes planned; implementation targets the existing `docs/CONTRACTS.md` §6, §9.4,
-  §10, §16 and §17 contracts.
+- No representation contract changed; implementation satisfies the existing
+  `docs/CONTRACTS.md` §6, §9.4, §10, §16 and §17 contracts.
 
 ## Decision Board Impact
 
-- D-168 must be mirrored with its ADR during REFACTOR before the story is complete.
+- D-168 is `Accepted` and mirrored across all four decision tables with ADR-0169.
 
 ## Shared-Write Modules Touched
 
@@ -113,11 +145,13 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Entry appended.
 
 ## Risks or Follow-ups
 
 - E3-03 must consume this integration without moving Firebase or GitLive types into `:core:sync`.
+- The pull request must pass all ten required checks and receive owner review before merge; this
+  branch is implemented, not yet complete.
 
 ## Human Review Gate
 

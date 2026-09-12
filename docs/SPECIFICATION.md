@@ -660,6 +660,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-165 | Departure process-death closure | Close the `D-163` process-death window inside `E2-05` with a durable recovery marker, superseding `D-163` and removing the separate `E2-09` story it had created | Accepted |
 | D-166 | Durable departure marker representation | A single-row schema v4 `account_departure_operation` table holding the departure kind, its owner and one flag per completed step, added by the additive `3.sqm` migration and deliberately excluded from the local-data clear | Accepted |
 | D-167 | Interrupted departure resumption | `AccountDepartureCoordinator.resumePending()` runs once at app-graph construction, finishes only the steps the marker does not record as done, reports nothing to the owner, and never repeats or starts the `D-23` operation | Accepted |
+| D-168 | Firestore authentication retry ownership | `:integration:firebase-firestore` forces the one token refresh required by `RemoteSyncSource` through the same accepted GitLive Firebase Auth client and retries the failed operation once inside the module | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

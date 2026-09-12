@@ -174,5 +174,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-165 | [ADR-0166](0166-close-the-departure-process-death-window-in-e2-05.md) | Close the departure process-death window in E2-05. | Accepted |
 | D-166 | [ADR-0167](0167-store-the-departure-marker-in-a-single-row-table.md) | Store the departure marker in a single-row table. | Accepted |
 | D-167 | [ADR-0168](0168-resume-an-interrupted-departure-at-graph-construction.md) | Resume an interrupted departure at graph construction. | Accepted |
+| D-168 | [ADR-0169](0169-keep-firestore-authentication-retry-inside-the-integration.md) | Keep Firestore authentication retry inside the integration. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

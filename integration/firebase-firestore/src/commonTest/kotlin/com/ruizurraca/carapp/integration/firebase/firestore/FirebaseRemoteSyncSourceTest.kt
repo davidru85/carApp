@@ -235,6 +235,24 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
+    fun providerFailureNamesMapWithoutLoadingProviderEnumConstants() {
+        val cases =
+            mapOf(
+                "UNAVAILABLE" to FirestoreGatewayFailure.UNAVAILABLE,
+                "DEADLINE_EXCEEDED" to FirestoreGatewayFailure.DEADLINE_EXCEEDED,
+                "PERMISSION_DENIED" to FirestoreGatewayFailure.PERMISSION_DENIED,
+                "UNAUTHENTICATED" to FirestoreGatewayFailure.UNAUTHENTICATED,
+                "INVALID_ARGUMENT" to FirestoreGatewayFailure.INVALID_ARGUMENT,
+                "NOT_FOUND" to FirestoreGatewayFailure.NOT_FOUND,
+                "ABORTED" to FirestoreGatewayFailure.UNKNOWN,
+            )
+
+        cases.forEach { (providerName, expected) ->
+            assertEquals(expected, providerName.toFirestoreGatewayFailure())
+        }
+    }
+
+    @Test
     fun emptyPullKeepsTheInputCursorAndReportsNoMoreItems() =
         runTest {
             val cursor =

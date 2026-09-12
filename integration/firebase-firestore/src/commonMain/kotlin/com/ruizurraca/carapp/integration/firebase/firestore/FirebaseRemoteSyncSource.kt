@@ -438,8 +438,10 @@ private fun DocumentSnapshot.getNullableTimestamp(field: String): FirestoreValue
 
 private fun Instant.toFirestoreTimestamp(): Timestamp = Timestamp.fromMilliseconds(toEpochMilliseconds().toDouble())
 
-private fun FirestoreExceptionCode.toGatewayFailure(): FirestoreGatewayFailure =
-    when (name) {
+private fun FirestoreExceptionCode.toGatewayFailure(): FirestoreGatewayFailure = name.toFirestoreGatewayFailure()
+
+internal fun String.toFirestoreGatewayFailure(): FirestoreGatewayFailure =
+    when (this) {
         "UNAVAILABLE" -> FirestoreGatewayFailure.UNAVAILABLE
         "DEADLINE_EXCEEDED" -> FirestoreGatewayFailure.DEADLINE_EXCEEDED
         "PERMISSION_DENIED" -> FirestoreGatewayFailure.PERMISSION_DENIED
