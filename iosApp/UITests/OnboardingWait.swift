@@ -273,7 +273,12 @@ func waitForOnboarding(
     ) {
         if isComplete() {
             stepDurations[waitState.step, default: 0] += Date().timeIntervalSince(stepStartedAt)
-            return finishOnboarding(destination: destination, startedAt: startedAt, stepDurations: stepDurations, waitState: waitState)
+            return finishOnboarding(
+                destination: destination,
+                startedAt: startedAt,
+                stepDurations: stepDurations,
+                waitState: waitState
+            )
         }
 
         if let handleVehicleForm, app.textFields[OnboardingIdentifiers.vehicleName].exists {
