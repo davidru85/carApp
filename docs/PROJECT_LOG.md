@@ -38,6 +38,21 @@
 
 ## Entries
 
+### 2026-09-12 — E3-02 submitted for owner review
+
+- **Type:** handoff
+- **Story / Decision:** `E3-02` / `D-168`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Opened [pull request #68](https://github.com/davidru85/carApp/pull/68) from the
+  three pushed TDD checkpoints: RED `0dfa7a2`, GREEN `4feda04` and REFACTOR `6dd9b30`.
+- **Why:** E3-02 touches Firestore, backend behavior, sync semantics, authentication recovery,
+  module boundaries, the error taxonomy and gated decision records, so owner review is mandatory.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-02.md`, this log.
+- **Verification:** The pull-request body carries the final focused, emulator and complete
+  repository evidence. The branch is pushed and the pull request is open.
+- **Follow-ups / risks:** All ten required checks and owner approval remain; E3-02 MUST NOT be
+  recorded as complete before merge.
+
 ### 2026-09-12 — E3-02 Firestore remote sync integration
 
 - **Type:** story

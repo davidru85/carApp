@@ -37,11 +37,10 @@
 
 - Date: 2026-09-12
 - Branch and base: `story/E3-02-firestore-remote-sync-source` from `origin/main` at `12c12c7`.
-- Current phase and latest commit: REFACTOR complete and not yet committed; latest commit is GREEN
-  `4feda04`.
-- Push and pull-request status: RED and GREEN are pushed to
-  `origin/story/E3-02-firestore-remote-sync-source`; no pull request exists.
-- Completed since the previous checkpoint: committed and pushed GREEN; isolated provider code-name
+- Current phase and latest commit: REFACTOR complete and committed at `6dd9b30`.
+- Push and pull-request status: RED, GREEN and REFACTOR are pushed to
+  `origin/story/E3-02-firestore-remote-sync-source`; pull request #68 is open for owner review.
+- Completed since the previous checkpoint: committed and pushed GREEN and REFACTOR; isolated provider code-name
   translation behind a host-safe internal function; added direct coverage for every mapped provider
   code and the unknown fallback; recorded D-168 and ADR-0169 with all three alternatives; and
   completed the focused, emulator and repository-wide verification.
@@ -55,7 +54,7 @@
   repository command passes 638 tasks.
 - Open decisions or blockers: none. D-168 is recorded as `Accepted`; owner review remains required
   before merge because Firestore and normative decision paths are gated.
-- Exact next step: commit and push REFACTOR, then create the owner-gated pull request.
+- Exact next step: wait for owner review and all ten required checks; merge only after both gates pass.
 
 ## Scope Completed
 

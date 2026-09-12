@@ -142,7 +142,9 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   request #64. `E2-07` is merged through pull request #61; `E2-08`, the anonymous reminder launch
   and race fixes that followed it, merged on 2026-09-08 through pull request #62.
 - **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-14`, `E3-15` and `E3-16`. `E3-14` and `E3-15` are the two
+  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-14`, `E3-15` and `E3-16`. `E3-02` is implemented on the
+  open pull request #68 awaiting the owner's gated review and all ten required checks. `E3-14` and
+  `E3-15` are the two
   post-merge findings of the `E3-11` review; `E3-14` is implemented on the open pull request #63
   awaiting the owner's gated review, `E3-15` is **not Ready** until the owner resolves `D-149`, and
   `E3-16` — the issuance lookup-to-write window found while reviewing that pull request — is **not
