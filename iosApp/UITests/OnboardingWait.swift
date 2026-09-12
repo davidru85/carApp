@@ -60,6 +60,14 @@ enum OnboardingWaitAction: Equatable {
     case wait
 }
 
+/// The two terminal outcomes of a wait, kept explicit so the report can distinguish a genuine
+/// arrival from a timeout. Completion always wins, even when it is observed on the iteration that
+/// the deadline expires.
+enum OnboardingWaitOutcome: Equatable {
+    case reached
+    case timedOut
+}
+
 /// An application-relative tap position captured while an affordance is present, enabled and
 /// hittable. A SwiftUI button stays `isHittable` while `.disabled(true)` (see `WelcomeView.swift`),
 /// so `isEnabled` is part of the availability gate: "present but disabled" is a distinct waiting
@@ -79,23 +87,37 @@ struct OnboardingTapPosition: Equatable {
         exists && isEnabled && isHittable
     }
 
+    /// Hittability derived from snapshot geometry. The `isHittable` property does not throw, and a
+    /// vanished element raises an Objective-C exception that `try?` cannot catch, so this avoids the
+    /// last uncatchable read: an element with no on-screen frame is not hittable.
+    static func isHittable(frame: CGRect, in appFrame: CGRect) -> Bool {
+        guard !frame.isEmpty, !appFrame.isEmpty else {
+            return false
+        }
+        return appFrame.intersects(frame)
+    }
+
     /// Resolves the element to a position, or `nil` when XCTest cannot take a snapshot. Reading
-    /// several properties separately leaves windows in which a SwiftUI transition removes the
-    /// element and XCTest fails with "Failed to get matching snapshot"; `exists` short-circuits and
-    /// a single `snapshot()` supplies enabled/frame while hittability is read once, all inside a
-    /// throwing scope so a vanished element yields `nil` instead of failing the test.
+    /// several element properties separately leaves windows in which a SwiftUI transition removes
+    /// the element and XCTest fails with "Failed to get matching snapshot"; `exists` short-circuits
+    /// and a single throwing `snapshot()` supplies enabled and frame together. Hittability is then
+    /// derived from that frame, so no property read can raise after the snapshot.
     static func resolve(_ element: XCUIElement, in app: XCUIApplication) -> OnboardingTapPosition? {
         guard element.exists else {
             return nil
         }
-        guard let snapshot = try? element.snapshot(), let hittable = try? element.isHittable else {
-            return nil
-        }
-        guard isAvailable(exists: true, isEnabled: snapshot.isEnabled, isHittable: hittable) else {
-            return nil
-        }
         let appFrame = app.frame
+        guard let snapshot = try? element.snapshot() else {
+            return nil
+        }
         let elementFrame = snapshot.frame
+        guard isAvailable(
+            exists: true,
+            isEnabled: snapshot.isEnabled,
+            isHittable: isHittable(frame: elementFrame, in: appFrame)
+        ) else {
+            return nil
+        }
         guard appFrame.width > 0, appFrame.height > 0, !elementFrame.isEmpty else {
             return nil
         }
@@ -131,6 +153,16 @@ enum OnboardingWaitBudget {
         now: Date
     ) -> Bool {
         now.timeIntervalSince(startedAt) >= effectiveLimit
+    }
+
+    /// Resolves the terminal outcome. Completion wins over the deadline, so a destination that
+    /// becomes true while the loop is finishing its last scheduler wait is reported as reached.
+    /// `nil` means the wait is not terminal yet and the caller must keep looping.
+    static func resolveOutcome(deadlineReached: Bool, isComplete: Bool) -> OnboardingWaitOutcome? {
+        if isComplete {
+            return .reached
+        }
+        return deadlineReached ? .timedOut : nil
     }
 }
 
@@ -197,24 +229,38 @@ struct OnboardingWaitState {
         return .wait
     }
 
-    var timeoutMessage: String {
-        if vehicleFormWasSeen {
+    /// Names the state that was never reached. `formVisibleAtTimeout` decides whether the message is
+    /// about a stuck form or about the step the wait was in when the budget expired; the sticky
+    /// `vehicleFormWasSeen` flag only adds context, so a dismissed form cannot make the message
+    /// claim the form is still there.
+    func timeoutMessage(formVisibleAtTimeout: Bool) -> String {
+        if formVisibleAtTimeout {
             return "The vehicle form stayed visible for \(vehicleFormVisibleIterations) iteration(s) " +
                 "after \(vehicleFormSubmissions) real submission(s) and never dismissed"
         }
+        let stepMessage: String
         switch step {
         case .waitingForAffordance:
-            return "Onboarding did not expose an enabled welcome_guest or add_vehicle affordance before the timeout"
+            stepMessage = "Onboarding did not expose an enabled welcome_guest or add_vehicle affordance before the timeout"
         case .startingGuestSession:
-            return "Guest session did not reach the vehicle list before the timeout"
+            stepMessage = "Guest session did not reach the vehicle list before the timeout"
         case .openingVehicleCreation:
-            return "Vehicle creation did not open before the timeout"
+            stepMessage = "Vehicle creation did not open before the timeout"
         }
+        guard vehicleFormWasSeen else {
+            return stepMessage
+        }
+        // The form was seen earlier but is gone now: keep the counters as secondary context so the
+        // earlier work is not lost while the message still names the step that was never reached.
+        return stepMessage +
+            " (the vehicle form had been visible for \(vehicleFormVisibleIterations) iteration(s) " +
+            "after \(vehicleFormSubmissions) real submission(s))"
     }
 }
 
 /// Per-step timing and tap counts for the CI measurement required by E1-17.
 struct OnboardingWaitReport {
+    let outcome: OnboardingWaitOutcome
     let destination: String
     let total: TimeInterval
     let stepDurations: [OnboardingWaitStep: TimeInterval]
@@ -223,8 +269,21 @@ struct OnboardingWaitReport {
     let vehicleFormVisibleIterations: Int
     let vehicleFormSubmissions: Int
 
+    /// Adds the elapsed time of `step` to the running totals. Called whenever the step changes and
+    /// once more when the wait ends, so the step that consumed the whole budget is not reported as
+    /// zero.
+    static func record(
+        stepDurations: inout [OnboardingWaitStep: TimeInterval],
+        step: OnboardingWaitStep,
+        since: Date,
+        now: Date
+    ) {
+        stepDurations[step, default: 0] += now.timeIntervalSince(since)
+    }
+
     var summary: String {
-        "E1-17 onboarding reached \(destination) in \(Self.format(total)) seconds " +
+        let outcomeText = outcome == .reached ? "reached" : "did not reach"
+        return "E1-17 onboarding \(outcomeText) \(destination) in \(Self.format(total)) seconds " +
             "(waitingForAffordance=\(Self.format(duration(.waitingForAffordance))) " +
             "startingGuestSession=\(Self.format(duration(.startingGuestSession))) " +
             "openingVehicleCreation=\(Self.format(duration(.openingVehicleCreation))) " +
@@ -266,22 +325,47 @@ func waitForOnboarding(
     var stepStartedAt = startedAt
     var stepDurations: [OnboardingWaitStep: TimeInterval] = [:]
 
-    while !OnboardingWaitBudget.hasReachedDeadline(
-        effectiveLimit: absoluteLimit,
-        startedAt: startedAt,
-        now: Date()
-    ) {
-        if isComplete() {
-            stepDurations[waitState.step, default: 0] += Date().timeIntervalSince(stepStartedAt)
-            return finishOnboarding(
+    while true {
+        let deadlineReached = OnboardingWaitBudget.hasReachedDeadline(
+            effectiveLimit: absoluteLimit,
+            startedAt: startedAt,
+            now: Date()
+        )
+        // Completion is re-checked on every iteration, including the one where the deadline expires,
+        // so a destination that becomes true during the final scheduler wait is still a success.
+        if let outcome = OnboardingWaitBudget.resolveOutcome(
+            deadlineReached: deadlineReached,
+            isComplete: isComplete()
+        ) {
+            OnboardingWaitReport.record(
+                stepDurations: &stepDurations,
+                step: waitState.step,
+                since: stepStartedAt,
+                now: Date()
+            )
+            let report = makeOnboardingReport(
+                outcome: outcome,
                 destination: destination,
                 startedAt: startedAt,
                 stepDurations: stepDurations,
                 waitState: waitState
             )
+            print(report.summary)
+            if outcome == .timedOut {
+                let formWasVisible =
+                    handleVehicleForm != nil && app.textFields["vehicle_name"].exists
+                XCTFail(
+                    "\(waitState.timeoutMessage(formVisibleAtTimeout: formWasVisible)) " +
+                        "within the \(OnboardingWaitReport.format(absoluteLimit))-second absolute cap. " +
+                        "Last step: \(waitState.step).",
+                    file: file,
+                    line: line
+                )
+            }
+            return report
         }
 
-        if let handleVehicleForm, app.textFields[OnboardingIdentifiers.vehicleName].exists {
+        if let handleVehicleForm, app.textFields["vehicle_name"].exists {
             let acted = handleVehicleForm()
             waitState.noteVehicleFormVisible(handlerActed: acted)
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
@@ -302,38 +386,29 @@ func waitForOnboarding(
         }
 
         if waitState.step != previousStep {
-            stepDurations[previousStep, default: 0] += Date().timeIntervalSince(stepStartedAt)
+            OnboardingWaitReport.record(
+                stepDurations: &stepDurations,
+                step: previousStep,
+                since: stepStartedAt,
+                now: Date()
+            )
             stepStartedAt = Date()
         }
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))
     }
-
-    let formWasVisible = handleVehicleForm != nil && app.textFields[OnboardingIdentifiers.vehicleName].exists
-    XCTFail(
-        "\(waitState.timeoutMessage) within the \(OnboardingWaitReport.format(absoluteLimit))-second absolute cap. " +
-            "Last step: \(waitState.step). Vehicle form visible at timeout: \(formWasVisible). " +
-            "Vehicle form iterations: \(waitState.vehicleFormVisibleIterations), " +
-            "real submissions: \(waitState.vehicleFormSubmissions).",
-        file: file,
-        line: line
-    )
-    return finishOnboarding(
-        destination: destination,
-        startedAt: startedAt,
-        stepDurations: stepDurations,
-        waitState: waitState
-    )
 }
 
-/// Builds and prints the completion report. Shared by the success and timeout exits so both carry
-/// the same measurements.
-private func finishOnboarding(
+/// Builds the completion report. Shared by the success and timeout exits so both carry the same
+/// measurements.
+private func makeOnboardingReport(
+    outcome: OnboardingWaitOutcome,
     destination: String,
     startedAt: Date,
     stepDurations: [OnboardingWaitStep: TimeInterval],
     waitState: OnboardingWaitState
 ) -> OnboardingWaitReport {
-    let report = OnboardingWaitReport(
+    OnboardingWaitReport(
+        outcome: outcome,
         destination: destination,
         total: Date().timeIntervalSince(startedAt),
         stepDurations: stepDurations,
@@ -342,11 +417,4 @@ private func finishOnboarding(
         vehicleFormVisibleIterations: waitState.vehicleFormVisibleIterations,
         vehicleFormSubmissions: waitState.vehicleFormSubmissions
     )
-    print(report.summary)
-    return report
-}
-
-/// The accessibility identifiers the shared onboarding wait drives.
-enum OnboardingIdentifiers {
-    static let vehicleName = "vehicle_name"
 }
