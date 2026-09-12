@@ -39,25 +39,27 @@
 - Date: 2026-09-12.
 - Branch and base: `story/E1-17-ios-onboarding-ui-test-flake`, based on synchronized `main` at
   `4207b05` after pull request #66 merged.
-- Current phase and latest commit: the second owner-review corrections are implemented and
+- Current phase and latest commit: the third owner-review corrections are implemented and
   committed. The prior sequence is `7b7ff63`/`7d40b9e`/`984fbba`; the stale-element cycle is
   `2f80204`/`66f4552`; the CI-failure correction is `20ceff6`/`4ee4f1b`/`12d9308`/`bd481c5`/
   `32fcca4`; the snapshot/cap hardening is `f3e362e`; the first owner-review correction is
-  `93d31e5`/`753c103`/`2b8326b`; and the second owner-review correction is `0c3a554` (RED) and
-  `73f943d` (GREEN).
+  `93d31e5`/`753c103`/`2b8326b`; the second is `0c3a554`/`73f943d`; and the third is `8ecd756`
+  (RED) and `76671e2` (GREEN).
 - Push and pull-request status: pull request #67 is open. All implementation commits through the
-  second owner-review correction are pushed; the pull-request body was refreshed to the merged
-  design and its repetition evidence is being aligned to the current iOS binary.
-- Completed since the previous checkpoint: fixed the two defects the `submittingVehicleForm`
-  diagnostic introduced, without changing the accepted design. Seeing the vehicle form is now a
-  non-terminal diagnostic observation tracked by a flag and two counters, so the step stays on the
-  affordance ladder and a dismissed form still retries `add_vehicle`; `handleVehicleForm` returns
-  whether it acted, so `vehicleFormVisibleIterations` and `vehicleFormSubmissions` are distinct and
-  a self-latching handler no longer inflates the submission count; and the observation no longer
-  bypasses the `enter()` guard because it never assigns `step`.
-- Verification evidence and known failures: fourteen policy tests pass on a booted iOS 26.5
-  simulator; the affected end-to-end tests pass locally (the only local failure is the pre-existing
-  swipe-to-delete flake, outside E1-17); the full non-instrumented command passes.
+  third owner-review correction are pushed; the pull-request body was refreshed to the merged design
+  and its repetition-evidence box is unticked until the runs on this head finish.
+- Completed since the previous checkpoint: fixed the remaining review findings without changing the
+  accepted design. The timeout message now keys off the form being visible at the timeout, so a form
+  seen earlier and dismissed names the step that was never reached; the report records an explicit
+  outcome (reached or timed out) and closes the step that consumed the budget; completion is
+  re-checked after the deadline so an arrival during the final scheduler wait is a success; and
+  hittability is derived from the snapshot frame, removing the inert `try?` and the false
+  catchability claim.
+- Verification evidence and known failures: twenty policy tests pass on a booted iOS 26.5
+  simulator; the affected end-to-end tests pass locally on an erased simulator with a pinned device
+  id (`56F1AD0C-42E0-499C-9469-DC91CDD8AD21`); the full non-instrumented command passes. Repeated
+  `ios-simulator-build` runs on the current head are recorded under Verification Run once they
+  finish.
 - Open decisions or blockers: option (b), a Debug-only launch-environment seam to remove the real
   Firebase anonymous sign-in from the UI tests, requires an owner decision and is recorded under
   "Owner Decision Required" below. No other blocker.
@@ -117,6 +119,13 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   still retries `add_vehicle`; `handleVehicleForm` returns `Bool` and the submission counter tracks
   real handler actions, not iterations. The form observation no longer assigns `step`, so it cannot
   bypass the `enter()` monotonic guard.
+- Third owner-review correction: `timeoutMessage(formVisibleAtTimeout:)` keys off the form being
+  visible at the timeout, so a dismissed form names the step that was never reached and keeps the
+  form counters only as secondary context; the report gained an explicit `OnboardingWaitOutcome` and
+  a shared `record` helper that closes the step that consumed the budget; completion is re-checked
+  after the deadline; and hittability is derived from the snapshot frame instead of the
+  non-throwing `isHittable` property. `OnboardingIdentifiers` was dropped because it wrapped a
+  single literal the callers already inline.
 
 ## Acceptance Evidence
 
@@ -163,8 +172,14 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   `testOnboardingEnteredStepIsWiredIntoNextAction`.
   The second owner-review cycle added
   `testOnboardingWaitStillRetriesAddVehicleAfterTheFormWasSeen` and
-  `testOnboardingFormSubmissionsTrackRealSubmissionsNotIterations`; both failed to compile or assert
-  against the previous diagnostic and pass after the correction. Fourteen tests, zero failures.
+  `testOnboardingFormSubmissionsTrackRealSubmissionsNotIterations`.
+  The third owner-review cycle added `testOnboardingTimeoutNamesTheUnreachedStepAfterAFormWasSeen`,
+  `testOnboardingTimeoutKeepsFormContextAfterTheFormWasSeen`,
+  `testOnboardingCompletionWinsOverTheDeadline`,
+  `testOnboardingSummaryDistinguishesReachedFromTimedOut`,
+  `testOnboardingReportClosesTheCurrentStep` and
+  `testOnboardingHittabilityIsDerivedFromGeometry`; all failed to compile or assert against the
+  previous helper and pass after the correction. Twenty tests, zero failures.
 - **Budget policy is now wired.** `waitForOnboarding`'s loop condition calls
   `OnboardingWaitBudget.hasReachedDeadline(effectiveLimit:startedAt:now:)`. Reintroducing a per-step
   deadline reset would now change the function whose test
@@ -172,19 +187,35 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   acceptance criterion is protected by an executable test rather than by an inline comparison.
 - **Form diagnostic is non-terminal and honest.** Seeing the vehicle form records a flag and two
   counters without moving `step`, so a dismissed form still taps a reappearing `add_vehicle`. The
-  timeout message names the form, the iterations it stayed visible, and the real submissions; the
-  submission counter advances only when `handleVehicleForm` returns `true`, so a self-latching
-  handler no longer reports roughly 360 submissions after one real one.
-- **Local end-to-end.** The affected onboarding tests pass locally; onboarding reached vehicle
-  creation with one guest and one add-vehicle tap attempt. The only local failure is the pre-existing
-  swipe-to-delete `visible frame is empty` flake in `testVehicleSwipeDeleteShowsConfirmationDialog`,
-  which is outside E1-17 and passed on CI.
+  timeout message keys off the form being visible at the timeout: a stuck form names the form and
+  its real submissions; a form seen earlier and dismissed names the step that was never reached and
+  keeps the counters as secondary context. The submission counter advances only when
+  `handleVehicleForm` returns `true`, so a self-latching handler no longer reports roughly 360
+  submissions after one real one.
+- **Timeout path reports honestly.** The single exit builds an `OnboardingWaitReport` with an
+  explicit `outcome` and closes the step that consumed the budget, so the summary reads
+  `did not reach` rather than `reached` and no step reports `0.000` after holding the whole cap. The
+  chosen option for this path is to keep the report (option b in the review), not to delete it: the
+  step is closed with `OnboardingWaitReport.record` before the report is built, and the `XCTFail`
+  text carries the diagnostic. `continueAfterFailure = false` makes the failure short-circuit, so
+  the report is printed once and the test stops.
+- **Completion wins over the deadline.** The loop resolves an optional outcome each iteration; a
+  destination that becomes true while the final scheduler wait is unwinding is reported as reached.
+- **Hittability is geometry-based.** `resolve` uses `element.exists` plus one throwing `snapshot()`
+  and derives hittability from the snapshot frame (`!isEmpty` and intersecting `app.frame`). The
+  inert `try?` on the non-throwing `isHittable` is gone, so the build is warning-free, and the
+  comment no longer claims an Objective-C exception is catchable.
+- **Local end-to-end.** The affected onboarding tests pass locally on an erased simulator with the
+  pinned device id `56F1AD0C-42E0-499C-9469-DC91CDD8AD21`, including
+  `testVehicleSwipeDeleteShowsConfirmationDialog`, which is the first local pass for that test in
+  this story.
 - All changes remain under `iosApp/UITests` plus the regenerated Xcode project and documentation;
   production code, shared state, contracts, Swift-facing ABI, schema, migrations and decisions are
   unchanged.
-- Consecutive green `ios-simulator-build` runs on the final implementation head: 3 of 3 (run
-  `34682336801` first execution plus two same-head reruns), all completing the full iOS suite with
-  zero failures. Documentation commits after that head change no iOS source.
+- Consecutive green `ios-simulator-build` runs: 3 of 3 on head `4ac8e85` (run `34682336801` plus two
+  same-head reruns); green on head `942df87` (run `34689361543`). The owner-review commits change
+  iOS test source, so the current head's own count is recorded under Verification Run once the runs
+  finish.
 
 ## Out of Scope / Not Done
 
@@ -245,9 +276,14 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
 - Second owner-review RED: the same command — the two new tests failed against the previous
   diagnostic (`noteVehicleFormVisible` arity and the terminal-form retry assertion).
 - Second owner-review GREEN: the same command — 14 executed, 0 failures, `TEST SUCCEEDED`.
+- Third owner-review RED: the same command — the six new tests failed to compile or assert against
+  the previous helper (missing `resolveOutcome`, `record` and the `formVisibleAtTimeout` parameter,
+  and the geometry-based hittability).
+- Third owner-review GREEN: the same command — 20 executed, 0 failures, `TEST SUCCEEDED`.
 - Affected end-to-end GREEN (local): `-only-testing:carAppUITests/OnboardingFlowUITests
-  -only-testing:carAppUITests/VehicleAndFuelFlowUITests test` — all onboarding tests pass; the only
-  failure is the pre-existing swipe-to-delete `visible frame is empty` flake.
+  -only-testing:carAppUITests/VehicleAndFuelFlowUITests test` on a freshly erased simulator with the
+  pinned device id `56F1AD0C-42E0-499C-9469-DC91CDD8AD21` — 6 executed, 0 failures, including the
+  previously flaky swipe-to-delete test.
 - Same-head CI reruns of the first corrected version (`34649174041`): one run green with per-step
   values (for example `startingGuestSession=3.784`), one rerun failed on a pre-existing
   swipe-to-delete assertion at `VehicleAndFuelFlowUITests.swift:42` after onboarding succeeded, and a
@@ -264,9 +300,11 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   the affected swipe-delete test reached vehicle creation in `3.466` seconds.
 - `ios-simulator-build` on the first owner-review head `7a65d03`: **green**. Run `34687150348`
   passed all ten required checks; onboarding reached its destinations in 3.838–7.860 seconds.
-- Repeated `ios-simulator-build` runs on the second owner-review head (the current iOS binary): the
+- `ios-simulator-build` on the second owner-review head `942df87`: **green**. Run `34689361543`
+  passed all ten required checks.
+- Repeated `ios-simulator-build` runs on the third owner-review head (the current iOS binary): the
   count is recorded here once the runs finish. The head changes iOS test source, so it cannot
-  inherit the `4ac8e85` or `7a65d03` results.
+  inherit the `4ac8e85`, `7a65d03` or `942df87` results.
 
 ## Contract Impact
 

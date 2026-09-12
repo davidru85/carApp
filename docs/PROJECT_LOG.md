@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-12 — E1-17 second and third owner-review corrections
+
+- **Type:** correction
+- **Story / Decision:** `E1-17`; no decision changes
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied two further owner-review rounds on
+  [pull request #67](https://github.com/davidru85/carApp/pull/67). The vehicle-form observation is
+  now non-terminal (a `vehicleFormWasSeen` flag plus `vehicleFormVisibleIterations` and
+  `vehicleFormSubmissions` counters) instead of a step, so a dismissed form still retries
+  `add_vehicle`; the submission counter advances only when the handler reports it acted. The
+  timeout message now keys off the form being visible at the timeout, so a form seen earlier and
+  dismissed names the step that was never reached. The wait report records an explicit outcome
+  (reached or timed out), closes the step that consumed the budget, and re-checks completion after
+  the deadline. Hittability is derived from the snapshot frame, removing the inert `try?` and the
+  false claim that it was catchable.
+- **Why:** The first form diagnostic reintroduced the one-shot-latch class this story exists to
+  remove and inflated its counter the same way as the earlier `guestTapAttempts`. The timeout
+  message and the report were also dishonest once the form was dismissed, and the inert `try?`
+  produced a compiler warning and overclaimed safety.
+- **Documents touched:** `docs/handoff-E1-17.md`, this log.
+- **Verification:** Three RED cycles produced 4, 4 and 2 intended failures against the evolving
+  policy; the final suite passes 20/20. The affected end-to-end tests passed locally on an erased
+  simulator with a pinned device id, and the complete non-instrumented command passed. Repeated
+  `ios-simulator-build` runs for the final head are recorded in `docs/handoff-E1-17.md`.
+- **Follow-ups / risks:** The stale 2026-09-11 story entry below still says "policy GREEN passed
+  9/9", "four intended failures" and head `4ac8e85`; those figures are superseded by this entry and
+  by `docs/handoff-E1-17.md`. `CarAppKeychainPersistenceUITests` is the only caller that passes
+  `handleVehicleForm` and it `XCTSkip`s without the App Check debug token, so green CI is not
+  evidence for that path.
+
 ### 2026-09-11 — E1-17 iOS onboarding UI-test stabilization
 
 - **Type:** story
