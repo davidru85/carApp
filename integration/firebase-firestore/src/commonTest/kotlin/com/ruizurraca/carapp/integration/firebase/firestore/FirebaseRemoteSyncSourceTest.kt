@@ -211,6 +211,52 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
+    fun failedRefreshOnPushReturnsUnauthenticatedWithoutRetryingTheWrite() =
+        runTest {
+            val gateway =
+                RecordingFirestoreGateway(
+                    writeFailures = mutableListOf(FirestoreGatewayFailure.UNAUTHENTICATED),
+                    refreshFailures = mutableListOf(FirestoreGatewayFailure.UNAUTHENTICATED),
+                )
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result = source.pushSnapshot(OwnerId("anonymous-owner"), vehicleSnapshot())
+
+            assertEquals(
+                RemoteError.Unauthenticated,
+                assertIs<Outcome.Err<RemoteError>>(result).error,
+            )
+            assertEquals(1, gateway.tokenRefreshCount)
+            assertEquals(1, gateway.writes.size)
+        }
+
+    @Test
+    fun failedRefreshOnPullReturnsUnauthenticatedWithoutRetryingTheQuery() =
+        runTest {
+            val gateway =
+                RecordingFirestoreGateway(
+                    queryFailures = mutableListOf(FirestoreGatewayFailure.UNAUTHENTICATED),
+                    refreshFailures = mutableListOf(FirestoreGatewayFailure.UNAUTHENTICATED),
+                )
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result =
+                source.pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 50,
+                )
+
+            assertEquals(
+                RemoteError.Unauthenticated,
+                assertIs<Outcome.Err<RemoteError>>(result).error,
+            )
+            assertEquals(1, gateway.tokenRefreshCount)
+            assertEquals(1, gateway.queries.size)
+        }
+
+    @Test
     fun firestoreFailuresMapToTheExactRemoteErrorLeaves() =
         runTest {
             val cases =
@@ -313,6 +359,7 @@ internal class RecordingFirestoreGateway(
     private val documents: List<FirestoreDocument> = emptyList(),
     private val writeFailures: MutableList<FirestoreGatewayFailure> = mutableListOf(),
     private val queryFailures: MutableList<FirestoreGatewayFailure> = mutableListOf(),
+    private val refreshFailures: MutableList<FirestoreGatewayFailure> = mutableListOf(),
 ) : FirestoreGateway {
     var memoryOnlyConfigurationCount = 0
     var tokenRefreshCount = 0
@@ -341,6 +388,9 @@ internal class RecordingFirestoreGateway(
 
     override suspend fun refreshAuthToken() {
         tokenRefreshCount += 1
+        refreshFailures.removeFirstOrNull()?.let { failure ->
+            throw FirestoreGatewayException(failure)
+        }
     }
 }
 
