@@ -142,8 +142,41 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         XCTAssertTrue(state.vehicleFormWasSeen)
         XCTAssertEqual(state.vehicleFormVisibleIterations, 3)
         XCTAssertEqual(state.vehicleFormSubmissions, 1)
-        XCTAssertTrue(state.timeoutMessage.contains("vehicle form"), state.timeoutMessage)
-        XCTAssertTrue(state.timeoutMessage.contains("1 real submission"), state.timeoutMessage)
+
+        let message = state.timeoutMessage(formVisibleAtTimeout: true)
+        XCTAssertTrue(message.contains("vehicle form"), message)
+        XCTAssertTrue(message.contains("1 real submission"), message)
+    }
+
+    /// The form message must key off the form being visible at the timeout, not off it having ever
+    /// been seen. Once the form is dismissed and the wait advances, the message must name the step
+    /// that was never reached instead of claiming the form is still there.
+    func testOnboardingTimeoutNamesTheUnreachedStepAfterAFormWasSeen() {
+        let addVehiclePosition = OnboardingTapPosition(dx: 0.4, dy: 0.6)
+        var state = OnboardingWaitState()
+        state.noteVehicleFormVisible(handlerActed: true)
+        _ = state.nextAction(positions: [.addVehicle: addVehiclePosition])
+        XCTAssertEqual(state.step, .openingVehicleCreation)
+
+        let message = state.timeoutMessage(formVisibleAtTimeout: false)
+        XCTAssertTrue(message.contains("Vehicle creation"), message)
+        XCTAssertFalse(
+            message.contains("never dismissed"),
+            "A dismissed form must not be reported as still present: \(message)"
+        )
+    }
+
+    /// When the form was seen earlier but is gone at the timeout, the step message may still carry
+    /// the form counters as secondary context, so the earlier work is not lost.
+    func testOnboardingTimeoutKeepsFormContextAfterTheFormWasSeen() {
+        let addVehiclePosition = OnboardingTapPosition(dx: 0.4, dy: 0.6)
+        var state = OnboardingWaitState()
+        state.noteVehicleFormVisible(handlerActed: true)
+        _ = state.nextAction(positions: [.addVehicle: addVehiclePosition])
+
+        let message = state.timeoutMessage(formVisibleAtTimeout: false)
+        XCTAssertTrue(message.contains("Vehicle creation"), message)
+        XCTAssertTrue(message.contains("1"), message)
     }
 
     /// The handler self-latches after one real submission, so the form stays visible for hundreds of
@@ -178,6 +211,87 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         )
     }
 
+    /// Completion wins over the deadline: a destination that becomes true during the final
+    /// scheduler wait must be reported as reached, not as a timeout. The previous driver checked the
+    /// deadline before completion and failed the test even when the app had arrived.
+    func testOnboardingCompletionWinsOverTheDeadline() {
+        XCTAssertEqual(
+            OnboardingWaitBudget.resolveOutcome(deadlineReached: true, isComplete: true),
+            .reached,
+            "Completion must be re-checked after the budget expires"
+        )
+        XCTAssertEqual(
+            OnboardingWaitBudget.resolveOutcome(deadlineReached: true, isComplete: false),
+            .timedOut
+        )
+        XCTAssertNil(
+            OnboardingWaitBudget.resolveOutcome(deadlineReached: false, isComplete: false),
+            "A wait inside its budget is not terminal"
+        )
+    }
+
+    /// The timeout report must not claim the destination was reached, and it must close the step
+    /// that consumed the budget so the per-step durations do not under-report.
+    func testOnboardingSummaryDistinguishesReachedFromTimedOut() {
+        let reached =
+            OnboardingWaitReport(
+                outcome: .reached,
+                destination: "vehicle creation",
+                total: 5,
+                stepDurations: [.openingVehicleCreation: 5],
+                guestTapAttempts: 1,
+                addVehicleTapAttempts: 1,
+                vehicleFormVisibleIterations: 0,
+                vehicleFormSubmissions: 0
+            )
+        let timedOut =
+            OnboardingWaitReport(
+                outcome: .timedOut,
+                destination: "vehicle creation",
+                total: 180,
+                stepDurations: [.openingVehicleCreation: 180],
+                guestTapAttempts: 1,
+                addVehicleTapAttempts: 20,
+                vehicleFormVisibleIterations: 0,
+                vehicleFormSubmissions: 0
+            )
+
+        XCTAssertTrue(reached.summary.contains("reached"), reached.summary)
+        XCTAssertTrue(timedOut.summary.contains("did not reach"), timedOut.summary)
+    }
+
+    /// Closing the in-progress step before building the timeout report keeps the measurement honest.
+    func testOnboardingReportClosesTheCurrentStep() {
+        var stepDurations: [OnboardingWaitStep: TimeInterval] = [:]
+        let startedAt = Date(timeIntervalSince1970: 1_000_000)
+        OnboardingWaitReport.record(
+            stepDurations: &stepDurations,
+            step: .openingVehicleCreation,
+            since: startedAt,
+            now: startedAt.addingTimeInterval(42)
+        )
+
+        XCTAssertEqual(stepDurations[.openingVehicleCreation], 42)
+    }
+
+    /// Hittability is derived from snapshot geometry instead of the non-throwing `isHittable`
+    /// property, so a vanished element cannot raise an uncatchable XCTest exception: an empty or
+    /// off-screen frame is not hittable, and a frame inside the app is.
+    func testOnboardingHittabilityIsDerivedFromGeometry() {
+        let appFrame = CGRect(x: 0, y: 0, width: 400, height: 800)
+        XCTAssertFalse(
+            OnboardingTapPosition.isHittable(frame: .zero, in: appFrame),
+            "An empty frame is not hittable"
+        )
+        XCTAssertFalse(
+            OnboardingTapPosition.isHittable(frame: CGRect(x: 0, y: 900, width: 100, height: 40), in: appFrame),
+            "An off-screen frame is not hittable"
+        )
+        XCTAssertTrue(
+            OnboardingTapPosition.isHittable(frame: CGRect(x: 100, y: 300, width: 100, height: 40), in: appFrame)
+        )
+    }
+
     /// The tap action must not retain an `XCUIElement` that can disappear before the tap; it carries
     /// a snapshotted application-relative position instead.
     func testOnboardingWaitCarriesTheSnapshottedTapPosition() {
@@ -195,14 +309,16 @@ final class OnboardingWaitPolicyTests: XCTestCase {
         var guestState = OnboardingWaitState()
         _ = guestState.nextAction(positions: [.guest: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
         XCTAssertEqual(guestState.step, .startingGuestSession)
-        XCTAssertTrue(guestState.timeoutMessage.contains("vehicle list"), guestState.timeoutMessage)
+        let message = guestState.timeoutMessage(formVisibleAtTimeout: false)
+        XCTAssertTrue(message.contains("vehicle list"), message)
     }
 
     func testOnboardingWaitNamesVehicleCreationTimeout() {
         var vehicleState = OnboardingWaitState()
         _ = vehicleState.nextAction(positions: [.addVehicle: OnboardingTapPosition(dx: 0.5, dy: 0.5)])
         XCTAssertEqual(vehicleState.step, .openingVehicleCreation)
-        XCTAssertTrue(vehicleState.timeoutMessage.contains("Vehicle creation"), vehicleState.timeoutMessage)
+        let message = vehicleState.timeoutMessage(formVisibleAtTimeout: false)
+        XCTAssertTrue(message.contains("Vehicle creation"), message)
     }
 
     /// Completion is owned solely by the caller's `isComplete` closure: `nextAction` has no
