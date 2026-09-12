@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-09-12 — E3-02 first owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-02` / `D-168`, `D-169`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the first owner-review round on
+  [pull request #68](https://github.com/davidru85/carApp/pull/68). Finding 1 amended the
+  `docs/CONTRACTS.md §10` side-effect budget to per attempt with an explicit exemption for the one
+  forced-refresh retry; no other normative document repeated the budget, so no further correction
+  was needed. Finding 3 made `FirestoreGateway.refreshAuthToken()` abstract so a gateway that omits
+  the mandatory refresh cannot compile. Finding 4 injected the GitLive `FirebaseAuth` handle into
+  `GitLiveFirestoreGateway` beside the existing `FirebaseFirestore` handle. Finding 5 added the
+  failed-refresh branches for `pushSnapshot` and `pullChanges` and proved them non-vacuous with a
+  mutation probe. Finding 2 was analysis-only: no data loss is possible because the truncated
+  boundary is a downward lower bound on an `>=` filter, but a full page inside one millisecond
+  cannot advance the cursor, so `D-169` / ADR-0170 records the options and a recommendation and
+  waits for the owner.
+- **Why:** The contract text and the implementation had diverged on the retry side-effect budget, the
+  gateway type did not enforce the mandatory refresh, the provider handles were acquired at two
+  different points, and the failed-refresh branch was untested. The millisecond-truncation analysis
+  is a representation question whose resolution the owner reserved.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0170,
+  `docs/handoff-E3-02.md`, this log.
+- **Verification:** The mutation probe made exactly the two new failed-refresh tests fail, then was
+  reverted. The focused review-round command passes 18 tests, Android quality gates, iOS
+  compilation and all 170 mirrored-decision checks; the emulator suite passes 156 assertions; the
+  complete non-instrumented repository command passes 638 tasks.
+- **Follow-ups / risks:** `D-169` is `Proposed` and blocks `E3-03`, not E3-02. Owner review and all
+  ten required checks remain; E3-02 stays implemented, not complete, until merge.
+
 ### 2026-09-12 — E3-02 submitted for owner review
 
 - **Type:** handoff
