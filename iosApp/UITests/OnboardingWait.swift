@@ -31,14 +31,32 @@ enum OnboardingTapTarget: CaseIterable, Equatable {
 }
 
 /// The onboarding segment the wait is currently in. It only ever moves forward.
-enum OnboardingWaitStep: Hashable {
+enum OnboardingWaitStep: Hashable, Comparable {
     case waitingForAffordance
     case startingGuestSession
     case openingVehicleCreation
+    case submittingVehicleForm
+
+    /// Monotonic rank used to reject a backwards transition.
+    private var rank: Int {
+        switch self {
+        case .waitingForAffordance:
+            return 0
+        case .startingGuestSession:
+            return 1
+        case .openingVehicleCreation:
+            return 2
+        case .submittingVehicleForm:
+            return 3
+        }
+    }
+
+    static func < (lhs: OnboardingWaitStep, rhs: OnboardingWaitStep) -> Bool {
+        lhs.rank < rhs.rank
+    }
 }
 
 enum OnboardingWaitAction: Equatable {
-    case complete
     case tap(OnboardingTapTarget, at: OnboardingTapPosition)
     case wait
 }
@@ -105,8 +123,15 @@ struct OnboardingTapPosition: Equatable {
 enum OnboardingWaitBudget {
     static let absoluteLimit: TimeInterval = 180
 
-    static func hasReachedDeadline(startedAt: Date, now: Date) -> Bool {
-        now.timeIntervalSince(startedAt) >= absoluteLimit
+    /// Accepts the effective limit so `waitForOnboarding` calls this function for its loop
+    /// condition instead of re-implementing the comparison inline. A per-step reset would have to
+    /// change this function and would fail its tests.
+    static func hasReachedDeadline(
+        effectiveLimit: TimeInterval = absoluteLimit,
+        startedAt: Date,
+        now: Date
+    ) -> Bool {
+        now.timeIntervalSince(startedAt) >= effectiveLimit
     }
 }
 
@@ -116,23 +141,35 @@ struct OnboardingWaitState {
     private(set) var step = OnboardingWaitStep.waitingForAffordance
     private(set) var guestTapAttempts = 0
     private(set) var addVehicleTapAttempts = 0
+    private(set) var vehicleFormSubmissionAttempts = 0
+
+    /// Records that the vehicle form was visible and the handler ran. The form never advances the
+    /// step through an affordance tap, so without this the timeout would blame the guest step.
+    mutating func noteVehicleFormVisible() {
+        vehicleFormSubmissionAttempts += 1
+        step = OnboardingWaitStep.submittingVehicleForm
+    }
+
+    /// Advances the step only forward, so a reappearing affordance cannot reset the step (and with
+    /// it the budget) or move the wait back to an earlier segment.
+    private mutating func enter(_ candidate: OnboardingWaitStep) {
+        if candidate > step {
+            step = candidate
+        }
+    }
 
     mutating func nextAction(
-        destinationReached: Bool,
         positions: [OnboardingTapTarget: OnboardingTapPosition]
     ) -> OnboardingWaitAction {
-        if destinationReached {
-            return .complete
-        }
         switch step {
         case .waitingForAffordance, .startingGuestSession:
             if let position = positions[.guest] {
-                step = .startingGuestSession
+                enter(OnboardingTapTarget.guest.enteredStep)
                 guestTapAttempts += 1
                 return .tap(.guest, at: position)
             }
             if let position = positions[.addVehicle] {
-                step = .openingVehicleCreation
+                enter(OnboardingTapTarget.addVehicle.enteredStep)
                 addVehicleTapAttempts += 1
                 return .tap(.addVehicle, at: position)
             }
@@ -147,6 +184,8 @@ struct OnboardingWaitState {
                 guestTapAttempts += 1
                 return .tap(.guest, at: position)
             }
+        case .submittingVehicleForm:
+            break
         }
         return .wait
     }
@@ -159,6 +198,9 @@ struct OnboardingWaitState {
             return "Guest session did not reach the vehicle list before the timeout"
         case .openingVehicleCreation:
             return "Vehicle creation did not open before the timeout"
+        case .submittingVehicleForm:
+            return "The vehicle form was visible but never dismissed after " +
+                "\(vehicleFormSubmissionAttempts) submission attempt(s)"
         }
     }
 }
@@ -167,18 +209,23 @@ struct OnboardingWaitState {
 struct OnboardingWaitReport {
     let destination: String
     let total: TimeInterval
-    let waitingForAffordance: TimeInterval
-    let startingGuestSession: TimeInterval
-    let openingVehicleCreation: TimeInterval
+    let stepDurations: [OnboardingWaitStep: TimeInterval]
     let guestTapAttempts: Int
     let addVehicleTapAttempts: Int
+    let vehicleFormSubmissionAttempts: Int
 
     var summary: String {
         "E1-17 onboarding reached \(destination) in \(Self.format(total)) seconds " +
-            "(waitingForAffordance=\(Self.format(waitingForAffordance)) " +
-            "startingGuestSession=\(Self.format(startingGuestSession)) " +
-            "openingVehicleCreation=\(Self.format(openingVehicleCreation))) " +
+            "(waitingForAffordance=\(Self.format(duration(.waitingForAffordance))) " +
+            "startingGuestSession=\(Self.format(duration(.startingGuestSession))) " +
+            "openingVehicleCreation=\(Self.format(duration(.openingVehicleCreation))) " +
+            "submittingVehicleForm=\(Self.format(duration(.submittingVehicleForm))) " +
+            "vehicleFormSubmissions=\(vehicleFormSubmissionAttempts)) " +
             "after \(guestTapAttempts) welcome_guest and \(addVehicleTapAttempts) add_vehicle tap attempts"
+    }
+
+    private func duration(_ step: OnboardingWaitStep) -> TimeInterval {
+        stepDurations[step] ?? 0
     }
 
     static func format(_ value: TimeInterval) -> String {
@@ -208,25 +255,33 @@ func waitForOnboarding(
     var waitState = OnboardingWaitState()
     var stepStartedAt = startedAt
     var stepDurations: [OnboardingWaitStep: TimeInterval] = [:]
-    let absoluteDeadline = startedAt.addingTimeInterval(absoluteLimit)
 
-    while Date() < absoluteDeadline {
+    while !OnboardingWaitBudget.hasReachedDeadline(
+        effectiveLimit: absoluteLimit,
+        startedAt: startedAt,
+        now: Date()
+    ) {
         if isComplete() {
             stepDurations[waitState.step, default: 0] += Date().timeIntervalSince(stepStartedAt)
             let report = OnboardingWaitReport(
                 destination: destination,
                 total: Date().timeIntervalSince(startedAt),
-                waitingForAffordance: stepDurations[.waitingForAffordance] ?? 0,
-                startingGuestSession: stepDurations[.startingGuestSession] ?? 0,
-                openingVehicleCreation: stepDurations[.openingVehicleCreation] ?? 0,
+                stepDurations: stepDurations,
                 guestTapAttempts: waitState.guestTapAttempts,
-                addVehicleTapAttempts: waitState.addVehicleTapAttempts
+                addVehicleTapAttempts: waitState.addVehicleTapAttempts,
+                vehicleFormSubmissionAttempts: waitState.vehicleFormSubmissionAttempts
             )
             print(report.summary)
             return report
         }
 
         if let handleVehicleForm, app.textFields[OnboardingIdentifiers.vehicleName].exists {
+            let previousStep = waitState.step
+            waitState.noteVehicleFormVisible()
+            if waitState.step != previousStep {
+                stepDurations[previousStep, default: 0] += Date().timeIntervalSince(stepStartedAt)
+                stepStartedAt = Date()
+            }
             handleVehicleForm()
             RunLoop.current.run(until: Date().addingTimeInterval(0.5))
             continue
@@ -238,9 +293,7 @@ func waitForOnboarding(
         }
 
         let previousStep = waitState.step
-        switch waitState.nextAction(destinationReached: false, positions: positions) {
-        case .complete:
-            break
+        switch waitState.nextAction(positions: positions) {
         case let .tap(_, position):
             position.tap(in: app)
         case .wait:
@@ -254,20 +307,21 @@ func waitForOnboarding(
         RunLoop.current.run(until: Date().addingTimeInterval(0.5))
     }
 
+    let formWasVisible = handleVehicleForm != nil && app.textFields[OnboardingIdentifiers.vehicleName].exists
     XCTFail(
         "\(waitState.timeoutMessage) within the \(OnboardingWaitReport.format(absoluteLimit))-second absolute cap. " +
-            "Last step: \(waitState.step).",
+            "Last step: \(waitState.step). Vehicle form visible at timeout: \(formWasVisible). " +
+            "handleVehicleForm ran \(waitState.vehicleFormSubmissionAttempts) time(s).",
         file: file,
         line: line
     )
     return OnboardingWaitReport(
         destination: destination,
         total: Date().timeIntervalSince(startedAt),
-        waitingForAffordance: stepDurations[.waitingForAffordance] ?? 0,
-        startingGuestSession: stepDurations[.startingGuestSession] ?? 0,
-        openingVehicleCreation: stepDurations[.openingVehicleCreation] ?? 0,
+        stepDurations: stepDurations,
         guestTapAttempts: waitState.guestTapAttempts,
-        addVehicleTapAttempts: waitState.addVehicleTapAttempts
+        addVehicleTapAttempts: waitState.addVehicleTapAttempts,
+        vehicleFormSubmissionAttempts: waitState.vehicleFormSubmissionAttempts
     )
 }
 
