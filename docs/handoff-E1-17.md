@@ -240,8 +240,11 @@ Recommendation: adopt (b) after the owner records the decision. Until then, (a) 
   completing the full iOS unit and UI suite with zero failures. The per-step values on the first
   execution were `startingGuestSession=1.675–4.327` seconds across the five onboarding waits, and
   the affected swipe-delete test reached vehicle creation in `3.466` seconds.
-- Final `ios-simulator-build` run on the owner-review head: recorded here once the run completes.
-  The owner-review commits change iOS test source, so this head needs its own result rather than
+- Final `ios-simulator-build` run on the owner-review head: **green**. Run `34687150348` passed on
+  head `7a65d03` with all ten required checks green. The onboarding waits reached their destinations
+  in 3.838–7.860 seconds with one guest and one add-vehicle tap attempt each, and the new
+  `submittingVehicleForm` step stayed at `0.000` because no run left the form open. The
+  owner-review commits change iOS test source, so this head carries its own result rather than
   inheriting the `4ac8e85` count.
 
 ## Contract Impact
