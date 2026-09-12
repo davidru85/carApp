@@ -12,6 +12,7 @@ import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseException
+import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.Direction
 import dev.gitlive.firebase.firestore.DocumentSnapshot
@@ -139,7 +140,7 @@ internal interface FirestoreGateway {
 
     suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument>
 
-    suspend fun refreshAuthToken() = Unit
+    suspend fun refreshAuthToken()
 }
 
 internal enum class FirestoreGatewayFailure {
@@ -199,6 +200,7 @@ internal data object FirestoreNull : FirestoreValue
 
 private class GitLiveFirestoreGateway(
     private val firestore: FirebaseFirestore = Firebase.firestore,
+    private val auth: FirebaseAuth = Firebase.auth,
 ) : FirestoreGateway {
     override fun configureMemoryOnlyCache() {
         firestore.settings =
@@ -243,7 +245,7 @@ private class GitLiveFirestoreGateway(
 
     override suspend fun refreshAuthToken() {
         val currentUser =
-            Firebase.auth.currentUser
+            auth.currentUser
                 ?: throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED)
         try {
             currentUser.getIdToken(forceRefresh = true)
