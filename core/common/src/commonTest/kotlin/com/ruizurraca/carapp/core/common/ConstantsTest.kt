@@ -17,6 +17,9 @@ class ConstantsTest {
         assertEquals("carapp-sync", SYNC_WORK)
         assertEquals(5_000L, STATE_HOLDER_TIMEOUT_MS)
         assertEquals(300_000L, FOREGROUND_RESUME_THRESHOLD_MS)
+        assertEquals(2_000L, SYNC_POST_WRITE_DEBOUNCE_MS)
+        assertEquals(30_000L, SYNC_MIN_AUTOMATIC_INTERVAL_MS)
+        assertEquals(21_600_000L, SYNC_PERIODIC_INTERVAL_MS)
         assertEquals(300_000L, FRESH_LOGIN_THRESHOLD_MS)
     }
 

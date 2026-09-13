@@ -10,6 +10,7 @@ import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.AccountConversionOperation
 import com.ruizurraca.carapp.core.database.AccountConversionPhase
 import com.ruizurraca.carapp.core.database.AccountConversionSnapshotRow
@@ -21,7 +22,7 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteCursor
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.feature.fuel.data.toAdoptionOutboxPayload
 import com.ruizurraca.carapp.feature.vehicle.data.toAdoptionOutboxPayload
@@ -209,8 +210,8 @@ internal class AccountConversionCoordinator(
     private suspend fun pullAll(
         ownerId: String,
         entityType: EntityType,
-    ): Outcome<List<RemoteSnapshot>, AppError> {
-        val snapshots = mutableListOf<RemoteSnapshot>()
+    ): Outcome<List<ConversionRemoteDocument>, AppError> {
+        val snapshots = mutableListOf<ConversionRemoteDocument>()
         var cursor = RemoteCursor.INITIAL
         do {
             when (val page = remoteSyncSource.pullChanges(OwnerId(ownerId), entityType, cursor, REMOTE_PAGE_SIZE)) {
@@ -219,7 +220,13 @@ internal class AccountConversionCoordinator(
                 }
 
                 is Outcome.Ok -> {
-                    snapshots += page.value.items
+                    val decoded =
+                        try {
+                            page.value.items.map(RemoteDocument::toConversionDocument)
+                        } catch (_: IllegalArgumentException) {
+                            return Outcome.Err(RemoteError.InvalidArgument)
+                        }
+                    snapshots += decoded
                     cursor = page.value.nextCursor
                     if (!page.value.hasMore) return Outcome.Ok(snapshots)
                 }
@@ -247,7 +254,27 @@ private fun AccountConversionSnapshotRow.toEntitySnapshot(permanentUid: String):
     )
 }
 
-private fun RemoteSnapshot.toTombstone(
+private data class ConversionRemoteDocument(
+    val entityType: EntityType,
+    val entityId: EntityId,
+    val schemaVersion: Int,
+    val deleted: Boolean,
+    val json: String,
+)
+
+private fun RemoteDocument.toConversionDocument(): ConversionRemoteDocument {
+    val payload = rawJson.asJsonObject()
+    require(payload.requiredString("id") == documentId.value)
+    return ConversionRemoteDocument(
+        entityType = entityType,
+        entityId = documentId,
+        schemaVersion = payload.requiredLong("schemaVersion").toInt(),
+        deleted = payload.requiredBoolean("deleted"),
+        json = rawJson,
+    )
+}
+
+private fun ConversionRemoteDocument.toTombstone(
     permanentUid: String,
     timestamp: Long,
 ): EntitySnapshot {

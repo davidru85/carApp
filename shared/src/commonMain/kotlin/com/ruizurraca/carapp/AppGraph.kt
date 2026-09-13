@@ -4,6 +4,7 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
@@ -18,6 +19,7 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
+import com.ruizurraca.carapp.core.sync.createSyncController
 import com.ruizurraca.carapp.feature.fuel.data.SqlDelightFuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
@@ -64,6 +66,8 @@ interface AppGraph {
 
     fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder
 
+    fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
+
     fun syncController(): SyncController
 
     fun close()
@@ -91,7 +95,35 @@ internal class DefaultAppGraph(
             authClient = dependencies.authClient,
         )
     private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
-    private val vehicleRuntime = VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption)
+    private val syncController =
+        createSyncController(
+            scope = graphScope,
+            database = databaseHandle.database,
+            ownerContext = dependencies.ownerContext,
+            connectivity = dependencies.connectivityObserver,
+            remote = dependencies.remoteSyncSource,
+            clock = dependencies.clock,
+            uuidGenerator = dependencies.uuidGenerator,
+            adoption = localOwnerAdoption::awaitAdoption,
+            onPoisoned = dependencies.crashReporter::recordNonFatal,
+            onQuarantined = { record ->
+                dependencies.logger.log(
+                    level = LogLevel.WARN,
+                    tag = "Sync",
+                    message = "Remote document quarantined",
+                    fields =
+                        mapOf(
+                            "entityType" to record.entityType.name,
+                            "code" to "SYNC.Quarantined",
+                            "schemaVersion" to record.schemaVersion.toString(),
+                        ),
+                    throwable = null,
+                )
+            },
+            isDebugBuild = dependencies.isDebugBuild,
+        )
+    private val vehicleRuntime =
+        VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption, syncController)
     private val fuelRepository: FuelEntryRepository =
         AdoptionNotifyingFuelEntryRepository(
             delegate =
@@ -139,6 +171,7 @@ internal class DefaultAppGraph(
             dispatchers = dependencies.dispatchers,
             refreshVehicles = vehicleRuntime::refresh,
             ownerContext = dependencies.ownerContext,
+            syncStatus = syncController.status,
         )
     }
 
@@ -167,6 +200,7 @@ internal class DefaultAppGraph(
             vehicleId = vehicleId,
             repository = fuelRepository,
             dispatchers = dependencies.dispatchers,
+            syncStatus = syncController.status,
         )
     }
 
@@ -206,9 +240,19 @@ internal class DefaultAppGraph(
         )
     }
 
+    override fun syncStateHolder(scope: CoroutineScope): SyncStateHolder {
+        checkOpen()
+        return SyncStateHolder(
+            scope = scope,
+            controller = syncController,
+            connectivity = dependencies.connectivityObserver,
+            dispatchers = dependencies.dispatchers,
+        )
+    }
+
     override fun syncController(): SyncController {
         checkOpen()
-        error("SyncController is staged until E3-03 (D-88)")
+        return syncController
     }
 
     override fun close() {

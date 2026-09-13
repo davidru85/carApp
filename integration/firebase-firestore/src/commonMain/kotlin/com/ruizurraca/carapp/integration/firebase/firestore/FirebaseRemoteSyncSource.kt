@@ -7,8 +7,8 @@ import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemotePage
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseException
@@ -93,13 +93,13 @@ class FirebaseRemoteSyncSource internal constructor(
             }
         return runRemoteOperation {
             val documents = gateway.queryDocuments(query)
-            val items = documents.map { document -> document.toRemoteSnapshot(entityType) }
+            val items = documents.map { document -> document.toRemoteDocument(entityType) }
             val last = items.lastOrNull()
             RemotePage(
                 items = items,
                 nextCursor =
                     last?.let { item ->
-                        RemoteCursor(item.serverUpdatedAt, item.entityId)
+                        RemoteCursor(item.serverUpdatedAt, item.documentId)
                     } ?: cursor,
                 hasMore = items.size == limit,
             )
@@ -348,20 +348,15 @@ private fun FirestoreValue.toProviderValue(): Any? =
         FirestoreNull -> null
     }
 
-private fun FirestoreDocument.toRemoteSnapshot(entityType: EntityType): RemoteSnapshot {
-    require(fields.getValue(ID_FIELD) == FirestoreString(id))
-    val schemaVersion = (fields.getValue(SCHEMA_VERSION_FIELD) as FirestoreLong).value.toInt()
+private fun FirestoreDocument.toRemoteDocument(entityType: EntityType): RemoteDocument {
     val serverUpdatedAt = (fields.getValue(UPDATED_AT_FIELD) as FirestoreTimestamp).epochMilliseconds
-    val deleted = (fields.getValue(DELETED_FIELD) as FirestoreBoolean).value
-    return RemoteSnapshot(
+    return RemoteDocument(
         entityType = entityType,
-        entityId =
+        documentId =
             com.ruizurraca.carapp.core.model
                 .EntityId(id),
-        schemaVersion = schemaVersion,
         serverUpdatedAt = Instant.fromEpochMilliseconds(serverUpdatedAt),
-        deleted = deleted,
-        json = fields.toSnapshotJson(),
+        rawJson = fields.toSnapshotJson(),
     )
 }
 

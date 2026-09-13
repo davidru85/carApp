@@ -2,10 +2,13 @@ package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
+import com.ruizurraca.carapp.core.crash.CrashReporter
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -141,6 +144,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits() =
         runTest {
+            val crashes = mutableListOf<AppError>()
             val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
@@ -162,6 +166,14 @@ class VehicleFormStateHolderTest {
                                 databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                                 remoteSyncSource = remote,
+                                crashReporter =
+                                    object : CrashReporter {
+                                        override fun recordNonFatal(error: AppError, fields: Map<String, String>) {
+                                            crashes += error
+                                        }
+
+                                        override fun setEnabled(enabled: Boolean) = Unit
+                                    },
                             ),
                         ),
                 )
@@ -175,7 +187,9 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle local commit finished") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
-
+                graph.syncController().requestSync(SyncTrigger.PostWriteDebounce)
+                graph.syncController().status.awaitState("vehicle pushed") { remote.pushCalls.isNotEmpty() }
+                assertEquals(emptyList(), crashes)
                 val call = remote.pushCalls.single()
                 assertEquals("anonymous-user", call.first.value)
                 assertEquals(EntityType.VEHICLE, call.second.entityType)
@@ -218,6 +232,8 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle outbox payload saved") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
+                graph.syncController().requestSync(SyncTrigger.PostWriteDebounce)
+                graph.syncController().status.awaitState("vehicle payload pushed") { remote.pushCalls.isNotEmpty() }
 
                 val snapshot = remote.pushCalls.single().second
                 val json = Json.parseToJsonElement(snapshot.json).jsonObject
@@ -257,6 +273,8 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle remote ack applied") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
+                graph.syncController().requestSync(SyncTrigger.PostWriteDebounce)
+                graph.syncController().status.awaitState("vehicle ack persisted") { remote.pushCalls.isNotEmpty() }
 
                 val vehicle =
                     database.databaseQueries

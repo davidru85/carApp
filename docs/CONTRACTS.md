@@ -2011,6 +2011,9 @@ const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel en
 const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
 const val STATE_HOLDER_TIMEOUT_MS: Long = 5_000L          // §14   — WhileSubscribed timeout
 const val FOREGROUND_RESUME_THRESHOLD_MS: Long = 300_000L // §9.8  — 5 minutes
+const val SYNC_POST_WRITE_DEBOUNCE_MS: Long = 2_000L       // §9.8  — 2 seconds
+const val SYNC_MIN_AUTOMATIC_INTERVAL_MS: Long = 30_000L   // §9.8  — 30 seconds
+const val SYNC_PERIODIC_INTERVAL_MS: Long = 21_600_000L    // §9.8  — 6 hours
 const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L       // §11.5 — 5 minutes
 
 // §2 — every supported MVP currency has exactly two decimal minor units, factor 100

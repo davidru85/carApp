@@ -79,6 +79,9 @@ interface SyncController {
     fun requestSync(reason: SyncTrigger)
 
     suspend fun retryFailed(): Outcome<Unit, AppError>
+
+    /** Redacted local diagnostics. Production controllers return an empty list. */
+    suspend fun debugLines(): List<String> = emptyList()
 }
 
 interface RemoteSyncSource {

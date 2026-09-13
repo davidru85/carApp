@@ -92,9 +92,9 @@ class SwiftAppGraph {
     }
 
     fun syncStateHolder(): SyncStateHolder {
-        requireOpenGraph()
+        val graph = requireOpenGraph()
         return cachedSync?.holder
-            ?: newScopedHolder { SyncStateHolder() }
+            ?: newScopedHolder { scope -> graph.syncStateHolder(scope) }
                 .also { cachedSync = it }
                 .holder
     }

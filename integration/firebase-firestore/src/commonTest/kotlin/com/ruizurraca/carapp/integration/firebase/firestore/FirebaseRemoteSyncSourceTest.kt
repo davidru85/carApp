@@ -60,7 +60,7 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
-    fun vehiclePullReturnsOrderedRemoteSnapshotsWithoutProviderTypes() =
+    fun vehiclePullReturnsOrderedRawDocumentsWithoutProviderTypes() =
         runTest {
             val entityId = EntityId("123e4567-e89b-42d3-a456-426614174000")
             val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
@@ -81,13 +81,11 @@ class FirebaseRemoteSyncSourceTest {
             val page = assertIs<Outcome.Ok<RemotePage>>(result).value
             val item = page.items.single()
             assertEquals(EntityType.VEHICLE, item.entityType)
-            assertEquals(entityId, item.entityId)
-            assertEquals(1, item.schemaVersion)
+            assertEquals(entityId, item.documentId)
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
-            assertEquals(false, item.deleted)
             assertEquals(
                 Json.parseToJsonElement(vehicleRemoteJson(entityId.value, serverUpdatedAt.toEpochMilliseconds())),
-                Json.parseToJsonElement(item.json),
+                Json.parseToJsonElement(item.rawJson),
             )
             assertEquals(RemoteCursor(serverUpdatedAt, entityId), page.nextCursor)
             assertEquals(false, page.hasMore)
@@ -104,7 +102,7 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
-    fun fuelEntryPullReturnsTheCompleteClosedRemoteSnapshot() =
+    fun fuelEntryPullReturnsTheCompleteRawRemoteDocument() =
         runTest {
             val entityId = EntityId("123e4567-e89b-42d3-a456-426614174001")
             val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
@@ -124,13 +122,13 @@ class FirebaseRemoteSyncSourceTest {
 
             val item = assertIs<Outcome.Ok<RemotePage>>(result).value.items.single()
             assertEquals(EntityType.FUEL_ENTRY, item.entityType)
-            assertEquals(entityId, item.entityId)
+            assertEquals(entityId, item.documentId)
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
             assertEquals(
                 Json.parseToJsonElement(
                     fuelEntryRemoteJson(entityId.value, serverUpdatedAt.toEpochMilliseconds()),
                 ),
-                Json.parseToJsonElement(item.json),
+                Json.parseToJsonElement(item.rawJson),
             )
             assertEquals("users/anonymous-owner/fuelEntries", gateway.queries.single().path)
         }
@@ -206,7 +204,7 @@ class FirebaseRemoteSyncSourceTest {
                     .value
                     .items
                     .single()
-                    .entityId,
+                    .documentId,
             )
             assertEquals(1, gateway.tokenRefreshCount)
             assertEquals(2, gateway.queries.size)

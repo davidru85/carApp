@@ -52,6 +52,7 @@ class VehicleListStateHolder internal constructor(
     private val dispatchers: DispatcherProvider,
     private val refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
+    syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
 ) {
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
@@ -63,6 +64,7 @@ class VehicleListStateHolder internal constructor(
     private var listing: Outcome<List<Vehicle>, AppError>? = null
     private var selection: String? = null
     private var message: UiMessage? = null
+    private var currentSyncStatus = syncStatus.value
 
     // `isLoading` means the vehicle list of the currently resolved owner is not known yet. It stays
     // true until that owner publishes a successful result, an owner transition reopens it, and an
@@ -81,6 +83,13 @@ class VehicleListStateHolder internal constructor(
     private val ownerJob =
         holderScope.launch(Dispatchers.Unconfined, start = CoroutineStart.UNDISPATCHED) {
             ownerContext.observe().collect(::onOwnerResolved)
+        }
+    private val syncStatusJob =
+        holderScope.launch(dispatchers.main) {
+            syncStatus.collect { value ->
+                currentSyncStatus = value
+                publishCurrent()
+            }
         }
 
     fun refresh() {
@@ -136,6 +145,7 @@ class VehicleListStateHolder internal constructor(
         closed = true
         observationJob = null
         ownerJob.cancel()
+        syncStatusJob.cancel()
         holderScope.cancel()
     }
 
@@ -196,7 +206,7 @@ class VehicleListStateHolder internal constructor(
                             )
                         }.orEmpty(),
                 selectedVehicleId = selection,
-                syncStatus = SyncStatus.Idle,
+                syncStatus = currentSyncStatus,
                 message = message ?: readError?.toErrorMessage(),
             )
     }
@@ -206,7 +216,7 @@ class VehicleListStateHolder internal constructor(
             isLoading = true,
             vehicles = emptyList(),
             selectedVehicleId = null,
-            syncStatus = SyncStatus.Idle,
+            syncStatus = currentSyncStatus,
             message = null,
         )
 }
@@ -398,7 +408,9 @@ fun createVehicleListStateHolder(
     dispatchers: DispatcherProvider,
     refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
-): VehicleListStateHolder = VehicleListStateHolder(scope, repository, dispatchers, refreshVehicles, ownerContext)
+    syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
+): VehicleListStateHolder =
+    VehicleListStateHolder(scope, repository, dispatchers, refreshVehicles, ownerContext, syncStatus)
 
 @HiddenFromObjC
 fun createVehicleFormStateHolder(

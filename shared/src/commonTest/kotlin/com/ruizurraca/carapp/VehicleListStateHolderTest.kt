@@ -15,7 +15,7 @@ import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.shared.testing.testAppProviders
@@ -126,10 +126,11 @@ class VehicleListStateHolderTest {
                         ownerId = OwnerId("anonymous-user"),
                         entityType = EntityType.VEHICLE,
                         cursor = RemoteCursor.INITIAL,
-                        limit = 50,
+                        limit = 200,
                     ),
-                    remote.pullCalls.single(),
+                    remote.pullCalls.first(),
                 )
+                assertEquals(listOf(EntityType.VEHICLE, EntityType.FUEL_ENTRY), remote.pullCalls.map(PullCall::entityType))
             } finally {
                 harness.close()
             }
@@ -150,14 +151,12 @@ class VehicleListStateHolderTest {
         }
 }
 
-private fun remoteVehicleSnapshot(): RemoteSnapshot =
-    RemoteSnapshot(
+private fun remoteVehicleSnapshot(): RemoteDocument =
+    RemoteDocument(
         entityType = EntityType.VEHICLE,
-        entityId = EntityId("00000000-0000-4000-8000-000000000001"),
-        schemaVersion = 1,
+        documentId = EntityId("00000000-0000-4000-8000-000000000001"),
         serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L),
-        deleted = false,
-        json =
+        rawJson =
             """
             {
               "id":"00000000-0000-4000-8000-000000000001",
@@ -184,7 +183,7 @@ private data class PullCall(
 )
 
 private class PullOnlyRemoteSyncSource(
-    private val snapshot: RemoteSnapshot,
+    private val snapshot: RemoteDocument,
 ) : RemoteSyncSource {
     private val recordedPullCalls = mutableListOf<PullCall>()
     val pullCalls: List<PullCall> get() = recordedPullCalls.toList()
@@ -207,7 +206,7 @@ private class PullOnlyRemoteSyncSource(
                 nextCursor =
                     RemoteCursor(
                         lastServerUpdatedAt = snapshot.serverUpdatedAt,
-                        lastDocumentId = snapshot.entityId,
+                        lastDocumentId = snapshot.documentId,
                     ),
                 hasMore = false,
             ),

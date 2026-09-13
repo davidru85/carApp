@@ -6,11 +6,13 @@ final class WalkingSkeletonModel: ObservableObject {
     @Published private(set) var sessionState: SessionUiState
     @Published private(set) var vehicleFormState: VehicleFormUiState
     @Published private(set) var vehicleListState: VehicleListUiState
+    @Published private(set) var syncDebugLines: [String]
     let signInCoordinator: NativeSignInCoordinator
 
     private let sessionStateHolder: SessionStateHolder
     private let vehicleFormStateHolder: VehicleFormStateHolder
     private let vehicleListStateHolder: VehicleListStateHolder
+    private let syncStateHolder: SyncStateHolder
     private var observationTasks: [Task<Void, Never>] = []
 
     init(graph: SwiftAppGraph) {
@@ -19,9 +21,11 @@ final class WalkingSkeletonModel: ObservableObject {
         signInCoordinator = NativeSignInCoordinator(sessionStateHolder: sessionStateHolder)
         vehicleFormStateHolder = graph.vehicleFormStateHolder(vehicleId: nil)
         vehicleListStateHolder = graph.vehicleListStateHolder()
+        syncStateHolder = graph.syncStateHolder()
         sessionState = sessionStateHolder.state.value
         vehicleFormState = vehicleFormStateHolder.state.value
         vehicleListState = vehicleListStateHolder.state.value
+        syncDebugLines = syncStateHolder.debugLines.value
 
         observationTasks = [
             Task { [weak self, sessionStateHolder] in
@@ -37,6 +41,11 @@ final class WalkingSkeletonModel: ObservableObject {
             Task { [weak self, vehicleListStateHolder] in
                 for await state in vehicleListStateHolder.state {
                     self?.vehicleListState = state
+                }
+            },
+            Task { [weak self, syncStateHolder] in
+                for await lines in syncStateHolder.debugLines {
+                    self?.syncDebugLines = lines
                 }
             },
         ]
@@ -87,6 +96,10 @@ final class WalkingSkeletonModel: ObservableObject {
 
     func restoreBackup() {
         vehicleListStateHolder.refresh()
+    }
+
+    func refreshSyncDiagnostics() {
+        syncStateHolder.refreshDebug()
     }
 
     deinit {

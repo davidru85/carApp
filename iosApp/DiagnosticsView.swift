@@ -32,7 +32,21 @@ struct DiagnosticsView: View {
                 }
                 .accessibilityIdentifier("restore_backup")
             }
+
+            Section(header: Text("sync_database")) {
+                if model.syncDebugLines.isEmpty {
+                    Text("empty_sync_diagnostics")
+                } else {
+                    ForEach(Array(model.syncDebugLines.enumerated()), id: \.offset) { _, line in
+                        Text(line).font(.caption.monospaced())
+                    }
+                }
+                Button("refresh_sync_diagnostics") {
+                    model.refreshSyncDiagnostics()
+                }
+            }
         }
         .navigationTitle(Text("diagnostics_title"))
+        .onAppear { model.refreshSyncDiagnostics() }
     }
 }

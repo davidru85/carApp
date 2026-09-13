@@ -26,7 +26,7 @@ import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -327,7 +327,7 @@ private class RecordingReplacementRemoteSource(
                 EntityType.VEHICLE -> remoteVehicle("existing-vehicle")
                 EntityType.FUEL_ENTRY -> remoteFuelEntry("existing-entry")
             }
-        return Outcome.Ok(RemotePage(listOf(item), RemoteCursor(item.serverUpdatedAt, item.entityId), false))
+        return Outcome.Ok(RemotePage(listOf(item), RemoteCursor(item.serverUpdatedAt, item.documentId), false))
     }
 }
 
@@ -342,22 +342,18 @@ private fun Outcome<AuthSession, AppError>.mapToUnit(): Outcome<Unit, AppError> 
 private fun anonymousSessionForConversion() = AuthSession(ANONYMOUS_UID, true, setOf(AuthProvider.ANONYMOUS))
 
 private fun remoteVehicle(id: String) =
-    RemoteSnapshot(
+    RemoteDocument(
         EntityType.VEHICLE,
         EntityId(id),
-        1,
         Instant.fromEpochMilliseconds(100),
-        false,
         anonymousVehicleJson(id = id, ownerId = PERMANENT_UID, includeEntityType = false),
     )
 
 private fun remoteFuelEntry(id: String) =
-    RemoteSnapshot(
+    RemoteDocument(
         EntityType.FUEL_ENTRY,
         EntityId(id),
-        1,
         Instant.fromEpochMilliseconds(100),
-        false,
         anonymousFuelEntryJson(id = id, ownerId = PERMANENT_UID, includeEntityType = false),
     )
 

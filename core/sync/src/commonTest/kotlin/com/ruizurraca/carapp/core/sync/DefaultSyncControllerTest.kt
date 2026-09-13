@@ -18,7 +18,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,6 +28,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.random.Random
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -222,6 +225,30 @@ class DefaultSyncControllerTest {
         }
 
     @Test
+    fun nonAdvancingMillisecondPageFailsClosedWithoutApplyingData() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullHandler = { type, cursor ->
+                if (type == EntityType.VEHICLE) {
+                    RemotePage(
+                        items = listOf(remoteVehicle("vehicle-1", cursor.lastServerUpdatedAt.toEpochMilliseconds())),
+                        nextCursor = cursor,
+                        hasMore = true,
+                    )
+                } else {
+                    page()
+                }
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertFalse(fixture.persistence.vehicleIds.contains("vehicle-1"))
+            assertFalse(fixture.persistence.cursors.containsKey(EntityType.VEHICLE))
+        }
+
+    @Test
     fun orphanFuelEntryBecomesVisibleWhenItsVehicleArrives() =
         runTest {
             val fixture = fixture()
@@ -266,9 +293,13 @@ class DefaultSyncControllerTest {
         runTest {
             lateinit var fixture: Fixture
             var calls = 0
+            var adopted = false
             fixture = fixture(adoption = {
                 calls += 1
-                if (fixture.persistence.outbox.isEmpty()) fixture.withOutbox(vehicleOutbox("vehicle-1"))
+                if (!adopted) {
+                    adopted = true
+                    fixture.withOutbox(vehicleOutbox("vehicle-1"))
+                }
                 Outcome.Ok(Unit)
             })
 
@@ -279,6 +310,31 @@ class DefaultSyncControllerTest {
 
             assertEquals(2, calls)
             assertEquals(1, fixture.remote.pushCalls.size)
+        }
+
+    @Test
+    fun failedAdoptionRetriesAutomaticallyBeforeAnyRemoteWork() =
+        runTest {
+            var attempts = 0
+            val fixture =
+                fixture(
+                    adoption = {
+                        attempts += 1
+                        if (attempts == 1) Outcome.Err(PersistenceError.TransactionFailed) else Outcome.Ok(Unit)
+                    },
+                ).withOutbox(vehicleOutbox("vehicle-1"))
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            runCurrent()
+            assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertEquals(0, fixture.remote.pushCalls.size)
+
+            advanceTimeBy(2_000)
+            runCurrent()
+
+            assertEquals(2, attempts)
+            assertEquals(listOf("vehicle-1"), fixture.remote.pushCalls.map { it.entityId.value })
+            assertEquals(SyncStatus.Idle, fixture.controller.status.value)
         }
 
     @Test
@@ -387,10 +443,40 @@ class DefaultSyncControllerTest {
             assertEquals(Outcome.Err(PersistenceError.TransactionFailed), result)
         }
 
+    @Test
+    fun fixedSeedBackupSimulationConvergesAfterLostResponses() =
+        runTest {
+            val random = Random(3_303)
+            val fixture = fixture(jitter = JitterSource { from, until -> random.nextInt(from, until) })
+            val expectedIds = mutableSetOf<String>()
+
+            repeat(50) { index ->
+                val id = "vehicle-${index.toString().padStart(2, '0')}"
+                expectedIds += id
+                fixture.withOutbox(vehicleOutbox(id))
+                if (random.nextBoolean()) {
+                    fixture.remote.pushResults += Outcome.Err(RemoteError.Unknown)
+                    fixture.remote.pushResults += ack(id)
+                }
+                fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+                advanceUntilIdle()
+                if (fixture.persistence.outbox.any { it.entityId.value == id }) {
+                    fixture.clock.advanceBy(900_000)
+                    fixture.controller.requestSync(SyncTrigger.Periodic)
+                    advanceUntilIdle()
+                }
+            }
+
+            assertEquals(expectedIds, fixture.remote.remoteIds)
+            assertEquals(emptyList(), fixture.persistence.outbox)
+            assertEquals(SyncStatus.Idle, fixture.controller.status.value)
+        }
+
     private fun TestScope.fixture(
         online: Boolean = true,
         now: Long = 0,
         adoption: suspend () -> Outcome<Unit, AppError> = { Outcome.Ok(Unit) },
+        jitter: JitterSource = JitterSource { _, _ -> 200 },
     ): Fixture {
         val clock = TestClock(instant(now))
         val connectivity = TestConnectivity(online)
@@ -405,7 +491,7 @@ class DefaultSyncControllerTest {
                 persistence = persistence,
                 clock = clock,
                 uuidGenerator = TestUuidGenerator(),
-                jitter = JitterSource { _, _ -> 200 },
+                jitter = jitter,
                 adoption = adoption,
             )
         return Fixture(controller, persistence, remote, connectivity, clock)
@@ -601,6 +687,8 @@ private class FakeSyncPersistence : SyncPersistence {
         }
         return SyncCounts(pending, retryable, poisoned)
     }
+
+    override suspend fun purgeTombstones(cutoff: Instant) = Unit
 
     fun edit(entityId: String) {
         val index = outbox.indexOfFirst { it.entityId.value == entityId }

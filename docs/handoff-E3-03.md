@@ -36,19 +36,19 @@
 
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: RED complete; commit pending.
+- Current phase and latest commit: GREEN complete; RED commit `a66c612`.
 - Push and pull-request status: not pushed; no pull request.
-- Completed since the previous checkpoint: synchronized `main`, recorded the ready check, accepted
-  the owner-selected D-169 option A and D-170 option A in the mirrored decision records, bounded the
-  cursor guarantee, specified the raw remote-document contract and added 20 executable engine
-  behavior tests covering the required recovery scenarios plus concurrency and failure boundaries.
-- Verification evidence and known failures: `./gradlew :core:sync:testAndroidHostTest --tests
-  '*DefaultSyncControllerTest'` compiled and ran 21 tests; 20 failed against the intentional
-  no-op controller/backoff stub. The sole passing test is the contract model coverage independent
-  of the implementation. This is the expected RED result.
+- Completed since the previous checkpoint: committed the intentional RED suite; implemented the
+  singleton sync controller, SQLDelight persistence, raw-document validation and quarantine,
+  push/pull ordering, retry and poison behavior, cursor progress guard, local adoption retry,
+  aggregate status, tombstone purge, debug diagnostics and shared state-holder convergence; and
+  integrated the raw Firestore transport boundary selected by D-170.
+- Verification evidence and known failures: the focused sync, database, Firestore integration and
+  shared graph tests pass. The combined Android-host suite, Android unit tests and debug assembly
+  pass with 279 tasks completed. No known functional failure remains in GREEN.
 - Open decisions or blockers: none.
-- Exact next step: commit RED, then implement the engine and persistence/integration behavior in
-  GREEN until the focused suite passes.
+- Exact next step: commit GREEN, then perform the REFACTOR phase, run the complete required
+  verification matrix, finalize the story records, push and open the gated pull request.
 
 ## Scope Completed
 
