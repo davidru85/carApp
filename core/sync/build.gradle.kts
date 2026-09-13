@@ -7,4 +7,5 @@ dependencies {
     "commonMainApi"(projects.core.common)
     "commonMainImplementation"(projects.core.database)
     "commonMainImplementation"(libs.kotlinx.serialization.json)
+    "commonTestImplementation"(libs.kotlinx.coroutines.test)
 }

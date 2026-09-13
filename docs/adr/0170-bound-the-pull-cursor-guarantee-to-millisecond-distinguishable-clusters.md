@@ -2,10 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted
 
-A recommendation is on the table (option A) and requires owner confirmation before `E3-03` starts.
-No option is selected here.
+The owner selected option A on 2026-09-13 before `E3-03` started.
 
 ## Context
 
@@ -68,11 +67,10 @@ times.
 
 ## Decision
 
-Not yet taken. The recommendation is **option A**: accept the behavior and amend `§9.4` and `§20.7`
+**Option A**: accept the behavior and amend `§9.4` and `§20.7`
 to bound the later-page progress guarantee to timestamp clusters that are distinguishable at
 millisecond resolution, explicitly stating that a cluster larger than the page limit within one
-millisecond can fail the cycle with `SyncError.ConflictUnresolved`. The owner chooses; the decision
-is `Proposed`, not `Accepted`.
+millisecond can fail the cycle with `SyncError.ConflictUnresolved`.
 
 ## Consequences
 
@@ -84,15 +82,14 @@ is `Proposed`, not `Accepted`.
 
 ### Negative
 
-- Until the owner decides, `§9.4` overstates its guarantee and `E3-03` cannot start.
 - Under option A, an unsupported same-millisecond cluster can still strand the pull cursor.
 
 ### Constraints Introduced
 
 - No document may claim the `§9.4` progress guarantee for a timestamp cluster that is not
   distinguishable at millisecond resolution.
-- Option B MUST NOT be implemented before it is `Accepted`, because it changes the `RemoteCursor`
-  representation and the `§9.4`/`§9.6` arbitration contract.
+- Preserving provider precision later requires a new accepted decision because it changes the
+  `RemoteCursor` representation and the `§9.4`/`§9.6` arbitration contract.
 
 ## Verification
 

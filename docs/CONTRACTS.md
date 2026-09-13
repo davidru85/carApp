@@ -586,7 +586,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
 - The first page of every cycle MUST use `startAt(overlapSince)`, including cycles that resume after the first pull. Firebase document-ID cursors reject an empty string, so the first boundary deliberately carries only the timestamp and therefore includes every document at that timestamp. Later pages MUST use both concrete cursor components with `startAfter(lastServerUpdatedAt, lastDocumentId)`. `null` MUST NOT be used as a cursor component passed to `startAt`/`startAfter`; the `RemoteCursor.INITIAL` sentinel is exempt because it is materialised as the timestamp-only first-page boundary before reaching Firestore (`§20.7`, D-50).
 - Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
-- A first-page query that omits `startAt(overlapSince)`, or a later-page query that omits either concrete cursor component, is a contract violation. The complete later-page cursor prevents re-reading the same page forever whenever a timestamp cluster exceeds the page size.
+- A first-page query that omits `startAt(overlapSince)`, or a later-page query that omits either concrete cursor component, is a contract violation. The complete later-page cursor advances every timestamp cluster distinguishable at millisecond resolution. Under D-169, a cluster larger than the page limit whose provider timestamps all truncate into one millisecond is an unsupported shape: the progress invariant fails the cycle with `SyncError.ConflictUnresolved` rather than looping. The downward-truncated `>=` boundary cannot exclude data.
 - Tombstones are included.
 - Each page is applied in one local transaction; apply is idempotent.
 - If an outbox row exists for a remote entity, local data is not overwritten.
@@ -597,7 +597,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 
 ### 9.5 Quarantine and malformed remote payloads
 
-A pulled document that cannot be safely applied MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance once the quarantine row is committed.
+A pulled `RemoteDocument` is transported as raw JSON and validated in `:core:sync` (`D-170`). A document that cannot be safely applied MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance once the quarantine row is committed. The integration MUST NOT classify a raw document as malformed or discard it because product decoding failed.
 
 Quarantine reasons are:
 
@@ -605,6 +605,12 @@ Quarantine reasons are:
 - `MalformedPayload`: `schemaVersion <= CLIENT_MAX_SCHEMA_VERSION`, but the document is missing a required field, has an unknown enum value, violates nullability, has a primitive type mismatch, has an out-of-range value, violates `deleted == (deletedAt != null)`, has a document ID / payload ID mismatch, contains a malformed JSON payload, or cannot be deserialized into the supported DTO.
 
 Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
+
+`RemoteDocument.documentId` and `serverUpdatedAt` are transport metadata obtained from the provider
+document and query ordering. The engine reads `schemaVersion` from `rawJson`; when that field is
+missing or cannot be represented as an integer, a `MalformedPayload` quarantine row stores `0` as
+its diagnostic schema version. The provider ordering timestamp supplies the quarantine row's
+non-null `serverUpdatedAt` even when product fields are malformed.
 
 For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
@@ -2475,13 +2481,11 @@ data class EntitySnapshot(
     val json: String,
 )
 
-data class RemoteSnapshot(
+data class RemoteDocument(
     val entityType: EntityType,
-    val entityId: EntityId,
-    val schemaVersion: Int,
+    val documentId: EntityId,
     val serverUpdatedAt: Instant,
-    val deleted: Boolean,
-    val json: String,
+    val rawJson: String,
 )
 
 data class RemoteAck(
@@ -2500,7 +2504,7 @@ data class RemoteCursor(
 }
 
 data class RemotePage(
-    val items: List<RemoteSnapshot>,
+    val items: List<RemoteDocument>,
     val nextCursor: RemoteCursor,
     val hasMore: Boolean,
 )

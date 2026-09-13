@@ -25,13 +25,11 @@ data class EntitySnapshot(
     val json: String,
 )
 
-data class RemoteSnapshot(
+data class RemoteDocument(
     val entityType: EntityType,
-    val entityId: EntityId,
-    val schemaVersion: Int,
+    val documentId: EntityId,
     val serverUpdatedAt: Instant,
-    val deleted: Boolean,
-    val json: String,
+    val rawJson: String,
 )
 
 data class RemoteAck(
@@ -50,7 +48,7 @@ data class RemoteCursor(
 }
 
 data class RemotePage(
-    val items: List<RemoteSnapshot>,
+    val items: List<RemoteDocument>,
     val nextCursor: RemoteCursor,
     val hasMore: Boolean,
 )
