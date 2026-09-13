@@ -17,6 +17,7 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +45,7 @@ class VehicleFormStateHolderTest {
                             defaultDependencies.copy(
                                 databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = false),
                             ),
                         ),
                 )
@@ -94,6 +96,7 @@ class VehicleFormStateHolderTest {
                             defaultDependencies.copy(
                                 databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = false),
                             ),
                         ),
                 )

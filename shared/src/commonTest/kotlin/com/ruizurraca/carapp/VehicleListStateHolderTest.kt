@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
@@ -104,6 +105,7 @@ class VehicleListStateHolderTest {
                 list.state.awaitState("vehicle recovery finished") { state ->
                     !state.isLoading && state.vehicles.isNotEmpty()
                 }
+                awaitSyncCycleSettled(graph, remote)
 
                 val recovered =
                     database.databaseQueries
@@ -138,6 +140,18 @@ class VehicleListStateHolderTest {
                 harness.close()
             }
         }
+
+    // `refresh()` delegates to the E3-03 sync controller, whose cycle runs detached from the
+    // caller. Wait for that cycle to settle before the harness closes the database, or the close
+    // can race an in-flight SQLite call (E1-12 / issue #42).
+    private suspend fun awaitSyncCycleSettled(
+        graph: AppGraph,
+        remote: PullOnlyRemoteSyncSource,
+    ) {
+        graph.syncController().status.awaitState("sync cycle settled") { status ->
+            status !is SyncStatus.Syncing && remote.pullCalls.size == 2
+        }
+    }
 
     private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =
         object : DatabaseFactory {
