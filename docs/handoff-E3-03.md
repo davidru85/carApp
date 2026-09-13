@@ -179,6 +179,15 @@
   `SyncStateHolder.debugLines` and `refreshDebug` members of the debug diagnostics surface changed
   the generated header. The golden was regenerated, `docs/CONTRACTS.md §20.10` was corrected to
   document those members, and both `contractCheck` and the header diff now pass.
+- The second CI run exposed two test-level races introduced by the E3-03 post-write trigger, not by
+  product code. `VehicleFormStateHolderTest` asserted a locally `PENDING` row while the detached
+  sync cycle could fail it against the default offline fake; those two tests now inject
+  `FakeConnectivityObserver(initiallyOnline = false)`, which matches their stated local-persistence
+  intent. `VehicleListStateHolderTest` closed the graph while the `refresh()`-initiated cycle was
+  still calling SQLite, producing an intermittent Kotlin/Native `SIGSEGV` (30% locally; zero on
+  `fbc6d64`); it now waits for the cycle to settle before teardown, the same mitigation E1-12 used
+  for issue #42. The `:shared` Android-host suite passed 25/25 and the full iOS simulator suite
+  25/25 after the change.
 - The pull request awaits the mandatory owner review and the ten required checks; E3-03 is
   implemented, not complete, until it merges.
 
