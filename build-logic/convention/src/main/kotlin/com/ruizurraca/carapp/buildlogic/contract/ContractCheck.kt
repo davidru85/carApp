@@ -36,6 +36,7 @@ class ContractCheck(
         assertion13TestAppGraphParity(),
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
+        assertion23NoDuplicatedDecisionIds(),
         *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
         FunctionGenerationContract(repoRoot).validate(),
         NativeTestExemptionContract.validate(
@@ -439,6 +440,40 @@ class ContractCheck(
             AssertionResult(18, "AuthProvider is declared in §20.3 before §20.8 and §20.9 use it", AssertionResult.Status.PASS)
         } else {
             AssertionResult(18, "AuthProvider is declared in §20.3 before §20.8 and §20.9 use it", AssertionResult.Status.FAIL, "declared at $declaration, §20.9 at $analytics")
+        }
+    }
+
+    // 23 -------------------------------------------------------------------------------------
+    /**
+     * A decision ID repeated inside one table is a data-entry defect: [DecisionRegistry] collapses
+     * the rows through `toMap()` and the duplicated decision reads as one correct row. The check is
+     * scoped per table, because an ID legitimately appears once in the registry and once in the
+     * awaiting summary. A rule with no duplicate detector passes a board that contains one.
+     */
+    private fun assertion23NoDuplicatedDecisionIds(): AssertionResult {
+        val board = read("docs/DECISION_BOARD.md")
+        val tables =
+            mapOf(
+                "docs/DECISION_BOARD.md registry" to DecisionRegistry.registryOf(board),
+                "docs/DECISION_BOARD.md awaiting summary" to DecisionRegistry.awaitingOf(board),
+                "docs/SPECIFICATION.md §12" to read("docs/SPECIFICATION.md"),
+                "docs/TECHNICAL_PLAN.md §2" to read("docs/TECHNICAL_PLAN.md"),
+                "docs/adr/README.md" to read("docs/adr/README.md"),
+            )
+        val duplicates =
+            tables.flatMap { (document, markdown) ->
+                DecisionRegistry.duplicatedIds(markdown).map { id -> "$id in $document" }
+            }
+
+        return if (duplicates.isEmpty()) {
+            AssertionResult(23, "no decision ID is duplicated inside a single table", AssertionResult.Status.PASS)
+        } else {
+            AssertionResult(
+                23,
+                "no decision ID is duplicated inside a single table",
+                AssertionResult.Status.FAIL,
+                "duplicated: ${duplicates.joinToString(", ")}",
+            )
         }
     }
 

@@ -847,6 +847,10 @@ Human review required.
 
 ### E3-02 - Firestore RemoteSyncSource - M
 
+Status: implemented on [pull request #68](https://github.com/davidru85/carApp/pull/68), awaiting
+owner review and all ten required checks. See `docs/handoff-E3-02.md` for the TDD commits and
+acceptance evidence.
+
 Implement the Firestore remote sync integration.
 
 Acceptance criteria:

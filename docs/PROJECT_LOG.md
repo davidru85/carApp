@@ -38,6 +38,109 @@
 
 ## Entries
 
+### 2026-09-13 — E3-02 second owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-02` / `D-170`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the second owner-review round on
+  [pull request #68](https://github.com/davidru85/carApp/pull/68). Finding 1 deleted the duplicated
+  `D-169` awaiting row in `docs/DECISION_BOARD.md` and closed the check gap: `DecisionRegistry`
+  gained a per-table `duplicatedIds` detector and `contractCheck` assertion 23 fails on a repeated
+  decision ID inside one table. Finding 2 escalated the pre-existing malformed-remote-document defect
+  as `D-170` / ADR-0171 (`Proposed`, `Needed by` `E3-03`) and qualified the overstated "exact closed
+  error mapping" claims in the handoff and ADR-0169 to the provider error-code taxonomy. Finding 3
+  restored compile-time exhaustiveness to `FirestoreExceptionCode.toGatewayFailure()` and deleted the
+  redundant string mapping and its host-isolated test. Finding 4 moved `auth.currentUser` inside a
+  protected `runProviderRefresh` region with a total `Throwable` catch, closing the unchecked escape
+  from the closed `Outcome` API.
+- **Why:** The board held two near-identical `D-169` rows and `contractCheck` reported 170 decisions
+  without noticing, the string-keyed error mapping could degrade silently after a provider rename,
+  `auth.currentUser` was evaluated outside the protected region, and `§9.5` `MalformedPayload`
+  quarantine is unimplementable through the current `RemotePage` shape. The owner took the two
+  decisions at the top of the round: the `§9.4` guarantee is not amended here, and the malformed
+  payload defect is escalated rather than fixed.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0171, ADR-0169, `docs/handoff-E3-02.md`,
+  `build-logic/convention` (`DecisionRegistry`, `ContractCheck`, `DecisionRegistryTest`), this log.
+- **Verification:** The new duplicate detector failed `contractCheck` on the real board before the
+  fix (`duplicated: D-169 in docs/DECISION_BOARD.md awaiting summary`); the exhaustive mapping and
+  the `runProviderRefresh` `Throwable` branch were both proven non-vacuous by mutation probes. The
+  focused command passes Android quality gates, 19 source plus 5 boundary tests, iOS compilation and
+  all 171 mirrored-decision checks; the emulator suite passes 156 assertions; the complete
+  non-instrumented repository command passes 638 tasks (550 executed).
+- **Follow-ups / risks:** `D-169` and `D-170` are `Proposed` and block `E3-03`, not E3-02. Owner
+  review and all ten required checks remain; E3-02 stays implemented, not complete, until merge.
+
+### 2026-09-12 — E3-02 first owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-02` / `D-168`, `D-169`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the first owner-review round on
+  [pull request #68](https://github.com/davidru85/carApp/pull/68). Finding 1 amended the
+  `docs/CONTRACTS.md §10` side-effect budget to per attempt with an explicit exemption for the one
+  forced-refresh retry; no other normative document repeated the budget, so no further correction
+  was needed. Finding 3 made `FirestoreGateway.refreshAuthToken()` abstract so a gateway that omits
+  the mandatory refresh cannot compile. Finding 4 injected the GitLive `FirebaseAuth` handle into
+  `GitLiveFirestoreGateway` beside the existing `FirebaseFirestore` handle. Finding 5 added the
+  failed-refresh branches for `pushSnapshot` and `pullChanges` and proved them non-vacuous with a
+  mutation probe. Finding 2 was analysis-only: no data loss is possible because the truncated
+  boundary is a downward lower bound on an `>=` filter, but a full page inside one millisecond
+  cannot advance the cursor, so `D-169` / ADR-0170 records the options and a recommendation and
+  waits for the owner.
+- **Why:** The contract text and the implementation had diverged on the retry side-effect budget, the
+  gateway type did not enforce the mandatory refresh, the provider handles were acquired at two
+  different points, and the failed-refresh branch was untested. The millisecond-truncation analysis
+  is a representation question whose resolution the owner reserved.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0170,
+  `docs/handoff-E3-02.md`, this log.
+- **Verification:** The mutation probe made exactly the two new failed-refresh tests fail, then was
+  reverted. The focused review-round command passes 18 tests, Android quality gates, iOS
+  compilation and all 170 mirrored-decision checks; the emulator suite passes 156 assertions; the
+  complete non-instrumented repository command passes 638 tasks.
+- **Follow-ups / risks:** `D-169` is `Proposed` and blocks `E3-03`, not E3-02. Owner review and all
+  ten required checks remain; E3-02 stays implemented, not complete, until merge.
+
+### 2026-09-12 — E3-02 submitted for owner review
+
+- **Type:** handoff
+- **Story / Decision:** `E3-02` / `D-168`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Opened [pull request #68](https://github.com/davidru85/carApp/pull/68) from the
+  three pushed TDD checkpoints: RED `0dfa7a2`, GREEN `4feda04` and REFACTOR `6dd9b30`.
+- **Why:** E3-02 touches Firestore, backend behavior, sync semantics, authentication recovery,
+  module boundaries, the error taxonomy and gated decision records, so owner review is mandatory.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-02.md`, this log.
+- **Verification:** The pull-request body carries the final focused, emulator and complete
+  repository evidence. The branch is pushed and the pull request is open.
+- **Follow-ups / risks:** All ten required checks and owner approval remain; E3-02 MUST NOT be
+  recorded as complete before merge.
+
+### 2026-09-12 — E3-02 Firestore remote sync integration
+
+- **Type:** story
+- **Story / Decision:** `E3-02` / `D-168`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Completed the GitLive-backed `FirebaseRemoteSyncSource` with client-ID writes,
+  server timestamps, deterministic two-field pagination, epoch-millisecond boundary conversion,
+  exact error mapping and a single forced-refresh retry for unauthenticated operations. Added a
+  resumed-cycle Firestore emulator test and recorded same-module retry ownership in D-168 and
+  ADR-0169. The implementation branch awaits its owner-gated pull request and is not complete until
+  merge.
+- **Why:** The staged E0-07 adapter lacked the closed retry and failure semantics required before the
+  sync engine can safely consume it. Keeping the provider refresh inside the Firestore integration
+  completes the transaction without widening provider-free core or graph contracts.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, ADR-0169, `docs/handoff-E3-02.md`, this log.
+- **Verification:** RED executed 15 tests with the intended four failures; GREEN and REFACTOR pass
+  16 focused tests, Android lint and static analysis, iOS simulator compilation, all 169 decision
+  consistency checks, 156 Firestore emulator assertions and the complete 638-task non-instrumented
+  repository command.
+- **Follow-ups / risks:** Owner review and all ten required pull-request checks remain mandatory.
+  E3-03 must consume the provider-free boundary without moving Firebase or GitLive types into core.
+
 ### 2026-09-12 — E1-17 second and third owner-review corrections
 
 - **Type:** correction

@@ -12,12 +12,13 @@ import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseException
+import dev.gitlive.firebase.auth.FirebaseAuth
+import dev.gitlive.firebase.auth.auth
 import dev.gitlive.firebase.firestore.Direction
 import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.firestore.FirebaseFirestoreException
-import dev.gitlive.firebase.firestore.FirestoreExceptionCode
 import dev.gitlive.firebase.firestore.Timestamp
 import dev.gitlive.firebase.firestore.code
 import dev.gitlive.firebase.firestore.firestore
@@ -26,6 +27,7 @@ import dev.gitlive.firebase.firestore.fromMilliseconds
 import dev.gitlive.firebase.firestore.memoryCacheSettings
 import dev.gitlive.firebase.firestore.memoryEagerGcSettings
 import dev.gitlive.firebase.firestore.toMilliseconds
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -52,23 +54,22 @@ class FirebaseRemoteSyncSource internal constructor(
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
-    ): Outcome<RemoteAck, RemoteError> =
-        try {
-            val serverUpdatedAt = gateway.writeDocument(snapshot.toFirestoreWrite(ownerId))
-            Outcome.Ok(
-                RemoteAck(
-                    entityType = snapshot.entityType,
-                    entityId = snapshot.entityId,
-                    serverUpdatedAt = serverUpdatedAt,
-                ),
+    ): Outcome<RemoteAck, RemoteError> {
+        val write =
+            try {
+                snapshot.toFirestoreWrite(ownerId)
+            } catch (failure: IllegalArgumentException) {
+                return Outcome.Err(RemoteError.InvalidArgument)
+            }
+        return runRemoteOperation {
+            val serverUpdatedAt = gateway.writeDocument(write)
+            RemoteAck(
+                entityType = snapshot.entityType,
+                entityId = snapshot.entityId,
+                serverUpdatedAt = serverUpdatedAt,
             )
-        } catch (failure: IllegalArgumentException) {
-            Outcome.Err(RemoteError.InvalidArgument)
-        } catch (failure: FirebaseFirestoreException) {
-            Outcome.Err(failure.code.toRemoteError())
-        } catch (failure: FirebaseException) {
-            Outcome.Err(RemoteError.Unknown)
         }
+    }
 
     @Suppress("SwallowedException") // Provider failures are deliberately converted to the closed RemoteError API.
     override suspend fun pullChanges(
@@ -76,37 +77,58 @@ class FirebaseRemoteSyncSource internal constructor(
         entityType: EntityType,
         cursor: RemoteCursor,
         limit: Int,
-    ): Outcome<RemotePage, RemoteError> =
-        try {
-            require(limit > 0)
-            val documents =
-                gateway.queryDocuments(
-                    FirestoreQuery(
-                        path = "users/${ownerId.value}/${entityType.collection}",
-                        entityType = entityType,
-                        updatedAtOrAfter = cursor.lastServerUpdatedAt,
-                        afterDocumentId = cursor.lastDocumentId?.value,
-                        limit = limit,
-                    ),
+    ): Outcome<RemotePage, RemoteError> {
+        val query =
+            try {
+                require(limit > 0)
+                FirestoreQuery(
+                    path = "users/${ownerId.value}/${entityType.collection}",
+                    entityType = entityType,
+                    updatedAtOrAfter = cursor.lastServerUpdatedAt,
+                    afterDocumentId = cursor.lastDocumentId?.value,
+                    limit = limit,
                 )
+            } catch (failure: IllegalArgumentException) {
+                return Outcome.Err(RemoteError.InvalidArgument)
+            }
+        return runRemoteOperation {
+            val documents = gateway.queryDocuments(query)
             val items = documents.map { document -> document.toRemoteSnapshot(entityType) }
             val last = items.lastOrNull()
-            Outcome.Ok(
-                RemotePage(
-                    items = items,
-                    nextCursor =
-                        last?.let { item ->
-                            RemoteCursor(item.serverUpdatedAt, item.entityId)
-                        } ?: cursor,
-                    hasMore = items.size == limit,
-                ),
+            RemotePage(
+                items = items,
+                nextCursor =
+                    last?.let { item ->
+                        RemoteCursor(item.serverUpdatedAt, item.entityId)
+                    } ?: cursor,
+                hasMore = items.size == limit,
             )
+        }
+    }
+
+    @Suppress("SwallowedException") // Gateway failures are deliberately converted to the closed RemoteError API.
+    private suspend fun <T> runRemoteOperation(operation: suspend () -> T): Outcome<T, RemoteError> =
+        try {
+            Outcome.Ok(operation())
+        } catch (failure: FirestoreGatewayException) {
+            if (failure.failure == FirestoreGatewayFailure.UNAUTHENTICATED) {
+                refreshAndRetry(operation)
+            } else {
+                Outcome.Err(failure.failure.toRemoteError())
+            }
         } catch (failure: IllegalArgumentException) {
             Outcome.Err(RemoteError.InvalidArgument)
-        } catch (failure: FirebaseFirestoreException) {
-            Outcome.Err(failure.code.toRemoteError())
-        } catch (failure: FirebaseException) {
-            Outcome.Err(RemoteError.Unknown)
+        }
+
+    @Suppress("SwallowedException") // Gateway failures are deliberately converted to the closed RemoteError API.
+    private suspend fun <T> refreshAndRetry(operation: suspend () -> T): Outcome<T, RemoteError> =
+        try {
+            gateway.refreshAuthToken()
+            Outcome.Ok(operation())
+        } catch (failure: FirestoreGatewayException) {
+            Outcome.Err(failure.failure.toRemoteError())
+        } catch (failure: IllegalArgumentException) {
+            Outcome.Err(RemoteError.InvalidArgument)
         }
 }
 
@@ -116,7 +138,24 @@ internal interface FirestoreGateway {
     suspend fun writeDocument(write: FirestoreWrite): Instant
 
     suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument>
+
+    suspend fun refreshAuthToken()
 }
+
+internal enum class FirestoreGatewayFailure {
+    UNAVAILABLE,
+    DEADLINE_EXCEEDED,
+    PERMISSION_DENIED,
+    UNAUTHENTICATED,
+    INVALID_ARGUMENT,
+    NOT_FOUND,
+    UNKNOWN,
+}
+
+internal class FirestoreGatewayException(
+    val failure: FirestoreGatewayFailure,
+    cause: Throwable? = null,
+) : Exception(cause)
 
 internal data class FirestoreWrite(
     val path: String,
@@ -160,6 +199,7 @@ internal data object FirestoreNull : FirestoreValue
 
 private class GitLiveFirestoreGateway(
     private val firestore: FirebaseFirestore = Firebase.firestore,
+    private val auth: FirebaseAuth = Firebase.auth,
 ) : FirestoreGateway {
     override fun configureMemoryOnlyCache() {
         firestore.settings =
@@ -171,35 +211,81 @@ private class GitLiveFirestoreGateway(
             }
     }
 
-    override suspend fun writeDocument(write: FirestoreWrite): Instant {
-        val reference = firestore.document(write.path)
-        reference.set(write.fields.mapValues { (_, value) -> value.toProviderValue() })
-        val timestamp = reference.get().get<Timestamp>(UPDATED_AT_FIELD)
-        return Instant.fromEpochMilliseconds(timestamp.toMilliseconds().toLong())
+    override suspend fun writeDocument(write: FirestoreWrite): Instant =
+        runProviderOperation {
+            val reference = firestore.document(write.path)
+            reference.set(write.fields.mapValues { (_, value) -> value.toProviderValue() })
+            val timestamp = reference.get().get<Timestamp>(UPDATED_AT_FIELD)
+            Instant.fromEpochMilliseconds(timestamp.toMilliseconds().toLong())
+        }
+
+    override suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument> =
+        runProviderOperation {
+            val boundary = query.updatedAtOrAfter.toFirestoreTimestamp()
+            var firestoreQuery =
+                firestore
+                    .collection(query.path)
+                    .where { UPDATED_AT_FIELD greaterThanOrEqualTo boundary }
+                    .orderBy(UPDATED_AT_FIELD, Direction.ASCENDING)
+                    .orderBy(FieldPath.documentId, Direction.ASCENDING)
+            firestoreQuery =
+                query.afterDocumentId?.let { documentId ->
+                    firestoreQuery.startAfterFieldValues {
+                        add(boundary)
+                        add(documentId)
+                    }
+                } ?: firestoreQuery.startAtFieldValues { add(boundary) }
+            firestoreQuery
+                .limit(query.limit)
+                .get()
+                .documents
+                .map { document -> document.toFirestoreDocument(query.entityType) }
+        }
+
+    override suspend fun refreshAuthToken() {
+        runProviderRefresh {
+            val currentUser =
+                auth.currentUser
+                    ?: throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED)
+            currentUser.getIdToken(forceRefresh = true)
+        }
     }
 
-    override suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument> {
-        val boundary = query.updatedAtOrAfter.toFirestoreTimestamp()
-        var firestoreQuery =
-            firestore
-                .collection(query.path)
-                .where { UPDATED_AT_FIELD greaterThanOrEqualTo boundary }
-                .orderBy(UPDATED_AT_FIELD, Direction.ASCENDING)
-                .orderBy(FieldPath.documentId, Direction.ASCENDING)
-        firestoreQuery =
-            query.afterDocumentId?.let { documentId ->
-                firestoreQuery.startAfterFieldValues {
-                    add(boundary)
-                    add(documentId)
-                }
-            } ?: firestoreQuery.startAtFieldValues { add(boundary) }
-        return firestoreQuery
-            .limit(query.limit)
-            .get()
-            .documents
-            .map { document -> document.toFirestoreDocument(query.entityType) }
-    }
+    @Suppress("SwallowedException")
+    private suspend fun <T> runProviderOperation(operation: suspend () -> T): T =
+        try {
+            operation()
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (failure: FirebaseFirestoreException) {
+            throw FirestoreGatewayException(failure.code.toGatewayFailure(), failure)
+        } catch (failure: FirebaseException) {
+            throw FirestoreGatewayException(FirestoreGatewayFailure.UNKNOWN, failure)
+        }
 }
+
+/**
+ * Runs the provider token refresh inside the closed failure vocabulary.
+ *
+ * `auth.currentUser` is evaluated inside this region on purpose: acquiring the handle can itself
+ * throw a provider throwable, and a refresh failure that escapes as an unchecked exception would
+ * break the closed `Outcome` API of `pushSnapshot` and `pullChanges`. A Firebase failure maps to
+ * `UNAUTHENTICATED`, any other throwable to `UNKNOWN`, and cancellation always propagates. This
+ * scope is deliberately narrower than the payload conversion path, whose escape is `D-170`.
+ */
+@Suppress("TooGenericExceptionCaught")
+internal suspend fun <T> runProviderRefresh(operation: suspend () -> T): T =
+    try {
+        operation()
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (failure: FirestoreGatewayException) {
+        throw failure
+    } catch (failure: FirebaseException) {
+        throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED, failure)
+    } catch (failure: Throwable) {
+        throw FirestoreGatewayException(FirestoreGatewayFailure.UNKNOWN, failure)
+    }
 
 private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): FirestoreWrite {
     val jsonObject = Json.parseToJsonElement(json).jsonObject
@@ -372,15 +458,15 @@ private fun DocumentSnapshot.getNullableTimestamp(field: String): FirestoreValue
 
 private fun Instant.toFirestoreTimestamp(): Timestamp = Timestamp.fromMilliseconds(toEpochMilliseconds().toDouble())
 
-private fun FirestoreExceptionCode.toRemoteError(): RemoteError =
+private fun FirestoreGatewayFailure.toRemoteError(): RemoteError =
     when (this) {
-        FirestoreExceptionCode.UNAVAILABLE -> RemoteError.Unavailable
-        FirestoreExceptionCode.DEADLINE_EXCEEDED -> RemoteError.DeadlineExceeded
-        FirestoreExceptionCode.PERMISSION_DENIED -> RemoteError.PermissionDenied
-        FirestoreExceptionCode.UNAUTHENTICATED -> RemoteError.Unauthenticated
-        FirestoreExceptionCode.INVALID_ARGUMENT -> RemoteError.InvalidArgument
-        FirestoreExceptionCode.NOT_FOUND -> RemoteError.NotFound
-        else -> RemoteError.Unknown
+        FirestoreGatewayFailure.UNAVAILABLE -> RemoteError.Unavailable
+        FirestoreGatewayFailure.DEADLINE_EXCEEDED -> RemoteError.DeadlineExceeded
+        FirestoreGatewayFailure.PERMISSION_DENIED -> RemoteError.PermissionDenied
+        FirestoreGatewayFailure.UNAUTHENTICATED -> RemoteError.Unauthenticated
+        FirestoreGatewayFailure.INVALID_ARGUMENT -> RemoteError.InvalidArgument
+        FirestoreGatewayFailure.NOT_FOUND -> RemoteError.NotFound
+        FirestoreGatewayFailure.UNKNOWN -> RemoteError.Unknown
     }
 
 private const val ENTITY_TYPE_FIELD = "entityType"

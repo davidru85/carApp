@@ -30,6 +30,27 @@ class DecisionRegistryTest {
         assertEquals(true, awaiting.contains("D-2"))
     }
 
+    /**
+     * A repeated ID inside one table is a data-entry defect: the later row silently overwrites the
+     * earlier one in [DecisionRegistry.decisionsWithStatus]. The detector MUST name it instead.
+     */
+    @Test
+    fun aDuplicatedIdWithinOneTableIsReported() {
+        assertEquals(
+            listOf("D-2"),
+            DecisionRegistry.duplicatedIds(BOARD_WITH_DUPLICATE_AWAITING_ROW),
+        )
+    }
+
+    /**
+     * The same ID appearing once in the registry and once in the awaiting summary is required, not
+     * a duplicate: the two tables say different things about the same decision.
+     */
+    @Test
+    fun anIdInBothTheRegistryAndTheAwaitingTableIsNotADuplicate() {
+        assertEquals(emptyList(), DecisionRegistry.duplicatedIds(BOARD))
+    }
+
     private companion object {
         val BOARD =
             """
@@ -45,6 +66,23 @@ class DecisionRegistryTest {
             | ID | Area | Recommendation | Needed by | Consequence if unresolved |
             |----|------|----------------|-----------|---------------------------|
             | D-2 | Second | Take option A | `E9-99` | The guarantee stays conditional |
+            """.trimIndent()
+
+        val BOARD_WITH_DUPLICATE_AWAITING_ROW =
+            """
+            ## Decision Registry
+
+            | ID | Area | Choice | Alternatives Reviewed | Status | Guardrail |
+            |----|------|--------|-----------------------|--------|-----------|
+            | D-1 | First | Chosen | None | Accepted | Guarded |
+            | D-2 | Second | Undecided | Another | Proposed | Guarded |
+
+            ## Decisions Awaiting Owner Confirmation
+
+            | ID | Area | Recommendation | Needed by | Consequence if unresolved |
+            |----|------|----------------|-----------|---------------------------|
+            | D-2 | Second | Take option A | `E9-99` | The guarantee stays conditional |
+            | D-2 | Second | Take option A again | `E9-99` | The guarantee stays conditional |
             """.trimIndent()
     }
 }
