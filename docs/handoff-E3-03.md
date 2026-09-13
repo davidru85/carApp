@@ -147,6 +147,10 @@
   `:composition:ios:linkDebugFrameworkIosSimulatorArm64` pass (the framework is produced by
   `:composition:ios`, not `:shared`); host-app `xcodebuild` `** BUILD SUCCEEDED **`; protected
   Android instrumented suite 17 tests, zero failures on the API 36 emulator.
+- Provider decoupling re-run locally after the golden update: `./gradlew
+  -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` pass, 234 tasks.
+  `contractCheck --rerun-tasks` reports assertion 7 `PASS` and zero `PENDING`, and the regenerated
+  header is byte-identical to the golden.
 
 ## Contract Impact
 
@@ -171,6 +175,10 @@
 - `contractCheck` was inspected and reports zero `PENDING` assertions.
 - No additional owner decision arose during E3-03. D-169 option A and D-170 option A are Accepted;
   D-149 and D-150 remain unrelated blockers for E3-15/E3-16 only.
+- The first CI run failed only `objc-header-golden-check`: the new Swift-facing
+  `SyncStateHolder.debugLines` and `refreshDebug` members of the debug diagnostics surface changed
+  the generated header. The golden was regenerated, `docs/CONTRACTS.md §20.10` was corrected to
+  document those members, and both `contractCheck` and the header diff now pass.
 - The pull request awaits the mandatory owner review and the ten required checks; E3-03 is
   implemented, not complete, until it merges.
 

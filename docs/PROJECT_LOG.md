@@ -68,7 +68,10 @@
   API 36 emulator.
 - **Follow-ups / risks:** The gated pull request requires owner review and the ten required checks;
   E3-03 is implemented, not complete, until it merges. E3-04 owns trigger scheduling and E3-07 owns
-  tombstone purge. No new owner decision arose; `D-149` and `D-150` stay unrelated to E3-03.
+  tombstone purge. No new owner decision arose; `D-149` and `D-150` stay unrelated to E3-03. The
+  first CI run failed `objc-header-golden-check` only, because the E3-03 debug diagnostics added the
+  Swift-facing `SyncStateHolder.debugLines` and `refreshDebug` members; the golden and
+  `docs/CONTRACTS.md §20.10` were updated to match.
 
 ### 2026-09-13 — E3-02 second owner-review round
 

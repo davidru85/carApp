@@ -2722,8 +2722,10 @@ class SessionStateHolder {
 
 class SyncStateHolder {
     val state: StateFlow<SyncUiState>
+    val debugLines: StateFlow<List<String>>
     fun requestSync(reason: SyncTrigger)
     fun retryFailed()
+    fun refreshDebug()
     fun clearMessage()
     fun close()
 }
