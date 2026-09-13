@@ -38,6 +38,40 @@
 
 ## Entries
 
+### 2026-09-13 — E3-02 second owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-02` / `D-170`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the second owner-review round on
+  [pull request #68](https://github.com/davidru85/carApp/pull/68). Finding 1 deleted the duplicated
+  `D-169` awaiting row in `docs/DECISION_BOARD.md` and closed the check gap: `DecisionRegistry`
+  gained a per-table `duplicatedIds` detector and `contractCheck` assertion 23 fails on a repeated
+  decision ID inside one table. Finding 2 escalated the pre-existing malformed-remote-document defect
+  as `D-170` / ADR-0171 (`Proposed`, `Needed by` `E3-03`) and qualified the overstated "exact closed
+  error mapping" claims in the handoff and ADR-0169 to the provider error-code taxonomy. Finding 3
+  restored compile-time exhaustiveness to `FirestoreExceptionCode.toGatewayFailure()` and deleted the
+  redundant string mapping and its host-isolated test. Finding 4 moved `auth.currentUser` inside a
+  protected `runProviderRefresh` region with a total `Throwable` catch, closing the unchecked escape
+  from the closed `Outcome` API.
+- **Why:** The board held two near-identical `D-169` rows and `contractCheck` reported 170 decisions
+  without noticing, the string-keyed error mapping could degrade silently after a provider rename,
+  `auth.currentUser` was evaluated outside the protected region, and `§9.5` `MalformedPayload`
+  quarantine is unimplementable through the current `RemotePage` shape. The owner took the two
+  decisions at the top of the round: the `§9.4` guarantee is not amended here, and the malformed
+  payload defect is escalated rather than fixed.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0171, ADR-0169, `docs/handoff-E3-02.md`,
+  `build-logic/convention` (`DecisionRegistry`, `ContractCheck`, `DecisionRegistryTest`), this log.
+- **Verification:** The new duplicate detector failed `contractCheck` on the real board before the
+  fix (`duplicated: D-169 in docs/DECISION_BOARD.md awaiting summary`); the exhaustive mapping and
+  the `runProviderRefresh` `Throwable` branch were both proven non-vacuous by mutation probes. The
+  focused command passes Android quality gates, 19 source plus 5 boundary tests, iOS compilation and
+  all 171 mirrored-decision checks; the emulator suite passes 156 assertions; the complete
+  non-instrumented repository command passes 638 tasks (550 executed).
+- **Follow-ups / risks:** `D-169` and `D-170` are `Proposed` and block `E3-03`, not E3-02. Owner
+  review and all ten required checks remain; E3-02 stays implemented, not complete, until merge.
+
 ### 2026-09-12 — E3-02 first owner-review round
 
 - **Type:** correction

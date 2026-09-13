@@ -176,5 +176,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-167 | [ADR-0168](0168-resume-an-interrupted-departure-at-graph-construction.md) | Resume an interrupted departure at graph construction. | Accepted |
 | D-168 | [ADR-0169](0169-keep-firestore-authentication-retry-inside-the-integration.md) | Keep Firestore authentication retry inside the integration. | Accepted |
 | D-169 | [ADR-0170](0170-bound-the-pull-cursor-guarantee-to-millisecond-distinguishable-clusters.md) | Bound the pull-cursor guarantee to millisecond-distinguishable clusters. | Proposed |
+| D-170 | [ADR-0171](0171-quarantine-malformed-remote-documents-through-the-sync-source.md) | Quarantine malformed remote documents through the sync source. | Proposed |
 
 New ADRs start from [0000-template.md](0000-template.md).

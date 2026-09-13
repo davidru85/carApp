@@ -9,10 +9,12 @@ import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.time.Instant
 
@@ -281,22 +283,25 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
-    fun providerFailureNamesMapWithoutLoadingProviderEnumConstants() {
-        val cases =
-            mapOf(
-                "UNAVAILABLE" to FirestoreGatewayFailure.UNAVAILABLE,
-                "DEADLINE_EXCEEDED" to FirestoreGatewayFailure.DEADLINE_EXCEEDED,
-                "PERMISSION_DENIED" to FirestoreGatewayFailure.PERMISSION_DENIED,
-                "UNAUTHENTICATED" to FirestoreGatewayFailure.UNAUTHENTICATED,
-                "INVALID_ARGUMENT" to FirestoreGatewayFailure.INVALID_ARGUMENT,
-                "NOT_FOUND" to FirestoreGatewayFailure.NOT_FOUND,
-                "ABORTED" to FirestoreGatewayFailure.UNKNOWN,
-            )
+    fun aNonProviderThrowableFromHandleAcquisitionBecomesUnknownInsteadOfEscaping() =
+        runTest {
+            val result =
+                try {
+                    runProviderRefresh<Unit> { throw IllegalStateException("handle acquisition failed") }
+                } catch (failure: FirestoreGatewayException) {
+                    failure.failure
+                }
 
-        cases.forEach { (providerName, expected) ->
-            assertEquals(expected, providerName.toFirestoreGatewayFailure())
+            assertEquals(FirestoreGatewayFailure.UNKNOWN, result)
         }
-    }
+
+    @Test
+    fun cancellationDuringRefreshPropagatesInsteadOfBecomingARemoteError() =
+        runTest {
+            assertFailsWith<CancellationException> {
+                runProviderRefresh<Unit> { throw CancellationException("refresh cancelled") }
+            }
+        }
 
     @Test
     fun emptyPullKeepsTheInputCursorAndReportsNoMoreItems() =

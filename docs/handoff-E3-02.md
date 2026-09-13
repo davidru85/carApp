@@ -35,34 +35,86 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-12
+- Date: 2026-09-13
 - Branch and base: `story/E3-02-firestore-remote-sync-source` from `origin/main` at `12c12c7`.
-- Current phase and latest commit: first owner-review round applied and committed at the head of
-  `story/E3-02-firestore-remote-sync-source`; the original RED `0dfa7a2`, GREEN `4feda04` and
-  REFACTOR `6dd9b30` remain the implementation cycle beneath the review commits.
-- Push and pull-request status: the review-round commits are pushed to
-  `origin/story/E3-02-firestore-remote-sync-source`; pull request #68 is open for owner review.
-- Completed since the previous checkpoint: applied the owner's first review round. Finding 1 amended
-  the `docs/CONTRACTS.md §10` side-effects budget to be per attempt and to exempt the single
-  forced-refresh retry. Finding 3 made `FirestoreGateway.refreshAuthToken()` abstract. Finding 4
-  injected the GitLive `FirebaseAuth` handle into `GitLiveFirestoreGateway` alongside the existing
-  `FirebaseFirestore` handle. Finding 5 added failed-refresh coverage for both `pushSnapshot` and
-  `pullChanges` and proved it non-vacuous by mutation probe. Finding 2 was an analysis-and-escalation
-  task: no data loss is possible, but the millisecond-truncated cursor cannot advance when a full
-  page falls inside one millisecond, so D-169 / ADR-0170 records the options and recommendation and
-  waits for the owner.
+- Current phase and latest commit: second owner-review round applied on top of the first-review head
+  `a530a7b`; the original RED `0dfa7a2`, GREEN `4feda04` and REFACTOR `6dd9b30` remain the
+  implementation cycle beneath the review commits.
+- Push and pull-request status: the second-round commits are ready to push to
+  `origin/story/E3-02-firestore-remote-sync-source`; pull request #68 is open.
+- Completed since the previous checkpoint: applied the owner's second review round. Finding 1 deleted
+  the duplicated `D-169` awaiting row and closed the check gap with a new `contractCheck` assertion 23
+  (`DecisionRegistry.duplicatedIds`) that fails on a repeated ID inside one table. Finding 2 escalated
+  the pre-existing malformed-payload defect as `D-170` / ADR-0171, proposal-only, and qualified the
+  overstated error-mapping claims in `docs/handoff-E3-02.md` and ADR-0169. Finding 3 restored
+  compile-time exhaustiveness to the provider error mapping and deleted the redundant string mapping
+  and its host-isolated test. Finding 4 moved `auth.currentUser` inside a protected
+  `runProviderRefresh` region with a total `Throwable` catch and added mutation-proven coverage.
 - Verification evidence and known failures:
-  The original RED run compiled and executed 15 tests with the intended four failures; GREEN and
-  REFACTOR pass the focused suite. The review round adds two failed-refresh tests, bringing the
-  focused source suite to 13 tests plus 5 boundary tests (18 total). The emulator suite remains green
-  at 156 assertions. The iOS simulator target compiles, `contractCheck` passes all 170 mirrored
-  decisions, and the complete non-instrumented repository command passes 638 tasks. The failed-refresh
-  tests first passed against the pre-existing retry code, so a mutation probe was used to prove they
-  are sensitive: swallowing a refresh failure in `refreshAndRetry` makes exactly those two tests
-  fail.
-- Open decisions or blockers: D-169 is `Proposed` and blocks `E3-03`, not E3-02. D-168 is `Accepted`.
-  Owner review remains required before merge because Firestore and normative decision paths are gated.
-- Exact next step: wait for owner review and all ten required checks; merge only after both gates pass.
+  The second-round focused command passes Android quality gates, 19 focused source tests plus 5
+  boundary tests, iOS simulator compilation, the `:build-logic:convention` tests and all 171
+  mirrored decisions. `contractCheck` reports assertion 23 PASS and 171 decisions, up from 170
+  because `D-170` was added. The emulator suite passes 156 assertions. Mutation probes: (1) removing
+  the `catch (Throwable)` in `runProviderRefresh` makes exactly
+  `aNonProviderThrowableFromHandleAcquisitionBecomesUnknownInsteadOfEscaping` fail; (2) the new
+  duplicate detector failed `contractCheck` on the real board before Finding 1a was applied, naming
+  `D-169 in docs/DECISION_BOARD.md awaiting summary`. The complete non-instrumented repository
+  command passes 638 tasks (550 executed). No failure is outstanding.
+- Open decisions or blockers: `D-169` and `D-170` are `Proposed` and block `E3-03`, not E3-02.
+  `D-168` is `Accepted`. Owner review remains required before merge because Firestore and normative
+  decision paths are gated.
+- Exact next step: push the second-round commits, update the pull request body, and wait for owner
+  review and all ten required checks; merge only after both gates pass.
+
+## Review Round 2
+
+### Finding 1 - duplicated `D-169` row and the check that missed it (fixed)
+
+`docs/DECISION_BOARD.md` held two near-identical `D-169` awaiting rows; the less precise one was
+deleted, keeping the row that names both `§9.4` and `§20.7` as the sections option A would amend.
+`grep -c '^| D-169' docs/DECISION_BOARD.md` now returns `2` (one registry row, one awaiting row).
+
+The gap was in `DecisionRegistry.decisionsWithStatus`, whose terminal `toMap()` collapsed a repeated
+ID silently. `DecisionRegistry.duplicatedIds` now reports an ID repeated **within one table**, scoped
+per table so the required registry-plus-awaiting pairing is not flagged. `contractCheck` exposes it
+as assertion 23, which names the duplicated ID and the document. This was developed red-first against
+a fixture board, and the new assertion was run against the real board before Finding 1a and failed
+with `duplicated: D-169 in docs/DECISION_BOARD.md awaiting summary`.
+
+### Finding 2 - malformed remote document fails the whole pull page (escalated, no fix)
+
+Escalated as `D-170` / ADR-0171, `Proposed`, `Needed by` `E3-03`, mirrored across
+`docs/DECISION_BOARD.md` (registry and awaiting), `docs/SPECIFICATION.md §12`,
+`docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`. The ADR records the three concrete failure
+paths, states that `UnsupportedSchemaVersion` is reachable and that only `MalformedPayload` is
+unimplementable, presents options A/B/C with costs, recommends A, and names the verification test.
+`RemotePage`, `RemoteSnapshot` and every `:core:sync` DTO are untouched by this pull request, per the
+owner's decision. The overstated "exact closed error mapping" claim was qualified in
+`docs/handoff-E3-02.md` and ADR-0169 to the provider **error-code** taxonomy with a `D-170`
+cross-reference.
+
+### Finding 3 - exhaustive provider error mapping (fixed)
+
+`FirestoreExceptionCode.toGatewayFailure()` is now an exhaustive `when (this)` naming each mapped
+constant, so a GitLive rename fails the build instead of silently degrading to
+`FirestoreGatewayFailure.UNKNOWN`. The redundant `String.toFirestoreGatewayFailure()` mapping and its
+`providerFailureNamesMapWithoutLoadingProviderEnumConstants` test were deleted rather than kept as a
+second mapping that can drift. The `when` lives in its own file, `FirestoreExceptionCodeMapping.kt`,
+because keeping it beside the `FirestoreGatewayFailure` switches initialised both generated
+enum-mapping tables together and broke the Android host tests where `FirestoreExceptionCode` is a
+Google SDK typealias; the host-isolation constraint that motivated the string indirection applies to
+the file, not the guarantee.
+
+### Finding 4 - escape from the closed error type in `refreshAuthToken` (fixed)
+
+`auth.currentUser` and the forced `getIdToken` now run inside `runProviderRefresh`, which rethrows
+`CancellationException`, rethrows `FirestoreGatewayException`, maps `FirebaseException` to
+`UNAUTHENTICATED` and maps any other `Throwable` to `UNKNOWN`. This closes the unchecked escape from
+`pushSnapshot` / `pullChanges`. The payload conversion path is deliberately untouched; it is
+Finding 2's subject. Coverage:
+`aNonProviderThrowableFromHandleAcquisitionBecomesUnknownInsteadOfEscaping` and
+`cancellationDuringRefreshPropagatesInsteadOfBecomingARemoteError`. The first was proven non-vacuous
+by removing the `catch (Throwable)` branch, which failed exactly that test.
 
 ## Scope Completed
 
@@ -86,8 +138,10 @@
 - `failedRefreshOnPushReturnsUnauthenticatedWithoutRetryingTheWrite` and
   `failedRefreshOnPullReturnsUnauthenticatedWithoutRetryingTheQuery` prove the failed-refresh branch:
   one refresh attempt, no operation retry after it, and the exact `RemoteError.Unauthenticated` leaf.
-- `firestoreFailuresMapToTheExactRemoteErrorLeaves` and
-  `providerFailureNamesMapWithoutLoadingProviderEnumConstants` prove the closed error translation.
+- `firestoreFailuresMapToTheExactRemoteErrorLeaves` proves the closed provider **error-code**
+  translation from `FirestoreGatewayFailure` to the exact `RemoteError` leaves. It does not cover
+  payload deserialization failures, which escape the closed `Outcome` API; that pre-existing gap is
+  `D-170` / ADR-0171.
 - The empty-page and shared-timestamp tests prove both cursor edge cases.
 - `a resumed cycle applies startAt to the overlap after a non-empty pull` passes against the
   Firestore emulator and proves the resumed-cycle overlap behavior.
@@ -102,15 +156,26 @@
 - `integration/firebase-firestore/build.gradle.kts` — accepted GitLive Auth artifact used for the
   same-module forced refresh.
 - `integration/firebase-firestore/.../FirebaseRemoteSyncSource.kt` — complete provider adapter,
-  retry protocol, pagination, timestamp conversion and closed error mapping.
+  retry protocol, pagination, timestamp conversion and closed provider error-code mapping. Payload
+  deserialization failures are not in that closed mapping; that pre-existing gap is `D-170`.
 - `integration/firebase-firestore/.../FirebaseRemoteSyncSourceTest.kt` — focused source tests.
+- `integration/firebase-firestore/.../FirestoreExceptionCodeMapping.kt` — exhaustive
+  `FirestoreExceptionCode` mapping in its own file, so its generated enum-mapping table does not
+  initialise beside the `FirestoreGatewayFailure` switches on the Android host.
+- `build-logic/convention/.../DecisionRegistry.kt` — `duplicatedIds` detector and `awaitingOf`; the
+  per-table duplicate rule behind `contractCheck` assertion 23.
+- `build-logic/convention/.../ContractCheck.kt` — assertion 23, the duplicated-decision-ID guard.
+- `build-logic/convention/.../DecisionRegistryTest.kt` — red-first tests for the duplicate detector
+  and for the required registry-plus-awaiting pairing.
 - `firestore/tests/firestore.rules.test.mjs` — resumed-cycle emulator test.
 - `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md` and
-  `docs/adr/README.md` — mirrored D-168 and D-169 decision records.
+  `docs/adr/README.md` — mirrored D-168, D-169 and D-170 decision records.
 - `docs/adr/0169-keep-firestore-authentication-retry-inside-the-integration.md` — decision context,
   three options, consequences and verification.
 - `docs/adr/0170-bound-the-pull-cursor-guarantee-to-millisecond-distinguishable-clusters.md` —
   Finding 2 analysis, no-data-loss proof, options and recommendation; D-169 is `Proposed`.
+- `docs/adr/0171-quarantine-malformed-remote-documents-through-the-sync-source.md` — second-round
+  Finding 2 analysis, three failure paths, options and recommendation; D-170 is `Proposed`.
 - `docs/CONTRACTS.md §10` — per-attempt side-effect budget with the forced-refresh retry exemption.
 - `docs/handoff-E3-02.md` and `docs/PROJECT_LOG.md` — story evidence and continuity records.
 
@@ -120,7 +185,13 @@
   This keeps the complete retry protocol inside `:integration:firebase-firestore` without widening
   provider-free contracts or moving retry behavior into wiring. The two rejected alternatives and
   their trade-offs are recorded in ADR-0169.
-- No `SHOULD` was deviated from in the first review round.
+- D-170: escalate the pre-existing malformed-remote-document defect as a decision, not a fix, per the
+  owner's second review round. `RemotePage`, `RemoteSnapshot` and every `:core:sync` DTO are
+  unchanged; `D-170` / ADR-0171 is `Proposed` and `Needed by` `E3-03`.
+- `docs/CONTRACTS.md §9.4` is NOT amended in this pull request. The owner accepts that `main`
+  temporarily carries the overstated later-page guarantee until `D-169` is resolved, and option A or
+  option B of ADR-0170 MUST NOT be implemented here.
+- No `SHOULD` was deviated from in either review round.
 
 ## Verification Run
 
@@ -147,13 +218,28 @@
 - `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt
   :integration:firebase-firestore:testAndroidHostTest
   :integration:firebase-firestore:compileKotlinIosSimulatorArm64 contractCheck --rerun-tasks
-  --stacktrace` — review round passed 18 focused tests (13 source plus 5 boundary), Android quality
-  gates, iOS compilation and all 170 mirrored-decision checks.
-- `npm run test:firestore-rules` — review round passed all 156 emulator assertions.
-- Complete non-instrumented command from `AGENTS.md` — review round passed 638 tasks (48 executed,
-  590 up-to-date), including lint, static analysis, architecture, contracts, convention tests,
-  coverage, Android assembly and unit tests, Android-host shared tests and eligible iOS simulator
-  tests.
+  --stacktrace` — first review round passed 18 focused tests (13 source plus 5 boundary), Android
+  quality gates, iOS compilation and all 170 mirrored-decision checks.
+- `npm run test:firestore-rules` — first review round passed all 156 emulator assertions.
+- Complete non-instrumented command from `AGENTS.md` — first review round passed 638 tasks.
+- `./gradlew :build-logic:convention:test --tests '*DecisionRegistryTest*' --rerun-tasks
+  --stacktrace` — RED, `duplicatedIds` did not exist; then GREEN after implementation.
+- `./gradlew contractCheck --rerun-tasks --stacktrace` — second review round, run before Finding 1a:
+  `[FAIL] 23. no decision ID is duplicated inside a single table — duplicated: D-169 in
+  docs/DECISION_BOARD.md awaiting summary`, proving the new assertion catches the real defect.
+- `./gradlew :integration:firebase-firestore:testAndroidHostTest --rerun-tasks --stacktrace` — second
+  review round: 19 focused source tests plus 5 boundary tests pass. Removing the `catch (Throwable)`
+  branch in `runProviderRefresh` failed exactly
+  `aNonProviderThrowableFromHandleAcquisitionBecomesUnknownInsteadOfEscaping`
+  (`19 tests completed, 1 failed`), proving the test non-vacuous; the mutation was reverted.
+- `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt
+  :integration:firebase-firestore:testAndroidHostTest
+  :integration:firebase-firestore:compileKotlinIosSimulatorArm64 :build-logic:convention:test
+  contractCheck --rerun-tasks --stacktrace` — second review round passed Android quality gates, the
+  focused and convention tests, iOS compilation and all 171 mirrored decisions.
+- `npm run test:firestore-rules` — second review round passed all 156 emulator assertions.
+- Complete non-instrumented command from `AGENTS.md` — second review round passed 638 tasks
+  (550 executed, 20 from cache, 68 up-to-date).
 
 ## Contract Impact
 
@@ -161,14 +247,20 @@
   and explicitly exempts the one forced-refresh retry mandated by the same section's token-refresh
   bullet. No other norm repeats the write/read budget, so no further document needed correction.
 - The `docs/CONTRACTS.md §9.4` later-page cursor guarantee is potentially overstated for
-  sub-millisecond timestamp clusters; correcting it is D-169 and awaits the owner. It is not changed
-  by this review round.
+  sub-millisecond timestamp clusters; correcting it is D-169 and awaits the owner. The owner accepted
+  that `main` carries it temporarily, and it is not changed by either review round.
+- `docs/CONTRACTS.md` line 403 and `§9.5` cannot be satisfied through the current `RemotePage` output
+  for `MalformedPayload`; correcting it is D-170 and awaits the owner. No `:core:sync` DTO is changed
+  by this pull request.
 
 ## Decision Board Impact
 
 - D-168 is `Accepted` and mirrored across all four decision tables with ADR-0169.
 - D-169 is `Proposed` and mirrored across all four decision tables with ADR-0170. It does not block
   E3-02.
+- D-170 is `Proposed` and mirrored across all four decision tables with ADR-0171. It does not block
+  E3-02 but blocks `E3-03`. The registry/awaiting tables now contain no duplicated ID.
+- `contractCheck` assertion 23 is new: a decision ID repeated inside one table fails the check.
 
 ## Shared-Write Modules Touched
 
@@ -185,6 +277,10 @@
   until the owner resolves it. There is no data loss: the truncated boundary is a downward lower
   bound on an `>=` filter. The unresolved behavior is a non-advancing page cursor when a full page
   falls inside one millisecond.
+- D-170 (`Proposed`, ADR-0171) makes `§9.5` `MalformedPayload` quarantine unimplementable through the
+  current `RemotePage` shape. E3-03 MUST NOT start until the owner selects an option; a malformed
+  document can currently fail a whole pull page or escape the closed `Outcome` API. The defect is
+  pre-existing from `E0-07`, not a regression from E3-02.
 - The pull request must pass all ten required checks and receive owner review before merge; this
   branch is implemented, not yet complete.
 

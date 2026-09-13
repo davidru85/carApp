@@ -55,9 +55,8 @@ Firebase nor GitLive types cross the module boundary.
 ## Verification
 
 - `FirebaseRemoteSyncSourceTest` proves successful push and pull recovery, the retry ceiling and the
-  exact closed error mapping.
-- `providerFailureNamesMapWithoutLoadingProviderEnumConstants` proves the provider code-name
-  translation without initializing Android SDK enum helpers on the Android host test runtime.
+  closed provider **error-code** taxonomy. It does not cover payload deserialization failures, which
+  escape the closed `Outcome` API; that gap is `D-170` / ADR-0171.
 - The architecture and provider-decoupling checks prove that no provider type crosses the module
   boundary.
 
@@ -68,3 +67,4 @@ Firebase nor GitLive types cross the module boundary.
 - `docs/TECHNICAL_PLAN.md §2`, `§4`
 - `docs/BACKLOG.md` (`E3-02`)
 - `docs/handoff-E3-02.md`
+- `docs/adr/0171-quarantine-malformed-remote-documents-through-the-sync-source.md` (`D-170`)

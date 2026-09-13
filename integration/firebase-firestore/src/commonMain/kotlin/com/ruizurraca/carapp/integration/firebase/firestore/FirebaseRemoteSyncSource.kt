@@ -19,7 +19,6 @@ import dev.gitlive.firebase.firestore.DocumentSnapshot
 import dev.gitlive.firebase.firestore.FieldPath
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.firestore.FirebaseFirestoreException
-import dev.gitlive.firebase.firestore.FirestoreExceptionCode
 import dev.gitlive.firebase.firestore.Timestamp
 import dev.gitlive.firebase.firestore.code
 import dev.gitlive.firebase.firestore.firestore
@@ -244,15 +243,11 @@ private class GitLiveFirestoreGateway(
         }
 
     override suspend fun refreshAuthToken() {
-        val currentUser =
-            auth.currentUser
-                ?: throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED)
-        try {
+        runProviderRefresh {
+            val currentUser =
+                auth.currentUser
+                    ?: throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED)
             currentUser.getIdToken(forceRefresh = true)
-        } catch (failure: CancellationException) {
-            throw failure
-        } catch (failure: FirebaseException) {
-            throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED, failure)
         }
     }
 
@@ -268,6 +263,29 @@ private class GitLiveFirestoreGateway(
             throw FirestoreGatewayException(FirestoreGatewayFailure.UNKNOWN, failure)
         }
 }
+
+/**
+ * Runs the provider token refresh inside the closed failure vocabulary.
+ *
+ * `auth.currentUser` is evaluated inside this region on purpose: acquiring the handle can itself
+ * throw a provider throwable, and a refresh failure that escapes as an unchecked exception would
+ * break the closed `Outcome` API of `pushSnapshot` and `pullChanges`. A Firebase failure maps to
+ * `UNAUTHENTICATED`, any other throwable to `UNKNOWN`, and cancellation always propagates. This
+ * scope is deliberately narrower than the payload conversion path, whose escape is `D-170`.
+ */
+@Suppress("TooGenericExceptionCaught")
+internal suspend fun <T> runProviderRefresh(operation: suspend () -> T): T =
+    try {
+        operation()
+    } catch (failure: CancellationException) {
+        throw failure
+    } catch (failure: FirestoreGatewayException) {
+        throw failure
+    } catch (failure: FirebaseException) {
+        throw FirestoreGatewayException(FirestoreGatewayFailure.UNAUTHENTICATED, failure)
+    } catch (failure: Throwable) {
+        throw FirestoreGatewayException(FirestoreGatewayFailure.UNKNOWN, failure)
+    }
 
 private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): FirestoreWrite {
     val jsonObject = Json.parseToJsonElement(json).jsonObject
@@ -439,19 +457,6 @@ private fun DocumentSnapshot.getNullableTimestamp(field: String): FirestoreValue
     get<Timestamp?>(field)?.let { value -> FirestoreTimestamp(value.toMilliseconds().toLong()) } ?: FirestoreNull
 
 private fun Instant.toFirestoreTimestamp(): Timestamp = Timestamp.fromMilliseconds(toEpochMilliseconds().toDouble())
-
-private fun FirestoreExceptionCode.toGatewayFailure(): FirestoreGatewayFailure = name.toFirestoreGatewayFailure()
-
-internal fun String.toFirestoreGatewayFailure(): FirestoreGatewayFailure =
-    when (this) {
-        "UNAVAILABLE" -> FirestoreGatewayFailure.UNAVAILABLE
-        "DEADLINE_EXCEEDED" -> FirestoreGatewayFailure.DEADLINE_EXCEEDED
-        "PERMISSION_DENIED" -> FirestoreGatewayFailure.PERMISSION_DENIED
-        "UNAUTHENTICATED" -> FirestoreGatewayFailure.UNAUTHENTICATED
-        "INVALID_ARGUMENT" -> FirestoreGatewayFailure.INVALID_ARGUMENT
-        "NOT_FOUND" -> FirestoreGatewayFailure.NOT_FOUND
-        else -> FirestoreGatewayFailure.UNKNOWN
-    }
 
 private fun FirestoreGatewayFailure.toRemoteError(): RemoteError =
     when (this) {
