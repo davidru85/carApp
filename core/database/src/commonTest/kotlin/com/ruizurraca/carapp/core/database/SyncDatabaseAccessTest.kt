@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.core.database
 
+import app.cash.sqldelight.async.coroutines.await
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -65,6 +66,7 @@ class SyncDatabaseAccessTest {
                 access.failPush(
                     entityType = "VEHICLE",
                     entityId = "vehicle-1",
+                    pushedLocalRevision = 1,
                     attemptCount = 3,
                     nextAttemptAt = 900,
                     errorCode = "REMOTE.UNKNOWN",
@@ -113,6 +115,71 @@ class SyncDatabaseAccessTest {
         }
 
     @Test
+    fun failureForAnOlderRevisionDoesNotStampTheNewerRow() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 1,
+                )
+                val access = SyncDatabaseAccess(testDatabase.database)
+
+                // A local edit bumps the row and outbox revisions while the in-flight push targets 1.
+                testDatabase.driver
+                    .execute(
+                        identifier = null,
+                        sql = "UPDATE vehicle SET localRevision = 2, syncState = 'PENDING' WHERE id = 'vehicle-1'",
+                        parameters = 0,
+                    ).await()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 2,
+                )
+                // Seed the newer row with unrelated retry context that the stale failure must not touch.
+                testDatabase.driver
+                    .execute(
+                        identifier = null,
+                        sql =
+                            "UPDATE outbox SET attemptCount = 5, lastErrorCode = 'REMOTE.OLDER' " +
+                                "WHERE entityId = 'vehicle-1'",
+                        parameters = 0,
+                    ).await()
+
+                access.failPush(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    pushedLocalRevision = 1,
+                    attemptCount = 3,
+                    nextAttemptAt = 900,
+                    errorCode = "REMOTE.UNKNOWN",
+                    poisoned = false,
+                    cycleId = "cycle-old",
+                )
+
+                assertEquals(
+                    5,
+                    testDatabase.driver.nullableLong("SELECT attemptCount FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    "REMOTE.OLDER",
+                    testDatabase.driver.nullableString("SELECT lastErrorCode FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    "PENDING",
+                    testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
+                )
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
     fun connectivityRecoveryMakesFailuresDueWithoutResettingAttempts() =
         runTest {
             val testDatabase = TestDatabase.create()
@@ -125,7 +192,7 @@ class SyncDatabaseAccessTest {
                     localRevision = 1,
                 )
                 val access = SyncDatabaseAccess(testDatabase.database)
-                access.failPush("VEHICLE", "vehicle-1", 7, 900, "REMOTE.UNAVAILABLE", false, "cycle-18")
+                access.failPush("VEHICLE", "vehicle-1", 1, 7, 900, "REMOTE.UNAVAILABLE", false, "cycle-18")
 
                 access.markConnectivityFailuresDue(now = 100)
 

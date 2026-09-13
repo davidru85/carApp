@@ -36,9 +36,9 @@
 
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: REFACTOR complete and verified, committed as the third TDD commit
-  `refactor(E3-03): finalize sync engine`. RED is `a66c612`; GREEN is `bfced6b`. The three-commit
-  series is the story's complete TDD history.
+- Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
+  `refactor(E3-03): finalize sync engine`. The story then received two owner-review correction
+  rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
 - Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
@@ -107,6 +107,9 @@
 
 ## Out of Scope / Not Done
 
+- R1 is recorded only: `E3-17` / `D-172` / ADR-0173 own making `AppGraph.close()` safe against an
+  in-flight sync cycle. `AppGraph.close()`, `DatabaseFactory`, `DatabaseHandle` and `core/database/**`
+  were deliberately not changed for it.
 - Platform background scheduling and repository post-write trigger wiring remain owned by E3-04.
 - Local tombstone purge remains owned by E3-07. A premature GREEN implementation was deliberately
   removed in REFACTOR and MUST NOT be restored in E3-03.
@@ -129,6 +132,11 @@
   oversized same-millisecond timestamp cluster.
 - D-170: owner selected option A, returning raw per-document results so `:core:sync` owns product
   validation and quarantine classification.
+- D-171 (second review round): owner selected option B, adding the awaitable
+  `SyncController.sync(reason)` so a user-initiated refresh observes the cycle outcome.
+- D-172 (second review round): raised as `Proposed` by the E3-03 review, recommending an awaitable
+  drain plus a bounded join before the `DatabaseHandle` closes. `E3-17` owns the fix; no production
+  change was made here.
 
 ## Verification Run
 
@@ -190,6 +198,73 @@
   25/25 after the change.
 - The pull request awaits the mandatory owner review and the ten required checks; E3-03 is
   implemented, not complete, until it merges.
+
+## Second Owner-Review Correction Round (2026-09-13)
+
+Seven findings on pull request #69, with D-169 option A and D-170 option A already held as settled.
+
+- **R1 — E3-03 invalidates the E1-12 deferral (recorded, not fixed).** `DefaultAppGraph.close()`
+  calls `graphScope.cancel()` and then `databaseHandle.close()`; `cancel()` does not join, so a
+  coroutine suspended inside an asynchronous SQLite call is not finished when the driver closes.
+  Before E3-03 `graphScope` hosted only short bootstrap jobs, which is exactly why `E1-12`
+  (`docs/BACKLOG.md`, GitHub issue #42) deferred the production fix as "a test-infrastructure
+  defect, not a production defect". E3-03 puts long-running detached sync cycles on that scope,
+  started by `VehicleSliceRuntime.createVehicle`/`updateVehicle` (`PostWriteDebounce`), by
+  `VehicleSliceRuntime.refresh` (`PullToRefresh`) and by `scheduleAdoptionRetry`, so both
+  `MainActivity.onCleared()` and `SwiftAppGraph.close()` can now run with a cycle in flight.
+  `SyncStateHolder.close()` does not mitigate it: it cancels the holder's collectors, not the
+  controller's cycle on `graphScope`. This is a **reachable hazard, not an observed production
+  crash**, and it is **not fixed here**. Added `E3-17` (`docs/BACKLOG.md`, Human review required)
+  and `D-172` / ADR-0173 (`Proposed`, recommendation option B, Needed by `E3-17`). No change was made
+  to `AppGraph.close()`, `DatabaseFactory`, `DatabaseHandle` or `core/database/**` for this item.
+- **R2 — Owner acceptance of D-169 and D-170 recorded.** Added a dedicated `decision` entry to
+  `docs/PROJECT_LOG.md` dated 2026-09-13, naming ADR-0170 and ADR-0171 and the four mirrored
+  documents. The E3-03 story entry's claim about new decisions arising during the story is
+  unchanged; the acceptance is a separate event.
+- **R3 — `refresh()` error contract restored via an awaitable cycle (owner option B).**
+  `SyncController` gained `suspend fun sync(reason): Outcome<Unit, AppError>`. `DefaultSyncController`
+  reserves either a new active cycle or a join on the single pending follow-up through a
+  completion handle; `requestSync` is unchanged for every other caller and no caller busy-waits on
+  `status`. Offline and `LOCAL_OWNER` return `Ok(Unit)`; a failed pull returns `Err` carrying the
+  failure, which required retaining the underlying error in `failPullCycle`. `VehicleSliceRuntime.refresh()`
+  delegates to `sync` and returns its result unchanged; `createVehicle`/`updateVehicle` stay on
+  `requestSync(PostWriteDebounce)`. Recorded as `D-171` / ADR-0172 (`Accepted`, owner-selected option
+  B, status-flow alternative rejected) and mirrored into `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md` and the project log.
+- **R4 — Aggregate counts preserved on unexpected and adoption failure.** `refreshStatus` reports
+  the real `persistence.counts()` in the `unexpectedFailure`, `adoptionFailure` and `cycleFailure`
+  branches; `retryable` takes `max(real, 1)` so a failure with zero outbox rows stays
+  representable, and `poisoned` is never reduced. Tests assert an adoption failure and an unexpected
+  failure each preserve a non-zero poisoned count.
+- **R5 — Connectivity row state and aggregate now agree.** `SyncDatabaseAccess.failPush` leaves the
+  entity `PENDING` when `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` (retry context stays in the
+  outbox), so the row and the `SyncStatus.Pending` aggregate say the same thing; `FAILED_RETRYABLE`
+  is reserved for non-connectivity retryable failures. `docs/CONTRACTS.md §7` and `§9.9` state the
+  resolution. A test pushes with `RemoteError.Unavailable` and asserts row state and aggregate
+  together.
+- **R6 — Failure path guarded by `localRevision`.** `recordOutboxFailure`, `markVehiclePushFailed`
+  and `markFuelEntryPushFailed` now carry the `pushedLocalRevision` guard, matching the confirm path,
+  so a local edit during an in-flight push does not inherit the older attempt's retry context. A
+  database test seeds a newer revision with unrelated context and asserts the stale failure leaves it
+  untouched; a controller test asserts the newer revision keeps `attemptCount = 0` and a clear error.
+- **R7 — Dead `NotFound` poison arm removed.** The `RemoteError.NotFound -> false` arm was
+  unreachable behind the early `confirmPush(row, null)` return and is gone, with a comment on why
+  `NotFound` is treated as success and why `serverUpdatedAt` is cleared to NULL for the `§9.6` LWW
+  comparison. `docs/CONTRACTS.md §6` states it, and a test pins the behaviour.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 173 decisions and zero `PENDING`.
+- `./gradlew :core:sync:testAndroidHostTest :core:database:testAndroidHostTest
+  :shared:testAndroidHostTest` pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10** consecutive runs, so the E3-03 test
+  determinism property did not regress.
+- The complete non-instrumented command passes 638 tasks; `:shared:iosSimulatorArm64Test` passed
+  **12/12** consecutive runs; `:composition:ios:linkDebugFrameworkIosSimulatorArm64` passes and the
+  regenerated header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
 
 ## Human Review Gate
 

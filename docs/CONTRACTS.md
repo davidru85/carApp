@@ -452,7 +452,7 @@ This table is normative; it decides retry versus poison.
 | `Unauthenticated` | `AuthExpired` | retry after a valid auth session, `attemptCount` unchanged |
 | `PermissionDenied` | `PermissionDenied` | **poison** — a rules rejection does not fix itself |
 | `InvalidArgument` | `ValidationRejected` | **poison** |
-| `NotFound` on push | — | treated as success; the local row is marked `SYNCED` with `serverUpdatedAt = null` |
+| `NotFound` on push | — | treated as success; the local row is marked `SYNCED` with `serverUpdatedAt = null`, so the `§9.6` LWW comparison sees it as never-synced and the next pull may overwrite it |
 | `NotFound` on pull | — | ignored |
 | `Unknown` | `RetryableNetwork` | retry with backoff, `attemptCount++` |
 
@@ -495,8 +495,8 @@ Allowed transitions:
 | `PENDING` | `SYNCING` | Sync engine starts push for the row. |
 | `SYNCING` | `SYNCING` | Local edit during an in-flight push. `localRevision` is incremented; the ack path detects the mismatch. |
 | `SYNCING` | `SYNCED` | Remote ack received and `localRevision` unchanged. |
-| `SYNCING` | `PENDING` | `localRevision` changed during push. |
-| `SYNCING` | `FAILED_RETRYABLE` | Retryable network or remote failure. |
+| `SYNCING` | `PENDING` | `localRevision` changed during push, **or** a connectivity-only failure (`lastErrorCode` in `CONNECTIVITY_ERROR_CODES`, §9.7). |
+| `SYNCING` | `FAILED_RETRYABLE` | Non-connectivity retryable remote failure, or a retryable local/cycle failure. |
 | `FAILED_RETRYABLE` | `PENDING` | Automatic due retry, manual retry, or a local edit. |
 | `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS` **and** `lastErrorCode` is not a connectivity code (§9.7). |
 | `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure. |
@@ -665,6 +665,8 @@ All five are `SyncTrigger` values passed to `requestSync(reason)` and logged wit
 Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a row in `FAILED_RETRYABLE` whose `lastErrorCode` is a connectivity code (§9.7) counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
 
 The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES`.
+
+The per-row `syncState` and the aggregate MUST agree for a connectivity failure. A push failure whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` leaves the entity `syncState = PENDING` (not `FAILED_RETRYABLE`) and keeps its retry context in the outbox; the aggregate therefore reports the row as `Pending`, and both representations say the same thing. `FAILED_RETRYABLE` is reserved for a non-connectivity retryable failure. Poison classification is unchanged: a connectivity-only failure never poisons (`§9.7`).
 
 ## 10. RemoteSyncSource Contract
 
@@ -2532,6 +2534,7 @@ data class QuarantineRecord(
 interface SyncController {
     val status: StateFlow<SyncStatus>
     fun requestSync(reason: SyncTrigger)
+    suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError>
     suspend fun retryFailed(): Outcome<Unit, AppError>
 }
 ```
@@ -2543,6 +2546,8 @@ selected by D-85.
 A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`. Deleting the row is the only supported way to force a full re-pull.
 
 `SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
+
+`SyncController.sync(reason)` is the awaitable, outcome-returning entry point (`D-171`). It suspends until the cycle that serves the request completes and returns that cycle's outcome. It follows the same serialization rules of `§9.1` as `requestSync`: one cycle at a time under the mutex, and concurrent triggers set the single pending flag. A caller that arrives while a cycle is running joins the single pending follow-up cycle — it MUST NOT start a second cycle and MUST NOT busy-wait on `status`. Its outcomes preserve the pre-`E3-03` `refresh` contract: offline or `LOCAL_OWNER` is `Ok(Unit)` with no error; a failed pull is `Err` carrying the failure (`RemoteError` or `SyncError.ConflictUnresolved`). A local post-write trigger MUST use `requestSync`, never `sync`, so a write never blocks on a network round trip.
 
 `RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises it as the timestamp-only `startAt(overlapSince)` first-page boundary per `§9.4`. The `null` prohibition in `§9.4` applies to cursor components passed to `startAt`/`startAfter`; `INITIAL` is exempt because no nullable document-ID component reaches Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
 

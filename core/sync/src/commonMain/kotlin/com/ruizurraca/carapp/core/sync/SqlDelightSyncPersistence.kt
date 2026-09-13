@@ -67,6 +67,7 @@ internal class SqlDelightSyncPersistence(
         access.failPush(
             entityType = row.entityType.name,
             entityId = row.entityId.value,
+            pushedLocalRevision = row.localRevision,
             attemptCount = attemptCount.toLong(),
             nextAttemptAt = nextAttemptAt.toEpochMilliseconds(),
             errorCode = errorCode,

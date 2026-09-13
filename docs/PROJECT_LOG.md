@@ -38,6 +38,66 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 second owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-171`, `D-172`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the second owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69) across seven findings. R1 recorded
+  that E3-03 invalidates the `E1-12` premise — `AppGraph.close()` no longer guarantees no SQLite call
+  is in flight, because `graphScope.cancel()` does not join a detached sync cycle — by adding `E3-17`
+  and `D-172` / ADR-0173, without touching `AppGraph.close()` or `core/database/**`. R2 added the
+  project-log entry recording the owner's acceptance of `D-169` option A and `D-170` option A. R3
+  added `SyncController.sync(reason): Outcome<Unit, AppError>`, so `VehicleSliceRuntime.refresh()`
+  awaits the cycle that serves it and restores the pre-E3-03 `Ok`/`Err` contract, recorded as `D-171`
+  / ADR-0172. R4 reports the real `counts()` on unexpected, adoption and cycle failure so a poisoned
+  count is never discarded. R5 leaves a connectivity failure's row `PENDING` so the per-row state and
+  the aggregate `SyncStatus` agree. R6 guards the failure path with `localRevision`, matching the
+  confirm path, so a local edit during an in-flight push keeps a clean retry context. R7 removed the
+  dead `NotFound` poison arm and documented the success semantics.
+- **Why:** The second review found that E3-03 changed a production risk analysis `E1-12` had
+  deferred, that a user-initiated refresh silently lost its error, that failure aggregation dropped
+  real counts, that connectivity row state disagreed with the aggregate, that a stale push could
+  stamp a newer revision, and that one `when` arm was unreachable. The owner preselected option B for
+  R3 and kept the E1-12 production fix out of this pull request.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/BACKLOG.md` (`E3-17`), `docs/DECISION_BOARD.md`
+  (`D-171`, `D-172`), `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
+  ADR-0172, ADR-0173, `docs/CONTRACTS.md` (`§6`, `§7`, `§9.1`, `§9.9`, `§20.7`), this log.
+  Production code: `:core:sync`, `:core:database`, `:shared`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions, zero
+  `PENDING`), `koverVerify` pass; the focused `:core:sync`, `:core:database` and `:shared` host tests
+  pass; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed
+  12/12; the complete non-instrumented command passes 638 tasks; the iOS framework links and the
+  regenerated header matches the golden byte for byte; the host-app `xcodebuild` succeeds; the
+  protected Android instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `E3-17` (`D-172`) owns making `AppGraph.close()` safe; it is a reachable
+  process-crash hazard, not an observed crash, and no production fix is delivered here. The pull
+  request still requires the owner's gated review and the ten required checks.
+
+### 2026-09-13 — Owner accepts D-169 and D-170
+
+- **Type:** decision
+- **Story / Decision:** `D-169` option A, `D-170` option A / ADR-0170, ADR-0171
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Recorded the owner's acceptance of `D-169` option A (accept the
+  millisecond-truncated cursor and bound the `§9.4` later-page progress guarantee to
+  millisecond-distinguishable clusters, failing closed with `SyncError.ConflictUnresolved` on an
+  oversized same-millisecond cluster) and `D-170` option A (`pullChanges` returns raw per-document
+  results; `:core:sync` validates, classifies and quarantines each payload beside the local page
+  transaction). The transition from `Proposed` to `Accepted` updates `docs/DECISION_BOARD.md`.
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` were mirrored,
+  and ADR-0170 and ADR-0171 now carry `Status: Accepted`.
+- **Why:** The last project-log statement on these decisions was that they were `Proposed` and
+  blocked `E3-03`. This entry records the acceptance as its own event; the acceptance did not arise
+  during the `E3-03` implementation, so it is not folded into that story entry.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0170, ADR-0171, this log.
+- **Verification:** `contractCheck` assertion 2 reports the decision IDs and statuses identical
+  across the four documents, assertion 3 reports each ADR status matching its decision, and both
+  assertions report zero `PENDING`.
+- **Follow-ups / risks:** None. Both decisions are `Accepted` and `E3-03` implements them.
+
 ### 2026-09-13 — E3-03 `:core:sync` engine implemented
 
 - **Type:** story

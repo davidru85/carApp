@@ -1494,6 +1494,50 @@ Acceptance criteria:
 - Evidence of stability: the affected test is run repeatedly on CI and the handoff records the
   number of consecutive passes observed, so "fixed" rests on a count and not on one green run.
 
+### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
+
+**Not Ready.** Blocked on owner decision `D-172`, which is `Pending` in `docs/DECISION_BOARD.md`
+— no recommendation is preselected for the mechanism — with its analysis recorded by `E3-03`.
+
+Tracked as the `E3-03` owner-review finding on [pull request
+#69](https://github.com/davidru85/carApp/pull/69). It is a **production** defect, unlike the
+test-infrastructure defect `E1-12` closed.
+
+`E1-12` (GitHub issue #42) deferred making `AppGraph.close()` safe against live subscribers because,
+verbatim, "This story is a test-infrastructure defect, not a production defect: no production code
+path closes an `AppGraph` while its state holders are still collecting." `E3-03` invalidates that
+premise. `DefaultAppGraph.close()` now hosts long-running detached sync cycles on `graphScope`, each
+performing many SQLite calls, started by `VehicleSliceRuntime.createVehicle`/`updateVehicle`
+(`PostWriteDebounce`), by `VehicleSliceRuntime.refresh` (`PullToRefresh`) and by
+`scheduleAdoptionRetry`. `DefaultAppGraph.close()` calls `graphScope.cancel()` and then
+`databaseHandle.close()`; `cancel()` does not join, so a coroutine suspended inside an asynchronous
+SQLite call is not finished when the driver closes. Both production close paths —
+`MainActivity.onCleared()` and `SwiftAppGraph.close()` — can therefore now run with a cycle in
+flight. `SyncStateHolder.close()` does not mitigate this: it cancels the holder's collectors, not the
+controller's cycle on `graphScope`.
+
+This is a reachable hazard, not an observed production crash. The D-89 handle-ownership contract
+(`docs/CONTRACTS.md §20.3.2`) and the gated path `core/database/**` are in scope, so the fix MUST get
+its own human review gate.
+
+Acceptance criteria (to be finalised once `D-172` is accepted):
+
+- The accepted option discharges its proof obligations: the close paths and the cycle lifecycle are
+  ordered explicitly, and the evidence states which mechanism joins, cancels or drains an in-flight
+  cycle before the `DatabaseHandle` closes.
+- The D-89 contract stays intact: exactly one owner closes the handle, closure is idempotent, and no
+  SQLite call is made after the driver is closed.
+- `MainActivity.onCleared()` and `SwiftAppGraph.close()` are both covered, including a cycle
+  suspended inside a remote call and a cycle performing a local transaction.
+- The `E1-12` test-level mitigation stays valid; the production fix MUST NOT make it unnecessary in
+  a way that hides the underlying hazard.
+- The change is recorded as its own decision with its ADR and the four mirror rows, and touches the
+  gated `core/database/**` path under an owner review gate.
+
+Depends on: `D-172`, E1-12 (context), E3-03.
+
+Human review required.
+
 ### Deferred scope, now scheduled
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
@@ -1648,6 +1692,7 @@ proof after E3-04.
 | E3-14 Orphan cleanup ticket issuance hardening | 3 | M | Yes |
 | E3-15 Close the ticket issuance and account deletion interleaving | 3 | M | Yes |
 | E3-16 Close the issuance lookup-to-write window | 3 | M | Yes |
+| E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle | 3 | M | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

@@ -19,6 +19,8 @@ import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -174,6 +176,12 @@ fun createSyncController(
     )
 }
 
+/** A reservation of a cycle: either the caller runs it, or it joins the pending follow-up. */
+private data class TriggerRegistration(
+    val completion: CompletableDeferred<Outcome<Unit, AppError>>,
+    val startsCycle: Boolean,
+)
+
 internal class DefaultSyncController(
     private val scope: CoroutineScope,
     private val ownerContext: OwnerContext,
@@ -194,27 +202,51 @@ internal class DefaultSyncController(
     private val cycleMutex = Mutex()
     private var cycleRunning = false
     private var pendingCycle = false
+
+    // The completion handle for the pending follow-up cycle. A `sync()` that arrives while a cycle
+    // is running joins this handle instead of starting a second cycle, so the single-follow-up rule
+    // of `§9.1` is preserved while the caller still observes the cycle that serves its request.
+    private var pendingCompletion: CompletableDeferred<Outcome<Unit, AppError>>? = null
     private var unexpectedFailure = false
     private var cycleFailure = false
+    private var lastCycleError: AppError? = null
     private var adoptionFailure = false
     private var adoptionAttemptCount = 0
     private var adoptionRetryScheduled = false
 
     override fun requestSync(reason: SyncTrigger) {
         scope.launch {
-            val startsCycle =
-                cycleMutex.withLock {
-                    if (cycleRunning) {
-                        pendingCycle = true
-                        false
-                    } else {
-                        cycleRunning = true
-                        true
-                    }
-                }
-            if (startsCycle) drainCycles(reason)
+            val registration = registerTrigger()
+            if (registration.startsCycle) drainCycles(reason, registration.completion)
         }
     }
+
+    override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> {
+        val registration = registerTrigger()
+        if (registration.startsCycle) scope.launch { drainCycles(reason, registration.completion) }
+        return registration.completion.await()
+    }
+
+    /**
+     * Reserves either a new active cycle or a join on the single pending follow-up. Only the caller
+     * that receives `startsCycle = true` runs [drainCycles]; every other concurrent trigger joins the
+     * follow-up completion, so multiple triggers still produce exactly one active and one pending
+     * cycle (`§9.1`).
+     */
+    private suspend fun registerTrigger(): TriggerRegistration =
+        cycleMutex.withLock {
+            if (cycleRunning) {
+                pendingCycle = true
+                val completion =
+                    pendingCompletion ?: CompletableDeferred<Outcome<Unit, AppError>>().also {
+                        pendingCompletion = it
+                    }
+                TriggerRegistration(completion, startsCycle = false)
+            } else {
+                cycleRunning = true
+                TriggerRegistration(CompletableDeferred(), startsCycle = true)
+            }
+        }
 
     override suspend fun retryFailed(): Outcome<Unit, AppError> {
         val result = persistence.resetFailed(clock.now())
@@ -226,58 +258,69 @@ internal class DefaultSyncController(
     override suspend fun debugLines(): List<String> = if (debugEnabled) debugLoader() else emptyList()
 
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun drainCycles(firstReason: SyncTrigger) {
+    private suspend fun drainCycles(
+        firstReason: SyncTrigger,
+        firstCompletion: CompletableDeferred<Outcome<Unit, AppError>>,
+    ) {
         var reason = firstReason
+        var completion = firstCompletion
         while (true) {
-            try {
-                runCycle(reason)
-                unexpectedFailure = false
-            } catch (cancellation: kotlinx.coroutines.CancellationException) {
-                throw cancellation
-            } catch (failure: Throwable) {
-                unexpectedFailure = true
-                onPoisoned(
-                    UnexpectedError(":core:sync", failure::class.simpleName ?: "Throwable"),
-                    mapOf("cycleId" to "unavailable"),
-                )
-            }
-            val runAgain =
+            val outcome =
+                try {
+                    val result = runCycle(reason)
+                    unexpectedFailure = false
+                    result
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (failure: Throwable) {
+                    unexpectedFailure = true
+                    val error = UnexpectedError(":core:sync", failure::class.simpleName ?: "Throwable")
+                    onPoisoned(error, mapOf("cycleId" to "unavailable"))
+                    Outcome.Err(error)
+                }
+            completion.complete(outcome)
+            val nextCompletion =
                 cycleMutex.withLock {
                     if (pendingCycle) {
                         pendingCycle = false
-                        true
+                        pendingCompletion?.also { pendingCompletion = null }
                     } else {
                         cycleRunning = false
-                        false
+                        null
                     }
                 }
-            if (!runAgain) {
+            if (nextCompletion == null) {
                 refreshStatus(running = false)
                 return
             }
+            completion = nextCompletion
             reason = SyncTrigger.PostWriteDebounce
         }
     }
 
-    private suspend fun runCycle(reason: SyncTrigger) {
+    private suspend fun runCycle(reason: SyncTrigger): Outcome<Unit, AppError> {
         cycleFailure = false
+        lastCycleError = null
+        // A refused cycle is a successful outcome with no error: offline or `LOCAL_OWNER` is not a
+        // failure the caller must surface (`§9.1`, `§9.2`).
         if (!connectivity.isOnline.value) {
             refreshStatus(running = false)
-            return
+            return Outcome.Ok(Unit)
         }
         val ownerId = ownerContext.current
         if (ownerId == LOCAL_OWNER) {
             refreshStatus(running = false)
-            return
+            return Outcome.Ok(Unit)
         }
         mutableStatus.value = SyncStatus.Syncing
         if (reason == SyncTrigger.ConnectivityRecovered) persistence.markConnectivityFailuresDue(clock.now())
-        if (adoption() is Outcome.Err) {
+        val adoptionResult = adoption()
+        if (adoptionResult is Outcome.Err) {
             adoptionFailure = true
             adoptionAttemptCount = minOf(adoptionAttemptCount + 1, MAX_RETRYABLE_ATTEMPTS)
             scheduleAdoptionRetry()
             refreshStatus(running = false)
-            return
+            return adoptionResult
         }
         adoptionFailure = false
         adoptionAttemptCount = 0
@@ -289,6 +332,7 @@ internal class DefaultSyncController(
             push(ownerId)
             pull(ownerId)
         }
+        return if (cycleFailure) Outcome.Err(lastCycleError ?: SyncError.ConflictUnresolved) else Outcome.Ok(Unit)
     }
 
     private suspend fun push(ownerId: OwnerId) {
@@ -314,20 +358,24 @@ internal class DefaultSyncController(
         error: RemoteError,
         cycleId: CycleId,
     ) {
+        // `NotFound` on push is treated as success (`§6`): the remote copy is already absent, which is
+        // the state this push was trying to reach. `serverUpdatedAt` is cleared to NULL so the entity
+        // reads as never-synced to the `§9.6` LWW comparison, and the next pull is therefore allowed
+        // to overwrite local data for it. That is intended for a non-tombstone push: there is no
+        // remote copy to lose, and a later remote write must be able to win.
         if (error == RemoteError.NotFound) {
             persistence.confirmPush(row, null)
             return
         }
         val attemptCount = minOf(row.attemptCount + 1, MAX_RETRYABLE_ATTEMPTS)
+        // `NotFound` is excluded by the early return above, so the remaining leaves are exhaustive:
+        // permission and validation failures poison immediately, `Unknown`/`Unauthenticated` poison at
+        // the ceiling, and connectivity failures never poison (`§6`, `§9.7`).
         val poisoned =
             when (error) {
                 RemoteError.PermissionDenied, RemoteError.InvalidArgument -> true
-
                 RemoteError.Unknown, RemoteError.Unauthenticated -> attemptCount >= MAX_RETRYABLE_ATTEMPTS
-
-                RemoteError.Unavailable, RemoteError.DeadlineExceeded,
-                RemoteError.NotFound,
-                -> false
+                else -> false
             }
         if (poisoned) {
             val syncError =
@@ -368,10 +416,10 @@ internal class DefaultSyncController(
         var hasMore = true
         while (hasMore) {
             val result = remote.pullChanges(ownerId, entityType, requestCursor, PULL_PAGE_LIMIT)
-            if (result is Outcome.Err) return failPullCycle()
+            if (result is Outcome.Err) return failPullCycle(result.error)
             val page = (result as Outcome.Ok).value
             if (page.items.isEmpty()) return true
-            if (!page.nextCursor.strictlyAfter(requestCursor)) return failPullCycle()
+            if (!page.nextCursor.strictlyAfter(requestCursor)) return failPullCycle(SyncError.ConflictUnresolved)
             val records = page.items.map { document -> document.toPullRecord(ownerId, clock.now()) }
             persistence.applyPullPage(ownerId, entityType, records, page.nextCursor).forEach(onQuarantined)
             hasMore = page.hasMore
@@ -380,8 +428,9 @@ internal class DefaultSyncController(
         return true
     }
 
-    private fun failPullCycle(): Boolean {
+    private fun failPullCycle(error: AppError): Boolean {
         cycleFailure = true
+        lastCycleError = error
         return false
     }
 
@@ -389,16 +438,20 @@ internal class DefaultSyncController(
         val counts = persistence.counts()
         mutableStatus.value =
             when {
+                // A failure condition with zero outbox rows must still be representable, so each
+                // synthetic dimension takes the maximum of the real count and 1; a real count is
+                // never reduced. `unexpectedFailure`, `adoptionFailure` and `cycleFailure` are all
+                // cycle-level failures that use the real `persistence.counts()` values (R4).
                 unexpectedFailure -> {
-                    SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
+                    SyncStatus.Failed(counts.retryableOrAtLeastOne(), counts.poisoned)
                 }
 
                 adoptionFailure -> {
-                    SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
+                    SyncStatus.Failed(counts.retryableOrAtLeastOne(), counts.poisoned)
                 }
 
                 cycleFailure -> {
-                    SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
+                    SyncStatus.Failed(counts.retryableOrAtLeastOne(), counts.poisoned)
                 }
 
                 counts.retryable > 0 || counts.poisoned > 0 -> {
@@ -418,6 +471,8 @@ internal class DefaultSyncController(
                 }
             }
     }
+
+    private fun SyncCounts.retryableOrAtLeastOne(): Int = maxOf(retryable, 1)
 
     private fun scheduleAdoptionRetry() {
         if (adoptionRetryScheduled) return

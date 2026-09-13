@@ -18,6 +18,7 @@ import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
@@ -26,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.time.Instant
 
 class VehicleListStateHolderTest {
@@ -141,6 +143,75 @@ class VehicleListStateHolderTest {
             }
         }
 
+    @Test
+    fun failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun() =
+        runTest {
+            val defaultDependencies = confinedGraphDependencies()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val remote = FailingPullRemoteSyncSource()
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                remoteSyncSource = remote,
+                            ),
+                        ),
+                )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val list = graph.vehicleListStateHolder(harness.scope)
+
+                list.refresh()
+                val failed = list.state.awaitState("refresh failure published") { state -> state.message != null }
+                assertEquals("REMOTE.UNAVAILABLE", failed.message?.code)
+
+                // The indicator cleared: a second refresh is not refused and reaches the remote again.
+                list.refresh()
+                list.state.awaitState("second refresh issued") { remote.pullCalls.size >= 2 }
+            } finally {
+                harness.close()
+            }
+        }
+
+    @Test
+    fun offlineRefreshIsOkWithNoMessage() =
+        runTest {
+            val defaultDependencies = confinedGraphDependencies()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = false),
+                            ),
+                        ),
+                )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val list = graph.vehicleListStateHolder(harness.scope)
+
+                list.refresh()
+                val settled =
+                    list.state.awaitState("offline refresh settles") { state ->
+                        !state.isLoading && state.message == null
+                    }
+                assertEquals(emptyList(), settled.vehicles)
+                assertNull(settled.message)
+            } finally {
+                harness.close()
+            }
+        }
+
     // `refresh()` delegates to the E3-03 sync controller, whose cycle runs detached from the
     // caller. Wait for that cycle to settle before the harness closes the database, or the close
     // can race an in-flight SQLite call (E1-12 / issue #42).
@@ -228,5 +299,25 @@ private class PullOnlyRemoteSyncSource(
                 hasMore = false,
             ),
         )
+    }
+}
+
+private class FailingPullRemoteSyncSource : RemoteSyncSource {
+    private val recordedPullCalls = mutableListOf<PullCall>()
+    val pullCalls: List<PullCall> get() = recordedPullCalls.toList()
+
+    override suspend fun pushSnapshot(
+        ownerId: OwnerId,
+        snapshot: EntitySnapshot,
+    ): Outcome<RemoteAck, RemoteError> = Outcome.Err(RemoteError.Unknown)
+
+    override suspend fun pullChanges(
+        ownerId: OwnerId,
+        entityType: EntityType,
+        cursor: RemoteCursor,
+        limit: Int,
+    ): Outcome<RemotePage, RemoteError> {
+        recordedPullCalls += PullCall(ownerId, entityType, cursor, limit)
+        return Outcome.Err(RemoteError.Unavailable)
     }
 }

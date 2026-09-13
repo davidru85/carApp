@@ -46,8 +46,8 @@ internal class VehicleSliceRuntime(
         return result
     }
 
-    suspend fun refresh(): Outcome<Unit, AppError> {
-        syncController.requestSync(SyncTrigger.PullToRefresh)
-        return Outcome.Ok(Unit)
-    }
+    suspend fun refresh(): Outcome<Unit, AppError> =
+        // A user-initiated refresh awaits the cycle that serves it, so the pull-to-refresh
+        // indicator stays on until the outcome is known and a failed pull surfaces its error.
+        syncController.sync(SyncTrigger.PullToRefresh)
 }

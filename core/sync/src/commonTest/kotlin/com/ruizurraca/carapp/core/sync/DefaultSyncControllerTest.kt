@@ -2,6 +2,7 @@ package com.ruizurraca.carapp.core.sync
 
 import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.CONNECTIVITY_ERROR_CODES
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.MAX_RETRYABLE_ATTEMPTS
 import com.ruizurraca.carapp.core.common.Outcome
@@ -13,12 +14,14 @@ import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -603,57 +606,208 @@ class DefaultSyncControllerTest {
             assertEquals(SyncStatus.Idle, fixture.controller.status.value)
         }
 
-    private fun TestScope.fixture(
-        online: Boolean = true,
-        now: Long = 0,
-        adoption: suspend () -> Outcome<Unit, AppError> = { Outcome.Ok(Unit) },
-        jitter: JitterSource = JitterSource { _, _ -> 200 },
-        debugEnabled: Boolean = false,
-        debugLines: suspend () -> List<String> = { emptyList() },
-    ): Fixture {
-        val clock = TestClock(instant(now))
-        val connectivity = TestConnectivity(online)
-        val persistence = FakeSyncPersistence()
-        val remote = FakeRemoteSyncSource()
-        val reportedErrors = mutableListOf<Pair<AppError, Map<String, String>>>()
-        val reportedQuarantines = mutableListOf<QuarantineRecord>()
-        val controller =
-            DefaultSyncController(
-                scope = this,
-                ownerContext = TestOwnerContext(OWNER),
-                connectivity = connectivity,
-                remote = remote,
-                persistence = persistence,
-                clock = clock,
-                uuidGenerator = TestUuidGenerator(),
-                jitter = jitter,
-                adoption = adoption,
-                onPoisoned = { error, fields -> reportedErrors += error to fields },
-                onQuarantined = reportedQuarantines::add,
-                debugEnabled = debugEnabled,
-                debugLoader = debugLines,
-            )
-        return Fixture(controller, persistence, remote, connectivity, clock, reportedErrors, reportedQuarantines)
-    }
-
-    private data class Fixture(
-        val controller: DefaultSyncController,
-        val persistence: FakeSyncPersistence,
-        val remote: FakeRemoteSyncSource,
-        val connectivity: TestConnectivity,
-        val clock: TestClock,
-        val reportedErrors: List<Pair<AppError, Map<String, String>>>,
-        val reportedQuarantines: List<QuarantineRecord>,
-    ) {
-        fun withOutbox(row: OutboxRecord): Fixture {
-            persistence.outbox += row
-            persistence.states[row.entityId.value] = "PENDING"
-            return this
-        }
-    }
-
     private companion object {
         val OWNER = OwnerId("owner-1")
+    }
+}
+
+/**
+ * The `E3-03` owner-review round's new behavioural cases: the awaitable cycle (`D-171`), the real
+ * aggregate counts on failure, the connectivity row/aggregate agreement, the `localRevision` guard
+ * on the failure path and the `NotFound` success path. Kept in its own class so detekt's
+ * `LargeClass` bound stays meaningful.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class DefaultSyncControllerReviewRoundTest {
+    @Test
+    fun awaitableSyncResolvesAgainstTheFollowUpCycleWithoutStartingASecond() =
+        runTest {
+            val fixture = fixture()
+            val firstPushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            fixture.withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.onPushSuspend = {
+                firstPushStarted.complete(Unit)
+                releasePush.await()
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            firstPushStarted.await()
+
+            var awaited: Outcome<Unit, AppError>? = null
+            val awaiting = launch { awaited = fixture.controller.sync(SyncTrigger.PullToRefresh) }
+            runCurrent()
+            // The awaited request joins the single pending follow-up rather than starting a cycle.
+            assertNull(awaited)
+
+            releasePush.complete(Unit)
+            awaiting.join()
+
+            assertEquals(Outcome.Ok(Unit), awaited)
+            assertEquals(2, fixture.remote.vehiclePullCursors.size)
+            assertEquals(1, fixture.remote.maxConcurrentPushes)
+        }
+
+    @Test
+    fun syncRefusedOfflineOrLocalOwnerIsOkWithoutError() =
+        runTest {
+            val offline = fixture(online = false).withOutbox(vehicleOutbox("vehicle-1"))
+            assertEquals(Outcome.Ok(Unit), offline.controller.sync(SyncTrigger.PullToRefresh))
+            assertEquals(0, offline.remote.pushCalls.size)
+
+            val localOwner =
+                fixture(owner = LOCAL_OWNER).withOutbox(vehicleOutbox("vehicle-1"))
+            assertEquals(Outcome.Ok(Unit), localOwner.controller.sync(SyncTrigger.PullToRefresh))
+            assertEquals(0, localOwner.remote.pushCalls.size)
+        }
+
+    @Test
+    fun syncCarriesTheUnderlyingPullFailure() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullHandler = { _, _ -> error("pull failed") }
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertIs<Outcome.Err<AppError>>(result)
+        }
+
+    @Test
+    fun unexpectedFailurePreservesRealPoisonedCount() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.states["vehicle-1"] = "FAILED_POISONED"
+            fixture.remote.pullHandler = { _, _ -> error("boom") }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            val status = assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertEquals(1, status.poisonedCount)
+        }
+
+    @Test
+    fun adoptionFailurePreservesRealPoisonedCount() =
+        runTest {
+            var failing = true
+            val fixture =
+                fixture(
+                    adoption = { if (failing) Outcome.Err(PersistenceError.TransactionFailed) else Outcome.Ok(Unit) },
+                ).withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.states["vehicle-1"] = "FAILED_POISONED"
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            runCurrent()
+
+            val status = assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertEquals(1, status.poisonedCount)
+            // The real retryable count is zero, so the synthetic 1 keeps the failure representable.
+            assertEquals(1, status.retryableCount)
+
+            // Let the scheduled adoption retry succeed so the test leaves no live job behind.
+            failing = false
+            advanceTimeBy(2_000)
+            runCurrent()
+            advanceUntilIdle()
+        }
+
+    @Test
+    fun connectivityFailureKeepsRowStateAndAggregateInAgreement() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.Unavailable)
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            // A connectivity-only failure is a deferred retry, so the row and the aggregate agree.
+            assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals(SyncStatus.Pending(1), fixture.controller.status.value)
+            // The retry context still lives in the outbox so the backoff is preserved.
+            val row = fixture.persistence.outbox.single()
+            assertEquals(1, row.attemptCount)
+            assertEquals(RemoteError.Unavailable.code, row.lastErrorCode)
+        }
+
+    @Test
+    fun localEditDuringFailingPushKeepsTheNewRevisionUnstamped() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.onPush = { fixture.persistence.edit("vehicle-1") }
+            fixture.remote.pushResults += Outcome.Err(RemoteError.Unknown)
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            val row = fixture.persistence.outbox.single()
+            assertEquals(2, row.localRevision)
+            assertEquals(0, row.attemptCount)
+            assertNull(row.lastErrorCode)
+            assertEquals("SYNCING", fixture.persistence.states.getValue("vehicle-1"))
+        }
+
+    @Test
+    fun notFoundOnPushMarksSyncedWithNoServerTimestamp() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.NotFound)
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals("SYNCED", fixture.persistence.states.getValue("vehicle-1"))
+            assertNull(fixture.persistence.vehicleServerTimes["vehicle-1"])
+            assertEquals(emptyList(), fixture.persistence.outbox)
+        }
+}
+
+private fun TestScope.fixture(
+    online: Boolean = true,
+    now: Long = 0,
+    owner: OwnerId = OwnerId("owner-1"),
+    adoption: suspend () -> Outcome<Unit, AppError> = { Outcome.Ok(Unit) },
+    jitter: JitterSource = JitterSource { _, _ -> 200 },
+    debugEnabled: Boolean = false,
+    debugLines: suspend () -> List<String> = { emptyList() },
+): Fixture {
+    val clock = TestClock(instant(now))
+    val connectivity = TestConnectivity(online)
+    val persistence = FakeSyncPersistence()
+    val remote = FakeRemoteSyncSource()
+    val reportedErrors = mutableListOf<Pair<AppError, Map<String, String>>>()
+    val reportedQuarantines = mutableListOf<QuarantineRecord>()
+    val controller =
+        DefaultSyncController(
+            scope = this,
+            ownerContext = TestOwnerContext(owner),
+            connectivity = connectivity,
+            remote = remote,
+            persistence = persistence,
+            clock = clock,
+            uuidGenerator = TestUuidGenerator(),
+            jitter = jitter,
+            adoption = adoption,
+            onPoisoned = { error, fields -> reportedErrors += error to fields },
+            onQuarantined = reportedQuarantines::add,
+            debugEnabled = debugEnabled,
+            debugLoader = debugLines,
+        )
+    return Fixture(controller, persistence, remote, connectivity, clock, reportedErrors, reportedQuarantines)
+}
+
+private data class Fixture(
+    val controller: DefaultSyncController,
+    val persistence: FakeSyncPersistence,
+    val remote: FakeRemoteSyncSource,
+    val connectivity: TestConnectivity,
+    val clock: TestClock,
+    val reportedErrors: List<Pair<AppError, Map<String, String>>>,
+    val reportedQuarantines: List<QuarantineRecord>,
+) {
+    fun withOutbox(row: OutboxRecord): Fixture {
+        persistence.outbox += row
+        persistence.states[row.entityId.value] = "PENDING"
+        return this
     }
 }
 
@@ -773,9 +927,20 @@ private class FakeSyncPersistence : SyncPersistence {
     ) {
         val index = outbox.indexOfFirst { it.entityId == row.entityId }
         if (index < 0) return
+        // The failure path is guarded by `localRevision` exactly like the confirm path: a local edit
+        // that landed during the in-flight push must not inherit this attempt's outcome.
+        if (outbox[index].localRevision != row.localRevision) return
         outbox[index] =
             outbox[index].copy(attemptCount = attemptCount, nextAttemptAt = nextAttemptAt, lastErrorCode = errorCode)
-        transition(row.entityId.value, if (poisoned) "FAILED_POISONED" else "FAILED_RETRYABLE")
+        // Mirror `SyncDatabaseAccess`: a connectivity-only failure is a deferred retry and leaves the
+        // row PENDING, so the row state agrees with the aggregate `SyncStatus` (`§9.9`).
+        val state =
+            when {
+                poisoned -> "FAILED_POISONED"
+                errorCode in CONNECTIVITY_ERROR_CODES -> "PENDING"
+                else -> "FAILED_RETRYABLE"
+            }
+        transition(row.entityId.value, state)
     }
 
     override suspend fun cursor(entityType: EntityType): RemoteCursor {

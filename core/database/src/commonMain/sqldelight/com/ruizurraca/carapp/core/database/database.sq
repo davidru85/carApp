@@ -403,13 +403,16 @@ SET attemptCount = :attemptCount,
   lastError = :lastError,
   lastErrorCode = :lastErrorCode,
   cycleId = :cycleId
-WHERE entityType = :entityType AND entityId = :entityId;
+WHERE entityType = :entityType AND entityId = :entityId
+  AND localRevision = :pushedLocalRevision;
 
 markVehiclePushFailed:
-UPDATE vehicle SET syncState = :syncState WHERE id = :entityId;
+UPDATE vehicle SET syncState = :syncState
+WHERE id = :entityId AND localRevision = :pushedLocalRevision;
 
 markFuelEntryPushFailed:
-UPDATE fuel_entry SET syncState = :syncState WHERE id = :entityId;
+UPDATE fuel_entry SET syncState = :syncState
+WHERE id = :entityId AND localRevision = :pushedLocalRevision;
 
 selectSyncCursor:
 SELECT * FROM sync_cursor WHERE entityType = :entityType;

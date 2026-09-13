@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.core.database
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.CONNECTIVITY_ERROR_CODES
 
 data class SyncOutboxDatabaseRow(
     val sequence: Long,
@@ -143,6 +144,7 @@ class SyncDatabaseAccess(
     suspend fun failPush(
         entityType: String,
         entityId: String,
+        pushedLocalRevision: Long,
         attemptCount: Long,
         nextAttemptAt: Long,
         errorCode: String,
@@ -158,11 +160,22 @@ class SyncDatabaseAccess(
                 cycleId = cycleId,
                 entityType = entityType,
                 entityId = entityId,
+                pushedLocalRevision = pushedLocalRevision,
             )
-            val state = if (poisoned) "FAILED_POISONED" else "FAILED_RETRYABLE"
+            // A connectivity-only failure is a deferred retry, not a row failure: it leaves the row
+            // `PENDING` so the per-row state agrees with the aggregate `SyncStatus` classification of
+            // `docs/CONTRACTS.md §9.9`, while the retry context (attemptCount, nextAttemptAt,
+            // lastErrorCode) lives in the outbox. A non-connectivity retryable failure is
+            // `FAILED_RETRYABLE`, and a poison is `FAILED_POISONED` (`§7`, `§9.7`).
+            val state =
+                when {
+                    poisoned -> "FAILED_POISONED"
+                    errorCode in CONNECTIVITY_ERROR_CODES -> "PENDING"
+                    else -> "FAILED_RETRYABLE"
+                }
             when (entityType) {
-                "VEHICLE" -> queries.markVehiclePushFailed(state, entityId)
-                "FUEL_ENTRY" -> queries.markFuelEntryPushFailed(state, entityId)
+                "VEHICLE" -> queries.markVehiclePushFailed(state, entityId, pushedLocalRevision)
+                "FUEL_ENTRY" -> queries.markFuelEntryPushFailed(state, entityId, pushedLocalRevision)
                 else -> error("Unknown sync entity type")
             }
         }
