@@ -686,7 +686,7 @@ DTOs are declared in §20.
 
 Side effects:
 
-- `pushSnapshot` performs at most one full-document remote write and at most one remote read per snapshot.
+- `pushSnapshot` performs at most one full-document remote write and at most one remote read per **attempt**. A snapshot therefore performs at most two writes and at most two reads: the single initial attempt, plus the one forced-refresh retry mandated by the token-refresh bullet below when that first attempt fails with `Unauthenticated`.
 - `pullChanges` performs no local writes.
 - On an empty page, `nextCursor` equals the input cursor and `hasMore` is `false`.
 - `pullChanges` returns `nextCursor = inputCursor` and `hasMore = false` exactly when `items` is empty. Otherwise `nextCursor.lastServerUpdatedAt` and `nextCursor.lastDocumentId` MUST equal the last item in `items`.

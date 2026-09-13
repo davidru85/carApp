@@ -652,3 +652,76 @@ test("the delta-pull query paginates deterministically and returns tombstones", 
     );
   });
 });
+
+test("a resumed cycle applies startAt to the overlap after a non-empty pull", async () => {
+  await withTestEnvironment(async (testEnvironment) => {
+    const firstTimestamp = Timestamp.fromMillis(1_700_000_000_000);
+    const storedCursorTimestamp = Timestamp.fromMillis(1_700_000_060_000);
+    const overlapSince = Timestamp.fromMillis(1_700_000_030_000);
+    const lateTimestamp = Timestamp.fromMillis(1_700_000_045_000);
+    const firstId = uuid(910);
+    const cursorId = uuid(911);
+    const lateId = uuid(912);
+
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await Promise.all([
+        setDoc(vehicleReference(context, firstId), {
+          ...vehicle(OWNER_ID, firstId),
+          updatedAt: firstTimestamp,
+        }),
+        setDoc(vehicleReference(context, cursorId), {
+          ...vehicle(OWNER_ID, cursorId),
+          updatedAt: storedCursorTimestamp,
+        }),
+      ]);
+    });
+
+    const ownerContext = anonymousOwnerContext(testEnvironment);
+    const vehicles = collection(
+      ownerContext.firestore(),
+      `users/${OWNER_ID}/vehicles`,
+    );
+    const firstCycle = await assertSucceeds(
+      getDocs(
+        query(
+          vehicles,
+          where("updatedAt", ">=", firstTimestamp),
+          orderBy("updatedAt", "asc"),
+          orderBy(documentId(), "asc"),
+          startAt(firstTimestamp),
+          limit(2),
+        ),
+      ),
+    );
+
+    assert.deepEqual(
+      firstCycle.docs.map((snapshot) => snapshot.id),
+      [firstId, cursorId],
+    );
+
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(vehicleReference(context, lateId), {
+        ...vehicle(OWNER_ID, lateId),
+        updatedAt: lateTimestamp,
+      });
+    });
+
+    const resumedCycle = await assertSucceeds(
+      getDocs(
+        query(
+          vehicles,
+          where("updatedAt", ">=", overlapSince),
+          orderBy("updatedAt", "asc"),
+          orderBy(documentId(), "asc"),
+          startAt(overlapSince),
+          limit(200),
+        ),
+      ),
+    );
+
+    assert.deepEqual(
+      resumedCycle.docs.map((snapshot) => snapshot.id),
+      [lateId, cursorId],
+    );
+  });
+});
