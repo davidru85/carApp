@@ -38,6 +38,38 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 `:core:sync` engine implemented
+
+- **Type:** story
+- **Story / Decision:** `E3-03` / `D-169` option A, `D-170` option A
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Delivered the `:core:sync` engine over three TDD commits on
+  `story/E3-03-core-sync-engine`: RED `a66c612`, GREEN `bfced6b`, REFACTOR
+  `refactor(E3-03): finalize sync engine`. The engine implements serialized cycles with one pending
+  follow-up, offline and local-owner admission, cold-start pull-first selection, dependency-ordered
+  push, idempotent acknowledgement, server-timestamp LWW pull, one-cycle overlap, deterministic
+  pagination, retry/backoff/poison rules, quarantine, automatic adoption retry and aggregate
+  `SyncStatus`. REFACTOR removed the premature E3-07 tombstone purge, replaced the direct
+  `AppDatabase` edge with a database-owned `SyncDatabaseAccess` composed in `:shared`, made
+  `Unauthenticated` consume the non-connectivity poison budget, made `applyPullPage` return only
+  newly persisted quarantines so an overlapped document is logged and reported once, and added
+  `SqlDelightSyncPersistenceTest`. Every state holder exposing `SyncStatus` now observes the single
+  controller flow and the debug screen shows redacted diagnostics only in debug builds.
+- **Why:** E3-03 is the gated synchronization-engine story and the prerequisite for the remaining
+  Phase 3 sync work. The overlap deduplication closes a double-reporting defect and the persistence
+  test restored `:core:sync` coverage, which was below the `D-18` 80% threshold since GREEN.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/BACKLOG.md` (`E3-03` status), this log.
+  Production code: `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared`,
+  `:feature:vehicle`, `:feature:fuel`, `androidApp` and `iosApp`.
+- **Verification:** Focused command pass; `:core:sync` Kover 96.01% lines (80% required); complete
+  non-instrumented command pass, 638 tasks; `contractCheck` 19 `[PASS]` and zero `PENDING`;
+  `:composition:ios:linkDebugFrameworkIosSimulatorArm64` pass; host-app `xcodebuild`
+  `** BUILD SUCCEEDED **`; protected Android instrumented suite 17 tests, zero failures on the D-84
+  API 36 emulator.
+- **Follow-ups / risks:** The gated pull request requires owner review and the ten required checks;
+  E3-03 is implemented, not complete, until it merges. E3-04 owns trigger scheduling and E3-07 owns
+  tombstone purge. No new owner decision arose; `D-149` and `D-150` stay unrelated to E3-03.
+
 ### 2026-09-13 — E3-02 second owner-review round
 
 - **Type:** correction

@@ -15,7 +15,7 @@ import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UnexpectedError
 import com.ruizurraca.carapp.core.common.UuidGenerator
-import com.ruizurraca.carapp.core.database.AppDatabase
+import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -35,11 +35,14 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
-import kotlin.time.Instant
 import kotlin.random.Random
+import kotlin.time.Instant
 
 fun interface JitterSource {
-    fun nextInt(from: Int, until: Int): Int
+    fun nextInt(
+        from: Int,
+        until: Int,
+    ): Int
 }
 
 internal data class OutboxRecord(
@@ -103,11 +106,17 @@ internal sealed interface PullRecord {
 internal interface SyncPersistence {
     suspend fun isOwnerDatabaseEmpty(ownerId: OwnerId): Boolean
 
-    suspend fun dueOutbox(now: Instant, limit: Int): List<OutboxRecord>
+    suspend fun dueOutbox(
+        now: Instant,
+        limit: Int,
+    ): List<OutboxRecord>
 
     suspend fun markSyncing(row: OutboxRecord)
 
-    suspend fun confirmPush(row: OutboxRecord, serverUpdatedAt: Instant?)
+    suspend fun confirmPush(
+        row: OutboxRecord,
+        serverUpdatedAt: Instant?,
+    )
 
     suspend fun failPush(
         row: OutboxRecord,
@@ -125,22 +134,18 @@ internal interface SyncPersistence {
         entityType: EntityType,
         records: List<PullRecord>,
         cursor: RemoteCursor,
-    )
+    ): List<QuarantineRecord>
 
     suspend fun markConnectivityFailuresDue(now: Instant)
 
     suspend fun resetFailed(now: Instant): Outcome<Unit, AppError>
 
     suspend fun counts(): SyncCounts
-
-    suspend fun purgeTombstones(cutoff: Instant)
-
-    suspend fun debugLines(): List<String> = emptyList()
 }
 
 fun createSyncController(
     scope: CoroutineScope,
-    database: AppDatabase,
+    databaseAccess: SyncDatabaseAccess,
     ownerContext: OwnerContext,
     connectivity: ConnectivityObserver,
     remote: RemoteSyncSource,
@@ -150,13 +155,14 @@ fun createSyncController(
     onPoisoned: (AppError, Map<String, String>) -> Unit,
     onQuarantined: (QuarantineRecord) -> Unit,
     isDebugBuild: Boolean,
-): SyncController =
-    DefaultSyncController(
+): SyncController {
+    val persistence = SqlDelightSyncPersistence(databaseAccess)
+    return DefaultSyncController(
         scope = scope,
         ownerContext = ownerContext,
         connectivity = connectivity,
         remote = remote,
-        persistence = SqlDelightSyncPersistence(database),
+        persistence = persistence,
         clock = clock,
         uuidGenerator = uuidGenerator,
         jitter = JitterSource { from, until -> Random.nextInt(from, until) },
@@ -164,7 +170,9 @@ fun createSyncController(
         onPoisoned = onPoisoned,
         onQuarantined = onQuarantined,
         debugEnabled = isDebugBuild,
+        debugLoader = persistence::debugLines,
     )
+}
 
 internal class DefaultSyncController(
     private val scope: CoroutineScope,
@@ -179,13 +187,13 @@ internal class DefaultSyncController(
     private val onPoisoned: (AppError, Map<String, String>) -> Unit = { _, _ -> },
     private val onQuarantined: (QuarantineRecord) -> Unit = {},
     private val debugEnabled: Boolean = false,
+    private val debugLoader: suspend () -> List<String> = { emptyList() },
 ) : SyncController {
     private val mutableStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     override val status: StateFlow<SyncStatus> = mutableStatus
     private val cycleMutex = Mutex()
     private var cycleRunning = false
     private var pendingCycle = false
-    private var purgedThisLaunch = false
     private var unexpectedFailure = false
     private var cycleFailure = false
     private var adoptionFailure = false
@@ -215,9 +223,9 @@ internal class DefaultSyncController(
         return result
     }
 
-    override suspend fun debugLines(): List<String> =
-        if (debugEnabled) persistence.debugLines() else emptyList()
+    override suspend fun debugLines(): List<String> = if (debugEnabled) debugLoader() else emptyList()
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun drainCycles(firstReason: SyncTrigger) {
         var reason = firstReason
         while (true) {
@@ -263,12 +271,6 @@ internal class DefaultSyncController(
             return
         }
         mutableStatus.value = SyncStatus.Syncing
-        if (!purgedThisLaunch) {
-            persistence.purgeTombstones(
-                Instant.fromEpochMilliseconds(clock.now().toEpochMilliseconds() - TOMBSTONE_RETENTION_MS),
-            )
-            purgedThisLaunch = true
-        }
         if (reason == SyncTrigger.ConnectivityRecovered) persistence.markConnectivityFailuresDue(clock.now())
         if (adoption() is Outcome.Err) {
             adoptionFailure = true
@@ -316,15 +318,14 @@ internal class DefaultSyncController(
             persistence.confirmPush(row, null)
             return
         }
-        val incrementsAttempt =
-            error == RemoteError.Unavailable || error == RemoteError.DeadlineExceeded || error == RemoteError.Unknown
-        val attemptCount =
-            if (incrementsAttempt) minOf(row.attemptCount + 1, MAX_RETRYABLE_ATTEMPTS) else row.attemptCount
+        val attemptCount = minOf(row.attemptCount + 1, MAX_RETRYABLE_ATTEMPTS)
         val poisoned =
             when (error) {
                 RemoteError.PermissionDenied, RemoteError.InvalidArgument -> true
-                RemoteError.Unknown -> attemptCount >= MAX_RETRYABLE_ATTEMPTS
-                RemoteError.Unavailable, RemoteError.DeadlineExceeded, RemoteError.Unauthenticated,
+
+                RemoteError.Unknown, RemoteError.Unauthenticated -> attemptCount >= MAX_RETRYABLE_ATTEMPTS
+
+                RemoteError.Unavailable, RemoteError.DeadlineExceeded,
                 RemoteError.NotFound,
                 -> false
             }
@@ -353,42 +354,68 @@ internal class DefaultSyncController(
 
     private suspend fun pull(ownerId: OwnerId) {
         for (entityType in EntityType.entries) {
-            val stored = persistence.cursor(entityType)
-            val overlapSince = maxOf(0L, stored.lastServerUpdatedAt.toEpochMilliseconds() - OVERLAP_MS)
-            var requestCursor = RemoteCursor(Instant.fromEpochMilliseconds(overlapSince), null)
-            while (true) {
-                val result = remote.pullChanges(ownerId, entityType, requestCursor, PULL_PAGE_LIMIT)
-                if (result is Outcome.Err) {
-                    cycleFailure = true
-                    return
-                }
-                val page = (result as Outcome.Ok).value
-                if (page.items.isEmpty()) break
-                if (!page.nextCursor.strictlyAfter(requestCursor)) {
-                    cycleFailure = true
-                    return
-                }
-                val records = page.items.map { document -> document.toPullRecord(ownerId, clock.now()) }
-                persistence.applyPullPage(ownerId, entityType, records, page.nextCursor)
-                records.filterIsInstance<PullRecord.Quarantined>().forEach { onQuarantined(it.record) }
-                if (!page.hasMore) break
-                requestCursor = page.nextCursor
-            }
+            if (!pullEntity(ownerId, entityType)) return
         }
+    }
+
+    private suspend fun pullEntity(
+        ownerId: OwnerId,
+        entityType: EntityType,
+    ): Boolean {
+        val stored = persistence.cursor(entityType)
+        val overlapSince = maxOf(0L, stored.lastServerUpdatedAt.toEpochMilliseconds() - OVERLAP_MS)
+        var requestCursor = RemoteCursor(Instant.fromEpochMilliseconds(overlapSince), null)
+        var hasMore = true
+        while (hasMore) {
+            val result = remote.pullChanges(ownerId, entityType, requestCursor, PULL_PAGE_LIMIT)
+            if (result is Outcome.Err) return failPullCycle()
+            val page = (result as Outcome.Ok).value
+            if (page.items.isEmpty()) return true
+            if (!page.nextCursor.strictlyAfter(requestCursor)) return failPullCycle()
+            val records = page.items.map { document -> document.toPullRecord(ownerId, clock.now()) }
+            persistence.applyPullPage(ownerId, entityType, records, page.nextCursor).forEach(onQuarantined)
+            hasMore = page.hasMore
+            requestCursor = page.nextCursor
+        }
+        return true
+    }
+
+    private fun failPullCycle(): Boolean {
+        cycleFailure = true
+        return false
     }
 
     private suspend fun refreshStatus(running: Boolean) {
         val counts = persistence.counts()
         mutableStatus.value =
             when {
-                unexpectedFailure -> SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
-                adoptionFailure -> SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
-                cycleFailure -> SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
-                counts.retryable > 0 || counts.poisoned > 0 ->
+                unexpectedFailure -> {
+                    SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
+                }
+
+                adoptionFailure -> {
+                    SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
+                }
+
+                cycleFailure -> {
+                    SyncStatus.Failed(retryableCount = 1, poisonedCount = 0)
+                }
+
+                counts.retryable > 0 || counts.poisoned > 0 -> {
                     SyncStatus.Failed(counts.retryable, counts.poisoned)
-                running -> SyncStatus.Syncing
-                counts.pending > 0 -> SyncStatus.Pending(counts.pending)
-                else -> SyncStatus.Idle
+                }
+
+                running -> {
+                    SyncStatus.Syncing
+                }
+
+                counts.pending > 0 -> {
+                    SyncStatus.Pending(counts.pending)
+                }
+
+                else -> {
+                    SyncStatus.Idle
+                }
             }
     }
 
@@ -409,8 +436,10 @@ internal fun retryDelayMillis(
     jitter: JitterSource,
 ): Long {
     val exponent = minOf(attemptCount, MAX_BACKOFF_EXPONENT)
-    val base = minOf(MAX_BACKOFF_MS, 1_000L shl exponent)
-    return (base * (800L + jitter.nextInt(0, 401)) / 1_000L).coerceIn(MIN_BACKOFF_MS, MAX_BACKOFF_MS)
+    val base = minOf(MAX_BACKOFF_MS, BACKOFF_SCALE shl exponent)
+    return (
+        base * (MIN_JITTER_SCALE + jitter.nextInt(0, JITTER_RANGE)) / BACKOFF_SCALE
+    ).coerceIn(MIN_BACKOFF_MS, MAX_BACKOFF_MS)
 }
 
 private fun List<OutboxRecord>.stableDependencyOrder(): List<OutboxRecord> =
@@ -418,10 +447,10 @@ private fun List<OutboxRecord>.stableDependencyOrder(): List<OutboxRecord> =
 
 private fun OutboxRecord.dependencyGroup(): Int =
     when {
-        entityType == EntityType.VEHICLE && !deleted -> 0
-        entityType == EntityType.FUEL_ENTRY && !deleted -> 1
-        entityType == EntityType.FUEL_ENTRY -> 2
-        else -> 3
+        entityType == EntityType.VEHICLE && !deleted -> VEHICLE_UPSERT_GROUP
+        entityType == EntityType.FUEL_ENTRY && !deleted -> FUEL_ENTRY_UPSERT_GROUP
+        entityType == EntityType.FUEL_ENTRY -> FUEL_ENTRY_TOMBSTONE_GROUP
+        else -> VEHICLE_TOMBSTONE_GROUP
     }
 
 private fun RemoteCursor.strictlyAfter(other: RemoteCursor): Boolean {
@@ -455,9 +484,9 @@ private fun RemoteDocument.toPullRecord(
             EntityType.FUEL_ENTRY -> objectValue.toFuelEntry(this, expectedOwner, schemaVersion, deletedAt)
         }
     } catch (_: IllegalArgumentException) {
-        quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: 0, createdAt)
+        quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: UNKNOWN_SCHEMA_VERSION, createdAt)
     } catch (_: IllegalStateException) {
-        quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: 0, createdAt)
+        quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: UNKNOWN_SCHEMA_VERSION, createdAt)
     }
 }
 
@@ -485,13 +514,13 @@ private fun JsonObject.toVehicle(
 ): PullRecord.Vehicle {
     require(keys == VEHICLE_KEYS)
     val name = string("name")
-    require(name.length in 1..40)
+    require(name.length in 1..MAX_VEHICLE_TEXT_LENGTH)
     val initialOdometerKm = long("initialOdometerKm")
-    require(initialOdometerKm in 0..2_000_000)
+    require(initialOdometerKm in 0..MAX_ODOMETER_KM)
     val brand = nullableString("brand")
     val model = nullableString("model")
-    require(brand == null || brand.length in 1..40)
-    require(model == null || model.length in 1..40)
+    require(brand == null || brand.length in 1..MAX_VEHICLE_TEXT_LENGTH)
+    require(model == null || model.length in 1..MAX_VEHICLE_TEXT_LENGTH)
     val fuelType = string("fuelType")
     require(fuelType in FUEL_TYPES)
     return PullRecord.Vehicle(
@@ -523,14 +552,14 @@ private fun JsonObject.toFuelEntry(
     val litersScaled = long("litersScaled")
     val pricePerLiterScaled = long("pricePerLiterScaled")
     val totalCostMinor = long("totalCostMinor")
-    require(odometerKm in 0..2_000_000)
-    require(litersScaled in 1..500_000)
-    require(pricePerLiterScaled in 1..999_999)
-    require(totalCostMinor in 1..99_999_999)
+    require(odometerKm in 0..MAX_ODOMETER_KM)
+    require(litersScaled in 1..MAX_LITERS_SCALED)
+    require(pricePerLiterScaled in 1..MAX_PRICE_PER_LITER_SCALED)
+    require(totalCostMinor in 1..MAX_TOTAL_COST_MINOR)
     val currency = string("currency")
     require(currency in SUPPORTED_CURRENCY_CODES)
     val notes = nullableString("notes")
-    require(notes == null || notes.length in 1..280)
+    require(notes == null || notes.length in 1..MAX_NOTES_LENGTH)
     boolean("odometerInconsistent")
     return PullRecord.FuelEntry(
         document = document,
@@ -595,7 +624,20 @@ private const val OVERLAP_MS = 30_000L
 private const val MIN_BACKOFF_MS = 1_000L
 private const val MAX_BACKOFF_MS = 900_000L
 private const val MAX_BACKOFF_EXPONENT = 20
-private const val TOMBSTONE_RETENTION_MS = 90L * 24L * 60L * 60L * 1_000L
+private const val BACKOFF_SCALE = 1_000L
+private const val MIN_JITTER_SCALE = 800L
+private const val JITTER_RANGE = 401
+private const val UNKNOWN_SCHEMA_VERSION = 0
+private const val VEHICLE_UPSERT_GROUP = 0
+private const val FUEL_ENTRY_UPSERT_GROUP = 1
+private const val FUEL_ENTRY_TOMBSTONE_GROUP = 2
+private const val VEHICLE_TOMBSTONE_GROUP = 3
+private const val MAX_VEHICLE_TEXT_LENGTH = 40
+private const val MAX_ODOMETER_KM = 2_000_000L
+private const val MAX_LITERS_SCALED = 500_000L
+private const val MAX_PRICE_PER_LITER_SCALED = 999_999L
+private const val MAX_TOTAL_COST_MINOR = 99_999_999L
+private const val MAX_NOTES_LENGTH = 280
 private val FUEL_TYPES = setOf("GASOLINE", "DIESEL", "LPG", "CNG", "OTHER")
 private val VEHICLE_KEYS =
     setOf(

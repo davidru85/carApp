@@ -36,35 +36,92 @@
 
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: GREEN complete; RED commit `a66c612`.
-- Push and pull-request status: not pushed; no pull request.
-- Completed since the previous checkpoint: committed the intentional RED suite; implemented the
-  singleton sync controller, SQLDelight persistence, raw-document validation and quarantine,
-  push/pull ordering, retry and poison behavior, cursor progress guard, local adoption retry,
-  aggregate status, tombstone purge, debug diagnostics and shared state-holder convergence; and
-  integrated the raw Firestore transport boundary selected by D-170.
-- Verification evidence and known failures: the focused sync, database, Firestore integration and
-  shared graph tests pass. The combined Android-host suite, Android unit tests and debug assembly
-  pass with 279 tasks completed. No known functional failure remains in GREEN.
+- Current phase and latest commit: REFACTOR complete and verified, committed as the third TDD commit
+  `refactor(E3-03): finalize sync engine`. RED is `a66c612`; GREEN is `bfced6b`. The three-commit
+  series is the story's complete TDD history.
+- Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
+  against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
+- Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
+  SQLDelight persistence, raw-document validation and quarantine, deterministic push/pull order,
+  cursor progress guard, retry/poison behavior, automatic adoption retry, aggregate status,
+  debug diagnostics, graph ownership and shared state-holder convergence. REFACTOR then formatted
+  the implementation, removed direct `AppDatabase` exposure from `:core:sync` by composing a
+  database-owned `SyncDatabaseAccess` in `:shared`, removed the premature E3-07 tombstone-purge
+  implementation, split complex methods, named validation and backoff constants, corrected
+  `Unauthenticated` failures to consume the non-connectivity poison budget, and strengthened tests
+  for cold-start ordering, exact state transitions, crash-reporting policy, connectivity recovery,
+  reset semantics, debug-only diagnostics and malformed raw Firestore transport.
+- Quarantine deduplication completed: `SyncPersistence.applyPullPage` now returns newly persisted
+  quarantine records; `SyncDatabaseAccess.applyPullPage` detects an existing quarantine row inside
+  the pull transaction and returns only the rows it inserted; `SqlDelightSyncPersistence` maps the
+  returned keys back to their `QuarantineRecord`s. The malformed-payload controller test repeats the
+  overlapping cycle and asserts the document is reported exactly once. A new
+  `SqlDelightSyncPersistenceTest` covers the persistence mapper, the production controller factory
+  and the once-only overlap delivery, restoring `:core:sync` coverage above the `D-18` threshold.
+- Verification evidence: the intentional RED command ran 21 tests with the expected 20 failures.
+  The focused REFACTOR command (`ktlintFormat`, `:core:sync`, `:core:database`,
+  `:integration:firebase-firestore` and `:shared` Android-host tests, `:core:sync:detekt`,
+  `:core:database:detekt`, `architectureCheck`) passes. `:core:sync` Kover reports 96.01% line
+  coverage, up from 72.65%, against the 80% threshold. The complete non-instrumented command passes
+  638 tasks; `contractCheck` reports 19 `[PASS]` assertions and zero `PENDING`. The Android
+  instrumented suite runs 17 tests on the D-84 API 36 emulator with zero failures.
+- Known failures: none.
 - Open decisions or blockers: none.
-- Exact next step: commit GREEN, then perform the REFACTOR phase, run the complete required
-  verification matrix, finalize the story records, push and open the gated pull request.
+- Exact next step: none for the agent. The pull request awaits the mandatory owner review and the
+  ten required checks.
 
 ## Scope Completed
 
-- In progress.
+- GREEN implements E3-03's sync engine and integration path: serialized cycles with one pending
+  follow-up, offline/local-owner admission, cold-start pull-first selection, dependency-ordered
+  push, idempotent acknowledgement, server-timestamp LWW pull, one-cycle overlap, deterministic
+  pagination, retry/backoff/poison rules, quarantine, adoption retry and aggregate status.
+- The app graph owns one controller. Vehicle and Fuel Entry holders observe its single status flow,
+  and the Swift facade exposes a `SyncStateHolder` rather than the controller.
+- Debug builds expose redacted outbox, cursor, quarantine and row-state lines on Android and iOS;
+  release controllers return no diagnostic lines.
+- D-170 is integrated as raw JSON transport with stable provider ordering metadata; product
+  validation and quarantine classification remain in `:core:sync`.
+- REFACTOR is complete: the implementation, its tests, the repository-wide verification, the iOS
+  framework link and the host-app build all pass on the committed worktree.
 
 ## Acceptance Evidence
 
-- In progress.
+- `DefaultSyncControllerTest` covers the 18 canonical backup/recovery scenarios plus cursor
+  fail-closed behavior, concurrent-trigger coalescing, initial-cursor materialization, local retry
+  failure propagation, authentication poison budgeting, crash-reporting policy, debug gating and
+  fixed-seed simulation.
+- `SyncDatabaseAccessTest` covers due selection and acknowledgement, failure correlation, full
+  retry reset, connectivity recovery without attempt reset, atomic quarantine/cursor persistence,
+  redacted debug projections and remote Vehicle/Fuel Entry application with derived odometer
+  recomputation.
+- `FirebaseRemoteSyncSourceTest` covers raw Vehicle and Fuel Entry documents and now includes a
+  malformed product-field result that must remain a successful raw pull item.
+- `AppGraphContractTest` proves Vehicle and Fuel Entry holders converge on the singleton controller
+  status flow.
+- `SqlDelightSyncPersistenceTest` covers the production persistence mapper, the production
+  controller factory and the once-only overlap quarantine delivery, which restores the `:core:sync`
+  coverage threshold.
+- Evidence is final for the committed REFACTOR: every required non-instrumented check, the iOS
+  framework link and the host-app build pass.
 
 ## Out of Scope / Not Done
 
 - Platform background scheduling and repository post-write trigger wiring remain owned by E3-04.
+- Local tombstone purge remains owned by E3-07. A premature GREEN implementation was deliberately
+  removed in REFACTOR and MUST NOT be restored in E3-03.
+- The protected Android instrumented suite was run locally against the D-84 API 36 emulator as
+  supporting evidence; CI remains the authoritative run.
 
 ## Files Changed
 
-- In progress.
+- RED and GREEN span `:core:common`, `:core:database`, `:core:sync`, the Firebase Firestore
+  integration, the shared graph/state holders, Vehicle and Fuel presentation status wiring,
+  Android/iOS debug surfaces and their localized resources, plus the D-169/D-170 normative records.
+- REFACTOR changes: sync and database production/tests, the new `SqlDelightSyncPersistenceTest`,
+  `core/sync/build.gradle.kts` test dependencies, the Firestore integration test,
+  `shared/AppGraph.kt`, three shared tests formatted by ktlint, this handoff, the backlog status and
+  the project log.
 
 ## Decisions Made
 
@@ -75,7 +132,21 @@
 
 ## Verification Run
 
-- In progress.
+- RED: `./gradlew :core:sync:testAndroidHostTest --tests '*DefaultSyncControllerTest'` — 21 tests,
+  20 expected failures against the intentional stubs.
+- GREEN: focused sync/database/Firestore/shared tests — pass.
+- GREEN: `./gradlew testAndroidHostTest :androidApp:testDebugUnitTest
+  :androidApp:assembleDebug` — pass, 279 tasks.
+- REFACTOR quality checkpoint: `./gradlew ktlintFormat :core:sync:detekt
+  :core:database:detekt architectureCheck` — pass after fixing all reported findings.
+- REFACTOR focused checkpoint: `./gradlew :core:sync:testAndroidHostTest
+  :core:database:testAndroidHostTest :integration:firebase-firestore:testAndroidHostTest
+  :shared:testAndroidHostTest` — pass before the latest quarantine-return API edits.
+- REFACTOR final: focused command pass; `:core:sync` Kover 96.01% line coverage; complete
+  non-instrumented command pass with 638 tasks; `contractCheck` 19 `[PASS]`, zero `PENDING`;
+  `:composition:ios:linkDebugFrameworkIosSimulatorArm64` pass (the framework is produced by
+  `:composition:ios`, not `:shared`); host-app `xcodebuild` `** BUILD SUCCEEDED **`; protected
+  Android instrumented suite 17 tests, zero failures on the API 36 emulator.
 
 ## Contract Impact
 
@@ -91,11 +162,17 @@
 
 ## Project Log Entry
 
-- [ ] Entry appended.
+- [x] Entry appended on 2026-09-13.
 
 ## Risks or Follow-ups
 
-- In progress.
+- The quarantine deduplication now compiles and is exercised end to end; the once-only overlap
+  delivery is asserted in `DefaultSyncControllerTest` and `SqlDelightSyncPersistenceTest`.
+- `contractCheck` was inspected and reports zero `PENDING` assertions.
+- No additional owner decision arose during E3-03. D-169 option A and D-170 option A are Accepted;
+  D-149 and D-150 remain unrelated blockers for E3-15/E3-16 only.
+- The pull request awaits the mandatory owner review and the ten required checks; E3-03 is
+  implemented, not complete, until it merges.
 
 ## Human Review Gate
 

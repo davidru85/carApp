@@ -3,7 +3,6 @@ package com.ruizurraca.carapp.core.sync
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
-import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.QuarantineDatabaseWrite
 import com.ruizurraca.carapp.core.database.RemoteFuelEntryDatabaseWrite
 import com.ruizurraca.carapp.core.database.RemoteVehicleDatabaseWrite
@@ -19,13 +18,14 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Instant
 
 internal class SqlDelightSyncPersistence(
-    database: AppDatabase,
+    private val access: SyncDatabaseAccess,
 ) : SyncPersistence {
-    private val access = SyncDatabaseAccess(database)
-
     override suspend fun isOwnerDatabaseEmpty(ownerId: OwnerId): Boolean = access.isOwnerDatabaseEmpty(ownerId.value)
 
-    override suspend fun dueOutbox(now: Instant, limit: Int): List<OutboxRecord> =
+    override suspend fun dueOutbox(
+        now: Instant,
+        limit: Int,
+    ): List<OutboxRecord> =
         access.dueOutbox(now.toEpochMilliseconds(), limit.toLong()).map { row ->
             OutboxRecord(
                 sequence = row.sequence,
@@ -44,7 +44,10 @@ internal class SqlDelightSyncPersistence(
         access.markSyncing(row.entityType.name, row.entityId.value)
     }
 
-    override suspend fun confirmPush(row: OutboxRecord, serverUpdatedAt: Instant?) {
+    override suspend fun confirmPush(
+        row: OutboxRecord,
+        serverUpdatedAt: Instant?,
+    ) {
         access.confirmPush(
             row.entityType.name,
             row.entityId.value,
@@ -82,18 +85,31 @@ internal class SqlDelightSyncPersistence(
         entityType: EntityType,
         records: List<PullRecord>,
         cursor: RemoteCursor,
-    ) {
-        access.applyPullPage(
-            entityType = entityType.name,
-            vehicles = records.filterIsInstance<PullRecord.Vehicle>().map(PullRecord.Vehicle::toDatabaseWrite),
-            fuelEntries = records.filterIsInstance<PullRecord.FuelEntry>().map(PullRecord.FuelEntry::toDatabaseWrite),
-            quarantines = records.filterIsInstance<PullRecord.Quarantined>().map { it.record.toDatabaseWrite() },
-            cursor =
-                SyncCursorDatabaseRow(
-                    cursor.lastServerUpdatedAt.toEpochMilliseconds(),
-                    requireNotNull(cursor.lastDocumentId).value,
-                ),
-        )
+    ): List<QuarantineRecord> {
+        val newQuarantines =
+            access.applyPullPage(
+                entityType = entityType.name,
+                vehicles = records.filterIsInstance<PullRecord.Vehicle>().map(PullRecord.Vehicle::toDatabaseWrite),
+                fuelEntries =
+                    records.filterIsInstance<PullRecord.FuelEntry>().map(
+                        PullRecord.FuelEntry::toDatabaseWrite,
+                    ),
+                quarantines =
+                    records.filterIsInstance<PullRecord.Quarantined>().map {
+                        it.record.toDatabaseWrite()
+                    },
+                cursor =
+                    SyncCursorDatabaseRow(
+                        cursor.lastServerUpdatedAt.toEpochMilliseconds(),
+                        requireNotNull(cursor.lastDocumentId).value,
+                    ),
+            )
+        return records
+            .filterIsInstance<PullRecord.Quarantined>()
+            .map { it.record }
+            .filter { record ->
+                newQuarantines.any { it.entityType == record.entityType.name && it.entityId == record.entityId.value }
+            }
     }
 
     override suspend fun markConnectivityFailuresDue(now: Instant) {
@@ -115,11 +131,7 @@ internal class SqlDelightSyncPersistence(
             SyncCounts(counts.pending.toInt(), counts.retryable.toInt(), counts.poisoned.toInt())
         }
 
-    override suspend fun purgeTombstones(cutoff: Instant) {
-        access.purgeTombstones(cutoff.toEpochMilliseconds())
-    }
-
-    override suspend fun debugLines(): List<String> = access.debugLines()
+    suspend fun debugLines(): List<String> = access.debugLines()
 }
 
 private fun PullRecord.Vehicle.toDatabaseWrite(): RemoteVehicleDatabaseWrite =
@@ -173,5 +185,9 @@ private fun QuarantineRecord.toDatabaseWrite(): QuarantineDatabaseWrite =
 
 private fun String.deletedOrFalse(): Boolean =
     runCatching {
-        Json.parseToJsonElement(this).jsonObject["deleted"]?.jsonPrimitive?.booleanOrNull == true
+        Json
+            .parseToJsonElement(this)
+            .jsonObject["deleted"]
+            ?.jsonPrimitive
+            ?.booleanOrNull == true
     }.getOrDefault(false)

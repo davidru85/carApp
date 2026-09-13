@@ -14,6 +14,7 @@ import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
+import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.UserSettings
@@ -98,7 +99,7 @@ internal class DefaultAppGraph(
     private val syncController =
         createSyncController(
             scope = graphScope,
-            database = databaseHandle.database,
+            databaseAccess = SyncDatabaseAccess(databaseHandle.database),
             ownerContext = dependencies.ownerContext,
             connectivity = dependencies.connectivityObserver,
             remote = dependencies.remoteSyncSource,

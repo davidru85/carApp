@@ -14,8 +14,8 @@ import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
-import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteDocument
+import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.shared.testing.testAppProviders
@@ -130,7 +130,10 @@ class VehicleListStateHolderTest {
                     ),
                     remote.pullCalls.first(),
                 )
-                assertEquals(listOf(EntityType.VEHICLE, EntityType.FUEL_ENTRY), remote.pullCalls.map(PullCall::entityType))
+                assertEquals(
+                    listOf(EntityType.VEHICLE, EntityType.FUEL_ENTRY),
+                    remote.pullCalls.map(PullCall::entityType),
+                )
             } finally {
                 harness.close()
             }

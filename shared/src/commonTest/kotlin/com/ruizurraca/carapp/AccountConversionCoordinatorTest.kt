@@ -25,8 +25,8 @@ import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
-import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteDocument
+import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -4,7 +4,9 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class SyncDatabaseAccessTest {
     @Test
@@ -22,14 +24,25 @@ class SyncDatabaseAccessTest {
                 val access = SyncDatabaseAccess(testDatabase.database)
 
                 val row = access.dueOutbox(now = 100, limit = 50).single()
-                assertNull(testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"))
+                assertNull(
+                    testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
                 access.markSyncing(row.entityType, row.entityId)
                 access.confirmPush(row.entityType, row.entityId, row.localRevision, serverUpdatedAt = 200)
 
-                val vehicle = testDatabase.database.databaseQueries.selectVehicleById("vehicle-1").awaitAsOneOrNull()
+                val vehicle =
+                    testDatabase.database.databaseQueries
+                        .selectVehicleById("vehicle-1")
+                        .awaitAsOneOrNull()
                 assertEquals("SYNCED", vehicle?.syncState)
                 assertEquals(200, vehicle?.serverUpdatedAt)
-                assertNull(testDatabase.database.databaseQueries.selectOutboxByEntity("VEHICLE", "vehicle-1").awaitAsOneOrNull())
+                assertNull(
+                    testDatabase.database.databaseQueries
+                        .selectOutboxByEntity(
+                            "VEHICLE",
+                            "vehicle-1",
+                        ).awaitAsOneOrNull(),
+                )
             } finally {
                 testDatabase.close()
             }
@@ -59,10 +72,66 @@ class SyncDatabaseAccessTest {
                     cycleId = "cycle-17",
                 )
 
-                assertEquals("cycle-17", testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"))
-                assertEquals("REMOTE.UNKNOWN", testDatabase.driver.nullableString("SELECT lastErrorCode FROM outbox WHERE entityId = 'vehicle-1'"))
-                assertEquals(3, testDatabase.driver.nullableLong("SELECT attemptCount FROM outbox WHERE entityId = 'vehicle-1'"))
-                assertEquals("FAILED_RETRYABLE", testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"))
+                assertEquals(
+                    "cycle-17",
+                    testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    "REMOTE.UNKNOWN",
+                    testDatabase.driver.nullableString("SELECT lastErrorCode FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    3,
+                    testDatabase.driver.nullableLong("SELECT attemptCount FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    "FAILED_RETRYABLE",
+                    testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
+                )
+                val debugLines = access.debugLines()
+                assertTrue(debugLines.any { it.startsWith("outbox ") && "cycle=cycle-17" in it })
+                assertTrue(debugLines.any { it == "row type=VEHICLE id=vehicle-1 state=FAILED_RETRYABLE" })
+
+                access.resetFailed(now = 1_000)
+                assertNull(
+                    testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertNull(
+                    testDatabase.driver.nullableString("SELECT lastErrorCode FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    0,
+                    testDatabase.driver.nullableLong("SELECT attemptCount FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertEquals(
+                    "PENDING",
+                    testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
+                )
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
+    fun connectivityRecoveryMakesFailuresDueWithoutResettingAttempts() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 1,
+                )
+                val access = SyncDatabaseAccess(testDatabase.database)
+                access.failPush("VEHICLE", "vehicle-1", 7, 900, "REMOTE.UNAVAILABLE", false, "cycle-18")
+
+                access.markConnectivityFailuresDue(now = 100)
+
+                val due = access.dueOutbox(now = 100, limit = 50).single()
+                assertEquals(7, due.attemptCount)
+                assertEquals(100, due.nextAttemptAt)
             } finally {
                 testDatabase.close()
             }
@@ -100,6 +169,10 @@ class SyncDatabaseAccessTest {
                     ),
                 )
                 assertEquals("vehicle-bad", access.cursor("VEHICLE")?.lastDocumentId)
+                val debugLines = access.debugLines()
+                assertTrue(debugLines.any { it.startsWith("cursor type=VEHICLE ") })
+                assertTrue(debugLines.any { it.startsWith("quarantine type=VEHICLE id=vehicle-bad ") })
+                assertFalse(debugLines.joinToString().contains("{broken"))
             } finally {
                 testDatabase.close()
             }
@@ -113,24 +186,7 @@ class SyncDatabaseAccessTest {
                 val access = SyncDatabaseAccess(testDatabase.database)
                 access.applyPullPage(
                     entityType = "VEHICLE",
-                    vehicles =
-                        listOf(
-                            RemoteVehicleDatabaseWrite(
-                                id = "vehicle-1",
-                                ownerId = "owner-1",
-                                name = "Roadster",
-                                nameFold = "roadster",
-                                initialOdometerKm = 10,
-                                brand = null,
-                                model = null,
-                                fuelType = "GASOLINE",
-                                createdAt = 100,
-                                updatedAt = 200,
-                                serverUpdatedAt = 200,
-                                deletedAt = null,
-                                schemaVersion = 1,
-                            ),
-                        ),
+                    vehicles = listOf(remoteVehicleWrite()),
                     fuelEntries = emptyList(),
                     quarantines = emptyList(),
                     cursor = SyncCursorDatabaseRow(200, "vehicle-1"),
@@ -138,37 +194,74 @@ class SyncDatabaseAccessTest {
                 access.applyPullPage(
                     entityType = "FUEL_ENTRY",
                     vehicles = emptyList(),
-                    fuelEntries =
-                        listOf(
-                            RemoteFuelEntryDatabaseWrite(
-                                id = "entry-1",
-                                ownerId = "owner-1",
-                                vehicleId = "vehicle-1",
-                                date = 150,
-                                odometerKm = 20,
-                                litersScaled = 10_000,
-                                pricePerLiterScaled = 1_500,
-                                totalCostMinor = 1_500,
-                                currency = "EUR",
-                                isFullTank = true,
-                                hasMissedEntries = false,
-                                notes = null,
-                                createdAt = 150,
-                                updatedAt = 250,
-                                serverUpdatedAt = 250,
-                                deletedAt = null,
-                                schemaVersion = 1,
-                            ),
-                        ),
+                    fuelEntries = listOf(remoteFuelEntryWrite()),
                     quarantines = emptyList(),
                     cursor = SyncCursorDatabaseRow(250, "entry-1"),
                 )
 
-                assertEquals("SYNCED", testDatabase.database.databaseQueries.selectVehicleById("vehicle-1").awaitAsOneOrNull()?.syncState)
-                assertEquals("SYNCED", testDatabase.database.databaseQueries.selectFuelEntryById("entry-1").awaitAsOneOrNull()?.syncState)
-                assertEquals(20, testDatabase.database.databaseQueries.selectVehicleById("vehicle-1").awaitAsOneOrNull()?.currentOdometerKm)
+                assertEquals(
+                    "SYNCED",
+                    testDatabase.database.databaseQueries
+                        .selectVehicleById("vehicle-1")
+                        .awaitAsOneOrNull()
+                        ?.syncState,
+                )
+                assertEquals(
+                    "SYNCED",
+                    testDatabase.database.databaseQueries
+                        .selectFuelEntryById("entry-1")
+                        .awaitAsOneOrNull()
+                        ?.syncState,
+                )
+                assertEquals(
+                    20,
+                    testDatabase.database.databaseQueries
+                        .selectVehicleById(
+                            "vehicle-1",
+                        ).awaitAsOneOrNull()
+                        ?.currentOdometerKm,
+                )
+                assertTrue(access.debugLines().any { it == "row type=FUEL_ENTRY id=entry-1 state=SYNCED" })
             } finally {
                 testDatabase.close()
             }
         }
+
+    private fun remoteVehicleWrite(): RemoteVehicleDatabaseWrite =
+        RemoteVehicleDatabaseWrite(
+            id = "vehicle-1",
+            ownerId = "owner-1",
+            name = "Roadster",
+            nameFold = "roadster",
+            initialOdometerKm = 10,
+            brand = null,
+            model = null,
+            fuelType = "GASOLINE",
+            createdAt = 100,
+            updatedAt = 200,
+            serverUpdatedAt = 200,
+            deletedAt = null,
+            schemaVersion = 1,
+        )
+
+    private fun remoteFuelEntryWrite(): RemoteFuelEntryDatabaseWrite =
+        RemoteFuelEntryDatabaseWrite(
+            id = "entry-1",
+            ownerId = "owner-1",
+            vehicleId = "vehicle-1",
+            date = 150,
+            odometerKm = 20,
+            litersScaled = 10_000,
+            pricePerLiterScaled = 1_500,
+            totalCostMinor = 1_500,
+            currency = "EUR",
+            isFullTank = true,
+            hasMissedEntries = false,
+            notes = null,
+            createdAt = 150,
+            updatedAt = 250,
+            serverUpdatedAt = 250,
+            deletedAt = null,
+            schemaVersion = 1,
+        )
 }

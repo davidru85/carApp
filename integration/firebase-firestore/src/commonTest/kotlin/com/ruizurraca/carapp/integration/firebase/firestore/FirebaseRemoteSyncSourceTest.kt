@@ -12,6 +12,9 @@ import com.ruizurraca.carapp.core.sync.RemotePage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -131,6 +134,41 @@ class FirebaseRemoteSyncSourceTest {
                 Json.parseToJsonElement(item.rawJson),
             )
             assertEquals("users/anonymous-owner/fuelEntries", gateway.queries.single().path)
+        }
+
+    @Test
+    fun malformedProductFieldsRemainSuccessfulRawPullItems() =
+        runTest {
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            val malformed =
+                FirestoreDocument(
+                    id = "vehicle-malformed",
+                    fields =
+                        mapOf(
+                            "name" to FirestoreBoolean(true),
+                            "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
+                        ),
+                )
+
+            val result =
+                FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(malformed))).pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 200,
+                )
+
+            val item = assertIs<Outcome.Ok<RemotePage>>(result).value.items.single()
+            assertEquals("vehicle-malformed", item.documentId.value)
+            assertEquals(serverUpdatedAt, item.serverUpdatedAt)
+            assertEquals(
+                true,
+                Json
+                    .parseToJsonElement(item.rawJson)
+                    .jsonObject["name"]
+                    ?.jsonPrimitive
+                    ?.boolean,
+            )
         }
 
     @Test

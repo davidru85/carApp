@@ -72,6 +72,11 @@ data class QuarantineDatabaseWrite(
     val createdAt: Long,
 )
 
+data class QuarantineDatabaseKey(
+    val entityType: String,
+    val entityId: String,
+)
+
 /** Database-owned sync mutations and their transaction boundaries (`D-38`, `E3-03`). */
 class SyncDatabaseAccess(
     private val database: AppDatabase,
@@ -128,7 +133,9 @@ class SyncDatabaseAccess(
                     queries.deleteConfirmedFuelEntryOutbox(entityId, pushedLocalRevision)
                 }
 
-                else -> error("Unknown sync entity type")
+                else -> {
+                    error("Unknown sync entity type")
+                }
             }
         }
     }
@@ -172,11 +179,15 @@ class SyncDatabaseAccess(
         fuelEntries: List<RemoteFuelEntryDatabaseWrite>,
         quarantines: List<QuarantineDatabaseWrite>,
         cursor: SyncCursorDatabaseRow,
-    ) {
+    ): Set<QuarantineDatabaseKey> {
+        val newQuarantines = mutableSetOf<QuarantineDatabaseKey>()
         database.transaction {
             vehicles.forEach { vehicle -> applyVehicleIfNewer(vehicle) }
             fuelEntries.forEach { entry -> applyFuelEntryIfNewer(entry) }
             quarantines.forEach { row ->
+                if (queries.selectQuarantineByEntity(row.entityType, row.entityId).awaitAsOneOrNull() == null) {
+                    newQuarantines += QuarantineDatabaseKey(row.entityType, row.entityId)
+                }
                 queries.upsertQuarantine(
                     row.entityType,
                     row.entityId,
@@ -189,6 +200,7 @@ class SyncDatabaseAccess(
             }
             queries.upsertSyncCursor(entityType, cursor.lastServerUpdatedAt, cursor.lastDocumentId)
         }
+        return newQuarantines
     }
 
     suspend fun markConnectivityFailuresDue(now: Long) {
@@ -209,13 +221,6 @@ class SyncDatabaseAccess(
             retryable = queries.countRetryableSyncRows().awaitAsOne(),
             poisoned = queries.countPoisonedSyncRows().awaitAsOne(),
         )
-
-    suspend fun purgeTombstones(cutoff: Long) {
-        database.transaction {
-            queries.deletePurgedFuelEntryTombstones(cutoff)
-            queries.deletePurgedVehicleTombstones(cutoff)
-        }
-    }
 
     suspend fun debugLines(): List<String> =
         buildList {

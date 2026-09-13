@@ -1,12 +1,14 @@
 package com.ruizurraca.carapp.core.sync
 
-import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.MAX_RETRYABLE_ATTEMPTS
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.SyncError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UuidGenerator
@@ -22,13 +24,13 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.random.Random
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -89,6 +91,21 @@ class DefaultSyncControllerTest {
         }
 
     @Test
+    fun coldStartPullsFirstOnlyWhenOwnerRowsAndOutboxAreEmpty() =
+        runTest {
+            val empty = fixture()
+            empty.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+            assertTrue(empty.persistence.calls.indexOf("cursor") < empty.persistence.calls.indexOf("dueOutbox"))
+
+            val populated = fixture()
+            populated.persistence.vehicleIds += "local-vehicle"
+            populated.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+            assertTrue(populated.persistence.calls.indexOf("dueOutbox") < populated.persistence.calls.indexOf("cursor"))
+        }
+
+    @Test
     fun exactTimestampTiePaginatesInDocumentIdOrder() =
         runTest {
             val fixture = fixture()
@@ -141,8 +158,19 @@ class DefaultSyncControllerTest {
             fixture.controller.requestSync(SyncTrigger.AppForeground)
             advanceUntilIdle()
 
-            assertEquals(2, fixture.persistence.outbox.single().localRevision)
+            assertEquals(
+                2,
+                fixture.persistence.outbox
+                    .single()
+                    .localRevision,
+            )
             assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals(
+                listOf("SYNCING", "SYNCING", "PENDING"),
+                fixture.persistence.stateHistory
+                    .filter { it.first == "vehicle-1" }
+                    .map { it.second },
+            )
         }
 
     @Test
@@ -157,8 +185,18 @@ class DefaultSyncControllerTest {
             fixture.controller.requestSync(SyncTrigger.PullToRefresh)
             advanceUntilIdle()
 
-            assertEquals(30_000L, fixture.remote.vehiclePullCursors.first().lastServerUpdatedAt.toEpochMilliseconds())
-            assertNull(fixture.remote.vehiclePullCursors.first().lastDocumentId)
+            assertEquals(
+                30_000L,
+                fixture.remote.vehiclePullCursors
+                    .first()
+                    .lastServerUpdatedAt
+                    .toEpochMilliseconds(),
+            )
+            assertNull(
+                fixture.remote.vehiclePullCursors
+                    .first()
+                    .lastDocumentId,
+            )
             assertTrue(fixture.persistence.vehicleIds.contains("vehicle-1"))
         }
 
@@ -181,7 +219,10 @@ class DefaultSyncControllerTest {
     fun firstSyncOfOneThousandRecordsIsPaginated() =
         runTest {
             val fixture = fixture()
-            val documents = (1..1_000).map { index -> remoteVehicle("vehicle-${index.toString().padStart(4, '0')}", index.toLong()) }
+            val documents =
+                (1..1_000).map { index ->
+                    remoteVehicle("vehicle-${index.toString().padStart(4, '0')}", index.toLong())
+                }
             fixture.remote.pagedDocuments[EntityType.VEHICLE] = documents
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
@@ -206,8 +247,58 @@ class DefaultSyncControllerTest {
             assertIs<SyncStatus.Failed>(fixture.controller.status.value)
 
             assertIs<Outcome.Ok<Unit>>(fixture.controller.retryFailed())
-            assertEquals(0, fixture.persistence.outbox.single().attemptCount)
+            assertEquals(
+                0,
+                fixture.persistence.outbox
+                    .single()
+                    .attemptCount,
+            )
             assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
+        }
+
+    @Test
+    fun exhaustedAuthenticationFailuresPoisonTheRow() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            repeat(MAX_RETRYABLE_ATTEMPTS) {
+                fixture.remote.pushResults += Outcome.Err(RemoteError.Unauthenticated)
+                fixture.controller.requestSync(SyncTrigger.PullToRefresh)
+                advanceUntilIdle()
+                fixture.clock.advanceBy(900_000)
+            }
+
+            assertEquals(
+                MAX_RETRYABLE_ATTEMPTS,
+                fixture.persistence.outbox
+                    .single()
+                    .attemptCount,
+            )
+            assertEquals("FAILED_POISONED", fixture.persistence.states.getValue("vehicle-1"))
+        }
+
+    @Test
+    fun poisonTransitionsAreReportedButConnectivityFailuresAreNot() =
+        runTest {
+            val poisoned = fixture().withOutbox(vehicleOutbox("poisoned"))
+            poisoned.remote.pushResults += Outcome.Err(RemoteError.InvalidArgument)
+
+            poisoned.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals(listOf(SyncError.ValidationRejected), poisoned.reportedErrors.map { it.first })
+            assertEquals(
+                setOf("entityType", "code", "cycleId"),
+                poisoned.reportedErrors
+                    .single()
+                    .second.keys,
+            )
+
+            val connectivity = fixture().withOutbox(vehicleOutbox("connectivity"))
+            connectivity.remote.pushResults += Outcome.Err(RemoteError.Unavailable)
+            connectivity.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals(emptyList(), connectivity.reportedErrors)
         }
 
     @Test
@@ -276,7 +367,10 @@ class DefaultSyncControllerTest {
             val fixture = fixture()
             fixture.remote.pullHandler = { type, _ ->
                 if (type == EntityType.VEHICLE) {
-                    page(remoteVehicle("vehicle-1", 1_000, name = "Car"), remoteVehicle("vehicle-2", 2_000, name = "Car"))
+                    page(
+                        remoteVehicle("vehicle-1", 1_000, name = "Car"),
+                        remoteVehicle("vehicle-2", 2_000, name = "Car"),
+                    )
                 } else {
                     page()
                 }
@@ -294,14 +388,15 @@ class DefaultSyncControllerTest {
             lateinit var fixture: Fixture
             var calls = 0
             var adopted = false
-            fixture = fixture(adoption = {
-                calls += 1
-                if (!adopted) {
-                    adopted = true
-                    fixture.withOutbox(vehicleOutbox("vehicle-1"))
-                }
-                Outcome.Ok(Unit)
-            })
+            fixture =
+                fixture(adoption = {
+                    calls += 1
+                    if (!adopted) {
+                        adopted = true
+                        fixture.withOutbox(vehicleOutbox("vehicle-1"))
+                    }
+                    Outcome.Ok(Unit)
+                })
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
             advanceUntilIdle()
@@ -348,9 +443,20 @@ class DefaultSyncControllerTest {
             fixture.controller.requestSync(SyncTrigger.AppForeground)
             advanceUntilIdle()
 
-            assertEquals(QuarantineReason.UnsupportedSchemaVersion, fixture.persistence.quarantine.single().reason)
+            assertEquals(
+                QuarantineReason.UnsupportedSchemaVersion,
+                fixture.persistence.quarantine
+                    .single()
+                    .reason,
+            )
             assertFalse(fixture.persistence.vehicleIds.contains("vehicle-1"))
-            assertEquals("vehicle-1", fixture.persistence.cursors.getValue(EntityType.VEHICLE).lastDocumentId?.value)
+            assertEquals(
+                "vehicle-1",
+                fixture.persistence.cursors
+                    .getValue(EntityType.VEHICLE)
+                    .lastDocumentId
+                    ?.value,
+            )
         }
 
     @Test
@@ -358,7 +464,12 @@ class DefaultSyncControllerTest {
         runTest {
             val fixture = fixture()
             val malformed =
-                RemoteDocument(EntityType.VEHICLE, EntityId("vehicle-1"), instant(1_000), "{\"schemaVersion\":1,\"id\":false}")
+                RemoteDocument(
+                    EntityType.VEHICLE,
+                    EntityId("vehicle-1"),
+                    instant(1_000),
+                    "{\"schemaVersion\":1,\"id\":false}",
+                )
             fixture.remote.pullHandler = { type, _ -> if (type == EntityType.VEHICLE) page(malformed) else page() }
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
@@ -367,7 +478,16 @@ class DefaultSyncControllerTest {
             val quarantine = fixture.persistence.quarantine.single()
             assertEquals(QuarantineReason.MalformedPayload, quarantine.reason)
             assertEquals(malformed.rawJson, quarantine.rawJson)
-            assertEquals("vehicle-1", fixture.persistence.cursors.getValue(EntityType.VEHICLE).lastDocumentId?.value)
+            assertEquals(
+                "vehicle-1",
+                fixture.persistence.cursors
+                    .getValue(EntityType.VEHICLE)
+                    .lastDocumentId
+                    ?.value,
+            )
+            fixture.controller.requestSync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+            assertEquals(listOf("vehicle-1"), fixture.reportedQuarantines.map { it.entityId.value })
         }
 
     @Test
@@ -385,7 +505,8 @@ class DefaultSyncControllerTest {
         runTest {
             val fixture = fixture(online = false).withOutbox(vehicleOutbox("vehicle-1", attemptCount = 10))
             fixture.persistence.states["vehicle-1"] = "FAILED_RETRYABLE"
-            fixture.persistence.outbox[0] = fixture.persistence.outbox[0].copy(lastErrorCode = RemoteError.Unavailable.code)
+            fixture.persistence.outbox[0] =
+                fixture.persistence.outbox[0].copy(lastErrorCode = RemoteError.Unavailable.code)
 
             fixture.clock.advanceBy(7 * 24 * 60 * 60 * 1_000L)
             fixture.controller.requestSync(SyncTrigger.Periodic)
@@ -444,6 +565,16 @@ class DefaultSyncControllerTest {
         }
 
     @Test
+    fun databaseDiagnosticsAreAvailableOnlyInDebugBuilds() =
+        runTest {
+            val release = fixture(debugEnabled = false, debugLines = { listOf("sensitive-local-state") })
+            val debug = fixture(debugEnabled = true, debugLines = { listOf("redacted-sync-state") })
+
+            assertEquals(emptyList(), release.controller.debugLines())
+            assertEquals(listOf("redacted-sync-state"), debug.controller.debugLines())
+        }
+
+    @Test
     fun fixedSeedBackupSimulationConvergesAfterLostResponses() =
         runTest {
             val random = Random(3_303)
@@ -477,11 +608,15 @@ class DefaultSyncControllerTest {
         now: Long = 0,
         adoption: suspend () -> Outcome<Unit, AppError> = { Outcome.Ok(Unit) },
         jitter: JitterSource = JitterSource { _, _ -> 200 },
+        debugEnabled: Boolean = false,
+        debugLines: suspend () -> List<String> = { emptyList() },
     ): Fixture {
         val clock = TestClock(instant(now))
         val connectivity = TestConnectivity(online)
         val persistence = FakeSyncPersistence()
         val remote = FakeRemoteSyncSource()
+        val reportedErrors = mutableListOf<Pair<AppError, Map<String, String>>>()
+        val reportedQuarantines = mutableListOf<QuarantineRecord>()
         val controller =
             DefaultSyncController(
                 scope = this,
@@ -493,8 +628,12 @@ class DefaultSyncControllerTest {
                 uuidGenerator = TestUuidGenerator(),
                 jitter = jitter,
                 adoption = adoption,
+                onPoisoned = { error, fields -> reportedErrors += error to fields },
+                onQuarantined = reportedQuarantines::add,
+                debugEnabled = debugEnabled,
+                debugLoader = debugLines,
             )
-        return Fixture(controller, persistence, remote, connectivity, clock)
+        return Fixture(controller, persistence, remote, connectivity, clock, reportedErrors, reportedQuarantines)
     }
 
     private data class Fixture(
@@ -503,6 +642,8 @@ class DefaultSyncControllerTest {
         val remote: FakeRemoteSyncSource,
         val connectivity: TestConnectivity,
         val clock: TestClock,
+        val reportedErrors: List<Pair<AppError, Map<String, String>>>,
+        val reportedQuarantines: List<QuarantineRecord>,
     ) {
         fun withOutbox(row: OutboxRecord): Fixture {
             persistence.outbox += row
@@ -529,7 +670,10 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
     var activePushes = 0
     var maxConcurrentPushes = 0
 
-    override suspend fun pushSnapshot(ownerId: OwnerId, snapshot: EntitySnapshot): Outcome<RemoteAck, RemoteError> {
+    override suspend fun pushSnapshot(
+        ownerId: OwnerId,
+        snapshot: EntitySnapshot,
+    ): Outcome<RemoteAck, RemoteError> {
         pushCalls += snapshot
         activePushes += 1
         maxConcurrentPushes = maxOf(maxConcurrentPushes, activePushes)
@@ -558,7 +702,9 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
                 pullHandler(entityType, cursor)
             } else {
                 val start =
-                    cursor.lastDocumentId?.value?.let { id -> documents.indexOfFirst { it.documentId.value == id } + 1 }
+                    cursor.lastDocumentId
+                        ?.value
+                        ?.let { id -> documents.indexOfFirst { it.documentId.value == id } + 1 }
                         ?.coerceAtLeast(0) ?: 0
                 val items = documents.drop(start).take(limit)
                 RemotePage(
@@ -574,6 +720,8 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
 private class FakeSyncPersistence : SyncPersistence {
     val outbox = mutableListOf<OutboxRecord>()
     val states = mutableMapOf<String, String>()
+    val stateHistory = mutableListOf<Pair<String, String>>()
+    val calls = mutableListOf<String>()
     val cursors = mutableMapOf<EntityType, RemoteCursor>()
     val vehicleServerTimes = mutableMapOf<String, Long?>()
     val vehicleIds = mutableSetOf<String>()
@@ -586,22 +734,31 @@ private class FakeSyncPersistence : SyncPersistence {
     val visibleFuelEntryIds: Set<String>
         get() = fuelEntryIds.filterTo(mutableSetOf()) { fuelEntryVehicles[it] in vehicleIds }
 
-    override suspend fun isOwnerDatabaseEmpty(ownerId: OwnerId): Boolean = vehicleIds.isEmpty() && fuelEntryIds.isEmpty() && outbox.isEmpty()
+    override suspend fun isOwnerDatabaseEmpty(ownerId: OwnerId): Boolean =
+        (vehicleIds.isEmpty() && fuelEntryIds.isEmpty() && outbox.isEmpty()).also { calls += "isEmpty" }
 
-    override suspend fun dueOutbox(now: Instant, limit: Int): List<OutboxRecord> =
-        outbox.filter { it.nextAttemptAt <= now && states[it.entityId.value] != "FAILED_POISONED" }.take(limit)
-
-    override suspend fun markSyncing(row: OutboxRecord) {
-        states[row.entityId.value] = "SYNCING"
+    override suspend fun dueOutbox(
+        now: Instant,
+        limit: Int,
+    ): List<OutboxRecord> {
+        calls += "dueOutbox"
+        return outbox.filter { it.nextAttemptAt <= now && states[it.entityId.value] != "FAILED_POISONED" }.take(limit)
     }
 
-    override suspend fun confirmPush(row: OutboxRecord, serverUpdatedAt: Instant?) {
+    override suspend fun markSyncing(row: OutboxRecord) {
+        transition(row.entityId.value, "SYNCING")
+    }
+
+    override suspend fun confirmPush(
+        row: OutboxRecord,
+        serverUpdatedAt: Instant?,
+    ) {
         val current = outbox.firstOrNull { it.entityId == row.entityId } ?: return
         if (current.localRevision == row.localRevision) {
             outbox.remove(current)
-            states[row.entityId.value] = "SYNCED"
+            transition(row.entityId.value, "SYNCED")
         } else {
-            states[row.entityId.value] = "PENDING"
+            transition(row.entityId.value, "PENDING")
         }
         vehicleServerTimes[row.entityId.value] = serverUpdatedAt?.toEpochMilliseconds()
     }
@@ -616,41 +773,52 @@ private class FakeSyncPersistence : SyncPersistence {
     ) {
         val index = outbox.indexOfFirst { it.entityId == row.entityId }
         if (index < 0) return
-        outbox[index] = outbox[index].copy(attemptCount = attemptCount, nextAttemptAt = nextAttemptAt, lastErrorCode = errorCode)
-        states[row.entityId.value] = if (poisoned) "FAILED_POISONED" else "FAILED_RETRYABLE"
+        outbox[index] =
+            outbox[index].copy(attemptCount = attemptCount, nextAttemptAt = nextAttemptAt, lastErrorCode = errorCode)
+        transition(row.entityId.value, if (poisoned) "FAILED_POISONED" else "FAILED_RETRYABLE")
     }
 
-    override suspend fun cursor(entityType: EntityType): RemoteCursor = cursors[entityType] ?: RemoteCursor.INITIAL
+    override suspend fun cursor(entityType: EntityType): RemoteCursor {
+        calls += "cursor"
+        return cursors[entityType] ?: RemoteCursor.INITIAL
+    }
 
     override suspend fun applyPullPage(
         ownerId: OwnerId,
         entityType: EntityType,
         records: List<PullRecord>,
         cursor: RemoteCursor,
-    ) {
-        records.forEach { record ->
-            when (record) {
-                is PullRecord.Quarantined -> quarantine += record.record
-                is PullRecord.Vehicle -> {
-                    val id = record.document.documentId.value
-                    if (outbox.none { it.entityId.value == id } &&
-                        (vehicleServerTimes[id] == null || record.document.serverUpdatedAt.toEpochMilliseconds() > requireNotNull(vehicleServerTimes[id]))
-                    ) {
-                        vehicleIds += id
-                        vehicleServerTimes[id] = record.document.serverUpdatedAt.toEpochMilliseconds()
-                        if (record.deletedAt == null) deletedVehicles -= id else deletedVehicles += id
-                    }
-                }
-                is PullRecord.FuelEntry -> {
-                    val id = record.document.documentId.value
-                    if (outbox.none { it.entityId.value == id }) {
-                        fuelEntryIds += id
-                        fuelEntryVehicles[id] = record.vehicleId.value
-                    }
-                }
-            }
-        }
+    ): List<QuarantineRecord> {
+        val existing = quarantine.mapTo(mutableSetOf()) { it.entityType to it.entityId }
+        records.forEach(::applyPullRecord)
         cursors[entityType] = cursor
+        return records.filterIsInstance<PullRecord.Quarantined>().map { it.record }.filter {
+            (it.entityType to it.entityId) !in existing
+        }
+    }
+
+    private fun applyPullRecord(record: PullRecord) {
+        when (record) {
+            is PullRecord.Quarantined -> quarantine += record.record
+            is PullRecord.Vehicle -> applyVehicle(record)
+            is PullRecord.FuelEntry -> applyFuelEntry(record)
+        }
+    }
+
+    private fun applyVehicle(record: PullRecord.Vehicle) {
+        val id = record.document.documentId.value
+        val remoteTime = record.document.serverUpdatedAt.toEpochMilliseconds()
+        if (outbox.any { it.entityId.value == id } || vehicleServerTimes[id]?.let { remoteTime <= it } == true) return
+        vehicleIds += id
+        vehicleServerTimes[id] = remoteTime
+        if (record.deletedAt == null) deletedVehicles -= id else deletedVehicles += id
+    }
+
+    private fun applyFuelEntry(record: PullRecord.FuelEntry) {
+        val id = record.document.documentId.value
+        if (outbox.any { it.entityId.value == id }) return
+        fuelEntryIds += id
+        fuelEntryVehicles[id] = record.vehicleId.value
     }
 
     override suspend fun markConnectivityFailuresDue(now: Instant) {
@@ -668,7 +836,7 @@ private class FakeSyncPersistence : SyncPersistence {
             val row = outbox[index]
             if (states[row.entityId.value] in setOf("FAILED_RETRYABLE", "FAILED_POISONED")) {
                 outbox[index] = row.copy(attemptCount = 0, nextAttemptAt = now, lastErrorCode = null)
-                states[row.entityId.value] = "PENDING"
+                transition(row.entityId.value, "PENDING")
             }
         }
         return Outcome.Ok(Unit)
@@ -680,33 +848,67 @@ private class FakeSyncPersistence : SyncPersistence {
         var poisoned = 0
         outbox.forEach { row ->
             when (states[row.entityId.value]) {
-                "FAILED_POISONED" -> poisoned += 1
-                "FAILED_RETRYABLE" -> if (row.lastErrorCode in setOf(RemoteError.Unavailable.code, RemoteError.DeadlineExceeded.code)) pending += 1 else retryable += 1
-                else -> pending += 1
+                "FAILED_POISONED" -> {
+                    poisoned += 1
+                }
+
+                "FAILED_RETRYABLE" -> {
+                    if (row.lastErrorCode in
+                        setOf(RemoteError.Unavailable.code, RemoteError.DeadlineExceeded.code)
+                    ) {
+                        pending += 1
+                    } else {
+                        retryable +=
+                            1
+                    }
+                }
+
+                else -> {
+                    pending += 1
+                }
             }
         }
         return SyncCounts(pending, retryable, poisoned)
     }
 
-    override suspend fun purgeTombstones(cutoff: Instant) = Unit
-
     fun edit(entityId: String) {
         val index = outbox.indexOfFirst { it.entityId.value == entityId }
         outbox[index] = outbox[index].copy(localRevision = outbox[index].localRevision + 1)
-        states[entityId] = "SYNCING"
+        transition(entityId, "SYNCING")
+    }
+
+    private fun transition(
+        entityId: String,
+        state: String,
+    ) {
+        states[entityId] = state
+        stateHistory += entityId to state
     }
 }
 
-private fun vehicleOutbox(id: String, attemptCount: Int = 0): OutboxRecord =
+private fun vehicleOutbox(
+    id: String,
+    attemptCount: Int = 0,
+): OutboxRecord =
     OutboxRecord(1, EntityType.VEHICLE, EntityId(id), vehicleJson(id, 0), 1, attemptCount, instant(0), null, false)
 
 private fun ack(id: String): Outcome<RemoteAck, RemoteError> =
     Outcome.Ok(RemoteAck(EntityType.VEHICLE, EntityId(id), instant(1_000)))
 
-private fun cursor(epochMillis: Long, id: String): RemoteCursor = RemoteCursor(instant(epochMillis), EntityId(id))
+private fun cursor(
+    epochMillis: Long,
+    id: String,
+): RemoteCursor = RemoteCursor(instant(epochMillis), EntityId(id))
 
-private fun page(vararg items: RemoteDocument, hasMore: Boolean = false): RemotePage =
-    RemotePage(items.toList(), items.lastOrNull()?.let { RemoteCursor(it.serverUpdatedAt, it.documentId) } ?: RemoteCursor(instant(0), null), hasMore)
+private fun page(
+    vararg items: RemoteDocument,
+    hasMore: Boolean = false,
+): RemotePage =
+    RemotePage(
+        items.toList(),
+        items.lastOrNull()?.let { RemoteCursor(it.serverUpdatedAt, it.documentId) } ?: RemoteCursor(instant(0), null),
+        hasMore,
+    )
 
 private fun remoteVehicle(
     id: String,
@@ -722,8 +924,17 @@ private fun remoteVehicle(
         vehicleJson(id, serverUpdatedAt, deleted, name, schemaVersion),
     )
 
-private fun remoteFuelEntry(id: String, vehicleId: String, serverUpdatedAt: Long): RemoteDocument =
-    RemoteDocument(EntityType.FUEL_ENTRY, EntityId(id), instant(serverUpdatedAt), fuelJson(id, vehicleId, serverUpdatedAt))
+private fun remoteFuelEntry(
+    id: String,
+    vehicleId: String,
+    serverUpdatedAt: Long,
+): RemoteDocument =
+    RemoteDocument(
+        EntityType.FUEL_ENTRY,
+        EntityId(id),
+        instant(serverUpdatedAt),
+        fuelJson(id, vehicleId, serverUpdatedAt),
+    )
 
 private fun vehicleJson(
     id: String,
@@ -732,14 +943,33 @@ private fun vehicleJson(
     name: String = id,
     schemaVersion: Int = 1,
 ): String =
-    """{"id":"$id","ownerId":"owner-1","name":"$name","initialOdometerKm":0,"brand":null,"model":null,"fuelType":"GASOLINE","createdAt":0,"updatedAt":$updatedAt,"deleted":$deleted,"deletedAt":${if (deleted) updatedAt else "null"},"schemaVersion":$schemaVersion}"""
+    """
+    {
+      "id":"$id","ownerId":"owner-1","name":"$name","initialOdometerKm":0,
+      "brand":null,"model":null,"fuelType":"GASOLINE","createdAt":0,"updatedAt":$updatedAt,
+      "deleted":$deleted,"deletedAt":${if (deleted) updatedAt else "null"},"schemaVersion":$schemaVersion
+    }
+    """.trimIndent()
 
-private fun fuelJson(id: String, vehicleId: String, updatedAt: Long): String =
-    """{"id":"$id","ownerId":"owner-1","vehicleId":"$vehicleId","date":0,"odometerKm":1,"litersScaled":1,"pricePerLiterScaled":1,"totalCostMinor":1,"currency":"EUR","isFullTank":true,"hasMissedEntries":false,"odometerInconsistent":false,"notes":null,"createdAt":0,"updatedAt":$updatedAt,"deleted":false,"deletedAt":null,"schemaVersion":1}"""
+private fun fuelJson(
+    id: String,
+    vehicleId: String,
+    updatedAt: Long,
+): String =
+    """
+    {
+      "id":"$id","ownerId":"owner-1","vehicleId":"$vehicleId","date":0,"odometerKm":1,
+      "litersScaled":1,"pricePerLiterScaled":1,"totalCostMinor":1,"currency":"EUR",
+      "isFullTank":true,"hasMissedEntries":false,"odometerInconsistent":false,"notes":null,
+      "createdAt":0,"updatedAt":$updatedAt,"deleted":false,"deletedAt":null,"schemaVersion":1
+    }
+    """.trimIndent()
 
 private fun instant(epochMillis: Long): Instant = Instant.fromEpochMilliseconds(epochMillis)
 
-private class TestClock(initial: Instant) : AppClock {
+private class TestClock(
+    initial: Instant,
+) : AppClock {
     private var current = initial
 
     override fun now(): Instant = current
@@ -749,7 +979,9 @@ private class TestClock(initial: Instant) : AppClock {
     }
 }
 
-private class TestConnectivity(initiallyOnline: Boolean) : ConnectivityObserver {
+private class TestConnectivity(
+    initiallyOnline: Boolean,
+) : ConnectivityObserver {
     private val mutable = MutableStateFlow(initiallyOnline)
     override val isOnline: StateFlow<Boolean> = mutable
 
@@ -758,9 +990,12 @@ private class TestConnectivity(initiallyOnline: Boolean) : ConnectivityObserver 
     }
 }
 
-private class TestOwnerContext(initial: OwnerId) : OwnerContext {
+private class TestOwnerContext(
+    initial: OwnerId,
+) : OwnerContext {
     private val mutable = MutableStateFlow(initial)
     override val current: OwnerId get() = mutable.value
+
     override fun observe(): Flow<OwnerId> = mutable
 }
 

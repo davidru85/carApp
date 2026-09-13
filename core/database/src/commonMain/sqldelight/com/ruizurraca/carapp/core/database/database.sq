@@ -431,6 +431,11 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   rawJson = excluded.rawJson,
   createdAt = excluded.createdAt;
 
+selectQuarantineByEntity:
+SELECT entityType, entityId
+FROM quarantine
+WHERE entityType = :entityType AND entityId = :entityId;
+
 markConnectivityFailuresDue:
 UPDATE outbox
 SET nextAttemptAt = :now
@@ -479,20 +484,6 @@ WHERE (entityType = 'VEHICLE' AND entityId IN (
   )) OR (entityType = 'FUEL_ENTRY' AND entityId IN (
     SELECT id FROM fuel_entry WHERE syncState = 'FAILED_POISONED'
   ));
-
-deletePurgedVehicleTombstones:
-DELETE FROM vehicle
-WHERE deleted = 1 AND syncState = 'SYNCED' AND serverUpdatedAt < :cutoff
-  AND NOT EXISTS (
-    SELECT 1 FROM outbox WHERE entityType = 'VEHICLE' AND entityId = vehicle.id
-  );
-
-deletePurgedFuelEntryTombstones:
-DELETE FROM fuel_entry
-WHERE deleted = 1 AND syncState = 'SYNCED' AND serverUpdatedAt < :cutoff
-  AND NOT EXISTS (
-    SELECT 1 FROM outbox WHERE entityType = 'FUEL_ENTRY' AND entityId = fuel_entry.id
-  );
 
 selectSyncDebugOutbox:
 SELECT seq, entityType, entityId, attemptCount, nextAttemptAt, lastErrorCode, cycleId
