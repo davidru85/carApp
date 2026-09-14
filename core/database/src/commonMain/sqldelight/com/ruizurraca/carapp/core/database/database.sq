@@ -380,10 +380,12 @@ ORDER BY seq ASC
 LIMIT :rowLimit;
 
 markVehicleSyncing:
-UPDATE vehicle SET syncState = 'SYNCING' WHERE id = :entityId;
+UPDATE vehicle SET syncState = 'SYNCING'
+WHERE id = :entityId AND syncState != 'FAILED_POISONED';
 
 markFuelEntrySyncing:
-UPDATE fuel_entry SET syncState = 'SYNCING' WHERE id = :entityId;
+UPDATE fuel_entry SET syncState = 'SYNCING'
+WHERE id = :entityId AND syncState != 'FAILED_POISONED';
 
 confirmFuelEntryPush:
 UPDATE fuel_entry

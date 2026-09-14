@@ -811,6 +811,50 @@ class DefaultSyncControllerReviewRoundTest {
         }
 
     @Test
+    fun missingFuelEntryTopLevelKeysAreQuarantinedAndNeverEscapeTheCycle() =
+        runTest {
+            listOf("id", "ownerId", "updatedAt", "deleted", "deletedAt").forEach { missing ->
+                val fixture = fixture()
+                val document =
+                    RemoteDocument(
+                        EntityType.FUEL_ENTRY,
+                        EntityId("entry-1"),
+                        instant(1_000),
+                        fuelEntryRemoteJsonWithout(missing),
+                    )
+                fixture.remote.pullHandler = { type, _ ->
+                    if (type == EntityType.FUEL_ENTRY) page(document) else page()
+                }
+
+                fixture.controller.requestSync(SyncTrigger.AppForeground)
+                advanceUntilIdle()
+
+                assertEquals(
+                    listOf(QuarantineReason.MalformedPayload),
+                    fixture.persistence.quarantine.map { it.reason },
+                    "missing fuel-entry '$missing' must be quarantined as MalformedPayload",
+                )
+                assertEquals(
+                    emptyList(),
+                    fixture.reportedErrors.map { it.first },
+                    "missing fuel-entry '$missing' must not be reported as an unexpected failure",
+                )
+                assertEquals(
+                    SyncStatus.Idle,
+                    fixture.controller.status.value,
+                    "missing fuel-entry '$missing' must not produce a Failed status",
+                )
+                assertEquals(
+                    "entry-1",
+                    fixture.persistence.cursors[EntityType.FUEL_ENTRY]
+                        ?.lastDocumentId
+                        ?.value,
+                    "missing fuel-entry '$missing' must still advance the cursor",
+                )
+            }
+        }
+
+    @Test
     fun poisonedRowIsNotRetriedAutomaticallyAndReportsOnce() =
         runTest {
             val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
@@ -821,6 +865,8 @@ class DefaultSyncControllerReviewRoundTest {
 
             assertEquals("FAILED_POISONED", fixture.persistence.states.getValue("vehicle-1"))
             assertEquals(1, fixture.reportedErrors.size)
+            val firstStatus = assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertEquals(1, firstStatus.poisonedCount)
 
             // Past every backoff the poisoned row still must not be selected for another push.
             fixture.clock.advanceBy(900_000)
@@ -830,6 +876,9 @@ class DefaultSyncControllerReviewRoundTest {
             assertEquals(1, fixture.remote.pushCalls.size)
             assertEquals(1, fixture.reportedErrors.size)
             assertEquals("FAILED_POISONED", fixture.persistence.states.getValue("vehicle-1"))
+            // The poisoned count survives the later cycle: the row never leaves FAILED_POISONED.
+            val secondStatus = assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertEquals(1, secondStatus.poisonedCount)
         }
 
     @Test
@@ -887,6 +936,29 @@ class DefaultSyncControllerReviewRoundTest {
             )
         }
 }
+
+/** A valid Fuel Entry remote payload with exactly one top-level key omitted. */
+private fun fuelEntryRemoteJsonWithout(missing: String): String =
+    buildJsonObject {
+        if (missing != "id") put("id", "entry-1")
+        if (missing != "ownerId") put("ownerId", "owner-1")
+        put("vehicleId", "vehicle-1")
+        put("date", 0)
+        put("odometerKm", 1)
+        put("litersScaled", 1)
+        put("pricePerLiterScaled", 1)
+        put("totalCostMinor", 1)
+        put("currency", "EUR")
+        put("isFullTank", true)
+        put("hasMissedEntries", false)
+        put("odometerInconsistent", false)
+        put("notes", JsonNull)
+        put("createdAt", 0)
+        if (missing != "updatedAt") put("updatedAt", 1_000)
+        if (missing != "deleted") put("deleted", false)
+        if (missing != "deletedAt") put("deletedAt", JsonNull)
+        put("schemaVersion", 1)
+    }.toString()
 
 /** A valid Vehicle remote payload with exactly one top-level key omitted. */
 private fun vehicleRemoteJsonWithout(missing: String): String =
@@ -1044,6 +1116,9 @@ private class FakeSyncPersistence : SyncPersistence {
     }
 
     override suspend fun markSyncing(row: OutboxRecord) {
+        // Mirror `SyncDatabaseAccess.markSyncing`: a poisoned row is never moved to SYNCING, so it
+        // stays FAILED_POISONED and keeps counting towards the aggregate poison count (`§7`).
+        if (states[row.entityId.value] == "FAILED_POISONED") return
         transition(row.entityId.value, "SYNCING")
     }
 

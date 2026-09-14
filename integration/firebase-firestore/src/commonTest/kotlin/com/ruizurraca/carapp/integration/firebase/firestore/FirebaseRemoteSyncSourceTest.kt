@@ -225,6 +225,60 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
+    fun missingOrderingTimestampFailsThePageClosed() =
+        runTest {
+            // `updatedAt` is the ordering timestamp `RemoteDocument` genuinely needs. A document
+            // without it must fail the page as a closed `Outcome`, never throw a
+            // `NoSuchElementException` out of `pullChanges` (`§6`, `§9.5`).
+            val withoutUpdatedAt =
+                FirestoreDocument(
+                    id = "vehicle-no-timestamp",
+                    fields =
+                        mapOf(
+                            "id" to "vehicle-no-timestamp",
+                            "ownerId" to "anonymous-owner",
+                            "name" to "Roadster",
+                        ),
+                )
+
+            val result =
+                FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(withoutUpdatedAt))).pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 200,
+                )
+
+            assertEquals(RemoteError.InvalidArgument, assertIs<Outcome.Err<RemoteError>>(result).error)
+        }
+
+    @Test
+    fun wrongTypedOrderingTimestampFailsThePageClosed() =
+        runTest {
+            val mistyped =
+                FirestoreDocument(
+                    id = "vehicle-bad-timestamp",
+                    fields =
+                        mapOf(
+                            "id" to "vehicle-bad-timestamp",
+                            "ownerId" to "anonymous-owner",
+                            "name" to "Roadster",
+                            "updatedAt" to "not-a-timestamp",
+                        ),
+                )
+
+            val result =
+                FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(mistyped))).pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 200,
+                )
+
+            assertEquals(RemoteError.InvalidArgument, assertIs<Outcome.Err<RemoteError>>(result).error)
+        }
+
+    @Test
     fun unauthenticatedPushRefreshesTheTokenAndRetriesOnce() =
         runTest {
             val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)

@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received three owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received four owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -330,6 +330,57 @@ Verification for this round:
   passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
   `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
   36 emulator.
+
+## Fourth Owner-Review Correction Round (2026-09-13)
+
+The review was written against `dbadbf7`, but the branch head when it arrived was already `6ceac01`
+(the third round), which had closed part of both blocking items. The remaining gaps were fixed
+TDD-first; every new test was shown failing on the pre-fix code before it passed.
+
+- **BLOCKING 1 — `markSyncing` had no state guard.** `selectDueOutbox` already excluded
+  `FAILED_POISONED` rows (third round), but `markVehicleSyncing` / `markFuelEntrySyncing` still ran
+  `UPDATE ... SET syncState = 'SYNCING'` unconditionally. A poisoned row pushed again — even
+  defensively — would leave `FAILED_POISONED`, drop out of `countPoisonedSyncRows`, and vanish from
+  `SyncStatus.Failed`. Both statements now guard on `syncState != 'FAILED_POISONED'`, so the
+  transition fails closed. `SyncDatabaseAccessTest` asserts the state stays `FAILED_POISONED` and
+  `counts().poisoned` stays 1 after `markSyncing`; the controller test now asserts
+  `SyncStatus.Failed.poisonedCount` survives a later cycle. The fake mirrors the guard. RED proven by
+  reverting the guard.
+- **BLOCKING 2 — the pull-validation helpers are total and the transport boundary is closed.**
+  `string`/`long`/`boolean`/`nullableLong`/`nullableString` already read through `get(name)` and raise
+  `IllegalArgumentException` on absence (third round), and `toRemoteDocument` already reads the
+  ordering timestamp with a safe cast, so `NoSuchElementException`/`ClassCastException` no longer
+  escape the closed `Outcome`. This round adds the missing coverage the review asked for: absent
+  `ownerId`/`updatedAt`/`deleted`/`deletedAt` for **FUEL_ENTRY** as well as VEHICLE, and two
+  `FirebaseRemoteSyncSourceTest` cases — a document missing `updatedAt` and one where `updatedAt` is
+  not a timestamp — asserting `RemoteError.InvalidArgument` rather than a thrown exception. RED
+  proven by reverting both the helpers and the transport cast.
+- **MINOR 3 — connectivity codes duplicated as SQL literals.** The first attempt bound
+  `CONNECTIVITY_ERROR_CODES` as a SQL parameter. That was measured to destabilise the
+  `:shared:iosSimulatorArm64Test` graph-close path (bisected: parameter binding 11/15 passes vs 15/15
+  for the reverted query, in the same worktree), so the accepted alternative was taken instead: the
+  literals stay, and a new `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both
+  the constant and the three statements and fails the build when they diverge. The guard was proven
+  to fire by mutating the SQL. `docs/CONTRACTS.md §7` records the guard.
+- **MINOR 4 — `strictlyAfter` null document id.** Already fixed in the third round:
+  `strictlyAfter` rejects a null `lastDocumentId` regardless of the timestamp comparison, so the
+  persistence layer is never reached with a null id; `nullDocumentIdCursorFailsClosedRegardlessOfTimestamp`
+  pins it. No further change was needed.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 173 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared` and
+  `:build-logic:convention` tests pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
+  passed **15/15** consecutive runs on the final tree.
+- The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
+  passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
+- No new decision was opened: both blocking items and both minor items are corrections inside the
+  accepted D-169 / D-170 / D-171 scope and the existing `§7` / `§9.5` / `§9.9` contract text.
 
 ## Human Review Gate
 

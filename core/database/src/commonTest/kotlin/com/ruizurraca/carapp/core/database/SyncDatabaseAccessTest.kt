@@ -208,6 +208,15 @@ class SyncDatabaseAccessTest {
                 assertEquals(emptyList(), access.dueOutbox(now = 100, limit = 50))
                 assertEquals(1, access.counts().poisoned)
 
+                // `markSyncing` MUST fail closed: it MUST NOT move a FAILED_POISONED row to SYNCING,
+                // which would drop it from `counts().poisoned` and from the aggregate status.
+                access.markSyncing("VEHICLE", "vehicle-1")
+                assertEquals(
+                    "FAILED_POISONED",
+                    testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
+                )
+                assertEquals(1, access.counts().poisoned)
+
                 access.resetFailed(now = 100)
 
                 assertEquals(listOf("vehicle-1"), access.dueOutbox(now = 100, limit = 50).map { it.entityId })

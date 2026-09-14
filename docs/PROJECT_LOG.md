@@ -38,6 +38,39 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 fourth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Closed the remaining gaps of the review written against `dbadbf7`; the branch head
+  was already `6ceac01`, which had fixed part of both blocking items. BLOCKING 1:
+  `markVehicleSyncing`/`markFuelEntrySyncing` now fail closed on `syncState != 'FAILED_POISONED'`, so
+  a poisoned row can never be moved to `SYNCING` and can never drop out of `countPoisonedSyncRows`.
+  BLOCKING 2: added the missing coverage for absent `ownerId`/`updatedAt`/`deleted`/`deletedAt` on
+  FUEL_ENTRY as well as VEHICLE, plus two `FirebaseRemoteSyncSourceTest` cases asserting a closed
+  `Outcome` for a document whose ordering `updatedAt` is missing or mistyped. MINOR 3: the SQL
+  connectivity literals stay, and a new `:build-logic:convention` guard (`ConnectivityCodeParityTest`)
+  fails the build when they diverge from `CONNECTIVITY_ERROR_CODES`; the first attempt at binding the
+  constant as a SQL parameter was measured to destabilise the `:shared:iosSimulatorArm64Test`
+  graph-close path and was reverted. MINOR 4 was already fixed in the third round.
+- **Why:** `FAILED_POISONED` must never be retried automatically (`§7`) and a malformed remote
+  document must be quarantined without failing the pull cycle (`§9.5`, `D-170` / ADR-0171); the SQL
+  literals and the Kotlin constant must not be able to drift apart silently.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/CONTRACTS.md` (`§7`), this log.
+  Production code: `:core:database`. Tests and build logic: `:core:sync`, `:core:database`,
+  `:integration:firebase-firestore`, `:build-logic:convention`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
+  zero `PENDING`) and `koverVerify` pass; every new test was shown failing on the pre-fix code;
+  `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 15/15;
+  the complete non-instrumented command passes; the iOS framework links and the golden header is
+  byte-identical; the host-app `xcodebuild` succeeds; the protected Android instrumented suite passes
+  17 tests.
+- **Follow-ups / risks:** No new decision was opened; all four items are corrections inside the
+  accepted D-169 / D-170 / D-171 scope. `E3-17` (`D-172`) still owns making `AppGraph.close()` safe
+  against an in-flight sync cycle. The pull request still requires the owner's gated review and the
+  ten required checks.
+
 ### 2026-09-13 — E3-03 third owner-review round
 
 - **Type:** correction
