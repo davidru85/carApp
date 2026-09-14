@@ -268,10 +268,14 @@ class DefaultSyncControllerTest {
         }
 
     @Test
-    fun exhaustedAuthenticationFailuresPoisonTheRow() =
+    fun repeatedAuthenticationFailuresNeverPoisonAndKeepTheAttemptCount() =
         runTest {
+            // `§6` is normative: `Unauthenticated` retries after a valid auth session with
+            // `attemptCount` unchanged and never poisons, so no number of consecutive auth failures
+            // may reach FAILED_POISONED or raise the count. The row is a non-connectivity retryable
+            // failure, which `§7` renders FAILED_RETRYABLE and `§9.9` therefore reports as Failed.
             val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
-            repeat(MAX_RETRYABLE_ATTEMPTS) {
+            repeat(MAX_RETRYABLE_ATTEMPTS + 5) {
                 fixture.remote.pushResults += Outcome.Err(RemoteError.Unauthenticated)
                 fixture.controller.requestSync(SyncTrigger.PullToRefresh)
                 advanceUntilIdle()
@@ -279,12 +283,73 @@ class DefaultSyncControllerTest {
             }
 
             assertEquals(
-                MAX_RETRYABLE_ATTEMPTS,
+                0,
+                fixture.persistence.outbox
+                    .single()
+                    .attemptCount,
+                "Unauthenticated MUST NOT consume the retry budget (§6)",
+            )
+            assertEquals("FAILED_RETRYABLE", fixture.persistence.states.getValue("vehicle-1"))
+            val status = assertIs<SyncStatus.Failed>(fixture.controller.status.value)
+            assertEquals(1, status.retryableCount)
+            assertEquals(0, status.poisonedCount)
+        }
+
+    @Test
+    fun anAuthenticationFailureIsFollowedByASuccessfulPushWithoutARaisedCount() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.Unauthenticated)
+            fixture.controller.requestSync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            assertEquals(
+                0,
                 fixture.persistence.outbox
                     .single()
                     .attemptCount,
             )
-            assertEquals("FAILED_POISONED", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals("FAILED_RETRYABLE", fixture.persistence.states.getValue("vehicle-1"))
+
+            // A later successful push confirms the row normally; the auth failure never raised the count.
+            fixture.clock.advanceBy(900_000)
+            fixture.remote.pushResults += ack("vehicle-1")
+            fixture.controller.requestSync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            assertEquals("SYNCED", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals(emptyList(), fixture.persistence.outbox)
+        }
+
+    @Test
+    fun authenticationRetryDoesNotWeakenUnknownOrValidationPoisoning() =
+        runTest {
+            // Over-correction guard: `Unknown` still consumes the budget and poisons at the ceiling.
+            val ambiguous = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            repeat(MAX_RETRYABLE_ATTEMPTS) {
+                ambiguous.remote.pushResults += Outcome.Err(RemoteError.Unknown)
+                ambiguous.controller.requestSync(SyncTrigger.PullToRefresh)
+                advanceUntilIdle()
+                ambiguous.clock.advanceBy(900_000)
+            }
+            assertEquals("FAILED_POISONED", ambiguous.persistence.states.getValue("vehicle-1"))
+            assertEquals(listOf(SyncError.PayloadPoisoned), ambiguous.reportedErrors.map { it.first })
+
+            // `PermissionDenied` and `InvalidArgument` still poison on the first attempt with their
+            // own mapped SyncError.
+            val denied = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            denied.remote.pushResults += Outcome.Err(RemoteError.PermissionDenied)
+            denied.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+            assertEquals("FAILED_POISONED", denied.persistence.states.getValue("vehicle-1"))
+            assertEquals(listOf(SyncError.PermissionDenied), denied.reportedErrors.map { it.first })
+
+            val invalid = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            invalid.remote.pushResults += Outcome.Err(RemoteError.InvalidArgument)
+            invalid.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+            assertEquals("FAILED_POISONED", invalid.persistence.states.getValue("vehicle-1"))
+            assertEquals(listOf(SyncError.ValidationRejected), invalid.reportedErrors.map { it.first })
         }
 
     @Test
@@ -1118,6 +1183,48 @@ class DefaultSyncControllerReviewRoundTest {
         }
 
     @Test
+    fun aFinishingCycleNeverOverwritesTheSyncingStatusOfANewerCycle() =
+        runTest {
+            // The finishing cycle assigns `cycleRunning = false` under the mutex and then publishes
+            // its terminal status after releasing it. A trigger that starts a new cycle in that
+            // window publishes `Syncing`, which the pending publish must not overwrite (§9.9).
+            val fixture = fixture()
+            val countsReached = CompletableDeferred<Unit>()
+            val releaseCounts = CompletableDeferred<Unit>()
+            // The finishing cycle's terminal `refreshStatus()` reads counts; hold it there.
+            fixture.persistence.gateCounts = countsReached to releaseCounts
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            countsReached.await()
+            assertEquals(SyncStatus.Syncing, fixture.controller.status.value)
+
+            // The finishing cycle has released the mutex (`cycleRunning = false`) but not yet
+            // published. A new cycle starts and publishes `Syncing`.
+            val secondPushStarted = CompletableDeferred<Unit>()
+            val releaseSecondPush = CompletableDeferred<Unit>()
+            fixture.withOutbox(vehicleOutbox("vehicle-2"))
+            fixture.remote.onPushSuspend = {
+                secondPushStarted.complete(Unit)
+                releaseSecondPush.await()
+            }
+            fixture.controller.requestSync(SyncTrigger.Periodic)
+            secondPushStarted.await()
+            assertEquals(SyncStatus.Syncing, fixture.controller.status.value)
+
+            // Let the finishing cycle publish; the newer cycle is still running.
+            releaseCounts.complete(Unit)
+            runCurrent()
+            assertEquals(
+                SyncStatus.Syncing,
+                fixture.controller.status.value,
+                "a finishing cycle must not overwrite the Syncing status of a newer cycle",
+            )
+
+            releaseSecondPush.complete(Unit)
+            advanceUntilIdle()
+        }
+
+    @Test
     fun concurrentJoinersAllCompleteAgainstOneFollowUpWithoutWedging() =
         runTest {
             // The pending follow-up and its completion handle are one value, so a follow-up can never
@@ -1619,7 +1726,18 @@ private class FakeSyncPersistence : SyncPersistence {
         return Outcome.Ok(Unit)
     }
 
+    /**
+     * A one-shot gate on the next `counts()` read, used to hold a finishing cycle inside its terminal
+     * status publication and observe what a cycle that starts in that window publishes.
+     */
+    var gateCounts: Pair<CompletableDeferred<Unit>, CompletableDeferred<Unit>>? = null
+
     override suspend fun counts(): SyncCounts {
+        gateCounts?.let { (reached, release) ->
+            gateCounts = null
+            reached.complete(Unit)
+            release.await()
+        }
         var pending = 0
         var retryable = 0
         var poisoned = 0

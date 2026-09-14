@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received eight owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received nine owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -51,6 +51,12 @@
   `Unauthenticated` failures to consume the non-connectivity poison budget, and strengthened tests
   for cold-start ordering, exact state transitions, crash-reporting policy, connectivity recovery,
   reset semantics, debug-only diagnostics and malformed raw Firestore transport.
+
+  > **Correction 2026-09-13 (ninth owner-review round):** the sentence above is wrong. The REFACTOR
+  > round did make `Unauthenticated` consume the poison budget, but `docs/CONTRACTS.md §6` is
+  > normative and states the opposite ("retry after a valid auth session, `attemptCount` unchanged").
+  > The ninth round restored the `§6` rule: `Unauthenticated` no longer increments `attemptCount` and
+  > never poisons. The original sentence is kept above as the historical record of what REFACTOR did.
 - Quarantine deduplication completed: `SyncPersistence.applyPullPage` now returns newly persisted
   quarantine records; `SyncDatabaseAccess.applyPullPage` detects an existing quarantine row inside
   the pull transaction and returns only the rows it inserted; `SqlDelightSyncPersistence` maps the
@@ -647,6 +653,63 @@ Verification for this round:
   reports 175 decisions and zero `PENDING`.
 - The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared`,
   `:feature:vehicle` and `:build-logic:convention` tests pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
+  passed **10/10** consecutive runs.
+- The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
+  passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
+
+## Ninth Owner-Review Correction Round (2026-09-13)
+
+Branch head reviewed: `ecb4487`. One blocking defect and three minors.
+
+- **BLOCKING 1 — `Unauthenticated` contradicted the normative `§6`.** `handlePushFailure` incremented
+  `attemptCount` for every non-`NotFound` error, poisoned `Unauthenticated` at the ceiling and mapped
+  it to `SyncError.PayloadPoisoned`. `§6` (normative, "decides retry versus poison") says
+  `Unauthenticated` retries "after a valid auth session, `attemptCount` unchanged". **Owner decision:
+  option A — the implementation follows `§6`; the contract is not changed.** The fix separates
+  `incrementsAttempt` (only `Unauthenticated` is excluded), removes `Unauthenticated` from the poison
+  arm, and leaves the mapping without a dead `AuthExpired` arm. **Row state:** the documents converge
+  on `FAILED_RETRYABLE` — `§7` reserves `PENDING` for the `CONNECTIVITY_ERROR_CODES` case, `§9.7`'s
+  `PENDING` rule is explicitly connectivity-only, and `§9.9` renders a non-connectivity retryable
+  failure as `Failed` — so the aggregate reports `Failed(retryable=1, poisoned=0)`. `SyncError.AuthExpired`
+  is therefore not reached on this path; it remains a declared `§20` taxonomy leaf whose `§6` mapping
+  target is real, and the handoff records that it is not produced by the sync engine rather than
+  leaving an unproduced leaf unstated.
+  - Test 1: `repeatedAuthenticationFailuresNeverPoisonAndKeepTheAttemptCount` inverts the old
+    `exhaustedAuthenticationFailuresPoisonTheRow`. RED proven by reverting the production change.
+  - Test 2: `anAuthenticationFailureIsFollowedByASuccessfulPushWithoutARaisedCount`. RED with the
+    same revert.
+  - Test 3: `authenticationRetryDoesNotWeakenUnknownOrValidationPoisoning` pins `Unknown` still
+    reaching `FAILED_POISONED` at the ceiling and `PermissionDenied`/`InvalidArgument` still poisoning
+    on the first attempt with their mapped `SyncError`. It passes before and after (over-correction
+    guard).
+  - Requirement 4 (a `PENDING`-specific `SyncDatabaseAccessTest`) does not apply because the chosen
+    state is `FAILED_RETRYABLE`.
+  - Documents: `§9.7` and `§9.9` gained the `Unauthenticated` rule so the `§6`/`§7`/`§9.7`/`§9.9` set
+    states one rule. The historical claim in this handoff and in `docs/PROJECT_LOG.md` is corrected by
+    a dated note rather than by rewriting the original text.
+- **MINOR 2 — a finishing cycle could publish a stale status.** `drainCycles` released `cycleMutex`
+  and then published the terminal status, so a trigger that started a new cycle in that window saw its
+  `Syncing` overwritten. A monotonic `cycleGeneration` is captured under the same lock that clears the
+  active-cycle reservation, and the terminal publish skips when a newer cycle has started. RED proven
+  by removing the generation guard; `aFinishingCycleNeverOverwritesTheSyncingStatusOfANewerCycle`
+  pins it.
+- **MINOR 3 — inconsistent initial sync status.** `FuelEntryListStateHolder.state` seeded `Idle`;
+  it now seeds `syncStatus.value`, matching `VehicleListStateHolder`.
+  `listSeedsItsInitialSyncStatusFromTheInjectedFlow` was RED before the change.
+- **MINOR 4 — `SYNCING` has no explicit recovery path after a process death.** No recovery statement
+  was added. `§7` now records that the `SYNCING` row is a push transient, that the surviving outbox
+  row is the recovery mechanism, and that the aggregate is outbox-derived and therefore correct while
+  the entity row is stale. Deferred hardening is tracked as `E3-21` (Human review required).
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 175 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared`,
+  `:feature:fuel` and `:build-logic:convention` tests pass.
 - `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
   passed **10/10** consecutive runs.
 - The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`

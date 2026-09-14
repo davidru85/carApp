@@ -1627,6 +1627,29 @@ Acceptance criteria:
 
 Human review required.
 
+### E3-21 - Explicit Startup Reset of Stale `SYNCING` Rows - S
+
+**Deferred by `E3-03`; low impact.** Not Ready until a story owner is scheduled.
+
+If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row
+is left `SYNCING` with no startup statement that resets it. It is not stranded — the outbox row
+survives and is re-pushed on the next cycle, `markSyncing` is idempotent, and the aggregate
+`SyncStatus` derives from the outbox and stays correct — but the entity row's own state is stale until
+a cycle runs. `docs/CONTRACTS.md §7` records the transient.
+
+Deferred because the reachable window is a process death inside one push and the recovery already
+exists through the outbox; an explicit reset is a clarity hardening, not a correctness fix.
+
+Acceptance criteria:
+
+- A startup statement resets every `SYNCING` entity row without a resolved push to a state consistent
+  with its outbox row, in one transaction.
+- A test seeds a `SYNCING` entity row and asserts the reset after app start.
+- The change keeps the aggregate `SyncStatus` derived from the outbox and does not alter push
+  ordering.
+
+Human review required.
+
 ### Deferred scope, now scheduled
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
@@ -1785,6 +1808,7 @@ proof after E3-04.
 | E3-18 Manual retry coverage for parked connectivity rows | 3 | S | Yes |
 | E3-19 Push-boundary payload totality | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values | 3 | S | Yes |
+| E3-21 Explicit startup reset of stale `SYNCING` rows | 3 | S | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

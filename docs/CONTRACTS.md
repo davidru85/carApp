@@ -507,6 +507,8 @@ The connectivity-code set that qualifies a failure as non-poisoning and counts i
 
 A local edit during an in-flight push leaves the row `PENDING` (`§7` invariant, `§9.3`): the editor sets it in the same transaction, and the ack for the stale revision only stamps `serverUpdatedAt`. The user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`. `SYNCING -> SYNCING` is therefore not a reachable transition and MUST NOT appear in any document or test.
 
+**The `SYNCING` state is transient across a push, not a durable one.** If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row is left `SYNCING` with no startup statement that resets it. It is not stranded: the outbox row survives and is re-pushed on the next cycle, and `markSyncing` is idempotent, so the row resolves as soon as a cycle runs. The aggregate `SyncStatus` is unaffected because all three counts derive from the outbox, not from the entity `syncState`, so it is correct while the entity row still reads `SYNCING`. There is deliberately no startup reset in the MVP; an explicit reset is a possible future hardening, tracked by the `E3-21` backlog item.
+
 `FAILED_RETRYABLE -> FAILED_POISONED` is governed by the qualified poison rule of §9.7. A connectivity-only failure never poisons.
 
 ## 8. Outbox Contract
@@ -666,10 +668,14 @@ would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a
 repair. The `§9.9` rule that a connectivity failure never renders as `Failed` depends on this same
 qualification, and `§7` records the matching `PENDING` row state.
 
+`Unauthenticated` is the second non-poisoning deferred retry, per the normative `§6` mapping. A push that fails with `RemoteError.Unauthenticated` MUST NOT increment `attemptCount` and MUST NOT poison at any count: the row keeps its current count so the backoff exponent is unchanged, is rescheduled with the ordinary `retryDelayMillis` backoff computed from that unchanged count, and resolves once a valid auth session exists. Its entity `syncState` is `FAILED_RETRYABLE`, not the connectivity `PENDING`: `§7` reserves `PENDING` for the `CONNECTIVITY_ERROR_CODES` case, `§9.7`'s `PENDING` rule is explicitly connectivity-only, and `§9.9` renders a non-connectivity retryable failure as `Failed`, which is the honest signal that the session needs re-authentication. Because it never poisons, `SyncError.AuthExpired` (`§6`) is not reached on this path; it remains declared in `§20` as the taxonomy's mapping target for the `§6` table.
+
 Manual retry through `SyncController.retryFailed()` resets every `FAILED_RETRYABLE` and
 `FAILED_POISONED` row to `PENDING`, sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and
 clears `lastError` and `lastErrorCode`. Preserving the count would make manual retry useless on
-exactly the rows that need it, because the count is already at the ceiling.
+exactly the rows that need it, because the count is already at the ceiling. An `Unauthenticated` row
+is `FAILED_RETRYABLE`, so `retryFailed()` does clear its retry context, which is the manual escape
+hatch for a stuck auth state.
 
 A connectivity-only row is `PENDING` with retry context in the outbox, so it is outside
 `resetFailedOutbox`'s `FAILED_RETRYABLE`/`FAILED_POISONED` selection and `retryFailed()` does not
@@ -697,7 +703,7 @@ Being offline with pending rows renders as `Pending`, never as an error. This is
 
 The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES`.
 
-The per-row `syncState` and the aggregate MUST agree for a connectivity failure. A push failure whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` leaves the entity `syncState = PENDING` (not `FAILED_RETRYABLE`) and keeps its retry context in the outbox; the aggregate therefore reports the row as `Pending`, and both representations say the same thing. `FAILED_RETRYABLE` is reserved for a non-connectivity retryable failure. Poison classification is unchanged: a connectivity-only failure never poisons (`§9.7`).
+The per-row `syncState` and the aggregate MUST agree for a connectivity failure. A push failure whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` leaves the entity `syncState = PENDING` (not `FAILED_RETRYABLE`) and keeps its retry context in the outbox; the aggregate therefore reports the row as `Pending`, and both representations say the same thing. `FAILED_RETRYABLE` is reserved for a non-connectivity retryable failure, including `Unauthenticated`, which the aggregate therefore reports as `Failed`. Poison classification is unchanged: a connectivity-only failure and an `Unauthenticated` failure never poison (`§6`, `§9.7`).
 
 ## 10. RemoteSyncSource Contract
 

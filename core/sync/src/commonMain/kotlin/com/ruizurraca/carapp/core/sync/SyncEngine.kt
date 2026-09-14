@@ -214,6 +214,12 @@ internal class DefaultSyncController(
     private val cycleMutex = Mutex()
     private var cycleRunning = false
 
+    // Monotonic counter incremented each time a new active cycle is reserved under `cycleMutex`. A
+    // finishing cycle captures it and passes the value to its terminal status publish, so a publish
+    // that lands after a newer cycle started can tell that publishing would clobber `Syncing` and
+    // leaves the newer cycle's status alone (`§9.9`).
+    private var cycleGeneration = 0L
+
     // The single pending follow-up. Both the joined reasons and the completion handle live in one
     // value, so the pending flag and its handle cannot be observed separately: there is no
     // inconsistent state in which a follow-up is flagged but no handle exists to complete, which
@@ -256,6 +262,7 @@ internal class DefaultSyncController(
                 TriggerRegistration(followUp.completion, reasons = setOf(reason), startsCycle = false)
             } else {
                 cycleRunning = true
+                cycleGeneration += 1
                 TriggerRegistration(CompletableDeferred(), reasons = setOf(reason), startsCycle = true)
             }
         }
@@ -296,19 +303,26 @@ internal class DefaultSyncController(
                     Outcome.Err(error)
                 }
             completion.complete(outcome)
-            val next =
+            // Capture the generation under the same lock that clears the active-cycle reservation.
+            // The terminal publish then skips if a newer cycle started in the window between releasing
+            // the lock and publishing, so it cannot overwrite that cycle's `Syncing` (`§9.9`).
+            val (nextFollowUp, finishingGeneration) =
                 cycleMutex.withLock {
-                    pendingFollowUp?.also { pendingFollowUp = null } ?: run {
+                    val pending = pendingFollowUp
+                    if (pending != null) {
+                        pendingFollowUp = null
+                        pending to null
+                    } else {
                         cycleRunning = false
-                        null
+                        null to cycleGeneration
                     }
                 }
-            if (next == null) {
-                refreshStatus()
+            if (nextFollowUp == null) {
+                refreshStatus(expectedGeneration = finishingGeneration)
                 return
             }
-            completion = next.completion
-            reasons = next.reasons.toSet()
+            completion = nextFollowUp.completion
+            reasons = nextFollowUp.reasons.toSet()
         }
     }
 
@@ -399,17 +413,27 @@ internal class DefaultSyncController(
             persistence.confirmPush(row, null)
             return
         }
-        val attemptCount = minOf(row.attemptCount + 1, MAX_RETRYABLE_ATTEMPTS)
-        // `NotFound` is excluded by the early return above, so the remaining leaves are exhaustive:
-        // permission and validation failures poison immediately, `Unknown`/`Unauthenticated` poison at
-        // the ceiling, and connectivity failures never poison (`§6`, `§9.7`).
+        // `§6` is normative: `Unauthenticated` retries "after a valid auth session, `attemptCount`
+        // unchanged". It therefore MUST NOT consume the retry budget — the row keeps its count so the
+        // backoff exponent is unchanged — and it MUST NOT poison at any count, exactly as a
+        // connectivity code never poisons. It is a non-connectivity retryable failure, so the row is
+        // `FAILED_RETRYABLE` (`§7`) and the aggregate reports it as `Failed` (`§9.9`). `Unknown`
+        // still increments and still poisons at the ceiling.
+        val incrementsAttempt = error != RemoteError.Unauthenticated
+        val attemptCount =
+            if (incrementsAttempt) minOf(row.attemptCount + 1, MAX_RETRYABLE_ATTEMPTS) else row.attemptCount
+        // `NotFound` is excluded by the early return above. Permission and validation failures poison
+        // immediately; `Unknown` poisons at the ceiling; connectivity failures and `Unauthenticated`
+        // never poison (`§6`, `§9.7`).
         val poisoned =
             when (error) {
                 RemoteError.PermissionDenied, RemoteError.InvalidArgument -> true
-                RemoteError.Unknown, RemoteError.Unauthenticated -> attemptCount >= MAX_RETRYABLE_ATTEMPTS
+                RemoteError.Unknown -> attemptCount >= MAX_RETRYABLE_ATTEMPTS
                 else -> false
             }
         if (poisoned) {
+            // `Unauthenticated` never reaches this branch (`§6`: it never poisons), so it is absent
+            // from the mapping rather than kept as a dead arm.
             val syncError =
                 when (error) {
                     RemoteError.PermissionDenied -> SyncError.PermissionDenied
@@ -494,9 +518,17 @@ internal class DefaultSyncController(
      * Publishes the aggregate status with the `§9.9` precedence `Failed > Pending > Idle`. `Syncing`
      * is assigned directly by [runCycle], so it is not a branch here: a status refresh only observes
      * the state left after a cycle step, never a running cycle.
+     *
+     * [expectedGeneration] is the generation of the cycle that is publishing. When a newer cycle has
+     * started since, this publish would replace that cycle's `Syncing` with a stale aggregate, so it
+     * is skipped; the newer cycle publishes when it finishes. A `null` value publishes unconditionally,
+     * for callers that are not a finishing cycle (for example `retryFailed()`).
      */
-    private suspend fun refreshStatus() {
+    private suspend fun refreshStatus(expectedGeneration: Long? = null) {
         val counts = persistence.counts()
+        val newerCycleStarted =
+            expectedGeneration != null && cycleMutex.withLock { cycleGeneration != expectedGeneration }
+        if (newerCycleStarted) return
         mutableStatus.value =
             when {
                 // A failure condition with zero outbox rows must still be representable, so each

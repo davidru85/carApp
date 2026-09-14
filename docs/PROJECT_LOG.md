@@ -38,6 +38,43 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 ninth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the ninth owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: `handlePushFailure`
+  made `RemoteError.Unauthenticated` consume the retry budget, poison at the ceiling and map to
+  `SyncError.PayloadPoisoned`, contradicting the normative `§6` table ("retry after a valid auth
+  session, `attemptCount` unchanged"). The owner selected option A — the implementation follows `§6`
+  and the contract is unchanged — so `Unauthenticated` now neither increments `attemptCount` nor
+  poisons, the row is `FAILED_RETRYABLE` (`§7`/`§9.7`/`§9.9`), and the aggregate reports
+  `Failed(retryable=1, poisoned=0)`. `§9.7` and `§9.9` gained the rule; `§6` needed no change.
+  MINOR 2: a finishing cycle can no longer overwrite a newer cycle's `Syncing` (monotonic
+  `cycleGeneration` guard on the terminal publish). MINOR 3: `FuelEntryListStateHolder` seeds its
+  initial `syncStatus` from the injected flow, matching `VehicleListStateHolder`. MINOR 4: `§7` now
+  records the `SYNCING` push transient and its outbox-based recovery, with the explicit reset deferred
+  to `E3-21` (Human review required).
+- **Why:** The review found a direct contradiction of a normative table on a gated topic (error
+  taxonomy, sync state machine), a stale-status publish of the same class fixed in the seventh round,
+  an inconsistent initial list status, and an undocumented transient.
+- **Correction:** the historical claim in the `E3-03` story entry below — "made `Unauthenticated`
+  consume the non-connectivity poison budget" — is wrong under `§6`. This entry supersedes it; the
+  original entry is preserved as history. The handoff carries the same dated correction.
+- **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§9.7`, `§9.9`), `docs/BACKLOG.md` (`E3-21`),
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`, `:feature:fuel`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (175 decisions,
+  zero `PENDING`) and `koverVerify` pass; the new and inverted tests were shown failing against the
+  pre-fix code; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite
+  passed 10/10; the complete non-instrumented command passes; the iOS framework links and the golden
+  header is byte-identical; the host-app `xcodebuild` succeeds; the protected Android instrumented
+  suite passes 17 tests.
+- **Follow-ups / risks:** `D-172`/`E3-17`, `D-173`/`E3-18`, `E3-19`, `E3-20` and `E3-21` remain open.
+  `SyncError.AuthExpired` is a declared `§20` taxonomy leaf that the sync engine never produces; it is
+  recorded as such rather than removed. The pull request still requires the owner's gated review and
+  the ten required checks.
+
 ### 2026-09-13 — E3-03 eighth owner-review round
 
 - **Type:** correction

@@ -85,7 +85,9 @@ class FuelEntryListStateHolder internal constructor(
                     consumptionAverageScaled = null,
                     validConsumptionSegmentCount = 0,
                     isConsumptionReliable = false,
-                    syncStatus = SyncStatus.Idle,
+                    // Seed from the injected flow, like `VehicleListStateHolder`, so the list renders
+                    // the live `SyncStatus` while it is still loading rather than a hardcoded idle.
+                    syncStatus = syncStatus.value,
                     message = null,
                 ),
         )
