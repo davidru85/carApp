@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 fifth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Fixed a blocking finding. A `ConnectivityRecovered` trigger that arrived while a
+  cycle was already in flight was coalesced into the single pending follow-up and downgraded to
+  `PostWriteDebounce`, so the follow-up never called `markConnectivityFailuresDue` and outbox rows
+  that failed with `REMOTE.UNAVAILABLE` / `REMOTE.DEADLINE_EXCEEDED` stayed behind their backoff, up
+  to `MAX_BACKOFF_MS` (900_000 ms). `registerTrigger(reason)` now accumulates each joined trigger's
+  reason in `pendingReasons`, `drainCycles` carries them into the follow-up, and `runCycle(reasons)`
+  runs every reason-dependent step any joined trigger requires. No call site special-cases a reason,
+  and the `§9.1` single-active/single-follow-up rule is unchanged.
+- **Why:** The `E3-03` acceptance criterion requires `ConnectivityRecovered` to move connectivity-only
+  failures due immediately while preserving `attemptCount`, whether the trigger starts its own cycle
+  or is coalesced; the fix implements the existing `§9.7` / `§9.8` guarantee, so no contract
+  clarification or new decision was required.
+- **Documents touched:** `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`. Tests:
+  `:core:sync`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
+  zero `PENDING`) and `koverVerify` pass; the two new blocking tests were shown failing on the pre-fix
+  code by stashing the production change, and the over-correction guard passes throughout;
+  `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 12/12;
+  the complete non-instrumented command passes; the iOS framework links and the golden header is
+  byte-identical; the host-app `xcodebuild` succeeds; the protected Android instrumented suite passes
+  17 tests.
+- **Follow-ups / risks:** `E3-17` (`D-172`) still owns making `AppGraph.close()` safe against an
+  in-flight sync cycle. The pull request still requires the owner's gated review and the ten required
+  checks.
+
 ### 2026-09-13 — E3-03 fourth owner-review round
 
 - **Type:** correction

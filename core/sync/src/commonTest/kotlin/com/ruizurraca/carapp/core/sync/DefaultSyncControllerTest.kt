@@ -935,6 +935,94 @@ class DefaultSyncControllerReviewRoundTest {
                 "the stranding condition must be reported through onPoisoned",
             )
         }
+
+    @Test
+    fun coalescedConnectivityRecoveredStillMarksFailuresDueInTheFollowUp() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            val firstPushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            fixture.remote.onPushSuspend = {
+                firstPushStarted.complete(Unit)
+                releasePush.await()
+            }
+
+            // A cycle is in flight; connectivity returns and its trigger is coalesced into the
+            // single pending follow-up. The follow-up MUST still run the reason-dependent step.
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            firstPushStarted.await()
+            fixture.controller.requestSync(SyncTrigger.ConnectivityRecovered)
+            releasePush.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(instant(0)),
+                fixture.persistence.connectivityDueCalls,
+                "the coalesced ConnectivityRecovered follow-up must mark connectivity failures due",
+            )
+        }
+
+    @Test
+    fun coalescedConnectivityRecoveredMakesTheFailedRowDueAndPreservesAttempts() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-2"))
+            // `vehicle-1` failed for connectivity and is parked behind a far-future backoff, so it is
+            // not due in the first cycle. `vehicle-2` keeps the first cycle alive until the
+            // coalesced trigger arrives.
+            fixture.withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.states["vehicle-1"] = "FAILED_RETRYABLE"
+            fixture.persistence.outbox[1] =
+                fixture.persistence.outbox[1].copy(
+                    attemptCount = 4,
+                    nextAttemptAt = instant(900_000),
+                    lastErrorCode = RemoteError.Unavailable.code,
+                )
+            val firstPushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            fixture.remote.onPushSuspend = {
+                firstPushStarted.complete(Unit)
+                releasePush.await()
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            firstPushStarted.await()
+            fixture.controller.requestSync(SyncTrigger.ConnectivityRecovered)
+            releasePush.complete(Unit)
+            advanceUntilIdle()
+
+            // The follow-up made the failed row due and pushed it, preserving its attemptCount.
+            assertTrue(
+                fixture.remote.pushCalls
+                    .map { it.entityId.value }
+                    .contains("vehicle-1"),
+            )
+            assertEquals(4, fixture.persistence.dueAttemptCounts["vehicle-1"])
+            assertEquals(null, fixture.persistence.outbox.firstOrNull { it.entityId.value == "vehicle-1" })
+        }
+
+    @Test
+    fun coalescedNonConnectivityTriggerDoesNotMarkFailuresDue() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            val firstPushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            fixture.remote.onPushSuspend = {
+                firstPushStarted.complete(Unit)
+                releasePush.await()
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            firstPushStarted.await()
+            fixture.controller.requestSync(SyncTrigger.Periodic)
+            releasePush.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(
+                emptyList(),
+                fixture.persistence.connectivityDueCalls,
+                "a coalesced non-connectivity trigger must not mark connectivity failures due",
+            )
+        }
 }
 
 /** A valid Fuel Entry remote payload with exactly one top-level key omitted. */
@@ -1101,6 +1189,12 @@ private class FakeSyncPersistence : SyncPersistence {
     val quarantine = mutableListOf<QuarantineRecord>()
     var resetResult: Outcome<Unit, AppError> = Outcome.Ok(Unit)
 
+    /** Every `markConnectivityFailuresDue` call, so a reason-dependent step is observable. */
+    val connectivityDueCalls = mutableListOf<Instant>()
+
+    /** The `attemptCount` each entity held when it was selected as due, for preservation checks. */
+    val dueAttemptCounts = mutableMapOf<String, Int>()
+
     val visibleFuelEntryIds: Set<String>
         get() = fuelEntryIds.filterTo(mutableSetOf()) { fuelEntryVehicles[it] in vehicleIds }
 
@@ -1112,7 +1206,10 @@ private class FakeSyncPersistence : SyncPersistence {
         limit: Int,
     ): List<OutboxRecord> {
         calls += "dueOutbox"
-        return outbox.filter { it.nextAttemptAt <= now && states[it.entityId.value] != "FAILED_POISONED" }.take(limit)
+        val due =
+            outbox.filter { it.nextAttemptAt <= now && states[it.entityId.value] != "FAILED_POISONED" }.take(limit)
+        due.forEach { dueAttemptCounts[it.entityId.value] = it.attemptCount }
+        return due
     }
 
     override suspend fun markSyncing(row: OutboxRecord) {
@@ -1206,6 +1303,7 @@ private class FakeSyncPersistence : SyncPersistence {
     }
 
     override suspend fun markConnectivityFailuresDue(now: Instant) {
+        connectivityDueCalls += now
         outbox.indices.forEach { index ->
             val row = outbox[index]
             if (row.lastErrorCode in setOf(RemoteError.Unavailable.code, RemoteError.DeadlineExceeded.code)) {

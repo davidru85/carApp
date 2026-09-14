@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received four owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received five owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -381,6 +381,57 @@ Verification for this round:
   36 emulator.
 - No new decision was opened: both blocking items and both minor items are corrections inside the
   accepted D-169 / D-170 / D-171 scope and the existing `§7` / `§9.5` / `§9.9` contract text.
+
+## Fifth Owner-Review Correction Round (2026-09-13)
+
+One blocking finding, fixed TDD-first.
+
+- **BLOCKING 1 — a coalesced `ConnectivityRecovered` trigger lost its recovery step.**
+  `registerTrigger` joined every trigger arriving during an active cycle to the single follow-up and
+  discarded the trigger's own `SyncTrigger`, while `drainCycles` hardcoded the follow-up reason to
+  `PostWriteDebounce`. `runCycle` ran `persistence.markConnectivityFailuresDue(clock.now())` only for
+  `ConnectivityRecovered`, so when connectivity returned mid-cycle the follow-up never marked
+  connectivity-only failures due: rows that failed with `REMOTE.UNAVAILABLE` /
+  `REMOTE.DEADLINE_EXCEEDED` stayed behind their backoff, up to `MAX_BACKOFF_MS` (900_000 ms), instead
+  of becoming due immediately. The `E3-03` acceptance criterion requires that guarantee whether the
+  trigger starts its own cycle or is coalesced.
+
+  Fix: `registerTrigger(reason)` accumulates each joined trigger's reason in a `pendingReasons` set,
+  `drainCycles` carries the accumulated reasons into the follow-up cycle, and `runCycle(reasons)`
+  runs every reason-dependent step any joined trigger requires — currently
+  `SyncTrigger.ConnectivityRecovered in reasons`. No call site special-cases a reason, so a future
+  reason-dependent step cannot regress the same way, and the `§9.1` serialization rules are
+  unchanged: exactly one active cycle and at most one pending follow-up.
+
+  Tests (all fail on the pre-fix code, RED proven by stashing the production change):
+  1. `coalescedConnectivityRecoveredStillMarksFailuresDueInTheFollowUp` — with the cycle suspended in
+     `onPushSuspend`, a joined `ConnectivityRecovered` records a `markConnectivityFailuresDue` call.
+     The fake now records those calls.
+  2. `coalescedConnectivityRecoveredMakesTheFailedRowDueAndPreservesAttempts` — end to end: a row
+     failed with `REMOTE.UNAVAILABLE` behind a far-future `nextAttemptAt` becomes due and is pushed
+     after the follow-up, with `attemptCount` unchanged at 4.
+  3. `coalescedNonConnectivityTriggerDoesNotMarkFailuresDue` — the over-correction guard: a joined
+     `Periodic` records no connectivity call.
+  `concurrentTriggersProduceOneActiveAndOneFollowUpCycle` and
+  `awaitableSyncResolvesAgainstTheFollowUpCycleWithoutStartingASecond` still pass unchanged, so the
+  single-follow-up rule is preserved.
+
+  No contract clarification was needed: the fix implements the `§9.7` / `§9.8` guarantee that already
+  required `ConnectivityRecovered` to move connectivity-only failures due while preserving
+  `attemptCount`. No new decision was opened.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 173 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared` and
+  `:build-logic:convention` tests pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
+  passed **12/12** consecutive runs.
+- The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
+  passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
 
 ## Human Review Gate
 
