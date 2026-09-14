@@ -38,6 +38,44 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 sixth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-173`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the sixth owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: `§9.7` was rewritten
+  so it states the implemented connectivity-failure behaviour exactly (entity `PENDING`, retry
+  context in the outbox, never poisons, made due by `markConnectivityFailuresDue` which selects on
+  `lastErrorCode` alone), and `§9.9` was corrected; the `§7` / `§9.7` / `§9.9` triple now reads as one
+  rule. BLOCKING 2: recorded the manual-retry gap left by R5 as `D-173` / ADR-0174 (`Proposed`,
+  recommendation option B) with its story `E3-18` (Human review required), mirrored into
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
+  `docs/adr/README.md`; no production change. MINOR 3: corrected the handoff's out-of-scope sentence
+  and added an explicit note to the `E3-04` backlog entry that enforcing `SYNC_POST_WRITE_DEBOUNCE_MS`
+  and `SYNC_MIN_AUTOMATIC_INTERVAL_MS` is `E3-04`'s, so the constants are declarative only. MINOR 4:
+  removed the always-false `refreshStatus(running)` parameter and its unreachable `Syncing` branch.
+  MINOR 5: merged the pending flag and its completion handle into one `PendingFollowUp` value so the
+  wedging state is unrepresentable, with a concurrent-joiner guard test. FOLLOW-UPS 6: recorded
+  `E3-19` (push-boundary payload totality) and `E3-20` (pull-boundary quarantine totality) as
+  deferred backlog items. QUESTION 7: extended ADR-0173's scope to require that option B complete or
+  fail every in-flight `sync()` awaiter on shutdown.
+- **Why:** The review found a normative contradiction left by R5, a bounded liveness gap in manual
+  retry, undeclared enforcement ownership of the `§9.8` constants, dead code, a silent-wedge failure
+  mode, two deferred totality gaps and an incompletely specified decision.
+- **Documents touched:** `docs/CONTRACTS.md` (`§9.7`, `§9.9`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0173,
+  ADR-0174, `docs/BACKLOG.md` (`E3-04`, `E3-17` context, `E3-18`, `E3-19`, `E3-20`),
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`. Tests: `:core:sync`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (174 decisions,
+  zero `PENDING`) and `koverVerify` pass; the focused module tests pass;
+  `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 10/10;
+  the complete non-instrumented command passes.
+- **Follow-ups / risks:** `D-173` / `E3-18` own the manual-retry gap; `D-172` / `E3-17` own
+  `AppGraph.close()` safety and now also the `sync()` awaiter completion; `E3-19` and `E3-20` own the
+  deferred totality gaps. The pull request still requires the owner's gated review and the ten
+  required checks.
+
 ### 2026-09-13 — E3-03 fifth owner-review round
 
 - **Type:** correction

@@ -665,6 +665,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-170 | Malformed remote document transport | `pullChanges` returns raw per-document results; `:core:sync` validates, classifies and quarantines each payload beside the local page transaction. | Accepted |
 | D-171 | Awaitable sync cycle for user-initiated refresh | `SyncController` gains `suspend fun sync(reason): Outcome<Unit, AppError>`; a user-initiated refresh awaits the cycle that serves it, joining the single pending follow-up, while writes keep the fire-and-forget `requestSync`. | Accepted |
 | D-172 | `AppGraph.close()` versus an in-flight sync cycle | Mechanism to make `AppGraph.close()` safe before it releases the `DatabaseHandle`; option B (awaitable drain plus bounded join, with a synchronous-host bridge) is recommended and no option is preselected. | Proposed |
+| D-173 | Manual retry coverage for parked connectivity rows | Mechanism to make `SyncController.retryFailed()` cover a row parked by a connectivity-only failure, which is `PENDING` with outbox retry context and is therefore outside `resetFailedOutbox`; option B (extend the reset selection to connectivity codes regardless of entity state) is recommended and no option is preselected. | Proposed |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

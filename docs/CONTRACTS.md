@@ -648,9 +648,32 @@ poison  iff  attemptCount >= MAX_RETRYABLE_ATTEMPTS
         and  lastErrorCode not in CONNECTIVITY_ERROR_CODES
 ```
 
-A row failing only for connectivity reasons therefore stays `FAILED_RETRYABLE` indefinitely, with `attemptCount` pinned at the ceiling and the backoff at its 15-minute cap, and resumes as soon as the network returns. On `ConnectivityRecovered`, `SyncController.requestSync(ConnectivityRecovered)` sets `nextAttemptAt = now` for every `FAILED_RETRYABLE` row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`; `attemptCount` is preserved so later failures keep the correct backoff. Without this qualification the constants above poison every pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity repair.
+A connectivity-only failure is a deferred retry, not a row failure. The entity `syncState` therefore
+stays `PENDING` (it is never set to `FAILED_RETRYABLE`), and the retry context — `attemptCount`,
+`nextAttemptAt` and `lastErrorCode` — is kept in the outbox. `attemptCount` still increments on every
+failure, so the backoff exponent is correct, and it is pinned at the ceiling while the failure repeats.
+The row resumes as soon as the network returns.
 
-Manual retry through `SyncController.retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING`, sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and clears `lastError` and `lastErrorCode`. Connectivity-only failures already auto-resume, so this method is for user-initiated recovery from permanent failures. Preserving the count would make manual retry useless on exactly the rows that need it, because the count is already at the ceiling.
+On `ConnectivityRecovered`, `markConnectivityFailuresDue` sets `nextAttemptAt = now` for every outbox
+row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`. That statement selects on `lastErrorCode`
+alone and is therefore independent of the entity `syncState`: whether the row is `PENDING` (the
+connectivity case) or any other state, a matching code is made due. `attemptCount` is preserved so
+later failures keep the correct backoff. Without this qualification the constants above poison every
+pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which
+would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity
+repair. The `§9.9` rule that a connectivity failure never renders as `Failed` depends on this same
+qualification, and `§7` records the matching `PENDING` row state.
+
+Manual retry through `SyncController.retryFailed()` resets every `FAILED_RETRYABLE` and
+`FAILED_POISONED` row to `PENDING`, sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and
+clears `lastError` and `lastErrorCode`. Preserving the count would make manual retry useless on
+exactly the rows that need it, because the count is already at the ceiling.
+
+A connectivity-only row is `PENDING` with retry context in the outbox, so it is outside
+`resetFailedOutbox`'s `FAILED_RETRYABLE`/`FAILED_POISONED` selection and `retryFailed()` does not
+clear its retry context. Clearing that gap is a separate decision (`D-173`) and story (`E3-18`),
+because it requires deciding whether manual retry covers such a row; until then the row waits out its
+backoff, which is bounded by `MAX_BACKOFF_MS`.
 
 ### 9.8 Trigger constants
 
@@ -668,7 +691,7 @@ All five are `SyncTrigger` values passed to `requestSync(reason)` and logged wit
 
 `SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`.
 
-Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a row in `FAILED_RETRYABLE` whose `lastErrorCode` is a connectivity code (§9.7) counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
+Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a connectivity-only failure leaves the entity `PENDING` (`§9.7`), so it counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
 
 The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES`.
 

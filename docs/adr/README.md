@@ -179,5 +179,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-170 | [ADR-0171](0171-quarantine-malformed-remote-documents-through-the-sync-source.md) | Quarantine malformed remote documents through the sync source. | Accepted |
 | D-171 | [ADR-0172](0172-make-the-sync-cycle-awaitable-for-user-initiated-refresh.md) | Make the sync cycle awaitable for user-initiated refresh. | Accepted |
 | D-172 | [ADR-0173](0173-make-app-graph-close-safe-against-an-in-flight-sync-cycle.md) | Make `AppGraph.close()` safe against an in-flight sync cycle. | Proposed |
+| D-173 | [ADR-0174](0174-manual-retry-coverage-for-parked-connectivity-rows.md) | Manual retry coverage for parked connectivity rows. | Proposed |
 
 New ADRs start from [0000-template.md](0000-template.md).

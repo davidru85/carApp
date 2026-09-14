@@ -937,6 +937,45 @@ class DefaultSyncControllerReviewRoundTest {
         }
 
     @Test
+    fun concurrentJoinersAllCompleteAgainstOneFollowUpWithoutWedging() =
+        runTest {
+            // The pending follow-up and its completion handle are one value, so a follow-up can never
+            // be flagged without a handle. Every concurrent `sync()` that joins it MUST complete, and
+            // exactly one follow-up cycle MUST run (`§9.1`).
+            val fixture = fixture()
+            val firstPushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            fixture.withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.onPushSuspend = {
+                firstPushStarted.complete(Unit)
+                releasePush.await()
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            firstPushStarted.await()
+
+            val joinerResults = mutableListOf<Outcome<Unit, AppError>>()
+            val alternativeTriggers = listOf(SyncTrigger.Periodic, SyncTrigger.PullToRefresh)
+            val joiners =
+                List(5) { index ->
+                    launch {
+                        joinerResults += fixture.controller.sync(alternativeTriggers[index % 2])
+                    }
+                }
+            runCurrent()
+
+            releasePush.complete(Unit)
+            joiners.forEach { it.join() }
+            advanceUntilIdle()
+
+            assertEquals(5, joinerResults.size, "every joining sync() must complete; none may wedge")
+            assertTrue(joinerResults.all { it == Outcome.Ok(Unit) })
+            // One active cycle plus exactly one follow-up: two pull passes, not six.
+            assertEquals(2, fixture.remote.vehiclePullCursors.size)
+            assertEquals(1, fixture.remote.maxConcurrentPushes)
+        }
+
+    @Test
     fun coalescedConnectivityRecoveredStillMarksFailuresDueInTheFollowUp() =
         runTest {
             val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))

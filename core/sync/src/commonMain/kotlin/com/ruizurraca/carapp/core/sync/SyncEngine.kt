@@ -184,6 +184,15 @@ private data class TriggerRegistration(
     val startsCycle: Boolean,
 )
 
+/**
+ * The single pending follow-up cycle a coalesced trigger joins. The joined reasons and the completion
+ * handle are held together so the follow-up cannot be flagged without a handle to complete (`§9.1`).
+ */
+private class PendingFollowUp {
+    val reasons = mutableSetOf<SyncTrigger>()
+    val completion = CompletableDeferred<Outcome<Unit, AppError>>()
+}
+
 internal class DefaultSyncController(
     private val scope: CoroutineScope,
     private val ownerContext: OwnerContext,
@@ -203,17 +212,13 @@ internal class DefaultSyncController(
     override val status: StateFlow<SyncStatus> = mutableStatus
     private val cycleMutex = Mutex()
     private var cycleRunning = false
-    private var pendingCycle = false
 
-    // The reasons joined into the single pending follow-up cycle. Every trigger that arrives during
-    // an active cycle contributes its reason here, so a reason-dependent step is not lost when the
-    // trigger is coalesced instead of starting its own cycle (`§9.1`, `§9.8`).
-    private val pendingReasons = mutableSetOf<SyncTrigger>()
+    // The single pending follow-up. Both the joined reasons and the completion handle live in one
+    // value, so the pending flag and its handle cannot be observed separately: there is no
+    // inconsistent state in which a follow-up is flagged but no handle exists to complete, which
+    // would wedge `drainCycles` and suspend every later `sync()` forever (`§9.1`).
+    private var pendingFollowUp: PendingFollowUp? = null
 
-    // The completion handle for the pending follow-up cycle. A `sync()` that arrives while a cycle
-    // is running joins this handle instead of starting a second cycle, so the single-follow-up rule
-    // of `§9.1` is preserved while the caller still observes the cycle that serves its request.
-    private var pendingCompletion: CompletableDeferred<Outcome<Unit, AppError>>? = null
     private var unexpectedFailure = false
     private var cycleFailure = false
     private var lastCycleError: AppError? = null
@@ -238,19 +243,16 @@ internal class DefaultSyncController(
      * Reserves either a new active cycle or a join on the single pending follow-up. Only the caller
      * that receives `startsCycle = true` runs [drainCycles]; every other concurrent trigger joins the
      * follow-up completion, so multiple triggers still produce exactly one active and one pending
-     * cycle (`§9.1`). Each trigger also contributes its own reason to [pendingReasons], so the
+     * cycle (`§9.1`). Each trigger also contributes its own reason to the [PendingFollowUp], so the
      * follow-up cycle runs every reason-dependent step a joined trigger requires.
      */
     private suspend fun registerTrigger(reason: SyncTrigger): TriggerRegistration =
         cycleMutex.withLock {
             if (cycleRunning) {
-                pendingCycle = true
-                pendingReasons += reason
-                val completion =
-                    pendingCompletion ?: CompletableDeferred<Outcome<Unit, AppError>>().also {
-                        pendingCompletion = it
-                    }
-                TriggerRegistration(completion, reasons = setOf(reason), startsCycle = false)
+                val followUp =
+                    pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
+                followUp.reasons += reason
+                TriggerRegistration(followUp.completion, reasons = setOf(reason), startsCycle = false)
             } else {
                 cycleRunning = true
                 TriggerRegistration(CompletableDeferred(), reasons = setOf(reason), startsCycle = true)
@@ -259,7 +261,7 @@ internal class DefaultSyncController(
 
     override suspend fun retryFailed(): Outcome<Unit, AppError> {
         val result = persistence.resetFailed(clock.now())
-        refreshStatus(running = false)
+        refreshStatus()
         if (result is Outcome.Ok) requestSync(SyncTrigger.PullToRefresh)
         return result
     }
@@ -290,23 +292,17 @@ internal class DefaultSyncController(
             completion.complete(outcome)
             val next =
                 cycleMutex.withLock {
-                    if (pendingCycle) {
-                        pendingCycle = false
-                        val joinedReasons = pendingReasons.toSet()
-                        pendingReasons.clear()
-                        pendingCompletion?.also { pendingCompletion = null }?.let { joinedReasons to it }
-                    } else {
+                    pendingFollowUp?.also { pendingFollowUp = null } ?: run {
                         cycleRunning = false
                         null
                     }
                 }
             if (next == null) {
-                refreshStatus(running = false)
+                refreshStatus()
                 return
             }
-            val (joinedReasons, nextCompletion) = next
-            completion = nextCompletion
-            reasons = joinedReasons
+            completion = next.completion
+            reasons = next.reasons.toSet()
         }
     }
 
@@ -316,12 +312,12 @@ internal class DefaultSyncController(
         // A refused cycle is a successful outcome with no error: offline or `LOCAL_OWNER` is not a
         // failure the caller must surface (`§9.1`, `§9.2`).
         if (!connectivity.isOnline.value) {
-            refreshStatus(running = false)
+            refreshStatus()
             return Outcome.Ok(Unit)
         }
         val ownerId = ownerContext.current
         if (ownerId == LOCAL_OWNER) {
-            refreshStatus(running = false)
+            refreshStatus()
             return Outcome.Ok(Unit)
         }
         mutableStatus.value = SyncStatus.Syncing
@@ -333,7 +329,7 @@ internal class DefaultSyncController(
             adoptionFailure = true
             adoptionAttemptCount = minOf(adoptionAttemptCount + 1, MAX_RETRYABLE_ATTEMPTS)
             scheduleAdoptionRetry()
-            refreshStatus(running = false)
+            refreshStatus()
             return adoptionResult
         }
         adoptionFailure = false
@@ -472,7 +468,12 @@ internal class DefaultSyncController(
         return false
     }
 
-    private suspend fun refreshStatus(running: Boolean) {
+    /**
+     * Publishes the aggregate status with the `§9.9` precedence `Failed > Pending > Idle`. `Syncing`
+     * is assigned directly by [runCycle], so it is not a branch here: a status refresh only observes
+     * the state left after a cycle step, never a running cycle.
+     */
+    private suspend fun refreshStatus() {
         val counts = persistence.counts()
         mutableStatus.value =
             when {
@@ -494,10 +495,6 @@ internal class DefaultSyncController(
 
                 counts.retryable > 0 || counts.poisoned > 0 -> {
                     SyncStatus.Failed(counts.retryable, counts.poisoned)
-                }
-
-                running -> {
-                    SyncStatus.Syncing
                 }
 
                 counts.pending > 0 -> {

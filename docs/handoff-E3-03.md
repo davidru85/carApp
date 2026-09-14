@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received five owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received six owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -110,7 +110,12 @@
 - R1 is recorded only: `E3-17` / `D-172` / ADR-0173 own making `AppGraph.close()` safe against an
   in-flight sync cycle. `AppGraph.close()`, `DatabaseFactory`, `DatabaseHandle` and `core/database/**`
   were deliberately not changed for it.
-- Platform background scheduling and repository post-write trigger wiring remain owned by E3-04.
+- `E3-03` **did** wire the post-write trigger: `VehicleSliceRuntime.createVehicle`/`updateVehicle`
+  call `syncController.requestSync(SyncTrigger.PostWriteDebounce)` after a successful local write, and
+  `VehicleSliceRuntime.refresh()` delegates to `sync(PullToRefresh)`. What remains owned by `E3-04` is
+  the platform background scheduling and the *enforcement* of `docs/CONTRACTS.md §9.8`:
+  `SYNC_POST_WRITE_DEBOUNCE_MS` (2 s) and `SYNC_MIN_AUTOMATIC_INTERVAL_MS` (30 s) are currently
+  declarative only — no code consumes them and `requestSync` starts a cycle immediately.
 - Local tombstone purge remains owned by E3-07. A premature GREEN implementation was deliberately
   removed in REFACTOR and MUST NOT be restored in E3-03.
 - The protected Android instrumented suite was run locally against the D-84 API 36 emulator as
@@ -432,6 +437,75 @@ Verification for this round:
   passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
   `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
   36 emulator.
+
+## Sixth Owner-Review Correction Round (2026-09-13)
+
+Branch head reviewed: `2123a139`. Two blocking items, three minors, two deferred follow-ups and one
+question.
+
+- **BLOCKING 1 — `§9.7` contradicted `§7` and `§9.9`.** The R5 round changed the connectivity row
+  state to `PENDING` and updated `§7` and `§9.9`, but `§9.7` still described the superseded
+  `FAILED_RETRYABLE` behaviour, and `§9.9` still described a `FAILED_RETRYABLE` row with a
+  connectivity code, which is no longer reachable. `§9.7` is rewritten to state the implemented
+  behaviour exactly: a connectivity-only failure leaves the entity `PENDING`, keeps `attemptCount`
+  and `nextAttemptAt` in the outbox, never poisons, and is made due by `markConnectivityFailuresDue`,
+  which selects on `lastErrorCode` alone and is therefore independent of the entity `syncState`. The
+  poison-rule formula and the ~17-minutes-offline rationale are unchanged. `§9.9` is corrected. The
+  `§7` / `§9.7` / `§9.9` triple now states one consistent rule.
+- **BLOCKING 2 — manual-retry gap recorded as `D-173` / ADR-0174 (`Proposed`).** After R5 a
+  connectivity row is `PENDING`, so `resetFailedOutbox` (which selects `FAILED_RETRYABLE` /
+  `FAILED_POISONED` entities) does not clear its retry context and `retryFailed()` has no effect on
+  it. A server-side `REMOTE.UNAVAILABLE`/`REMOTE.DEADLINE_EXCEEDED` while online fires no
+  `ConnectivityRecovered`, so the row waits out its backoff up to `MAX_BACKOFF_MS`. Option B (extend
+  the reset selection to connectivity codes regardless of entity state) is recommended; A (accept and
+  bound in `§9.7`) and C (`PullToRefresh` calls `markConnectivityFailuresDue`) are the alternatives.
+  Added the row to `docs/DECISION_BOARD.md` (registry and awaiting section),
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`; the story is
+  `E3-18`, marked Human review required and `Needed by` the decision. No production change.
+- **MINOR 3 — `§9.8` constants are declarative only.** Corrected the "Out of Scope / Not Done"
+  sentence to state what `E3-03` actually wired — the post-write `requestSync(PostWriteDebounce)` call
+  sites in `VehicleSliceRuntime` and the `refresh()` delegation — and added an explicit line to both
+  the handoff and the `E3-04` backlog entry that enforcement of `SYNC_POST_WRITE_DEBOUNCE_MS` (2 s)
+  and `SYNC_MIN_AUTOMATIC_INTERVAL_MS` (30 s) is `E3-04`'s, so the constants are currently
+  declarative only.
+- **MINOR 4 — dead `running` parameter and unreachable branch removed.** `refreshStatus(running:
+  Boolean)` was always called with `false` and the `running -> SyncStatus.Syncing` branch was
+  unreachable because `runCycle` assigns `Syncing` directly. Both are removed; the `Failed > Pending >
+  Idle` precedence is unchanged. Existing controller tests pass unchanged, and `:core:sync` Kover
+  line coverage stayed above the `D-18` threshold.
+- **MINOR 5 — `drainCycles` could wedge silently.** The pending flag and its completion handle are now
+  one value, `PendingFollowUp`, so a follow-up cannot be observed without a handle to complete; the
+  `next == null` path also resets `cycleRunning`. Added
+  `concurrentJoinersAllCompleteAgainstOneFollowUpWithoutWedging`, which fires five concurrent `sync()`
+  callers during an active cycle and asserts all five complete and exactly one follow-up runs. The
+  invariant already held through `registerTrigger`'s single-lock update, so this test is a guard
+  rather than a RED-provable regression; the production change makes the inconsistent state
+  unrepresentable. Recorded honestly here rather than claiming a RED.
+- **FOLLOW-UPS 6 — two totality gaps deferred, not fixed.** `E3-19` (push-boundary
+  `toFirestoreWrite` reads `getValue`, so a payload missing `id`/`ownerId`/`schemaVersion` escapes as
+  `UnexpectedError` and stays `SYNCING`; deferred because it predates E3-03 — present on `main` — and
+  the payload is written locally under `§8`, so reachability is low) and `E3-20`
+  (`untypedFields()` throws for an unsupported provider value, failing the whole page and stalling the
+  cursor instead of quarantining; deferred because the closed `§16` schema and `validPayload()` make
+  it near-unreachable). Both are backlog items marked Human review required.
+- **QUESTION 7 — answered in ADR-0173, scope section extended.** Option B as originally written did
+  **not** cover completing or failing an in-flight `sync()` awaiter: if `graphScope` is cancelled
+  between `registerTrigger` and the launched `drainCycles`, or while a cycle runs, the
+  `CompletableDeferred` is never completed and `VehicleSliceRuntime.refresh()` suspends forever,
+  because the awaiting caller lives outside `graphScope`. The ADR now states that option B includes
+  the obligation to complete or fail every in-flight `sync()` awaiter (active and pending follow-up)
+  with a closed `Outcome` on shutdown, and requires a test that closes the graph with a suspended
+  `sync()` and asserts the caller returns rather than hanging. No code change in this round.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 174 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared` and
+  `:build-logic:convention` tests pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
+  passed **10/10** consecutive runs.
+- The complete non-instrumented command passes.
 
 ## Human Review Gate
 
