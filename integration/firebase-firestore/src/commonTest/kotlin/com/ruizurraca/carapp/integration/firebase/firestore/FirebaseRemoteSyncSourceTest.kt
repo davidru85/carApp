@@ -2,6 +2,8 @@ package com.ruizurraca.carapp.integration.firebase.firestore
 
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
+import com.ruizurraca.carapp.core.common.toEpochMicroseconds
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -145,6 +147,7 @@ class FirebaseRemoteSyncSourceTest {
             val malformed =
                 FirestoreDocument(
                     id = "vehicle-malformed",
+                    orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
                     fields =
                         mapOf(
                             "name" to true,
@@ -176,6 +179,7 @@ class FirebaseRemoteSyncSourceTest {
             val missingField =
                 FirestoreDocument(
                     id = "vehicle-missing",
+                    orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
                     fields =
                         mapOf(
                             "id" to "vehicle-missing",
@@ -233,6 +237,7 @@ class FirebaseRemoteSyncSourceTest {
             val withoutUpdatedAt =
                 FirestoreDocument(
                     id = "vehicle-no-timestamp",
+                    orderingUpdatedAtMicros = null,
                     fields =
                         mapOf(
                             "id" to "vehicle-no-timestamp",
@@ -258,6 +263,7 @@ class FirebaseRemoteSyncSourceTest {
             val mistyped =
                 FirestoreDocument(
                     id = "vehicle-bad-timestamp",
+                    orderingUpdatedAtMicros = null,
                     fields =
                         mapOf(
                             "id" to "vehicle-bad-timestamp",
@@ -447,6 +453,35 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
+    fun aSubMillisecondCursorBecomesAFullPrecisionLaterPageBoundary() =
+        runTest {
+            // `D-174`: the boundary must keep the provider's microsecond precision. A millisecond
+            // boundary would make `startAfter` compare a truncated value against the stored
+            // microsecond one, so the last document of the previous page would be re-delivered.
+            val cursorMicros = 1_767_225_600_000_123L
+            val cursor =
+                RemoteCursor(
+                    lastServerUpdatedAt = instantFromEpochMicroseconds(cursorMicros),
+                    lastDocumentId = EntityId("123e4567-e89b-42d3-a456-426614174000"),
+                )
+            val gateway = RecordingFirestoreGateway()
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            source.pullChanges(
+                ownerId = OwnerId("anonymous-owner"),
+                entityType = EntityType.VEHICLE,
+                cursor = cursor,
+                limit = 50,
+            )
+
+            val query = gateway.queries.single()
+            // The cursor reaches the query at full precision; the later-page boundary keeps it.
+            assertEquals(instantFromEpochMicroseconds(cursorMicros), query.updatedAtOrAfter)
+            assertEquals(cursorMicros, query.updatedAtOrAfter.toEpochMicroseconds())
+            assertEquals(cursor.lastDocumentId?.value, query.afterDocumentId)
+        }
+
+    @Test
     fun emptyPullKeepsTheInputCursorAndReportsNoMoreItems() =
         runTest {
             val cursor =
@@ -558,6 +593,7 @@ private fun vehicleDocument(
 ): FirestoreDocument =
     FirestoreDocument(
         id = id,
+        orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
         fields =
             mapOf(
                 "id" to id,
@@ -603,6 +639,7 @@ private fun fuelEntryDocument(
 ): FirestoreDocument =
     FirestoreDocument(
         id = id,
+        orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
         fields =
             mapOf(
                 "id" to id,

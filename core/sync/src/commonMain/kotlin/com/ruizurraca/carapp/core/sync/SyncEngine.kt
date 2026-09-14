@@ -19,6 +19,7 @@ import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.model.canonicalVehicleName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -649,7 +650,7 @@ private fun JsonObject.toVehicle(
         document = document,
         ownerId = ownerId,
         name = name,
-        nameFold = name.canonicalName().lowercase(),
+        nameFold = canonicalVehicleName(name).lowercase(),
         initialOdometerKm = initialOdometerKm,
         brand = brand,
         model = model,
@@ -724,23 +725,11 @@ private fun JsonObject.nullableString(name: String): String? {
     return value.jsonPrimitive.contentOrNull ?: throw IllegalArgumentException(name)
 }
 
-private fun String.canonicalName(): String =
-    buildString {
-        var pendingSpace = false
-        for (character in this@canonicalName.trim()) {
-            if (character.isWhitespace()) {
-                pendingSpace = isNotEmpty()
-            } else {
-                if (pendingSpace) append(' ')
-                append(character)
-                pendingSpace = false
-            }
-        }
-    }
-
 /** `§9.3` push batch limit; `internal` so tests can size batches against the contract value. */
 internal const val PUSH_BATCH_LIMIT = 50
-private const val PULL_PAGE_LIMIT = 200
+
+/** `§9.4` pull page limit; `internal` so tests can size pages against the contract value. */
+internal const val PULL_PAGE_LIMIT = 200
 private const val OVERLAP_MS = 30_000L
 private const val MIN_BACKOFF_MS = 1_000L
 private const val MAX_BACKOFF_MS = 900_000L

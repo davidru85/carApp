@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received seven owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received eight owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -571,6 +571,84 @@ Verification for this round:
   assertion and not a regression: the same tree passed 25/25, including 15/15 at a comparable load,
   and the failing run reported no assertion failure. The full `:shared:iosSimulatorArm64Test` passed
   **10/10** consecutive runs.
+- The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
+  passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
+
+## Eighth Owner-Review Correction Round (2026-09-13)
+
+Branch head reviewed: `16ffd34`. One blocking defect and three minors.
+
+Owner decision: for BLOCKING 1 the owner selected **option A with an in-memory scope** (see `D-174` /
+ADR-0175) after the agent reported that carrying microseconds into the persisted `sync_cursor` needs a
+schema-tooling change, because this repository's SQLDelight configuration does not let an `.sqm`
+reference a `schema.sq` table.
+
+- **BLOCKING 1 — the millisecond cursor made `startAfter` non-exclusive.**
+  `EntitySnapshot.toFirestoreWrite` maps `updatedAt` to `FirestoreServerTimestamp`, so Firestore stores
+  a microsecond-precision server timestamp, but the integration truncated it with
+  `Instant.fromEpochMilliseconds(timestamp.toMilliseconds())`. The later-page boundary
+  `Timestamp.fromMilliseconds(truncatedMs)` then sorted before the previous page's last document, which
+  was re-delivered; when the remaining change set was an exact page multiple, page N+1 returned only
+  that repeated document, `nextCursor` equalled the request cursor, and the engine raised a false
+  `SyncError.ConflictUnresolved` with nothing stranded. The suite stayed green because the controller
+  fake modelled `startAfter` as index-exclusive on the document id alone.
+  - Requirements 1–2: `FakeRemoteSyncSource` now keeps the stored microsecond ordering key separate
+    from the delivered `serverUpdatedAt` and models `startAfter` as a strict total-order comparison.
+    A `deliverUpdatedAtTruncatedToMillis` switch models the pre-fix integration. With it on,
+    `moreThanOnePageSharingATimestampCompletes`, `aChangeSetOfExactlyOnePageCompletesWithoutAFalseProgressFailure`
+    and `twoSameMillisecondDocumentsStraddlingAPageBoundaryDoNotFailTheCycle` all fail; with it off
+    they pass. The new tests assert `Ok`, no `onPoisoned`, a non-`Failed` status, an advanced cursor
+    and full completion.
+  - Requirement 4: `FirebaseRemoteSyncSourceTest` asserts the full-precision cursor reaches
+    `FirestoreQuery` and that the later-page boundary keeps the microsecond value
+    (`aSubMillisecondCursorBecomesAFullPrecisionLaterPageBoundary`). `toProviderTimestamp` now uses
+    `Timestamp(epochSeconds, nanosecondsOfSecond)` instead of `fromMilliseconds`, and
+    `orderingUpdatedAtMicros()` reads the provider timestamp per platform.
+  - Requirement 5: `§9.4` now states that the in-cycle cursor carries the provider's full precision
+    and that the persisted `sync_cursor` stays an epoch-millisecond anchor the 30-second overlap
+    re-includes; the stale "millisecond-distinguishable" claim is removed. `D-174` / ADR-0175 record
+    the decision and its in-memory scope; no data migration and no `core/database/**` tooling change.
+- **MINOR 3 — the pull cursor could regress inside the overlap window.** `upsertSyncCursor` now keeps
+  the greater stored timestamp and, on a tie, the greater `lastDocumentId`, so a failed later page
+  cannot move the anchor behind its pre-cycle position. `SyncDatabaseAccessTest.theStoredCursorNeverMovesBackwardsWithinACycle`
+  was RED before the change; `§9.4` states the monotonic rule.
+- **MINOR 4 — `canonicalName()` was duplicated.** Moved to `:core:model` as
+  `canonicalVehicleName`; `:feature:vehicle` and `:core:sync` now call the single function, so
+  `§3` duplicate-name detection cannot diverge between a local write and a remotely applied row. The
+  feature test imports the new location.
+- **MINOR 2 — push dependency order was not preserved across batches.** `selectDueOutbox` now joins
+  the entity table, derives each row's `§8` dependency group from `deleted`, and orders by group then
+  `seq` **before** the `LIMIT`, so a low-`seq` vehicle tombstone cannot be pushed in an earlier batch
+  ahead of the fuel-entry tombstones it deletes. `§9.3` states the global-order rule. The controller
+  fake mirrors the selection order, and
+  `SyncDatabaseAccessTest.dueOutboxSelectsInGlobalDependencyOrderBeforeTheBatchLimit` was RED before
+  the query change and proven non-vacuous by reverting it. `FakeSyncPersistence` gained a faithful
+  `dependencyGroupForTest`.
+
+New tests and how each RED was produced:
+
+- `moreThanOnePageSharingATimestampCompletes` (updated): RED by modelling the pre-fix integration
+  (`deliverUpdatedAtTruncatedToMillis = true`).
+- `aChangeSetOfExactlyOnePageCompletesWithoutAFalseProgressFailure`: same RED mechanism.
+- `twoSameMillisecondDocumentsStraddlingAPageBoundaryDoNotFailTheCycle`: same RED mechanism.
+- `aSubMillisecondCursorBecomesAFullPrecisionLaterPageBoundary`: RED by reverting
+  `toProviderTimestamp` to `fromMilliseconds` (the earlier `getValue`/`Timestamp` path).
+- `theStoredCursorNeverMovesBackwardsWithinACycle`: RED by writing a regressing cursor with the old
+  unconditional upsert.
+- `dueOutboxSelectsInGlobalDependencyOrderBeforeTheBatchLimit`: RED by reverting `selectDueOutbox` to
+  `ORDER BY seq` only.
+- `pushDependencyOrderHoldsAcrossBatchBoundaries`: RED against the pre-fix selection order.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 175 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared`,
+  `:feature:vehicle` and `:build-logic:convention` tests pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
+  passed **10/10** consecutive runs.
 - The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
   passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
   `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API

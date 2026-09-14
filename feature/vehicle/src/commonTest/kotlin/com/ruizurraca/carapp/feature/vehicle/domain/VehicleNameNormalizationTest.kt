@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.feature.vehicle.domain
 
+import com.ruizurraca.carapp.core.model.canonicalVehicleName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

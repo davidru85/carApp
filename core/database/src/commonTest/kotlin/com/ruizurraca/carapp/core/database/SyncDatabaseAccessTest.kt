@@ -334,6 +334,99 @@ class SyncDatabaseAccessTest {
         }
 
     @Test
+    fun dueOutboxSelectsInGlobalDependencyOrderBeforeTheBatchLimit() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                // A vehicle tombstone with the lowest `seq` and more than a batch of fuel-entry
+                // tombstones. The selection MUST apply the `§8` dependency order before the `LIMIT`,
+                // or the vehicle tombstone is returned in the first batch ahead of entries it deletes.
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.driver
+                    .execute(
+                        identifier = null,
+                        sql =
+                            "UPDATE vehicle SET deleted = 1, deletedAt = 5, syncState = 'PENDING' " +
+                                "WHERE id = 'vehicle-1'",
+                        parameters = 0,
+                    ).await()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":true}",
+                    localRevision = 2,
+                )
+                repeat(60) { index ->
+                    testDatabase.insertFuelEntryForMutationTest(
+                        id = "entry-$index",
+                        date = index.toLong(),
+                        createdAt = index.toLong(),
+                        odometerKm = 1,
+                    )
+                    testDatabase.driver
+                        .execute(
+                            identifier = null,
+                            sql =
+                                "UPDATE fuel_entry SET deleted = 1, deletedAt = 5, syncState = 'PENDING' " +
+                                    "WHERE id = 'entry-$index'",
+                            parameters = 0,
+                        ).await()
+                    testDatabase.database.databaseQueries.coalesceOutbox(
+                        entityType = "FUEL_ENTRY",
+                        entityId = "entry-$index",
+                        payload = "{\"deleted\":true}",
+                        localRevision = 2,
+                    )
+                }
+
+                val access = SyncDatabaseAccess(testDatabase.database)
+                val firstBatch = access.dueOutbox(now = 100, limit = 50)
+
+                assertEquals(50, firstBatch.size)
+                assertTrue(
+                    firstBatch.none { it.entityType == "VEHICLE" },
+                    "the vehicle tombstone must not appear before the fuel-entry tombstones it deletes",
+                )
+                assertTrue(firstBatch.all { it.entityType == "FUEL_ENTRY" })
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
+    fun theStoredCursorNeverMovesBackwardsWithinACycle() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                val access = SyncDatabaseAccess(testDatabase.database)
+                // A later page of the same cycle fails after an earlier page advanced the cursor, so
+                // the retry applies a page cursor that is behind the stored one. The stored anchor must
+                // stay at its high-water mark; otherwise each retry subtracts another 30-second overlap
+                // and the re-pull cost grows.
+                access.applyPullPage(
+                    entityType = "VEHICLE",
+                    vehicles = emptyList(),
+                    fuelEntries = emptyList(),
+                    quarantines = emptyList(),
+                    cursor = SyncCursorDatabaseRow(9_000, "vehicle-high"),
+                )
+                access.applyPullPage(
+                    entityType = "VEHICLE",
+                    vehicles = emptyList(),
+                    fuelEntries = emptyList(),
+                    quarantines = emptyList(),
+                    cursor = SyncCursorDatabaseRow(5_000, "vehicle-low"),
+                )
+
+                val cursor = access.cursor("VEHICLE")
+                assertEquals(9_000, cursor?.lastServerUpdatedAt)
+                assertEquals("vehicle-high", cursor?.lastDocumentId)
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
     fun connectivityRecoveryMakesFailuresDueWithoutResettingAttempts() =
         runTest {
             val testDatabase = TestDatabase.create()

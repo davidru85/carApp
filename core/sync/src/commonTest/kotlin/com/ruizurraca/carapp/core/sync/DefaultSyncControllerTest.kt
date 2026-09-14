@@ -13,6 +13,8 @@ import com.ruizurraca.carapp.core.common.SyncError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UuidGenerator
+import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
+import com.ruizurraca.carapp.core.common.toEpochMicroseconds
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
@@ -232,7 +234,7 @@ class DefaultSyncControllerTest {
                 (1..1_000).map { index ->
                     remoteVehicle("vehicle-${index.toString().padStart(4, '0')}", index.toLong())
                 }
-            fixture.remote.pagedDocuments[EntityType.VEHICLE] = documents
+            fixture.remote.seedDocuments(EntityType.VEHICLE, documents)
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
             advanceUntilIdle()
@@ -314,14 +316,81 @@ class DefaultSyncControllerTest {
     fun moreThanOnePageSharingATimestampCompletes() =
         runTest {
             val fixture = fixture()
-            fixture.remote.pagedDocuments[EntityType.VEHICLE] =
-                (1..401).map { index -> remoteVehicle("vehicle-${index.toString().padStart(3, '0')}", 1_000) }
+            fixture.remote.seedDocuments(
+                EntityType.VEHICLE,
+                (1..401).map { index -> remoteVehicle("vehicle-${index.toString().padStart(3, '0')}", 1_000) },
+            )
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
             advanceUntilIdle()
 
             assertEquals(401, fixture.persistence.vehicleIds.size)
+            // 401 documents at one exact millisecond paginate 200 + 200 + 1; a full-precision cursor
+            // makes each later `startAfter` exclusive, so no document is re-delivered.
             assertEquals(3, fixture.remote.vehiclePullCursors.size)
+        }
+
+    @Test
+    fun aChangeSetOfExactlyOnePageCompletesWithoutAFalseProgressFailure() =
+        runTest {
+            // Exactly PULL_PAGE_LIMIT documents, all sharing one millisecond with a sub-millisecond
+            // remainder. A millisecond-truncated cursor makes page 2 re-deliver the last document,
+            // whose nextCursor equals the request cursor: the progress invariant would then fail the
+            // cycle with ConflictUnresolved even though nothing is stranded (`§9.4`).
+            val fixture = fixture()
+            val sharedMillis = 5_000L
+            val documents =
+                (1..PULL_PAGE_LIMIT).map { index ->
+                    remoteVehicleAtMicros(
+                        id = "vehicle-${index.toString().padStart(3, '0')}",
+                        epochMicros = sharedMillis * MICROS_PER_MILLISECOND + index,
+                    )
+                }
+            fixture.remote.seedDocuments(EntityType.VEHICLE, documents)
+
+            val result = fixture.controller.sync(SyncTrigger.AppForeground)
+
+            assertEquals(Outcome.Ok(Unit), result)
+            assertEquals(PULL_PAGE_LIMIT, fixture.persistence.vehicleIds.size)
+            assertEquals(
+                emptyList(),
+                fixture.reportedErrors.map { it.first },
+                "a millisecond-distinguishable change set must not report a progress failure",
+            )
+            assertFalse(fixture.controller.status.value is SyncStatus.Failed)
+            assertEquals(
+                instantFromEpochMicroseconds(sharedMillis * MICROS_PER_MILLISECOND + PULL_PAGE_LIMIT),
+                fixture.persistence.cursors
+                    .getValue(EntityType.VEHICLE)
+                    .lastServerUpdatedAt,
+                "the cursor must advance to the full-precision last document",
+            )
+        }
+
+    @Test
+    fun twoSameMillisecondDocumentsStraddlingAPageBoundaryDoNotFailTheCycle() =
+        runTest {
+            // Two documents inside the same millisecond straddle the boundary: the last document of
+            // page 1 has a sub-millisecond remainder, so a truncated cursor re-delivers it and page 2
+            // does not strictly advance. With a full-precision cursor page 2 is exclusive and the
+            // cycle completes.
+            val fixture = fixture()
+            val sharedMillis = 7_000L
+            val documents =
+                (1..PULL_PAGE_LIMIT + 1).map { index ->
+                    remoteVehicleAtMicros(
+                        id = "vehicle-${index.toString().padStart(3, '0')}",
+                        epochMicros = sharedMillis * MICROS_PER_MILLISECOND + index,
+                    )
+                }
+            fixture.remote.seedDocuments(EntityType.VEHICLE, documents)
+
+            val result = fixture.controller.sync(SyncTrigger.AppForeground)
+
+            assertEquals(Outcome.Ok(Unit), result)
+            assertEquals(PULL_PAGE_LIMIT + 1, fixture.persistence.vehicleIds.size)
+            assertEquals(emptyList(), fixture.reportedErrors.map { it.first })
+            assertFalse(fixture.controller.status.value is SyncStatus.Failed)
         }
 
     @Test
@@ -944,6 +1013,43 @@ class DefaultSyncControllerReviewRoundTest {
         }
 
     @Test
+    fun pushDependencyOrderHoldsAcrossBatchBoundaries() =
+        runTest {
+            // A vehicle tombstone whose outbox row predates its fuel-entry tombstones (a lower `seq`)
+            // must still be pushed AFTER them (`§8`), even when the change set spans more than one
+            // 50-row batch. Ordering only within a batch would push the vehicle tombstone first.
+            val fixture = fixture()
+            val vehicle = vehicleOutbox("vehicle-1", sequence = 1, deleted = true)
+            val entries =
+                (1..PUSH_BATCH_LIMIT).map { index ->
+                    fuelEntryOutbox(
+                        "entry-$index",
+                        vehicleId = "vehicle-1",
+                        sequence = (index + 1).toLong(),
+                        deleted = true,
+                    )
+                }
+            fixture.persistence.outbox += vehicle
+            fixture.persistence.states[vehicle.entityId.value] = "PENDING"
+            entries.forEach { entry ->
+                fixture.persistence.outbox += entry
+                fixture.persistence.states[entry.entityId.value] = "PENDING"
+            }
+
+            fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            advanceUntilIdle()
+
+            val pushed = fixture.remote.pushCalls.map { it.entityId.value }
+            assertEquals(PUSH_BATCH_LIMIT + 1, pushed.size)
+            assertEquals(
+                "vehicle-1",
+                pushed.last(),
+                "the vehicle tombstone must be pushed after every fuel-entry tombstone (`§8`), even across batches",
+            )
+            assertTrue(pushed.dropLast(1).all { it.startsWith("entry-") })
+        }
+
+    @Test
     fun manualRetryDuringAnActiveCycleKeepsPublishingSyncing() =
         runTest {
             // A manual retry issued while a cycle is running must not replace §9.9's `Syncing` for the
@@ -1229,18 +1335,52 @@ private data class Fixture(
     }
 }
 
+/**
+ * A remote source that models Firestore's ordering faithfully.
+ *
+ * Firestore orders by the stored `(updatedAt, __name__)` pair, where `updatedAt` is a server
+ * timestamp at microsecond precision, and `startAfter(boundary, documentId)` is a strict total-order
+ * comparison against it. This fake keeps the **stored** microsecond ordering key separate from the
+ * `serverUpdatedAt` the integration *delivers* into `RemoteDocument`, because that separation is the
+ * whole defect: a millisecond-truncated delivery makes the next page's boundary sort before a
+ * document whose true timestamp has a sub-millisecond remainder, so it is re-delivered.
+ *
+ * [deliverUpdatedAtTruncatedToMillis] models the integration. It is `false` for the fixed behaviour
+ * (full precision carried through) and `true` for the pre-fix behaviour. The fake NEVER models
+ * `startAfter` as index-exclusive on the document id alone.
+ */
 private class FakeRemoteSyncSource : RemoteSyncSource {
     val pushCalls = mutableListOf<EntitySnapshot>()
     val pushResults = ArrayDeque<Outcome<RemoteAck, RemoteError>>()
     val remoteIds = mutableSetOf<String>()
     val pullCursors = mutableListOf<RemoteCursor>()
     val vehiclePullCursors = mutableListOf<RemoteCursor>()
-    val pagedDocuments = mutableMapOf<EntityType, List<RemoteDocument>>()
+    val pagedDocuments = mutableMapOf<EntityType, List<StoredDocument>>()
     var pullHandler: (EntityType, RemoteCursor) -> RemotePage = { _, cursor -> RemotePage(emptyList(), cursor, false) }
     var onPush: () -> Unit = {}
     var onPushSuspend: suspend () -> Unit = {}
     var activePushes = 0
     var maxConcurrentPushes = 0
+    var deliverUpdatedAtTruncatedToMillis = false
+
+    /**
+     * Seeds the stored documents for one entity type. The document's `serverUpdatedAt` is its true
+     * stored ordering timestamp, at whatever precision the test gives it; ordering and the
+     * `startAfter` boundary use it directly. Delivery may still truncate it (see
+     * [deliverUpdatedAtTruncatedToMillis]), which is what models the integration.
+     */
+    fun seedDocuments(
+        entityType: EntityType,
+        documents: List<RemoteDocument>,
+    ) {
+        pagedDocuments[entityType] =
+            documents.map { document ->
+                StoredDocument(
+                    document = document,
+                    storedUpdatedAtMicros = document.serverUpdatedAt.toEpochMicroseconds(),
+                )
+            }
+    }
 
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
@@ -1273,12 +1413,25 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
             if (documents == null) {
                 pullHandler(entityType, cursor)
             } else {
-                val start =
-                    cursor.lastDocumentId
-                        ?.value
-                        ?.let { id -> documents.indexOfFirst { it.documentId.value == id } + 1 }
-                        ?.coerceAtLeast(0) ?: 0
-                val items = documents.drop(start).take(limit)
+                val ordered =
+                    documents.sortedWith(compareBy({ it.storedUpdatedAtMicros }, { it.document.documentId.value }))
+                val boundaryId = cursor.lastDocumentId?.value
+                val boundaryMicros = cursor.lastServerUpdatedAt.toEpochMicroseconds()
+                val remaining =
+                    if (boundaryId == null) {
+                        ordered
+                    } else {
+                        // Strict total order: keep only documents sorting strictly after
+                        // `(boundary, documentId)`.
+                        ordered.dropWhile { stored ->
+                            stored.storedUpdatedAtMicros < boundaryMicros ||
+                                (
+                                    stored.storedUpdatedAtMicros == boundaryMicros &&
+                                        stored.document.documentId.value <= boundaryId
+                                )
+                        }
+                    }
+                val items = remaining.take(limit).map(::deliver)
                 RemotePage(
                     items = items,
                     nextCursor = items.lastOrNull()?.let { RemoteCursor(it.serverUpdatedAt, it.documentId) } ?: cursor,
@@ -1287,7 +1440,20 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
             }
         return Outcome.Ok(if (page.items.isEmpty()) page.copy(nextCursor = cursor) else page)
     }
+
+    /** The integration boundary: the ordering timestamp delivered into `RemoteDocument`. */
+    private fun deliver(stored: StoredDocument): RemoteDocument =
+        if (deliverUpdatedAtTruncatedToMillis) {
+            stored.document.copy(serverUpdatedAt = instant(stored.document.serverUpdatedAt.toEpochMilliseconds()))
+        } else {
+            stored.document
+        }
 }
+
+private data class StoredDocument(
+    val document: RemoteDocument,
+    val storedUpdatedAtMicros: Long,
+)
 
 private class FakeSyncPersistence : SyncPersistence {
     val outbox = mutableListOf<OutboxRecord>()
@@ -1320,11 +1486,25 @@ private class FakeSyncPersistence : SyncPersistence {
         limit: Int,
     ): List<OutboxRecord> {
         calls += "dueOutbox"
+        // Mirror `selectDueOutbox` (`§8`, `§9.3`): the global dependency-group order is applied by the
+        // selection, before the batch limit, so a vehicle tombstone cannot overtake fuel-entry
+        // tombstones across a batch boundary.
         val due =
-            outbox.filter { it.nextAttemptAt <= now && states[it.entityId.value] != "FAILED_POISONED" }.take(limit)
+            outbox
+                .filter { it.nextAttemptAt <= now && states[it.entityId.value] != "FAILED_POISONED" }
+                .sortedWith(compareBy({ it.dependencyGroupForTest() }, { it.sequence }))
+                .take(limit)
         due.forEach { dueAttemptCounts[it.entityId.value] = it.attemptCount }
         return due
     }
+
+    private fun OutboxRecord.dependencyGroupForTest(): Int =
+        when {
+            entityType == EntityType.VEHICLE && !deleted -> 0
+            entityType == EntityType.FUEL_ENTRY && !deleted -> 1
+            entityType == EntityType.FUEL_ENTRY -> 2
+            else -> 3
+        }
 
     override suspend fun markSyncing(row: OutboxRecord) {
         // Mirror `SyncDatabaseAccess.markSyncing`: a poisoned row is never moved to SYNCING, so it
@@ -1488,8 +1668,38 @@ private class FakeSyncPersistence : SyncPersistence {
 private fun vehicleOutbox(
     id: String,
     attemptCount: Int = 0,
+    sequence: Long = 1,
+    deleted: Boolean = false,
 ): OutboxRecord =
-    OutboxRecord(1, EntityType.VEHICLE, EntityId(id), vehicleJson(id, 0), 1, attemptCount, instant(0), null, false)
+    OutboxRecord(
+        sequence,
+        EntityType.VEHICLE,
+        EntityId(id),
+        vehicleJson(id, 0, deleted = deleted),
+        1,
+        attemptCount,
+        instant(0),
+        null,
+        deleted,
+    )
+
+private fun fuelEntryOutbox(
+    id: String,
+    vehicleId: String,
+    sequence: Long,
+    deleted: Boolean = false,
+): OutboxRecord =
+    OutboxRecord(
+        sequence,
+        EntityType.FUEL_ENTRY,
+        EntityId(id),
+        fuelJson(id, vehicleId, 0),
+        1,
+        0,
+        instant(0),
+        null,
+        deleted,
+    )
 
 private fun ack(id: String): Outcome<RemoteAck, RemoteError> =
     Outcome.Ok(RemoteAck(EntityType.VEHICLE, EntityId(id), instant(1_000)))
@@ -1522,6 +1732,20 @@ private fun remoteVehicle(
         instant(serverUpdatedAt),
         vehicleJson(id, serverUpdatedAt, deleted, name, schemaVersion),
     )
+
+/** A vehicle whose ordering timestamp has a sub-millisecond component (`D-174`). */
+private fun remoteVehicleAtMicros(
+    id: String,
+    epochMicros: Long,
+): RemoteDocument {
+    val millis = epochMicros / MICROS_PER_MILLISECOND
+    return RemoteDocument(
+        EntityType.VEHICLE,
+        EntityId(id),
+        instantFromEpochMicroseconds(epochMicros),
+        vehicleJson(id, millis),
+    )
+}
 
 private fun remoteFuelEntry(
     id: String,
@@ -1606,3 +1830,5 @@ private class TestUuidGenerator : UuidGenerator {
         return "00000000-0000-4000-8000-${sequence.toString().padStart(12, '0')}"
     }
 }
+
+private const val MICROS_PER_MILLISECOND = 1_000L

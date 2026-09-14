@@ -38,6 +38,43 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 eighth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-174`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the eighth owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: the integration
+  truncated the provider's microsecond ordering timestamp to milliseconds, so the later-page
+  `startAfter` boundary was non-exclusive and a change set of an exact page multiple raised a false
+  `SyncError.ConflictUnresolved`. The owner selected option A with an in-memory scope after the agent
+  reported that persisting microseconds needs a schema-tooling change (this SQLDelight configuration
+  cannot reference `schema.sq` tables from an `.sqm`). `orderingUpdatedAtMicros()` now reads the
+  provider timestamp per platform, `toProviderTimestamp` rebuilds the boundary at full precision, the
+  controller fake became faithful (stored micros separate from delivered value, strict total-order
+  `startAfter`), and `§9.4` was corrected. Recorded as `D-174` / ADR-0175 with its four mirror rows.
+  MINOR 2: `selectDueOutbox` now orders by the `§8` dependency group before `seq` and before the
+  `LIMIT`, so a vehicle tombstone cannot overtake fuel-entry tombstones across a batch; `§9.3`
+  states it. MINOR 3: `upsertSyncCursor` advances monotonically. MINOR 4: `canonicalVehicleName`
+  moved to `:core:model` and both call sites use it.
+- **Why:** The review found a false fail-closed on a millisecond-distinguishable document, a
+  cross-batch dependency-order gap, a cursor that could regress inside the overlap window, and a
+  duplicated canonical-name function with no parity guard.
+- **Documents touched:** `docs/CONTRACTS.md` (`§9.3`, `§9.4`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0175,
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:common`, `:core:model`,
+  `:core:database`, `:core:sync`, `:integration:firebase-firestore`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (175 decisions,
+  zero `PENDING`) and `koverVerify` pass; every new test was shown failing against the pre-fix code
+  and passing after; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator
+  suite passed 10/10; the complete non-instrumented command passes; the iOS framework links and the
+  golden header is byte-identical; the host-app `xcodebuild` succeeds; the protected Android
+  instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `D-172` / `E3-17`, `D-173` / `E3-18`, `E3-19` and `E3-20` remain open. The
+  persisted `sync_cursor` anchor is epoch milliseconds by decision; removing the 30-second overlap
+  would require revisiting `D-174`. The pull request still requires the owner's gated review and the
+  ten required checks.
+
 ### 2026-09-13 — E3-03 seventh owner-review round
 
 - **Type:** correction

@@ -370,14 +370,23 @@ WHERE entityType = 'VEHICLE'
   AND localRevision = :pushedLocalRevision;
 
 selectDueOutbox:
-SELECT *
+SELECT outbox.*
 FROM outbox
-WHERE nextAttemptAt <= :now
-  AND (entityType != 'VEHICLE'
-    OR entityId NOT IN (SELECT id FROM vehicle WHERE syncState = 'FAILED_POISONED'))
-  AND (entityType != 'FUEL_ENTRY'
-    OR entityId NOT IN (SELECT id FROM fuel_entry WHERE syncState = 'FAILED_POISONED'))
-ORDER BY seq ASC
+LEFT JOIN vehicle ON outbox.entityType = 'VEHICLE' AND vehicle.id = outbox.entityId
+LEFT JOIN fuel_entry ON outbox.entityType = 'FUEL_ENTRY' AND fuel_entry.id = outbox.entityId
+WHERE outbox.nextAttemptAt <= :now
+  AND (outbox.entityType != 'VEHICLE'
+    OR outbox.entityId NOT IN (SELECT id FROM vehicle WHERE syncState = 'FAILED_POISONED'))
+  AND (outbox.entityType != 'FUEL_ENTRY'
+    OR outbox.entityId NOT IN (SELECT id FROM fuel_entry WHERE syncState = 'FAILED_POISONED'))
+ORDER BY
+  CASE
+    WHEN outbox.entityType = 'VEHICLE' AND COALESCE(vehicle.deleted, 0) = 0 THEN 0
+    WHEN outbox.entityType = 'FUEL_ENTRY' AND COALESCE(fuel_entry.deleted, 0) = 0 THEN 1
+    WHEN outbox.entityType = 'FUEL_ENTRY' THEN 2
+    ELSE 3
+  END ASC,
+  outbox.seq ASC
 LIMIT :rowLimit;
 
 markVehicleSyncing:
@@ -428,8 +437,12 @@ upsertSyncCursor:
 INSERT INTO sync_cursor(entityType, lastServerUpdatedAt, lastDocumentId)
 VALUES (:entityType, :lastServerUpdatedAt, :lastDocumentId)
 ON CONFLICT(entityType) DO UPDATE SET
-  lastServerUpdatedAt = excluded.lastServerUpdatedAt,
-  lastDocumentId = excluded.lastDocumentId;
+  lastServerUpdatedAt = MAX(excluded.lastServerUpdatedAt, sync_cursor.lastServerUpdatedAt),
+  lastDocumentId = CASE
+    WHEN excluded.lastServerUpdatedAt > sync_cursor.lastServerUpdatedAt THEN excluded.lastDocumentId
+    WHEN excluded.lastServerUpdatedAt < sync_cursor.lastServerUpdatedAt THEN sync_cursor.lastDocumentId
+    ELSE MAX(excluded.lastDocumentId, sync_cursor.lastDocumentId)
+  END;
 
 upsertQuarantine:
 INSERT INTO quarantine(entityType, entityId, reason, schemaVersion, serverUpdatedAt, rawJson, createdAt)
