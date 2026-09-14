@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received two owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received three owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -263,6 +263,71 @@ Verification for this round:
 - The complete non-instrumented command passes 638 tasks; `:shared:iosSimulatorArm64Test` passed
   **12/12** consecutive runs; `:composition:ios:linkDebugFrameworkIosSimulatorArm64` passes and the
   regenerated header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
+
+## Third Owner-Review Correction Round (2026-09-13)
+
+Four defects, TDD: each new test failed against the unfixed code before the fix.
+
+- **BLOCKER 1 — total pull classification.** `RemoteDocument.toPullRecord` read the top-level keys
+  `id`, `ownerId`, `updatedAt`, `deleted`, `deletedAt` and `schemaVersion` through
+  `JsonObject.getValue`, and the diagnostic `schemaVersion` through `getValue`, so a document missing
+  a key threw `NoSuchElementException`. That is neither `IllegalArgumentException` nor
+  `IllegalStateException`, so it escaped `toPullRecord`, `pullEntity` and `runCycle` and was swallowed
+  by the generic cycle catch: no quarantine, `Failed(1, 0)`, an `UnexpectedError` report and a cursor
+  that never advanced. Every field read on the validation path is now reached through
+  `get(name) + require`, and `schemaVersionOrNull` reads non-throwing, so the classification is total
+  and a missing key becomes a `MalformedPayload` quarantine record with the cursor advancing.
+  `docs/CONTRACTS.md §9.5` states the totality requirement. Tests iterate each of the five keys and
+  assert the quarantine, the advanced cursor, no `UnexpectedError` and a non-`Failed` status; they
+  fail on the previous `getValue` readers.
+- **BLOCKER 2 — poisoned rows were retried automatically.** `selectDueOutbox` had no sync-state
+  filter, so a `FAILED_POISONED` row was selected again once its capped backoff elapsed, producing a
+  `FAILED_POISONED -> SYNCING` transition the `§7` table does not allow and repeating
+  `onPoisoned`/`recordNonFatal` per cycle. The query now excludes an outbox row whose entity
+  `syncState` is `FAILED_POISONED`, keeping `idx_outbox_due` effective; only `retryFailed()` or a
+  local edit makes such a row due again. `docs/CONTRACTS.md §7` states the rule. The controller fake
+  encoded the exclusion the production query lacked; the fake and the production path now agree.
+  Tests: a poisoned row with a past `nextAttemptAt` is excluded until `resetFailed` (`SyncDatabaseAccessTest`),
+  and after a `PermissionDenied` poison a later cycle past the backoff performs no second push and
+  reports once (`DefaultSyncControllerTest`). Both fail on the unfixed query.
+- **DEFECT 3 — the integration still decoded product fields.** `DocumentSnapshot.toFirestoreDocument`
+  read every product field with a typed non-null `get<T>()`, so a missing or mistyped field threw
+  inside `queryDocuments` and never reached `:core:sync` as raw JSON, leaving ADR-0171 failure path 2
+  open. It now reads the provider's untyped field map (`untypedFields`, per-platform) and only
+  strongly reads the ordering `updatedAt` transport timestamp; every product field is carried into
+  `rawJson` verbatim. A document whose ordering timestamp is unusable fails the page as
+  `RemoteError.InvalidArgument`. `docs/CONTRACTS.md §9.5` and the ADR-0171 reachability section are
+  updated. Tests: a snapshot with one missing and one mistyped product field yields a successful
+  `RemotePage` carrying the raw values. Correcting the integration exposed BLOCKER 1, which is fixed
+  in the same round.
+- **DEFECT 4 — `SyncError.ConflictUnresolved` was never surfaced.** `failPullCycle` set only a
+  boolean, so a non-advancing cursor produced `Failed(1, 0)` with no code and no report, while
+  `§9.4`/ADR-0170 require the fail-closed error. `pullEntity` now distinguishes the progress-invariant
+  failure and reports `SyncError.ConflictUnresolved` through `onPoisoned` (a stranded cursor is not a
+  connectivity-only failure, `§17`), returns it as the cycle outcome and leaves the stored cursor
+  unchanged. Test: a page whose `nextCursor` does not strictly advance fails with
+  `SyncError.ConflictUnresolved`, does not loop and preserves the stored cursor.
+- **MINOR — `strictlyAfter` null document id.** `RemoteCursor.strictlyAfter` returned early on a
+  later timestamp before its null check, so a `nextCursor` with a later timestamp and a null
+  `lastDocumentId` reached `SqlDelightSyncPersistence.applyPullPage`'s `requireNotNull` and threw out
+  of the persistence layer. It now rejects a null `lastDocumentId` regardless of the timestamp
+  comparison, so a misbehaving source fails the pull cycle closed. A test pins it.
+- **MINOR — dead `NotFound` poison arm.** The `RemoteError.NotFound` arm inside the `poisoned`
+  `when` was already unreachable behind the early `confirmPush(row, null)` return and had been
+  removed in the second round; the second-round restructure is confirmed to keep the `when` closed.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 173 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore` and `:shared`
+  Android-host tests pass.
+- `:shared:testAndroidHostTest --rerun-tasks` passed **10/10** consecutive runs; the full
+  `:shared:iosSimulatorArm64Test` passed **12/12** consecutive runs.
+- The complete non-instrumented command passes 638 tasks; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
+  passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
   `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
   36 emulator.
 

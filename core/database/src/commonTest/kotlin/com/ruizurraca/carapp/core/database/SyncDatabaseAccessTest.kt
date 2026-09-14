@@ -180,6 +180,43 @@ class SyncDatabaseAccessTest {
         }
 
     @Test
+    fun poisonedRowsAreExcludedFromDueOutboxUntilResetFailed() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 1,
+                )
+                val access = SyncDatabaseAccess(testDatabase.database)
+                access.failPush(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    pushedLocalRevision = 1,
+                    attemptCount = 8,
+                    nextAttemptAt = 50,
+                    errorCode = "REMOTE.INVALID_ARGUMENT",
+                    poisoned = true,
+                    cycleId = "cycle-poison",
+                )
+
+                // `nextAttemptAt` is in the past, yet a poisoned row MUST NOT be selected again; it is
+                // never retried automatically (`§7`).
+                assertEquals(emptyList(), access.dueOutbox(now = 100, limit = 50))
+                assertEquals(1, access.counts().poisoned)
+
+                access.resetFailed(now = 100)
+
+                assertEquals(listOf("vehicle-1"), access.dueOutbox(now = 100, limit = 50).map { it.entityId })
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
     fun connectivityRecoveryMakesFailuresDueWithoutResettingAttempts() =
         runTest {
             val testDatabase = TestDatabase.create()

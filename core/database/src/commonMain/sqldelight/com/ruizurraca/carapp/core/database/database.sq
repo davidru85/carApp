@@ -372,6 +372,10 @@ selectDueOutbox:
 SELECT *
 FROM outbox
 WHERE nextAttemptAt <= :now
+  AND (entityType != 'VEHICLE'
+    OR entityId NOT IN (SELECT id FROM vehicle WHERE syncState = 'FAILED_POISONED'))
+  AND (entityType != 'FUEL_ENTRY'
+    OR entityId NOT IN (SELECT id FROM fuel_entry WHERE syncState = 'FAILED_POISONED'))
 ORDER BY seq ASC
 LIMIT :rowLimit;
 

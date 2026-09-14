@@ -140,13 +140,15 @@ class FirebaseRemoteSyncSourceTest {
     fun malformedProductFieldsRemainSuccessfulRawPullItems() =
         runTest {
             val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            // One product field is missing, another has the wrong primitive type. Neither may fail
+            // the page: the raw values reach `:core:sync` for `§9.5` quarantine (`D-170`).
             val malformed =
                 FirestoreDocument(
                     id = "vehicle-malformed",
                     fields =
                         mapOf(
-                            "name" to FirestoreBoolean(true),
-                            "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
+                            "name" to true,
+                            "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
                         ),
                 )
 
@@ -161,6 +163,57 @@ class FirebaseRemoteSyncSourceTest {
             val item = assertIs<Outcome.Ok<RemotePage>>(result).value.items.single()
             assertEquals("vehicle-malformed", item.documentId.value)
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
+            val json = Json.parseToJsonElement(item.rawJson).jsonObject
+            assertEquals(true, json["name"]?.jsonPrimitive?.boolean)
+        }
+
+    @Test
+    fun missingProductFieldReachesTheEngineAsARawDocumentForQuarantine() =
+        runTest {
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            // `initialOdometerKm` is absent and `name` is a boolean. Before the `D-170` transport fix
+            // this threw inside the per-field typed read and never reached `:core:sync`.
+            val missingField =
+                FirestoreDocument(
+                    id = "vehicle-missing",
+                    fields =
+                        mapOf(
+                            "id" to "vehicle-missing",
+                            "ownerId" to "anonymous-owner",
+                            "name" to true,
+                            "brand" to null,
+                            "model" to null,
+                            "fuelType" to "GASOLINE",
+                            "createdAt" to 1_700_000_000_000L,
+                            "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                            "deleted" to false,
+                            "deletedAt" to null,
+                            "schemaVersion" to 1L,
+                        ),
+                )
+
+            val page =
+                assertIs<Outcome.Ok<RemotePage>>(
+                    FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(missingField))).pullChanges(
+                        ownerId = OwnerId("anonymous-owner"),
+                        entityType = EntityType.VEHICLE,
+                        cursor = RemoteCursor.INITIAL,
+                        limit = 200,
+                    ),
+                ).value
+
+            val item = page.items.single()
+            assertEquals(serverUpdatedAt, item.serverUpdatedAt)
+            // The raw field map is preserved so `:core:sync` can classify it, and `name` keeps its
+            // untyped raw value rather than being coerced or dropped.
+            assertEquals(
+                "vehicle-missing",
+                Json
+                    .parseToJsonElement(item.rawJson)
+                    .jsonObject["id"]
+                    ?.jsonPrimitive
+                    ?.content,
+            )
             assertEquals(
                 true,
                 Json
@@ -453,18 +506,18 @@ private fun vehicleDocument(
         id = id,
         fields =
             mapOf(
-                "id" to FirestoreString(id),
-                "ownerId" to FirestoreString("anonymous-owner"),
-                "name" to FirestoreString("Roadster"),
-                "initialOdometerKm" to FirestoreLong(0),
-                "brand" to FirestoreNull,
-                "model" to FirestoreNull,
-                "fuelType" to FirestoreString("GASOLINE"),
-                "createdAt" to FirestoreTimestamp(1_700_000_000_000L),
-                "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
-                "deleted" to FirestoreBoolean(false),
-                "deletedAt" to FirestoreNull,
-                "schemaVersion" to FirestoreLong(1),
+                "id" to id,
+                "ownerId" to "anonymous-owner",
+                "name" to "Roadster",
+                "initialOdometerKm" to 0L,
+                "brand" to null,
+                "model" to null,
+                "fuelType" to "GASOLINE",
+                "createdAt" to 1_700_000_000_000L,
+                "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                "deleted" to false,
+                "deletedAt" to null,
+                "schemaVersion" to 1L,
             ),
     )
 
@@ -498,24 +551,24 @@ private fun fuelEntryDocument(
         id = id,
         fields =
             mapOf(
-                "id" to FirestoreString(id),
-                "ownerId" to FirestoreString("anonymous-owner"),
-                "vehicleId" to FirestoreString("123e4567-e89b-42d3-a456-426614174000"),
-                "date" to FirestoreTimestamp(1_700_000_000_000L),
-                "odometerKm" to FirestoreLong(100),
-                "litersScaled" to FirestoreLong(50_000),
-                "pricePerLiterScaled" to FirestoreLong(1_500),
-                "totalCostMinor" to FirestoreLong(7_500),
-                "currency" to FirestoreString("EUR"),
-                "isFullTank" to FirestoreBoolean(true),
-                "hasMissedEntries" to FirestoreBoolean(false),
-                "odometerInconsistent" to FirestoreBoolean(false),
-                "notes" to FirestoreNull,
-                "createdAt" to FirestoreTimestamp(1_700_000_000_000L),
-                "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
-                "deleted" to FirestoreBoolean(false),
-                "deletedAt" to FirestoreNull,
-                "schemaVersion" to FirestoreLong(1),
+                "id" to id,
+                "ownerId" to "anonymous-owner",
+                "vehicleId" to "123e4567-e89b-42d3-a456-426614174000",
+                "date" to 1_700_000_000_000L,
+                "odometerKm" to 100L,
+                "litersScaled" to 50_000L,
+                "pricePerLiterScaled" to 1_500L,
+                "totalCostMinor" to 7_500L,
+                "currency" to "EUR",
+                "isFullTank" to true,
+                "hasMissedEntries" to false,
+                "odometerInconsistent" to false,
+                "notes" to null,
+                "createdAt" to 1_700_000_000_000L,
+                "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                "deleted" to false,
+                "deletedAt" to null,
+                "schemaVersion" to 1L,
             ),
     )
 

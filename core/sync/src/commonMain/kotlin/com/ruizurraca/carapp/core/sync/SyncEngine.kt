@@ -31,6 +31,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -419,7 +420,9 @@ internal class DefaultSyncController(
             if (result is Outcome.Err) return failPullCycle(result.error)
             val page = (result as Outcome.Ok).value
             if (page.items.isEmpty()) return true
-            if (!page.nextCursor.strictlyAfter(requestCursor)) return failPullCycle(SyncError.ConflictUnresolved)
+            if (!page.nextCursor.strictlyAfter(requestCursor)) {
+                return failProgressInvariant(entityType)
+            }
             val records = page.items.map { document -> document.toPullRecord(ownerId, clock.now()) }
             persistence.applyPullPage(ownerId, entityType, records, page.nextCursor).forEach(onQuarantined)
             hasMore = page.hasMore
@@ -431,6 +434,28 @@ internal class DefaultSyncController(
     private fun failPullCycle(error: AppError): Boolean {
         cycleFailure = true
         lastCycleError = error
+        return false
+    }
+
+    /**
+     * The `§9.4` progress invariant failed: a non-empty page did not advance the cursor. This is a
+     * stranding condition, not a connectivity failure, so it is reported through the established
+     * `onPoisoned` path (`§17` recordNonFatal policy) with the stable code `SYNC.CONFLICT_UNRESOLVED`,
+     * and it fails the cycle closed rather than looping. `D-169` / ADR-0170 accept this as the
+     * behaviour for an oversized same-millisecond cluster.
+     */
+    private fun failProgressInvariant(entityType: EntityType): Boolean {
+        cycleFailure = true
+        lastCycleError = SyncError.ConflictUnresolved
+        // Fields follow the `§17` allowlist: enum names and stable codes only, never payload data.
+        onPoisoned(
+            SyncError.ConflictUnresolved,
+            mapOf(
+                "entityType" to entityType.name,
+                "code" to SyncError.ConflictUnresolved.code,
+                "cycleId" to "unavailable",
+            ),
+        )
         return false
     }
 
@@ -509,9 +534,12 @@ private fun OutboxRecord.dependencyGroup(): Int =
     }
 
 private fun RemoteCursor.strictlyAfter(other: RemoteCursor): Boolean {
+    // A cursor document id is mandatory regardless of the timestamp comparison: a source that
+    // returns a later timestamp with a null id cannot advance the `§9.4` progress invariant and MUST
+    // fail the cycle closed, not reach `applyPullPage` and throw there.
+    val id = lastDocumentId?.value ?: return false
     val timestampComparison = lastServerUpdatedAt.compareTo(other.lastServerUpdatedAt)
     if (timestampComparison != 0) return timestampComparison > 0
-    val id = lastDocumentId?.value ?: return false
     val otherId = other.lastDocumentId?.value ?: return true
     return id > otherId
 }
@@ -521,10 +549,15 @@ private fun RemoteDocument.toPullRecord(
     createdAt: Instant,
 ): PullRecord {
     val objectValue = rawObjectOrNull()
-    val schemaVersion = objectValue?.int("schemaVersion")
+    val schemaVersion = objectValue?.schemaVersionOrNull()
     if (schemaVersion != null && schemaVersion > CLIENT_MAX_SCHEMA_VERSION) {
         return quarantined(QuarantineReason.UnsupportedSchemaVersion, schemaVersion, createdAt)
     }
+    // The classification MUST be total (`§9.5`, ADR-0171): every field read below is reached through
+    // `get(name) + require`, so a missing key raises `IllegalArgumentException` and a wrong-typed
+    // value raises `IllegalArgumentException`/`IllegalStateException` — never `NoSuchElementException`
+    // escaping to the generic cycle catch. A document that cannot be applied becomes a
+    // `MalformedPayload` quarantine record and the cursor still advances.
     return try {
         requireNotNull(objectValue)
         require(schemaVersion == CLIENT_MAX_SCHEMA_VERSION)
@@ -544,6 +577,9 @@ private fun RemoteDocument.toPullRecord(
         quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: UNKNOWN_SCHEMA_VERSION, createdAt)
     }
 }
+
+/** A non-throwing read of the diagnostic `schemaVersion`, so a malformed value cannot escape. */
+private fun JsonObject.schemaVersionOrNull(): Int? = (get("schemaVersion") as? JsonPrimitive)?.intOrNull
 
 private fun RemoteDocument.rawObjectOrNull(): JsonObject? =
     try {
@@ -637,24 +673,22 @@ private fun JsonObject.toFuelEntry(
 }
 
 private fun JsonObject.string(name: String): String =
-    getValue(name).jsonPrimitive.contentOrNull ?: throw IllegalArgumentException(name)
+    get(name)?.jsonPrimitive?.contentOrNull ?: throw IllegalArgumentException(name)
 
 private fun JsonObject.long(name: String): Long =
-    getValue(name).jsonPrimitive.longOrNull ?: throw IllegalArgumentException(name)
-
-private fun JsonObject.int(name: String): Int? = get(name)?.jsonPrimitive?.intOrNull
+    get(name)?.jsonPrimitive?.longOrNull ?: throw IllegalArgumentException(name)
 
 private fun JsonObject.boolean(name: String): Boolean =
-    getValue(name).jsonPrimitive.booleanOrNull ?: throw IllegalArgumentException(name)
+    get(name)?.jsonPrimitive?.booleanOrNull ?: throw IllegalArgumentException(name)
 
 private fun JsonObject.nullableLong(name: String): Long? {
-    val value = getValue(name)
+    val value = get(name) ?: throw IllegalArgumentException(name)
     if (value === JsonNull) return null
     return value.jsonPrimitive.longOrNull ?: throw IllegalArgumentException(name)
 }
 
 private fun JsonObject.nullableString(name: String): String? {
-    val value = getValue(name)
+    val value = get(name) ?: throw IllegalArgumentException(name)
     if (value === JsonNull) return null
     return value.jsonPrimitive.contentOrNull ?: throw IllegalArgumentException(name)
 }

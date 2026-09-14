@@ -61,11 +61,15 @@ converts cleanly into a `RemoteSnapshot` and reaches the engine, which can then 
 ### Reachability of the `§9.5` reasons today
 
 - `UnsupportedSchemaVersion`: **reachable.** A higher-version document with the expected fields
-  converts to a `RemoteSnapshot` and the engine can quarantine it.
-- `MalformedPayload`: **not reachable.** Its sub-cases either fail the whole page (path 1), escape
-  the closed API entirely (path 2), or have no representable output (path 3). The escalation is
-  about `MalformedPayload` only. An ADR that overstates the defect is as wrong as one that
-  understates it.
+  reaches the engine, which quarantines it.
+- `MalformedPayload`: **reachable since the `E3-03` owner-review round.** Option A removed the
+  typed per-field read from the integration (`toFirestoreDocument` now reads the provider's untyped
+  field map and carries every product field verbatim), so a missing required field, a primitive type
+  mismatch or a document-ID/payload-ID mismatch reaches `:core:sync` as raw JSON instead of failing
+  the page or escaping the closed API. The engine's classification was also made total, so a missing
+  top-level key becomes a quarantine record rather than an escaping `NoSuchElementException`. The
+  three failure paths recorded above are therefore closed; this section preserves the original
+  analysis as the context for the decision.
 
 ### This is pre-existing
 

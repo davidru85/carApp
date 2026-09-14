@@ -38,6 +38,42 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 third owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Fixed four defects found on the third review of
+  [pull request #69](https://github.com/davidru85/carApp/pull/69), TDD-first. BLOCKER 1: the
+  pull-validation path read top-level keys with `JsonObject.getValue`, so a document missing a key
+  threw a `NoSuchElementException` that escaped to the generic cycle catch instead of being
+  quarantined; every reader is now total, so a missing key becomes a `MalformedPayload` quarantine
+  record and the cursor advances. BLOCKER 2: `selectDueOutbox` had no sync-state filter, so a
+  `FAILED_POISONED` row was retried once its backoff elapsed; the query now excludes poisoned rows
+  and only `retryFailed()` or a local edit revives them, and the controller test fake was aligned
+  with the production query. DEFECT 3: the Firestore integration still decoded product fields with
+  typed non-null reads, so a malformed document never reached `:core:sync`; `toFirestoreDocument`
+  now reads the provider's untyped field map and carries every product field verbatim, with only the
+  `updatedAt` ordering timestamp strongly read. DEFECT 4: the non-advancing-cursor progress invariant
+  now surfaces `SyncError.ConflictUnresolved` through the established error path instead of a bare
+  `Failed(1, 0)`. The `strictlyAfter` null-document-id case fails closed.
+- **Why:** The review found that the `§9.5` quarantine contract was not total, that `§7`'s
+  "`FAILED_POISONED` is never retried automatically" was false in the SQL, that ADR-0171 failure path
+  2 was still open in the integration, and that D-169/ADR-0170's fail-closed conflict error had no
+  production call site.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/CONTRACTS.md` (`§7`, `§9.4`, `§9.5`),
+  `docs/adr/0171-quarantine-malformed-remote-documents-through-the-sync-source.md`, this log.
+  Production code: `:core:sync`, `:core:database`, `:integration:firebase-firestore`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
+  zero `PENDING`) and `koverVerify` pass; each new test failed against the unfixed code and passes
+  after it; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite
+  passed 12/12; the complete non-instrumented command passes 638 tasks; the iOS framework links and
+  the golden header is byte-identical; the host-app `xcodebuild` succeeds; the protected Android
+  instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `E3-17` (`D-172`) still owns making `AppGraph.close()` safe against an
+  in-flight sync cycle. The pull request still requires the owner's gated review and the ten required
+  checks.
+
 ### 2026-09-13 — E3-03 second owner-review round
 
 - **Type:** correction

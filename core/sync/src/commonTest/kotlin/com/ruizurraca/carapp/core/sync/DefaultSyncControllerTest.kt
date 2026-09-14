@@ -27,6 +27,9 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -759,7 +762,148 @@ class DefaultSyncControllerReviewRoundTest {
             assertNull(fixture.persistence.vehicleServerTimes["vehicle-1"])
             assertEquals(emptyList(), fixture.persistence.outbox)
         }
+
+    @Test
+    fun missingTopLevelKeysAreQuarantinedAndNeverEscapeTheCycle() =
+        runTest {
+            // Every top-level key read before the entity-specific validation must be total: a missing
+            // key becomes a MalformedPayload quarantine record, not an escaping NoSuchElementException
+            // that is swallowed by the generic cycle catch (`§9.5`, ADR-0171).
+            listOf("id", "ownerId", "updatedAt", "deleted", "deletedAt").forEach { missing ->
+                val fixture = fixture()
+                val document =
+                    RemoteDocument(
+                        EntityType.VEHICLE,
+                        EntityId("vehicle-1"),
+                        instant(1_000),
+                        vehicleRemoteJsonWithout(missing),
+                    )
+                fixture.remote.pullHandler = { type, _ ->
+                    if (type == EntityType.VEHICLE) page(document) else page()
+                }
+
+                fixture.controller.requestSync(SyncTrigger.AppForeground)
+                advanceUntilIdle()
+
+                assertEquals(
+                    listOf(QuarantineReason.MalformedPayload),
+                    fixture.persistence.quarantine.map { it.reason },
+                    "missing '$missing' must be quarantined as MalformedPayload",
+                )
+                assertEquals(
+                    emptyList(),
+                    fixture.reportedErrors.map { it.first },
+                    "missing '$missing' must not be reported as an unexpected failure",
+                )
+                assertEquals(
+                    SyncStatus.Idle,
+                    fixture.controller.status.value,
+                    "missing '$missing' must not produce a Failed status",
+                )
+                assertEquals(
+                    "vehicle-1",
+                    fixture.persistence.cursors[EntityType.VEHICLE]
+                        ?.lastDocumentId
+                        ?.value,
+                    "missing '$missing' must still advance the cursor",
+                )
+            }
+        }
+
+    @Test
+    fun poisonedRowIsNotRetriedAutomaticallyAndReportsOnce() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.PermissionDenied)
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals("FAILED_POISONED", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals(1, fixture.reportedErrors.size)
+
+            // Past every backoff the poisoned row still must not be selected for another push.
+            fixture.clock.advanceBy(900_000)
+            fixture.controller.requestSync(SyncTrigger.Periodic)
+            advanceUntilIdle()
+
+            assertEquals(1, fixture.remote.pushCalls.size)
+            assertEquals(1, fixture.reportedErrors.size)
+            assertEquals("FAILED_POISONED", fixture.persistence.states.getValue("vehicle-1"))
+        }
+
+    @Test
+    fun nullDocumentIdCursorFailsClosedRegardlessOfTimestamp() =
+        runTest {
+            val fixture = fixture()
+            fixture.persistence.cursors[EntityType.VEHICLE] = cursor(5_000, "anchor")
+            val later = remoteVehicle("vehicle-1", 9_000)
+            fixture.remote.pullHandler = { type, _ ->
+                if (type == EntityType.VEHICLE) {
+                    // A later timestamp but a null document id: the progress invariant cannot hold.
+                    RemotePage(
+                        items = listOf(later),
+                        nextCursor = RemoteCursor(instant(9_000), null),
+                        hasMore = true,
+                    )
+                } else {
+                    page()
+                }
+            }
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(Outcome.Err(SyncError.ConflictUnresolved), result)
+            assertEquals(cursor(5_000, "anchor"), fixture.persistence.cursors[EntityType.VEHICLE])
+        }
+
+    @Test
+    fun nonAdvancingCursorFailsClosedWithConflictUnresolved() =
+        runTest {
+            val fixture = fixture()
+            fixture.persistence.cursors[EntityType.VEHICLE] = cursor(5_000, "anchor")
+            val stalled = remoteVehicle("vehicle-1", 5_000)
+            fixture.remote.pullHandler = { type, _ ->
+                if (type == EntityType.VEHICLE) {
+                    // A page whose nextCursor does not strictly advance past the anchor.
+                    RemotePage(items = listOf(stalled), nextCursor = cursor(5_000, "anchor"), hasMore = true)
+                } else {
+                    page()
+                }
+            }
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(Outcome.Err(SyncError.ConflictUnresolved), result)
+            assertEquals(
+                cursor(5_000, "anchor"),
+                fixture.persistence.cursors[EntityType.VEHICLE],
+                "the stored cursor must not advance on a progress-invariant failure",
+            )
+            assertEquals(
+                listOf(SyncError.ConflictUnresolved),
+                fixture.reportedErrors.map { it.first },
+                "the stranding condition must be reported through onPoisoned",
+            )
+        }
 }
+
+/** A valid Vehicle remote payload with exactly one top-level key omitted. */
+private fun vehicleRemoteJsonWithout(missing: String): String =
+    buildJsonObject {
+        if (missing != "id") put("id", "vehicle-1")
+        if (missing != "ownerId") put("ownerId", "owner-1")
+        put("name", "Roadster")
+        put("initialOdometerKm", 0)
+        put("brand", JsonNull)
+        put("model", JsonNull)
+        put("fuelType", "GASOLINE")
+        put("createdAt", 0)
+        if (missing != "updatedAt") put("updatedAt", 1_000)
+        if (missing != "deleted") put("deleted", false)
+        if (missing != "deletedAt") put("deletedAt", JsonNull)
+        put("schemaVersion", 1)
+    }.toString()
 
 private fun TestScope.fixture(
     online: Boolean = true,

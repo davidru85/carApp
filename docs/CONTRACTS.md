@@ -502,7 +502,7 @@ Allowed transitions:
 | `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure. |
 | `FAILED_POISONED` | `PENDING` | User or repair flow edits the entity and re-enqueues a valid snapshot, **or** the user invokes `SyncController.retryFailed()` (§9.7). |
 
-`FAILED_POISONED` is never retried automatically.
+`FAILED_POISONED` is never retried automatically. Automatic selection (`selectDueOutbox`) MUST exclude a row whose entity `syncState` is `FAILED_POISONED`, regardless of `nextAttemptAt`, so the backoff expiring cannot reselect it. Only `SyncController.retryFailed()` (which resets those rows to `PENDING`) or a local edit that re-enqueues a valid snapshot makes a poisoned row due again. Consequently a `FAILED_POISONED -> SYNCING` transition is not reachable and the crash-reporting policy of `§17` fires once per poison transition, not once per cycle.
 
 While a row remains `SYNCING` after a local edit, its effective UI state is "pending sync after push": the user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
 
@@ -592,7 +592,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - If an outbox row exists for a remote entity, local data is not overwritten.
 - Otherwise the remote snapshot is applied iff `local.serverUpdatedAt == null || remote.updatedAt > local.serverUpdatedAt`. The comparison is made on epoch milliseconds as `Long`; Firestore `Timestamp` conversion happens in `:integration:firebase-firestore` at the boundary. **`local.updatedAt` MUST NOT participate in remote conflict arbitration.**
 - The cursor advances only after the local transaction succeeds.
-- Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. If not, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
+- Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. A cursor whose `lastDocumentId` is `null` does not advance, even when its timestamp is later. If the invariant fails, the engine MUST fail the cycle closed with `SyncError.ConflictUnresolved`, MUST NOT loop, MUST leave the stored cursor unchanged, and MUST report the condition through the `onPoisoned` path (`§17`), because a stranded pull cursor is not a connectivity-only failure.
 - Orphan fuel entries (vehicle not yet pulled) are legal transient state. They MUST be persisted, and MUST be excluded from all UI queries and from consumption until their vehicle arrives.
 
 ### 9.5 Quarantine and malformed remote payloads
@@ -611,6 +611,10 @@ document and query ordering. The engine reads `schemaVersion` from `rawJson`; wh
 missing or cannot be represented as an integer, a `MalformedPayload` quarantine row stores `0` as
 its diagnostic schema version. The provider ordering timestamp supplies the quarantine row's
 non-null `serverUpdatedAt` even when product fields are malformed.
+
+The classification MUST be total: every field read on the pull-validation path, including every top-level key required before entity-specific validation (`id`, `ownerId`, `updatedAt`, `deleted`, `deletedAt`, `schemaVersion`), MUST produce a `MalformedPayload` quarantine record when it is missing or has the wrong type. No malformed document MAY raise an unchecked exception to the cycle loop: a `MalformedPayload` document is quarantined and the cursor advances, whether the failure is a missing key, a wrong type, a nullability violation or an out-of-range value.
+
+The integration transports product fields without decoding or asserting them (`D-170`). Only the document id and the ordering `updatedAt` timestamp are strongly read; a document whose ordering timestamp is missing or not epoch milliseconds fails the page as `RemoteError.InvalidArgument`, because the pull stream cannot be ordered without it. Every other field is carried into `rawJson` verbatim, including a missing or mistyped product field, so `:core:sync` can classify it.
 
 For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
@@ -1476,6 +1480,12 @@ Injection is the **only** mechanism for anything present in `AppGraphDependencie
 Allowed `expect`/`actual`:
 
 - Internal platform factories for the SQLDelight AndroidX driver and database file location.
+- The internal provider-field extractor `DocumentSnapshot.untypedFields()` in
+  `:integration:firebase-firestore` (`D-170`). GitLive 2.6 exposes no neutral field-map accessor in
+  common code, and `§9.5` requires the integration to transport product fields without decoding or
+  asserting them. The declaration is `internal`, never appears in a public API, and returns a
+  provider-free map. It is a platform adapter, not business logic, and it is the only
+  `expect`/`actual` permitted outside the two entries above.
 
 Forbidden `expect`/`actual`:
 
