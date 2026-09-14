@@ -38,6 +38,46 @@
 
 ## Entries
 
+### 2026-09-13 — E3-03 seventh owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the seventh owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: reconciled `§7` with
+  `§9.3` and the editor invariant. The reachable sequence for a local edit during an in-flight push
+  is `SYNCING -> PENDING` (the editor sets `PENDING` in the same transaction; the stale ack only
+  stamps `serverUpdatedAt`), so the unreachable `SYNCING -> SYNCING` row was removed, `§7`'s stale
+  prose and `docs/TECHNICAL_PLAN.md` test 6 were corrected, and the `E3-03` acceptance criterion in
+  `docs/BACKLOG.md` was updated in the same change so it no longer requires a sequence the code does
+  not produce. `FakeSyncPersistence` now mirrors the production SQL for `edit()` and `confirmPush`,
+  and a new `SyncDatabaseAccessTest` covers a stale-revision ack. BLOCKING 2: `push()` drains every
+  due batch in one cycle, bounded so each row is attempted at most once, so a full push batch no
+  longer waits for an external trigger; two controller tests cover the drain and the failing-batch
+  termination. MINOR 3: `retryFailed()` no longer clobbers an active cycle's `Syncing` status.
+  MINOR 4: the connectivity parity guard asserts per statement with a failing fixture. MINOR 5:
+  `:core:database` promoted to `commonMainApi`. MINOR 6: `docs/TECHNICAL_PLAN.md` test 18 corrected
+  and its controller test reseeded to the `PENDING` rule. MINOR 7: `coalesceOutbox` clears `cycleId`.
+- **Why:** The review found that the `SYNCING -> SYNCING` acceptance criterion was proven only
+  against a fake that implemented the inverse of production, that a full push batch never scheduled
+  further work, that a manual retry could replace `Syncing` mid-cycle, that two guards and documents
+  had drifted, and that one dependency and one statement carried stale state.
+- **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§8`, `§9.3`), `docs/BACKLOG.md` (`E3-03`),
+  `docs/TECHNICAL_PLAN.md` (test 6, test 18), `docs/handoff-E3-03.md`, this log. Production code:
+  `:core:sync`, `:core:database`. Tests and build logic: `:core:sync`, `:core:database`,
+  `:build-logic:convention`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (174 decisions,
+  zero `PENDING`) and `koverVerify` pass; the focused module tests pass; `:core:sync` Kover line
+  coverage is 97.78%; `:shared:testAndroidHostTest --rerun-tasks` passed 25/25 after one native
+  SQLite `SIGSEGV` under host load above 16 (not an assertion failure, not reproducible in 25 runs);
+  the full iOS simulator suite passed 10/10; the complete non-instrumented command passes; the iOS
+  framework links and the golden header is byte-identical; the host-app `xcodebuild` succeeds; the
+  protected Android instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `D-172` / `E3-17`, `D-173` / `E3-18`, `E3-19` and `E3-20` remain the open
+  follow-ups. A native SQLite `SIGSEGV` under severe host load is a known host-environment hazard,
+  not a product defect, and is recorded here rather than hidden. The pull request still requires the
+  owner's gated review and the ten required checks.
+
 ### 2026-09-13 — E3-03 sixth owner-review round
 
 - **Type:** correction

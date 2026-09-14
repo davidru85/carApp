@@ -171,8 +171,11 @@ class DefaultSyncControllerTest {
                     .localRevision,
             )
             assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
+            // The editor sets PENDING in the same transaction as the local edit (§7 invariant,
+            // §9.3), and the ack with a mismatched revision leaves the state unchanged. The real
+            // sequence is therefore SYNCING -> PENDING, not SYNCING -> SYNCING.
             assertEquals(
-                listOf("SYNCING", "SYNCING", "PENDING"),
+                listOf("SYNCING", "PENDING"),
                 fixture.persistence.stateHistory
                     .filter { it.first == "vehicle-1" }
                     .map { it.second },
@@ -510,7 +513,10 @@ class DefaultSyncControllerTest {
     fun longOfflinePeriodNeverPoisonsAndBacksUpOnRecovery() =
         runTest {
             val fixture = fixture(online = false).withOutbox(vehicleOutbox("vehicle-1", attemptCount = 10))
-            fixture.persistence.states["vehicle-1"] = "FAILED_RETRYABLE"
+            // A connectivity failure leaves the row PENDING with its retry context in the outbox
+            // (§7/§9.7); the seed reflects that corrected state rather than the superseded
+            // FAILED_RETRYABLE one.
+            fixture.persistence.states["vehicle-1"] = "PENDING"
             fixture.persistence.outbox[0] =
                 fixture.persistence.outbox[0].copy(lastErrorCode = RemoteError.Unavailable.code)
 
@@ -518,7 +524,7 @@ class DefaultSyncControllerTest {
             fixture.controller.requestSync(SyncTrigger.Periodic)
             advanceUntilIdle()
             assertEquals(SyncStatus.Pending(1), fixture.controller.status.value)
-            assertEquals("FAILED_RETRYABLE", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
 
             fixture.connectivity.set(true)
             fixture.controller.requestSync(SyncTrigger.ConnectivityRecovered)
@@ -746,7 +752,8 @@ class DefaultSyncControllerReviewRoundTest {
             assertEquals(2, row.localRevision)
             assertEquals(0, row.attemptCount)
             assertNull(row.lastErrorCode)
-            assertEquals("SYNCING", fixture.persistence.states.getValue("vehicle-1"))
+            // The editor already moved the entity to PENDING; the stale failure leaves it there.
+            assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
         }
 
     @Test
@@ -934,6 +941,74 @@ class DefaultSyncControllerReviewRoundTest {
                 fixture.reportedErrors.map { it.first },
                 "the stranding condition must be reported through onPoisoned",
             )
+        }
+
+    @Test
+    fun manualRetryDuringAnActiveCycleKeepsPublishingSyncing() =
+        runTest {
+            // A manual retry issued while a cycle is running must not replace §9.9's `Syncing` for the
+            // rest of that cycle; the active cycle publishes the aggregate when it finishes.
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            val firstPushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            fixture.remote.onPushSuspend = {
+                firstPushStarted.complete(Unit)
+                releasePush.await()
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            firstPushStarted.await()
+            assertEquals(SyncStatus.Syncing, fixture.controller.status.value)
+
+            assertIs<Outcome.Ok<Unit>>(fixture.controller.retryFailed())
+            assertEquals(
+                SyncStatus.Syncing,
+                fixture.controller.status.value,
+                "a manual retry must not clobber an active cycle's Syncing status",
+            )
+
+            releasePush.complete(Unit)
+            advanceUntilIdle()
+            assertEquals(SyncStatus.Idle, fixture.controller.status.value)
+        }
+
+    @Test
+    fun fullPushBatchContinuesUntilEveryDueRowIsPushedWithoutAnExternalTrigger() =
+        runTest {
+            // More than one full batch. A single cycle must drain every due row rather than pushing
+            // only PUSH_BATCH_LIMIT and waiting for the next external trigger (`§9.3`, P2).
+            val fixture = fixture()
+            val rowCount = PUSH_BATCH_LIMIT * 2 + 20
+            repeat(rowCount) { index -> fixture.withOutbox(vehicleOutbox("vehicle-$index")) }
+
+            fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            advanceUntilIdle()
+
+            assertEquals(rowCount, fixture.remote.pushCalls.size, "every due row must be pushed")
+            assertEquals(emptyList(), fixture.persistence.outbox)
+            assertEquals(SyncStatus.Idle, fixture.controller.status.value)
+        }
+
+    @Test
+    fun fullFailingPushBatchTerminatesTheContinuation() =
+        runTest {
+            // A full batch that keeps failing must not spin: each failure reschedules the row out of
+            // the due window, so the continuation attempts every row once and then stops.
+            val fixture = fixture()
+            repeat(PUSH_BATCH_LIMIT + 10) { index ->
+                fixture.withOutbox(vehicleOutbox("vehicle-$index"))
+                fixture.remote.pushResults += Outcome.Err(RemoteError.Unavailable)
+            }
+
+            fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            advanceUntilIdle()
+
+            assertEquals(
+                PUSH_BATCH_LIMIT + 10,
+                fixture.remote.pushCalls.size,
+                "each row is attempted exactly once; a failing full batch must not loop",
+            )
+            assertEquals(PUSH_BATCH_LIMIT + 10, fixture.persistence.outbox.size)
         }
 
     @Test
@@ -1263,11 +1338,12 @@ private class FakeSyncPersistence : SyncPersistence {
         serverUpdatedAt: Instant?,
     ) {
         val current = outbox.firstOrNull { it.entityId == row.entityId } ?: return
+        // Mirror the production SQL (`confirmVehiclePush`/`confirmFuelEntryPush`): only an unchanged
+        // revision becomes SYNCED; a mismatched one keeps the entity state, which the editor already
+        // set to PENDING, and the ack only stamps `serverUpdatedAt` (§9.3).
         if (current.localRevision == row.localRevision) {
             outbox.remove(current)
             transition(row.entityId.value, "SYNCED")
-        } else {
-            transition(row.entityId.value, "PENDING")
         }
         vehicleServerTimes[row.entityId.value] = serverUpdatedAt?.toEpochMilliseconds()
     }
@@ -1395,7 +1471,9 @@ private class FakeSyncPersistence : SyncPersistence {
     fun edit(entityId: String) {
         val index = outbox.indexOfFirst { it.entityId.value == entityId }
         outbox[index] = outbox[index].copy(localRevision = outbox[index].localRevision + 1)
-        transition(entityId, "SYNCING")
+        // Mirror the production editor (`updateVehicleRow`/`updateFuelEntryRow`), which sets the
+        // entity to PENDING in the same transaction as the edit (§7 invariant, §9.3).
+        transition(entityId, "PENDING")
     }
 
     private fun transition(

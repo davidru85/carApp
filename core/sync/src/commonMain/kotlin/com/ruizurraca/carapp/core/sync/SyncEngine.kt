@@ -261,10 +261,15 @@ internal class DefaultSyncController(
 
     override suspend fun retryFailed(): Outcome<Unit, AppError> {
         val result = persistence.resetFailed(clock.now())
-        refreshStatus()
+        // While a cycle is active it owns the published status (`§9.9` `Failed > Syncing > Pending >
+        // Idle`); a manual reset must not replace `Syncing` mid-cycle. The cycle publishes the
+        // aggregate when it finishes.
+        if (!isCycleRunning()) refreshStatus()
         if (result is Outcome.Ok) requestSync(SyncTrigger.PullToRefresh)
         return result
     }
+
+    private suspend fun isCycleRunning(): Boolean = cycleMutex.withLock { cycleRunning }
 
     override suspend fun debugLines(): List<String> = if (debugEnabled) debugLoader() else emptyList()
 
@@ -347,19 +352,35 @@ internal class DefaultSyncController(
 
     private suspend fun push(ownerId: OwnerId) {
         val cycleId = CycleId(uuidGenerator.newId())
-        val rows = persistence.dueOutbox(clock.now(), PUSH_BATCH_LIMIT).stableDependencyOrder()
-        for (row in rows) {
-            persistence.markSyncing(row)
-            when (
-                val result =
-                    remote.pushSnapshot(
-                        ownerId,
-                        EntitySnapshot(row.entityType, row.entityId, CLIENT_MAX_SCHEMA_VERSION, row.payload),
-                    )
-            ) {
-                is Outcome.Ok -> persistence.confirmPush(row, result.value.serverUpdatedAt)
-                is Outcome.Err -> handlePushFailure(row, result.error, cycleId)
+        // Drain every due batch in one cycle: a full batch means more work is waiting, so the cycle
+        // continues instead of leaving the rest for the next external trigger (`§9.3`, P2).
+        //
+        // Termination is explicit, not incidental. A successful push deletes the outbox row and a
+        // failed push reschedules it behind the backoff, but with a real clock a slow cycle can
+        // outlast that backoff and make a failed row due again immediately. Every entity attempted in
+        // this push is therefore recorded, and the continuation stops once a full batch contains no
+        // entity that was not already attempted — that is the point at which retrying would spin.
+        // Each row is attempted at most once per cycle, and the pull step still runs.
+        val attempted = mutableSetOf<Pair<EntityType, EntityId>>()
+        while (true) {
+            val rows = persistence.dueOutbox(clock.now(), PUSH_BATCH_LIMIT).stableDependencyOrder()
+            val unprocessed = rows.filterNot { (it.entityType to it.entityId) in attempted }
+            if (unprocessed.isEmpty()) return
+            for (row in unprocessed) {
+                attempted += row.entityType to row.entityId
+                persistence.markSyncing(row)
+                when (
+                    val result =
+                        remote.pushSnapshot(
+                            ownerId,
+                            EntitySnapshot(row.entityType, row.entityId, CLIENT_MAX_SCHEMA_VERSION, row.payload),
+                        )
+                ) {
+                    is Outcome.Ok -> persistence.confirmPush(row, result.value.serverUpdatedAt)
+                    is Outcome.Err -> handlePushFailure(row, result.error, cycleId)
+                }
             }
+            if (rows.size < PUSH_BATCH_LIMIT) return
         }
     }
 
@@ -717,7 +738,8 @@ private fun String.canonicalName(): String =
         }
     }
 
-private const val PUSH_BATCH_LIMIT = 50
+/** `§9.3` push batch limit; `internal` so tests can size batches against the contract value. */
+internal const val PUSH_BATCH_LIMIT = 50
 private const val PULL_PAGE_LIMIT = 200
 private const val OVERLAP_MS = 30_000L
 private const val MIN_BACKOFF_MS = 1_000L

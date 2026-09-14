@@ -532,7 +532,7 @@ Required tests for `:core:sync`:
 3. A clean recovery device restores backed-up vehicles and fuel entries for the authenticated owner.
 4. Exact `updatedAt` tie paginates deterministically in the pull stream order.
 5. Tombstone wins over older update.
-6. Local edit during in-flight push is not lost, and the state machine follows `SYNCING -> SYNCING -> PENDING`.
+6. Local edit during in-flight push is not lost, and the state machine follows `SYNCING -> PENDING`: the editor sets `PENDING` in the same transaction (the `§7` invariant), and the stale ack only stamps `serverUpdatedAt` (`§9.3`).
 7. Pull overlap prevents missing a document with a timestamp before the cursor.
 8. Device clock one hour ahead does not win all conflicts.
 9. First sync of 1,000 records is paginated correctly.
@@ -544,7 +544,7 @@ Required tests for `:core:sync`:
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
 16. A supported-version document with malformed payload is quarantined with `MalformedPayload`, is not applied to product tables and does not block cursor advance after quarantine is committed.
 17. Backoff with an injected jitter source produces deterministic, capped delays.
-18. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and backs up once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
+18. A device offline for longer than the full backoff series leaves every connectivity-failed row `PENDING` (not `FAILED_RETRYABLE`, `§7`/`§9.7`), poisons nothing, reports `Pending` rather than `Failed` (`§9.9`), and backs up once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
 Add a deterministic simulation with a fixed seed that interleaves local edits, push, recovery pull, network failure, duplicate delivery and lost responses, asserting that a clean recovery client can restore the source client's backed-up data.
 

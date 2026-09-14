@@ -493,9 +493,8 @@ Allowed transitions:
 | `SYNCED` | `PENDING` | Local create/update/delete. |
 | `PENDING` | `PENDING` | Further local edit. Payload coalesced, `attemptCount = 0`, `nextAttemptAt = 0`. |
 | `PENDING` | `SYNCING` | Sync engine starts push for the row. |
-| `SYNCING` | `SYNCING` | Local edit during an in-flight push. `localRevision` is incremented; the ack path detects the mismatch. |
+| `SYNCING` | `PENDING` | Local edit during an in-flight push — the editor sets `PENDING` in the same transaction, so the row never stays `SYNCING` after the edit — **or** a connectivity-only failure (`lastErrorCode` in `CONNECTIVITY_ERROR_CODES`, §9.7). |
 | `SYNCING` | `SYNCED` | Remote ack received and `localRevision` unchanged. |
-| `SYNCING` | `PENDING` | `localRevision` changed during push, **or** a connectivity-only failure (`lastErrorCode` in `CONNECTIVITY_ERROR_CODES`, §9.7). |
 | `SYNCING` | `FAILED_RETRYABLE` | Non-connectivity retryable remote failure, or a retryable local/cycle failure. |
 | `FAILED_RETRYABLE` | `PENDING` | Automatic due retry, manual retry, or a local edit. |
 | `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS` **and** `lastErrorCode` is not a connectivity code (§9.7). |
@@ -506,7 +505,7 @@ Allowed transitions:
 
 The connectivity-code set that qualifies a failure as non-poisoning and counts it as `Pending` is defined once in `:core:common` (`CONNECTIVITY_ERROR_CODES`). The three statements that read it (`markConnectivityFailuresDue`, `countPendingSyncRows`, `countRetryableSyncRows`) spell the codes as SQL literals because a SQLDelight `IN` list cannot bind a Kotlin set without changing the query shape. A `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both sources and fails the build when they diverge, so adding a code to the constant without the SQL, or the reverse, is caught rather than silently changing behaviour.
 
-While a row remains `SYNCING` after a local edit, its effective UI state is "pending sync after push": the user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
+A local edit during an in-flight push leaves the row `PENDING` (`§7` invariant, `§9.3`): the editor sets it in the same transaction, and the ack for the stale revision only stamps `serverUpdatedAt`. The user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`. `SYNCING -> SYNCING` is therefore not a reachable transition and MUST NOT appear in any document or test.
 
 `FAILED_RETRYABLE -> FAILED_POISONED` is governed by the qualified poison rule of §9.7. A connectivity-only failure never poisons.
 
@@ -523,7 +522,7 @@ Outbox payload format:
 Outbox coalescing:
 
 - At most one outbox row per `(entityType, entityId)`.
-- `ON CONFLICT DO UPDATE` replaces `payload` and `localRevision`, and resets `attemptCount = 0`, `nextAttemptAt = 0`, `lastError = NULL`, `lastErrorCode = NULL`.
+- `ON CONFLICT DO UPDATE` replaces `payload` and `localRevision`, and resets `attemptCount = 0`, `nextAttemptAt = 0`, `lastError = NULL`, `lastErrorCode = NULL`, `cycleId = NULL`, so a re-enqueued row carries no stale cycle correlation.
 - The original `seq` MUST be preserved to keep causal order.
 
 The coalesce is performed from the repository write path, inside the same transaction as the entity row write, using this statement shape:
@@ -537,7 +536,8 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   attemptCount = 0,
   nextAttemptAt = 0,
   lastError = NULL,
-  lastErrorCode = NULL
+  lastErrorCode = NULL,
+  cycleId = NULL
 ```
 
 **The outbox MUST NOT be populated while `ownerId == LOCAL_OWNER`.** Before a real UID exists, local writes set `syncState = PENDING` but the outbox writer is a no-op. Outbox rows are created for those entities by local-owner adoption (§11.4).
@@ -577,7 +577,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - Batch limit: 50 outbox rows, selected where `nextAttemptAt <= now`, ordered by `seq`, then partitioned by the dependency order of §8.
 - Remote writes use the client-generated document ID and a server timestamp.
 - The authoritative `serverUpdatedAt` comes from the write result where the SDK provides it; otherwise the document is re-read. The ack timestamp is a **lower bound** on this device's write, never proof of content: a re-read returning newer content is not an error, and the next pull reconciles it.
-- Local confirmation happens in one transaction: if `outbox.localRevision == entity.localRevision`, delete the outbox row and mark `SYNCED`; otherwise keep the row and update only `serverUpdatedAt`.
+- Local confirmation happens in one transaction: if `outbox.localRevision == entity.localRevision`, delete the outbox row and mark `SYNCED`; otherwise the ack keeps the entity state unchanged — the local editor already set `PENDING` in the same transaction as its edit (`§7` invariant) — and updates only `serverUpdatedAt`. An ack never downgrades an edited row to a state it does not already have.
 
 ### 9.4 Pull
 

@@ -351,7 +351,8 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   attemptCount = 0,
   nextAttemptAt = 0,
   lastError = NULL,
-  lastErrorCode = NULL;
+  lastErrorCode = NULL,
+  cycleId = NULL;
 
 confirmVehiclePush:
 UPDATE vehicle

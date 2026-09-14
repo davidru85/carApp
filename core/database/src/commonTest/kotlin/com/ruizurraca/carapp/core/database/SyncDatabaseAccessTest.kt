@@ -50,6 +50,114 @@ class SyncDatabaseAccessTest {
         }
 
     @Test
+    fun coalescingALocalEditClearsTheStaleCycleCorrelation() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 1,
+                )
+                val access = SyncDatabaseAccess(testDatabase.database)
+                val row = access.dueOutbox(now = 100, limit = 50).single()
+                access.failPush(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    pushedLocalRevision = 1,
+                    attemptCount = 3,
+                    nextAttemptAt = 900,
+                    errorCode = "REMOTE.UNKNOWN",
+                    poisoned = false,
+                    cycleId = "cycle-stale",
+                )
+                assertEquals(
+                    "cycle-stale",
+                    testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+
+                // Re-enqueuing after a local edit clears the retry context; the cycleId must clear with
+                // it, or the debug diagnostics show a correlation that belongs to no current attempt.
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = row.localRevision + 1,
+                )
+
+                assertNull(
+                    testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+                assertNull(
+                    testDatabase.driver.nullableString("SELECT lastErrorCode FROM outbox WHERE entityId = 'vehicle-1'"),
+                )
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
+    fun confirmPushWithAStaleRevisionKeepsTheEditedRowPendingAndTheOutbox() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 1,
+                )
+                val access = SyncDatabaseAccess(testDatabase.database)
+                val row = access.dueOutbox(now = 100, limit = 50).single()
+                access.markSyncing(row.entityType, row.entityId)
+
+                // A local edit lands while the push is in flight: the editor bumps the entity and
+                // outbox revisions to 2 and sets the entity PENDING (§7 invariant, §9.3).
+                testDatabase.driver
+                    .execute(
+                        identifier = null,
+                        sql = "UPDATE vehicle SET localRevision = 2, syncState = 'PENDING' WHERE id = 'vehicle-1'",
+                        parameters = 0,
+                    ).await()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 2,
+                )
+
+                // The in-flight push acknowledges the stale revision 1.
+                access.confirmPush(
+                    entityType = row.entityType,
+                    entityId = row.entityId,
+                    pushedLocalRevision = 1,
+                    serverUpdatedAt = 500,
+                )
+
+                assertEquals(
+                    "PENDING",
+                    testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
+                    "an ack for a stale revision must not mark the edited row SYNCED",
+                )
+                assertEquals(
+                    500,
+                    testDatabase.driver.nullableLong("SELECT serverUpdatedAt FROM vehicle WHERE id = 'vehicle-1'"),
+                    "the ack still stamps serverUpdatedAt",
+                )
+                assertEquals(
+                    2,
+                    testDatabase.driver.nullableLong("SELECT localRevision FROM outbox WHERE entityId = 'vehicle-1'"),
+                    "the outbox row survives carrying the new revision",
+                )
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
     fun failedPushStoresCycleCorrelationAndRetryContext() =
         runTest {
             val testDatabase = TestDatabase.create()

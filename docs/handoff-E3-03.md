@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received six owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received seven owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -506,6 +506,75 @@ Verification for this round:
 - `:shared:testAndroidHostTest --rerun-tasks` passed **10/10**; the full `:shared:iosSimulatorArm64Test`
   passed **10/10** consecutive runs.
 - The complete non-instrumented command passes.
+
+## Seventh Owner-Review Correction Round (2026-09-13)
+
+Branch head reviewed: `00fc587`. Two blocking items and five minors.
+
+- **BLOCKING 1 — the `§7` `SYNCING -> SYNCING` criterion was proven only against the fake.**
+  **Reconciliation decision: `§9.3` and the `§7` "editor sets `PENDING` in the same transaction"
+  invariant are normative, and the production SQL already implements them.** `updateVehicleRow` /
+  `updateFuelEntryRow` set `PENDING` on a local edit, and `confirmVehiclePush` /
+  `confirmFuelEntryPush` keep the entity state unchanged on a stale revision, so the reachable
+  sequence is `SYNCING -> PENDING`, and the `§7` row `SYNCING -> SYNCING` was unreachable and
+  incorrect. That row is removed and the `SYNCING -> PENDING` row now states the local-edit cause
+  explicitly; `§9.3` states that an ack never downgrades an edited row; `§7`'s stale prose about a
+  row remaining `SYNCING` is corrected to say `SYNCING -> SYNCING` is not reachable. `docs/BACKLOG.md`
+  `E3-03` was updated in the same change: its acceptance criterion now requires the `SYNCING ->
+  PENDING` sequence rather than the unreachable one, so no criterion the code does not meet is left
+  standing. `docs/TECHNICAL_PLAN.md` test 6 was corrected to the same rule. `FakeSyncPersistence.edit()`
+  now transitions to `PENDING` and `confirmPush` no longer invents a `PENDING` transition on a
+  mismatch, mirroring the SQL; `localEditDuringInflightPushRemainsPending` re-derives its expected
+  history as `["SYNCING", "PENDING"]` (RED proven by reverting the fake). Added
+  `SyncDatabaseAccessTest.confirmPushWithAStaleRevisionKeepsTheEditedRowPendingAndTheOutbox`, which
+  pushes a row, edits the entity to `localRevision = 2` in flight, confirms the stale revision and
+  asserts the entity stays `PENDING`, `serverUpdatedAt` is stamped and the outbox keeps revision 2.
+  Also corrected `localEditDuringFailingPushKeepsTheNewRevisionUnstamped` to the reconciled state.
+- **BLOCKING 2 — a full push batch never scheduled a follow-up.** `push()` now drains every due
+  batch in one cycle: it repeats while a batch is full and stops when a full batch contains no
+  entity not already attempted in that push, so each row is attempted at most once per cycle and the
+  loop cannot spin even when a slow cycle outlasts a failed row's backoff. The `§9.1` single-active /
+  single-follow-up rules are unchanged and the pull step still runs. Tests:
+  `fullPushBatchContinuesUntilEveryDueRowIsPushedWithoutAnExternalTrigger` pushes `PUSH_BATCH_LIMIT * 2 + 20`
+  rows in one cycle and asserts all are pushed with an empty outbox, and
+  `fullFailingPushBatchTerminatesTheContinuation` asserts a full batch that keeps failing attempts
+  each row exactly once and stops. `PUSH_BATCH_LIMIT` became `internal` so tests size against the
+  contract value. Both were RED before the change. This removes the owner-visible bound, so no new
+  decision was needed.
+- **MINOR 3 — `retryFailed()` clobbered `Syncing`.** It now refreshes the status only when no cycle
+  is active; an active cycle keeps publishing `Syncing` and publishes the aggregate when it finishes.
+  `manualRetryDuringAnActiveCycleKeepsPublishingSyncing` was RED before the change.
+- **MINOR 4 — the connectivity parity guard could pass with one divergent statement.**
+  `ConnectivityCodeParityTest` now asserts parity per statement rather than over their union, and
+  `aSingleDivergentStatementIsRejected` is the failing fixture. Verified non-vacuous by mutating one
+  statement and observing the real guard fail.
+- **MINOR 5 — `:core:database` was an `implementation` dependency of a public signature.**
+  `core/sync/build.gradle.kts` promotes it to `commonMainApi`, since `createSyncController(...)`
+  exposes `SyncDatabaseAccess`. `architectureCheck` and the provider-decoupling run still pass.
+- **MINOR 6 — `docs/TECHNICAL_PLAN.md` test 18 described the superseded rule.** Rewritten to state
+  that a connectivity-failed row stays `PENDING` and that `FAILED_RETRYABLE` is not the connectivity
+  outcome; `longOfflinePeriodNeverPoisonsAndBacksUpOnRecovery` was seeded with the corrected
+  `PENDING` state so it asserts the `§7` / `§9.7` / `§9.9` rule.
+- **MINOR 7 — `coalesceOutbox` left a stale `cycleId`.** The statement now clears `cycleId` with the
+  other retry context, and `docs/CONTRACTS.md §8` states it.
+  `coalescingALocalEditClearsTheStaleCycleCorrelation` was RED before the change.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` pass; `contractCheck`
+  reports 174 decisions and zero `PENDING`.
+- The focused `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared` and
+  `:build-logic:convention` tests pass; `:core:sync` Kover line coverage is 97.78%.
+- `:shared:testAndroidHostTest --rerun-tasks` passed 25 of 25 runs after one native `SIGSEGV` inside
+  the bundled SQLite library (`sqlite3DbMallocRawNN` while preparing an `IN` query) on a run with
+  system load above 16. That crash is a native library fault under host contention, not a test
+  assertion and not a regression: the same tree passed 25/25, including 15/15 at a comparable load,
+  and the failing run reported no assertion failure. The full `:shared:iosSimulatorArm64Test` passed
+  **10/10** consecutive runs.
+- The complete non-instrumented command passes; `:composition:ios:linkDebugFrameworkIosSimulatorArm64`
+  passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
+  `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
+  36 emulator.
 
 ## Human Review Gate
 
