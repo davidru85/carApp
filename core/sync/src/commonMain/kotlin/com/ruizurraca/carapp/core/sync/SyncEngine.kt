@@ -551,8 +551,9 @@ internal class DefaultSyncController(
             when {
                 // A failure condition with zero outbox rows must still be representable, so each
                 // synthetic dimension takes the maximum of the real count and 1; a real count is
-                // never reduced. `unexpectedFailure`, `adoptionFailure` and `cycleFailure` are all
-                // cycle-level failures that use the real `persistence.counts()` values (R4).
+                // never reduced. `unexpectedFailure` and `adoptionFailure` are cycle-level failures
+                // that use the real `persistence.counts()` values (R4); `cycleFailure` narrows that
+                // further for a connectivity-class error, which `§9.9` forbids rendering as `Failed`.
                 unexpectedFailure -> {
                     SyncStatus.Failed(counts.retryableOrAtLeastOne(), counts.poisoned)
                 }
@@ -562,22 +563,35 @@ internal class DefaultSyncController(
                 }
 
                 cycleFailure -> {
-                    SyncStatus.Failed(counts.retryableOrAtLeastOne(), counts.poisoned)
-                }
-
-                counts.retryable > 0 || counts.poisoned > 0 -> {
-                    SyncStatus.Failed(counts.retryable, counts.poisoned)
-                }
-
-                counts.pending > 0 -> {
-                    SyncStatus.Pending(counts.pending)
+                    // `§9.9` is a rule about aggregation, not only about admission: a cycle that
+                    // failed because the transport dropped mid-cycle is not an error the user must
+                    // see. A connectivity-class failure therefore MUST NOT force `Failed` and MUST
+                    // fall through to the row-derived buckets below, exactly as the per-row rule in
+                    // `SyncDatabaseAccess.failPush` already does for the push path. A non-connectivity
+                    // failure — including the progress-invariant `ConflictUnresolved` — keeps the
+                    // synthetic count that makes the failure representable with an empty outbox.
+                    if (lastCycleError?.code in CONNECTIVITY_ERROR_CODES) {
+                        rowDerived(counts)
+                    } else {
+                        SyncStatus.Failed(counts.retryableOrAtLeastOne(), counts.poisoned)
+                    }
                 }
 
                 else -> {
-                    SyncStatus.Idle
+                    rowDerived(counts)
                 }
             }
     }
+
+    /** The `§9.9` aggregate over the real outbox rows: `Failed > Pending > Idle`. */
+    private fun rowDerived(counts: SyncCounts): SyncStatus =
+        when {
+            counts.retryable > 0 || counts.poisoned > 0 -> SyncStatus.Failed(counts.retryable, counts.poisoned)
+
+            counts.pending > 0 -> SyncStatus.Pending(counts.pending)
+
+            else -> SyncStatus.Idle
+        }
 
     private fun SyncCounts.retryableOrAtLeastOne(): Int = maxOf(retryable, 1)
 
