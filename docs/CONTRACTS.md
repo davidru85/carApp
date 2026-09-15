@@ -581,6 +581,7 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - Batch limit: 50 outbox rows, selected where `nextAttemptAt <= now`, ordered by the dependency order of §8 and then by `seq` **before** the batch limit is applied. The global order across batches matters: a vehicle tombstone whose outbox row predates its fuel-entry tombstones keeps a lower `seq`, so a `seq`-only selection could push it in an earlier batch, ahead of the entries it deletes. The selection therefore derives each row's dependency group from its entity table (`deleted`) and orders by group then `seq`, so the §8 order holds across batch boundaries.
 - Remote writes use the client-generated document ID and a server timestamp.
 - The authoritative `serverUpdatedAt` comes from the write result where the SDK provides it; otherwise the document is re-read. The ack timestamp is a **lower bound** on this device's write, never proof of content: a re-read returning newer content is not an error, and the next pull reconciles it.
+- Before each selected snapshot is pushed, its entity is marked `SYNCING` only when the entity still has the selected outbox row's `localRevision` and is not `FAILED_POISONED`. A local edit after batch selection therefore leaves the entity `PENDING`; the stale snapshot may finish its idempotent remote attempt, but the revision-guarded acknowledgement or failure cannot stamp the edited row.
 - Local confirmation happens in one transaction: if `outbox.localRevision == entity.localRevision`, delete the outbox row and mark `SYNCED`; otherwise the ack keeps the entity state unchanged — the local editor already set `PENDING` in the same transaction as its edit (`§7` invariant) — and updates only `serverUpdatedAt`. An ack never downgrades an edited row to a state it does not already have.
 
 ### 9.4 Pull
@@ -612,7 +613,7 @@ Quarantine reasons are:
 - `UnsupportedSchemaVersion`: `schemaVersion > CLIENT_MAX_SCHEMA_VERSION`.
 - `MalformedPayload`: `schemaVersion <= CLIENT_MAX_SCHEMA_VERSION`, but the document is missing a required field, has an unknown enum value, violates nullability, has a primitive type mismatch, has an out-of-range value, violates `deleted == (deletedAt != null)`, has a document ID / payload ID mismatch, contains a malformed JSON payload, or cannot be deserialized into the supported DTO.
 
-Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
+Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. Re-delivery updates the diagnostic fields but preserves the original `createdAt`; the column records when the entity first entered quarantine, not when it was last observed. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
 
 `RemoteDocument.documentId` and `serverUpdatedAt` are transport metadata obtained from the provider
 document and query ordering. The engine reads `schemaVersion` from `rawJson`; when that field is

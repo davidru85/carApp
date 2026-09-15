@@ -7,6 +7,10 @@ Accepted
 The owner selected option A with an in-memory scope on 2026-09-13 during the eighth `E3-03` review
 round.
 
+This decision supersedes ADR-0170 / D-169 in part: it replaces only ADR-0170's in-cycle
+millisecond-boundary premise. ADR-0170 continues to govern the persisted millisecond anchor and the
+fail-closed progress rule at the active cursor's precision.
+
 ## Context
 
 `docs/CONTRACTS.md §9.4` requires later pages to advance with
@@ -34,10 +38,10 @@ Two reachable failures follow:
 - Two documents inside the same millisecond that straddle a page boundary trip the same false
   failure.
 
-This is not the shape D-169 accepts. `§9.4` fails closed only for a cluster **larger than the page
-limit**, not for a single millisecond-distinguishable document at the end of the collection. The
-suite stayed green because the controller fake modelled `startAfter` as index-exclusive on the
-document id alone, a semantics the production query does not have.
+This was not the shape D-169 accepted at the time. The then-current `§9.4` caveat covered only a
+cluster larger than the page limit, not a single millisecond-distinguishable document at the end of
+the collection. The suite stayed green because the controller fake modelled `startAfter` as
+index-exclusive on the document id alone, a semantics the production query does not have.
 
 ### Scope decision: in-memory precision
 

@@ -1639,6 +1639,8 @@ a cycle runs. `docs/CONTRACTS.md §7` records the transient.
 
 Deferred because the reachable window is a process death inside one push and the recovery already
 exists through the outbox; an explicit reset is a clarity hardening, not a correctness fix.
+The E3-03 `localRevision` guard closes the separate window between batch selection and
+`markSyncing`: a local edit in that interval remains `PENDING`, so it does not broaden E3-21.
 
 Acceptance criteria:
 

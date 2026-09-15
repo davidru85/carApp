@@ -8,10 +8,10 @@ import kotlin.time.Instant
 /*
  * Epoch-microsecond conversion for the pull ordering cursor (`D-174`).
  *
- * Firestore server timestamps carry microsecond precision. The pull cursor is persisted as an epoch
- * Long, so storing it in milliseconds truncates the sub-millisecond component and makes a later-page
- * `startAfter` boundary non-exclusive. These helpers are the single conversion point between the
- * microsecond Long the database stores and the `Instant` the sync contracts use.
+ * Firestore server timestamps carry microsecond precision. The database persists the cross-cycle
+ * anchor as epoch milliseconds, while the in-cycle ordering cursor keeps the provider value as epoch
+ * microseconds so a later-page `startAfter` boundary remains exclusive. These helpers are the
+ * canonical conversion point for that in-cycle microsecond representation.
  *
  * Only the ordering cursor uses microseconds. The whole-document LWW comparison of `§9.6` and the
  * entity `serverUpdatedAt` column stay epoch milliseconds, matching the payload `updatedAt` field.

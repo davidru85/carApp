@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 eleventh owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-169`, `D-174`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Closed five findings on [pull request #69](https://github.com/davidru85/carApp/pull/69): guarded `markSyncing` by the selected revision, reconciled D-169 with D-174, corrected epoch-precision documentation, made aggregate counts transactional, and preserved the first quarantine `createdAt`.
+- **Why:** A local edit after batch selection could be overwritten to `SYNCING`; the accepted cursor decisions contradicted each other in their mirrors; three aggregate reads could observe different snapshots; and repeated overlap delivery changed a field documented as creation time.
+- **Documents touched:** `docs/CONTRACTS.md` (`§9.3`, `§9.5`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md` (`§2`, `§8`), `docs/BACKLOG.md` (`E3-21`),
+  ADR-0170, ADR-0175, `docs/handoff-E3-03.md`, this log. Production/tests: `:core:common`,
+  `:core:database`, `:core:sync`.
+- **Verification:** RED `9177c70` reproduced four intended failures; GREEN `65a6297` passes the
+  focused and full module suites; quality, architecture, contract and coverage gates pass with zero
+  `PENDING`; the complete non-instrumented command passes 642 tasks on Android host and iOS
+  simulator.
+- **Follow-ups / risks:** The E3-21 justification remains valid: after the revision guard, its stale
+  `SYNCING` window still requires process death inside one push. PR #69 remains unmerged and requires
+  the owner's gated review and all ten required checks.
+
 ### 2026-09-15 — E3-03 tenth owner-review round
 
 - **Type:** correction

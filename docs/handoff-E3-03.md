@@ -36,12 +36,12 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the eleventh owner-review correction round is GREEN; RED
-  `9177c70` is committed and pushed, and the focused controller/database suites pass after the
-  bounded production fixes. Earlier story RED is `a66c612`; earlier story GREEN is `bfced6b`.
-- Push and pull-request status: RED `9177c70` is pushed on `story/E3-03-core-sync-engine`; the GREEN
-  commit and push are the next step. Gated pull request #69 remains open against `main`. It is not
-  merged and MUST NOT be merged on agent judgement.
+- Current phase and latest commit: the eleventh owner-review correction round is REFACTOR complete;
+  RED `9177c70` and GREEN `65a6297` are committed and pushed. The complete non-instrumented check
+  passes on the final worktree. Earlier story RED is `a66c612`; earlier story GREEN is `bfced6b`.
+- Push and pull-request status: RED `9177c70` and GREEN `65a6297` are pushed on
+  `story/E3-03-core-sync-engine`; the REFACTOR commit and push are the next step. Gated pull request
+  #69 remains open against `main`. It is not merged and MUST NOT be merged on agent judgement.
 - Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
   SQLDelight persistence, raw-document validation and quarantine, deterministic push/pull order,
   cursor progress guard, retry/poison behavior, automatic adoption retry, aggregate status,
@@ -72,10 +72,11 @@
   coverage, up from 72.65%, against the 80% threshold. The complete non-instrumented command passes
   638 tasks; `contractCheck` reports 19 `[PASS]` assertions and zero `PENDING`. The Android
   instrumented suite runs 17 tests on the D-84 API 36 emulator with zero failures.
-- Known failures: none in the focused GREEN verification. The four RED failures are resolved.
+- Known failures: none. The four intended RED failures are resolved; quality, architecture,
+  contracts, coverage and the complete non-instrumented command pass.
 - Open decisions or blockers: none.
-- Exact next step: commit and push GREEN, reconcile D-169/D-174 and the remaining documentation in
-  REFACTOR, then run the full verification without merging pull request #69.
+- Exact next step: commit and push REFACTOR, then leave pull request #69 for the mandatory owner
+  review and required checks without merging it.
 
 ## Scope Completed
 
@@ -149,6 +150,15 @@
 - D-172 (second review round): raised as `Proposed` by the E3-03 review, recommending an awaitable
   drain plus a bounded join before the `DatabaseHandle` closes. `E3-17` owns the fix; no production
   change was made here.
+- No new decision arose in the eleventh review round. D-169 was reconciled with the already-accepted
+  D-174: D-169 governs the persisted millisecond anchor and fail-closed progress invariant, while
+  D-174 governs the provider-precision in-cycle boundary.
+- Re-quarantine preserves the original `createdAt`. This enforces the existing `§9.5` field meaning
+  without a schema rename or migration; later deliveries update only the diagnostic fields.
+- `Instant.toEpochMicroseconds()` remains public but hidden from Objective-C under D-174. Tests are
+  its current callers, and cross-module integration tests need the canonical forward conversion to
+  construct and inspect provider-precision boundaries without duplicating arithmetic or exposing
+  provider timestamp types.
 
 ## Verification Run
 
@@ -806,6 +816,61 @@ Verification for this round:
 - `env ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace` —
   `BUILD SUCCESSFUL in 55s`, all 17 tests passed on the D-84 API 36 emulator.
 - No pull-request merge was performed; PR #69 still requires the owner's gated review and all ten
+  required checks.
+
+## Eleventh Owner-Review Correction Round (2026-09-15)
+
+Five findings were closed without changing behavior outside their stated scope.
+
+- **Finding 1 — stale batch revision at `markSyncing`.** `markVehicleSyncing` and
+  `markFuelEntrySyncing` now require the selected `localRevision` as well as the existing
+  `FAILED_POISONED` guard. `SyncDatabaseAccess` and `SqlDelightSyncPersistence` propagate the
+  revision, and `FakeSyncPersistence` mirrors both guards. A local edit after batch selection but
+  before the later row reaches `markSyncing` therefore remains `PENDING`; its stale remote attempt
+  cannot stamp the edited row.
+- **Finding 2 — D-169/D-174 reconciliation.** The D-169 rows in `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12` and `docs/TECHNICAL_PLAN.md §2`, plus the `§8` recovery guarantee and
+  ADR-0170, now state that D-169 governs the persisted epoch-millisecond anchor and the fail-closed
+  rule at the active cursor's precision. D-174 governs the in-cycle provider-microsecond boundary.
+  ADR-0170 is marked superseded in part by ADR-0175, and ADR-0175 has the reciprocal reference. No
+  new decision ID was introduced.
+- **Finding 3 — epoch precision documentation and API visibility.** `EpochPrecision.kt` now states
+  the actual split: epoch milliseconds in persisted `sync_cursor`, provider microseconds in the
+  in-cycle ordering cursor. `toEpochMicroseconds()` remains public and hidden from Objective-C under
+  D-174 because cross-module integration tests need the canonical forward conversion; this avoids
+  duplicated arithmetic and provider-type leakage even though production currently calls only the
+  inverse direction.
+- **Finding 4 — aggregate snapshot consistency.** `SyncDatabaseAccess.counts()` reads pending,
+  retryable and poisoned buckets inside one SQLDelight transaction. The test driver asserts exactly
+  one transaction encloses the three reads, preventing concurrent mutation from mixing snapshots.
+- **Finding 5 — quarantine timestamp semantics.** Re-quarantine updates diagnostic fields while
+  preserving the original `createdAt`. This was chosen because `§9.5` already names a creation time;
+  preserving it keeps that meaning without a column rename, schema migration or representational
+  change. The SQL test delivers the same quarantined entity twice and pins the first timestamp.
+- **E3-21 re-check.** Its justification remains correct after Finding 1. The revision guard closes
+  the local-edit window between batch selection and `markSyncing`; the remaining reachable stale
+  `SYNCING` state still requires process death after a successful mark and before that push resolves.
+
+TDD evidence for this round:
+
+- RED `9177c70`: the focused command failed in four intended places. The controller and real SQL
+  tests each expected `PENDING` but observed `SYNCING`; the aggregate test expected one transaction
+  but observed zero; the quarantine test expected `createdAt = 400` but observed `900`.
+- GREEN `65a6297`: the same four focused cases pass, followed by the complete
+  `:core:sync:testAndroidHostTest` and `:core:database:testAndroidHostTest` suites with
+  `--rerun-tasks`.
+- REFACTOR: the new cases were moved into bounded review-specific test classes after detekt correctly
+  reported both original classes over `LargeClass`; no behavior changed.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify` — `BUILD SUCCESSFUL`, 397 tasks. `contractCheck` reports 175 decisions, all 19
+  assertions passing and zero `PENDING`.
+- The complete non-instrumented repository command from `AGENTS.md` — initial `BUILD SUCCESSFUL in
+  19s`; final documented-tree rerun `BUILD SUCCESSFUL in 5s`, both 642 tasks, including Android
+  assembly/unit tests and Android-host/iOS-simulator shared suites.
+- No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
   required checks.
 
 ## Human Review Gate
