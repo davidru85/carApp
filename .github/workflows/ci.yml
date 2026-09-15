@@ -190,7 +190,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Run Android application and KMP host tests
         timeout-minutes: 8
-        run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --no-parallel --stacktrace
+        run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --stacktrace
       # D-75 derives the current four exclusions from the transitive Native-test project graph
       # rooted at the two Firebase integrations. Keeping this invocation separate makes a Native
       # simulator stall visible instead of hiding it behind the Android-host aggregate.
@@ -202,7 +202,6 @@ jobs:
           -x :integration:firebase-firestore:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test
           -x :composition:ios:iosSimulatorArm64Test
-          --no-parallel
           --stacktrace
       - name: Coverage thresholds
         timeout-minutes: 4
@@ -288,12 +287,11 @@ jobs:
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:testAndroidHostTest
-          --no-parallel
           --stacktrace
       - name: Run provider-free Kotlin/Native simulator tests
         timeout-minutes: 8
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:iosSimulatorArm64Test
-          --no-parallel
+          --max-workers=2
           --stacktrace
