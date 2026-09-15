@@ -188,11 +188,16 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      # Host and Kotlin/Native runs both matter: a common test that only ever executes on the JVM
-      # would not catch a Kotlin/Native divergence. D-75 derives the current four exclusions from
-      # the transitive Native-test project graph rooted at the two Firebase integrations.
-      - run: >-
-          ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test
+      - name: Run Android application and KMP host tests
+        timeout-minutes: 8
+        run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --no-parallel --stacktrace
+      # D-75 derives the current four exclusions from the transitive Native-test project graph
+      # rooted at the two Firebase integrations. Keeping this invocation separate makes a Native
+      # simulator stall visible instead of hiding it behind the Android-host aggregate.
+      - name: Run Kotlin/Native simulator tests
+        timeout-minutes: 8
+        run: >-
+          ./gradlew iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
           -x :integration:firebase-firestore:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test
@@ -200,6 +205,7 @@ jobs:
           --no-parallel
           --stacktrace
       - name: Coverage thresholds
+        timeout-minutes: 4
         run: ./gradlew koverVerify --stacktrace
 
   ios-simulator-build:
@@ -277,10 +283,17 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Compile and test without Firebase providers
+      - name: Run provider-free Android host tests
+        timeout-minutes: 8
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:testAndroidHostTest
+          --no-parallel
+          --stacktrace
+      - name: Run provider-free Kotlin/Native simulator tests
+        timeout-minutes: 8
+        run: >-
+          ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:iosSimulatorArm64Test
           --no-parallel
           --stacktrace
