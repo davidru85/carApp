@@ -334,6 +334,69 @@ class SyncDatabaseAccessTest {
         }
 
     @Test
+    fun elapsedRetryableVehicleAndFuelEntryRowsMoveDirectlyToSyncing() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.insertFuelEntryForMutationTest(
+                    id = "entry-1",
+                    date = 1,
+                    createdAt = 1,
+                    odometerKm = 100,
+                )
+                val queries = testDatabase.database.databaseQueries
+                queries.coalesceOutbox("VEHICLE", "vehicle-1", "{\"deleted\":false}", 1)
+                queries.coalesceOutbox("FUEL_ENTRY", "entry-1", "{\"deleted\":false}", 1)
+                val access = SyncDatabaseAccess(testDatabase.database)
+                access.failPush("VEHICLE", "vehicle-1", 1, 3, 50, "REMOTE.UNKNOWN", false, "cycle-v")
+                access.failPush("FUEL_ENTRY", "entry-1", 1, 4, 50, "REMOTE.UNKNOWN", false, "cycle-f")
+
+                val due = access.dueOutbox(now = 100, limit = 50)
+                assertEquals(setOf("vehicle-1", "entry-1"), due.mapTo(mutableSetOf()) { it.entityId })
+                due.forEach { access.markSyncing(it.entityType, it.entityId) }
+
+                assertEquals(
+                    "SYNCING",
+                    testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
+                )
+                assertEquals(
+                    "SYNCING",
+                    testDatabase.driver.nullableString("SELECT syncState FROM fuel_entry WHERE id = 'entry-1'"),
+                )
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
+    fun strandedSyncingRowWithNonConnectivityErrorCountsAsPendingWork() =
+        runTest {
+            val testDatabase = TestDatabase.create()
+            try {
+                testDatabase.insertVehicleForMutationTest()
+                testDatabase.database.databaseQueries.coalesceOutbox(
+                    entityType = "VEHICLE",
+                    entityId = "vehicle-1",
+                    payload = "{\"deleted\":false}",
+                    localRevision = 1,
+                )
+                val access = SyncDatabaseAccess(testDatabase.database)
+                access.failPush("VEHICLE", "vehicle-1", 1, 3, 900, "REMOTE.UNKNOWN", false, "cycle-old")
+                testDatabase.driver
+                    .execute(
+                        identifier = null,
+                        sql = "UPDATE vehicle SET syncState = 'SYNCING' WHERE id = 'vehicle-1'",
+                        parameters = 0,
+                    ).await()
+
+                assertEquals(SyncDatabaseCounts(pending = 1, retryable = 0, poisoned = 0), access.counts())
+            } finally {
+                testDatabase.close()
+            }
+        }
+
+    @Test
     fun dueOutboxSelectsInGlobalDependencyOrderBeforeTheBatchLimit() =
         runTest {
             val testDatabase = TestDatabase.create()

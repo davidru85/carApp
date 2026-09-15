@@ -38,6 +38,33 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 tenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the owner report labelled round 9 to
+  [pull request #69](https://github.com/davidru85/carApp/pull/69) as the tenth correction round because
+  its reviewed head `ecb4487` preceded the already-recorded ninth-round commit `b8de833`. Reconciled
+  the `§7` state machine with the production retry path, corrected the connectivity-recovery
+  criterion, made outbox aggregate classification exhaustive, strengthened SQL/controller/graph
+  regression coverage, aligned the persistence fake with SQL edit resets, and clarified provider
+  microsecond conversion ownership.
+- **Why:** The review found two documentation blockers that contradicted executable behavior and five
+  smaller coverage, fake-fidelity, aggregate-classification and wording gaps.
+- **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§9.5`, `§9.9`),
+  `docs/TECHNICAL_PLAN.md` (`§6`, `§9`), `docs/BACKLOG.md` (`E3-03`),
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:common`, `:core:database`; test code:
+  `:core:database`, `:core:sync`, `:shared`.
+- **Verification:** Intended RED failures were observed before each relevant production correction;
+  focused tests pass; quality, architecture, contract and coverage gates pass with zero `PENDING`;
+  Android and iOS shared suites each pass 10/10 consecutive runs; the complete non-instrumented
+  command passes; the iOS framework/header and host app pass; the protected Android instrumented
+  suite passes all 17 tests on the API 36 emulator.
+- **Follow-ups / risks:** No new follow-up was created. `D-172`/`E3-17`, `D-173`/`E3-18`, `E3-19`,
+  `E3-20` and `E3-21` remain open. PR #69 is not merged and still requires the owner's gated review
+  and all ten required checks.
+
 ### 2026-09-13 — E3-03 ninth owner-review round
 
 - **Type:** correction

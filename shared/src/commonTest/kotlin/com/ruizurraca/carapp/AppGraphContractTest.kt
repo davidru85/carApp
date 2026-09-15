@@ -56,9 +56,13 @@ class AppGraphContractTest {
             val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
+                graph.syncController().requestSync(SyncTrigger.PullToRefresh)
+                graph.syncController().status.awaitState("controller starts syncing") { it == SyncStatus.Syncing }
                 val vehicles = graph.vehicleListStateHolder(harness.scope)
                 val fuelEntries = graph.fuelEntryListStateHolder(harness.scope, "vehicle-1")
-                graph.syncController().requestSync(SyncTrigger.PullToRefresh)
+
+                assertEquals(SyncStatus.Syncing, vehicles.state.value.syncStatus)
+                assertEquals(SyncStatus.Syncing, fuelEntries.state.value.syncStatus)
 
                 vehicles.state.awaitState("vehicle list observes syncing") { it.syncStatus == SyncStatus.Syncing }
                 fuelEntries.state.awaitState("fuel list observes syncing") { it.syncStatus == SyncStatus.Syncing }

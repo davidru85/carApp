@@ -158,33 +158,6 @@ class DefaultSyncControllerTest {
         }
 
     @Test
-    fun localEditDuringInflightPushRemainsPending() =
-        runTest {
-            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
-            fixture.remote.onPush = { fixture.persistence.edit("vehicle-1") }
-
-            fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
-
-            assertEquals(
-                2,
-                fixture.persistence.outbox
-                    .single()
-                    .localRevision,
-            )
-            assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
-            // The editor sets PENDING in the same transaction as the local edit (§7 invariant,
-            // §9.3), and the ack with a mismatched revision leaves the state unchanged. The real
-            // sequence is therefore SYNCING -> PENDING, not SYNCING -> SYNCING.
-            assertEquals(
-                listOf("SYNCING", "PENDING"),
-                fixture.persistence.stateHistory
-                    .filter { it.first == "vehicle-1" }
-                    .map { it.second },
-            )
-        }
-
-    @Test
     fun pullOverlapIncludesADocumentBeforeTheStoredCursor() =
         runTest {
             val fixture = fixture()
@@ -762,6 +735,139 @@ class DefaultSyncControllerTest {
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultSyncControllerReviewRoundTest {
+    @Test
+    fun localEditDuringInflightPushRemainsPending() =
+        runTest {
+            val fixture = fixture(now = 900_000).withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.outbox[0] =
+                fixture.persistence.outbox[0].copy(
+                    attemptCount = 4,
+                    nextAttemptAt = instant(900_000),
+                    lastErrorCode = RemoteError.Unknown.code,
+                )
+            fixture.persistence.lastErrors["vehicle-1"] = RemoteError.Unknown.code
+            fixture.persistence.cycleIds["vehicle-1"] = "cycle-stale"
+            fixture.remote.onPush = { fixture.persistence.edit("vehicle-1") }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals(
+                2,
+                fixture.persistence.outbox
+                    .single()
+                    .localRevision,
+            )
+            assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-1"))
+            assertEquals(
+                0,
+                fixture.persistence.outbox
+                    .single()
+                    .attemptCount,
+            )
+            assertEquals(
+                instant(0),
+                fixture.persistence.outbox
+                    .single()
+                    .nextAttemptAt,
+            )
+            assertNull(
+                fixture.persistence.outbox
+                    .single()
+                    .lastErrorCode,
+            )
+            assertNull(fixture.persistence.lastErrors["vehicle-1"])
+            assertNull(fixture.persistence.cycleIds["vehicle-1"])
+            // The editor sets PENDING in the same transaction as the local edit (§7 invariant,
+            // §9.3), and the ack with a mismatched revision leaves the state unchanged. The real
+            // sequence is therefore SYNCING -> PENDING, not SYNCING -> SYNCING.
+            assertEquals(
+                listOf("SYNCING", "PENDING"),
+                fixture.persistence.stateHistory
+                    .filter { it.first == "vehicle-1" }
+                    .map { it.second },
+            )
+        }
+
+    @Test
+    fun automaticDueRetryTransitionsDirectlyFromFailedRetryableToSyncing() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.Unknown)
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            fixture.clock.advanceBy(900_000)
+            fixture.remote.pushResults += ack("vehicle-1")
+            fixture.controller.requestSync(SyncTrigger.Periodic)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("SYNCING", "FAILED_RETRYABLE", "SYNCING", "SYNCED"),
+                fixture.persistence.stateHistory
+                    .filter { it.first == "vehicle-1" }
+                    .map { it.second },
+            )
+        }
+
+    @Test
+    fun retryCeilingPoisonIsStampedFromSyncing() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.outbox[0] =
+                fixture.persistence.outbox[0].copy(attemptCount = MAX_RETRYABLE_ATTEMPTS - 1)
+            fixture.remote.pushResults += Outcome.Err(RemoteError.Unknown)
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("SYNCING", "FAILED_POISONED"),
+                fixture.persistence.stateHistory
+                    .filter { it.first == "vehicle-1" }
+                    .map { it.second },
+            )
+        }
+
+    @Test
+    fun everyObservedTransitionBelongsToTheSectionSevenAllowedSet() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.Unknown)
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+            fixture.clock.advanceBy(900_000)
+            fixture.remote.pushResults += Outcome.Err(RemoteError.InvalidArgument)
+            fixture.controller.requestSync(SyncTrigger.Periodic)
+            advanceUntilIdle()
+
+            val observedStates =
+                listOf("PENDING") +
+                    fixture.persistence.stateHistory
+                        .filter { it.first == "vehicle-1" }
+                        .map { it.second }
+            val observedTransitions = observedStates.zipWithNext().toSet()
+            val documentedAllowedTransitions =
+                setOf(
+                    "SYNCED" to "PENDING",
+                    "PENDING" to "PENDING",
+                    "PENDING" to "SYNCING",
+                    "SYNCING" to "SYNCED",
+                    "SYNCING" to "PENDING",
+                    "SYNCING" to "FAILED_RETRYABLE",
+                    "FAILED_RETRYABLE" to "PENDING",
+                    "FAILED_RETRYABLE" to "SYNCING",
+                    "SYNCING" to "FAILED_POISONED",
+                    "FAILED_POISONED" to "PENDING",
+                )
+
+            assertTrue(
+                observedTransitions.all { it in documentedAllowedTransitions },
+                "observed transitions missing from docs/CONTRACTS.md §7: " +
+                    (observedTransitions - documentedAllowedTransitions),
+            )
+        }
+
     @Test
     fun awaitableSyncResolvesAgainstTheFollowUpCycleWithoutStartingASecond() =
         runTest {
@@ -1566,6 +1672,8 @@ private class FakeSyncPersistence : SyncPersistence {
     val outbox = mutableListOf<OutboxRecord>()
     val states = mutableMapOf<String, String>()
     val stateHistory = mutableListOf<Pair<String, String>>()
+    val lastErrors = mutableMapOf<String, String>()
+    val cycleIds = mutableMapOf<String, String>()
     val calls = mutableListOf<String>()
     val cursors = mutableMapOf<EntityType, RemoteCursor>()
     val vehicleServerTimes = mutableMapOf<String, Long?>()
@@ -1630,6 +1738,8 @@ private class FakeSyncPersistence : SyncPersistence {
         // set to PENDING, and the ack only stamps `serverUpdatedAt` (§9.3).
         if (current.localRevision == row.localRevision) {
             outbox.remove(current)
+            lastErrors.remove(row.entityId.value)
+            cycleIds.remove(row.entityId.value)
             transition(row.entityId.value, "SYNCED")
         }
         vehicleServerTimes[row.entityId.value] = serverUpdatedAt?.toEpochMilliseconds()
@@ -1650,6 +1760,8 @@ private class FakeSyncPersistence : SyncPersistence {
         if (outbox[index].localRevision != row.localRevision) return
         outbox[index] =
             outbox[index].copy(attemptCount = attemptCount, nextAttemptAt = nextAttemptAt, lastErrorCode = errorCode)
+        lastErrors[row.entityId.value] = errorCode
+        cycleIds[row.entityId.value] = cycleId.value
         // Mirror `SyncDatabaseAccess`: a connectivity-only failure is a deferred retry and leaves the
         // row PENDING, so the row state agrees with the aggregate `SyncStatus` (`§9.9`).
         val state =
@@ -1720,6 +1832,8 @@ private class FakeSyncPersistence : SyncPersistence {
             val row = outbox[index]
             if (states[row.entityId.value] in setOf("FAILED_RETRYABLE", "FAILED_POISONED")) {
                 outbox[index] = row.copy(attemptCount = 0, nextAttemptAt = now, lastErrorCode = null)
+                lastErrors.remove(row.entityId.value)
+                cycleIds.remove(row.entityId.value)
                 transition(row.entityId.value, "PENDING")
             }
         }
@@ -1768,9 +1882,18 @@ private class FakeSyncPersistence : SyncPersistence {
 
     fun edit(entityId: String) {
         val index = outbox.indexOfFirst { it.entityId.value == entityId }
-        outbox[index] = outbox[index].copy(localRevision = outbox[index].localRevision + 1)
+        outbox[index] =
+            outbox[index].copy(
+                localRevision = outbox[index].localRevision + 1,
+                attemptCount = 0,
+                nextAttemptAt = instant(0),
+                lastErrorCode = null,
+            )
+        lastErrors.remove(entityId)
+        cycleIds.remove(entityId)
         // Mirror the production editor (`updateVehicleRow`/`updateFuelEntryRow`), which sets the
-        // entity to PENDING in the same transaction as the edit (§7 invariant, §9.3).
+        // entity to PENDING and coalesces a clean retry context in the same transaction as the edit
+        // (`coalesceOutbox`, §7 invariant, §9.3).
         transition(entityId, "PENDING")
     }
 

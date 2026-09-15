@@ -878,11 +878,11 @@ Acceptance criteria:
 - All 18 backup and recovery tests in `docs/TECHNICAL_PLAN.md §9` pass.
 - A cycle is not started while `ConnectivityObserver.isOnline` is false, and connectivity failures never poison a row (`docs/CONTRACTS.md §9.2`, `§9.7`).
 - The deterministic backup and recovery simulation exists with a fixed seed and an injected jitter source.
-- The state machine matches `docs/CONTRACTS.md §7`. A local edit during an in-flight push sets the row `PENDING` in the same transaction as the edit (the editor's rule, `§7` invariant and `§9.3`), so the reachable sequence is `SYNCING -> PENDING`, and the ack for the stale revision only stamps `serverUpdatedAt`; `SYNCING -> SYNCING` is not reachable.
+- The state machine matches `docs/CONTRACTS.md §7`. A local edit during an in-flight push sets the row `PENDING` in the same transaction as the edit (the editor's rule, `§7` invariant and `§9.3`), so the reachable sequence is `SYNCING -> PENDING`, and the ack for the stale revision only stamps `serverUpdatedAt`. An automatic due retry follows `FAILED_RETRYABLE -> SYNCING`, and poison is stamped only as `SYNCING -> FAILED_POISONED`; `SYNCING -> SYNCING`, `FAILED_RETRYABLE -> FAILED_POISONED` and `FAILED_POISONED -> SYNCING` are not reachable.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.
 - Concurrent triggers set the single pending flag and cause exactly one follow-up cycle after the active cycle completes.
 - Trigger constants match `docs/CONTRACTS.md §9.8`.
-- `ConnectivityRecovered` moves connectivity-only `FAILED_RETRYABLE` rows due immediately while preserving `attemptCount`.
+- `ConnectivityRecovered` makes every outbox row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` due immediately, regardless of entity `syncState`, while preserving `attemptCount`.
 - `retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING` with cleared error context.
 - Cold-start sync pulls before pushing only when `vehicle` and `fuel_entry` are empty for the owner and the outbox is empty.
 - Debug screen exposes the outbox, cursors, quarantine and row sync state.

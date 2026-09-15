@@ -334,6 +334,13 @@ Synchronized entity control columns:
 | `localMutationSeq` | Monotonic database-local mutation order, shared across synchronized entity tables. |
 | `schemaVersion` | Payload schema version. |
 
+Automatic due retry does not rewrite an entity to `PENDING`: `selectDueOutbox` can select an
+elapsed `FAILED_RETRYABLE` row and `markVehicleSyncing` / `markFuelEntrySyncing` moves it directly to
+`SYNCING`. Manual retry and a local edit produce `FAILED_RETRYABLE -> PENDING`. A poison is always
+stamped after push start as `SYNCING -> FAILED_POISONED`; `FAILED_RETRYABLE -> FAILED_POISONED`,
+`SYNCING -> SYNCING` and `FAILED_POISONED -> SYNCING` are not reachable. The complete canonical set
+remains `docs/CONTRACTS.md §7`.
+
 Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`, `anonymous_reminder`, `account_conversion_operation`, `account_conversion_snapshot`.
 
 There is **no enforced foreign key** from `fuel_entry` to `vehicle`: sync can legitimately deliver an entry before its vehicle, and a constraint failure inside a pull transaction would stall the cursor permanently.
@@ -490,8 +497,10 @@ The engine lives fully in `commonMain`. Platform APIs only trigger it; they are 
        delete outbox row, set syncState = SYNCED, set serverUpdatedAt
    - else:
        keep outbox row, update only serverUpdatedAt
-6. Retry network and token failures with backoff, up to MAX_RETRYABLE_ATTEMPTS.
-7. Mark validation and permission failures as poisoned.
+6. On an automatic due retry, move `FAILED_RETRYABLE` directly to `SYNCING` before the remote push.
+7. Retry qualifying non-connectivity remote failures with backoff; stamp poison from `SYNCING` when
+   the §9.7 ceiling is reached. Connectivity and `Unauthenticated` failures never poison.
+8. Mark validation and permission failures as poisoned from `SYNCING`.
 ```
 
 ### Pull
@@ -537,7 +546,7 @@ Required tests for `:core:sync`:
 7. Pull overlap prevents missing a document with a timestamp before the cursor.
 8. Device clock one hour ahead does not win all conflicts.
 9. First sync of 1,000 records is paginated correctly.
-10. After `MAX_RETRYABLE_ATTEMPTS` consecutive **non-connectivity** retryable failures the row becomes `FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it.
+10. After `MAX_RETRYABLE_ATTEMPTS` consecutive qualifying **non-connectivity** retryable failures the row follows `SYNCING -> FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it. Every automatic due retry before that poison follows `FAILED_RETRYABLE -> SYNCING`, never `FAILED_RETRYABLE -> PENDING`.
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
 12. A fuel entry arriving before its vehicle during recovery is persisted, hidden from the UI, and later becomes visible without stalling.
 13. Recovery data containing two vehicle documents with the same name restores both vehicles without a local uniqueness constraint failure.

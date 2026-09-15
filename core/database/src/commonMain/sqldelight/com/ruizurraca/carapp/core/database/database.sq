@@ -487,8 +487,36 @@ WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 
 countPendingSyncRows:
 SELECT COUNT(*) FROM outbox
-WHERE lastErrorCode IS NULL
-   OR lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED');
+WHERE NOT EXISTS (
+    SELECT 1 FROM vehicle
+    WHERE outbox.entityType = 'VEHICLE'
+      AND vehicle.id = outbox.entityId
+      AND vehicle.syncState = 'FAILED_POISONED'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM fuel_entry
+    WHERE outbox.entityType = 'FUEL_ENTRY'
+      AND fuel_entry.id = outbox.entityId
+      AND fuel_entry.syncState = 'FAILED_POISONED'
+  )
+  AND (
+    lastErrorCode IS NULL
+    OR lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+    OR (
+      NOT EXISTS (
+        SELECT 1 FROM vehicle
+        WHERE outbox.entityType = 'VEHICLE'
+          AND vehicle.id = outbox.entityId
+          AND vehicle.syncState = 'FAILED_RETRYABLE'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM fuel_entry
+        WHERE outbox.entityType = 'FUEL_ENTRY'
+          AND fuel_entry.id = outbox.entityId
+          AND fuel_entry.syncState = 'FAILED_RETRYABLE'
+      )
+    )
+  );
 
 countRetryableSyncRows:
 SELECT COUNT(*) FROM outbox

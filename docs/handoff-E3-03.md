@@ -37,7 +37,7 @@
 - Date: 2026-09-13.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received nine owner-review correction
+  `refactor(E3-03): finalize sync engine`. The story then received ten owner-review correction
   rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
 - Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
   against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
@@ -716,6 +716,96 @@ Verification for this round:
   passes and the header is byte-identical to the golden; the host-app `xcodebuild` is
   `** BUILD SUCCEEDED **`; the protected Android instrumented suite passes 17 tests on the D-84 API
   36 emulator.
+
+## Tenth Owner-Review Correction Round (Owner report labelled round 9; 2026-09-15)
+
+The report reviewed branch head `ecb4487`, but the branch was already at `b8de833` when this work
+started. That intervening commit is the ninth correction round recorded above. This section therefore
+records the incoming report as the tenth correction round without reverting the accepted ninth-round
+fixes. The report contained two blockers and five minors.
+
+- **BLOCKING 1 — the documented entity state machine contradicted production.** The owner selected
+  option A: production was correct and the documents were stale. `docs/CONTRACTS.md §7` now makes
+  automatic due retry `FAILED_RETRYABLE -> SYNCING` directly, reserves
+  `FAILED_RETRYABLE -> PENDING` for manual retry or a local edit, removes
+  `FAILED_RETRYABLE -> FAILED_POISONED`, assigns qualifying retry-ceiling poison to
+  `SYNCING -> FAILED_POISONED`, and limits `SYNCING -> FAILED_RETRYABLE` to non-connectivity
+  retryable remote push failures. `docs/TECHNICAL_PLAN.md §§6, 9` and the E3-03 backlog entry mirror
+  that rule. The allowed-subset guard, controller tests for automatic retry and ceiling poison, and
+  SQLDelight vehicle/fuel path tests pin the corrected model.
+- **BLOCKING 2 — the backlog's connectivity criterion required the wrong state.** The E3-03
+  criterion now resets every outbox row whose `lastErrorCode` belongs to
+  `CONNECTIVITY_ERROR_CODES`, independently of entity state, while preserving `attemptCount`. A
+  sweep of the rest of E3-03, `docs/TECHNICAL_PLAN.md §9`, `docs/SPECIFICATION.md` and this handoff
+  found no second stale connectivity/state rule.
+- **MINOR 3 — graph convergence did not assert the fuel holder's initial value.** The production
+  seed was already corrected by `b8de833`. The graph-level convergence test now constructs both list
+  holders while the graph-owned controller is `Syncing` and asserts that both initial states are
+  `Syncing` before observing their common terminal state.
+- **MINOR 4 — the controller fake under-modelled local-edit reset semantics.**
+  `FakeSyncPersistence.edit` now resets `attemptCount`, `nextAttemptAt`, `lastErrorCode`, stored
+  error details and cycle attribution, matching the SQL path. The in-flight local-edit regression
+  test seeds stale retry context and asserts the full reset.
+- **MINOR 5 — aggregate classification could omit a stranded outbox row.** The implementation choice
+  was to widen `countPendingSyncRows`: every outbox row not classified as retryable or poisoned
+  failed work is pending work, including a stranded `SYNCING` row with a non-connectivity error.
+  The three aggregate buckets are therefore exhaustive for outbox-backed work. A SQLDelight test
+  pins the stranded-`SYNCING` case.
+- **MINOR 6 — `§9.5` described the ordering timestamp as milliseconds.** It now names the provider
+  microsecond value returned by `orderingUpdatedAtMicros()` and keeps the fail-closed
+  `InvalidArgument` behavior for missing or unusable ordering metadata.
+- **MINOR 7 — `toEpochMicroseconds` appeared production-public only for tests.** The function remains
+  public as the symmetric counterpart of the provider-facing inverse conversion; its KDoc now
+  records that integration boundaries and deterministic cross-module test construction share the
+  canonical arithmetic without exposing provider types or duplicating conversion logic.
+
+TDD evidence for this round:
+
+- RED command:
+  `./gradlew :core:sync:testAndroidHostTest --tests '*DefaultSyncControllerTest'
+  :core:database:testAndroidHostTest --tests '*SyncDatabaseAccessTest'
+  :shared:testAndroidHostTest --tests '*AppGraphContractTest'`. It failed in the three intended
+  places: local edit retained `attemptCount = 4`, the observed transitions lacked
+  `FAILED_RETRYABLE -> SYNCING`, and the stranded `SYNCING` row produced zero pending work. After
+  production changes, the exact same command was GREEN: `BUILD SUCCESSFUL in 5s`, 82 tasks.
+- Because `b8de833` already contained the fuel initial-seed production fix, its new convergence
+  assertion was demonstrated RED by temporarily restoring the old `Idle` seed, then restoring the
+  branch implementation. The exact command was
+  `./gradlew :shared:testAndroidHostTest --tests
+  '*AppGraphContractTest.vehicleAndFuelListsObserveTheSameGraphOwnedSyncStatus'`: RED reported
+  expected `Syncing` but was `Idle`; the restored implementation was GREEN with
+  `BUILD SUCCESSFUL in 2s`. No temporary production edit remains.
+
+Verification for this round:
+
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck koverVerify` —
+  `BUILD SUCCESSFUL in 3s`, 394 tasks; `contractCheck` reported 175 decisions, 19 passing assertions
+  and zero `PENDING`.
+- `./gradlew :core:sync:testAndroidHostTest :core:database:testAndroidHostTest
+  :integration:firebase-firestore:testAndroidHostTest :shared:testAndroidHostTest
+  :feature:vehicle:testAndroidHostTest :feature:fuel:testAndroidHostTest
+  :build-logic:convention:test --rerun-tasks` — `BUILD SUCCESSFUL in 16s`, 102 tasks.
+- `./gradlew :shared:testAndroidHostTest --rerun-tasks --quiet` — **10/10** consecutive runs passed.
+- `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks --quiet` — **10/10** consecutive runs passed.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest
+  iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test
+  -x :integration:firebase-firestore:iosSimulatorArm64Test
+  -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test` —
+  final rerun `BUILD SUCCESSFUL in 16s`, 642 tasks.
+- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64 --stacktrace` —
+  `BUILD SUCCESSFUL in 6s`, 70 tasks. `diff -u
+  shared/build/generated/objc-header/Shared.h.golden
+  composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework/Headers/Shared.h` —
+  exit 0 with no output; the headers are byte-identical.
+- From `iosApp/`: `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator
+  -configuration Debug ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — `** BUILD SUCCEEDED **`. The first
+  sandboxed attempt failed with exit 74 because Xcode could not write its cache or reach
+  CoreSimulator; the unrestricted rerun is the platform result.
+- `env ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest --stacktrace` —
+  `BUILD SUCCESSFUL in 55s`, all 17 tests passed on the D-84 API 36 emulator.
+- No pull-request merge was performed; PR #69 still requires the owner's gated review and all ten
+  required checks.
 
 ## Human Review Gate
 
