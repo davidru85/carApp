@@ -586,11 +586,17 @@ internal class DefaultSyncController(
     /** The `§9.9` aggregate over the real outbox rows: `Failed > Pending > Idle`. */
     private fun rowDerived(counts: SyncCounts): SyncStatus =
         when {
-            counts.retryable > 0 || counts.poisoned > 0 -> SyncStatus.Failed(counts.retryable, counts.poisoned)
+            counts.retryable > 0 || counts.poisoned > 0 -> {
+                SyncStatus.Failed(counts.retryable, counts.poisoned)
+            }
 
-            counts.pending > 0 -> SyncStatus.Pending(counts.pending)
+            counts.pending > 0 -> {
+                SyncStatus.Pending(counts.pending)
+            }
 
-            else -> SyncStatus.Idle
+            else -> {
+                SyncStatus.Idle
+            }
         }
 
     private fun SyncCounts.retryableOrAtLeastOne(): Int = maxOf(retryable, 1)

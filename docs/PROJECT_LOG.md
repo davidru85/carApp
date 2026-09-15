@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 thirteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Closed one defect and one coverage gap on [pull request #69](https://github.com/davidru85/carApp/pull/69): a connectivity-class pull failure no longer publishes `SyncStatus.Failed`, and `FakeRemoteSyncSource.pullChanges` can now return `Outcome.Err`, which was previously impossible to script. `docs/CONTRACTS.md §9.9` now states that its aggregation rule covers cycle-level failures, not only per-row classification.
+- **Why:** An authenticated, online owner with an empty outbox whose network dropped mid-cycle was shown `Failed(retryable = 1, poisoned = 0)` — an error synthesized from zero failed rows — which `§9.9` names explicitly. The push path had already been fixed by the R5 round through `SyncDatabaseAccess.failPush`; the pull path disagreed for the same error class and had no test coverage at all.
+- **Documents touched:** `docs/CONTRACTS.md §9.9`, `docs/handoff-E3-03.md`, this log, the pull-request description. Production/tests: `:core:sync`. No new decision; `docs/BACKLOG.md` needs no deferral because the item is fixed here.
+- **Verification:** RED `6bded94` reproduced the wrong aggregate in three cases (`expected:<Idle> but was:<Failed(retryableCount=1, poisonedCount=0)>` and `expected:<Pending(count=1)> but was:<Failed(retryableCount=1, poisonedCount=0)>`) while both regression guards passed; GREEN `1667857` passes `:core:sync:testAndroidHostTest` and `:core:sync:iosSimulatorArm64Test`, and `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify` passes with all 19 contract assertions `[PASS]` and zero `PENDING`. `sync(reason)` still returns `Outcome.Err` for a failed pull, so D-171 / ADR-0172 pull-to-refresh propagation is unchanged.
+- **Environment note:** mid-session `Xcode.app` was replaced and its license is no longer agreed, so `xcrun` exits 69 and every `iosSimulatorArm64Test` / `linkDebugTestIosSimulatorArm64` task fails on the toolchain. The same iOS suite passed before the replacement; `sudo xcodebuild -license accept` restores the route. No code failure is involved.
+- **Follow-ups / risks:** `SyncTrigger.ConnectivityRecovered` is still unwired (E3-04 scope), so a connectivity failure is not retried automatically; the false `Failed` it used to leave sticky can no longer be published. `E3-17` / `D-172` still owns graph-close safety, and `E3-18` through `E3-21` remain deferred. PR #69 remains unmerged and gated.
+
 ### 2026-09-15 — E3-03 twelfth owner-review round
 
 - **Type:** correction

@@ -36,10 +36,10 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the twelfth owner-review correction round is REFACTOR complete;
-  RED `8c97239` and GREEN `80241a3` are committed and pushed. Earlier story RED is `a66c612` and
+- Current phase and latest commit: the thirteenth owner-review correction round is REFACTOR complete;
+  RED `6bded94` and GREEN `1667857` are committed and pushed. Earlier story RED is `a66c612` and
   earlier story GREEN is `bfced6b`.
-- Push and pull-request status: the round is organized as RED `8c97239`, GREEN `80241a3` and the
+- Push and pull-request status: the round is organized as RED `6bded94`, GREEN `1667857` and the
   REFACTOR commit containing this checkpoint and the repository records. Pull request #69 remains
   open against `main`; it is not merged and MUST NOT be merged on agent judgement.
 - Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
@@ -72,9 +72,21 @@
   coverage, up from 72.65%, against the 80% threshold. The complete non-instrumented command passes
   638 tasks; `contractCheck` reports 19 `[PASS]` assertions and zero `PENDING`. The Android
   instrumented suite runs 17 tests on the D-84 API 36 emulator with zero failures.
-- Known failures: none. The twelfth-round intended RED failures are resolved; focused module suites,
-  quality checks and the complete non-instrumented command pass.
-- Open decisions or blockers: none.
+- Verification evidence for the thirteenth round: `:core:sync` Android-host and iOS-simulator suites
+  pass on GREEN `1667857` (62 tasks); `ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify` passes (397 tasks) after the REFACTOR formatting, with all
+  19 contract assertions `[PASS]` and zero `PENDING`; `testAndroidHostTest :androidApp:testDebugUnitTest
+  :androidApp:assembleDebug --rerun-tasks` passes. The complete non-instrumented command currently
+  fails **only** on `iosSimulatorArm64Test` and `linkDebugTestIosSimulatorArm64`, because `Xcode.app`
+  was replaced mid-session and its license is no longer agreed (`xcrun` exits 69). That is an
+  environment blocker, not a code failure: the same iOS suite passed before the replacement and
+  `:core:sync:compileKotlinIosSimulatorArm64` still passes. See the thirteenth-round section.
+- Known failures: none in code. The iOS-simulator route is blocked by the host Xcode license state
+  until the owner runs `sudo xcodebuild -license accept`; the thirteenth-round intended RED failures
+  are resolved; focused module suites, quality checks and every reachable test task pass.
+- Open decisions or blockers: none in code. The iOS-simulator verification route is blocked by the
+  host Xcode license state (environment, not repository): `Xcode.app` was replaced during this session
+  and `xcrun` now exits 69. Owner action `sudo xcodebuild -license accept` restores it.
 - Exact next step: leave pull request #69 for the mandatory owner review and ten required checks;
   do not merge it on agent judgement.
 
@@ -944,6 +956,87 @@ Verification for this round:
   pass together (`BUILD SUCCESSFUL in 16s`, 135 tasks). No production behavior changed.
 - The complete non-instrumented repository command from `AGENTS.md` — `BUILD SUCCESSFUL in 6s`, 642
   tasks, including Android assembly/unit tests and Android-host/iOS-simulator shared suites.
+- No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
+  required checks.
+
+## Thirteenth Owner-Review Correction Round (2026-09-15)
+
+One defect and one test-coverage gap were closed without changing any other behaviour.
+
+- **DEFECT — a connectivity-class pull failure published `SyncStatus.Failed`.** `refreshStatus()`
+  forced the representative failure aggregate on every `cycleFailure`, so an authenticated, online
+  owner with an empty outbox whose `pullChanges` returned `Outcome.Err(RemoteError.Unavailable)`
+  (the network dropping mid-cycle while `ConnectivityObserver.isOnline` still reads `true`) was
+  shown `Failed(retryable = 1, poisoned = 0)`: an error state synthesized from zero failed rows.
+  `docs/CONTRACTS.md §9.9` is explicitly a rule about aggregation rather than only about admission,
+  and names this exact case. The R5 round had already resolved it for the push path through
+  `SyncDatabaseAccess.failPush`, which leaves a `CONNECTIVITY_ERROR_CODES` row `PENDING`; the pull
+  path was not brought into that resolution, so the two paths disagreed for the same error class.
+  `RemoteError.DeadlineExceeded` behaved identically.
+- **Fix.** The `cycleFailure` branch of `refreshStatus()` now consults `lastCycleError`. A failure
+  whose `code` is in `CONNECTIVITY_ERROR_CODES` falls through to the same row-derived aggregate the
+  push path reaches — `retryable > 0 || poisoned > 0` -> `Failed`, `pending > 0` -> `Pending`, else
+  `Idle` — extracted into a `rowDerived(counts)` helper shared with the terminal `else` branch. A
+  non-connectivity cycle failure keeps the synthetic representative count unchanged.
+- **`sync(reason)` outcome preserved.** The change is confined to the published `SyncStatus`.
+  `sync(reason)` still returns `Outcome.Err` carrying the underlying `RemoteError`, as the
+  pull-to-refresh path requires (`§20.7`, D-171 / ADR-0172), and `failPullCycle` still leaves the
+  stored cursor unchanged. `failProgressInvariant` is unchanged: `SyncError.ConflictUnresolved` is
+  a stranding condition per `§9.4`, not a connectivity failure, so it keeps publishing `Failed` and
+  reporting through `onPoisoned` with its cycle id. `unexpectedFailure` and `adoptionFailure` were
+  left as they were.
+- **TEST GAP — the pull-failure path had no coverage at all.** `FakeRemoteSyncSource.pullChanges`
+  always returned `Outcome.Ok`: `pullHandler` was typed `(EntityType, RemoteCursor) -> RemotePage`,
+  so a test could not express a transport failure. The two pre-existing tests that throw from
+  `pullHandler` reach the generic `runCycle` catch, not `failPullCycle`. The fake now consults a
+  scripted `pullResults: ArrayDeque<Outcome<RemotePage, RemoteError>>` before its paged documents,
+  which is the only path that exercises `Outcome.Err` in `pullEntity`.
+- **Aggravating factor recorded, not fixed here.** `SyncTrigger.ConnectivityRecovered` is not yet
+  wired (E3-04 scope), so nothing re-runs the cycle automatically. Before this round the false
+  `Failed` was therefore sticky until a manual pull-to-refresh; it now cannot be published at all.
+- **No new decision.** This is a defect against an existing normative rule, not a new choice, so no
+  `D-*` was opened. `AppGraph.close()`, `DatabaseFactory`, `DatabaseHandle` and `core/database/**`
+  were not touched: E3-17 / D-172 still own that race, and E3-18 through E3-21 stay deferred.
+
+TDD evidence for this round:
+
+- RED `6bded94`: `:core:sync:testAndroidHostTest` ran 88 tests with the three intended failures,
+  each observing the same wrong aggregate. The exact output was
+  `expected:<Idle> but was:<Failed(retryableCount=1, poisonedCount=0)>` for
+  `pullConnectivityFailureOnEmptyOutboxPublishesIdle` and for
+  `pullDeadlineExceededIsAlsoTreatedAsConnectivity`, and
+  `expected:<Pending(count=1)> but was:<Failed(retryableCount=1, poisonedCount=0)>` for
+  `pullConnectivityFailureWithPendingWorkPublishesPending`. The two regression guards —
+  `nonConnectivityPullFailureStillPublishesFailed` and
+  `progressInvariantFailureStillPublishesFailedAndReports` — already passed, confirming the fix
+  narrows the connectivity class only.
+- GREEN `1667857`: `./gradlew :core:sync:testAndroidHostTest :core:sync:iosSimulatorArm64Test
+  --rerun-tasks` — `BUILD SUCCESSFUL`, 62 tasks, both targets.
+
+Verification for this round:
+
+- `./gradlew :core:sync:testAndroidHostTest :core:sync:iosSimulatorArm64Test --rerun-tasks` —
+  `BUILD SUCCESSFUL`, 62 tasks, both targets, run on GREEN `1667857`. The Android-host suite ran 88
+  tests with zero failures, including the five new cases.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify` — `BUILD SUCCESSFUL`, 397 tasks, after the REFACTOR formatting. `contractCheck`
+  re-run with `--rerun-tasks` reports all 19 assertions `[PASS]`, zero `PENDING`, 175 decisions and
+  175 ADRs.
+- `./gradlew testAndroidHostTest :androidApp:testDebugUnitTest :androidApp:assembleDebug
+  --rerun-tasks --continue` — `BUILD SUCCESSFUL`; every module's Android-host suite executed with no
+  `UP-TO-DATE`/`NO-SOURCE` substitution on the two tasks that matter (`:core:sync` and
+  `:androidApp`).
+- **iOS-simulator verification could not be repeated after the REFACTOR formatting.** `Xcode.app`
+  was replaced during this session (bundle timestamp 2026-09-15 11:44, `xcrun --version` reports
+  Xcode 27.0 while `/Library/Preferences/com.apple.dt.Xcode.plist` still records agreement to 26.4),
+  so `xcrun` now exits 69 with "You have not agreed to the Xcode license agreements" and every
+  `iosSimulatorArm64Test` task fails while evaluating its `device` property, plus every
+  `linkDebugTestIosSimulatorArm64`. This is an environment change, not a code change: the whole iOS
+  simulator suite passed on GREEN `1667857` at 11:42, before that replacement, and
+  `:core:sync:compileKotlinIosSimulatorArm64` still passes afterwards. The only edit between that
+  green run and now is the ktlint-mandated `when`-branch reformatting of `rowDerived`, which does not
+  change behaviour. Owner action is required to restore the simulator route:
+  `sudo xcodebuild -license accept`.
 - No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
   required checks.
 
