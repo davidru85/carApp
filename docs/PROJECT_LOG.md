@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 fifteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Split the protected `shared-tests` and `provider-decoupling` jobs into explicitly
+  named Android-host, Kotlin/Native simulator and coverage steps while preserving their check names,
+  macOS runners, aggregate tasks, D-75 exclusions, provider-free property and `--no-parallel` policy.
+- **Why:** A job-level timeout did not identify which platform-specific invocation stalled. Per-step
+  timeouts now distinguish Android, Kotlin/Native and coverage diagnostics without changing contractual
+  coverage or the D-35 job separation.
+- **Documents touched:** `.github/workflows/ci.yml`, the D-109 mirror assertion in
+  `build-logic/convention/src/test/kotlin/com/ruizurraca/carapp/buildlogic/IosCompositionContractTest.kt`,
+  `docs/handoff-E3-03.md` and this log. `NativeTestExemptionContract` and its omitted/stale exclusion
+  tests remain unchanged.
+- **Verification:** YAML syntax validation; `./gradlew contractCheck :build-logic:convention:test
+  --rerun-tasks`; exact Android-host and Kotlin/Native commands for both jobs all pass locally.
+- **Follow-ups / risks:** CI step durations for the pushed run will be recorded in the handoff and log.
+  PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172 scope.
+
 ### 2026-09-15 — E3-03 fourteenth owner-review round
 
 - **Type:** correction

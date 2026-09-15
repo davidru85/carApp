@@ -36,12 +36,12 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the fourteenth owner-review correction round is REFACTOR complete;
-  RED `81ed4e4` and GREEN `05c9668` are committed and pushed. The repository-record update containing
-  this checkpoint is not yet committed.
-- Push and pull-request status: RED `81ed4e4` and GREEN `05c9668` are pushed to the existing branch.
-  Pull request #69 remains open against `main`; it is not merged and MUST NOT be merged on agent
-  judgement.
+- Current phase and latest commit: the fifteenth owner-review correction round is REFACTOR complete;
+  the workflow split is committed as `f64bfe3`. The repository-record update for this checkpoint is
+  not yet committed.
+- Push and pull-request status: `f64bfe3` and the preceding RED/GREEN commits are ready to push to
+  the existing branch. Pull request #69 remains open against `main`; it is not merged and MUST NOT
+  be merged on agent judgement.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
@@ -101,10 +101,17 @@
   zero `PENDING`.
 - Known failures: none. The prior Xcode-license blocker is resolved; all required iOS simulator runs
   completed locally.
+- Verification evidence for the fifteenth round: YAML parsing succeeds. `contractCheck` and
+  `:build-logic:convention:test` pass, including rejection tests for omitted and stale Native
+  exclusions. The exact workflow invocations pass locally: Android application plus KMP host tests
+  (219 actionable tasks), Kotlin/Native simulator tests with all four D-75 exclusions (136 tasks),
+  provider-free Android host tests (74 tasks), and provider-free Kotlin/Native simulator tests (75
+  tasks). Per-step timeouts are 8/8/4 minutes for `shared-tests` and 8/8 minutes for
+  `provider-decoupling`, under the existing 20-minute job limits.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
-- Exact next step: commit and push the repository records, wait for pull request #69 CI, then record
-  the resulting `shared-tests` and `provider-decoupling` durations without merging the pull request.
+- Exact next step: push the technical commit and repository records, wait for pull request #69 CI,
+  then record each new step duration without merging the pull request.
 
 ## Scope Completed
 
@@ -1104,6 +1111,32 @@ Verification for this round:
   assertions pass with zero `PENDING`.
 - No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
   required checks.
+
+## Fifteenth Owner-Review Correction Round (2026-09-15)
+
+The protected CI jobs were split into diagnostic steps without changing their contractual coverage.
+
+- **`shared-tests`.** The Android application unit tests and aggregate KMP host tests now run in a
+  named step, the Kotlin/Native simulator aggregate runs in a second named step with the four D-75
+  exclusions, and Kover thresholds remain a third named step. The job remains on `macos-latest`,
+  retains `timeout-minutes: 20` and `--no-parallel`, and preserves the protected check name.
+- **`provider-decoupling`.** The provider-free `:shared:testAndroidHostTest` and
+  `:shared:iosSimulatorArm64Test` invocations now run in separate named steps under the existing
+  `-Pcarapp.excludeFirebaseProviders=true` property. The job remains on `macos-latest`, retains its
+  protected name, `timeout-minutes: 20` and `--no-parallel`.
+- **Contract coverage.** The D-109 workflow mirror assertion now checks the split Android-host and
+  Native commands independently. `NativeTestExemptionContract` remains graph-derived and its tests
+  continue to reject both omitted and stale exclusions; no parser rule or exclusion set changed.
+- **Scope.** Only `.github/workflows/ci.yml` and the affected build-logic contract test changed in
+  the technical commit `f64bfe3`. No production code, D-35 topology or D-75 policy changed.
+
+Verification for this round:
+
+- YAML syntax validation passes.
+- `./gradlew contractCheck :build-logic:convention:test --rerun-tasks` passes.
+- Exact `shared-tests` Android and Native commands pass locally.
+- Exact `provider-decoupling` Android and Native commands pass locally.
+- No pull-request merge was performed; CI step durations remain to be recorded after the pushed run.
 
 ## Human Review Gate
 
