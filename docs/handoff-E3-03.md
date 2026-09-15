@@ -34,13 +34,14 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-13.
+- Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: REFACTOR complete and verified; the third TDD commit is
-  `refactor(E3-03): finalize sync engine`. The story then received ten owner-review correction
-  rounds on the open pull request. RED is `a66c612`; GREEN is `bfced6b`.
-- Push and pull-request status: pushed on `story/E3-03-core-sync-engine`; gated pull request opened
-  against `main` after this commit. It is not merged and MUST NOT be merged on agent judgement.
+- Current phase and latest commit: the eleventh owner-review correction round is RED against
+  `4414595`; four focused regressions fail on the pre-fix implementation as intended. Earlier story
+  RED is `a66c612`; earlier story GREEN is `bfced6b`.
+- Push and pull-request status: RED commit and push are the next step on
+  `story/E3-03-core-sync-engine`; gated pull request #69 remains open against `main`. It is not merged
+  and MUST NOT be merged on agent judgement.
 - Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
   SQLDelight persistence, raw-document validation and quarantine, deterministic push/pull order,
   cursor progress guard, retry/poison behavior, automatic adoption retry, aggregate status,
@@ -71,10 +72,12 @@
   coverage, up from 72.65%, against the 80% threshold. The complete non-instrumented command passes
   638 tasks; `contractCheck` reports 19 `[PASS]` assertions and zero `PENDING`. The Android
   instrumented suite runs 17 tests on the D-84 API 36 emulator with zero failures.
-- Known failures: none.
+- Known failures: the four new RED tests fail as intended: the controller and real SQL paths move a
+  locally edited later-batch row from `PENDING` to `SYNCING`; `counts()` opens zero transactions; and
+  re-quarantine changes `createdAt` from 400 to 900.
 - Open decisions or blockers: none.
-- Exact next step: none for the agent. The pull request awaits the mandatory owner review and the
-  ten required checks.
+- Exact next step: commit and push RED, implement the five bounded findings in GREEN, then complete
+  documentation and full verification in REFACTOR without merging pull request #69.
 
 ## Scope Completed
 

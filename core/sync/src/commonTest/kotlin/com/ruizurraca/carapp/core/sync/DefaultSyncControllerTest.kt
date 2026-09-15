@@ -790,6 +790,36 @@ class DefaultSyncControllerReviewRoundTest {
         }
 
     @Test
+    fun localEditAfterBatchSelectionButBeforeLaterMarkSyncingRemainsPending() =
+        runTest {
+            val fixture =
+                fixture()
+                    .withOutbox(vehicleOutbox("vehicle-1", sequence = 1))
+                    .withOutbox(vehicleOutbox("vehicle-2", sequence = 2))
+            fixture.remote.onPush = {
+                if (fixture.remote.pushCalls.size == 1) fixture.persistence.edit("vehicle-2")
+            }
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals(
+                2,
+                fixture.persistence.outbox
+                    .single()
+                    .localRevision,
+            )
+            assertEquals("PENDING", fixture.persistence.states.getValue("vehicle-2"))
+            assertEquals(
+                listOf("PENDING"),
+                fixture.persistence.stateHistory
+                    .filter { it.first == "vehicle-2" }
+                    .map { it.second },
+                "markSyncing for the selected stale revision must not overwrite the later local edit",
+            )
+        }
+
+    @Test
     fun automaticDueRetryTransitionsDirectlyFromFailedRetryableToSyncing() =
         runTest {
             val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
