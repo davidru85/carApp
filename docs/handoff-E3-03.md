@@ -36,13 +36,18 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the thirteenth owner-review correction round is REFACTOR complete;
-  RED `6bded94` and GREEN `1667857` are committed and pushed. Earlier story RED is `a66c612` and
-  earlier story GREEN is `bfced6b`.
-- Push and pull-request status: the round is organized as RED `6bded94`, GREEN `1667857` and the
-  REFACTOR commit containing this checkpoint and the repository records. Pull request #69 remains
-  open against `main`; it is not merged and MUST NOT be merged on agent judgement.
-- Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
+- Current phase and latest commit: the fourteenth owner-review correction round is RED; the latest
+  pushed commit before this round is `21373a6`. Earlier story RED is `a66c612` and earlier story GREEN
+  is `bfced6b`.
+- Push and pull-request status: the deterministic RED reproduction and this checkpoint are not yet
+  committed or pushed. Pull request #69 remains open against `main`; it is not merged and MUST NOT be
+  merged on agent judgement.
+- Completed since the previous checkpoint: added a deterministic shared-test reproduction that
+  records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
+  wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
+  intended assertion (`settled.isActive`), without closing SQLite during the blocked operation. The
+  correction remains limited to shared test code and records; no production lifecycle code is changed.
+  The earlier rounds committed GREEN with the singleton sync controller,
   SQLDelight persistence, raw-document validation and quarantine, deterministic push/pull order,
   cursor progress guard, retry/poison behavior, automatic adoption retry, aggregate status,
   debug diagnostics, graph ownership and shared state-holder convergence. REFACTOR then formatted
@@ -81,14 +86,14 @@
   was replaced mid-session and its license is no longer agreed (`xcrun` exits 69). That is an
   environment blocker, not a code failure: the same iOS suite passed before the replacement and
   `:core:sync:compileKotlinIosSimulatorArm64` still passes. See the thirteenth-round section.
-- Known failures: none in code. The iOS-simulator route is blocked by the host Xcode license state
-  until the owner runs `sudo xcodebuild -license accept`; the thirteenth-round intended RED failures
-  are resolved; focused module suites, quality checks and every reachable test task pass.
-- Open decisions or blockers: none in code. The iOS-simulator verification route is blocked by the
-  host Xcode license state (environment, not repository): `Xcode.app` was replaced during this session
-  and `xcrun` now exits 69. Owner action `sudo xcodebuild -license accept` restores it.
-- Exact next step: leave pull request #69 for the mandatory owner review and ten required checks;
-  do not merge it on agent judgement.
+- Known failures: the new focused reproduction fails intentionally until the test synchronization
+  helper also requires the controller to leave `SyncStatus.Syncing`. The prior Xcode-license blocker
+  must be re-checked before the required iOS repetitions.
+- Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
+  own production graph-close safety.
+- Exact next step: commit and push RED, then make the shared test helper require the remote effect,
+  any expected persisted state and a non-`Syncing` controller state; remove redundant form-test
+  triggers and audit every E3-03-modified shared test for the same teardown pattern.
 
 ## Scope Completed
 
