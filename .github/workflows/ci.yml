@@ -195,9 +195,7 @@ jobs:
       # rooted at the two Firebase integrations. Keeping this invocation separate makes a Native
       # simulator stall visible instead of hiding it behind the Android-host aggregate.
       - name: Run Kotlin/Native simulator tests
-        # A cold macOS runner can spend several minutes linking the Native test graph before
-        # execution starts; keep the diagnostic step bounded below the job-level 20-minute limit.
-        timeout-minutes: 12
+        timeout-minutes: 8
         run: >-
           ./gradlew iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
