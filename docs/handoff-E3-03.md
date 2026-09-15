@@ -128,23 +128,22 @@
   thresholds 6s. `provider-decoupling` completed in 4m59s: provider-free Android host tests 1m21s
   and provider-free Kotlin/Native simulator tests 3m06s. Both protected jobs are comfortably below
   their 20-minute limits.
-- Documentation-only CI run `35022299380` exposed cold-run timing bounds rather than test failures:
-  the shared Native step reached `:shared:iosSimulatorArm64Test` successfully but exceeded eight
-  minutes by 13 seconds, while provider-free Android reached `:shared:testAndroidHostTest` before
-  exceeding its eight-minute bound. Both diagnostic steps now have 12-minute timeouts, still below
-  the 20-minute job limits; a fresh CI run must confirm them.
+- Documentation-only CI run `35022299380` exposed a cold-run timing bound rather than a test failure:
+  the shared Native step reached `:shared:iosSimulatorArm64Test` successfully but the first uncached
+  macOS runner exceeded the previous eight-minute step timeout by 13 seconds. That diagnostic step
+  now has a 12-minute timeout, still below the 20-minute job limit; a fresh CI run must confirm it.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
 - Exact next step: owner review of pull request #69; no merge was performed.
 
 ## Eighteenth Owner-Review Correction Round (2026-09-15)
 
-- The documentation-only CI run `35022299380` timed out both the shared Native and provider-free
-  Android diagnostic steps after eight minutes on an uncached macOS runner; each Gradle invocation
-  had reached its test task and no assertion failed.
-- `.github/workflows/ci.yml` raises those two diagnostic steps to 12-minute timeouts; the 20-minute
-  job limits, protected check names, D-35 separation, D-75 exclusions and measured parallelism
-  policy are unchanged.
+- The documentation-only CI run `35022299380` timed out `Run Kotlin/Native simulator tests` after
+  eight minutes on an uncached macOS runner; the Gradle invocation had already reached the shared
+  Native test task and no assertion failed.
+- `.github/workflows/ci.yml` raises only that shared Native diagnostic step to a 12-minute timeout;
+  the 20-minute job limit, protected check names, D-35 separation, D-75 exclusions and measured
+  parallelism policy are unchanged.
 - YAML syntax remains valid. The next verification is a fresh CI run from this correction commit;
   PR #69 remains open and unmerged.
 

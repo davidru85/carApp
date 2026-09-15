@@ -43,18 +43,17 @@
 - **Type:** correction
 - **Story / Decision:** `E3-03` / `D-35`, `D-75`
 - **Author:** Codex, on behalf of David Ruiz
-- **What changed:** Raised the `shared-tests` Kotlin/Native and `provider-decoupling` Android
-  diagnostic step timeouts from eight to twelve minutes after the documentation-only CI run
-  `35022299380` timed out during a cold macOS runner.
-- **Why:** The Gradle invocations reached `:shared:iosSimulatorArm64Test` and
-  `:shared:testAndroidHostTest` without test failures but exceeded their eight-minute bounds while
-  materializing uncached graphs. The jobs remain capped at 20 minutes and the measured parallelism
-  policy is unchanged.
+- **What changed:** Raised the `shared-tests` Kotlin/Native diagnostic step timeout from eight to
+  twelve minutes after the documentation-only CI run `35022299380` timed out during a cold macOS
+  runner.
+- **Why:** The Gradle invocation reached `:shared:iosSimulatorArm64Test` without a test failure but
+  exceeded the eight-minute bound by 13 seconds while linking the uncached Native graph. The job
+  remains capped at 20 minutes and the measured parallelism policy is unchanged.
 - **Documents touched:** `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log. No
   production code, tests, exclusions or protected check names changed.
-- **Verification:** YAML syntax validation; the timed-out run's log confirms cold-run timeouts, and
+- **Verification:** YAML syntax validation; the timed-out run's log confirms a cold-run timeout, and
   the previous post-policy run `35020526800` remains fully green. A fresh CI run is required for the
-  new bounds.
+  new bound.
 - **Follow-ups / risks:** Record the fresh CI `shared-tests` and `provider-decoupling` durations.
   PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172 scope.
 
