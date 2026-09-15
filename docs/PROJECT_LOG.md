@@ -38,6 +38,509 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 fifteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Split the protected `shared-tests` and `provider-decoupling` jobs into explicitly
+  named Android-host, Kotlin/Native simulator and coverage steps while preserving their check names,
+  macOS runners, aggregate tasks, D-75 exclusions, provider-free property and `--no-parallel` policy.
+- **Why:** A job-level timeout did not identify which platform-specific invocation stalled. Per-step
+  timeouts now distinguish Android, Kotlin/Native and coverage diagnostics without changing contractual
+  coverage or the D-35 job separation.
+- **Documents touched:** `.github/workflows/ci.yml`, the D-109 mirror assertion in
+  `build-logic/convention/src/test/kotlin/com/ruizurraca/carapp/buildlogic/IosCompositionContractTest.kt`,
+  `docs/handoff-E3-03.md` and this log. `NativeTestExemptionContract` and its omitted/stale exclusion
+  tests remain unchanged.
+- **Verification:** YAML syntax validation; `./gradlew contractCheck :build-logic:convention:test
+  --rerun-tasks`; exact Android-host and Kotlin/Native commands for both jobs all pass locally.
+- **Follow-ups / risks:** CI step durations for the pushed run will be recorded in the handoff and log.
+  PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172 scope.
+
+### 2026-09-15 — E3-03 sixteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Tuned Gradle parallelism from three repeated measurements per policy and applied
+  default parallelism to `shared-tests` plus provider-free Android, with `--max-workers=2` only for
+  provider-free Native tests. `--no-parallel` is removed from both jobs.
+- **Why:** Default parallelism was materially faster and stable for Android/JVM and shared Native
+  tests; provider-free Native consistently benefited from two workers. The no-parallel policy added
+  latency without preventing the prior CI test assertion failure.
+- **Documents touched:** `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log. No tests,
+  exclusions, protected check names or production code changed.
+- **Verification:** 27 local repetitions all passed: 219 actionable tasks for Android/JVM, 136 for
+  shared Native, 74 for provider-free Android and 75 for provider-free Native. The latest pre-policy
+  CI run `35008337379` passed `shared-tests` in 7m44s and failed `provider-decoupling` in 2m08s on a
+  `VehicleListStateHolderTest` assertion, not a timeout.
+- **Follow-ups / risks:** Push `9205dc6` and the records, then wait for fresh CI and record each named
+  step duration. PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172
+  scope.
+
+### 2026-09-15 — E3-03 seventeenth owner-review round
+
+- **Type:** milestone
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Confirmed the measured parallelism policy in CI run
+  [35020526800](https://github.com/davidru85/carApp/actions/runs/35020526800). Both protected jobs
+  completed successfully below their 20-minute limits.
+- **Why:** The final workflow run validates that platform-specific diagnostics remain stable on the
+  hosted macOS runner after removing `--no-parallel` and constraining only provider-free Native tests.
+- **Documents touched:** `docs/handoff-E3-03.md` and this log. No production code or contractual
+  test coverage changed.
+- **Verification:** `shared-tests` took 4m05s: Android application and KMP host tests 1m32s,
+  Kotlin/Native simulator tests 1m58s and coverage thresholds 6s. `provider-decoupling` took 4m59s:
+  provider-free Android host tests 1m21s and provider-free Kotlin/Native simulator tests 3m06s.
+  All ten protected checks are green.
+- **Follow-ups / risks:** PR #69 remains open for owner review and is not merged. Production
+  graph-close safety remains E3-17 / D-172 scope.
+
+### 2026-09-15 — E3-03 fourteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Fixed the shared-test teardown readiness race on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). The three redundant Vehicle form
+  `requestSync(PostWriteDebounce)` calls are gone, and a shared test helper now waits for the expected
+  remote effect, any applicable persisted state and a controller state other than `Syncing` before
+  graph teardown. The audit also moved the graph-convergence and second-refresh tests onto the same
+  complete-cycle boundary.
+- **Why:** `VehicleFormStateHolder.save()` already requests synchronization. The redundant test
+  trigger could reserve a follow-up cycle, while the old wait returned as soon as `pushCalls` became
+  non-empty. `AppGraphTestHarness.close()` could consequently cancel the graph and close SQLite while
+  the active or pending cycle still owned database work.
+- **Documents touched:** `docs/handoff-E3-03.md` and this log. Test code only:
+  `shared/src/commonTest`. `AppGraph`, `DefaultSyncController`, `core/database/**` and every other
+  production path are unchanged; E3-17 / D-172 remains the production lifecycle owner.
+- **Verification:** RED `81ed4e4` deterministically records the automatic push, blocks the following
+  pull and proves the remote-effect-only helper returns while the controller remains `Syncing`.
+  GREEN `05c9668` passes the three focused shared test classes plus shared lint and detekt. Both full
+  shared suites pass together (135 tasks), followed by 25/25 complete Android-host and 25/25 complete
+  iOS-simulator `--rerun-tasks` runs. Global lint, detekt, architecture, contract, build-logic and
+  coverage checks pass with 397 executed tasks; all 19 contract assertions pass and none is `PENDING`.
+- **Follow-ups / risks:** CI durations for `shared-tests` and `provider-decoupling` will be added to
+  the E3-03 handoff after the final record commit completes. PR #69 remains unmerged and gated;
+  production graph-close safety remains E3-17 / D-172 scope.
+
+### 2026-09-15 — E3-03 thirteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Closed one defect and one coverage gap on [pull request #69](https://github.com/davidru85/carApp/pull/69): a connectivity-class pull failure no longer publishes `SyncStatus.Failed`, and `FakeRemoteSyncSource.pullChanges` can now return `Outcome.Err`, which was previously impossible to script. `docs/CONTRACTS.md §9.9` now states that its aggregation rule covers cycle-level failures, not only per-row classification.
+- **Why:** An authenticated, online owner with an empty outbox whose network dropped mid-cycle was shown `Failed(retryable = 1, poisoned = 0)` — an error synthesized from zero failed rows — which `§9.9` names explicitly. The push path had already been fixed by the R5 round through `SyncDatabaseAccess.failPush`; the pull path disagreed for the same error class and had no test coverage at all.
+- **Documents touched:** `docs/CONTRACTS.md §9.9`, `docs/handoff-E3-03.md`, this log, the pull-request description. Production/tests: `:core:sync`. No new decision; `docs/BACKLOG.md` needs no deferral because the item is fixed here.
+- **Verification:** RED `6bded94` reproduced the wrong aggregate in three cases (`expected:<Idle> but was:<Failed(retryableCount=1, poisonedCount=0)>` and `expected:<Pending(count=1)> but was:<Failed(retryableCount=1, poisonedCount=0)>`) while both regression guards passed; GREEN `1667857` passes `:core:sync:testAndroidHostTest` and `:core:sync:iosSimulatorArm64Test`, and `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify` passes with all 19 contract assertions `[PASS]` and zero `PENDING`. `sync(reason)` still returns `Outcome.Err` for a failed pull, so D-171 / ADR-0172 pull-to-refresh propagation is unchanged.
+- **Environment note:** mid-session `Xcode.app` was replaced and its license is no longer agreed, so `xcrun` exits 69 and every `iosSimulatorArm64Test` / `linkDebugTestIosSimulatorArm64` task fails on the toolchain. The same iOS suite passed before the replacement; `sudo xcodebuild -license accept` restores the route. No code failure is involved.
+- **Follow-ups / risks:** `SyncTrigger.ConnectivityRecovered` is still unwired (E3-04 scope), so a connectivity failure is not retried automatically; the false `Failed` it used to leave sticky can no longer be published. `E3-17` / `D-172` still owns graph-close safety, and `E3-18` through `E3-21` remain deferred. PR #69 remains unmerged and gated.
+
+### 2026-09-15 — E3-03 twelfth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Closed two findings on [pull request #69](https://github.com/davidru85/carApp/pull/69): made account-conversion remote decoding total at both the coordinator and graph-launched recovery boundaries, and allocated one correlation ID per complete sync cycle rather than per push.
+- **Why:** Missing, mistyped or non-object remote JSON escaped the conversion's closed `Outcome` API and could crash the graph scope; pull-side and unexpected reports used `cycleId = unavailable`, so one cycle's failures could not be correlated.
+- **Documents touched:** `docs/handoff-E3-03.md`, this log and the pull-request description. Production/tests: `:shared`, `:core:sync`.
+- **Verification:** RED `8c97239` reproduced the unchecked conversion exceptions and split cycle IDs; GREEN `80241a3` passes every focused case and the complete `:shared` / `:core:sync` Android-host suites. The final complete non-instrumented repository run passes 642 tasks on Android host and iOS simulator.
+- **Follow-ups / risks:** Account conversion fails closed with `RemoteError.InvalidArgument` on the first malformed remote document. `E3-17` / `D-172` still owns graph-close safety and completion or failure of every in-flight `sync()` awaiter. PR #69 remains unmerged and gated.
+
+### 2026-09-15 — E3-03 eleventh owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-169`, `D-174`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Closed five findings on [pull request #69](https://github.com/davidru85/carApp/pull/69): guarded `markSyncing` by the selected revision, reconciled D-169 with D-174, corrected epoch-precision documentation, made aggregate counts transactional, and preserved the first quarantine `createdAt`.
+- **Why:** A local edit after batch selection could be overwritten to `SYNCING`; the accepted cursor decisions contradicted each other in their mirrors; three aggregate reads could observe different snapshots; and repeated overlap delivery changed a field documented as creation time.
+- **Documents touched:** `docs/CONTRACTS.md` (`§9.3`, `§9.5`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md` (`§2`, `§8`), `docs/BACKLOG.md` (`E3-21`),
+  ADR-0170, ADR-0175, `docs/handoff-E3-03.md`, this log. Production/tests: `:core:common`,
+  `:core:database`, `:core:sync`.
+- **Verification:** RED `9177c70` reproduced four intended failures; GREEN `65a6297` passes the
+  focused and full module suites; quality, architecture, contract and coverage gates pass with zero
+  `PENDING`; the complete non-instrumented command passes 642 tasks on Android host and iOS
+  simulator.
+- **Follow-ups / risks:** The E3-21 justification remains valid: after the revision guard, its stale
+  `SYNCING` window still requires process death inside one push. PR #69 remains unmerged and requires
+  the owner's gated review and all ten required checks.
+
+### 2026-09-15 — E3-03 tenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Applied the owner report labelled round 9 to
+  [pull request #69](https://github.com/davidru85/carApp/pull/69) as the tenth correction round because
+  its reviewed head `ecb4487` preceded the already-recorded ninth-round commit `b8de833`. Reconciled
+  the `§7` state machine with the production retry path, corrected the connectivity-recovery
+  criterion, made outbox aggregate classification exhaustive, strengthened SQL/controller/graph
+  regression coverage, aligned the persistence fake with SQL edit resets, and clarified provider
+  microsecond conversion ownership.
+- **Why:** The review found two documentation blockers that contradicted executable behavior and five
+  smaller coverage, fake-fidelity, aggregate-classification and wording gaps.
+- **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§9.5`, `§9.9`),
+  `docs/TECHNICAL_PLAN.md` (`§6`, `§9`), `docs/BACKLOG.md` (`E3-03`),
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:common`, `:core:database`; test code:
+  `:core:database`, `:core:sync`, `:shared`.
+- **Verification:** Intended RED failures were observed before each relevant production correction;
+  focused tests pass; quality, architecture, contract and coverage gates pass with zero `PENDING`;
+  Android and iOS shared suites each pass 10/10 consecutive runs; the complete non-instrumented
+  command passes; the iOS framework/header and host app pass; the protected Android instrumented
+  suite passes all 17 tests on the API 36 emulator.
+- **Follow-ups / risks:** No new follow-up was created. `D-172`/`E3-17`, `D-173`/`E3-18`, `E3-19`,
+  `E3-20` and `E3-21` remain open. PR #69 is not merged and still requires the owner's gated review
+  and all ten required checks.
+
+### 2026-09-13 — E3-03 ninth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the ninth owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: `handlePushFailure`
+  made `RemoteError.Unauthenticated` consume the retry budget, poison at the ceiling and map to
+  `SyncError.PayloadPoisoned`, contradicting the normative `§6` table ("retry after a valid auth
+  session, `attemptCount` unchanged"). The owner selected option A — the implementation follows `§6`
+  and the contract is unchanged — so `Unauthenticated` now neither increments `attemptCount` nor
+  poisons, the row is `FAILED_RETRYABLE` (`§7`/`§9.7`/`§9.9`), and the aggregate reports
+  `Failed(retryable=1, poisoned=0)`. `§9.7` and `§9.9` gained the rule; `§6` needed no change.
+  MINOR 2: a finishing cycle can no longer overwrite a newer cycle's `Syncing` (monotonic
+  `cycleGeneration` guard on the terminal publish). MINOR 3: `FuelEntryListStateHolder` seeds its
+  initial `syncStatus` from the injected flow, matching `VehicleListStateHolder`. MINOR 4: `§7` now
+  records the `SYNCING` push transient and its outbox-based recovery, with the explicit reset deferred
+  to `E3-21` (Human review required).
+- **Why:** The review found a direct contradiction of a normative table on a gated topic (error
+  taxonomy, sync state machine), a stale-status publish of the same class fixed in the seventh round,
+  an inconsistent initial list status, and an undocumented transient.
+- **Correction:** the historical claim in the `E3-03` story entry below — "made `Unauthenticated`
+  consume the non-connectivity poison budget" — is wrong under `§6`. This entry supersedes it; the
+  original entry is preserved as history. The handoff carries the same dated correction.
+- **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§9.7`, `§9.9`), `docs/BACKLOG.md` (`E3-21`),
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`, `:feature:fuel`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (175 decisions,
+  zero `PENDING`) and `koverVerify` pass; the new and inverted tests were shown failing against the
+  pre-fix code; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite
+  passed 10/10; the complete non-instrumented command passes; the iOS framework links and the golden
+  header is byte-identical; the host-app `xcodebuild` succeeds; the protected Android instrumented
+  suite passes 17 tests.
+- **Follow-ups / risks:** `D-172`/`E3-17`, `D-173`/`E3-18`, `E3-19`, `E3-20` and `E3-21` remain open.
+  `SyncError.AuthExpired` is a declared `§20` taxonomy leaf that the sync engine never produces; it is
+  recorded as such rather than removed. The pull request still requires the owner's gated review and
+  the ten required checks.
+
+### 2026-09-13 — E3-03 eighth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-174`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the eighth owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: the integration
+  truncated the provider's microsecond ordering timestamp to milliseconds, so the later-page
+  `startAfter` boundary was non-exclusive and a change set of an exact page multiple raised a false
+  `SyncError.ConflictUnresolved`. The owner selected option A with an in-memory scope after the agent
+  reported that persisting microseconds needs a schema-tooling change (this SQLDelight configuration
+  cannot reference `schema.sq` tables from an `.sqm`). `orderingUpdatedAtMicros()` now reads the
+  provider timestamp per platform, `toProviderTimestamp` rebuilds the boundary at full precision, the
+  controller fake became faithful (stored micros separate from delivered value, strict total-order
+  `startAfter`), and `§9.4` was corrected. Recorded as `D-174` / ADR-0175 with its four mirror rows.
+  MINOR 2: `selectDueOutbox` now orders by the `§8` dependency group before `seq` and before the
+  `LIMIT`, so a vehicle tombstone cannot overtake fuel-entry tombstones across a batch; `§9.3`
+  states it. MINOR 3: `upsertSyncCursor` advances monotonically. MINOR 4: `canonicalVehicleName`
+  moved to `:core:model` and both call sites use it.
+- **Why:** The review found a false fail-closed on a millisecond-distinguishable document, a
+  cross-batch dependency-order gap, a cursor that could regress inside the overlap window, and a
+  duplicated canonical-name function with no parity guard.
+- **Documents touched:** `docs/CONTRACTS.md` (`§9.3`, `§9.4`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0175,
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:common`, `:core:model`,
+  `:core:database`, `:core:sync`, `:integration:firebase-firestore`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (175 decisions,
+  zero `PENDING`) and `koverVerify` pass; every new test was shown failing against the pre-fix code
+  and passing after; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator
+  suite passed 10/10; the complete non-instrumented command passes; the iOS framework links and the
+  golden header is byte-identical; the host-app `xcodebuild` succeeds; the protected Android
+  instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `D-172` / `E3-17`, `D-173` / `E3-18`, `E3-19` and `E3-20` remain open. The
+  persisted `sync_cursor` anchor is epoch milliseconds by decision; removing the 30-second overlap
+  would require revisiting `D-174`. The pull request still requires the owner's gated review and the
+  ten required checks.
+
+### 2026-09-13 — E3-03 seventh owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the seventh owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: reconciled `§7` with
+  `§9.3` and the editor invariant. The reachable sequence for a local edit during an in-flight push
+  is `SYNCING -> PENDING` (the editor sets `PENDING` in the same transaction; the stale ack only
+  stamps `serverUpdatedAt`), so the unreachable `SYNCING -> SYNCING` row was removed, `§7`'s stale
+  prose and `docs/TECHNICAL_PLAN.md` test 6 were corrected, and the `E3-03` acceptance criterion in
+  `docs/BACKLOG.md` was updated in the same change so it no longer requires a sequence the code does
+  not produce. `FakeSyncPersistence` now mirrors the production SQL for `edit()` and `confirmPush`,
+  and a new `SyncDatabaseAccessTest` covers a stale-revision ack. BLOCKING 2: `push()` drains every
+  due batch in one cycle, bounded so each row is attempted at most once, so a full push batch no
+  longer waits for an external trigger; two controller tests cover the drain and the failing-batch
+  termination. MINOR 3: `retryFailed()` no longer clobbers an active cycle's `Syncing` status.
+  MINOR 4: the connectivity parity guard asserts per statement with a failing fixture. MINOR 5:
+  `:core:database` promoted to `commonMainApi`. MINOR 6: `docs/TECHNICAL_PLAN.md` test 18 corrected
+  and its controller test reseeded to the `PENDING` rule. MINOR 7: `coalesceOutbox` clears `cycleId`.
+- **Why:** The review found that the `SYNCING -> SYNCING` acceptance criterion was proven only
+  against a fake that implemented the inverse of production, that a full push batch never scheduled
+  further work, that a manual retry could replace `Syncing` mid-cycle, that two guards and documents
+  had drifted, and that one dependency and one statement carried stale state.
+- **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§8`, `§9.3`), `docs/BACKLOG.md` (`E3-03`),
+  `docs/TECHNICAL_PLAN.md` (test 6, test 18), `docs/handoff-E3-03.md`, this log. Production code:
+  `:core:sync`, `:core:database`. Tests and build logic: `:core:sync`, `:core:database`,
+  `:build-logic:convention`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (174 decisions,
+  zero `PENDING`) and `koverVerify` pass; the focused module tests pass; `:core:sync` Kover line
+  coverage is 97.78%; `:shared:testAndroidHostTest --rerun-tasks` passed 25/25 after one native
+  SQLite `SIGSEGV` under host load above 16 (not an assertion failure, not reproducible in 25 runs);
+  the full iOS simulator suite passed 10/10; the complete non-instrumented command passes; the iOS
+  framework links and the golden header is byte-identical; the host-app `xcodebuild` succeeds; the
+  protected Android instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `D-172` / `E3-17`, `D-173` / `E3-18`, `E3-19` and `E3-20` remain the open
+  follow-ups. A native SQLite `SIGSEGV` under severe host load is a known host-environment hazard,
+  not a product defect, and is recorded here rather than hidden. The pull request still requires the
+  owner's gated review and the ten required checks.
+
+### 2026-09-13 — E3-03 sixth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-173`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the sixth owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). BLOCKING 1: `§9.7` was rewritten
+  so it states the implemented connectivity-failure behaviour exactly (entity `PENDING`, retry
+  context in the outbox, never poisons, made due by `markConnectivityFailuresDue` which selects on
+  `lastErrorCode` alone), and `§9.9` was corrected; the `§7` / `§9.7` / `§9.9` triple now reads as one
+  rule. BLOCKING 2: recorded the manual-retry gap left by R5 as `D-173` / ADR-0174 (`Proposed`,
+  recommendation option B) with its story `E3-18` (Human review required), mirrored into
+  `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
+  `docs/adr/README.md`; no production change. MINOR 3: corrected the handoff's out-of-scope sentence
+  and added an explicit note to the `E3-04` backlog entry that enforcing `SYNC_POST_WRITE_DEBOUNCE_MS`
+  and `SYNC_MIN_AUTOMATIC_INTERVAL_MS` is `E3-04`'s, so the constants are declarative only. MINOR 4:
+  removed the always-false `refreshStatus(running)` parameter and its unreachable `Syncing` branch.
+  MINOR 5: merged the pending flag and its completion handle into one `PendingFollowUp` value so the
+  wedging state is unrepresentable, with a concurrent-joiner guard test. FOLLOW-UPS 6: recorded
+  `E3-19` (push-boundary payload totality) and `E3-20` (pull-boundary quarantine totality) as
+  deferred backlog items. QUESTION 7: extended ADR-0173's scope to require that option B complete or
+  fail every in-flight `sync()` awaiter on shutdown.
+- **Why:** The review found a normative contradiction left by R5, a bounded liveness gap in manual
+  retry, undeclared enforcement ownership of the `§9.8` constants, dead code, a silent-wedge failure
+  mode, two deferred totality gaps and an incompletely specified decision.
+- **Documents touched:** `docs/CONTRACTS.md` (`§9.7`, `§9.9`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0173,
+  ADR-0174, `docs/BACKLOG.md` (`E3-04`, `E3-17` context, `E3-18`, `E3-19`, `E3-20`),
+  `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`. Tests: `:core:sync`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (174 decisions,
+  zero `PENDING`) and `koverVerify` pass; the focused module tests pass;
+  `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 10/10;
+  the complete non-instrumented command passes.
+- **Follow-ups / risks:** `D-173` / `E3-18` own the manual-retry gap; `D-172` / `E3-17` own
+  `AppGraph.close()` safety and now also the `sync()` awaiter completion; `E3-19` and `E3-20` own the
+  deferred totality gaps. The pull request still requires the owner's gated review and the ten
+  required checks.
+
+### 2026-09-13 — E3-03 fifth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Fixed a blocking finding. A `ConnectivityRecovered` trigger that arrived while a
+  cycle was already in flight was coalesced into the single pending follow-up and downgraded to
+  `PostWriteDebounce`, so the follow-up never called `markConnectivityFailuresDue` and outbox rows
+  that failed with `REMOTE.UNAVAILABLE` / `REMOTE.DEADLINE_EXCEEDED` stayed behind their backoff, up
+  to `MAX_BACKOFF_MS` (900_000 ms). `registerTrigger(reason)` now accumulates each joined trigger's
+  reason in `pendingReasons`, `drainCycles` carries them into the follow-up, and `runCycle(reasons)`
+  runs every reason-dependent step any joined trigger requires. No call site special-cases a reason,
+  and the `§9.1` single-active/single-follow-up rule is unchanged.
+- **Why:** The `E3-03` acceptance criterion requires `ConnectivityRecovered` to move connectivity-only
+  failures due immediately while preserving `attemptCount`, whether the trigger starts its own cycle
+  or is coalesced; the fix implements the existing `§9.7` / `§9.8` guarantee, so no contract
+  clarification or new decision was required.
+- **Documents touched:** `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`. Tests:
+  `:core:sync`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
+  zero `PENDING`) and `koverVerify` pass; the two new blocking tests were shown failing on the pre-fix
+  code by stashing the production change, and the over-correction guard passes throughout;
+  `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 12/12;
+  the complete non-instrumented command passes; the iOS framework links and the golden header is
+  byte-identical; the host-app `xcodebuild` succeeds; the protected Android instrumented suite passes
+  17 tests.
+- **Follow-ups / risks:** `E3-17` (`D-172`) still owns making `AppGraph.close()` safe against an
+  in-flight sync cycle. The pull request still requires the owner's gated review and the ten required
+  checks.
+
+### 2026-09-13 — E3-03 fourth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Closed the remaining gaps of the review written against `dbadbf7`; the branch head
+  was already `6ceac01`, which had fixed part of both blocking items. BLOCKING 1:
+  `markVehicleSyncing`/`markFuelEntrySyncing` now fail closed on `syncState != 'FAILED_POISONED'`, so
+  a poisoned row can never be moved to `SYNCING` and can never drop out of `countPoisonedSyncRows`.
+  BLOCKING 2: added the missing coverage for absent `ownerId`/`updatedAt`/`deleted`/`deletedAt` on
+  FUEL_ENTRY as well as VEHICLE, plus two `FirebaseRemoteSyncSourceTest` cases asserting a closed
+  `Outcome` for a document whose ordering `updatedAt` is missing or mistyped. MINOR 3: the SQL
+  connectivity literals stay, and a new `:build-logic:convention` guard (`ConnectivityCodeParityTest`)
+  fails the build when they diverge from `CONNECTIVITY_ERROR_CODES`; the first attempt at binding the
+  constant as a SQL parameter was measured to destabilise the `:shared:iosSimulatorArm64Test`
+  graph-close path and was reverted. MINOR 4 was already fixed in the third round.
+- **Why:** `FAILED_POISONED` must never be retried automatically (`§7`) and a malformed remote
+  document must be quarantined without failing the pull cycle (`§9.5`, `D-170` / ADR-0171); the SQL
+  literals and the Kotlin constant must not be able to drift apart silently.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/CONTRACTS.md` (`§7`), this log.
+  Production code: `:core:database`. Tests and build logic: `:core:sync`, `:core:database`,
+  `:integration:firebase-firestore`, `:build-logic:convention`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
+  zero `PENDING`) and `koverVerify` pass; every new test was shown failing on the pre-fix code;
+  `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 15/15;
+  the complete non-instrumented command passes; the iOS framework links and the golden header is
+  byte-identical; the host-app `xcodebuild` succeeds; the protected Android instrumented suite passes
+  17 tests.
+- **Follow-ups / risks:** No new decision was opened; all four items are corrections inside the
+  accepted D-169 / D-170 / D-171 scope. `E3-17` (`D-172`) still owns making `AppGraph.close()` safe
+  against an in-flight sync cycle. The pull request still requires the owner's gated review and the
+  ten required checks.
+
+### 2026-09-13 — E3-03 third owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Fixed four defects found on the third review of
+  [pull request #69](https://github.com/davidru85/carApp/pull/69), TDD-first. BLOCKER 1: the
+  pull-validation path read top-level keys with `JsonObject.getValue`, so a document missing a key
+  threw a `NoSuchElementException` that escaped to the generic cycle catch instead of being
+  quarantined; every reader is now total, so a missing key becomes a `MalformedPayload` quarantine
+  record and the cursor advances. BLOCKER 2: `selectDueOutbox` had no sync-state filter, so a
+  `FAILED_POISONED` row was retried once its backoff elapsed; the query now excludes poisoned rows
+  and only `retryFailed()` or a local edit revives them, and the controller test fake was aligned
+  with the production query. DEFECT 3: the Firestore integration still decoded product fields with
+  typed non-null reads, so a malformed document never reached `:core:sync`; `toFirestoreDocument`
+  now reads the provider's untyped field map and carries every product field verbatim, with only the
+  `updatedAt` ordering timestamp strongly read. DEFECT 4: the non-advancing-cursor progress invariant
+  now surfaces `SyncError.ConflictUnresolved` through the established error path instead of a bare
+  `Failed(1, 0)`. The `strictlyAfter` null-document-id case fails closed.
+- **Why:** The review found that the `§9.5` quarantine contract was not total, that `§7`'s
+  "`FAILED_POISONED` is never retried automatically" was false in the SQL, that ADR-0171 failure path
+  2 was still open in the integration, and that D-169/ADR-0170's fail-closed conflict error had no
+  production call site.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/CONTRACTS.md` (`§7`, `§9.4`, `§9.5`),
+  `docs/adr/0171-quarantine-malformed-remote-documents-through-the-sync-source.md`, this log.
+  Production code: `:core:sync`, `:core:database`, `:integration:firebase-firestore`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
+  zero `PENDING`) and `koverVerify` pass; each new test failed against the unfixed code and passes
+  after it; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite
+  passed 12/12; the complete non-instrumented command passes 638 tasks; the iOS framework links and
+  the golden header is byte-identical; the host-app `xcodebuild` succeeds; the protected Android
+  instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `E3-17` (`D-172`) still owns making `AppGraph.close()` safe against an
+  in-flight sync cycle. The pull request still requires the owner's gated review and the ten required
+  checks.
+
+### 2026-09-13 — E3-03 second owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-171`, `D-172`
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Applied the second owner-review round on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69) across seven findings. R1 recorded
+  that E3-03 invalidates the `E1-12` premise — `AppGraph.close()` no longer guarantees no SQLite call
+  is in flight, because `graphScope.cancel()` does not join a detached sync cycle — by adding `E3-17`
+  and `D-172` / ADR-0173, without touching `AppGraph.close()` or `core/database/**`. R2 added the
+  project-log entry recording the owner's acceptance of `D-169` option A and `D-170` option A. R3
+  added `SyncController.sync(reason): Outcome<Unit, AppError>`, so `VehicleSliceRuntime.refresh()`
+  awaits the cycle that serves it and restores the pre-E3-03 `Ok`/`Err` contract, recorded as `D-171`
+  / ADR-0172. R4 reports the real `counts()` on unexpected, adoption and cycle failure so a poisoned
+  count is never discarded. R5 leaves a connectivity failure's row `PENDING` so the per-row state and
+  the aggregate `SyncStatus` agree. R6 guards the failure path with `localRevision`, matching the
+  confirm path, so a local edit during an in-flight push keeps a clean retry context. R7 removed the
+  dead `NotFound` poison arm and documented the success semantics.
+- **Why:** The second review found that E3-03 changed a production risk analysis `E1-12` had
+  deferred, that a user-initiated refresh silently lost its error, that failure aggregation dropped
+  real counts, that connectivity row state disagreed with the aggregate, that a stale push could
+  stamp a newer revision, and that one `when` arm was unreachable. The owner preselected option B for
+  R3 and kept the E1-12 production fix out of this pull request.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/BACKLOG.md` (`E3-17`), `docs/DECISION_BOARD.md`
+  (`D-171`, `D-172`), `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
+  ADR-0172, ADR-0173, `docs/CONTRACTS.md` (`§6`, `§7`, `§9.1`, `§9.9`, `§20.7`), this log.
+  Production code: `:core:sync`, `:core:database`, `:shared`.
+- **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions, zero
+  `PENDING`), `koverVerify` pass; the focused `:core:sync`, `:core:database` and `:shared` host tests
+  pass; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed
+  12/12; the complete non-instrumented command passes 638 tasks; the iOS framework links and the
+  regenerated header matches the golden byte for byte; the host-app `xcodebuild` succeeds; the
+  protected Android instrumented suite passes 17 tests.
+- **Follow-ups / risks:** `E3-17` (`D-172`) owns making `AppGraph.close()` safe; it is a reachable
+  process-crash hazard, not an observed crash, and no production fix is delivered here. The pull
+  request still requires the owner's gated review and the ten required checks.
+
+### 2026-09-13 — Owner accepts D-169 and D-170
+
+- **Type:** decision
+- **Story / Decision:** `D-169` option A, `D-170` option A / ADR-0170, ADR-0171
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Recorded the owner's acceptance of `D-169` option A (accept the
+  millisecond-truncated cursor and bound the `§9.4` later-page progress guarantee to
+  millisecond-distinguishable clusters, failing closed with `SyncError.ConflictUnresolved` on an
+  oversized same-millisecond cluster) and `D-170` option A (`pullChanges` returns raw per-document
+  results; `:core:sync` validates, classifies and quarantines each payload beside the local page
+  transaction). The transition from `Proposed` to `Accepted` updates `docs/DECISION_BOARD.md`.
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` were mirrored,
+  and ADR-0170 and ADR-0171 now carry `Status: Accepted`.
+- **Why:** The last project-log statement on these decisions was that they were `Proposed` and
+  blocked `E3-03`. This entry records the acceptance as its own event; the acceptance did not arise
+  during the `E3-03` implementation, so it is not folded into that story entry.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0170, ADR-0171, this log.
+- **Verification:** `contractCheck` assertion 2 reports the decision IDs and statuses identical
+  across the four documents, assertion 3 reports each ADR status matching its decision, and both
+  assertions report zero `PENDING`.
+- **Follow-ups / risks:** None. Both decisions are `Accepted` and `E3-03` implements them.
+
+### 2026-09-13 — E3-03 `:core:sync` engine implemented
+
+- **Type:** story
+- **Story / Decision:** `E3-03` / `D-169` option A, `D-170` option A
+- **Author:** opencode, on behalf of David Ruiz
+- **What changed:** Delivered the `:core:sync` engine over three TDD commits on
+  `story/E3-03-core-sync-engine`: RED `a66c612`, GREEN `bfced6b`, REFACTOR
+  `refactor(E3-03): finalize sync engine`. The engine implements serialized cycles with one pending
+  follow-up, offline and local-owner admission, cold-start pull-first selection, dependency-ordered
+  push, idempotent acknowledgement, server-timestamp LWW pull, one-cycle overlap, deterministic
+  pagination, retry/backoff/poison rules, quarantine, automatic adoption retry and aggregate
+  `SyncStatus`. REFACTOR removed the premature E3-07 tombstone purge, replaced the direct
+  `AppDatabase` edge with a database-owned `SyncDatabaseAccess` composed in `:shared`, made
+  `Unauthenticated` consume the non-connectivity poison budget, made `applyPullPage` return only
+  newly persisted quarantines so an overlapped document is logged and reported once, and added
+  `SqlDelightSyncPersistenceTest`. Every state holder exposing `SyncStatus` now observes the single
+  controller flow and the debug screen shows redacted diagnostics only in debug builds.
+- **Why:** E3-03 is the gated synchronization-engine story and the prerequisite for the remaining
+  Phase 3 sync work. The overlap deduplication closes a double-reporting defect and the persistence
+  test restored `:core:sync` coverage, which was below the `D-18` 80% threshold since GREEN.
+- **Documents touched:** `docs/handoff-E3-03.md`, `docs/BACKLOG.md` (`E3-03` status), this log.
+  Production code: `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared`,
+  `:feature:vehicle`, `:feature:fuel`, `androidApp` and `iosApp`.
+- **Verification:** Focused command pass; `:core:sync` Kover 96.01% lines (80% required); complete
+  non-instrumented command pass, 638 tasks; `contractCheck` 19 `[PASS]` and zero `PENDING`;
+  `:composition:ios:linkDebugFrameworkIosSimulatorArm64` pass; host-app `xcodebuild`
+  `** BUILD SUCCEEDED **`; protected Android instrumented suite 17 tests, zero failures on the D-84
+  API 36 emulator.
+- **Follow-ups / risks:** The gated pull request requires owner review and the ten required checks;
+  E3-03 is implemented, not complete, until it merges. E3-04 owns trigger scheduling and E3-07 owns
+  tombstone purge. No new owner decision arose; `D-149` and `D-150` stay unrelated to E3-03. The
+  first CI run failed `objc-header-golden-check` only, because the E3-03 debug diagnostics added the
+  Swift-facing `SyncStateHolder.debugLines` and `refreshDebug` members; the golden and
+  `docs/CONTRACTS.md §20.10` were updated to match.
+
 ### 2026-09-13 — E3-02 second owner-review round
 
 - **Type:** correction

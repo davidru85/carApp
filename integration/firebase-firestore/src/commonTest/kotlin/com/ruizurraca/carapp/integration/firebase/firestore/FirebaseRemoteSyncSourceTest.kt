@@ -2,6 +2,8 @@ package com.ruizurraca.carapp.integration.firebase.firestore
 
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
+import com.ruizurraca.carapp.core.common.toEpochMicroseconds
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -12,6 +14,9 @@ import com.ruizurraca.carapp.core.sync.RemotePage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -60,7 +65,7 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
-    fun vehiclePullReturnsOrderedRemoteSnapshotsWithoutProviderTypes() =
+    fun vehiclePullReturnsOrderedRawDocumentsWithoutProviderTypes() =
         runTest {
             val entityId = EntityId("123e4567-e89b-42d3-a456-426614174000")
             val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
@@ -81,13 +86,11 @@ class FirebaseRemoteSyncSourceTest {
             val page = assertIs<Outcome.Ok<RemotePage>>(result).value
             val item = page.items.single()
             assertEquals(EntityType.VEHICLE, item.entityType)
-            assertEquals(entityId, item.entityId)
-            assertEquals(1, item.schemaVersion)
+            assertEquals(entityId, item.documentId)
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
-            assertEquals(false, item.deleted)
             assertEquals(
                 Json.parseToJsonElement(vehicleRemoteJson(entityId.value, serverUpdatedAt.toEpochMilliseconds())),
-                Json.parseToJsonElement(item.json),
+                Json.parseToJsonElement(item.rawJson),
             )
             assertEquals(RemoteCursor(serverUpdatedAt, entityId), page.nextCursor)
             assertEquals(false, page.hasMore)
@@ -104,7 +107,7 @@ class FirebaseRemoteSyncSourceTest {
         }
 
     @Test
-    fun fuelEntryPullReturnsTheCompleteClosedRemoteSnapshot() =
+    fun fuelEntryPullReturnsTheCompleteRawRemoteDocument() =
         runTest {
             val entityId = EntityId("123e4567-e89b-42d3-a456-426614174001")
             val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
@@ -124,15 +127,161 @@ class FirebaseRemoteSyncSourceTest {
 
             val item = assertIs<Outcome.Ok<RemotePage>>(result).value.items.single()
             assertEquals(EntityType.FUEL_ENTRY, item.entityType)
-            assertEquals(entityId, item.entityId)
+            assertEquals(entityId, item.documentId)
             assertEquals(serverUpdatedAt, item.serverUpdatedAt)
             assertEquals(
                 Json.parseToJsonElement(
                     fuelEntryRemoteJson(entityId.value, serverUpdatedAt.toEpochMilliseconds()),
                 ),
-                Json.parseToJsonElement(item.json),
+                Json.parseToJsonElement(item.rawJson),
             )
             assertEquals("users/anonymous-owner/fuelEntries", gateway.queries.single().path)
+        }
+
+    @Test
+    fun malformedProductFieldsRemainSuccessfulRawPullItems() =
+        runTest {
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            // One product field is missing, another has the wrong primitive type. Neither may fail
+            // the page: the raw values reach `:core:sync` for `§9.5` quarantine (`D-170`).
+            val malformed =
+                FirestoreDocument(
+                    id = "vehicle-malformed",
+                    orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
+                    fields =
+                        mapOf(
+                            "name" to true,
+                            "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                        ),
+                )
+
+            val result =
+                FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(malformed))).pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 200,
+                )
+
+            val item = assertIs<Outcome.Ok<RemotePage>>(result).value.items.single()
+            assertEquals("vehicle-malformed", item.documentId.value)
+            assertEquals(serverUpdatedAt, item.serverUpdatedAt)
+            val json = Json.parseToJsonElement(item.rawJson).jsonObject
+            assertEquals(true, json["name"]?.jsonPrimitive?.boolean)
+        }
+
+    @Test
+    fun missingProductFieldReachesTheEngineAsARawDocumentForQuarantine() =
+        runTest {
+            val serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L)
+            // `initialOdometerKm` is absent and `name` is a boolean. Before the `D-170` transport fix
+            // this threw inside the per-field typed read and never reached `:core:sync`.
+            val missingField =
+                FirestoreDocument(
+                    id = "vehicle-missing",
+                    orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
+                    fields =
+                        mapOf(
+                            "id" to "vehicle-missing",
+                            "ownerId" to "anonymous-owner",
+                            "name" to true,
+                            "brand" to null,
+                            "model" to null,
+                            "fuelType" to "GASOLINE",
+                            "createdAt" to 1_700_000_000_000L,
+                            "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                            "deleted" to false,
+                            "deletedAt" to null,
+                            "schemaVersion" to 1L,
+                        ),
+                )
+
+            val page =
+                assertIs<Outcome.Ok<RemotePage>>(
+                    FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(missingField))).pullChanges(
+                        ownerId = OwnerId("anonymous-owner"),
+                        entityType = EntityType.VEHICLE,
+                        cursor = RemoteCursor.INITIAL,
+                        limit = 200,
+                    ),
+                ).value
+
+            val item = page.items.single()
+            assertEquals(serverUpdatedAt, item.serverUpdatedAt)
+            // The raw field map is preserved so `:core:sync` can classify it, and `name` keeps its
+            // untyped raw value rather than being coerced or dropped.
+            assertEquals(
+                "vehicle-missing",
+                Json
+                    .parseToJsonElement(item.rawJson)
+                    .jsonObject["id"]
+                    ?.jsonPrimitive
+                    ?.content,
+            )
+            assertEquals(
+                true,
+                Json
+                    .parseToJsonElement(item.rawJson)
+                    .jsonObject["name"]
+                    ?.jsonPrimitive
+                    ?.boolean,
+            )
+        }
+
+    @Test
+    fun missingOrderingTimestampFailsThePageClosed() =
+        runTest {
+            // `updatedAt` is the ordering timestamp `RemoteDocument` genuinely needs. A document
+            // without it must fail the page as a closed `Outcome`, never throw a
+            // `NoSuchElementException` out of `pullChanges` (`§6`, `§9.5`).
+            val withoutUpdatedAt =
+                FirestoreDocument(
+                    id = "vehicle-no-timestamp",
+                    orderingUpdatedAtMicros = null,
+                    fields =
+                        mapOf(
+                            "id" to "vehicle-no-timestamp",
+                            "ownerId" to "anonymous-owner",
+                            "name" to "Roadster",
+                        ),
+                )
+
+            val result =
+                FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(withoutUpdatedAt))).pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 200,
+                )
+
+            assertEquals(RemoteError.InvalidArgument, assertIs<Outcome.Err<RemoteError>>(result).error)
+        }
+
+    @Test
+    fun wrongTypedOrderingTimestampFailsThePageClosed() =
+        runTest {
+            val mistyped =
+                FirestoreDocument(
+                    id = "vehicle-bad-timestamp",
+                    orderingUpdatedAtMicros = null,
+                    fields =
+                        mapOf(
+                            "id" to "vehicle-bad-timestamp",
+                            "ownerId" to "anonymous-owner",
+                            "name" to "Roadster",
+                            "updatedAt" to "not-a-timestamp",
+                        ),
+                )
+
+            val result =
+                FirebaseRemoteSyncSource(RecordingFirestoreGateway(documents = listOf(mistyped))).pullChanges(
+                    ownerId = OwnerId("anonymous-owner"),
+                    entityType = EntityType.VEHICLE,
+                    cursor = RemoteCursor.INITIAL,
+                    limit = 200,
+                )
+
+            assertEquals(RemoteError.InvalidArgument, assertIs<Outcome.Err<RemoteError>>(result).error)
         }
 
     @Test
@@ -206,7 +355,7 @@ class FirebaseRemoteSyncSourceTest {
                     .value
                     .items
                     .single()
-                    .entityId,
+                    .documentId,
             )
             assertEquals(1, gateway.tokenRefreshCount)
             assertEquals(2, gateway.queries.size)
@@ -301,6 +450,35 @@ class FirebaseRemoteSyncSourceTest {
             assertFailsWith<CancellationException> {
                 runProviderRefresh<Unit> { throw CancellationException("refresh cancelled") }
             }
+        }
+
+    @Test
+    fun aSubMillisecondCursorBecomesAFullPrecisionLaterPageBoundary() =
+        runTest {
+            // `D-174`: the boundary must keep the provider's microsecond precision. A millisecond
+            // boundary would make `startAfter` compare a truncated value against the stored
+            // microsecond one, so the last document of the previous page would be re-delivered.
+            val cursorMicros = 1_767_225_600_000_123L
+            val cursor =
+                RemoteCursor(
+                    lastServerUpdatedAt = instantFromEpochMicroseconds(cursorMicros),
+                    lastDocumentId = EntityId("123e4567-e89b-42d3-a456-426614174000"),
+                )
+            val gateway = RecordingFirestoreGateway()
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            source.pullChanges(
+                ownerId = OwnerId("anonymous-owner"),
+                entityType = EntityType.VEHICLE,
+                cursor = cursor,
+                limit = 50,
+            )
+
+            val query = gateway.queries.single()
+            // The cursor reaches the query at full precision; the later-page boundary keeps it.
+            assertEquals(instantFromEpochMicroseconds(cursorMicros), query.updatedAtOrAfter)
+            assertEquals(cursorMicros, query.updatedAtOrAfter.toEpochMicroseconds())
+            assertEquals(cursor.lastDocumentId?.value, query.afterDocumentId)
         }
 
     @Test
@@ -415,20 +593,21 @@ private fun vehicleDocument(
 ): FirestoreDocument =
     FirestoreDocument(
         id = id,
+        orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
         fields =
             mapOf(
-                "id" to FirestoreString(id),
-                "ownerId" to FirestoreString("anonymous-owner"),
-                "name" to FirestoreString("Roadster"),
-                "initialOdometerKm" to FirestoreLong(0),
-                "brand" to FirestoreNull,
-                "model" to FirestoreNull,
-                "fuelType" to FirestoreString("GASOLINE"),
-                "createdAt" to FirestoreTimestamp(1_700_000_000_000L),
-                "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
-                "deleted" to FirestoreBoolean(false),
-                "deletedAt" to FirestoreNull,
-                "schemaVersion" to FirestoreLong(1),
+                "id" to id,
+                "ownerId" to "anonymous-owner",
+                "name" to "Roadster",
+                "initialOdometerKm" to 0L,
+                "brand" to null,
+                "model" to null,
+                "fuelType" to "GASOLINE",
+                "createdAt" to 1_700_000_000_000L,
+                "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                "deleted" to false,
+                "deletedAt" to null,
+                "schemaVersion" to 1L,
             ),
     )
 
@@ -460,26 +639,27 @@ private fun fuelEntryDocument(
 ): FirestoreDocument =
     FirestoreDocument(
         id = id,
+        orderingUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
         fields =
             mapOf(
-                "id" to FirestoreString(id),
-                "ownerId" to FirestoreString("anonymous-owner"),
-                "vehicleId" to FirestoreString("123e4567-e89b-42d3-a456-426614174000"),
-                "date" to FirestoreTimestamp(1_700_000_000_000L),
-                "odometerKm" to FirestoreLong(100),
-                "litersScaled" to FirestoreLong(50_000),
-                "pricePerLiterScaled" to FirestoreLong(1_500),
-                "totalCostMinor" to FirestoreLong(7_500),
-                "currency" to FirestoreString("EUR"),
-                "isFullTank" to FirestoreBoolean(true),
-                "hasMissedEntries" to FirestoreBoolean(false),
-                "odometerInconsistent" to FirestoreBoolean(false),
-                "notes" to FirestoreNull,
-                "createdAt" to FirestoreTimestamp(1_700_000_000_000L),
-                "updatedAt" to FirestoreTimestamp(serverUpdatedAt.toEpochMilliseconds()),
-                "deleted" to FirestoreBoolean(false),
-                "deletedAt" to FirestoreNull,
-                "schemaVersion" to FirestoreLong(1),
+                "id" to id,
+                "ownerId" to "anonymous-owner",
+                "vehicleId" to "123e4567-e89b-42d3-a456-426614174000",
+                "date" to 1_700_000_000_000L,
+                "odometerKm" to 100L,
+                "litersScaled" to 50_000L,
+                "pricePerLiterScaled" to 1_500L,
+                "totalCostMinor" to 7_500L,
+                "currency" to "EUR",
+                "isFullTank" to true,
+                "hasMissedEntries" to false,
+                "odometerInconsistent" to false,
+                "notes" to null,
+                "createdAt" to 1_700_000_000_000L,
+                "updatedAt" to serverUpdatedAt.toEpochMilliseconds(),
+                "deleted" to false,
+                "deletedAt" to null,
+                "schemaVersion" to 1L,
             ),
     )
 

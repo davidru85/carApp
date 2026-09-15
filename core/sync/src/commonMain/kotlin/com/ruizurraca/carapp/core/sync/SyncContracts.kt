@@ -25,13 +25,11 @@ data class EntitySnapshot(
     val json: String,
 )
 
-data class RemoteSnapshot(
+data class RemoteDocument(
     val entityType: EntityType,
-    val entityId: EntityId,
-    val schemaVersion: Int,
+    val documentId: EntityId,
     val serverUpdatedAt: Instant,
-    val deleted: Boolean,
-    val json: String,
+    val rawJson: String,
 )
 
 data class RemoteAck(
@@ -50,7 +48,7 @@ data class RemoteCursor(
 }
 
 data class RemotePage(
-    val items: List<RemoteSnapshot>,
+    val items: List<RemoteDocument>,
     val nextCursor: RemoteCursor,
     val hasMore: Boolean,
 )
@@ -80,7 +78,20 @@ interface SyncController {
 
     fun requestSync(reason: SyncTrigger)
 
+    /**
+     * Requests a cycle and suspends until the cycle that serves this trigger completes, returning
+     * its outcome. Symmetric with [retryFailed]. A refused cycle (offline or `LOCAL_OWNER`) is
+     * `Ok(Unit)` with no error; a failed pull is `Err` carrying the failure. When a cycle is already
+     * running, the caller joins the single pending follow-up rather than starting a second cycle, so
+     * the serialization rules of `§9.1` are unchanged. A local write MUST use [requestSync], never
+     * this method, so it never blocks on a network round trip.
+     */
+    suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError>
+
     suspend fun retryFailed(): Outcome<Unit, AppError>
+
+    /** Redacted local diagnostics. Production controllers return an empty list. */
+    suspend fun debugLines(): List<String> = emptyList()
 }
 
 interface RemoteSyncSource {

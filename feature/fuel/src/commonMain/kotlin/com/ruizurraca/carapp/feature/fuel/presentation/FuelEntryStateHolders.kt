@@ -53,6 +53,7 @@ class FuelEntryListStateHolder internal constructor(
     private val vehicleId: String,
     private val repository: FuelEntryRepository,
     private val dispatchers: DispatcherProvider,
+    syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
 ) {
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
@@ -65,11 +66,13 @@ class FuelEntryListStateHolder internal constructor(
             repository.observeFuelEntries(EntityId(vehicleId), includeDeleted = false).flowOn(dispatchers.io),
             repository.observeConsumption(EntityId(vehicleId)).flowOn(dispatchers.io),
             transientMessage,
-        ) { entries, report, message ->
+            syncStatus,
+        ) { entries, report, message, status ->
             entries.toUiState(
                 vehicleId = vehicleId,
                 report = report,
                 message = message,
+                syncStatus = status,
             )
         }.stateIn(
             scope = holderScope + dispatchers.main,
@@ -82,7 +85,9 @@ class FuelEntryListStateHolder internal constructor(
                     consumptionAverageScaled = null,
                     validConsumptionSegmentCount = 0,
                     isConsumptionReliable = false,
-                    syncStatus = SyncStatus.Idle,
+                    // Seed from the injected flow, like `VehicleListStateHolder`, so the list renders
+                    // the live `SyncStatus` while it is still loading rather than a hardcoded idle.
+                    syncStatus = syncStatus.value,
                     message = null,
                 ),
         )
@@ -318,7 +323,8 @@ fun createFuelEntryListStateHolder(
     vehicleId: String,
     repository: FuelEntryRepository,
     dispatchers: DispatcherProvider,
-): FuelEntryListStateHolder = FuelEntryListStateHolder(scope, vehicleId, repository, dispatchers)
+    syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
+): FuelEntryListStateHolder = FuelEntryListStateHolder(scope, vehicleId, repository, dispatchers, syncStatus)
 
 @HiddenFromObjC
 fun createFuelEntryFormStateHolder(
@@ -471,6 +477,7 @@ private fun Outcome<List<FuelEntryListItem>, AppError>.toUiState(
     vehicleId: String,
     report: Outcome<ConsumptionReport, AppError>,
     message: UiMessage?,
+    syncStatus: SyncStatus,
 ): FuelEntryListUiState {
     val entries = (this as? Outcome.Ok)?.value.orEmpty()
     val consumption = (report as? Outcome.Ok)?.value
@@ -482,7 +489,7 @@ private fun Outcome<List<FuelEntryListItem>, AppError>.toUiState(
         consumptionAverageScaled = consumption?.average?.scaled,
         validConsumptionSegmentCount = consumption?.validSegmentCount ?: 0,
         isConsumptionReliable = consumption?.isReliable ?: false,
-        syncStatus = SyncStatus.Idle,
+        syncStatus = syncStatus,
         message = message ?: error?.toUiMessage(),
     )
 }

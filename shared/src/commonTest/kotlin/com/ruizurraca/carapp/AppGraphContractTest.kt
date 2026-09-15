@@ -1,11 +1,25 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.common.SyncTrigger
+import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.EntitySnapshot
+import com.ruizurraca.carapp.core.sync.EntityType
+import com.ruizurraca.carapp.core.sync.RemoteAck
+import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemotePage
+import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class AppGraphContractTest {
@@ -27,4 +41,71 @@ class AppGraphContractTest {
                 harness.close()
             }
         }
+
+    @Test
+    fun vehicleAndFuelListsObserveTheSameGraphOwnedSyncStatus() =
+        runTest {
+            val releasePull = CompletableDeferred<Unit>()
+            val remote = BlockingPullRemote(releasePull)
+            val dependencies =
+                testAppGraphDependencies(
+                    ownerContext = FakeOwnerContext(OwnerId("owner-1")),
+                    remoteSyncSource = remote,
+                )
+            val graph = buildAppGraph(true, testAppProviders(dependencies))
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                graph.syncController().requestSync(SyncTrigger.PullToRefresh)
+                graph.syncController().status.awaitState("controller starts syncing") { it == SyncStatus.Syncing }
+                val vehicles = graph.vehicleListStateHolder(harness.scope)
+                val fuelEntries = graph.fuelEntryListStateHolder(harness.scope, "vehicle-1")
+
+                assertEquals(SyncStatus.Syncing, vehicles.state.value.syncStatus)
+                assertEquals(SyncStatus.Syncing, fuelEntries.state.value.syncStatus)
+
+                vehicles.state.awaitState("vehicle list observes syncing") { it.syncStatus == SyncStatus.Syncing }
+                fuelEntries.state.awaitState("fuel list observes syncing") { it.syncStatus == SyncStatus.Syncing }
+                assertEquals(vehicles.state.value.syncStatus, fuelEntries.state.value.syncStatus)
+
+                releasePull.complete(Unit)
+                graph.awaitSyncCycleSettled(
+                    expectation = "graph convergence sync cycle settled",
+                    expectedRemoteEffect = { remote.pullCalls == 2 },
+                )
+            } finally {
+                releasePull.complete(Unit)
+                try {
+                    graph.awaitSyncCycleSettled(
+                        expectation = "graph convergence teardown is safe",
+                        expectedRemoteEffect = { true },
+                    )
+                } finally {
+                    harness.close()
+                }
+            }
+        }
+}
+
+private class BlockingPullRemote(
+    private val release: CompletableDeferred<Unit>,
+) : RemoteSyncSource {
+    var pullCalls = 0
+        private set
+
+    override suspend fun pushSnapshot(
+        ownerId: OwnerId,
+        snapshot: EntitySnapshot,
+    ): Outcome<RemoteAck, RemoteError> = Outcome.Err(RemoteError.Unknown)
+
+    override suspend fun pullChanges(
+        ownerId: OwnerId,
+        entityType: EntityType,
+        cursor: RemoteCursor,
+        limit: Int,
+    ): Outcome<RemotePage, RemoteError> {
+        pullCalls += 1
+        release.await()
+        return Outcome.Ok(RemotePage(emptyList(), cursor, false))
+    }
 }

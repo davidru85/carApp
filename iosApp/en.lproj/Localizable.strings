@@ -102,6 +102,9 @@
 "consumption_unavailable" = "Consumption is not available.";
 
 "diagnostics_title" = "Diagnostics";
+"sync_database" = "Sync database";
+"empty_sync_diagnostics" = "No sync rows";
+"refresh_sync_diagnostics" = "Refresh sync diagnostics";
 "diagnostics_button" = "Diagnostics";
 
 "anonymous_reminder_title" = "Your data lives only on this device";

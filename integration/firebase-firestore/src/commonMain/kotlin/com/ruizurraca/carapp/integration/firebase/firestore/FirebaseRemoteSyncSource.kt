@@ -2,13 +2,15 @@ package com.ruizurraca.carapp.integration.firebase.firestore
 
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
+import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemotePage
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseException
@@ -33,6 +35,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -93,17 +96,37 @@ class FirebaseRemoteSyncSource internal constructor(
             }
         return runRemoteOperation {
             val documents = gateway.queryDocuments(query)
-            val items = documents.map { document -> document.toRemoteSnapshot(entityType) }
+            val items = documents.map { document -> document.toRemoteDocument(entityType) }
             val last = items.lastOrNull()
             RemotePage(
                 items = items,
                 nextCursor =
                     last?.let { item ->
-                        RemoteCursor(item.serverUpdatedAt, item.entityId)
+                        RemoteCursor(item.serverUpdatedAt, item.documentId)
                     } ?: cursor,
                 hasMore = items.size == limit,
             )
         }
+    }
+
+    /**
+     * Converts a transport document into a [RemoteDocument] without decoding or asserting any
+     * product field (`D-170`, `§9.5`). The only strongly-read value is the transport metadata this
+     * type genuinely needs: the ordering `updatedAt` timestamp. Every other field is serialized
+     * verbatim, so a missing or mistyped product field reaches `:core:sync` as raw JSON and is
+     * classified there. A document whose ordering timestamp is missing or unusable fails the page as
+     * `RemoteError.InvalidArgument` rather than being silently dropped.
+     */
+    private fun FirestoreDocument.toRemoteDocument(entityType: EntityType): RemoteDocument {
+        val orderingMicros =
+            orderingUpdatedAtMicros
+                ?: throw IllegalArgumentException("$UPDATED_AT_FIELD must be a provider timestamp")
+        return RemoteDocument(
+            entityType = entityType,
+            documentId = EntityId(id),
+            serverUpdatedAt = instantFromEpochMicroseconds(orderingMicros),
+            rawJson = fields.toRawJson(),
+        )
     }
 
     @Suppress("SwallowedException") // Gateway failures are deliberately converted to the closed RemoteError API.
@@ -142,6 +165,12 @@ internal interface FirestoreGateway {
     suspend fun refreshAuthToken()
 }
 
+/**
+ * A pulled document as product-neutral transport data (`D-170`): the document id and the provider's
+ * untyped field map, with values normalized to JSON-friendly Kotlin types and timestamps converted
+ * to epoch milliseconds. The gateway produces these; `FirebaseRemoteSyncSource` maps them and never
+ * decodes a product field, so `§9.5` validation belongs to `:core:sync`.
+ */
 internal enum class FirestoreGatewayFailure {
     UNAVAILABLE,
     DEADLINE_EXCEEDED,
@@ -170,10 +199,110 @@ internal data class FirestoreQuery(
     val limit: Int,
 )
 
+/**
+ * A pulled document as product-neutral transport data (`D-170`, `D-174`): the document id, the raw
+ * product field map with values normalized to JSON-friendly Kotlin types, and the ordering
+ * `updatedAt` at the provider's full microsecond precision. Product fields, including the `updatedAt`
+ * value serialized into `rawJson`, stay epoch milliseconds; only [orderingUpdatedAtMicros] carries
+ * the sub-millisecond component the pull cursor needs.
+ */
 internal data class FirestoreDocument(
     val id: String,
-    val fields: Map<String, FirestoreValue>,
+    val fields: Map<String, Any?>,
+    val orderingUpdatedAtMicros: Long?,
 )
+
+/**
+ * The provider's untyped field map for this snapshot, with provider values normalized to
+ * JSON-friendly Kotlin types (String, Long, Double, Boolean, Map, List, null) and timestamps
+ * converted to epoch milliseconds. Platform-specific because GitLive 2.6 exposes no neutral
+ * field-map accessor; each integration target reads its own provider map. It MUST NOT decode or
+ * assert product fields (`D-170`, `§9.5`).
+ */
+internal expect fun DocumentSnapshot.untypedFields(): Map<String, Any?>
+
+/**
+ * The `updatedAt` ordering timestamp at the provider's full precision, as epoch microseconds
+ * (`D-174`). Firestore server timestamps carry microsecond precision; truncating them to
+ * milliseconds makes a later-page `startAfter` boundary non-exclusive, so the ordering cursor
+ * MUST carry this value. Returns `null` when the field is absent or not a provider timestamp, which
+ * the caller turns into a closed page failure (the ordering timestamp is transport metadata).
+ *
+ * This is deliberately separate from [untypedFields]: product fields, including the `updatedAt`
+ * value serialized into `rawJson`, stay epoch milliseconds per `§8` and `§20.7`, so only the
+ * ordering cursor gains precision.
+ */
+internal expect fun DocumentSnapshot.orderingUpdatedAtMicros(): Long?
+
+/**
+ * Builds the transport document from a provider snapshot without decoding any product field. It reads
+ * the provider's untyped field map plus the ordering `updatedAt` at full precision (`D-174`); the
+ * ordering-timestamp validation happens when the engine document is materialized, so a missing or
+ * mistyped product field is carried through verbatim.
+ */
+internal fun DocumentSnapshot.toFirestoreDocument(): FirestoreDocument =
+    FirestoreDocument(
+        id = id,
+        fields = untypedFields(),
+        orderingUpdatedAtMicros = orderingUpdatedAtMicros(),
+    )
+
+/**
+ * Serializes the untyped product fields to JSON without decoding or asserting any of them. The
+ * provider-free value set is String, Long, Double, Boolean, Map, List and null.
+ */
+internal fun Map<String, Any?>.toRawJson(): String =
+    buildJsonObject {
+        forEach { (field, value) ->
+            put(field, value.toJsonElement())
+        }
+    }.toString()
+
+private fun Any?.toJsonElement(): JsonElement =
+    when (this) {
+        null -> {
+            JsonNull
+        }
+
+        is String -> {
+            JsonPrimitive(this)
+        }
+
+        is Boolean -> {
+            JsonPrimitive(this)
+        }
+
+        is Long -> {
+            JsonPrimitive(this)
+        }
+
+        is Int -> {
+            JsonPrimitive(this)
+        }
+
+        is Double -> {
+            JsonPrimitive(this)
+        }
+
+        is Map<*, *> -> {
+            buildJsonObject {
+                forEach { (key, value) ->
+                    put(
+                        requireNotNull(key as? String) { "Non-string map key in remote document" },
+                        value.toJsonElement(),
+                    )
+                }
+            }
+        }
+
+        is List<*> -> {
+            buildJsonArray { this@toJsonElement.forEach { add(it.toJsonElement()) } }
+        }
+
+        else -> {
+            throw IllegalArgumentException("Unsupported remote field type: ${this::class.simpleName}")
+        }
+    }
 
 internal sealed interface FirestoreValue
 
@@ -216,12 +345,20 @@ private class GitLiveFirestoreGateway(
             val reference = firestore.document(write.path)
             reference.set(write.fields.mapValues { (_, value) -> value.toProviderValue() })
             val timestamp = reference.get().get<Timestamp>(UPDATED_AT_FIELD)
-            Instant.fromEpochMilliseconds(timestamp.toMilliseconds().toLong())
+            // Full precision (`D-174`): the acknowledged server timestamp drives the local
+            // `serverUpdatedAt` that the next pull compares against.
+            instantFromEpochMicroseconds(
+                timestamp.seconds * MICROS_PER_SECOND + timestamp.nanoseconds / NANOS_PER_MICROSECOND,
+            )
         }
 
     override suspend fun queryDocuments(query: FirestoreQuery): List<FirestoreDocument> =
         runProviderOperation {
-            val boundary = query.updatedAtOrAfter.toFirestoreTimestamp()
+            // The boundary keeps the provider's full microsecond precision (`D-174`). Truncating it to
+            // milliseconds would make `startAfter` compare a truncated value against the stored
+            // microsecond one, so the last document of the previous page sorts after the boundary and
+            // is re-delivered.
+            val boundary = query.updatedAtOrAfter.toProviderTimestamp()
             var firestoreQuery =
                 firestore
                     .collection(query.path)
@@ -239,7 +376,7 @@ private class GitLiveFirestoreGateway(
                 .limit(query.limit)
                 .get()
                 .documents
-                .map { document -> document.toFirestoreDocument(query.entityType) }
+                .map { document -> document.toFirestoreDocument() }
         }
 
     override suspend fun refreshAuthToken() {
@@ -348,115 +485,11 @@ private fun FirestoreValue.toProviderValue(): Any? =
         FirestoreNull -> null
     }
 
-private fun FirestoreDocument.toRemoteSnapshot(entityType: EntityType): RemoteSnapshot {
-    require(fields.getValue(ID_FIELD) == FirestoreString(id))
-    val schemaVersion = (fields.getValue(SCHEMA_VERSION_FIELD) as FirestoreLong).value.toInt()
-    val serverUpdatedAt = (fields.getValue(UPDATED_AT_FIELD) as FirestoreTimestamp).epochMilliseconds
-    val deleted = (fields.getValue(DELETED_FIELD) as FirestoreBoolean).value
-    return RemoteSnapshot(
-        entityType = entityType,
-        entityId =
-            com.ruizurraca.carapp.core.model
-                .EntityId(id),
-        schemaVersion = schemaVersion,
-        serverUpdatedAt = Instant.fromEpochMilliseconds(serverUpdatedAt),
-        deleted = deleted,
-        json = fields.toSnapshotJson(),
-    )
-}
-
-private fun Map<String, FirestoreValue>.toSnapshotJson(): String =
-    buildJsonObject {
-        this@toSnapshotJson.forEach { (field, value) ->
-            when (value) {
-                is FirestoreString -> {
-                    put(field, value.value)
-                }
-
-                is FirestoreLong -> {
-                    put(field, value.value)
-                }
-
-                is FirestoreBoolean -> {
-                    put(field, value.value)
-                }
-
-                is FirestoreTimestamp -> {
-                    put(field, value.epochMilliseconds)
-                }
-
-                FirestoreNull -> {
-                    put(field, JsonNull)
-                }
-
-                FirestoreServerTimestamp -> {
-                    throw IllegalArgumentException("Unresolved server timestamp in remote snapshot")
-                }
-            }
-        }
-    }.toString()
-
-private fun DocumentSnapshot.toFirestoreDocument(entityType: EntityType): FirestoreDocument =
-    when (entityType) {
-        EntityType.VEHICLE -> {
-            FirestoreDocument(
-                id = id,
-                fields =
-                    mapOf(
-                        ID_FIELD to FirestoreString(get(ID_FIELD)),
-                        OWNER_ID_FIELD to FirestoreString(get(OWNER_ID_FIELD)),
-                        "name" to FirestoreString(get("name")),
-                        "initialOdometerKm" to FirestoreLong(get("initialOdometerKm")),
-                        "brand" to getNullableString("brand"),
-                        "model" to getNullableString("model"),
-                        "fuelType" to FirestoreString(get("fuelType")),
-                        "createdAt" to getTimestamp("createdAt"),
-                        UPDATED_AT_FIELD to getTimestamp(UPDATED_AT_FIELD),
-                        DELETED_FIELD to FirestoreBoolean(get(DELETED_FIELD)),
-                        "deletedAt" to getNullableTimestamp("deletedAt"),
-                        SCHEMA_VERSION_FIELD to FirestoreLong(get(SCHEMA_VERSION_FIELD)),
-                    ),
-            )
-        }
-
-        EntityType.FUEL_ENTRY -> {
-            FirestoreDocument(
-                id = id,
-                fields =
-                    mapOf(
-                        ID_FIELD to FirestoreString(get(ID_FIELD)),
-                        OWNER_ID_FIELD to FirestoreString(get(OWNER_ID_FIELD)),
-                        "vehicleId" to FirestoreString(get("vehicleId")),
-                        "date" to getTimestamp("date"),
-                        "odometerKm" to FirestoreLong(get("odometerKm")),
-                        "litersScaled" to FirestoreLong(get("litersScaled")),
-                        "pricePerLiterScaled" to FirestoreLong(get("pricePerLiterScaled")),
-                        "totalCostMinor" to FirestoreLong(get("totalCostMinor")),
-                        "currency" to FirestoreString(get("currency")),
-                        "isFullTank" to FirestoreBoolean(get("isFullTank")),
-                        "hasMissedEntries" to FirestoreBoolean(get("hasMissedEntries")),
-                        "odometerInconsistent" to FirestoreBoolean(get("odometerInconsistent")),
-                        "notes" to getNullableString("notes"),
-                        "createdAt" to getTimestamp("createdAt"),
-                        UPDATED_AT_FIELD to getTimestamp(UPDATED_AT_FIELD),
-                        DELETED_FIELD to FirestoreBoolean(get(DELETED_FIELD)),
-                        "deletedAt" to getNullableTimestamp("deletedAt"),
-                        SCHEMA_VERSION_FIELD to FirestoreLong(get(SCHEMA_VERSION_FIELD)),
-                    ),
-            )
-        }
-    }
-
-private fun DocumentSnapshot.getNullableString(field: String): FirestoreValue =
-    get<String?>(field)?.let(::FirestoreString) ?: FirestoreNull
-
-private fun DocumentSnapshot.getTimestamp(field: String): FirestoreTimestamp =
-    FirestoreTimestamp(get<Timestamp>(field).toMilliseconds().toLong())
-
-private fun DocumentSnapshot.getNullableTimestamp(field: String): FirestoreValue =
-    get<Timestamp?>(field)?.let { value -> FirestoreTimestamp(value.toMilliseconds().toLong()) } ?: FirestoreNull
-
-private fun Instant.toFirestoreTimestamp(): Timestamp = Timestamp.fromMilliseconds(toEpochMilliseconds().toDouble())
+/**
+ * The provider `Timestamp` for this instant at full precision (`D-174`). `Timestamp(seconds,
+ * nanoseconds)` preserves the sub-millisecond component, which `fromMilliseconds` would drop.
+ */
+private fun Instant.toProviderTimestamp(): Timestamp = Timestamp(epochSeconds, nanosecondsOfSecond)
 
 private fun FirestoreGatewayFailure.toRemoteError(): RemoteError =
     when (this) {
@@ -474,5 +507,6 @@ private const val ID_FIELD = "id"
 private const val OWNER_ID_FIELD = "ownerId"
 private const val SCHEMA_VERSION_FIELD = "schemaVersion"
 private const val UPDATED_AT_FIELD = "updatedAt"
-private const val DELETED_FIELD = "deleted"
+private const val MICROS_PER_SECOND = 1_000_000L
+private const val NANOS_PER_MICROSECOND = 1_000L
 private val EPOCH_MILLISECOND_FIELDS = setOf("createdAt", "date", "deletedAt")

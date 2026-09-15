@@ -14,6 +14,8 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
+import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.DispatcherProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
@@ -22,6 +24,7 @@ import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.database.DepartureOperationKind
 import com.ruizurraca.carapp.core.database.DepartureOperationStep
 import com.ruizurraca.carapp.core.model.FuelType
+import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.feature.session.domain.AnonymousReminderRepository
 import com.ruizurraca.carapp.feature.session.domain.dueAnonymousReminderIndex
 import kotlinx.coroutines.CoroutineScope
@@ -663,18 +666,73 @@ private const val ACCOUNT_CONVERSION_CONFIRMATION_MESSAGE_ID = 3L
 private const val PENDING_SYNC_CONFIRMATION_MESSAGE_ID = 4L
 private const val DELETE_ACCOUNT_CONFIRMATION_MESSAGE_ID = 5L
 private const val DELETE_LOCAL_DATA_CONFIRMATION_MESSAGE_ID = 6L
+private const val SYNC_ERROR_MESSAGE_ID = 7L
 
-class SyncStateHolder internal constructor() {
-    val state: StateFlow<SyncUiState> =
-        MutableStateFlow(SyncUiState(SyncStatus.Idle, true, null))
+class SyncStateHolder internal constructor(
+    private val scope: CoroutineScope,
+    private val controller: SyncController,
+    connectivity: ConnectivityObserver,
+    private val dispatchers: DispatcherProvider,
+) {
+    private val mutableState =
+        MutableStateFlow(SyncUiState(controller.status.value, connectivity.isOnline.value, null))
+    val state: StateFlow<SyncUiState> = mutableState
+    private val mutableDebugLines = MutableStateFlow<List<String>>(emptyList())
+    val debugLines: StateFlow<List<String>> = mutableDebugLines
+    private var closed = false
+    private val statusJob =
+        scope.launch(dispatchers.main) {
+            controller.status.collect { status -> mutableState.value = mutableState.value.copy(status = status) }
+        }
+    private val connectivityJob =
+        scope.launch(dispatchers.main) {
+            connectivity.isOnline.collect { online -> mutableState.value = mutableState.value.copy(isOnline = online) }
+        }
 
-    fun requestSync(reason: SyncTrigger) = reason.let { Unit }
+    init {
+        refreshDebug()
+    }
 
-    fun retryFailed() = Unit
+    fun requestSync(reason: SyncTrigger) {
+        if (!closed) controller.requestSync(reason)
+    }
 
-    fun clearMessage() = Unit
+    fun retryFailed() {
+        if (closed) return
+        scope.launch(dispatchers.main) {
+            val result = withContext(dispatchers.io) { controller.retryFailed() }
+            if (result is Outcome.Err) {
+                mutableState.value =
+                    mutableState.value.copy(
+                        message =
+                            UiMessage(
+                                id = SYNC_ERROR_MESSAGE_ID,
+                                kind = UiMessageKind.ERROR,
+                                code = result.error.code,
+                                confirmation = null,
+                            ),
+                    )
+            }
+        }
+    }
 
-    fun close() = Unit
+    fun clearMessage() {
+        if (!closed) mutableState.value = mutableState.value.copy(message = null)
+    }
+
+    fun refreshDebug() {
+        if (closed) return
+        scope.launch(dispatchers.main) {
+            mutableDebugLines.value = withContext(dispatchers.io) { controller.debugLines() }
+        }
+    }
+
+    fun close() {
+        if (closed) return
+        closed = true
+        statusJob.cancel()
+        connectivityJob.cancel()
+    }
 }
 
 internal fun signedOutSessionState(): SessionUiState =

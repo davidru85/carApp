@@ -6,6 +6,7 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.canonicalVehicleName
 import kotlin.native.HiddenFromObjC
 
 private const val MIN_TEXT_LENGTH = 1
@@ -36,21 +37,6 @@ data class UpdateVehicleValidationContext(
     val activeVehicles: List<VehicleNameCandidate>,
     val hasNonDeletedFuelEntries: Boolean,
 )
-
-@HiddenFromObjC
-fun canonicalVehicleName(input: String): String =
-    buildString {
-        var whitespacePending = false
-        input.forEach { character ->
-            if (character.isWhitespace()) {
-                whitespacePending = isNotEmpty()
-            } else {
-                if (whitespacePending) append(' ')
-                append(character)
-                whitespacePending = false
-            }
-        }
-    }
 
 private fun hasDuplicateName(
     candidates: List<VehicleNameCandidate>,

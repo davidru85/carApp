@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
@@ -14,9 +15,10 @@ import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemotePage
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +27,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.time.Instant
 
 class VehicleListStateHolderTest {
@@ -104,32 +107,92 @@ class VehicleListStateHolderTest {
                 list.state.awaitState("vehicle recovery finished") { state ->
                     !state.isLoading && state.vehicles.isNotEmpty()
                 }
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle recovery sync cycle settled",
+                    expectedRemoteEffect = { remote.pullCalls.size == 2 },
+                    expectedPersistedState = { database.hasSyncedVehicle(VEHICLE_ID) },
+                )
 
-                val recovered =
-                    database.databaseQueries
-                        .selectVehicleById("00000000-0000-4000-8000-000000000001")
-                        .awaitAsOneOrNull()
-                assertNotNull(recovered)
-                assertEquals("Recovered Roadster", recovered.name)
-                assertEquals("SYNCED", recovered.syncState)
-                assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
-                assertEquals(0L, recovered.localRevision)
-                assertEquals(0L, recovered.localMutationSeq)
+                assertRecoveredVehicle(database)
                 val publishedState =
                     list.state.awaitState("recovered vehicle listed") { state -> state.vehicles.isNotEmpty() }
                 assertEquals(
                     "Recovered Roadster",
                     publishedState.vehicles.single().name,
                 )
-                assertEquals(
-                    PullCall(
-                        ownerId = OwnerId("anonymous-user"),
-                        entityType = EntityType.VEHICLE,
-                        cursor = RemoteCursor.INITIAL,
-                        limit = 50,
-                    ),
-                    remote.pullCalls.single(),
+                assertRecoveryPullOrder(remote)
+            } finally {
+                harness.close()
+            }
+        }
+
+    @Test
+    fun failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun() =
+        runTest {
+            val defaultDependencies = confinedGraphDependencies()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val remote = FailingPullRemoteSyncSource()
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                remoteSyncSource = remote,
+                            ),
+                        ),
                 )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val list = graph.vehicleListStateHolder(harness.scope)
+
+                list.refresh()
+                val failed = list.state.awaitState("refresh failure published") { state -> state.message != null }
+                assertEquals("REMOTE.UNAVAILABLE", failed.message?.code)
+
+                // The indicator cleared: a second refresh is not refused and reaches the remote again.
+                list.refresh()
+                graph.awaitSyncCycleSettled(
+                    expectation = "second failed refresh cycle settled",
+                    expectedRemoteEffect = { remote.pullCalls.size >= 2 },
+                )
+            } finally {
+                harness.close()
+            }
+        }
+
+    @Test
+    fun offlineRefreshIsOkWithNoMessage() =
+        runTest {
+            val defaultDependencies = confinedGraphDependencies()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = false),
+                            ),
+                        ),
+                )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val list = graph.vehicleListStateHolder(harness.scope)
+
+                list.refresh()
+                val settled =
+                    list.state.awaitState("offline refresh settles") { state ->
+                        !state.isLoading && state.message == null
+                    }
+                assertEquals(emptyList(), settled.vehicles)
+                assertNull(settled.message)
             } finally {
                 harness.close()
             }
@@ -150,14 +213,43 @@ class VehicleListStateHolderTest {
         }
 }
 
-private fun remoteVehicleSnapshot(): RemoteSnapshot =
-    RemoteSnapshot(
+private suspend fun AppDatabase.hasSyncedVehicle(vehicleId: String): Boolean =
+    databaseQueries.selectVehicleById(vehicleId).awaitAsOneOrNull()?.syncState == "SYNCED"
+
+private suspend fun assertRecoveredVehicle(database: AppDatabase) {
+    val recovered = database.databaseQueries.selectVehicleById(VEHICLE_ID).awaitAsOneOrNull()
+    assertNotNull(recovered)
+    assertEquals("Recovered Roadster", recovered.name)
+    assertEquals("SYNCED", recovered.syncState)
+    assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
+    assertEquals(0L, recovered.localRevision)
+    assertEquals(0L, recovered.localMutationSeq)
+}
+
+private fun assertRecoveryPullOrder(remote: PullOnlyRemoteSyncSource) {
+    assertEquals(
+        PullCall(
+            ownerId = OwnerId("anonymous-user"),
+            entityType = EntityType.VEHICLE,
+            cursor = RemoteCursor.INITIAL,
+            limit = 200,
+        ),
+        remote.pullCalls.first(),
+    )
+    assertEquals(
+        listOf(EntityType.VEHICLE, EntityType.FUEL_ENTRY),
+        remote.pullCalls.map(PullCall::entityType),
+    )
+}
+
+private const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
+
+private fun remoteVehicleSnapshot(): RemoteDocument =
+    RemoteDocument(
         entityType = EntityType.VEHICLE,
-        entityId = EntityId("00000000-0000-4000-8000-000000000001"),
-        schemaVersion = 1,
+        documentId = EntityId("00000000-0000-4000-8000-000000000001"),
         serverUpdatedAt = Instant.fromEpochMilliseconds(1_767_225_600_000L),
-        deleted = false,
-        json =
+        rawJson =
             """
             {
               "id":"00000000-0000-4000-8000-000000000001",
@@ -184,7 +276,7 @@ private data class PullCall(
 )
 
 private class PullOnlyRemoteSyncSource(
-    private val snapshot: RemoteSnapshot,
+    private val snapshot: RemoteDocument,
 ) : RemoteSyncSource {
     private val recordedPullCalls = mutableListOf<PullCall>()
     val pullCalls: List<PullCall> get() = recordedPullCalls.toList()
@@ -207,10 +299,30 @@ private class PullOnlyRemoteSyncSource(
                 nextCursor =
                     RemoteCursor(
                         lastServerUpdatedAt = snapshot.serverUpdatedAt,
-                        lastDocumentId = snapshot.entityId,
+                        lastDocumentId = snapshot.documentId,
                     ),
                 hasMore = false,
             ),
         )
+    }
+}
+
+private class FailingPullRemoteSyncSource : RemoteSyncSource {
+    private val recordedPullCalls = mutableListOf<PullCall>()
+    val pullCalls: List<PullCall> get() = recordedPullCalls.toList()
+
+    override suspend fun pushSnapshot(
+        ownerId: OwnerId,
+        snapshot: EntitySnapshot,
+    ): Outcome<RemoteAck, RemoteError> = Outcome.Err(RemoteError.Unknown)
+
+    override suspend fun pullChanges(
+        ownerId: OwnerId,
+        entityType: EntityType,
+        cursor: RemoteCursor,
+        limit: Int,
+    ): Outcome<RemotePage, RemoteError> {
+        recordedPullCalls += PullCall(ownerId, entityType, cursor, limit)
+        return Outcome.Err(RemoteError.Unavailable)
     }
 }

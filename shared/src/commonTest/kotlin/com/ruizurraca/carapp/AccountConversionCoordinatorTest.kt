@@ -25,13 +25,17 @@ import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemotePage
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -131,6 +135,49 @@ class AccountConversionCoordinatorTest {
             assertIs<Outcome.Err<AppError>>(result)
             assertTrue(fixture.store.operation != null)
         }
+
+    @Test
+    fun remoteDocumentMissingDeletedReturnsInvalidArgumentWithoutThrowing() =
+        runTest {
+            assertMalformedRemoteDocumentReturnsInvalidArgument(remoteVehicleJsonWithout("deleted"))
+        }
+
+    @Test
+    fun remoteDocumentMissingSchemaVersionReturnsInvalidArgumentWithoutThrowing() =
+        runTest {
+            assertMalformedRemoteDocumentReturnsInvalidArgument(remoteVehicleJsonWithout("schemaVersion"))
+        }
+
+    @Test
+    fun remoteDocumentMissingIdReturnsInvalidArgumentWithoutThrowing() =
+        runTest {
+            assertMalformedRemoteDocumentReturnsInvalidArgument(remoteVehicleJsonWithout("id"))
+        }
+
+    @Test
+    fun remoteDocumentWithMistypedDeletedReturnsInvalidArgumentWithoutThrowing() =
+        runTest {
+            val values = remoteVehicle("existing-vehicle").rawJson.asObjectValues()
+            values["deleted"] = JsonPrimitive("not-a-boolean")
+
+            assertMalformedRemoteDocumentReturnsInvalidArgument(JsonObject(values).toString())
+        }
+
+    @Test
+    fun remoteDocumentWithNonObjectPayloadReturnsInvalidArgumentWithoutThrowing() =
+        runTest {
+            assertMalformedRemoteDocumentReturnsInvalidArgument("[]")
+        }
+
+    private suspend fun assertMalformedRemoteDocumentReturnsInvalidArgument(rawJson: String) {
+        val fixture = ConversionFixture()
+        fixture.remote.vehicleDocument = remoteVehicle("existing-vehicle").copy(rawJson = rawJson)
+
+        val result = fixture.coordinator().confirm(ANONYMOUS_UID, CREDENTIAL)
+
+        assertEquals(Outcome.Err(RemoteError.InvalidArgument), result)
+        assertEquals(AccountConversionPhase.SESSION_SWITCHED, fixture.store.operation?.phase)
+    }
 }
 
 private class ConversionFixture {
@@ -306,6 +353,8 @@ private class RecordingOrphanCleanupClient(
 private class RecordingReplacementRemoteSource(
     private val events: MutableList<String>,
 ) : RemoteSyncSource {
+    var vehicleDocument: RemoteDocument = remoteVehicle("existing-vehicle")
+
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
@@ -324,10 +373,10 @@ private class RecordingReplacementRemoteSource(
         events += "pull:${entityType.name}"
         val item =
             when (entityType) {
-                EntityType.VEHICLE -> remoteVehicle("existing-vehicle")
+                EntityType.VEHICLE -> vehicleDocument
                 EntityType.FUEL_ENTRY -> remoteFuelEntry("existing-entry")
             }
-        return Outcome.Ok(RemotePage(listOf(item), RemoteCursor(item.serverUpdatedAt, item.entityId), false))
+        return Outcome.Ok(RemotePage(listOf(item), RemoteCursor(item.serverUpdatedAt, item.documentId), false))
     }
 }
 
@@ -342,24 +391,28 @@ private fun Outcome<AuthSession, AppError>.mapToUnit(): Outcome<Unit, AppError> 
 private fun anonymousSessionForConversion() = AuthSession(ANONYMOUS_UID, true, setOf(AuthProvider.ANONYMOUS))
 
 private fun remoteVehicle(id: String) =
-    RemoteSnapshot(
+    RemoteDocument(
         EntityType.VEHICLE,
         EntityId(id),
-        1,
         Instant.fromEpochMilliseconds(100),
-        false,
         anonymousVehicleJson(id = id, ownerId = PERMANENT_UID, includeEntityType = false),
     )
 
 private fun remoteFuelEntry(id: String) =
-    RemoteSnapshot(
+    RemoteDocument(
         EntityType.FUEL_ENTRY,
         EntityId(id),
-        1,
         Instant.fromEpochMilliseconds(100),
-        false,
         anonymousFuelEntryJson(id = id, ownerId = PERMANENT_UID, includeEntityType = false),
     )
+
+private fun remoteVehicleJsonWithout(key: String): String {
+    val values = remoteVehicle("existing-vehicle").rawJson.asObjectValues()
+    values.remove(key)
+    return JsonObject(values).toString()
+}
+
+private fun String.asObjectValues() = Json.parseToJsonElement(this).jsonObject.toMutableMap()
 
 private fun anonymousVehicleJson(
     id: String = "anonymous-vehicle",

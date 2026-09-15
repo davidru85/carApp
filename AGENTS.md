@@ -142,13 +142,18 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   request #64. `E2-07` is merged through pull request #61; `E2-08`, the anonymous reminder launch
   and race fixes that followed it, merged on 2026-09-08 through pull request #62.
 - **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-14`, `E3-15` and `E3-16`. `E3-02` is implemented on the
-  open pull request #68 awaiting the owner's gated review and all ten required checks. `E3-14` and
+  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-14`, `E3-15`, `E3-16` and `E3-17`. `E3-02` is implemented
+  on the open pull request #68 awaiting the owner's gated review and all ten required checks; `E3-03`
+  is implemented on the open `story/E3-03-core-sync-engine` branch and its gated pull request,
+  awaiting the owner's review and the same ten checks. `E3-14` and
   `E3-15` are the two
   post-merge findings of the `E3-11` review; `E3-14` is implemented on the open pull request #63
   awaiting the owner's gated review, `E3-15` is **not Ready** until the owner resolves `D-149`, and
   `E3-16` — the issuance lookup-to-write window found while reviewing that pull request — is **not
-  Ready** until the owner resolves `D-150`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
+  Ready** until the owner resolves `D-150`. `E3-17` — making `AppGraph.close()` safe against an
+  in-flight sync cycle, found while reviewing `E3-03`, which invalidated the `E1-12` premise that no
+  production path closes a graph while work is live — is **not Ready** until the owner resolves
+  `D-172`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation

@@ -36,6 +36,18 @@ const val STATE_HOLDER_TIMEOUT_MS: Long = 5_000L
 @HiddenFromObjC
 const val FOREGROUND_RESUME_THRESHOLD_MS: Long = 300_000L
 
+/** Delay that coalesces local mutations before an automatic sync cycle (`§9.8`). */
+@HiddenFromObjC
+const val SYNC_POST_WRITE_DEBOUNCE_MS: Long = 2_000L
+
+/** Minimum interval between automatic sync cycles (`§9.8`). */
+@HiddenFromObjC
+const val SYNC_MIN_AUTOMATIC_INTERVAL_MS: Long = 30_000L
+
+/** Six-hour periodic background interval (`§9.8`). */
+@HiddenFromObjC
+const val SYNC_PERIODIC_INTERVAL_MS: Long = 21_600_000L
+
 /** Five minutes (`§11.5`). */
 @HiddenFromObjC
 const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L

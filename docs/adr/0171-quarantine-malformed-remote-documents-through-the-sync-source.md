@@ -2,10 +2,9 @@
 
 ## Status
 
-Proposed
+Accepted
 
-No option is selected here. The owner chooses before `E3-03` implements the pull-cycle quarantine
-behavior of `docs/CONTRACTS.md §9.5`.
+The owner selected option A on 2026-09-13 before `E3-03` started.
 
 ## Context
 
@@ -62,11 +61,15 @@ converts cleanly into a `RemoteSnapshot` and reaches the engine, which can then 
 ### Reachability of the `§9.5` reasons today
 
 - `UnsupportedSchemaVersion`: **reachable.** A higher-version document with the expected fields
-  converts to a `RemoteSnapshot` and the engine can quarantine it.
-- `MalformedPayload`: **not reachable.** Its sub-cases either fail the whole page (path 1), escape
-  the closed API entirely (path 2), or have no representable output (path 3). The escalation is
-  about `MalformedPayload` only. An ADR that overstates the defect is as wrong as one that
-  understates it.
+  reaches the engine, which quarantines it.
+- `MalformedPayload`: **reachable since the `E3-03` owner-review round.** Option A removed the
+  typed per-field read from the integration (`toFirestoreDocument` now reads the provider's untyped
+  field map and carries every product field verbatim), so a missing required field, a primitive type
+  mismatch or a document-ID/payload-ID mismatch reaches `:core:sync` as raw JSON instead of failing
+  the page or escaping the closed API. The engine's classification was also made total, so a missing
+  top-level key becomes a quarantine record rather than an escaping `NoSuchElementException`. The
+  three failure paths recorded above are therefore closed; this section preserves the original
+  analysis as the context for the decision.
 
 ### This is pre-existing
 
@@ -85,14 +88,16 @@ implement `§9.5`.
 
 ## Decision
 
-Not yet taken. The recommendation is **option A**: `pullChanges` returns raw per-document results
+**Option A**: `pullChanges` returns raw per-document results
 and the engine validates and quarantines, so `§9.5` classification is executed in `:core:sync`
 beside the local transaction that writes the quarantine row, and the integration does not own a
 contract rule. Option A is the only option that restores both halves of line 403 — "MUST NOT fail
 because of a malformed payload" and "documents that cannot be applied are quarantined" — without
-moving `§9.5` semantics into an integration module. Option B is a viable fallback if the DTO change
-is judged too wide; option C is rejected because it drops data silently. The owner chooses; the
-decision is `Proposed`, not `Accepted`.
+moving `§9.5` semantics into an integration module. `RemoteDocument` carries the provider-known
+document id, entity type, millisecond ordering timestamp and raw JSON. `RemotePage.items` is a list
+of those envelopes. The engine parses `schemaVersion` and all product fields; an unreadable or
+missing `schemaVersion` is persisted as `0` in a `MalformedPayload` quarantine record, while the
+ordering timestamp supplies the non-null `serverUpdatedAt` required by the quarantine schema.
 
 ## Consequences
 
@@ -107,18 +112,17 @@ decision is `Proposed`, not `Accepted`.
 
 - `RemotePage` / `§20.7` change, which is a representation contract change requiring an owner
   decision. The exact new shape is not designed here.
-- Until the owner decides, a single malformed remote document can fail a whole pull page (path 1)
-  or escape the closed `Outcome` API (path 2), and `§9.5` `MalformedPayload` quarantine cannot be
-  implemented as written.
+- The raw envelope widens `RemotePage` and requires every integration to serialize provider values
+  without applying product validation.
 
 ### Constraints Introduced
 
-- No `§9.5` `MalformedPayload` classification MAY be implemented outside the option the owner
-  selects, because every option except C changes the `RemoteSyncSource` output contract.
+- `§9.5` `MalformedPayload` classification is owned by `:core:sync`; integrations transport raw
+  documents and MUST NOT classify them.
 - Option C MUST NOT be implemented: silently skipping a document without a quarantine row
   contradicts `§9.5` and is presented here only to make its cost explicit.
-- `E3-03` MUST NOT assume it can quarantine a `MalformedPayload` document until this decision is
-  resolved, because the current output type cannot deliver one.
+- `RemoteDocument.serverUpdatedAt` is the provider ordering timestamp converted to epoch
+  milliseconds at the integration boundary and is available even when product fields are malformed.
 
 ## Verification
 

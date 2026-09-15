@@ -867,6 +867,10 @@ Acceptance criteria:
 
 ### E3-03 - `:core:sync` Engine - L
 
+Status: implemented on `story/E3-03-core-sync-engine`, awaiting the gated owner review and the ten
+required checks. See `docs/handoff-E3-03.md` for the RED, GREEN and REFACTOR commits and acceptance
+evidence.
+
 Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quarantine, aggregate backup status and debug support according to `docs/CONTRACTS.md §7`–`§9`.
 
 Acceptance criteria:
@@ -874,11 +878,11 @@ Acceptance criteria:
 - All 18 backup and recovery tests in `docs/TECHNICAL_PLAN.md §9` pass.
 - A cycle is not started while `ConnectivityObserver.isOnline` is false, and connectivity failures never poison a row (`docs/CONTRACTS.md §9.2`, `§9.7`).
 - The deterministic backup and recovery simulation exists with a fixed seed and an injected jitter source.
-- The state machine matches `docs/CONTRACTS.md §7`, including `SYNCING -> SYNCING` on a local edit during an in-flight push.
+- The state machine matches `docs/CONTRACTS.md §7`. A local edit during an in-flight push sets the row `PENDING` in the same transaction as the edit (the editor's rule, `§7` invariant and `§9.3`), so the reachable sequence is `SYNCING -> PENDING`, and the ack for the stale revision only stamps `serverUpdatedAt`. An automatic due retry follows `FAILED_RETRYABLE -> SYNCING`, and poison is stamped only as `SYNCING -> FAILED_POISONED`; `SYNCING -> SYNCING`, `FAILED_RETRYABLE -> FAILED_POISONED` and `FAILED_POISONED -> SYNCING` are not reachable.
 - Only one cycle runs at a time per owner, enforced by a mutex in `SyncController`.
 - Concurrent triggers set the single pending flag and cause exactly one follow-up cycle after the active cycle completes.
 - Trigger constants match `docs/CONTRACTS.md §9.8`.
-- `ConnectivityRecovered` moves connectivity-only `FAILED_RETRYABLE` rows due immediately while preserving `attemptCount`.
+- `ConnectivityRecovered` makes every outbox row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` due immediately, regardless of entity `syncState`, while preserving `attemptCount`.
 - `retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING` with cleared error context.
 - Cold-start sync pulls before pushing only when `vehicle` and `fuel_entry` are empty for the owner and the outbox is empty.
 - Debug screen exposes the outbox, cursors, quarantine and row sync state.
@@ -926,6 +930,12 @@ Acceptance criteria:
 - The five triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
 - Platform workers only call `SyncController.requestSync(reason)`.
 - No state holder change is required for sync correctness.
+- **`E3-03` wired the post-write `requestSync(PostWriteDebounce)` call sites in
+  `VehicleSliceRuntime`, so enforcement is what remains here.** `SYNC_POST_WRITE_DEBOUNCE_MS` (2 s)
+  and `SYNC_MIN_AUTOMATIC_INTERVAL_MS` (30 s) are currently declarative only: no code consumes them,
+  and `DefaultSyncController.requestSync` starts a cycle immediately with no coalescing window and no
+  floor between automatic cycles. `E3-04` MUST enforce both constants, or record explicitly why one is
+  not enforced.
 
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
@@ -1490,6 +1500,158 @@ Acceptance criteria:
 - Evidence of stability: the affected test is run repeatedly on CI and the handoff records the
   number of consecutive passes observed, so "fixed" rests on a count and not on one green run.
 
+### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
+
+**Not Ready.** Blocked on owner decision `D-172`, which is `Pending` in `docs/DECISION_BOARD.md`
+— no recommendation is preselected for the mechanism — with its analysis recorded by `E3-03`.
+
+Tracked as the `E3-03` owner-review finding on [pull request
+#69](https://github.com/davidru85/carApp/pull/69). It is a **production** defect, unlike the
+test-infrastructure defect `E1-12` closed.
+
+`E1-12` (GitHub issue #42) deferred making `AppGraph.close()` safe against live subscribers because,
+verbatim, "This story is a test-infrastructure defect, not a production defect: no production code
+path closes an `AppGraph` while its state holders are still collecting." `E3-03` invalidates that
+premise. `DefaultAppGraph.close()` now hosts long-running detached sync cycles on `graphScope`, each
+performing many SQLite calls, started by `VehicleSliceRuntime.createVehicle`/`updateVehicle`
+(`PostWriteDebounce`), by `VehicleSliceRuntime.refresh` (`PullToRefresh`) and by
+`scheduleAdoptionRetry`. `DefaultAppGraph.close()` calls `graphScope.cancel()` and then
+`databaseHandle.close()`; `cancel()` does not join, so a coroutine suspended inside an asynchronous
+SQLite call is not finished when the driver closes. Both production close paths —
+`MainActivity.onCleared()` and `SwiftAppGraph.close()` — can therefore now run with a cycle in
+flight. `SyncStateHolder.close()` does not mitigate this: it cancels the holder's collectors, not the
+controller's cycle on `graphScope`.
+
+This is a reachable hazard, not an observed production crash. The D-89 handle-ownership contract
+(`docs/CONTRACTS.md §20.3.2`) and the gated path `core/database/**` are in scope, so the fix MUST get
+its own human review gate.
+
+Acceptance criteria (to be finalised once `D-172` is accepted):
+
+- The accepted option discharges its proof obligations: the close paths and the cycle lifecycle are
+  ordered explicitly, and the evidence states which mechanism joins, cancels or drains an in-flight
+  cycle before the `DatabaseHandle` closes.
+- The D-89 contract stays intact: exactly one owner closes the handle, closure is idempotent, and no
+  SQLite call is made after the driver is closed.
+- `MainActivity.onCleared()` and `SwiftAppGraph.close()` are both covered, including a cycle
+  suspended inside a remote call and a cycle performing a local transaction.
+- The `E1-12` test-level mitigation stays valid; the production fix MUST NOT make it unnecessary in
+  a way that hides the underlying hazard.
+- The change is recorded as its own decision with its ADR and the four mirror rows, and touches the
+  gated `core/database/**` path under an owner review gate.
+
+Depends on: `D-172`, E1-12 (context), E3-03.
+
+Human review required.
+
+### E3-18 - Manual Retry Coverage for Parked Connectivity Rows - S
+
+**Not Ready.** Blocked on owner decision `D-173`, which is `Pending` in `docs/DECISION_BOARD.md`
+— option B is recommended but no option is preselected — with its analysis in
+[ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md).
+
+Tracked as the `E3-03` sixth owner-review finding on [pull request
+#69](https://github.com/davidru85/carApp/pull/69). The `E3-03` R5 round made a connectivity-only
+failure leave the entity `syncState = PENDING` with its retry context in the outbox. That is the
+correct row state, but `resetFailedOutbox` clears retry context only for entities whose `syncState`
+is `FAILED_RETRYABLE` or `FAILED_POISONED`, so a `PENDING` connectivity row is outside the selection
+and `SyncController.retryFailed()` has no effect on it.
+
+`§9.7` justifies excluding connectivity rows from manual retry because "Connectivity-only failures
+already auto-resume". That holds only for a real offline-to-online transition. A server-side
+`REMOTE.UNAVAILABLE` or `REMOTE.DEADLINE_EXCEEDED` while the device stays online fires no
+`ConnectivityRecovered`, so the row waits out its backoff up to `MAX_BACKOFF_MS` (900_000 ms), the
+aggregate reports `Pending` and the user cannot force it.
+
+This is a bounded liveness gap, not a data-loss or correctness defect. `E3-03` records it only and
+makes no production change here.
+
+Acceptance criteria (to be finalised once `D-173` is accepted):
+
+- The accepted option discharges its proof obligations: the exact manual-retry selection is stated,
+  and the evidence shows which rows `retryFailed()` now clears.
+- The poison rule and `attemptCount` semantics of `§9.7` stay intact.
+- If option A is chosen, `§9.7` states the `MAX_BACKOFF_MS` bound explicitly and the residual
+  user-visible effect; if option B is chosen, a test proves a `PENDING` connectivity row with a
+  far-future `nextAttemptAt` becomes due after `retryFailed()`.
+- Option C, if chosen, is tested as a `PullToRefresh` cycle calling `markConnectivityFailuresDue`.
+
+Depends on: `D-173`, E3-03.
+
+Human review required.
+
+### E3-19 - Push-Boundary Payload Totality - S
+
+**Deferred by `E3-03`; low reachability.** Not Ready until a story owner is scheduled.
+
+`EntitySnapshot.toFirestoreWrite` (`FirebaseRemoteSyncSource.kt`) reads `ID_FIELD`, `OWNER_ID_FIELD`
+and `SCHEMA_VERSION_FIELD` through `JsonObject.getValue`, which throws `NoSuchElementException`.
+`pushSnapshot` catches only `IllegalArgumentException`, so an outbox payload missing one of those keys
+escapes to the generic `drainCycles` catch: `UnexpectedError`, the row stays `SYNCING`, it never
+poisons, and the same failure repeats every cycle. This is the third round's BLOCKER 1 shape on the
+push boundary.
+
+Deferred because it **predates `E3-03`** — it is present on `main` — and because the outbox payload is
+written locally under `docs/CONTRACTS.md §8`, so the missing key requires a producer defect rather
+than remote input. It is a closure gap, not a live defect.
+
+Acceptance criteria:
+
+- Every field read on the push boundary is total: a missing or wrong-typed key produces a closed
+  `Outcome.Err` (or a poison) rather than an escaping `NoSuchElementException`.
+- A test drives a payload missing each of `id`, `ownerId` and `schemaVersion` and asserts a closed
+  result, the row does not stay `SYNCING` indefinitely, and no `UnexpectedError` is reported.
+
+Human review required.
+
+### E3-20 - Pull-Boundary Quarantine Totality for Unsupported Provider Values - S
+
+**Deferred by `E3-03`; near-unreachable.** Not Ready until a story owner is scheduled.
+
+`untypedFields()` (both platform actuals) throws `IllegalArgumentException` for an unsupported
+provider value type, which `runRemoteOperation` converts to `RemoteError.InvalidArgument` for the
+whole page. `failPullCycle` then leaves the stored cursor unchanged, so one such document stalls the
+pull permanently instead of being quarantined — the outcome `docs/CONTRACTS.md §9.5` requires
+classification to avoid.
+
+Deferred because the closed Firestore schema of `§16` and the `validPayload()` rule make an
+unsupported provider value type near-unreachable: only a provider- or rule-level regression could
+produce one. It is a closure gap, not a live defect.
+
+Acceptance criteria:
+
+- An unsupported provider value is classified as a `MalformedPayload` quarantine record, not a
+  page-level `RemoteError.InvalidArgument`, so the cursor advances past it.
+- A test feeds a document with an unsupported provider value and asserts a quarantine record and an
+  advanced cursor.
+
+Human review required.
+
+### E3-21 - Explicit Startup Reset of Stale `SYNCING` Rows - S
+
+**Deferred by `E3-03`; low impact.** Not Ready until a story owner is scheduled.
+
+If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row
+is left `SYNCING` with no startup statement that resets it. It is not stranded — the outbox row
+survives and is re-pushed on the next cycle, `markSyncing` is idempotent, and the aggregate
+`SyncStatus` derives from the outbox and stays correct — but the entity row's own state is stale until
+a cycle runs. `docs/CONTRACTS.md §7` records the transient.
+
+Deferred because the reachable window is a process death inside one push and the recovery already
+exists through the outbox; an explicit reset is a clarity hardening, not a correctness fix.
+The E3-03 `localRevision` guard closes the separate window between batch selection and
+`markSyncing`: a local edit in that interval remains `PENDING`, so it does not broaden E3-21.
+
+Acceptance criteria:
+
+- A startup statement resets every `SYNCING` entity row without a resolved push to a state consistent
+  with its outbox row, in one transaction.
+- A test seeds a `SYNCING` entity row and asserts the reset after app start.
+- The change keeps the aggregate `SyncStatus` derived from the outbox and does not alter push
+  ordering.
+
+Human review required.
+
 ### Deferred scope, now scheduled
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
@@ -1644,6 +1806,11 @@ proof after E3-04.
 | E3-14 Orphan cleanup ticket issuance hardening | 3 | M | Yes |
 | E3-15 Close the ticket issuance and account deletion interleaving | 3 | M | Yes |
 | E3-16 Close the issuance lookup-to-write window | 3 | M | Yes |
+| E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle | 3 | M | Yes |
+| E3-18 Manual retry coverage for parked connectivity rows | 3 | S | Yes |
+| E3-19 Push-boundary payload totality | 3 | S | Yes |
+| E3-20 Pull-boundary quarantine totality for unsupported provider values | 3 | S | Yes |
+| E3-21 Explicit startup reset of stale `SYNCING` rows | 3 | S | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

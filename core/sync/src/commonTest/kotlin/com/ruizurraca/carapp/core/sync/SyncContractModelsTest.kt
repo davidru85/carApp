@@ -31,23 +31,19 @@ class SyncContractModelsTest {
     }
 
     @Test
-    fun remoteSnapshotPreservesRemoteMetadataAndPayload() {
+    fun remoteDocumentPreservesTransportMetadataAndRawPayload() {
         val snapshot =
-            RemoteSnapshot(
+            RemoteDocument(
                 entityType = EntityType.FUEL_ENTRY,
-                entityId = entityId,
-                schemaVersion = 2,
+                documentId = entityId,
                 serverUpdatedAt = serverUpdatedAt,
-                deleted = true,
-                json = "{\"deleted\":true}",
+                rawJson = "{\"deleted\":true}",
             )
 
         assertEquals(EntityType.FUEL_ENTRY, snapshot.entityType)
-        assertEquals(entityId, snapshot.entityId)
-        assertEquals(2, snapshot.schemaVersion)
+        assertEquals(entityId, snapshot.documentId)
         assertEquals(serverUpdatedAt, snapshot.serverUpdatedAt)
-        assertTrue(snapshot.deleted)
-        assertEquals("{\"deleted\":true}", snapshot.json)
+        assertEquals("{\"deleted\":true}", snapshot.rawJson)
     }
 
     @Test
@@ -68,12 +64,10 @@ class SyncContractModelsTest {
     @Test
     fun remotePagePreservesPaginationState() {
         val snapshot =
-            RemoteSnapshot(
+            RemoteDocument(
                 EntityType.VEHICLE,
                 entityId,
-                1,
                 serverUpdatedAt,
-                false,
                 "{}",
             )
         val cursor = RemoteCursor(serverUpdatedAt, entityId)

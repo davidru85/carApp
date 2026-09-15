@@ -24,6 +24,7 @@ jobs:
   ktlint:
     name: ktlint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -44,6 +45,7 @@ jobs:
   detekt:
     name: detekt
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -56,6 +58,7 @@ jobs:
   architecture-check:
     name: architecture-check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -69,6 +72,7 @@ jobs:
   contract-check:
     name: contract-check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: cloud-runtime-verification
     permissions:
       contents: read
@@ -131,6 +135,7 @@ jobs:
   android-assemble:
     name: android-assemble
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -143,6 +148,7 @@ jobs:
   android-instrumented-tests:
     name: android-instrumented-tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Enable KVM access
         run: |
@@ -174,6 +180,7 @@ jobs:
     # macOS is required here only by iosSimulatorArm64Test. Moving that test out also requires
     # superseding D-35.
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -181,22 +188,29 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      # Host and Kotlin/Native runs both matter: a common test that only ever executes on the JVM
-      # would not catch a Kotlin/Native divergence. D-75 derives the current four exclusions from
-      # the transitive Native-test project graph rooted at the two Firebase integrations.
-      - run: >-
-          ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test
+      - name: Run Android application and KMP host tests
+        timeout-minutes: 8
+        run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --stacktrace
+      # D-75 derives the current four exclusions from the transitive Native-test project graph
+      # rooted at the two Firebase integrations. Keeping this invocation separate makes a Native
+      # simulator stall visible instead of hiding it behind the Android-host aggregate.
+      - name: Run Kotlin/Native simulator tests
+        timeout-minutes: 8
+        run: >-
+          ./gradlew iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
           -x :integration:firebase-firestore:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test
           -x :composition:ios:iosSimulatorArm64Test
           --stacktrace
       - name: Coverage thresholds
+        timeout-minutes: 4
         run: ./gradlew koverVerify --stacktrace
 
   ios-simulator-build:
     name: ios-simulator-build
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -237,6 +251,7 @@ jobs:
   objc-header-golden-check:
     name: objc-header-golden-check
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -259,6 +274,7 @@ jobs:
     # D-45: dependency leaks can be target-specific, so the provider-free graph is tested on both
     # Android host (JVM) and iosSimulatorArm64 (Kotlin/Native) under one protected check name.
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -266,7 +282,16 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Compile and test without Firebase providers
+      - name: Run provider-free Android host tests
+        timeout-minutes: 8
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
-          testAndroidHostTest iosSimulatorArm64Test --stacktrace
+          :shared:testAndroidHostTest
+          --stacktrace
+      - name: Run provider-free Kotlin/Native simulator tests
+        timeout-minutes: 8
+        run: >-
+          ./gradlew -Pcarapp.excludeFirebaseProviders=true
+          :shared:iosSimulatorArm64Test
+          --max-workers=2
+          --stacktrace

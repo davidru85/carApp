@@ -17,6 +17,9 @@
     <string name="vehicle_model">Modelo (opcional)</string>
     <string name="save_vehicle">Guardar vehículo</string>
     <string name="restore_backup">Recuperar copia</string>
+    <string name="sync_diagnostics">Diagnóstico de sincronización</string>
+    <string name="refresh_sync_diagnostics">Actualizar</string>
+    <string name="empty_sync_diagnostics">No hay filas de sincronización</string>
     <string name="empty_vehicles">Todavía no hay vehículos guardados.</string>
     <string name="vehicle_odometer">%1$d km</string>
     <string name="add_first_fuel_entry_invitation">Añade el primer repostaje para empezar a medir el consumo.</string>
