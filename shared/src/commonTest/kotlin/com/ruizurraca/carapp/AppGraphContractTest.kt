@@ -69,9 +69,20 @@ class AppGraphContractTest {
                 assertEquals(vehicles.state.value.syncStatus, fuelEntries.state.value.syncStatus)
 
                 releasePull.complete(Unit)
+                graph.awaitSyncCycleSettled(
+                    expectation = "graph convergence sync cycle settled",
+                    expectedRemoteEffect = { remote.pullCalls == 2 },
+                )
             } finally {
                 releasePull.complete(Unit)
-                harness.close()
+                try {
+                    graph.awaitSyncCycleSettled(
+                        expectation = "graph convergence teardown is safe",
+                        expectedRemoteEffect = { true },
+                    )
+                } finally {
+                    harness.close()
+                }
             }
         }
 }
@@ -79,6 +90,9 @@ class AppGraphContractTest {
 private class BlockingPullRemote(
     private val release: CompletableDeferred<Unit>,
 ) : RemoteSyncSource {
+    var pullCalls = 0
+        private set
+
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
@@ -90,6 +104,7 @@ private class BlockingPullRemote(
         cursor: RemoteCursor,
         limit: Int,
     ): Outcome<RemotePage, RemoteError> {
+        pullCalls += 1
         release.await()
         return Outcome.Ok(RemotePage(emptyList(), cursor, false))
     }

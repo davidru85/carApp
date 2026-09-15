@@ -4,7 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
-import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
@@ -107,37 +107,20 @@ class VehicleListStateHolderTest {
                 list.state.awaitState("vehicle recovery finished") { state ->
                     !state.isLoading && state.vehicles.isNotEmpty()
                 }
-                awaitSyncCycleSettled(graph, remote)
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle recovery sync cycle settled",
+                    expectedRemoteEffect = { remote.pullCalls.size == 2 },
+                    expectedPersistedState = { database.hasSyncedVehicle(VEHICLE_ID) },
+                )
 
-                val recovered =
-                    database.databaseQueries
-                        .selectVehicleById("00000000-0000-4000-8000-000000000001")
-                        .awaitAsOneOrNull()
-                assertNotNull(recovered)
-                assertEquals("Recovered Roadster", recovered.name)
-                assertEquals("SYNCED", recovered.syncState)
-                assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
-                assertEquals(0L, recovered.localRevision)
-                assertEquals(0L, recovered.localMutationSeq)
+                assertRecoveredVehicle(database)
                 val publishedState =
                     list.state.awaitState("recovered vehicle listed") { state -> state.vehicles.isNotEmpty() }
                 assertEquals(
                     "Recovered Roadster",
                     publishedState.vehicles.single().name,
                 )
-                assertEquals(
-                    PullCall(
-                        ownerId = OwnerId("anonymous-user"),
-                        entityType = EntityType.VEHICLE,
-                        cursor = RemoteCursor.INITIAL,
-                        limit = 200,
-                    ),
-                    remote.pullCalls.first(),
-                )
-                assertEquals(
-                    listOf(EntityType.VEHICLE, EntityType.FUEL_ENTRY),
-                    remote.pullCalls.map(PullCall::entityType),
-                )
+                assertRecoveryPullOrder(remote)
             } finally {
                 harness.close()
             }
@@ -172,7 +155,10 @@ class VehicleListStateHolderTest {
 
                 // The indicator cleared: a second refresh is not refused and reaches the remote again.
                 list.refresh()
-                list.state.awaitState("second refresh issued") { remote.pullCalls.size >= 2 }
+                graph.awaitSyncCycleSettled(
+                    expectation = "second failed refresh cycle settled",
+                    expectedRemoteEffect = { remote.pullCalls.size >= 2 },
+                )
             } finally {
                 harness.close()
             }
@@ -212,18 +198,6 @@ class VehicleListStateHolderTest {
             }
         }
 
-    // `refresh()` delegates to the E3-03 sync controller, whose cycle runs detached from the
-    // caller. Wait for that cycle to settle before the harness closes the database, or the close
-    // can race an in-flight SQLite call (E1-12 / issue #42).
-    private suspend fun awaitSyncCycleSettled(
-        graph: AppGraph,
-        remote: PullOnlyRemoteSyncSource,
-    ) {
-        graph.syncController().status.awaitState("sync cycle settled") { status ->
-            status !is SyncStatus.Syncing && remote.pullCalls.size == 2
-        }
-    }
-
     private fun fixedDatabaseFactory(databaseHandle: DatabaseHandle): DatabaseFactory =
         object : DatabaseFactory {
             override fun create() = databaseHandle
@@ -238,6 +212,37 @@ class VehicleListStateHolderTest {
             override fun observe(): Flow<OwnerId> = state
         }
 }
+
+private suspend fun AppDatabase.hasSyncedVehicle(vehicleId: String): Boolean =
+    databaseQueries.selectVehicleById(vehicleId).awaitAsOneOrNull()?.syncState == "SYNCED"
+
+private suspend fun assertRecoveredVehicle(database: AppDatabase) {
+    val recovered = database.databaseQueries.selectVehicleById(VEHICLE_ID).awaitAsOneOrNull()
+    assertNotNull(recovered)
+    assertEquals("Recovered Roadster", recovered.name)
+    assertEquals("SYNCED", recovered.syncState)
+    assertEquals(1_767_225_600_000L, recovered.serverUpdatedAt)
+    assertEquals(0L, recovered.localRevision)
+    assertEquals(0L, recovered.localMutationSeq)
+}
+
+private fun assertRecoveryPullOrder(remote: PullOnlyRemoteSyncSource) {
+    assertEquals(
+        PullCall(
+            ownerId = OwnerId("anonymous-user"),
+            entityType = EntityType.VEHICLE,
+            cursor = RemoteCursor.INITIAL,
+            limit = 200,
+        ),
+        remote.pullCalls.first(),
+    )
+    assertEquals(
+        listOf(EntityType.VEHICLE, EntityType.FUEL_ENTRY),
+        remote.pullCalls.map(PullCall::entityType),
+    )
+}
+
+private const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
 
 private fun remoteVehicleSnapshot(): RemoteDocument =
     RemoteDocument(

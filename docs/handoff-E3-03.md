@@ -36,17 +36,23 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the fourteenth owner-review correction round is RED; the latest
-  pushed commit before this round is `21373a6`. Earlier story RED is `a66c612` and earlier story GREEN
-  is `bfced6b`.
-- Push and pull-request status: the deterministic RED reproduction and this checkpoint are not yet
-  committed or pushed. Pull request #69 remains open against `main`; it is not merged and MUST NOT be
-  merged on agent judgement.
+- Current phase and latest commit: the fourteenth owner-review correction round is GREEN; RED
+  `81ed4e4` is committed and pushed, and the GREEN changes are not yet committed. Earlier story RED
+  is `a66c612` and earlier story GREEN is `bfced6b`.
+- Push and pull-request status: RED `81ed4e4` is pushed to the existing branch; GREEN remains in the
+  working tree. Pull request #69 remains open against `main`; it is not merged and MUST NOT be merged
+  on agent judgement.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
   intended assertion (`settled.isActive`), without closing SQLite during the blocked operation. The
   correction remains limited to shared test code and records; no production lifecycle code is changed.
+  GREEN makes the shared expectation require the expected remote effect and a controller state other
+  than `SyncStatus.Syncing`, then verifies the expected persisted state after that terminal boundary.
+  The three redundant form-test `requestSync(PostWriteDebounce)` calls are removed because `save()`
+  already triggers the cycle. The E3-03 shared-test audit also moved the graph convergence teardown
+  and the second refresh case onto the same helper; the account-conversion graph test already drains
+  scheduled work before close and needed no change.
   The earlier rounds committed GREEN with the singleton sync controller,
   SQLDelight persistence, raw-document validation and quarantine, deterministic push/pull order,
   cursor progress guard, retry/poison behavior, automatic adoption retry, aggregate status,
@@ -86,14 +92,13 @@
   was replaced mid-session and its license is no longer agreed (`xcrun` exits 69). That is an
   environment blocker, not a code failure: the same iOS suite passed before the replacement and
   `:core:sync:compileKotlinIosSimulatorArm64` still passes. See the thirteenth-round section.
-- Known failures: the new focused reproduction fails intentionally until the test synchronization
-  helper also requires the controller to leave `SyncStatus.Syncing`. The prior Xcode-license blocker
-  must be re-checked before the required iOS repetitions.
+- Known failures: none in the focused Android-host tests. The prior Xcode-license blocker must be
+  re-checked before the required iOS repetitions.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
-- Exact next step: commit and push RED, then make the shared test helper require the remote effect,
-  any expected persisted state and a non-`Syncing` controller state; remove redundant form-test
-  triggers and audit every E3-03-modified shared test for the same teardown pattern.
+- Exact next step: commit and push GREEN, run both complete shared suites and at least 25 repeated
+  executions per target if the host permits them, then run the required quality, contract and
+  build-logic checks and record CI durations.
 
 ## Scope Completed
 

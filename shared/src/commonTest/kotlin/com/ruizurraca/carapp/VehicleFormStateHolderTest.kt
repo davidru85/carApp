@@ -6,8 +6,8 @@ import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncStatus
-import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -200,8 +200,10 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle local commit finished") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
-                graph.syncController().requestSync(SyncTrigger.PostWriteDebounce)
-                graph.syncController().status.awaitState("vehicle pushed") { remote.pushCalls.isNotEmpty() }
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle push cycle settled",
+                    expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                )
                 assertEquals(emptyList(), crashes)
                 val call = remote.pushCalls.single()
                 assertEquals("anonymous-user", call.first.value)
@@ -245,9 +247,10 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle save completed before blocked pull") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
-                graph.syncController().status.awaitState("remote push visible during active cycle") { status ->
-                    remote.pushCalls.size == 1 && status is SyncStatus.Syncing
+                remote.pushCallsFlow.awaitState("remote push visible during active cycle") { calls ->
+                    calls.size == 1
                 }
+                assertEquals(SyncStatus.Syncing, graph.syncController().status.value)
 
                 val settled =
                     async {
@@ -303,8 +306,10 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle outbox payload saved") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
-                graph.syncController().requestSync(SyncTrigger.PostWriteDebounce)
-                graph.syncController().status.awaitState("vehicle payload pushed") { remote.pushCalls.isNotEmpty() }
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle payload push cycle settled",
+                    expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                )
 
                 val snapshot = remote.pushCalls.single().second
                 val json = Json.parseToJsonElement(snapshot.json).jsonObject
@@ -344,12 +349,15 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle remote ack applied") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
-                graph.syncController().requestSync(SyncTrigger.PostWriteDebounce)
-                graph.syncController().status.awaitState("vehicle ack persisted") { remote.pushCalls.isNotEmpty() }
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle acknowledgement cycle settled",
+                    expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                    expectedPersistedState = { database.hasSyncedVehicleWithoutOutbox(VEHICLE_ID) },
+                )
 
                 val vehicle =
                     database.databaseQueries
-                        .selectVehicleById("00000000-0000-4000-8000-000000000001")
+                        .selectVehicleById(VEHICLE_ID)
                         .awaitAsOneOrNull()
                 assertNotNull(vehicle)
                 assertEquals("SYNCED", vehicle.syncState)
@@ -433,19 +441,28 @@ class VehicleFormStateHolderTest {
         }
 }
 
+private suspend fun AppDatabase.hasSyncedVehicleWithoutOutbox(vehicleId: String): Boolean {
+    val vehicle = databaseQueries.selectVehicleById(vehicleId).awaitAsOneOrNull()
+    val outbox = databaseQueries.selectOutboxByEntity("VEHICLE", vehicleId).awaitAsOneOrNull()
+    return vehicle?.syncState == "SYNCED" && outbox == null
+}
+
+private const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
+
 private class RecordingRemoteSyncSource(
     private val onPull: suspend () -> Unit = {},
     private val onPush: suspend (OwnerId, EntitySnapshot) -> Unit,
 ) : RemoteSyncSource {
-    private val recordedPushCalls = mutableListOf<Pair<OwnerId, EntitySnapshot>>()
-    val pushCalls: List<Pair<OwnerId, EntitySnapshot>> get() = recordedPushCalls.toList()
+    private val recordedPushCalls = MutableStateFlow<List<Pair<OwnerId, EntitySnapshot>>>(emptyList())
+    val pushCallsFlow: Flow<List<Pair<OwnerId, EntitySnapshot>>> = recordedPushCalls
+    val pushCalls: List<Pair<OwnerId, EntitySnapshot>> get() = recordedPushCalls.value
 
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
     ): Outcome<RemoteAck, RemoteError> {
         onPush(ownerId, snapshot)
-        recordedPushCalls += ownerId to snapshot
+        recordedPushCalls.value += ownerId to snapshot
         return Outcome.Ok(
             RemoteAck(
                 entityType = snapshot.entityType,
