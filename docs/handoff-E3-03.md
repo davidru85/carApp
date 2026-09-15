@@ -1154,7 +1154,8 @@ Verification for this round:
 - `./gradlew contractCheck :build-logic:convention:test --rerun-tasks` passes.
 - Exact `shared-tests` Android and Native commands pass locally.
 - Exact `provider-decoupling` Android and Native commands pass locally.
-- No pull-request merge was performed; CI step durations remain to be recorded after the pushed run.
+- No pull-request merge was performed; the final CI step durations are recorded above and in the
+  sixteenth-round evidence below.
 
 ## Sixteenth Owner-Review Correction Round (2026-09-15)
 
