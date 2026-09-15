@@ -218,6 +218,9 @@ internal class AccountConversionCoordinator(
                 }
 
                 is Outcome.Ok -> {
+                    // Account replacement derives stale tombstones from the complete remote set.
+                    // One malformed document therefore fails the conversion closed instead of being
+                    // skipped and silently treated as absent.
                     val decoded =
                         try {
                             page.value.items.map(RemoteDocument::toConversionDocument)

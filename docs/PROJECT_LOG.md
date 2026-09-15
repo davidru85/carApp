@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 twelfth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Closed two findings on [pull request #69](https://github.com/davidru85/carApp/pull/69): made account-conversion remote decoding total at both the coordinator and graph-launched recovery boundaries, and allocated one correlation ID per complete sync cycle rather than per push.
+- **Why:** Missing, mistyped or non-object remote JSON escaped the conversion's closed `Outcome` API and could crash the graph scope; pull-side and unexpected reports used `cycleId = unavailable`, so one cycle's failures could not be correlated.
+- **Documents touched:** `docs/handoff-E3-03.md`, this log and the pull-request description. Production/tests: `:shared`, `:core:sync`.
+- **Verification:** RED `8c97239` reproduced the unchecked conversion exceptions and split cycle IDs; GREEN `80241a3` passes every focused case and the complete `:shared` / `:core:sync` Android-host suites. The final complete non-instrumented repository run passes 642 tasks on Android host and iOS simulator.
+- **Follow-ups / risks:** Account conversion fails closed with `RemoteError.InvalidArgument` on the first malformed remote document. `E3-17` / `D-172` still owns graph-close safety and completion or failure of every in-flight `sync()` awaiter. PR #69 remains unmerged and gated.
+
 ### 2026-09-15 — E3-03 eleventh owner-review round
 
 - **Type:** correction

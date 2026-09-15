@@ -36,12 +36,12 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the eleventh owner-review correction round is REFACTOR complete;
-  RED `9177c70` and GREEN `65a6297` are committed and pushed. The complete non-instrumented check
-  passes on the final worktree. Earlier story RED is `a66c612`; earlier story GREEN is `bfced6b`.
-- Push and pull-request status: RED `9177c70` and GREEN `65a6297` are pushed on
-  `story/E3-03-core-sync-engine`; the REFACTOR commit and push are the next step. Gated pull request
-  #69 remains open against `main`. It is not merged and MUST NOT be merged on agent judgement.
+- Current phase and latest commit: the twelfth owner-review correction round is REFACTOR complete;
+  RED `8c97239` and GREEN `80241a3` are committed and pushed. Earlier story RED is `a66c612` and
+  earlier story GREEN is `bfced6b`.
+- Push and pull-request status: the round is organized as RED `8c97239`, GREEN `80241a3` and the
+  REFACTOR commit containing this checkpoint and the repository records. Pull request #69 remains
+  open against `main`; it is not merged and MUST NOT be merged on agent judgement.
 - Completed since the previous checkpoint: committed GREEN with the singleton sync controller,
   SQLDelight persistence, raw-document validation and quarantine, deterministic push/pull order,
   cursor progress guard, retry/poison behavior, automatic adoption retry, aggregate status,
@@ -72,11 +72,11 @@
   coverage, up from 72.65%, against the 80% threshold. The complete non-instrumented command passes
   638 tasks; `contractCheck` reports 19 `[PASS]` assertions and zero `PENDING`. The Android
   instrumented suite runs 17 tests on the D-84 API 36 emulator with zero failures.
-- Known failures: none. The four intended RED failures are resolved; quality, architecture,
-  contracts, coverage and the complete non-instrumented command pass.
+- Known failures: none. The twelfth-round intended RED failures are resolved; focused module suites,
+  quality checks and the complete non-instrumented command pass.
 - Open decisions or blockers: none.
-- Exact next step: commit and push REFACTOR, then leave pull request #69 for the mandatory owner
-  review and required checks without merging it.
+- Exact next step: leave pull request #69 for the mandatory owner review and ten required checks;
+  do not merge it on agent judgement.
 
 ## Scope Completed
 
@@ -159,6 +159,17 @@
   its current callers, and cross-module integration tests need the canonical forward conversion to
   construct and inspect provider-precision boundaries without duplicating arithmetic or exposing
   provider timestamp types.
+- No new owner decision arose in the twelfth review round. Account conversion retains its existing
+  fail-closed policy: the first malformed remote document returns `RemoteError.InvalidArgument`, the
+  durable operation remains resumable and no remote replacement is marked complete. Skipping the
+  document or applying pull-cycle quarantine semantics would be a behavioral change and was not
+  chosen.
+- The local-payload helpers (`toEntitySnapshot`, `toVehicleRow`, `toFuelEntryRow` and
+  `String.deleted`) remain outside the remote-failure mapping. Their payloads are captured from
+  application-generated serializers in the same durable operation; malformed local content would be
+  an invariant or storage-corruption failure, not a remote failure, and no existing `AppError`
+  contract classifies it. Their shared primitive readers now fail consistently through explicit
+  requirements, but this round does not silently assign new recovery semantics to local corruption.
 
 ## Verification Run
 
@@ -220,6 +231,11 @@
   25/25 after the change.
 - The pull request awaits the mandatory owner review and the ten required checks; E3-03 is
   implemented, not complete, until it merges.
+- Twelfth-round re-verification confirms the current `AppGraph.close()` still cancels `graphScope`
+  without joining before `databaseHandle.close()`. `E3-17` / `D-172` / ADR-0173 therefore remains an
+  accurate deferral: its scope explicitly requires completing or failing the active cycle and pending
+  follow-up `sync()` awaiters, including the bounded-deadline path. No change was made to
+  `AppGraph.close()`, `DatabaseFactory`, `DatabaseHandle` or `core/database/**` for this record.
 
 ## Second Owner-Review Correction Round (2026-09-13)
 
@@ -870,6 +886,64 @@ Verification for this round:
 - The complete non-instrumented repository command from `AGENTS.md` — initial `BUILD SUCCESSFUL in
   19s`; final documented-tree rerun `BUILD SUCCESSFUL in 5s`, both 642 tasks, including Android
   assembly/unit tests and Android-host/iOS-simulator shared suites.
+- No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
+  required checks.
+
+## Twelfth Owner-Review Correction Round (2026-09-15)
+
+Two code findings and two review records were closed without expanding product scope.
+
+- **BLOCKING 1 — account-conversion remote decoding is total.** The remote conversion path now uses
+  `get(name)` plus explicit requirements for object shape, presence, primitive type, JSON type and
+  nullability. Missing `deleted`, `schemaVersion` or `id`, a string-valued `deleted`, and a non-object
+  payload all return `Outcome.Err(RemoteError.InvalidArgument)` from `confirm()` rather than throwing.
+  The same guarantee is exercised through the `DefaultAppGraph` auth-state collector that launches
+  `accountConversion.resumePending()` on `graphScope`; the durable marker remains
+  `SESSION_SWITCHED`, so a later valid retry can resume.
+- **Malformed conversion policy.** Account replacement fails closed on the first malformed remote
+  document. It does not skip or quarantine that document because `replaceRemote` uses the complete
+  remote set to derive stale tombstones; treating malformed data as absent could delete a valid
+  remote entity. This preserves the behavior intended by the pre-existing
+  `IllegalArgumentException -> RemoteError.InvalidArgument` catch and needs no new contract or owner
+  decision.
+- **Local-payload totality review.** `toEntitySnapshot`, `toVehicleRow`, `toFuelEntryRow` and
+  `String.deleted()` read application-generated snapshots captured in the durable conversion
+  operation, not provider input. They now share explicit primitive requirements, but remain outside
+  the remote-error catch: classifying local invariant/storage corruption needs its own contract and
+  was not silently introduced here.
+- **MINOR 2 — one `CycleId` per complete cycle.** `runCycle` allocates the ID before admission and
+  carries it through every push batch, both pull entity types, the progress-invariant report and the
+  generic unexpected-failure boundary. Push poison and `ConflictUnresolved` reports in one cycle now
+  share one non-placeholder value; a follow-up or later cycle gets a fresh value.
+- **RECORDS 3 — pull-request description.** The PR review artifact is updated through rounds ten,
+  eleven and twelve and now names the current RED/GREEN/REFACTOR sequence and current head.
+- **RECORDS 4 — E3-17 / D-172 deferral.** The current production close order and ADR-0173 were read
+  again. The hazard remains reachable and deferred accurately; ADR-0173 explicitly covers completing
+  or failing every active and pending `sync()` awaiter, including after a bounded deadline. No
+  forbidden close/database file was changed.
+
+TDD evidence for this round:
+
+- RED `8c97239`: missing `deleted`, `schemaVersion` and `id` each escaped as
+  `NoSuchElementException`; mistyped `deleted` escaped as `IllegalStateException`; a non-object
+  payload escaped as `ClassCastException`; and the graph-launched recovery also escaped as
+  `NoSuchElementException`. The cycle test observed two IDs in one cycle because the push poison used
+  a UUID while the progress failure used `unavailable`.
+- GREEN `80241a3`: all seven focused cases pass. The complete `:shared:testAndroidHostTest` and
+  `:core:sync:testAndroidHostTest` suites then pass with `--rerun-tasks` (78 tasks).
+- REFACTOR: clarified the fail-closed and cycle-correlation intent, reconciled the repository and PR
+  records, and retained bounded review-specific test classes. No behavior changed after GREEN.
+
+Verification for this round:
+
+- `./gradlew :shared:ktlintCheck :shared:detekt :core:sync:ktlintCheck :core:sync:detekt` —
+  `BUILD SUCCESSFUL`, 24 tasks.
+- The first complete run exposed only that the new graph-path test asserted before its native
+  coroutine reached the remote fake (expected one pull, observed zero); the test now awaits that
+  observable boundary with the test timeout. Android host plus the complete iOS simulator suite then
+  pass together (`BUILD SUCCESSFUL in 16s`, 135 tasks). No production behavior changed.
+- The complete non-instrumented repository command from `AGENTS.md` — `BUILD SUCCESSFUL in 6s`, 642
+  tasks, including Android assembly/unit tests and Android-host/iOS-simulator shared suites.
 - No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
   required checks.
 

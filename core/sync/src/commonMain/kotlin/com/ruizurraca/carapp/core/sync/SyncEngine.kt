@@ -315,6 +315,8 @@ internal class DefaultSyncController(
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun runCycle(reasons: Set<SyncTrigger>): Outcome<Unit, AppError> {
+        // Allocate correlation before any cycle step. Push batches, pull pages, fail-closed progress
+        // reports and the unexpected-failure boundary all retain this one identifier (`§17`).
         val cycleId = CycleId(uuidGenerator.newId())
         return try {
             val result = executeCycle(reasons, cycleId)

@@ -28,15 +28,17 @@ import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccountConversionAppGraphTest {
     @Test
     fun malformedRemoteDocumentDoesNotEscapeResumePendingOnGraphScope() =
-        runTest {
+        runTest(timeout = 10.seconds) {
             val owningFactory = InMemoryDatabaseFactory()
             val handle = owningFactory.create()
             val store = AccountConversionDatabaseAccess(handle.database)
@@ -73,6 +75,7 @@ class AccountConversionAppGraphTest {
                     ),
                 )
                 assertEquals(PERMANENT_UID, (authClient.authState.value as AuthState.SignedIn).session.uid)
+                while (remote.pullCalls == 0) yield()
                 advanceUntilIdle()
 
                 assertEquals(AccountConversionPhase.SESSION_SWITCHED, store.load()?.phase)
