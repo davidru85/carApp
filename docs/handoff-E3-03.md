@@ -36,12 +36,12 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the fourteenth owner-review correction round is GREEN; RED
-  `81ed4e4` is committed and pushed, and the GREEN changes are not yet committed. Earlier story RED
-  is `a66c612` and earlier story GREEN is `bfced6b`.
-- Push and pull-request status: RED `81ed4e4` is pushed to the existing branch; GREEN remains in the
-  working tree. Pull request #69 remains open against `main`; it is not merged and MUST NOT be merged
-  on agent judgement.
+- Current phase and latest commit: the fourteenth owner-review correction round is REFACTOR complete;
+  RED `81ed4e4` and GREEN `05c9668` are committed and pushed. The repository-record update containing
+  this checkpoint is not yet committed.
+- Push and pull-request status: RED `81ed4e4` and GREEN `05c9668` are pushed to the existing branch.
+  Pull request #69 remains open against `main`; it is not merged and MUST NOT be merged on agent
+  judgement.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
@@ -92,13 +92,19 @@
   was replaced mid-session and its license is no longer agreed (`xcrun` exits 69). That is an
   environment blocker, not a code failure: the same iOS suite passed before the replacement and
   `:core:sync:compileKotlinIosSimulatorArm64` still passes. See the thirteenth-round section.
-- Known failures: none in the focused Android-host tests. The prior Xcode-license blocker must be
-  re-checked before the required iOS repetitions.
+- Verification evidence for the fourteenth round: the combined complete `:shared:testAndroidHostTest`
+  and `:shared:iosSimulatorArm64Test` run passes 135 tasks. The Android-host suite then passes 25/25
+  complete `--rerun-tasks` executions (7-9 seconds each), and the iOS-simulator suite passes 25/25
+  complete `--rerun-tasks` executions (10-16 seconds each). `ktlintCheck`, `detekt`,
+  `architectureCheck`, `contractCheck`, `:build-logic:convention:test` and `koverVerify` pass with
+  397 executed tasks; `contractCheck` reports all 19 assertions `[PASS]`, 175 decisions, 175 ADRs and
+  zero `PENDING`.
+- Known failures: none. The prior Xcode-license blocker is resolved; all required iOS simulator runs
+  completed locally.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
-- Exact next step: commit and push GREEN, run both complete shared suites and at least 25 repeated
-  executions per target if the host permits them, then run the required quality, contract and
-  build-logic checks and record CI durations.
+- Exact next step: commit and push the repository records, wait for pull request #69 CI, then record
+  the resulting `shared-tests` and `provider-decoupling` durations without merging the pull request.
 
 ## Scope Completed
 
@@ -1047,6 +1053,55 @@ Verification for this round:
   green run and now is the ktlint-mandated `when`-branch reformatting of `rowDerived`, which does not
   change behaviour. Owner action is required to restore the simulator route:
   `sudo xcodebuild -license accept`.
+- No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
+  required checks.
+
+## Fourteenth Owner-Review Correction Round (2026-09-15)
+
+The shared-test lifecycle race was corrected without changing production graph lifecycle behavior.
+
+- **Deterministic reproduction.** RED `81ed4e4` adds
+  `visibleRemotePushDoesNotMeanThePostWriteSyncCycleHasSettled`. Its remote records the automatic
+  post-write push and then blocks the pull. The remote-effect-only helper returns while the controller
+  is still `SyncStatus.Syncing`, so the intended `settled.isActive` assertion fails deterministically.
+  The test does not close SQLite while the pull is blocked, avoiding reliance on a native crash to
+  prove the unsafe readiness boundary.
+- **Fix.** GREEN `05c9668` makes the shared `awaitSyncCycleSettled` test helper require the expected
+  remote effect and a controller state other than `SyncStatus.Syncing`. It then checks the expected
+  persisted state after that terminal boundary; the successful-ack case requires `SYNCED` plus no
+  outbox row. The controller publishes its terminal status only after cycle-owned database work, so
+  that ordering keeps teardown behind both persistence and controller completion.
+- **Redundant triggers removed.** The three explicit
+  `requestSync(SyncTrigger.PostWriteDebounce)` calls were removed from `VehicleFormStateHolderTest`.
+  `VehicleFormStateHolder.save()` already reaches `VehicleSliceRuntime`, whose successful write issues
+  the required post-write trigger.
+- **Audit.** Every shared test changed by E3-03 was reviewed for an effect-only wait followed by graph
+  close. `AppGraphContractTest` now releases its blocking pull and awaits both pull calls plus a
+  non-`Syncing` status before teardown. `VehicleListStateHolderTest` reuses the same helper for remote
+  recovery, its persisted `SYNCED` row and the second failed refresh. `AccountConversionAppGraphTest`
+  already calls `advanceUntilIdle()` after observing its remote call, so no change was required.
+  `AccountConversionCoordinatorTest` has no graph lifecycle. The remaining E3-03-modified module tests
+  own no `AppGraph` and expose no matching teardown pattern.
+- **Scope.** Changes are limited to `shared/src/commonTest` and repository records. `AppGraph`,
+  `DefaultSyncController`, `core/database/**` and all other production code are unchanged. E3-17 /
+  D-172 continues to own production `AppGraph.close()` safety.
+
+Verification for this round:
+
+- RED focused Android-host run: one intended failure at `settled.isActive` while the controller was
+  `Syncing` and the pull remained blocked.
+- GREEN focused Android-host run: all 13 tests across `VehicleFormStateHolderTest`,
+  `VehicleListStateHolderTest` and `AppGraphContractTest` pass with `:shared:ktlintCheck` and
+  `:shared:detekt`.
+- `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --rerun-tasks` —
+  `BUILD SUCCESSFUL in 24s`, 135 tasks.
+- `:shared:testAndroidHostTest --rerun-tasks --quiet` — **25/25** complete runs pass, 7-9 seconds per
+  run.
+- `:shared:iosSimulatorArm64Test --rerun-tasks --quiet` — **25/25** complete runs pass, 10-16 seconds
+  per run.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+  koverVerify --rerun-tasks` — `BUILD SUCCESSFUL in 19s`, 397 executed tasks; all 19 contract
+  assertions pass with zero `PENDING`.
 - No pull-request merge was performed; PR #69 remains subject to mandatory owner review and its ten
   required checks.
 

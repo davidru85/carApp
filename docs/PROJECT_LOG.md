@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 fourteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Fixed the shared-test teardown readiness race on
+  [pull request #69](https://github.com/davidru85/carApp/pull/69). The three redundant Vehicle form
+  `requestSync(PostWriteDebounce)` calls are gone, and a shared test helper now waits for the expected
+  remote effect, any applicable persisted state and a controller state other than `Syncing` before
+  graph teardown. The audit also moved the graph-convergence and second-refresh tests onto the same
+  complete-cycle boundary.
+- **Why:** `VehicleFormStateHolder.save()` already requests synchronization. The redundant test
+  trigger could reserve a follow-up cycle, while the old wait returned as soon as `pushCalls` became
+  non-empty. `AppGraphTestHarness.close()` could consequently cancel the graph and close SQLite while
+  the active or pending cycle still owned database work.
+- **Documents touched:** `docs/handoff-E3-03.md` and this log. Test code only:
+  `shared/src/commonTest`. `AppGraph`, `DefaultSyncController`, `core/database/**` and every other
+  production path are unchanged; E3-17 / D-172 remains the production lifecycle owner.
+- **Verification:** RED `81ed4e4` deterministically records the automatic push, blocks the following
+  pull and proves the remote-effect-only helper returns while the controller remains `Syncing`.
+  GREEN `05c9668` passes the three focused shared test classes plus shared lint and detekt. Both full
+  shared suites pass together (135 tasks), followed by 25/25 complete Android-host and 25/25 complete
+  iOS-simulator `--rerun-tasks` runs. Global lint, detekt, architecture, contract, build-logic and
+  coverage checks pass with 397 executed tasks; all 19 contract assertions pass and none is `PENDING`.
+- **Follow-ups / risks:** CI durations for `shared-tests` and `provider-decoupling` will be added to
+  the E3-03 handoff after the final record commit completes. PR #69 remains unmerged and gated;
+  production graph-close safety remains E3-17 / D-172 scope.
+
 ### 2026-09-15 — E3-03 thirteenth owner-review round
 
 - **Type:** correction
