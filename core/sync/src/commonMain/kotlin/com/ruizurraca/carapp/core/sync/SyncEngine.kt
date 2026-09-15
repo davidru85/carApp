@@ -281,7 +281,6 @@ internal class DefaultSyncController(
 
     override suspend fun debugLines(): List<String> = if (debugEnabled) debugLoader() else emptyList()
 
-    @Suppress("TooGenericExceptionCaught")
     private suspend fun drainCycles(
         firstReasons: Set<SyncTrigger>,
         firstCompletion: CompletableDeferred<Outcome<Unit, AppError>>,
@@ -289,19 +288,7 @@ internal class DefaultSyncController(
         var reasons = firstReasons
         var completion = firstCompletion
         while (true) {
-            val outcome =
-                try {
-                    val result = runCycle(reasons)
-                    unexpectedFailure = false
-                    result
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (failure: Throwable) {
-                    unexpectedFailure = true
-                    val error = UnexpectedError(":core:sync", failure::class.simpleName ?: "Throwable")
-                    onPoisoned(error, mapOf("cycleId" to "unavailable"))
-                    Outcome.Err(error)
-                }
+            val outcome = runCycle(reasons)
             completion.complete(outcome)
             // Capture the generation under the same lock that clears the active-cycle reservation.
             // The terminal publish then skips if a newer cycle started in the window between releasing
@@ -326,7 +313,27 @@ internal class DefaultSyncController(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun runCycle(reasons: Set<SyncTrigger>): Outcome<Unit, AppError> {
+        val cycleId = CycleId(uuidGenerator.newId())
+        return try {
+            val result = executeCycle(reasons, cycleId)
+            unexpectedFailure = false
+            result
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Throwable) {
+            unexpectedFailure = true
+            val error = UnexpectedError(":core:sync", failure::class.simpleName ?: "Throwable")
+            onPoisoned(error, mapOf("cycleId" to cycleId.value))
+            Outcome.Err(error)
+        }
+    }
+
+    private suspend fun executeCycle(
+        reasons: Set<SyncTrigger>,
+        cycleId: CycleId,
+    ): Outcome<Unit, AppError> {
         cycleFailure = false
         lastCycleError = null
         // A refused cycle is a successful outcome with no error: offline or `LOCAL_OWNER` is not a
@@ -356,17 +363,19 @@ internal class DefaultSyncController(
         adoptionAttemptCount = 0
         val pullFirst = persistence.isOwnerDatabaseEmpty(ownerId)
         if (pullFirst) {
-            pull(ownerId)
-            push(ownerId)
+            pull(ownerId, cycleId)
+            push(ownerId, cycleId)
         } else {
-            push(ownerId)
-            pull(ownerId)
+            push(ownerId, cycleId)
+            pull(ownerId, cycleId)
         }
         return if (cycleFailure) Outcome.Err(lastCycleError ?: SyncError.ConflictUnresolved) else Outcome.Ok(Unit)
     }
 
-    private suspend fun push(ownerId: OwnerId) {
-        val cycleId = CycleId(uuidGenerator.newId())
+    private suspend fun push(
+        ownerId: OwnerId,
+        cycleId: CycleId,
+    ) {
         // Drain every due batch in one cycle: a full batch means more work is waiting, so the cycle
         // continues instead of leaving the rest for the next external trigger (`§9.3`, P2).
         //
@@ -456,15 +465,19 @@ internal class DefaultSyncController(
         )
     }
 
-    private suspend fun pull(ownerId: OwnerId) {
+    private suspend fun pull(
+        ownerId: OwnerId,
+        cycleId: CycleId,
+    ) {
         for (entityType in EntityType.entries) {
-            if (!pullEntity(ownerId, entityType)) return
+            if (!pullEntity(ownerId, entityType, cycleId)) return
         }
     }
 
     private suspend fun pullEntity(
         ownerId: OwnerId,
         entityType: EntityType,
+        cycleId: CycleId,
     ): Boolean {
         val stored = persistence.cursor(entityType)
         val overlapSince = maxOf(0L, stored.lastServerUpdatedAt.toEpochMilliseconds() - OVERLAP_MS)
@@ -476,7 +489,7 @@ internal class DefaultSyncController(
             val page = (result as Outcome.Ok).value
             if (page.items.isEmpty()) return true
             if (!page.nextCursor.strictlyAfter(requestCursor)) {
-                return failProgressInvariant(entityType)
+                return failProgressInvariant(entityType, cycleId)
             }
             val records = page.items.map { document -> document.toPullRecord(ownerId, clock.now()) }
             persistence.applyPullPage(ownerId, entityType, records, page.nextCursor).forEach(onQuarantined)
@@ -499,7 +512,10 @@ internal class DefaultSyncController(
      * and it fails the cycle closed rather than looping. `D-169` / ADR-0170 accept this as the
      * behaviour for an oversized same-millisecond cluster.
      */
-    private fun failProgressInvariant(entityType: EntityType): Boolean {
+    private fun failProgressInvariant(
+        entityType: EntityType,
+        cycleId: CycleId,
+    ): Boolean {
         cycleFailure = true
         lastCycleError = SyncError.ConflictUnresolved
         // Fields follow the `§17` allowlist: enum names and stable codes only, never payload data.
@@ -508,7 +524,7 @@ internal class DefaultSyncController(
             mapOf(
                 "entityType" to entityType.name,
                 "code" to SyncError.ConflictUnresolved.code,
-                "cycleId" to "unavailable",
+                "cycleId" to cycleId.value,
             ),
         )
         return false

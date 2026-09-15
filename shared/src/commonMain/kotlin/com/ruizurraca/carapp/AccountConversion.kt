@@ -32,10 +32,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.longOrNull
 
 /** Internal orchestration seam for the confirmed credential-collision flow. */
 internal fun interface AccountConversionHandler {
@@ -337,20 +335,51 @@ private fun AccountConversionSnapshotRow.toFuelEntryRow(permanentUid: String): F
     )
 }
 
-private fun String.asJsonObject(): JsonObject = Json.parseToJsonElement(this) as JsonObject
+private fun String.asJsonObject(): JsonObject {
+    val value = Json.parseToJsonElement(this)
+    require(value is JsonObject)
+    return value
+}
 
 private fun JsonObject.withPermanentOwner(permanentUid: String): JsonObject =
     JsonObject(toMutableMap().apply { this["ownerId"] = JsonPrimitive(permanentUid) })
 
 private fun String.deleted(): Boolean = asJsonObject().requiredBoolean("deleted")
 
-private fun JsonObject.requiredString(key: String): String = getValue(key).jsonPrimitive.content
+private fun JsonObject.requiredString(key: String): String {
+    val value = requiredPrimitive(key)
+    require(value.isString)
+    return value.content
+}
 
-private fun JsonObject.requiredLong(key: String): Long = getValue(key).jsonPrimitive.long
+private fun JsonObject.requiredLong(key: String): Long {
+    val value = requiredPrimitive(key)
+    require(!value.isString)
+    return requireNotNull(value.longOrNull)
+}
 
-private fun JsonObject.requiredBoolean(key: String): Boolean = getValue(key).jsonPrimitive.boolean
+private fun JsonObject.requiredBoolean(key: String): Boolean {
+    val value = requiredPrimitive(key)
+    require(!value.isString)
+    return requireNotNull(value.booleanOrNull)
+}
 
-private fun JsonObject.optionalString(key: String): String? =
-    get(key)?.takeUnless { it is JsonNull }?.jsonPrimitive?.contentOrNull
+private fun JsonObject.requiredPrimitive(key: String): JsonPrimitive {
+    val value = get(key)
+    require(value is JsonPrimitive)
+    return value
+}
 
-private fun JsonObject.optionalLong(key: String): Long? = get(key)?.takeUnless { it is JsonNull }?.jsonPrimitive?.long
+private fun JsonObject.optionalString(key: String): String? {
+    val value = get(key) ?: return null
+    if (value is JsonNull) return null
+    require(value is JsonPrimitive && value.isString)
+    return value.content
+}
+
+private fun JsonObject.optionalLong(key: String): Long? {
+    val value = get(key) ?: return null
+    if (value is JsonNull) return null
+    require(value is JsonPrimitive && !value.isString)
+    return requireNotNull(value.longOrNull)
+}
