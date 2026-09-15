@@ -1547,6 +1547,91 @@ class DefaultSyncControllerTwelfthReviewTest {
         }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
+class DefaultSyncControllerThirteenthReviewTest {
+    @Test
+    fun pullConnectivityFailureOnEmptyOutboxPublishesIdle() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullResults += Outcome.Err(RemoteError.Unavailable)
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            // The caller still learns the pull failed (`§20.7`, D-171 / ADR-0172), but the published
+            // aggregate MUST NOT invent a failed row (`§9.9`).
+            assertEquals(Outcome.Err(RemoteError.Unavailable), result)
+            assertEquals(SyncStatus.Idle, fixture.controller.status.value)
+        }
+
+    @Test
+    fun pullConnectivityFailureWithPendingWorkPublishesPending() =
+        runTest {
+            val fixture = fixture()
+            // A pending row that is not yet due, so the push step leaves it outstanding.
+            fixture.withOutbox(vehicleOutbox("vehicle-1").copy(nextAttemptAt = instant(90_000)))
+            fixture.remote.pullResults += Outcome.Err(RemoteError.Unavailable)
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            assertEquals(Outcome.Err(RemoteError.Unavailable), result)
+            assertEquals(SyncStatus.Pending(1), fixture.controller.status.value)
+        }
+
+    @Test
+    fun pullDeadlineExceededIsAlsoTreatedAsConnectivity() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullResults += Outcome.Err(RemoteError.DeadlineExceeded)
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            assertEquals(Outcome.Err(RemoteError.DeadlineExceeded), result)
+            assertEquals(SyncStatus.Idle, fixture.controller.status.value)
+        }
+
+    @Test
+    fun nonConnectivityPullFailureStillPublishesFailed() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullResults += Outcome.Err(RemoteError.Unknown)
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            assertEquals(Outcome.Err(RemoteError.Unknown), result)
+            // The real retryable count is zero, so the synthetic 1 keeps the failure representable.
+            assertEquals(SyncStatus.Failed(retryableCount = 1, poisonedCount = 0), fixture.controller.status.value)
+        }
+
+    @Test
+    fun progressInvariantFailureStillPublishesFailedAndReports() =
+        runTest {
+            val fixture = fixture()
+            fixture.persistence.cursors[EntityType.VEHICLE] = cursor(5_000, "anchor")
+            val stalled = remoteVehicle("vehicle-1", 5_000)
+            fixture.remote.pullHandler = { type, _ ->
+                if (type == EntityType.VEHICLE) {
+                    RemotePage(items = listOf(stalled), nextCursor = cursor(5_000, "anchor"), hasMore = true)
+                } else {
+                    page()
+                }
+            }
+
+            val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            assertEquals(Outcome.Err(SyncError.ConflictUnresolved), result)
+            assertEquals(SyncStatus.Failed(retryableCount = 1, poisonedCount = 0), fixture.controller.status.value)
+            val reported = fixture.reportedErrors.single()
+            assertEquals(SyncError.ConflictUnresolved, reported.first)
+            assertEquals(SyncError.ConflictUnresolved.code, reported.second.getValue("code"))
+            assertTrue(reported.second.getValue("cycleId") != "unavailable")
+        }
+}
+
 /** A valid Fuel Entry remote payload with exactly one top-level key omitted. */
 private fun fuelEntryRemoteJsonWithout(missing: String): String =
     buildJsonObject {
@@ -1658,6 +1743,14 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
     val pullCursors = mutableListOf<RemoteCursor>()
     val vehiclePullCursors = mutableListOf<RemoteCursor>()
     val pagedDocuments = mutableMapOf<EntityType, List<StoredDocument>>()
+
+    /**
+     * Scripted pull outcomes, consulted before [pagedDocuments] and [pullHandler]. This is the only
+     * way a test can make `RemoteSyncSource.pullChanges` fail with an `Outcome.Err`, which is the
+     * transport-level shape the integration produces and the shape the controller's pull-failure
+     * path consumes.
+     */
+    val pullResults = ArrayDeque<Outcome<RemotePage, RemoteError>>()
     var pullHandler: (EntityType, RemoteCursor) -> RemotePage = { _, cursor -> RemotePage(emptyList(), cursor, false) }
     var onPush: () -> Unit = {}
     var onPushSuspend: suspend () -> Unit = {}
@@ -1710,6 +1803,7 @@ private class FakeRemoteSyncSource : RemoteSyncSource {
     ): Outcome<RemotePage, RemoteError> {
         pullCursors += cursor
         if (entityType == EntityType.VEHICLE) vehiclePullCursors += cursor
+        pullResults.removeFirstOrNull()?.let { return it }
         val documents = pagedDocuments[entityType]
         val page =
             if (documents == null) {
