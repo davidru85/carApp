@@ -36,12 +36,12 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the fifteenth owner-review correction round is REFACTOR complete;
-  the workflow split is committed as `f64bfe3`. The repository-record update for this checkpoint is
-  not yet committed.
-- Push and pull-request status: `f64bfe3` and the preceding RED/GREEN commits are ready to push to
-  the existing branch. Pull request #69 remains open against `main`; it is not merged and MUST NOT
-  be merged on agent judgement.
+- Current phase and latest commit: the sixteenth owner-review correction round is REFACTOR complete;
+  the measured parallelism policy is committed as `9205dc6`. The repository-record update for this
+  checkpoint is not yet committed.
+- Push and pull-request status: `9205dc6` and the preceding commits are ready to push to the existing
+  branch. Pull request #69 remains open against `main`; it is not merged and MUST NOT be merged on
+  agent judgement.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
@@ -108,10 +108,27 @@
   provider-free Android host tests (74 tasks), and provider-free Kotlin/Native simulator tests (75
   tasks). Per-step timeouts are 8/8/4 minutes for `shared-tests` and 8/8 minutes for
   `provider-decoupling`, under the existing 20-minute job limits.
+- Verification evidence for the sixteenth round: the teardown regression tests pass before
+  measurement. Three repetitions per policy pass for each equivalent task set. Android/JVM uses
+  219 actionable tasks per run: default parallelism takes 13.1-13.7 seconds, `--max-workers=2`
+  takes 16.9-28.2 seconds, and `--no-parallel` takes 21.9-22.9 seconds. The shared Native set uses
+  136 actionable tasks: default takes 15.4-23.8 seconds, `--max-workers=2` takes 21.1-23.0
+  seconds, and `--no-parallel` takes about 45 seconds. Provider-free Android uses 74 actionable
+  tasks: default 8.4-11.0 seconds, `--max-workers=2` 8.4-8.9 seconds, and `--no-parallel`
+  8.4-8.7 seconds. Provider-free Native uses 75 actionable tasks: default 16.0-20.9 seconds,
+  `--max-workers=2` 13.5-16.8 seconds, and `--no-parallel` 15.4-18.5 seconds. Every repetition
+  returned success. The implemented policy removes `--no-parallel`, keeps default parallelism for
+  `shared-tests` and provider-free Android, and applies `--max-workers=2` only to provider-free
+  Native tests.
+- Latest pre-policy CI execution `35008337379` completed `shared-tests` successfully in 7m44s and
+  failed `provider-decoupling` in `VehicleListStateHolderTest` after 2m08s; the failure was a test
+  assertion, not a timeout or workflow parsing error. The new policy must be confirmed by a fresh CI
+  run after push.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
 - Exact next step: push the technical commit and repository records, wait for pull request #69 CI,
-  then record each new step duration without merging the pull request.
+  then record each new step duration and confirm both protected jobs stay below 20 minutes without
+  merging the pull request.
 
 ## Scope Completed
 
@@ -1137,6 +1154,26 @@ Verification for this round:
 - Exact `shared-tests` Android and Native commands pass locally.
 - Exact `provider-decoupling` Android and Native commands pass locally.
 - No pull-request merge was performed; CI step durations remain to be recorded after the pushed run.
+
+## Sixteenth Owner-Review Correction Round (2026-09-15)
+
+Gradle parallelism was tuned from repeated local measurements after the platform-specific CI split.
+
+- **Measurement.** Equivalent Android/JVM, shared Native and provider-free task sets were each run
+  three times with the default `gradle.properties` parallelism, `--max-workers=2` and
+  `--no-parallel`. All 27 runs passed. The actionable-task counts were stable at 219 (Android/JVM),
+  136 (shared Native), 74 (provider-free Android) and 75 (provider-free Native).
+- **Decision.** Default parallelism is materially faster and stable for Android/JVM and shared Native
+  tests. Provider-free Android is equivalent under all policies, so it keeps the default. Provider-free
+  Native is consistently fastest with `--max-workers=2`, so that is the only constrained policy
+  applied. `--no-parallel` is removed everywhere and is not applied to the complete `shared-tests`
+  graph.
+- **Implementation.** Commit `9205dc6` removes `--no-parallel` from the Android/JVM, shared Native
+  and provider-free Android steps and replaces it with `--max-workers=2` only for the provider-free
+  Native step. Tests and D-75 exclusions are unchanged.
+- **CI context.** The latest pre-policy run `35008337379` passed `shared-tests` in 7m44s and failed
+  `provider-decoupling` in `VehicleListStateHolderTest` after 2m08s. The failure was not a timeout;
+  the fresh post-policy run remains the authoritative confirmation.
 
 ## Human Review Gate
 

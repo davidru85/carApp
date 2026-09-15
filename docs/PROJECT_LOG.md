@@ -58,6 +58,27 @@
 - **Follow-ups / risks:** CI step durations for the pushed run will be recorded in the handoff and log.
   PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172 scope.
 
+### 2026-09-15 — E3-03 sixteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Tuned Gradle parallelism from three repeated measurements per policy and applied
+  default parallelism to `shared-tests` plus provider-free Android, with `--max-workers=2` only for
+  provider-free Native tests. `--no-parallel` is removed from both jobs.
+- **Why:** Default parallelism was materially faster and stable for Android/JVM and shared Native
+  tests; provider-free Native consistently benefited from two workers. The no-parallel policy added
+  latency without preventing the prior CI test assertion failure.
+- **Documents touched:** `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log. No tests,
+  exclusions, protected check names or production code changed.
+- **Verification:** 27 local repetitions all passed: 219 actionable tasks for Android/JVM, 136 for
+  shared Native, 74 for provider-free Android and 75 for provider-free Native. The latest pre-policy
+  CI run `35008337379` passed `shared-tests` in 7m44s and failed `provider-decoupling` in 2m08s on a
+  `VehicleListStateHolderTest` assertion, not a timeout.
+- **Follow-ups / risks:** Push `9205dc6` and the records, then wait for fresh CI and record each named
+  step duration. PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172
+  scope.
+
 ### 2026-09-15 — E3-03 fourteenth owner-review round
 
 - **Type:** correction
