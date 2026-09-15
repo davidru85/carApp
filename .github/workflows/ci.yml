@@ -292,7 +292,6 @@ jobs:
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:testAndroidHostTest
-          --no-parallel
           --stacktrace
       - name: Run provider-free Kotlin/Native simulator tests
         timeout-minutes: 8

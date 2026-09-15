@@ -38,24 +38,6 @@
 
 ## Entries
 
-### 2026-09-16 — E3-03 twentieth owner-review round
-
-- **Type:** correction
-- **Story / Decision:** `E3-03` / `D-35`, `D-75`
-- **Author:** Codex, on behalf of David Ruiz
-- **What changed:** Added `--no-parallel` to the provider-free Android diagnostic invocation after
-  `35027677842` stalled at `:shared:testAndroidHostTest` until its 12-minute timeout.
-- **Why:** The hosted runner produced no test failure but reproduced the provider-free Android stall
-  after the timeout had already been widened. The no-parallel variant is stable in local repetitions
-  and prior CI evidence; shared Native remains on the measured `--max-workers=2` policy.
-- **Documents touched:** `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log. No
-  production code, tests, exclusions or protected check names changed.
-- **Verification:** YAML syntax validation; `shared-tests` completed successfully in `35027677842`,
-  while only provider-free Android timed out. A fresh CI run is required to confirm this final
-  diagnostic policy.
-- **Follow-ups / risks:** Record the fresh CI `shared-tests` and `provider-decoupling` durations.
-  PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172 scope.
-
 ### 2026-09-15 — E3-03 nineteenth owner-review round
 
 - **Type:** correction
