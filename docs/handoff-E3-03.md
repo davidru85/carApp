@@ -37,11 +37,9 @@
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase and latest commit: the sixteenth owner-review correction round is REFACTOR complete;
-  the measured parallelism policy is committed as `9205dc6`. The repository-record update for this
-  checkpoint is not yet committed.
-- Push and pull-request status: `9205dc6` and the preceding commits are ready to push to the existing
-  branch. Pull request #69 remains open against `main`; it is not merged and MUST NOT be merged on
-  agent judgement.
+  the measured parallelism policy and CI evidence are recorded in the current repository head. Pull
+  request #69 remains open against `main`; it is not merged and MUST NOT be merged on agent
+  judgement.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
@@ -124,11 +122,14 @@
   failed `provider-decoupling` in `VehicleListStateHolderTest` after 2m08s; the failure was a test
   assertion, not a timeout or workflow parsing error. The new policy must be confirmed by a fresh CI
   run after push.
+- Final post-policy CI execution `35020526800` is fully green. `shared-tests` completed in 4m05s:
+  Android application and KMP host tests 1m32s, Kotlin/Native simulator tests 1m58s and coverage
+  thresholds 6s. `provider-decoupling` completed in 4m59s: provider-free Android host tests 1m21s
+  and provider-free Kotlin/Native simulator tests 3m06s. Both protected jobs are comfortably below
+  their 20-minute limits.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
-- Exact next step: push the technical commit and repository records, wait for pull request #69 CI,
-  then record each new step duration and confirm both protected jobs stay below 20 minutes without
-  merging the pull request.
+- Exact next step: owner review of pull request #69; no merge was performed.
 
 ## Scope Completed
 
@@ -1174,6 +1175,9 @@ Gradle parallelism was tuned from repeated local measurements after the platform
 - **CI context.** The latest pre-policy run `35008337379` passed `shared-tests` in 7m44s and failed
   `provider-decoupling` in `VehicleListStateHolderTest` after 2m08s. The failure was not a timeout;
   the fresh post-policy run remains the authoritative confirmation.
+- **Final CI evidence.** Run `35020526800` is fully green. `shared-tests` took 4m05s (Android/KMP
+  1m32s, Native 1m58s, coverage 6s); `provider-decoupling` took 4m59s (Android 1m21s, Native
+  3m06s). Every named step passed below its timeout.
 
 ## Human Review Gate
 

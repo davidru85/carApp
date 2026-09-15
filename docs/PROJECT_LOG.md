@@ -79,6 +79,25 @@
   step duration. PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172
   scope.
 
+### 2026-09-15 — E3-03 seventeenth owner-review round
+
+- **Type:** milestone
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Confirmed the measured parallelism policy in CI run
+  [35020526800](https://github.com/davidru85/carApp/actions/runs/35020526800). Both protected jobs
+  completed successfully below their 20-minute limits.
+- **Why:** The final workflow run validates that platform-specific diagnostics remain stable on the
+  hosted macOS runner after removing `--no-parallel` and constraining only provider-free Native tests.
+- **Documents touched:** `docs/handoff-E3-03.md` and this log. No production code or contractual
+  test coverage changed.
+- **Verification:** `shared-tests` took 4m05s: Android application and KMP host tests 1m32s,
+  Kotlin/Native simulator tests 1m58s and coverage thresholds 6s. `provider-decoupling` took 4m59s:
+  provider-free Android host tests 1m21s and provider-free Kotlin/Native simulator tests 3m06s.
+  All ten protected checks are green.
+- **Follow-ups / risks:** PR #69 remains open for owner review and is not merged. Production
+  graph-close safety remains E3-17 / D-172 scope.
+
 ### 2026-09-15 — E3-03 fourteenth owner-review round
 
 - **Type:** correction
