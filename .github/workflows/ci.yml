@@ -285,7 +285,9 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Run provider-free Android host tests
-        timeout-minutes: 8
+        # Cold hosted runners can spend several minutes materializing the provider-free test graph
+        # before the shared test task emits output; keep this diagnostic bounded below the job limit.
+        timeout-minutes: 12
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:testAndroidHostTest
