@@ -1491,6 +1491,62 @@ class DefaultSyncControllerEleventhReviewTest {
         }
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
+class DefaultSyncControllerTwelfthReviewTest {
+    @Test
+    fun oneCycleSharesItsNonPlaceholderIdAndTheFollowingCycleGetsAnother() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1", sequence = 1))
+            fixture.remote.pullHandler = { type, cursor ->
+                if (type == EntityType.VEHICLE) {
+                    RemotePage(
+                        items = listOf(remoteVehicle("stalled-vehicle", 0)),
+                        nextCursor = cursor,
+                        hasMore = true,
+                    )
+                } else {
+                    page()
+                }
+            }
+            fixture.remote.pushResults += Outcome.Err(RemoteError.PermissionDenied)
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            fixture.withOutbox(vehicleOutbox("vehicle-2", sequence = 2))
+            fixture.remote.pushResults += Outcome.Err(RemoteError.PermissionDenied)
+            fixture.controller.requestSync(SyncTrigger.Periodic)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(
+                    SyncError.PermissionDenied,
+                    SyncError.ConflictUnresolved,
+                    SyncError.PermissionDenied,
+                    SyncError.ConflictUnresolved,
+                ),
+                fixture.reportedErrors.map { it.first },
+            )
+            val firstCycleIds =
+                fixture.reportedErrors
+                    .take(2)
+                    .map { it.second.getValue("cycleId") }
+                    .toSet()
+            val secondCycleIds =
+                fixture.reportedErrors
+                    .drop(2)
+                    .map { it.second.getValue("cycleId") }
+                    .toSet()
+            assertEquals(1, firstCycleIds.size, "push and pull failures in one cycle share its id")
+            assertEquals(1, secondCycleIds.size, "the following cycle also has one shared id")
+            val firstCycleId = firstCycleIds.single()
+            val secondCycleId = secondCycleIds.single()
+            assertTrue(firstCycleId != "unavailable")
+            assertTrue(secondCycleId != "unavailable")
+            assertTrue(firstCycleId != secondCycleId, "consecutive cycles must get different ids")
+        }
+}
+
 /** A valid Fuel Entry remote payload with exactly one top-level key omitted. */
 private fun fuelEntryRemoteJsonWithout(missing: String): String =
     buildJsonObject {
