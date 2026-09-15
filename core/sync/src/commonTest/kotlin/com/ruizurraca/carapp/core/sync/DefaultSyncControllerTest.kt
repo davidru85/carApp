@@ -1752,8 +1752,14 @@ private class FakeSyncPersistence : SyncPersistence {
         }
 
     override suspend fun markSyncing(row: OutboxRecord) {
-        // Mirror `SyncDatabaseAccess.markSyncing`: a poisoned row is never moved to SYNCING, so it
-        // stays FAILED_POISONED and keeps counting towards the aggregate poison count (`§7`).
+        // Mirror `SyncDatabaseAccess.markSyncing`: only the selected revision may move to SYNCING,
+        // and a poisoned row stays FAILED_POISONED so it keeps counting towards the aggregate poison
+        // count (`§7`).
+        val current =
+            outbox.firstOrNull {
+                it.entityType == row.entityType && it.entityId == row.entityId
+            } ?: return
+        if (current.localRevision != row.localRevision) return
         if (states[row.entityId.value] == "FAILED_POISONED") return
         transition(row.entityId.value, "SYNCING")
     }

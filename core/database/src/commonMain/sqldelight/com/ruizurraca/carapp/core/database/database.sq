@@ -391,11 +391,15 @@ LIMIT :rowLimit;
 
 markVehicleSyncing:
 UPDATE vehicle SET syncState = 'SYNCING'
-WHERE id = :entityId AND syncState != 'FAILED_POISONED';
+WHERE id = :entityId
+  AND localRevision = :pushedLocalRevision
+  AND syncState != 'FAILED_POISONED';
 
 markFuelEntrySyncing:
 UPDATE fuel_entry SET syncState = 'SYNCING'
-WHERE id = :entityId AND syncState != 'FAILED_POISONED';
+WHERE id = :entityId
+  AND localRevision = :pushedLocalRevision
+  AND syncState != 'FAILED_POISONED';
 
 confirmFuelEntryPush:
 UPDATE fuel_entry
@@ -451,8 +455,7 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   reason = excluded.reason,
   schemaVersion = excluded.schemaVersion,
   serverUpdatedAt = excluded.serverUpdatedAt,
-  rawJson = excluded.rawJson,
-  createdAt = excluded.createdAt;
+  rawJson = excluded.rawJson;
 
 selectQuarantineByEntity:
 SELECT entityType, entityId

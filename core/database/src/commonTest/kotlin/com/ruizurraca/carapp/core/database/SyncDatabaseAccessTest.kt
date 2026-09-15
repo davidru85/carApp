@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.core.database
 
 import app.cash.sqldelight.Transacter
+import app.cash.sqldelight.SuspendingTransacter
 import app.cash.sqldelight.async.coroutines.await
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.cash.sqldelight.db.QueryResult
@@ -31,7 +32,7 @@ class SyncDatabaseAccessTest {
                 assertNull(
                     testDatabase.driver.nullableString("SELECT cycleId FROM outbox WHERE entityId = 'vehicle-1'"),
                 )
-                access.markSyncing(row.entityType, row.entityId)
+                access.markSyncing(row.entityType, row.entityId, row.localRevision)
                 access.confirmPush(row.entityType, row.entityId, row.localRevision, serverUpdatedAt = 200)
 
                 val vehicle =
@@ -115,7 +116,7 @@ class SyncDatabaseAccessTest {
                 )
                 val access = SyncDatabaseAccess(testDatabase.database)
                 val row = access.dueOutbox(now = 100, limit = 50).single()
-                access.markSyncing(row.entityType, row.entityId)
+                access.markSyncing(row.entityType, row.entityId, row.localRevision)
 
                 // A local edit lands while the push is in flight: the editor bumps the entity and
                 // outbox revisions to 2 and sets the entity PENDING (§7 invariant, §9.3).
@@ -191,7 +192,7 @@ class SyncDatabaseAccessTest {
                         parameters = 0,
                     ).await()
 
-                selected.forEach { row -> access.markSyncing(row.entityType, row.entityId) }
+                selected.forEach { row -> access.markSyncing(row.entityType, row.entityId, row.localRevision) }
 
                 assertEquals(
                     "PENDING",
@@ -367,7 +368,7 @@ class SyncDatabaseAccessTest {
 
                 // `markSyncing` MUST fail closed: it MUST NOT move a FAILED_POISONED row to SYNCING,
                 // which would drop it from `counts().poisoned` and from the aggregate status.
-                access.markSyncing("VEHICLE", "vehicle-1")
+                access.markSyncing("VEHICLE", "vehicle-1", pushedLocalRevision = 1)
                 assertEquals(
                     "FAILED_POISONED",
                     testDatabase.driver.nullableString("SELECT syncState FROM vehicle WHERE id = 'vehicle-1'"),
@@ -403,7 +404,7 @@ class SyncDatabaseAccessTest {
 
                 val due = access.dueOutbox(now = 100, limit = 50)
                 assertEquals(setOf("vehicle-1", "entry-1"), due.mapTo(mutableSetOf()) { it.entityId })
-                due.forEach { access.markSyncing(it.entityType, it.entityId) }
+                due.forEach { access.markSyncing(it.entityType, it.entityId, it.localRevision) }
 
                 assertEquals(
                     "SYNCING",
@@ -764,7 +765,8 @@ class SyncDatabaseAccessTest {
 
 private class TransactionCountingSqlDriver(
     private val delegate: SqlDriver,
-) : SqlDriver by delegate {
+) : SqlDriver by delegate,
+    SuspendingTransacter.TransactionDispatcher {
     var newTransactionCalls: Int = 0
         private set
 
@@ -772,4 +774,7 @@ private class TransactionCountingSqlDriver(
         newTransactionCalls += 1
         return delegate.newTransaction()
     }
+
+    override suspend fun <R> dispatch(transaction: suspend () -> R): R =
+        (delegate as SuspendingTransacter.TransactionDispatcher).dispatch(transaction)
 }

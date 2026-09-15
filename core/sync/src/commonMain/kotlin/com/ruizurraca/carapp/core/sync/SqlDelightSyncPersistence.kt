@@ -41,7 +41,7 @@ internal class SqlDelightSyncPersistence(
         }
 
     override suspend fun markSyncing(row: OutboxRecord) {
-        access.markSyncing(row.entityType.name, row.entityId.value)
+        access.markSyncing(row.entityType.name, row.entityId.value, row.localRevision)
     }
 
     override suspend fun confirmPush(

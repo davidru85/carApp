@@ -108,10 +108,11 @@ class SyncDatabaseAccess(
     suspend fun markSyncing(
         entityType: String,
         entityId: String,
+        pushedLocalRevision: Long,
     ) {
         when (entityType) {
-            "VEHICLE" -> queries.markVehicleSyncing(entityId)
-            "FUEL_ENTRY" -> queries.markFuelEntrySyncing(entityId)
+            "VEHICLE" -> queries.markVehicleSyncing(entityId, pushedLocalRevision)
+            "FUEL_ENTRY" -> queries.markFuelEntrySyncing(entityId, pushedLocalRevision)
             else -> error("Unknown sync entity type")
         }
     }
@@ -229,11 +230,13 @@ class SyncDatabaseAccess(
     }
 
     suspend fun counts(): SyncDatabaseCounts =
-        SyncDatabaseCounts(
-            pending = queries.countPendingSyncRows().awaitAsOne(),
-            retryable = queries.countRetryableSyncRows().awaitAsOne(),
-            poisoned = queries.countPoisonedSyncRows().awaitAsOne(),
-        )
+        database.transactionWithResult {
+            SyncDatabaseCounts(
+                pending = queries.countPendingSyncRows().awaitAsOne(),
+                retryable = queries.countRetryableSyncRows().awaitAsOne(),
+                poisoned = queries.countPoisonedSyncRows().awaitAsOne(),
+            )
+        }
 
     suspend fun debugLines(): List<String> =
         buildList {
