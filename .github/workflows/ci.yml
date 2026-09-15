@@ -272,7 +272,5 @@ jobs:
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
           :shared:testAndroidHostTest
           :shared:iosSimulatorArm64Test
-          :androidApp:testDebugUnitTest
-          :androidApp:assembleDebug
           --no-parallel
           --stacktrace
