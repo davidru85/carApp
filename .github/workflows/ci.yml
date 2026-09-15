@@ -259,6 +259,7 @@ jobs:
     # D-45: dependency leaks can be target-specific, so the provider-free graph is tested on both
     # Android host (JVM) and iosSimulatorArm64 (Kotlin/Native) under one protected check name.
     runs-on: macos-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -269,4 +270,9 @@ jobs:
       - name: Compile and test without Firebase providers
         run: >-
           ./gradlew -Pcarapp.excludeFirebaseProviders=true
-          testAndroidHostTest iosSimulatorArm64Test --stacktrace
+          :shared:testAndroidHostTest
+          :shared:iosSimulatorArm64Test
+          :androidApp:testDebugUnitTest
+          :androidApp:assembleDebug
+          --no-parallel
+          --stacktrace
