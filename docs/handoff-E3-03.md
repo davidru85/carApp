@@ -36,8 +36,9 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the sixteenth owner-review correction round is REFACTOR complete;
-  the measured parallelism policy and CI evidence are recorded in the current repository head. Pull
+- Current phase and latest commit: the eighteenth owner-review correction round is REFACTOR complete;
+  the measured parallelism policy, cold-run timeout correction and CI evidence are recorded in the
+  current repository head. Pull
   request #69 remains open against `main`; it is not merged and MUST NOT be merged on agent
   judgement.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
@@ -127,9 +128,24 @@
   thresholds 6s. `provider-decoupling` completed in 4m59s: provider-free Android host tests 1m21s
   and provider-free Kotlin/Native simulator tests 3m06s. Both protected jobs are comfortably below
   their 20-minute limits.
+- Documentation-only CI run `35022299380` exposed a cold-run timing bound rather than a test failure:
+  the shared Native step reached `:shared:iosSimulatorArm64Test` successfully but the first uncached
+  macOS runner exceeded the previous eight-minute step timeout by 13 seconds. That diagnostic step
+  now has a 12-minute timeout, still below the 20-minute job limit; a fresh CI run must confirm it.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
 - Exact next step: owner review of pull request #69; no merge was performed.
+
+## Eighteenth Owner-Review Correction Round (2026-09-15)
+
+- The documentation-only CI run `35022299380` timed out `Run Kotlin/Native simulator tests` after
+  eight minutes on an uncached macOS runner; the Gradle invocation had already reached the shared
+  Native test task and no assertion failed.
+- `.github/workflows/ci.yml` raises only that shared Native diagnostic step to a 12-minute timeout;
+  the 20-minute job limit, protected check names, D-35 separation, D-75 exclusions and measured
+  parallelism policy are unchanged.
+- YAML syntax remains valid. The next verification is a fresh CI run from this correction commit;
+  PR #69 remains open and unmerged.
 
 ## Scope Completed
 
