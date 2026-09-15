@@ -38,6 +38,23 @@
 
 ## Entries
 
+### 2026-09-15 — E3-03 nineteenth owner-review round
+
+- **Type:** correction
+- **Story / Decision:** `E3-03` / `D-35`, `D-75`
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** Added `--max-workers=2` to the shared Native diagnostic invocation after
+  `35024525094` again stalled at `:shared:iosSimulatorArm64Test` until its 12-minute timeout.
+- **Why:** Two hosted runs reached the shared Native test task without assertion output and timed out
+  at eight and twelve minutes respectively, while provider-free Native with the same worker bound
+  completed successfully. This is targeted pressure relief; all task coverage and exclusions remain.
+- **Documents touched:** `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log. No
+  production code or tests changed.
+- **Verification:** YAML syntax validation; provider-free Android and Native steps completed in
+  `35024525094`; a fresh CI run is required to confirm shared Native stability under the worker bound.
+- **Follow-ups / risks:** Record the fresh CI `shared-tests` and `provider-decoupling` durations.
+  PR #69 remains unmerged and gated; production graph-close safety remains E3-17 / D-172 scope.
+
 ### 2026-09-15 — E3-03 eighteenth owner-review round
 
 - **Type:** correction

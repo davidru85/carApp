@@ -36,8 +36,8 @@
 
 - Date: 2026-09-15.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the eighteenth owner-review correction round is REFACTOR complete;
-  the measured parallelism policy, cold-run timeout correction and CI evidence are recorded in the
+- Current phase and latest commit: the nineteenth owner-review correction round is REFACTOR complete;
+  the measured parallelism policy, cold-run timeout corrections and CI evidence are recorded in the
   current repository head. Pull
   request #69 remains open against `main`; it is not merged and MUST NOT be merged on agent
   judgement.
@@ -133,6 +133,10 @@
   minutes by 13 seconds, while provider-free Android reached `:shared:testAndroidHostTest` before
   exceeding its eight-minute bound. Both diagnostic steps now have 12-minute timeouts, still below
   the 20-minute job limits; a fresh CI run must confirm them.
+- Follow-up run `35024525094` confirmed the Android timeout correction but again reached
+  `:shared:iosSimulatorArm64Test` without output until the 12-minute Native timeout. The shared
+  Native invocation now also uses `--max-workers=2`, justified by the repeated hosted-run stalls;
+  provider-free Native already uses the same bound.
 - Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
   own production graph-close safety.
 - Exact next step: owner review of pull request #69; no merge was performed.
@@ -147,6 +151,16 @@
   policy are unchanged.
 - YAML syntax remains valid. The next verification is a fresh CI run from this correction commit;
   PR #69 remains open and unmerged.
+
+## Nineteenth Owner-Review Correction Round (2026-09-15)
+
+- CI run `35024525094` timed out the shared Native step after 12 minutes at
+  `:shared:iosSimulatorArm64Test`, while Android and provider-free steps completed successfully.
+- The shared Native command now adds `--max-workers=2`. This is the only additional parallelism
+  restriction and is supported by repeated hosted-run stalls plus the existing provider-free Native
+  evidence; all D-75 exclusions and the 20-minute job limit remain unchanged.
+- A fresh CI run from this correction commit is required before owner review can consider the
+  workflow evidence final. PR #69 remains open and unmerged.
 
 ## Scope Completed
 
