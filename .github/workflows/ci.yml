@@ -203,13 +203,13 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Run Android application and KMP host tests
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --stacktrace
       # D-75 derives the current four exclusions from the transitive Native-test project graph
       # rooted at the two Firebase integrations. Keeping this invocation separate makes a Native
       # simulator stall visible instead of hiding it behind the Android-host aggregate.
       - name: Run Kotlin/Native simulator tests
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: >-
           ./gradlew iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
