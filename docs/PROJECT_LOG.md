@@ -60,7 +60,9 @@
   `shared/src/commonTest/kotlin/com/ruizurraca/carapp/LocalOwnerAdoptionTriggerTest.kt`.
 - **Verification:** the reworked test passes 8/8 repeated `--rerun-tasks` runs; `:shared`
   `testAndroidHostTest` and `iosSimulatorArm64Test` pass; `ktlintCheck`, `detekt`,
-  `architectureCheck`, `contractCheck` and `koverVerify` pass.
+  `architectureCheck`, `contractCheck` and `koverVerify` pass. CI `35140944317` on `988b735` is
+  fully green with all ten required checks, including `shared-tests` and `ios-simulator-build`
+  (19.0 minutes).
 - **Follow-ups / risks:** no production behaviour changed, so `E3-17` / `D-172` remains the separate
   and still-open production graph-close hazard, and the third `D-175` stall mechanism stays open.
 

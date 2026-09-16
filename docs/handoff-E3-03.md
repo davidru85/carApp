@@ -87,6 +87,10 @@
   assertion now reads the created entry back through `selectActiveFuelEntriesByVehicle` and asserts
   that exactly one entry exists and that its outbox row exists, which is the behaviour the test is
   named for. Verified by 8/8 repeated runs of the test, both shared suites, and the quality gates.
+- CI `35140944317` on `988b735` is **fully green**: all ten required checks pass, including
+  `shared-tests` - whose Android-host step is the one that failed on `f9e04c8` - and
+  `ios-simulator-build` in 19.0 minutes. Nineteen minutes is 95% of the old 20-minute cap, which is
+  the second independent confirmation that the `D-176` ceiling had to move.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
