@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.buildlogic.contract
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 
 class WorkflowTimeoutContractTest {
     private val repositoryRoot = File(checkNotNull(System.getProperty("carapp.repoRoot")))
@@ -35,6 +36,7 @@ class WorkflowTimeoutContractTest {
             Regex("(      - name: Run Kotlin/Native simulator tests\\n        timeout-minutes: )\\d+\\n"),
             "$1",
         )
+        assertNotEquals(workflow, mutated, "The fixture mutation must remove the named step timeout")
         assertEquals(AssertionResult.Status.FAIL, WorkflowTimeoutContract(mutated).validate().single { it.id == 29 }.status)
     }
 
