@@ -31,7 +31,10 @@ class WorkflowTimeoutContractTest {
 
     @Test
     fun missingPlatformStepTimeoutFails() {
-        val mutated = workflow.replace("      - name: Run Kotlin/Native simulator tests\n        timeout-minutes: 8\n", "      - name: Run Kotlin/Native simulator tests\n")
+        val mutated = workflow.replaceFirst(
+            Regex("(      - name: Run Kotlin/Native simulator tests\\n        timeout-minutes: )\\d+\\n"),
+            "$1",
+        )
         assertEquals(AssertionResult.Status.FAIL, WorkflowTimeoutContract(mutated).validate().single { it.id == 29 }.status)
     }
 
