@@ -216,6 +216,7 @@ jobs:
           -x :integration:firebase-firestore:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test
           -x :composition:ios:iosSimulatorArm64Test
+          --max-workers=2
           --stacktrace
       - name: Coverage thresholds
         timeout-minutes: 4
