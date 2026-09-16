@@ -37,6 +37,10 @@ class ContractCheck(
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
         assertion23NoDuplicatedDecisionIds(),
+        *GitHubActionsContract(repoRoot).validate().toTypedArray(),
+        *WorkflowTimeoutContract(repoRoot).validate().toTypedArray(),
+        *WorkflowPermissionsContract(repoRoot).validate().toTypedArray(),
+        GradleJvmContract(repoRoot).validate(),
         *CloudRuntimeContract(repoRoot).validate().toTypedArray(),
         FunctionGenerationContract(repoRoot).validate(),
         NativeTestExemptionContract.validate(

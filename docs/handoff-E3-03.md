@@ -133,6 +133,26 @@
 
 ## Scope Completed
 
+## Cumulative CI Optimization Update (2026-09-16)
+
+- Foundational GitHub Actions now use immutable Node.js 24 generation pins recorded in
+  `docs/versions-matrix.md`; `contractCheck` rejects floating, unrecorded or obsolete references.
+- CI safety policy is executable: all protected jobs declare a limit no greater than 20 minutes,
+  `shared-tests` retains stricter Android-host and Kotlin/Native step limits, and protected check
+  names are pinned by contract.
+- Workflow permissions are least privilege (`contents: read` globally; `contents: read` plus
+  `id-token: write` only on `contract-check`). Checkout no longer persists credentials.
+- The independent iOS `xcodebuild build` was removed because the subsequent `xcodebuild test` builds
+  the same scheme; the test command retains `ARCHS=arm64` and `ONLY_ACTIVE_ARCH=NO`. Historical CI
+  evidence records a 14m37s job with an almost-nine-minute test step; a clean local comparison was
+  blocked by the host's Xcode 27/CoreSimulator permissions, so CI reruns remain the authoritative
+  post-change comparison.
+- `gradle.properties` is now the sole `org.gradle.jvmargs` source; the CI `GRADLE_OPTS` override was
+  removed. Contract and convention tests reject a second definition or environment override.
+- Local `:build-logic:convention:test`, `ktlintCheck`, `detekt`, `contractCheck` and
+  `architectureCheck` pass on this cumulative worktree. The complete protected workflow and the
+  final CI duration record remain pending after push.
+
 - GREEN implements E3-03's sync engine and integration path: serialized cycles with one pending
   follow-up, offline/local-owner admission, cold-start pull-first selection, dependency-ordered
   push, idempotent acknowledgement, server-timestamp LWW pull, one-cycle overlap, deterministic

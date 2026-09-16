@@ -2002,6 +2002,19 @@ Optional checks:
     Kotlin/Native exclusions equal the set derived by taking the transitive reverse dependency
     closure from `:integration:firebase-auth` and `:integration:firebase-firestore` across the
     Native-test project graph; equality fails on either addition or removal.
+25. The foundational GitHub Actions (`actions/checkout`, `actions/setup-java`, `actions/setup-node`
+    and `gradle/actions/setup-gradle`) use the immutable SHAs recorded in `docs/versions-matrix.md`;
+    floating refs, missing rows or unrecorded SHAs fail the check.
+26. The foundational GitHub Actions are recorded as Node.js 24 generations in the version matrix;
+    an obsolete runtime generation fails the check.
+27. Every protected CI job declares a `timeout-minutes` safety limit.
+28. No CI job declares a safety limit above 20 minutes.
+29. The `shared-tests` Android-host and Kotlin/Native steps retain stricter platform-specific limits.
+30. Every protected check name required by branch protection remains present in `ci.yml`.
+31. The workflow-level GitHub permission is exactly `contents: read`.
+32. Only `contract-check` declares `contents: read` and `id-token: write`; no other job declares permissions.
+33. `gradle.properties` is the sole source of `org.gradle.jvmargs`; CI MUST NOT redefine it through
+    `GRADLE_OPTS` or another environment override.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

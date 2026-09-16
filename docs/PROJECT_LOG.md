@@ -38,6 +38,20 @@
 
 ## Entries
 
+### 2026-09-16 — E3-03 CI lifecycle and optimization follow-up
+
+- **Type:** engineering follow-up
+- **Story / Decision:** `E3-03`; no new decision
+- **Author:** Codex, on behalf of David Ruiz
+- **What changed:** pinned foundational GitHub Actions to immutable Node.js 24 generation SHAs;
+  made the 20-minute job policy, protected check names and least-privilege permissions executable;
+  removed redundant iOS app compilation before `xcodebuild test`; and made `gradle.properties` the
+  sole Gradle daemon JVM-argument source.
+- **Verification:** local contract, architecture, lint, detekt and build-logic convention suites
+  pass. Local Xcode clean-build timing was blocked by host Xcode 27/CoreSimulator permissions;
+  CI comparison is pending on the pushed branch.
+- **Follow-ups / risks:** owner review and CI confirmation remain required; no merge was performed.
+
 ### 2026-09-15 — E3-03 fifteenth owner-review round
 
 - **Type:** correction
