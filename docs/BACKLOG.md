@@ -869,7 +869,8 @@ Acceptance criteria:
 
 Status: implemented on `story/E3-03-core-sync-engine`, awaiting the gated owner review and the ten
 required checks. See `docs/handoff-E3-03.md` for the RED, GREEN and REFACTOR commits and acceptance
-evidence.
+evidence. The seventeenth correction round (`D-175`, `ADR-0176`) fixed the silent `shared-tests`
+step-timeout stall in shared test scaffolding; the decision is recorded there.
 
 Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quarantine, aggregate backup status and debug support according to `docs/CONTRACTS.md §7`–`§9`.
 
