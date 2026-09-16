@@ -38,6 +38,40 @@
 
 ## Entries
 
+### 2026-09-16 — E3-03 seventeenth owner-review round: the `shared-tests` stall fixed
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`; no new decision
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the silent `shared-tests` step timeout is fixed in shared test code. Two constructs
+  made a bounded assertion incapable of reporting its own failure: `awaitState` awaited its collector
+  with an unbounded `cancelAndJoin`, and eight bare `while (condition) yield()` polls never suspend
+  for real, so `runTest`'s timeout could not fire. The join is now bounded (30 s) and fails by name;
+  the polls are replaced by `awaitCondition`, bounded at 10 000 scheduling rounds and reported by
+  expectation name, with an `attempt` hook for the two expectations that drive the effect.
+  `FlowExpectationTest.aCollectorThatIgnoresCancellationCannotOutliveTheExpectation` is the permanent
+  regression.
+- **Why:** the owner chose to absorb the correction into `E3-03` (round 17) rather than create a
+  sibling test-infrastructure story, and to re-run CI and merge if green. `shared-tests` is a
+  required check for `main`, so the stall blocked pull request #69 independently of `E3-03`'s product
+  behaviour.
+- **Diagnosis:** not a flake in the usual sense and not the `D-172` production hazard. RED `cd41ed7`
+  reproduced the CI shape locally — a 120 s hang with no test result — where the previously recorded
+  attempts had only shown a hypothesis. A thread dump pinned the second mechanism inside
+  `runTest`'s own `advanceUntilIdleOr` drain, which is why no result was ever produced. The
+  re-run of the previously green commit `8b76f6aa` also stalled, proving the defect predates the
+  CI-tooling commits and is independent of them.
+- **Documents touched:** `docs/handoff-E3-03.md` and this log. Code: `shared/src/commonTest/**`
+  (`FlowExpectation.kt`, its test, and the three test classes that held the polls).
+- **Verification:** RED `cd41ed7` (120 s silent hang); GREEN `9c7c51f` (fails in ~8 s naming the
+  expectation); `:shared:testAndroidHostTest` 173 tests pass; `:shared:iosSimulatorArm64Test` pass;
+  provider-free host pass; 6/6 repeated combined runs; the exact `shared-tests` steps pass; the
+  quality gates and the complete non-instrumented command pass with `--rerun-tasks`, 397 tasks, and
+  `contractCheck` reporting 30 `[PASS]` and zero `PENDING`. CI run `35123138250` is the post-change
+  confirmation.
+- **Follow-ups / risks:** no production behaviour changed, so `E3-17` / `D-172` remains the separate
+  and still-open production graph-close hazard. Owner review of pull request #69 remains required.
+
 ### 2026-09-16 — E3-03 CI lifecycle and optimization follow-up
 
 - **Type:** engineering follow-up

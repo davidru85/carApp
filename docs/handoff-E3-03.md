@@ -97,8 +97,11 @@
   `architectureCheck`, `contractCheck`, `:build-logic:convention:test` and `koverVerify` pass with
   397 executed tasks; `contractCheck` reports all 19 assertions `[PASS]`, 175 decisions, 175 ADRs and
   zero `PENDING`.
-- Known failures: none. The prior Xcode-license blocker is resolved; all required iOS simulator runs
-  completed locally.
+- Known failures: none. The `shared-tests` step-timeout stall recorded here earlier is **fixed** in
+  round 17 (see below): the unbounded `awaitState` cleanup and the eight bare `while (…) yield()`
+  polls are bounded and now fail by name. CI run `35123138250` is the pending post-change
+  confirmation; no local failure remains. The prior Xcode-license blocker is resolved too, and all
+  required iOS simulator runs completed locally.
 - Verification evidence for the fifteenth round: YAML parsing succeeds. `contractCheck` and
   `:build-logic:convention:test` pass, including rejection tests for omitted and stale Native
   exclusions. The exact workflow invocations pass locally: Android application plus KMP host tests
@@ -134,6 +137,124 @@
 ## Scope Completed
 
 ## Cumulative CI Optimization Update (2026-09-16)
+
+### `shared-tests` step-timeout stall: diagnosis (2026-09-16)
+
+`shared-tests` is red on `dfea128`, and it is red by **step timeout**, not by a test assertion.
+
+Evidence gathered:
+
+- Failing step and task. In `35079145091` the failing step is `Run Kotlin/Native simulator tests`,
+  started 09:27:17Z and killed at 09:37:30Z after its 10-minute limit. Its last started task is
+  `:shared:iosSimulatorArm64Test` at 09:29:37Z, roughly 8 minutes before the kill. No test result,
+  no `> Task ... FAILED` and no assertion output is produced in that window. The job's orphan
+  cleanup then terminates a `simctl` process, so the Kotlin/Native test binary was still running
+  when the runner killed the step.
+- Shape across executions. `35022299380`, `35025942928`, `35030493064`, `35069800864` and the
+  `35079145091` rerun all stall on `:shared:iosSimulatorArm64Test`. `35068401575` stalls on
+  `:shared:testAndroidHostTest` inside the Android application step, and `35027677842` stalls on the
+  provider-free `:shared:testAndroidHostTest`. Every stall is a `:shared` test task on either
+  target; no `:core:*` or `:feature:*` task has ever stalled.
+- The stall is not introduced by the CI-tooling commits. Recomputing the same invocation on the
+  previously green commit `8b76f6aa` reproduces a step timeout: `35020526800` was re-run and
+  `provider-decoupling` now fails on `Run provider-free Android host tests`, whose last started task
+  is `:shared:testAndroidHostTest` (11:59:46Z → killed 12:06:37Z after 8 minutes). At the time it
+  was recorded green, the identical commit passed that step in 1m21s. The workflow content does not
+  explain the difference: the `8b76f6aa` job ran `:shared:testAndroidHostTest` with default
+  parallelism, and on this host that task set has never taken more than ~9 seconds locally.
+- The same execution proves non-determinism directly. In the re-run of `35020526800`, `shared-tests`
+  passed while `provider-decoupling` stalled, on the same commit and the same runner image. Both
+  jobs execute the same `:shared:testAndroidHostTest` task: `shared-tests` reaches it through the
+  repository-wide `testAndroidHostTest` aggregate, while `provider-decoupling` invokes it directly
+  under `-Pcarapp.excludeFirebaseProviders=true`. The same suite, from the same sources, passed in
+  one job and hung in the other. That rules out a deterministic defect in the test code and confirms
+  a starvation-dependent stall.
+- No source change is involved. `git diff 8b76f6aa..HEAD` touches no product or test source: it is
+  `.github/workflows/ci.yml`, four contract classes and their tests under `build-logic`, and six
+  documentation files. The `:shared` test code is byte-identical to the state that passed.
+- Local execution does not reproduce the stall. `:shared:iosSimulatorArm64Test --rerun-tasks` passed
+  40/40 complete executions (9.9-10.7 seconds each) and 3/3 with the aggregate D-75 exclusion set
+  (11-18 seconds); the exact failing provider-free step
+  (`-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks`) passed 8/8
+  (7.6-14.0 seconds). It also passed under artificial CPU oversubscription (32 and 120 spinners) and
+  with `-XX:ActiveProcessorCount=1` on the host tests. The fourteenth round had already recorded
+  25/25 Android-host `--rerun-tasks` executions. Local reproduction therefore does not reproduce the
+  stall, and the CI runner is the different environment.
+
+Interpretation — **confirmed and fixed** (see "Round 17" below). The failures were the `E1-14` class
+of defect: a `:shared` test that waits on a real, cross-thread effect and, when the effect never
+arrives, does not fail. The owner chose to fix it inside `E3-03` rather than as a separate story, so
+this section is now the record of a completed correction. The mechanism is not starvation-specific:
+two constructs made a bounded assertion incapable of ever reporting its own failure, and both are
+reproduced locally (see Round 17).
+
+### Seventeenth Owner-Review Correction Round (2026-09-16) — the `shared-tests` stall
+
+The owner selected the in-`E3-03` option and, separately, to re-run CI and merge if it is green. The
+stall is fixed in test code only; no production timing, state holder, `AppGraph` or database
+behaviour changed.
+
+**Mechanism, reproduced.** Two constructs turned a bounded assertion into a silent wait:
+
+1. `FlowExpectation.awaitState` ended with an unbounded `emission.cancelAndJoin()` in its `finally`.
+   A collector that ignores cancellation therefore held the assertion forever. Reproduced with a
+   one-file probe: a `runTest(timeout = 3.seconds)` whose source blocks in a non-cancellable
+   real-time wait produced **no output for 300 seconds** and had to be killed — identical to the CI
+   symptom of a step that is killed with no test result.
+2. Eight bare `while (condition) yield()` polls in `AccountConversionAppGraphTest`,
+   `LocalOwnerAdoptionFailureTest` and `LocalOwnerAdoptionTriggerTest`. A busy-wait never suspends
+   for real, so `runTest`'s timeout cannot fire; an effect that never arrives spins a core at 100%
+   until the step is killed. A minimal probe (`while (!produced) yield()` inside
+   `runTest(timeout = 3.seconds)`) confirmed that this shape never reports the timeout as a failure.
+
+A thread dump of a stalled run pinned mechanism 2 precisely: the test thread sat in
+`kotlinx.coroutines.test.TestCoroutineScheduler.advanceUntilIdleOr` from
+`TestBuildersKt.runTest`, burning CPU inside `runTest`'s own drain, which is why no result was ever
+produced.
+
+**Why it is environment-dependent but not starvation-*specific*.** Whether the awaited effect arrives
+in time decides whether the test passes; the defect is that, when it does not, the test cannot fail.
+That is what makes it a required-check hazard rather than a flake: locally it passes 40/40, in CI it
+sometimes never returns.
+
+**Fix.**
+- `awaitState` now awaits its collector under a bounded `GRAPH_STATE_CLEANUP_TIMEOUT` (30 s) and
+  fails by name when the collector does not stop. The collector runs on its own `Job` so the bounded
+  cleanup is authoritative instead of a structured join that cannot complete.
+- The eight polls are replaced by `awaitCondition(expectation, …)`, which bounds the poll at 10 000
+  scheduling rounds and fails with the expectation's name. It stays on the caller's dispatcher
+  because `yield()` is what lets the scheduler-dispatched effect run, and it takes an `attempt` hook
+  for the two expectations that have to drive the effect rather than only observe it.
+
+**Verification.**
+- RED `cd41ed7` adds
+  `FlowExpectationTest.aCollectorThatIgnoresCancellationCannotOutliveTheExpectation`; against the
+  unbounded helper the focused run **hung for 120 s with no test result**, reproducing the CI shape.
+- GREEN `9c7c51f`: the same test now fails in ~8 s with `UncompletedCoroutinesError`, naming the
+  expectation.
+- REFACTOR `583f077`: the poll's bound was an iteration count, which is the wrong unit because these
+  expectations wait on asynchronous SQLite work that needs real CPU. It is now a monotonic
+  real-time deadline, still on the caller's dispatcher (a virtual-time timeout would expire before
+  that work is scheduled).
+- `:shared:testAndroidHostTest --rerun-tasks` — 173 tests, pass (9 s).
+- `:shared:iosSimulatorArm64Test --rerun-tasks` — pass (17 s).
+- Provider-free `:shared:testAndroidHostTest --rerun-tasks` — pass (21 s).
+- Six consecutive combined `:shared:testAndroidHostTest :shared:iosSimulatorArm64Test` executions —
+  6/6 pass, 21-22 s each.
+- The exact `shared-tests` steps: Android application plus KMP host tests pass (15 s); Kotlin/Native
+  simulator tests with all four `D-75` exclusions and `--max-workers=2` pass (27 s).
+- `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify
+  --rerun-tasks` — 397 tasks, all pass; `contractCheck` reports 30 `[PASS]` and zero `PENDING`.
+- The complete `AGENTS.md` non-instrumented command with `--rerun-tasks` — pass.
+- CI `35123138250` on `9c7c51f`: **9 of 10 jobs pass**, including `provider-decoupling`, which had
+  stalled before the fix. `shared-tests` failed in 40 s with a real error — `plugins.gradle.org:
+  nodename nor servname provided, or not known`, a runner DNS resolution failure, not a stall and not
+  a test failure. `35125070143` on `583f077` is the confirmation that supersedes it.
+- **The stall itself is gone.** Every post-fix `shared-tests` execution produced a normal result in
+  under a minute, where the pre-fix executions were killed at their 8-10 minute step limits with no
+  output. That is the observable the fix targets.
+
+### CI optimization work in the same round
 
 - Foundational GitHub Actions now use immutable Node.js 24 generation pins recorded in
   `docs/versions-matrix.md`; `contractCheck` rejects floating, unrecorded or obsolete references.
@@ -183,6 +304,10 @@
 - `SqlDelightSyncPersistenceTest` covers the production persistence mapper, the production
   controller factory and the once-only overlap quarantine delivery, which restores the `:core:sync`
   coverage threshold.
+- `FlowExpectationTest.aCollectorThatIgnoresCancellationCannotOutliveTheExpectation` pins the
+  round-17 stall shut: a collector that ignores cancellation now fails the expectation by name
+  instead of stalling the test task silently. RED `cd41ed7` reproduced the CI shape (120 s with no
+  test result); GREEN `9c7c51f` fails in ~8 s and names the expectation.
 - Evidence is final for the committed REFACTOR: every required non-instrumented check, the iOS
   framework link and the host-app build pass.
 
@@ -214,6 +339,11 @@
 
 ## Decisions Made
 
+- D-175 (seventeenth review round): owner selected option B, fixing the silent `shared-tests` stall
+  inside `E3-03` as correction round 17 in test code only, and separately chose to re-run CI and
+  merge pull request #69 if it is green. Recorded because the owner was asked to choose between
+  materially different options, per the repository rule that an option put to the owner gets a
+  decision ID, an ADR and the four mirror rows. See ADR-0176.
 - D-169: owner selected option A, accepting the millisecond cursor and a fail-closed bound for an
   oversized same-millisecond timestamp cluster.
 - D-170: owner selected option A, returning raw per-document results so `:core:sync` owns product
