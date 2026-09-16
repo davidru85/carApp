@@ -72,6 +72,10 @@
   states the ceiling and its purpose, the `shared-tests` and `provider-decoupling` step limits stay
   stricter, and `E0-05`'s 20-minute whole-run objective is unchanged. `docs/adr/0177` and the four
   mirror rows record it.
+- CI `35137642996` on `261d9bb` is **fully green**: all ten required checks pass, including
+  `shared-tests` (its fifth consecutive green) and `ios-simulator-build`, which completed normally in
+  17.9 minutes. That run is the direct evidence the guard no longer fires on healthy work: 17.9
+  minutes is 89% of the old 20-minute cap, and the previous run was cancelled at 20m50s.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the

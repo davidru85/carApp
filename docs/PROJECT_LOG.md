@@ -59,8 +59,9 @@
   `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log.
 - **Verification:** `contractCheck` passes assertions 27-30 with the 40-minute ceiling and reports
   177 decisions and 177 ADRs; `:build-logic:convention:test` passes, including the firing fixtures
-  (omitted job timeout fails 27, 41 minutes fails 28); `ktlintCheck` passes. `ios-simulator-build`
-  completing normally on the pull-request head is the remaining direct evidence.
+  (omitted job timeout fails 27, 41 minutes fails 28); `ktlintCheck` passes. CI `35137642996` on
+  `261d9bb` is fully green with all ten required checks, and `ios-simulator-build` completed in 17.9
+  minutes - 89% of the old cap, in a job the previous run cancelled at 20m50s.
 - **Follow-ups / risks:** the `E0-05` 20-minute objective is unchanged and MUST NOT be reused as a
   hard limit. The third `shared-tests` stall mechanism recorded by `D-175` stays open and unbounded.
 
