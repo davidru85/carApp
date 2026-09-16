@@ -38,6 +38,32 @@
 
 ## Entries
 
+### 2026-09-16 — D-176: the CI job hang guard was cancelling healthy work
+
+- **Type:** decision
+- **Story / Decision:** `E3-03` / `D-176`
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** every CI job's `timeout-minutes` and
+  `WorkflowTimeoutContract.MAX_JOB_MINUTES` are raised from 20 to 40, and `docs/CONTRACTS.md §18`
+  assertion 28 now states the ceiling together with its purpose: the limit kills a hung job and MUST
+  retain headroom over the measured distribution rather than sit near its worst observed success.
+- **Why:** the 20-minute cap had coupled the `E0-05` **monitored objective** for whole-run duration
+  to a hard kill. On run `35133388068` it cancelled `ios-simulator-build` at 20m50s with
+  `The job has exceeded the maximum execution time of 20m0s` - in a run whose other nine checks,
+  `shared-tests` included, had already passed. The cancelled job was not hung: across 58 sampled runs
+  its 44 successes ranged 12.1 to 23.9 minutes (median 15.3, p90 18.3). Forty is 1.67x the worst
+  observed success. A per-job measurement table was rejected as a maintained artifact that goes stale
+  silently, which is how this defect arose.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0177-…md`, `docs/CONTRACTS.md §18`,
+  `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log.
+- **Verification:** `contractCheck` passes assertions 27-30 with the 40-minute ceiling and reports
+  177 decisions and 177 ADRs; `:build-logic:convention:test` passes, including the firing fixtures
+  (omitted job timeout fails 27, 41 minutes fails 28); `ktlintCheck` passes. `ios-simulator-build`
+  completing normally on the pull-request head is the remaining direct evidence.
+- **Follow-ups / risks:** the `E0-05` 20-minute objective is unchanged and MUST NOT be reused as a
+  hard limit. The third `shared-tests` stall mechanism recorded by `D-175` stays open and unbounded.
+
 ### 2026-09-16 — E3-03 seventeenth owner-review round: two `shared-tests` stall mechanisms fixed
 
 - **Type:** correction

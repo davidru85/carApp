@@ -27,7 +27,7 @@ internal class WorkflowTimeoutContract private constructor(
     private fun jobsDoNotExceedSafetyLimit(): AssertionResult {
         val excessive = jobs.filter { (it.timeoutMinutes ?: 0) > MAX_JOB_MINUTES }
             .map { "${it.id} declares ${it.timeoutMinutes} minutes" }
-        return result(28, "CI jobs do not exceed the 20-minute safety limit", excessive)
+        return result(28, "CI jobs do not exceed the $MAX_JOB_MINUTES-minute safety limit", excessive)
     }
 
     private fun sharedTestsHavePlatformStepLimits(): AssertionResult {
@@ -81,7 +81,14 @@ internal class WorkflowTimeoutContract private constructor(
     private data class Step(val name: String, val timeoutMinutes: Int?)
 
     private companion object {
-        const val MAX_JOB_MINUTES = 20
+        /**
+         * The ceiling for a job's `timeout-minutes`. It exists to kill a hung job, not to bound a
+         * healthy one, so it MUST retain headroom over the measured distribution: over 58 sampled
+         * `ios-simulator-build` runs, the 44 successes ranged 12.1 to 23.9 minutes with a p90 of
+         * 18.3, so a ceiling must sit well above the worst observed success rather than near it
+         * (`D-176`).
+         */
+        const val MAX_JOB_MINUTES = 40
         val JOB_START = Regex("^  ([A-Za-z0-9_-]+):$")
         val NAME = Regex("^\\s{4}name: (.+)$")
         val STEP_NAME = Regex("^\\s{6}- name: (.+)$")

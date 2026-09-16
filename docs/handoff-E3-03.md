@@ -61,6 +61,17 @@
 - Exact next step: the owner reviews pull request #69; if a `shared-tests` stall recurs, the per-test
   log from `a900571` names the responsible test, and the candidate is
   `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`.
+- Eighteenth round (2026-09-16): the cancelled required check on `c1fc6f0` was **not** `shared-tests`.
+  That job passed in the same run (18:16:49 -> 18:23:37, its fourth consecutive green after the
+  round-17 fix). The cancelled check was `ios-simulator-build`, with the annotation `The job has
+  exceeded the maximum execution time of 20m0s`: it ran 20m50s and was killed by the flat
+  `timeout-minutes: 20` that this branch added in `21373a6`. `main` declares no job caps. Across 58
+  sampled runs that job's 44 successes ranged 12.1 to 23.9 minutes (median 15.3, p90 18.3), so the
+  cap was reachable by healthy work. Fixed as `D-176`: every job's ceiling and
+  `WorkflowTimeoutContract.MAX_JOB_MINUTES` are 40 (1.67x the worst observed success), assertion 28
+  states the ceiling and its purpose, the `shared-tests` and `provider-decoupling` step limits stay
+  stricter, and `E0-05`'s 20-minute whole-run objective is unchanged. `docs/adr/0177` and the four
+  mirror rows record it.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
@@ -305,7 +316,8 @@ is what will confirm the culprit on the next CI stall.
 
 - Foundational GitHub Actions now use immutable Node.js 24 generation pins recorded in
   `docs/versions-matrix.md`; `contractCheck` rejects floating, unrecorded or obsolete references.
-- CI safety policy is executable: all protected jobs declare a limit no greater than 20 minutes,
+- CI safety policy is executable: all protected jobs declare a limit no greater than 40 minutes
+  (`D-176` raised it from 20, which was cancelling a healthy `ios-simulator-build`),
   `shared-tests` retains stricter Android-host and Kotlin/Native step limits, and protected check
   names are pinned by contract.
 - Workflow permissions are least privilege (`contents: read` globally; `contents: read` plus

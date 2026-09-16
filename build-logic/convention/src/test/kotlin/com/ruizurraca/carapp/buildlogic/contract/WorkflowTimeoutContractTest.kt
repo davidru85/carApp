@@ -20,13 +20,13 @@ class WorkflowTimeoutContractTest {
 
     @Test
     fun missingJobTimeoutFails() {
-        val mutated = workflow.replaceFirst("    timeout-minutes: 20\n    steps:", "    steps:")
+        val mutated = workflow.replaceFirst("    timeout-minutes: 40\n    steps:", "    steps:")
         assertEquals(AssertionResult.Status.FAIL, WorkflowTimeoutContract(mutated).validate().single { it.id == 27 }.status)
     }
 
     @Test
     fun excessiveJobTimeoutFails() {
-        val mutated = workflow.replaceFirst("    timeout-minutes: 20", "    timeout-minutes: 21")
+        val mutated = workflow.replaceFirst("    timeout-minutes: 40", "    timeout-minutes: 41")
         assertEquals(AssertionResult.Status.FAIL, WorkflowTimeoutContract(mutated).validate().single { it.id == 28 }.status)
     }
 

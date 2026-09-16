@@ -3,7 +3,11 @@
 # The job names below are the check names fixed by docs/CONTRACTS.md §18 and MUST NOT be renamed:
 # branch protection for main requires them by name.
 #
-# CI duration under 20 minutes is a monitored objective, not a pass/fail criterion (E0-05).
+# The `timeout-minutes` on each job is a hang guard, not a speed budget: it kills a job that has
+# stopped making progress. It MUST stay well above the slowest healthy run, which is why it is 40 and
+# not 20 (`D-176`): `ios-simulator-build` has succeeded in as little as 12 minutes and as much as
+# 23.9. CI duration under 20 minutes is the separate monitored objective of `E0-05`, and the
+# test-heavy jobs keep stricter per-step limits.
 
 name: CI
 
@@ -24,7 +28,7 @@ jobs:
   ktlint:
     name: ktlint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -47,7 +51,7 @@ jobs:
   detekt:
     name: detekt
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -62,7 +66,7 @@ jobs:
   architecture-check:
     name: architecture-check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -78,7 +82,7 @@ jobs:
   contract-check:
     name: contract-check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     environment: cloud-runtime-verification
     permissions:
       contents: read
@@ -143,7 +147,7 @@ jobs:
   android-assemble:
     name: android-assemble
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -158,7 +162,7 @@ jobs:
   android-instrumented-tests:
     name: android-instrumented-tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - name: Enable KVM access
         run: |
@@ -192,7 +196,7 @@ jobs:
     # macOS is required here only by iosSimulatorArm64Test. Moving that test out also requires
     # superseding D-35.
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -225,7 +229,7 @@ jobs:
   ios-simulator-build:
     name: ios-simulator-build
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -263,7 +267,7 @@ jobs:
   objc-header-golden-check:
     name: objc-header-golden-check
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -288,7 +292,7 @@ jobs:
     # D-45: dependency leaks can be target-specific, so the provider-free graph is tested on both
     # Android host (JVM) and iosSimulatorArm64 (Kotlin/Native) under one protected check name.
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:

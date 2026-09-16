@@ -2008,7 +2008,10 @@ Optional checks:
 26. The foundational GitHub Actions are recorded as Node.js 24 generations in the version matrix;
     an obsolete runtime generation fails the check.
 27. Every protected CI job declares a `timeout-minutes` safety limit.
-28. No CI job declares a safety limit above 20 minutes.
+28. No CI job declares a safety limit above 40 minutes. The limit kills a hung job; it is not a
+    bound on a healthy one and MUST retain headroom over the measured distribution, not sit near its
+    worst observed success. Over 58 sampled runs `ios-simulator-build` succeeded between 12.1 and
+    23.9 minutes, so its duration varies by nearly a factor of two with runner speed.
 29. The `shared-tests` Android-host and Kotlin/Native steps retain stricter platform-specific limits.
 30. Every protected check name required by branch protection remains present in `ci.yml`.
 31. The workflow-level GitHub permission is exactly `contents: read`.
