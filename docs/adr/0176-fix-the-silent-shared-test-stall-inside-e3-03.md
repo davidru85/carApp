@@ -93,9 +93,21 @@ the merge until the stall is provably eliminated.
   koverVerify --rerun-tasks` passes with 397 tasks and 30 `[PASS]` assertions; the complete
   non-instrumented command passes.
 - CI: `35123138250` on `9c7c51f` passed 9 of 10 jobs, including the previously stalling
-  `provider-decoupling`, and `shared-tests` failed in 40 s with a runner DNS resolution error rather
-  than a stall. `35125070143` on `583f077` is the confirmation that supersedes it: every post-fix
-  `shared-tests` execution produced a normal result in under a minute.
+  `provider-decoupling`; `shared-tests` failed in 40 s with a runner DNS resolution error rather than
+  a stall. `35125459030` on `2daa531` stalled again on `:shared:testAndroidHostTest`, so the two
+  bounded waits were not the whole cause. `35127303504` on `a900571` is **fully green**, all ten
+  required checks passing.
+
+## Residual Risk
+
+A third silent-hang mechanism is proven and **not** fixed by this decision:
+`advanceUntilIdle()` never terminates when work keeps re-arming itself in virtual time, and
+`DefaultSyncController.scheduleAdoptionRetry` (`core/sync/src/commonMain/.../SyncEngine.kt:604-613`)
+is exactly that shape (delay, then `requestSync(SyncTrigger.Periodic)`). It is reachable in
+`FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`, the one shared test that both
+confines a real `AppGraph` to the test scheduler and calls `advanceUntilIdle()`. Bounding the retry
+changes production behaviour, so it belongs to a production story; `a900571` adds per-test log lines
+so the culprit is named on the next stall. This is recorded rather than silently carried.
 
 ## References
 

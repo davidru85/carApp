@@ -249,10 +249,44 @@ sometimes never returns.
 - CI `35123138250` on `9c7c51f`: **9 of 10 jobs pass**, including `provider-decoupling`, which had
   stalled before the fix. `shared-tests` failed in 40 s with a real error — `plugins.gradle.org:
   nodename nor servname provided, or not known`, a runner DNS resolution failure, not a stall and not
-  a test failure. `35125070143` on `583f077` is the confirmation that supersedes it.
-- **The stall itself is gone.** Every post-fix `shared-tests` execution produced a normal result in
-  under a minute, where the pre-fix executions were killed at their 8-10 minute step limits with no
-  output. That is the observable the fix targets.
+  a test failure.
+- CI `35125459030` on `2daa531` **stalled again** on `:shared:testAndroidHostTest` (started
+  17:03:27Z, step killed at 17:11:24Z after ~8 minutes of silence). The round-17 fix removed two real
+  unbounded waits, but the stall has a remaining cause, so this round's claim is narrowed to what it
+  actually proves: two silent-hang mechanisms are eliminated and diagnosed, and the stall is not
+  attributable from CI because a killed test task reports no test name. `a900571` adds that missing
+  capability.
+- CI `35127303504` on `a900571` — **all ten required checks pass**, including `shared-tests`:
+  Android application and KMP host tests success, Kotlin/Native simulator tests success
+  (17:22:21Z → 17:26:31Z), coverage thresholds success; `provider-decoupling`,
+  `ios-simulator-build`, `android-instrumented-tests` and the other checks also pass. The per-test
+  log now names each test as it starts, so a future stall is attributable to a test instead of being
+  an anonymous timeout.
+
+#### Residual risk: a third mechanism, proven but not bounded
+
+A third silent-hang mechanism was found and reproduced after that green run, and it is **not** fixed
+here. It is recorded so the next agent does not have to rediscover it:
+
+- `kotlinx.coroutines.test.advanceUntilIdle()` never terminates when work keeps rescheduling itself
+  in virtual time. Reproduced in isolation: a scope whose coroutine delays and then re-arms itself
+  makes `advanceUntilIdle()` spin until the step is killed, with no test result.
+- The production code contains exactly that shape. `DefaultSyncController.scheduleAdoptionRetry`
+  (`core/sync/src/commonMain/.../SyncEngine.kt:604-613`) delays `retryDelayMillis(...)` and then calls
+  `requestSync(SyncTrigger.Periodic)`; a cycle whose adoption keeps failing re-arms it indefinitely.
+- It becomes reachable in tests that *both* confine a real `AppGraph` to the test scheduler and then
+  call `advanceUntilIdle()`. Exactly one shared test does both:
+  `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur` (confined via
+  `confinedGraphDependencies`, `advanceUntilIdle()` at the call site). It is therefore the most
+  probable remaining culprit for the `35125459030` stall.
+
+Why it is not fixed in this round: the retry is production behaviour that `§9` requires, so bounding
+it changes product behaviour and belongs to a production story rather than to test scaffolding;
+`attemptCount` already saturates at `MAX_RETRYABLE_ATTEMPTS` for the *outbox* path, but the adoption
+retry re-arms on its own schedule. Attempts to reproduce the stall through that test under three
+CPUs passed 30/30, so the local reproduction of the *trigger* was not achieved and a fix could not be
+validated. Bounding it is a candidate for a follow-up story, and the per-test log added in `a900571`
+is what will confirm the culprit on the next CI stall.
 
 ### CI optimization work in the same round
 

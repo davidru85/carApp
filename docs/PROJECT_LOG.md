@@ -64,13 +64,21 @@
 - **Documents touched:** `docs/handoff-E3-03.md` and this log. Code: `shared/src/commonTest/**`
   (`FlowExpectation.kt`, its test, and the three test classes that held the polls).
 - **Verification:** RED `cd41ed7` (120 s silent hang); GREEN `9c7c51f` (fails in ~8 s naming the
-  expectation); `:shared:testAndroidHostTest` 173 tests pass; `:shared:iosSimulatorArm64Test` pass;
-  provider-free host pass; 6/6 repeated combined runs; the exact `shared-tests` steps pass; the
-  quality gates and the complete non-instrumented command pass with `--rerun-tasks`, 397 tasks, and
-  `contractCheck` reporting 30 `[PASS]` and zero `PENDING`. CI run `35123138250` is the post-change
-  confirmation.
+  expectation); REFACTOR `583f077` (real-time poll bound); `a900571` adds per-test log lines.
+  `:shared:testAndroidHostTest` 173 tests pass; `:shared:iosSimulatorArm64Test` pass; provider-free
+  host pass; 6/6 repeated combined runs; the exact `shared-tests` steps pass; the quality gates and
+  the complete non-instrumented command pass with `--rerun-tasks`, 397 tasks, and `contractCheck`
+  reporting 30 `[PASS]` and zero `PENDING`. CI `35127303504` on `a900571` is **fully green**: all ten
+  required checks pass, including `shared-tests` and `provider-decoupling`. The earlier
+  `35125459030` stalled again, which is why a third mechanism remains open.
 - **Follow-ups / risks:** no production behaviour changed, so `E3-17` / `D-172` remains the separate
-  and still-open production graph-close hazard. Owner review of pull request #69 remains required.
+  and still-open production graph-close hazard. A **third** stall mechanism is proven but not fixed:
+  `advanceUntilIdle()` never terminates when `DefaultSyncController.scheduleAdoptionRetry`
+  (`SyncEngine.kt:604-613`, a self-re-arming delay-then-`requestSync` loop) keeps rescheduling in
+  virtual time, and `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur` is the one
+  shared test that both confines a real `AppGraph` to the test scheduler and drains it. Bounding the
+  retry is production behaviour, so it belongs to its own story; the per-test log from `a900571` will
+  name the culprit on the next stall. Owner review of pull request #69 remains required.
 
 ### 2026-09-16 — E3-03 CI lifecycle and optimization follow-up
 
