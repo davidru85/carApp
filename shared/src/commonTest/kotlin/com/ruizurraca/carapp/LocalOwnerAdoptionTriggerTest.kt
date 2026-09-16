@@ -117,16 +117,21 @@ class LocalOwnerAdoptionTriggerTest {
             adoption.launchIn(backgroundScope)
 
             connectivity.set(true)
-            while (authClient.anonymousSignInCalls < 1) yield()
+            awaitCondition("the first connectivity acquisition") { authClient.anonymousSignInCalls >= 1 }
             // Drive real offline-to-online edges until the retry lands. A conflated StateFlow can
-            // swallow one toggle; an observation that died cannot answer any of them, and the
-            // bounded test timeout is what separates the two.
-            while (authClient.anonymousSignInCalls < 2) {
-                connectivity.set(false)
-                yield()
-                connectivity.set(true)
-                yield()
-            }
+            // swallow one toggle; an observation that died cannot answer any of them, which the
+            // bounded poll is what separates.
+            awaitCondition(
+                expectation = "the connectivity retry after a failed attempt",
+                attempt = {
+                    // Each toggle needs its own scheduling round, or the observer never sees the
+                    // offline edge that makes the returning connectivity a new trigger.
+                    connectivity.set(false)
+                    yield()
+                    connectivity.set(true)
+                    yield()
+                },
+            ) { authClient.anonymousSignInCalls >= 2 }
 
             assertEquals(
                 2,
@@ -153,11 +158,13 @@ class LocalOwnerAdoptionTriggerTest {
 
             // The connectivity trigger fires first and fails, which is attempt one and warning one.
             adoption.launchIn(backgroundScope)
-            while (authClient.anonymousSignInCalls < 1) yield()
+            awaitCondition("the failing connectivity attempt") { authClient.anonymousSignInCalls >= 1 }
 
             adoption.onLocalOwnerWriteCommitted()
-            while (authClient.anonymousSignInCalls < 2) yield()
-            while (logger.entries.count { entry -> entry.level == LogLevel.WARN } < 2) yield()
+            awaitCondition("the write-launched acquisition attempt") { authClient.anonymousSignInCalls >= 2 }
+            awaitCondition("both trigger failures to be reported") {
+                logger.entries.count { entry -> entry.level == LogLevel.WARN } >= 2
+            }
 
             assertTrue(backgroundScope.isActive, "an unexpected provider fault never cancels the graph scope")
             assertEquals(
@@ -193,7 +200,9 @@ class LocalOwnerAdoptionTriggerTest {
             val harness = AppGraphTestHarness(graph, backgroundScope)
 
             try {
-                while (authClient.anonymousSignInCalls < 1) yield()
+                awaitCondition("the initial acquisition before the fuel write") {
+                    authClient.anonymousSignInCalls >= 1
+                }
 
                 val form = graph.fuelEntryFormStateHolder(harness.scope, VEHICLE_ID, entryId = null)
                 harness.collect(form.state)
@@ -205,7 +214,9 @@ class LocalOwnerAdoptionTriggerTest {
                 authClient.authState.awaitState(
                     "anonymous session acquired after fuel write",
                 ) { state -> state is AuthState.SignedIn }
-                while (database.sentinelRowCount() > 0L) yield()
+                awaitCondition("every sentinel row to be adopted after the fuel write") {
+                    database.sentinelRowCount() == 0L
+                }
 
                 assertEquals(2, authClient.anonymousSignInCalls, "the fuel entry write re-evaluated acquisition")
                 assertEquals(0L, database.sentinelRowCount(), "and adoption rewrote every sentinel row")

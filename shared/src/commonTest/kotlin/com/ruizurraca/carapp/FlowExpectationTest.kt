@@ -167,7 +167,11 @@ class FlowExpectationTest {
 
             val failure =
                 assertFailsWith<AssertionError> {
-                    source.awaitState("cleanup stays bounded", timeout = 50.milliseconds) { false }
+                    source.awaitState(
+                        expectation = "cleanup stays bounded",
+                        timeout = 50.milliseconds,
+                        cleanupTimeout = 2.seconds,
+                    ) { false }
                 }
 
             assertTrue(

@@ -75,7 +75,7 @@ class AccountConversionAppGraphTest {
                     ),
                 )
                 assertEquals(PERMANENT_UID, (authClient.authState.value as AuthState.SignedIn).session.uid)
-                while (remote.pullCalls == 0) yield()
+                awaitCondition("the conversion pull to start") { remote.pullCalls > 0 }
                 advanceUntilIdle()
 
                 assertEquals(AccountConversionPhase.SESSION_SWITCHED, store.load()?.phase)
