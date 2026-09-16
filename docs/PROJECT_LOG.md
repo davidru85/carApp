@@ -38,6 +38,32 @@
 
 ## Entries
 
+### 2026-09-16 — E3-03 eighteenth owner-review round: the hardcoded outbox-id assertion
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`; no new decision
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** `LocalOwnerAdoptionTriggerTest
+  .aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed` no longer asserts a
+  hardcoded fuel-entry id. It reads the created entry back from the database with
+  `selectActiveFuelEntriesByVehicle`, asserts exactly one entry exists, and asserts that entry has an
+  outbox row.
+- **Why:** the assertion named `FIRST_GENERATED_ID`, the `FakeUuidGenerator` counter-1 value, and the
+  test injected one generator into the whole graph. `SyncEngine.runCycle` allocates
+  `CycleId(uuidGenerator.newId())` before doing any work, so whenever a sync cycle ran before
+  `form.save()` the repository's entry received counter 2 and the assertion failed on an id nothing
+  had promised. Confirmed by forcing a cycle first: the entry id was `...0002` while the outbox row
+  existed. This is the test-only defect that failed `shared-tests` on `f9e04c8`; it is not related to
+  the `D-175` stall work or the `D-176` timeout change, and it is a different failure shape - an
+  assertion, not a step timeout.
+- **Documents touched:** `docs/handoff-E3-03.md` and this log. Code:
+  `shared/src/commonTest/kotlin/com/ruizurraca/carapp/LocalOwnerAdoptionTriggerTest.kt`.
+- **Verification:** the reworked test passes 8/8 repeated `--rerun-tasks` runs; `:shared`
+  `testAndroidHostTest` and `iosSimulatorArm64Test` pass; `ktlintCheck`, `detekt`,
+  `architectureCheck`, `contractCheck` and `koverVerify` pass.
+- **Follow-ups / risks:** no production behaviour changed, so `E3-17` / `D-172` remains the separate
+  and still-open production graph-close hazard, and the third `D-175` stall mechanism stays open.
+
 ### 2026-09-16 — D-176: the CI job hang guard was cancelling healthy work
 
 - **Type:** decision

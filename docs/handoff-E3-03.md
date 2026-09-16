@@ -76,6 +76,17 @@
   `shared-tests` (its fifth consecutive green) and `ios-simulator-build`, which completed normally in
   17.9 minutes. That run is the direct evidence the guard no longer fires on healthy work: 17.9
   minutes is 89% of the old 20-minute cap, and the previous run was cancelled at 20m50s.
+- CI `35139557705` on `f9e04c8` then failed `shared-tests` by **assertion**, and it was a genuine
+  test defect rather than a timeout: `LocalOwnerAdoptionTriggerTest
+  .aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed` asserted
+  `hasOutboxRow("FUEL_ENTRY", FIRST_GENERATED_ID)`, a hardcoded `FakeUuidGenerator` counter-1 value.
+  `SyncEngine.runCycle` allocates `CycleId(uuidGenerator.newId())` from the same generator before it
+  does any work, so whenever a cycle runs before `form.save()` the repository's entry receives
+  counter 2 instead of counter 1 and the assertion fails on an id that was never promised. Proven
+  directly: with a cycle forced first, the entry id is `...0002` and the outbox row exists. The
+  assertion now reads the created entry back through `selectActiveFuelEntriesByVehicle` and asserts
+  that exactly one entry exists and that its outbox row exists, which is the behaviour the test is
+  named for. Verified by 8/8 repeated runs of the test, both shared suites, and the quality gates.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the

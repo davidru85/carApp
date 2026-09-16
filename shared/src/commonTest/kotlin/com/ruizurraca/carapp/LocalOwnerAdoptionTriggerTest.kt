@@ -221,8 +221,19 @@ class LocalOwnerAdoptionTriggerTest {
                 assertEquals(2, authClient.anonymousSignInCalls, "the fuel entry write re-evaluated acquisition")
                 assertEquals(0L, database.sentinelRowCount(), "and adoption rewrote every sentinel row")
                 assertTrue(database.hasOutboxRow("VEHICLE", VEHICLE_ID), "the vehicle is enqueued")
+                // Read the created entry back instead of naming its id. The sync engine allocates its
+                // own cycle correlation from the same `UuidGenerator`, so which counter value the
+                // repository receives depends on whether a cycle ran first, and that ordering is
+                // timing-dependent. The assertion is that the write's entry is enqueued, not that it
+                // happened to receive the first generated id.
+                val createdFuelEntryIds = database.fuelEntryIdsForVehicle(VEHICLE_ID)
+                assertEquals(
+                    1,
+                    createdFuelEntryIds.size,
+                    "the write created exactly one fuel entry for the vehicle",
+                )
                 assertTrue(
-                    database.hasOutboxRow("FUEL_ENTRY", FIRST_GENERATED_ID),
+                    database.hasOutboxRow("FUEL_ENTRY", createdFuelEntryIds.single()),
                     "and so is the fuel entry the write created",
                 )
                 form.close()
@@ -258,9 +269,6 @@ class LocalOwnerAdoptionTriggerTest {
 
     private companion object {
         const val VEHICLE_ID = "vehicle-1"
-
-        /** `FakeUuidGenerator` is deterministic, and the seeded vehicle consumed none of it. */
-        const val FIRST_GENERATED_ID = "00000000-0000-4000-8000-000000000001"
         val AWAIT_TIMEOUT = 10.seconds
     }
 }
@@ -352,3 +360,6 @@ private suspend fun AppDatabase.hasOutboxRow(
     entityType: String,
     entityId: String,
 ): Boolean = databaseQueries.selectOutboxByEntity(entityType, entityId).awaitAsList().isNotEmpty()
+
+private suspend fun AppDatabase.fuelEntryIdsForVehicle(vehicleId: String): List<String> =
+    databaseQueries.selectActiveFuelEntriesByVehicle(vehicleId).awaitAsList().map { it.id }
