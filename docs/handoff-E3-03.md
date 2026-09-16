@@ -34,12 +34,33 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-15.
+- Date: 2026-09-16.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the sixteenth owner-review correction round is REFACTOR complete;
-  the measured parallelism policy and CI evidence are recorded in the current repository head. Pull
-  request #69 remains open against `main`; it is not merged and MUST NOT be merged on agent
-  judgement.
+- Current phase and latest commit: the seventeenth owner-review correction round is REFACTOR
+  complete at `d0fea48`; the round-17 fix, its diagnostics and the residual risk are recorded in the
+  repository head. Pull request #69 remains open against `main`; it is not merged and MUST NOT be
+  merged on agent judgement.
+- Completed since the previous checkpoint: the `shared-tests` silent stall was bounded in two proven
+  mechanisms (`FlowExpectation` polls gained a real-time ceiling instead of hanging, `awaitState` no
+  longer races a foreign scope during teardown with `UnboundedCoroutineJoin`), and `a900571` added
+  per-test log lines so a future stall names its test instead of dying anonymously. A third mechanism
+  was then proven and is recorded as residual risk rather than carried silently: `advanceUntilIdle()`
+  never terminates while `DefaultSyncController.scheduleAdoptionRetry` self-re-arms in virtual time,
+  reachable in the one shared test that both confines a real `AppGraph` to the test scheduler and
+  drains it. Bounding it changes production behaviour, so it belongs to its own story.
+- Verification evidence: `:shared:testAndroidHostTest` 173 tests pass, `:shared:iosSimulatorArm64Test`
+  passes, provider-free host passes, the complete non-instrumented command passes with `--rerun-tasks`
+  (397 tasks) and `contractCheck` reports 30 `[PASS]` and zero `PENDING`. CI `35129959669` on
+  `d0fea48` is **fully green**: all ten required checks pass, including `shared-tests` and
+  `provider-decoupling`; CI `35127303504` on `a900571` was green the same way.
+- Known failures: none on the required checks. The residual third stall mechanism above is open, is
+  not a red check, and its trigger was not reproduced locally (30/30 passes with a bounded CPU count).
+- Open decisions or blockers: owner review of pull request #69 is the outstanding gate. `E3-17` /
+  `D-172` remains the separate, still-open production graph-close hazard and is unchanged by this
+  round.
+- Exact next step: the owner reviews pull request #69; if a `shared-tests` stall recurs, the per-test
+  log from `a900571` names the responsible test, and the candidate is
+  `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the
@@ -97,11 +118,6 @@
   `architectureCheck`, `contractCheck`, `:build-logic:convention:test` and `koverVerify` pass with
   397 executed tasks; `contractCheck` reports all 19 assertions `[PASS]`, 175 decisions, 175 ADRs and
   zero `PENDING`.
-- Known failures: none. The `shared-tests` step-timeout stall recorded here earlier is **fixed** in
-  round 17 (see below): the unbounded `awaitState` cleanup and the eight bare `while (…) yield()`
-  polls are bounded and now fail by name. CI run `35123138250` is the pending post-change
-  confirmation; no local failure remains. The prior Xcode-license blocker is resolved too, and all
-  required iOS simulator runs completed locally.
 - Verification evidence for the fifteenth round: YAML parsing succeeds. `contractCheck` and
   `:build-logic:convention:test` pass, including rejection tests for omitted and stale Native
   exclusions. The exact workflow invocations pass locally: Android application plus KMP host tests
@@ -130,9 +146,6 @@
   thresholds 6s. `provider-decoupling` completed in 4m59s: provider-free Android host tests 1m21s
   and provider-free Kotlin/Native simulator tests 3m06s. Both protected jobs are comfortably below
   their 20-minute limits.
-- Open decisions or blockers: none in code and no new owner decision. `E3-17` / `D-172` continues to
-  own production graph-close safety.
-- Exact next step: owner review of pull request #69; no merge was performed.
 
 ## Scope Completed
 
