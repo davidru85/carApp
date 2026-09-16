@@ -18,41 +18,42 @@ import kotlinx.coroutines.yield
 import kotlin.test.fail
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 private val GRAPH_STATE_EXPECTATION_TIMEOUT = 5.seconds
 
 /**
- * Scheduling rounds a poll may consume before the expectation fails. Each round is one `yield()`,
- * so this is a bound on interleavings, not on wall time: a cooperative effect lands in a handful of
- * rounds, and an effect that never arrives fails by name instead of spinning.
- */
-private const val CONDITION_MAX_ATTEMPTS = 10_000
-
-/**
  * Polls [condition] until it holds, yielding between attempts, and fails the named expectation once
- * [maxAttempts] scheduling rounds elapse.
+ * [timeout] of real time elapses.
  *
  * Replaces a bare `while (condition) yield()`. That loop is unbounded and, because it never suspends
  * for real, it also never lets `runTest`'s timeout fire: an effect that never arrives spins a CPU
- * core at 100% until the CI step is killed with no test result and no diagnosis. Staying on the
- * caller's dispatcher is deliberate -- `yield()` is what lets the scheduler-dispatched work that
- * produces the awaited effect run, so the loop must not move to another dispatcher.
+ * core at 100% until the CI step is killed with no test result and no diagnosis.
+ *
+ * Two properties are deliberate. The bound is a real-time deadline, not an iteration count, because
+ * these conditions wait on asynchronous SQLite work that needs real CPU: a count would expire on a
+ * slow runner while the awaited work was still making progress. The poll stays on the caller's
+ * dispatcher, because `yield()` is what lets the scheduler-dispatched work that produces the awaited
+ * effect run; `withTimeoutOrNull` could not be used here, since under `runTest` its delay is virtual
+ * and would expire before that real work is scheduled.
  *
  * [attempt] runs before each round's `yield()`, for the expectations that have to drive the effect
  * rather than merely observe it.
  */
 internal suspend fun awaitCondition(
     expectation: String,
-    maxAttempts: Int = CONDITION_MAX_ATTEMPTS,
+    timeout: Duration = GRAPH_STATE_EXPECTATION_TIMEOUT,
     attempt: suspend () -> Unit = {},
     condition: suspend () -> Boolean,
 ) {
-    repeat(maxAttempts) {
-        if (condition()) return
+    val deadline = TimeSource.Monotonic.markNow() + timeout
+    while (!condition()) {
+        if (deadline.hasPassedNow()) {
+            fail("Timed out after $timeout waiting for $expectation")
+        }
         attempt()
         yield()
     }
-    fail("Waited $maxAttempts scheduling rounds for $expectation; the expected effect never arrived")
 }
 
 /**
