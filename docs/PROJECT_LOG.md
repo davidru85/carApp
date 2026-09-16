@@ -38,12 +38,13 @@
 
 ## Entries
 
-### 2026-09-16 — E3-03 seventeenth owner-review round: the `shared-tests` stall fixed
+### 2026-09-16 — E3-03 seventeenth owner-review round: two `shared-tests` stall mechanisms fixed
 
 - **Type:** correction
 - **Story / Decision:** `E3-03`; no new decision
 - **Author:** Claude, on behalf of David Ruiz
-- **What changed:** the silent `shared-tests` step timeout is fixed in shared test code. Two constructs
+- **What changed:** two of the silent `shared-tests` step-timeout mechanisms are fixed in shared test
+  code; a third is proven and recorded as residual risk (see below). The two fixed constructs
   made a bounded assertion incapable of reporting its own failure: `awaitState` awaited its collector
   with an unbounded `cancelAndJoin`, and eight bare `while (condition) yield()` polls never suspend
   for real, so `runTest`'s timeout could not fire. The join is now bounded (30 s) and fails by name;
