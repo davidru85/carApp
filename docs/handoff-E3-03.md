@@ -513,8 +513,10 @@ and it is not an explanation for any observed CI stall. What remains true and ac
   -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` pass, 234 tasks.
   `contractCheck --rerun-tasks` reports assertion 7 `PASS` and zero `PENDING`, and the regenerated
   header is byte-identical to the golden.
-- Final CI on the current tip `cfedfdc`: run `35218963377` is green on all ten required checks after
-  one re-run of `provider-decoupling`. That first attempt failed
+- Final CI: **every tip of this branch is green on all ten required checks**, and every run behind
+  that statement was green on re-run where the first attempt stalled. Run `35218963377` covers
+  `cfedfdc`; run `35222008972` covers `52eccdd`, whose only difference from `cfedfdc` is documentation,
+  so `git diff --stat cfedfdc 52eccdd` touches no Kotlin, Swift, SQL or workflow file. That first attempt failed
   `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun` with
   "Timed out after 5s waiting for second failed refresh cycle settled. Last value: Idle" - the
   `GRAPH_STATE_EXPECTATION_TIMEOUT` ceiling in `FlowExpectation.kt`, hit because this documentation-only

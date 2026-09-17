@@ -76,8 +76,9 @@
   `shared-tests` three times before, and 20 consecutive local runs of that module under
   `--max-workers=3` each took about 5 seconds, so this is an environment-dependent stall and not
   evidence of a regression in `E3-03` or `E3-17`. Both handoffs state the classification.
-- **Final CI:** both tips are green on all ten required checks. Run `35218963377` covers the `E3-03`
-  tip `cfedfdc` after one `provider-decoupling` re-run, whose first attempt failed
+- **Final CI:** every tip of both branches is green on all ten required checks, and the last two runs
+  needed one re-run each. Run `35218963377` covers the `E3-03` tip `cfedfdc` after one
+  `provider-decoupling` re-run, whose first attempt failed
   `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun` at the five-second
   `GRAPH_STATE_EXPECTATION_TIMEOUT` although the commit changes no Kotlin source. Run `35218978911`
   covers the `E3-17` tip `36ee3ec` after one `shared-tests` re-run, whose first attempt failed
@@ -85,9 +86,13 @@
   - the `E1-14` flake class on the test and target its handoffs already record. Both green runs are the
   evidence; neither re-run is offered as a claim that the underlying flake is fixed.
 - **Flake budget, stated plainly:** `E1-14` and `E1-17` are still open by design, so a red
-  `shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous. Three re-runs
-  were needed across these four runs, which matches what `docs/BACKLOG.md` already says about those two
-  stories and is the reason the reflex "re-run it" is not enough for future work.
+  `shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous. Across the
+  seven runs of these two tips, five single-job re-runs were needed: one `provider-decoupling` failing
+  at the five-second `GRAPH_STATE_EXPECTATION_TIMEOUT`, one `LocalOwnerAdoptionTriggerTest` failure in
+  the `E1-14` class, and three ten-minute step stalls on documentation-only commits. Local runs passed
+  every time, including a full `--rerun-tasks` sweep of both targets, which is what separates the
+  environment from the change. This matches what `docs/BACKLOG.md` already says about those two
+  stories: the reflex "re-run it" is exactly why a real regression can slip through.
 - **Follow-ups / risks:** `D-149`, `D-150` and `D-173` remain the owner's to resolve, and each still
   blocks only its own story. `E1-17`'s UI flake stayed reachable: it failed once more on 2026-09-17 in
   `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` and passed on re-run, which is why a
