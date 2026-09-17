@@ -76,9 +76,18 @@
   `shared-tests` three times before, and 20 consecutive local runs of that module under
   `--max-workers=3` each took about 5 seconds, so this is an environment-dependent stall and not
   evidence of a regression in `E3-03` or `E3-17`. Both handoffs state the classification.
-- **Final CI:** run `35215558738` is green on all ten checks for the `E3-03` tip `12294c3`, and run
-  `35215623265` is green on all ten for the `E3-17` tip `ecbaccc` after one `shared-tests` re-run.
-  Both pull requests report `MERGEABLE` and are blocked only on the owner's gated review.
+- **Final CI:** both tips are green on all ten required checks. Run `35218963377` covers the `E3-03`
+  tip `cfedfdc` after one `provider-decoupling` re-run, whose first attempt failed
+  `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun` at the five-second
+  `GRAPH_STATE_EXPECTATION_TIMEOUT` although the commit changes no Kotlin source. Run `35218978911`
+  covers the `E3-17` tip `36ee3ec` after one `shared-tests` re-run, whose first attempt failed
+  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
+  - the `E1-14` flake class on the test and target its handoffs already record. Both green runs are the
+  evidence; neither re-run is offered as a claim that the underlying flake is fixed.
+- **Flake budget, stated plainly:** `E1-14` and `E1-17` are still open by design, so a red
+  `shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous. Three re-runs
+  were needed across these four runs, which matches what `docs/BACKLOG.md` already says about those two
+  stories and is the reason the reflex "re-run it" is not enough for future work.
 - **Follow-ups / risks:** `D-149`, `D-150` and `D-173` remain the owner's to resolve, and each still
   blocks only its own story. `E1-17`'s UI flake stayed reachable: it failed once more on 2026-09-17 in
   `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` and passed on re-run, which is why a
