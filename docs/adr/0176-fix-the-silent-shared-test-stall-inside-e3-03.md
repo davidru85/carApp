@@ -103,11 +103,13 @@ the merge until the stall is provably eliminated.
 A third silent-hang mechanism is proven and **not** fixed by this decision:
 `advanceUntilIdle()` never terminates when work keeps re-arming itself in virtual time, and
 `DefaultSyncController.scheduleAdoptionRetry` (`core/sync/src/commonMain/.../SyncEngine.kt:604-613`)
-is exactly that shape (delay, then `requestSync(SyncTrigger.Periodic)`). It is reachable in
-`FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`, the one shared test that both
-confines a real `AppGraph` to the test scheduler and calls `advanceUntilIdle()`. Bounding the retry
-changes production behaviour, so it belongs to a production story; `a900571` adds per-test log lines
-so the culprit is named on the next stall. This is recorded rather than silently carried.
+is exactly that shape (delay, then `requestSync(SyncTrigger.Periodic)`). It is a proven hazard, but
+**no current shared test can reach it**: the re-arm needs a persistently failing adoption, no graph
+test can inject one, and `FuelEntryStateHolderTest` additionally runs as `LOCAL_OWNER`, for which
+`awaitAdoption()` returns `Ok` immediately. An earlier version of this note named that test as the
+reachable site; that is withdrawn. Bounding the retry changes production behaviour, so it belongs to
+a production story; `a900571` adds per-test log lines so the culprit is named on the next stall. This
+is recorded rather than silently carried.
 
 ## References
 

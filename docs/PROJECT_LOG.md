@@ -131,10 +131,13 @@
   and still-open production graph-close hazard. A **third** stall mechanism is proven but not fixed:
   `advanceUntilIdle()` never terminates when `DefaultSyncController.scheduleAdoptionRetry`
   (`SyncEngine.kt:604-613`, a self-re-arming delay-then-`requestSync` loop) keeps rescheduling in
-  virtual time, and `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur` is the one
-  shared test that both confines a real `AppGraph` to the test scheduler and drains it. Bounding the
-  retry is production behaviour, so it belongs to its own story; the per-test log from `a900571` will
-  name the culprit on the next stall. Owner review of pull request #69 remains required.
+  virtual time. Bounding the retry is production behaviour, so it belongs to its own story.
+  **Correction (round 19):** this entry first named
+  `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur` as the reachable site. That is
+  withdrawn: three graph tests call `advanceUntilIdle()`, and none can re-arm the loop, because the
+  re-arm needs a persistently failing adoption and no graph test can inject one. The mechanism is a
+  proven hazard that the current suite cannot reach, and it is not an explanation for any stall.
+  Owner review of pull request #69 remains required.
 
 ### 2026-09-16 — E3-03 CI lifecycle and optimization follow-up
 

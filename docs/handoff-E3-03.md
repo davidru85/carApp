@@ -45,22 +45,23 @@
   longer races a foreign scope during teardown with `UnboundedCoroutineJoin`), and `a900571` added
   per-test log lines so a future stall names its test instead of dying anonymously. A third mechanism
   was then proven and is recorded as residual risk rather than carried silently: `advanceUntilIdle()`
-  never terminates while `DefaultSyncController.scheduleAdoptionRetry` self-re-arms in virtual time,
-  reachable in the one shared test that both confines a real `AppGraph` to the test scheduler and
-  drains it. Bounding it changes production behaviour, so it belongs to its own story.
+  never terminates while `DefaultSyncController.scheduleAdoptionRetry` self-re-arms in virtual time.
+  It is a proven hazard but **not reachable in the current shared suite**, because no graph test can
+  inject a persistently failing adoption; see the withdrawal note in the round-17 section. Bounding
+  it changes production behaviour, so it belongs to its own story.
 - Verification evidence: `:shared:testAndroidHostTest` 173 tests pass, `:shared:iosSimulatorArm64Test`
   passes, provider-free host passes, the complete non-instrumented command passes with `--rerun-tasks`
   (397 tasks) and `contractCheck` reports 30 `[PASS]` and zero `PENDING`. CI `35129959669` on
   `d0fea48` is **fully green**: all ten required checks pass, including `shared-tests` and
   `provider-decoupling`; CI `35127303504` on `a900571` was green the same way.
-- Known failures: none on the required checks. The residual third stall mechanism above is open, is
-  not a red check, and its trigger was not reproduced locally (30/30 passes with a bounded CPU count).
+- Known failures: none on the required checks. The residual third stall mechanism above is a proven
+  hazard that no current shared test can reach, so it is not an explanation for any observed stall.
 - Open decisions or blockers: owner review of pull request #69 is the outstanding gate. `E3-17` /
   `D-172` remains the separate, still-open production graph-close hazard and is unchanged by this
   round.
 - Exact next step: the owner reviews pull request #69; if a `shared-tests` stall recurs, the per-test
-  log from `a900571` names the responsible test, and the candidate is
-  `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`.
+  log from `a900571` names the responsible test. The previously suggested candidate
+  (`FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`) is withdrawn as wrong.
 - Eighteenth round (2026-09-16): the cancelled required check on `c1fc6f0` was **not** `shared-tests`.
   That job passed in the same run (18:16:49 -> 18:23:37, its fourth consecutive green after the
   round-17 fix). The cancelled check was `ios-simulator-build`, with the annotation `The job has
@@ -306,30 +307,44 @@ sometimes never returns.
   log now names each test as it starts, so a future stall is attributable to a test instead of being
   an anonymous timeout.
 
-#### Residual risk: a third mechanism, proven but not bounded
+#### Residual risk: a third mechanism, proven but not reachable today
 
 A third silent-hang mechanism was found and reproduced after that green run, and it is **not** fixed
 here. It is recorded so the next agent does not have to rediscover it:
 
 - `kotlinx.coroutines.test.advanceUntilIdle()` never terminates when work keeps rescheduling itself
   in virtual time. Reproduced in isolation: a scope whose coroutine delays and then re-arms itself
-  makes `advanceUntilIdle()` spin until the step is killed, with no test result.
+  makes `advanceUntilIdle()` spin until the step is killed, with no test result. A `withTimeoutOrNull`
+  around it does not rescue the test either, because under `runTest` that timeout is virtual and
+  `advanceUntilIdle()` never yields the thread back to the scheduler.
 - The production code contains exactly that shape. `DefaultSyncController.scheduleAdoptionRetry`
   (`core/sync/src/commonMain/.../SyncEngine.kt:604-613`) delays `retryDelayMillis(...)` and then calls
   `requestSync(SyncTrigger.Periodic)`; a cycle whose adoption keeps failing re-arms it indefinitely.
-- It becomes reachable in tests that *both* confine a real `AppGraph` to the test scheduler and then
-  call `advanceUntilIdle()`. Exactly one shared test does both:
-  `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur` (confined via
-  `confinedGraphDependencies`, `advanceUntilIdle()` at the call site). It is therefore the most
-  probable remaining culprit for the `35125459030` stall.
+  It is the **only** self-re-arming `delay` loop in production `commonMain`.
 
-Why it is not fixed in this round: the retry is production behaviour that `§9` requires, so bounding
-it changes product behaviour and belongs to a production story rather than to test scaffolding;
-`attemptCount` already saturates at `MAX_RETRYABLE_ATTEMPTS` for the *outbox* path, but the adoption
-retry re-arms on its own schedule. Attempts to reproduce the stall through that test under three
-CPUs passed 30/30, so the local reproduction of the *trigger* was not achieved and a fix could not be
-validated. Bounding it is a candidate for a follow-up story, and the per-test log added in `a900571`
-is what will confirm the culprit on the next CI stall.
+> **Correction 2026-09-16 (round 19).** The first version of this note named
+> `FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur` as "the one shared test that both
+> confines a real `AppGraph` to the test scheduler and calls `advanceUntilIdle()`, and therefore the
+> most probable remaining culprit for the `35125459030` stall". **That is wrong on both counts, and it
+> is withdrawn.** Three graph tests call `advanceUntilIdle()` (`FuelEntryStateHolderTest:158`,
+> `AccountConversionAppGraphTest:79`, `AppGraphCloseTest:66`), not one; and none of them can re-arm
+> the loop: the re-arm requires a *persistently failing* adoption, which requires a non-sentinel owner
+> whose `adoptRows` fails, and **no graph test can produce that** — `DefaultAppGraph` constructs
+> `LocalOwnerAdoption(dependencies, databaseHandle.database)` with no `injectedAdoptRows` argument,
+> the only failure injection lives in `LocalOwnerAdoptionFailureTest`, and that class never calls
+> `buildAppGraph`. `FuelEntryStateHolderTest` additionally uses the default `FakeOwnerContext()`,
+> which is `LOCAL_OWNER`, for which `awaitAdoption()` returns `Ok` immediately.
+
+So the mechanism is proven as a **hazard** but is **not reachable in the current shared test suite**,
+and it is not an explanation for any observed CI stall. What remains true and actionable:
+
+- No test injects a failing adoption into a real graph. The first test that does so, or any future
+  production path that re-arms a `delay` loop on `graphScope`, makes `advanceUntilIdle()`
+  non-terminating for every later test in that task.
+- Bounding it is production behaviour (the retry is required by `§9`), so it belongs to a production
+  story rather than to test scaffolding. A test-side guard would be a bounded `advanceUntilIdle`
+  helper, which is worth doing only if the owner wants that insurance; it is not required to make
+  the current suite correct.
 
 ### CI optimization work in the same round
 
