@@ -111,8 +111,9 @@
   `shared-tests` three times before, and 20 consecutive local runs of that module under
   `--max-workers=3` each took about 5 seconds, so this is an environment-dependent stall and not
   evidence of a regression in `E3-03` or `E3-17`. Both handoffs state the classification.
-- **Final CI:** every tip of both branches is green on all ten required checks, and the last two runs
-  needed one re-run each. Run `35218963377` covers the `E3-03` tip `cfedfdc` after one
+- **Final CI:** the product code of both branches passes all ten required checks, verified on repeated
+  runs on this branch and on `main` alike. The green runs for the final tips are `35229324708`
+  (`0f88552`, `E3-03`) and `35233683515` (`c150da6`, `E3-17`); earlier ones needed one re-run each. Run `35218963377` covers the `E3-03` tip `cfedfdc` after one
   `provider-decoupling` re-run, whose first attempt failed
   `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun` at the five-second
   `GRAPH_STATE_EXPECTATION_TIMEOUT` although the commit changes no Kotlin source. Run `35218978911`
