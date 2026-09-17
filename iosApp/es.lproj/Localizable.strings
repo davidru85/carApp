@@ -102,6 +102,9 @@
 "consumption_unavailable" = "El consumo no está disponible.";
 
 "diagnostics_title" = "Diagnóstico";
+"sync_database" = "Base de datos de sincronización";
+"empty_sync_diagnostics" = "No hay filas de sincronización";
+"refresh_sync_diagnostics" = "Actualizar diagnóstico de sincronización";
 "diagnostics_button" = "Diagnóstico";
 
 "anonymous_reminder_title" = "Tus datos solo existen en este dispositivo";

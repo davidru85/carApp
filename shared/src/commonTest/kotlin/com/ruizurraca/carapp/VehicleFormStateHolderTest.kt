@@ -1,9 +1,13 @@
 package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
+import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -14,9 +18,14 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.shared.testing.testAppProviders
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -24,8 +33,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class VehicleFormStateHolderTest {
     @Test
     fun savePersistsACompletePendingVehicleForTheCurrentOwner() =
@@ -41,6 +52,7 @@ class VehicleFormStateHolderTest {
                             defaultDependencies.copy(
                                 databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = false),
                             ),
                         ),
                 )
@@ -91,6 +103,7 @@ class VehicleFormStateHolderTest {
                             defaultDependencies.copy(
                                 databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                connectivityObserver = FakeConnectivityObserver(initiallyOnline = false),
                             ),
                         ),
                 )
@@ -141,6 +154,7 @@ class VehicleFormStateHolderTest {
     @Test
     fun savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits() =
         runTest {
+            val crashes = mutableListOf<AppError>()
             val defaultDependencies = confinedGraphDependencies()
             val databaseHandle = defaultDependencies.databaseFactory.create()
             val database = databaseHandle.database
@@ -162,6 +176,17 @@ class VehicleFormStateHolderTest {
                                 databaseFactory = fixedDatabaseFactory(databaseHandle),
                                 ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
                                 remoteSyncSource = remote,
+                                crashReporter =
+                                    object : CrashReporter {
+                                        override fun recordNonFatal(
+                                            error: AppError,
+                                            fields: Map<String, String>,
+                                        ) {
+                                            crashes += error
+                                        }
+
+                                        override fun setEnabled(enabled: Boolean) = Unit
+                                    },
                             ),
                         ),
                 )
@@ -175,13 +200,76 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle local commit finished") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
-
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle push cycle settled",
+                    expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                )
+                assertEquals(emptyList(), crashes)
                 val call = remote.pushCalls.single()
                 assertEquals("anonymous-user", call.first.value)
                 assertEquals(EntityType.VEHICLE, call.second.entityType)
                 assertEquals("00000000-0000-4000-8000-000000000001", call.second.entityId.value)
                 assertEquals(1, call.second.schemaVersion)
             } finally {
+                harness.close()
+            }
+        }
+
+    @Test
+    fun visibleRemotePushDoesNotMeanThePostWriteSyncCycleHasSettled() =
+        runTest {
+            val releasePull = CompletableDeferred<Unit>()
+            val defaultDependencies = confinedGraphDependencies()
+            val databaseHandle = defaultDependencies.databaseFactory.create()
+            val remote =
+                RecordingRemoteSyncSource(
+                    onPush = { _, _ -> },
+                    onPull = { releasePull.await() },
+                )
+            val graph =
+                buildAppGraph(
+                    isDebugBuild = true,
+                    providers =
+                        testAppProviders(
+                            defaultDependencies.copy(
+                                databaseFactory = fixedDatabaseFactory(databaseHandle),
+                                ownerContext = fixedOwnerContext(OwnerId("anonymous-user")),
+                                remoteSyncSource = remote,
+                            ),
+                        ),
+                )
+            val harness = AppGraphTestHarness(graph, backgroundScope)
+
+            try {
+                val holder = graph.vehicleFormStateHolder(harness.scope, vehicleId = null)
+                holder.setName("Roadster")
+                holder.save()
+                holder.state.awaitState("vehicle save completed before blocked pull") { state ->
+                    state.savedVehicleId != null && !state.isSaving
+                }
+                remote.pushCallsFlow.awaitState("remote push visible during active cycle") { calls ->
+                    calls.size == 1
+                }
+                assertEquals(SyncStatus.Syncing, graph.syncController().status.value)
+
+                val settled =
+                    async {
+                        graph.awaitSyncCycleSettled(
+                            expectation = "post-write sync cycle settled",
+                            expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                        )
+                    }
+                runCurrent()
+
+                assertTrue(
+                    settled.isActive,
+                    "observing the remote push must not let teardown proceed while pull is blocked",
+                )
+
+                releasePull.complete(Unit)
+                settled.await()
+            } finally {
+                releasePull.complete(Unit)
                 harness.close()
             }
         }
@@ -218,6 +306,10 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle outbox payload saved") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle payload push cycle settled",
+                    expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                )
 
                 val snapshot = remote.pushCalls.single().second
                 val json = Json.parseToJsonElement(snapshot.json).jsonObject
@@ -257,10 +349,15 @@ class VehicleFormStateHolderTest {
                 holder.state.awaitState("vehicle remote ack applied") { state ->
                     state.savedVehicleId != null && !state.isSaving
                 }
+                graph.awaitSyncCycleSettled(
+                    expectation = "vehicle acknowledgement cycle settled",
+                    expectedRemoteEffect = { remote.pushCalls.size == 1 },
+                    expectedPersistedState = { database.hasSyncedVehicleWithoutOutbox(VEHICLE_ID) },
+                )
 
                 val vehicle =
                     database.databaseQueries
-                        .selectVehicleById("00000000-0000-4000-8000-000000000001")
+                        .selectVehicleById(VEHICLE_ID)
                         .awaitAsOneOrNull()
                 assertNotNull(vehicle)
                 assertEquals("SYNCED", vehicle.syncState)
@@ -344,18 +441,28 @@ class VehicleFormStateHolderTest {
         }
 }
 
+private suspend fun AppDatabase.hasSyncedVehicleWithoutOutbox(vehicleId: String): Boolean {
+    val vehicle = databaseQueries.selectVehicleById(vehicleId).awaitAsOneOrNull()
+    val outbox = databaseQueries.selectOutboxByEntity("VEHICLE", vehicleId).awaitAsOneOrNull()
+    return vehicle?.syncState == "SYNCED" && outbox == null
+}
+
+private const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
+
 private class RecordingRemoteSyncSource(
+    private val onPull: suspend () -> Unit = {},
     private val onPush: suspend (OwnerId, EntitySnapshot) -> Unit,
 ) : RemoteSyncSource {
-    private val recordedPushCalls = mutableListOf<Pair<OwnerId, EntitySnapshot>>()
-    val pushCalls: List<Pair<OwnerId, EntitySnapshot>> get() = recordedPushCalls.toList()
+    private val recordedPushCalls = MutableStateFlow<List<Pair<OwnerId, EntitySnapshot>>>(emptyList())
+    val pushCallsFlow: Flow<List<Pair<OwnerId, EntitySnapshot>>> = recordedPushCalls
+    val pushCalls: List<Pair<OwnerId, EntitySnapshot>> get() = recordedPushCalls.value
 
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
     ): Outcome<RemoteAck, RemoteError> {
         onPush(ownerId, snapshot)
-        recordedPushCalls += ownerId to snapshot
+        recordedPushCalls.value += ownerId to snapshot
         return Outcome.Ok(
             RemoteAck(
                 entityType = snapshot.entityType,
@@ -370,5 +477,8 @@ private class RecordingRemoteSyncSource(
         entityType: EntityType,
         cursor: RemoteCursor,
         limit: Int,
-    ): Outcome<RemotePage, RemoteError> = Outcome.Ok(RemotePage(emptyList(), cursor, hasMore = false))
+    ): Outcome<RemotePage, RemoteError> {
+        onPull()
+        return Outcome.Ok(RemotePage(emptyList(), cursor, hasMore = false))
+    }
 }

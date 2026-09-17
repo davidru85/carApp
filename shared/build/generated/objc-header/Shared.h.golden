@@ -1234,9 +1234,11 @@ __attribute__((swift_name("SwiftAppGraph")))
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("SyncStateHolder")))
 @interface SharedSyncStateHolder : SharedBase
+@property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> debugLines __attribute__((swift_name("debugLines")));
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
 - (void)clearMessage __attribute__((swift_name("clearMessage()")));
 - (void)close __attribute__((swift_name("close()")));
+- (void)refreshDebug __attribute__((swift_name("refreshDebug()")));
 - (void)requestSyncReason:(SharedSyncTrigger *)reason __attribute__((swift_name("requestSync(reason:)")));
 - (void)retryFailed __attribute__((swift_name("retryFailed()")));
 @end

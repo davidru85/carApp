@@ -351,7 +351,8 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   attemptCount = 0,
   nextAttemptAt = 0,
   lastError = NULL,
-  lastErrorCode = NULL;
+  lastErrorCode = NULL,
+  cycleId = NULL;
 
 confirmVehiclePush:
 UPDATE vehicle
@@ -367,6 +368,197 @@ DELETE FROM outbox
 WHERE entityType = 'VEHICLE'
   AND entityId = :entityId
   AND localRevision = :pushedLocalRevision;
+
+selectDueOutbox:
+SELECT outbox.*
+FROM outbox
+LEFT JOIN vehicle ON outbox.entityType = 'VEHICLE' AND vehicle.id = outbox.entityId
+LEFT JOIN fuel_entry ON outbox.entityType = 'FUEL_ENTRY' AND fuel_entry.id = outbox.entityId
+WHERE outbox.nextAttemptAt <= :now
+  AND (outbox.entityType != 'VEHICLE'
+    OR outbox.entityId NOT IN (SELECT id FROM vehicle WHERE syncState = 'FAILED_POISONED'))
+  AND (outbox.entityType != 'FUEL_ENTRY'
+    OR outbox.entityId NOT IN (SELECT id FROM fuel_entry WHERE syncState = 'FAILED_POISONED'))
+ORDER BY
+  CASE
+    WHEN outbox.entityType = 'VEHICLE' AND COALESCE(vehicle.deleted, 0) = 0 THEN 0
+    WHEN outbox.entityType = 'FUEL_ENTRY' AND COALESCE(fuel_entry.deleted, 0) = 0 THEN 1
+    WHEN outbox.entityType = 'FUEL_ENTRY' THEN 2
+    ELSE 3
+  END ASC,
+  outbox.seq ASC
+LIMIT :rowLimit;
+
+markVehicleSyncing:
+UPDATE vehicle SET syncState = 'SYNCING'
+WHERE id = :entityId
+  AND localRevision = :pushedLocalRevision
+  AND syncState != 'FAILED_POISONED';
+
+markFuelEntrySyncing:
+UPDATE fuel_entry SET syncState = 'SYNCING'
+WHERE id = :entityId
+  AND localRevision = :pushedLocalRevision
+  AND syncState != 'FAILED_POISONED';
+
+confirmFuelEntryPush:
+UPDATE fuel_entry
+SET serverUpdatedAt = :serverUpdatedAt,
+  syncState = CASE
+    WHEN localRevision = :pushedLocalRevision THEN 'SYNCED'
+    ELSE syncState
+  END
+WHERE id = :entityId;
+
+deleteConfirmedFuelEntryOutbox:
+DELETE FROM outbox
+WHERE entityType = 'FUEL_ENTRY'
+  AND entityId = :entityId
+  AND localRevision = :pushedLocalRevision;
+
+recordOutboxFailure:
+UPDATE outbox
+SET attemptCount = :attemptCount,
+  nextAttemptAt = :nextAttemptAt,
+  lastError = :lastError,
+  lastErrorCode = :lastErrorCode,
+  cycleId = :cycleId
+WHERE entityType = :entityType AND entityId = :entityId
+  AND localRevision = :pushedLocalRevision;
+
+markVehiclePushFailed:
+UPDATE vehicle SET syncState = :syncState
+WHERE id = :entityId AND localRevision = :pushedLocalRevision;
+
+markFuelEntryPushFailed:
+UPDATE fuel_entry SET syncState = :syncState
+WHERE id = :entityId AND localRevision = :pushedLocalRevision;
+
+selectSyncCursor:
+SELECT * FROM sync_cursor WHERE entityType = :entityType;
+
+upsertSyncCursor:
+INSERT INTO sync_cursor(entityType, lastServerUpdatedAt, lastDocumentId)
+VALUES (:entityType, :lastServerUpdatedAt, :lastDocumentId)
+ON CONFLICT(entityType) DO UPDATE SET
+  lastServerUpdatedAt = MAX(excluded.lastServerUpdatedAt, sync_cursor.lastServerUpdatedAt),
+  lastDocumentId = CASE
+    WHEN excluded.lastServerUpdatedAt > sync_cursor.lastServerUpdatedAt THEN excluded.lastDocumentId
+    WHEN excluded.lastServerUpdatedAt < sync_cursor.lastServerUpdatedAt THEN sync_cursor.lastDocumentId
+    ELSE MAX(excluded.lastDocumentId, sync_cursor.lastDocumentId)
+  END;
+
+upsertQuarantine:
+INSERT INTO quarantine(entityType, entityId, reason, schemaVersion, serverUpdatedAt, rawJson, createdAt)
+VALUES (:entityType, :entityId, :reason, :schemaVersion, :serverUpdatedAt, :rawJson, :createdAt)
+ON CONFLICT(entityType, entityId) DO UPDATE SET
+  reason = excluded.reason,
+  schemaVersion = excluded.schemaVersion,
+  serverUpdatedAt = excluded.serverUpdatedAt,
+  rawJson = excluded.rawJson;
+
+selectQuarantineByEntity:
+SELECT entityType, entityId
+FROM quarantine
+WHERE entityType = :entityType AND entityId = :entityId;
+
+markConnectivityFailuresDue:
+UPDATE outbox
+SET nextAttemptAt = :now
+WHERE lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED');
+
+resetFailedOutbox:
+UPDATE outbox
+SET attemptCount = 0,
+  nextAttemptAt = :now,
+  lastError = NULL,
+  lastErrorCode = NULL,
+  cycleId = NULL
+WHERE (entityType = 'VEHICLE' AND entityId IN (
+    SELECT id FROM vehicle WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED')
+  )) OR (entityType = 'FUEL_ENTRY' AND entityId IN (
+    SELECT id FROM fuel_entry WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED')
+  ));
+
+resetFailedVehicles:
+UPDATE vehicle SET syncState = 'PENDING'
+WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
+
+resetFailedFuelEntries:
+UPDATE fuel_entry SET syncState = 'PENDING'
+WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
+
+countPendingSyncRows:
+SELECT COUNT(*) FROM outbox
+WHERE NOT EXISTS (
+    SELECT 1 FROM vehicle
+    WHERE outbox.entityType = 'VEHICLE'
+      AND vehicle.id = outbox.entityId
+      AND vehicle.syncState = 'FAILED_POISONED'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM fuel_entry
+    WHERE outbox.entityType = 'FUEL_ENTRY'
+      AND fuel_entry.id = outbox.entityId
+      AND fuel_entry.syncState = 'FAILED_POISONED'
+  )
+  AND (
+    lastErrorCode IS NULL
+    OR lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+    OR (
+      NOT EXISTS (
+        SELECT 1 FROM vehicle
+        WHERE outbox.entityType = 'VEHICLE'
+          AND vehicle.id = outbox.entityId
+          AND vehicle.syncState = 'FAILED_RETRYABLE'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM fuel_entry
+        WHERE outbox.entityType = 'FUEL_ENTRY'
+          AND fuel_entry.id = outbox.entityId
+          AND fuel_entry.syncState = 'FAILED_RETRYABLE'
+      )
+    )
+  );
+
+countRetryableSyncRows:
+SELECT COUNT(*) FROM outbox
+WHERE lastErrorCode IS NOT NULL
+  AND lastErrorCode NOT IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+  AND ((entityType = 'VEHICLE' AND entityId IN (
+      SELECT id FROM vehicle WHERE syncState = 'FAILED_RETRYABLE'
+    )) OR (entityType = 'FUEL_ENTRY' AND entityId IN (
+      SELECT id FROM fuel_entry WHERE syncState = 'FAILED_RETRYABLE'
+    )));
+
+countPoisonedSyncRows:
+SELECT COUNT(*) FROM outbox
+WHERE (entityType = 'VEHICLE' AND entityId IN (
+    SELECT id FROM vehicle WHERE syncState = 'FAILED_POISONED'
+  )) OR (entityType = 'FUEL_ENTRY' AND entityId IN (
+    SELECT id FROM fuel_entry WHERE syncState = 'FAILED_POISONED'
+  ));
+
+selectSyncDebugOutbox:
+SELECT seq, entityType, entityId, attemptCount, nextAttemptAt, lastErrorCode, cycleId
+FROM outbox
+ORDER BY seq ASC;
+
+selectSyncDebugCursors:
+SELECT entityType, lastServerUpdatedAt, lastDocumentId
+FROM sync_cursor
+ORDER BY entityType ASC;
+
+selectSyncDebugQuarantine:
+SELECT entityType, entityId, reason, schemaVersion, serverUpdatedAt
+FROM quarantine
+ORDER BY entityType ASC, entityId ASC;
+
+selectSyncDebugVehicleStates:
+SELECT id, syncState FROM vehicle ORDER BY id ASC;
+
+selectSyncDebugFuelEntryStates:
+SELECT id, syncState FROM fuel_entry ORDER BY id ASC;
 
 selectAnonymousReminder:
 SELECT anonymousUid, lastShownIndex

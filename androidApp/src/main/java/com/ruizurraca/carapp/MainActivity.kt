@@ -111,10 +111,11 @@ internal class VehicleAppViewModel(
             localeProvider = AndroidLocaleProvider(),
             connectivityObserver = AndroidConnectivityObserver.fromSystemService(application),
         )
-    private val isDebugBuild = application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    val isDebugBuild = application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     private val graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)
     val sessionStateHolder: SessionStateHolder = graph.sessionStateHolder(scope = viewModelScope)
     val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
+    val syncStateHolder: SyncStateHolder = graph.syncStateHolder(scope = viewModelScope)
     private val formStateHolders = mutableMapOf<String, VehicleFormStateHolder>()
     private val fuelEntryListStateHolders = mutableMapOf<String, FuelEntryListStateHolder>()
     private val fuelEntryFormStateHolders = mutableMapOf<Pair<String, String?>, FuelEntryFormStateHolder>()
@@ -161,6 +162,7 @@ internal class VehicleAppViewModel(
         fuelEntryFormStateHolders.clear()
         sessionStateHolder.close()
         vehicleListStateHolder.close()
+        syncStateHolder.close()
         graph.close()
     }
 
@@ -355,6 +357,14 @@ private fun NavGraphBuilder.vehicleRoutes(
             stateHolder = viewModel.vehicleListStateHolder,
             onCreate = { navController.navigate(VehicleRoutes.CREATE) },
             onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
+            showDiagnostics = viewModel.isDebugBuild,
+            onDiagnostics = { navController.navigate(VehicleRoutes.SYNC_DIAGNOSTICS) },
+        )
+    }
+    composable(VehicleRoutes.SYNC_DIAGNOSTICS) {
+        SyncDiagnosticsScreen(
+            stateHolder = viewModel.syncStateHolder,
+            onBack = { navController.popBackStack() },
         )
     }
     vehicleCreationRoute(
@@ -540,6 +550,8 @@ private fun VehicleListScreen(
     stateHolder: VehicleListStateHolder,
     onCreate: () -> Unit,
     onOpen: (String) -> Unit,
+    showDiagnostics: Boolean,
+    onDiagnostics: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
     Scaffold(
@@ -547,6 +559,11 @@ private fun VehicleListScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.vehicle_list_title)) },
                 actions = {
+                    if (showDiagnostics) {
+                        TextButton(onClick = onDiagnostics) {
+                            Text(stringResource(R.string.sync_diagnostics))
+                        }
+                    }
                     TextButton(
                         onClick = stateHolder::refresh,
                         enabled = vehicleListGate(state.isLoading, state.message != null) != VehicleListGate.WAITING,
@@ -570,6 +587,41 @@ private fun VehicleListScreen(
             onOpen = onOpen,
             modifier = Modifier.padding(padding),
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SyncDiagnosticsScreen(
+    stateHolder: SyncStateHolder,
+    onBack: () -> Unit,
+) {
+    val lines by stateHolder.debugLines.collectAsState()
+    LaunchedEffect(stateHolder) { stateHolder.refreshDebug() }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.sync_diagnostics)) },
+                navigationIcon = {
+                    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+                },
+                actions = {
+                    TextButton(onClick = stateHolder::refreshDebug) {
+                        Text(stringResource(R.string.refresh_sync_diagnostics))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        if (lines.isEmpty()) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.empty_sync_diagnostics))
+            }
+        } else {
+            LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+                items(lines) { line -> Text(line, style = MaterialTheme.typography.bodySmall) }
+            }
+        }
     }
 }
 
@@ -1026,6 +1078,7 @@ internal object VehicleRoutes {
     const val DETAIL = "vehicles/detail/{$VEHICLE_ID}"
     const val FUEL_CREATE = "vehicles/{$VEHICLE_ID}/fuel/create"
     const val FUEL_EDIT = "vehicles/{$VEHICLE_ID}/fuel/{$ENTRY_ID}/edit"
+    const val SYNC_DIAGNOSTICS = "debug/sync"
 
     fun edit(vehicleId: String): String = "vehicles/edit/$vehicleId"
 

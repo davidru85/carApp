@@ -3,6 +3,7 @@ package com.ruizurraca.carapp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
@@ -24,6 +25,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -146,6 +148,36 @@ class FlowExpectationTest {
 
             assertTrue(cancelled)
             assertTrue(stopped)
+        }
+
+    @Test
+    fun aCollectorThatIgnoresCancellationCannotOutliveTheExpectation() =
+        runTest(timeout = 20.seconds) {
+            val source =
+                flow<Int> {
+                    try {
+                        awaitCancellation()
+                    } finally {
+                        // A collector that does not cooperate with cancellation: a real-time,
+                        // non-cancellable wait. An unbounded cleanup holds the assertion here, so the
+                        // expectation never reports its own failure and the whole test task stalls.
+                        withContext(NonCancellable + Dispatchers.Default) { delay(1.hours) }
+                    }
+                }
+
+            val failure =
+                assertFailsWith<AssertionError> {
+                    source.awaitState(
+                        expectation = "cleanup stays bounded",
+                        timeout = 50.milliseconds,
+                        cleanupTimeout = 2.seconds,
+                    ) { false }
+                }
+
+            assertTrue(
+                failure.message.orEmpty().contains("cleanup stays bounded"),
+                "the failure must name the expectation so a stuck collector is diagnosable: ${failure.message}",
+            )
         }
 
     @Test

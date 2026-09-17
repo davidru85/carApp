@@ -22,7 +22,9 @@ import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.domain.MoneyInput
 import com.ruizurraca.carapp.feature.fuel.domain.UpdateFuelEntryCommand
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -605,6 +607,24 @@ class FuelEntryStateHoldersTest {
             assertFalse(holder.isLoading.value)
             assertEquals(456L, holder.state.value.odometerKm)
         }
+
+    @Test
+    fun listSeedsItsInitialSyncStatusFromTheInjectedFlow() {
+        val repository = FakeFuelEntryRepository()
+        val holder =
+            createFuelEntryListStateHolder(
+                scope = CoroutineScope(Job()),
+                vehicleId = VEHICLE_ID.value,
+                repository = repository,
+                dispatchers = TestDispatcherProvider(),
+                syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Syncing),
+            )
+
+        // Like `VehicleListStateHolder`, the loading state renders the live injected status rather
+        // than a hardcoded idle, so both list holders behave identically during loading.
+        assertTrue(holder.state.value.isLoading)
+        assertEquals(SyncStatus.Syncing, holder.state.value.syncStatus)
+    }
 
     private fun TestScope.createCollectedListHolder(repository: FakeFuelEntryRepository): FuelEntryListStateHolder {
         val holder =

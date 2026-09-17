@@ -10,6 +10,7 @@ import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.AccountConversionOperation
 import com.ruizurraca.carapp.core.database.AccountConversionPhase
 import com.ruizurraca.carapp.core.database.AccountConversionSnapshotRow
@@ -21,7 +22,7 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
 import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteCursor
-import com.ruizurraca.carapp.core.sync.RemoteSnapshot
+import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
 import com.ruizurraca.carapp.feature.fuel.data.toAdoptionOutboxPayload
 import com.ruizurraca.carapp.feature.vehicle.data.toAdoptionOutboxPayload
@@ -31,10 +32,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.long
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.longOrNull
 
 /** Internal orchestration seam for the confirmed credential-collision flow. */
 internal fun interface AccountConversionHandler {
@@ -209,8 +208,8 @@ internal class AccountConversionCoordinator(
     private suspend fun pullAll(
         ownerId: String,
         entityType: EntityType,
-    ): Outcome<List<RemoteSnapshot>, AppError> {
-        val snapshots = mutableListOf<RemoteSnapshot>()
+    ): Outcome<List<ConversionRemoteDocument>, AppError> {
+        val snapshots = mutableListOf<ConversionRemoteDocument>()
         var cursor = RemoteCursor.INITIAL
         do {
             when (val page = remoteSyncSource.pullChanges(OwnerId(ownerId), entityType, cursor, REMOTE_PAGE_SIZE)) {
@@ -219,7 +218,16 @@ internal class AccountConversionCoordinator(
                 }
 
                 is Outcome.Ok -> {
-                    snapshots += page.value.items
+                    // Account replacement derives stale tombstones from the complete remote set.
+                    // One malformed document therefore fails the conversion closed instead of being
+                    // skipped and silently treated as absent.
+                    val decoded =
+                        try {
+                            page.value.items.map(RemoteDocument::toConversionDocument)
+                        } catch (_: IllegalArgumentException) {
+                            return Outcome.Err(RemoteError.InvalidArgument)
+                        }
+                    snapshots += decoded
                     cursor = page.value.nextCursor
                     if (!page.value.hasMore) return Outcome.Ok(snapshots)
                 }
@@ -247,7 +255,27 @@ private fun AccountConversionSnapshotRow.toEntitySnapshot(permanentUid: String):
     )
 }
 
-private fun RemoteSnapshot.toTombstone(
+private data class ConversionRemoteDocument(
+    val entityType: EntityType,
+    val entityId: EntityId,
+    val schemaVersion: Int,
+    val deleted: Boolean,
+    val json: String,
+)
+
+private fun RemoteDocument.toConversionDocument(): ConversionRemoteDocument {
+    val payload = rawJson.asJsonObject()
+    require(payload.requiredString("id") == documentId.value)
+    return ConversionRemoteDocument(
+        entityType = entityType,
+        entityId = documentId,
+        schemaVersion = payload.requiredLong("schemaVersion").toInt(),
+        deleted = payload.requiredBoolean("deleted"),
+        json = rawJson,
+    )
+}
+
+private fun ConversionRemoteDocument.toTombstone(
     permanentUid: String,
     timestamp: Long,
 ): EntitySnapshot {
@@ -310,20 +338,51 @@ private fun AccountConversionSnapshotRow.toFuelEntryRow(permanentUid: String): F
     )
 }
 
-private fun String.asJsonObject(): JsonObject = Json.parseToJsonElement(this) as JsonObject
+private fun String.asJsonObject(): JsonObject {
+    val value = Json.parseToJsonElement(this)
+    require(value is JsonObject)
+    return value
+}
 
 private fun JsonObject.withPermanentOwner(permanentUid: String): JsonObject =
     JsonObject(toMutableMap().apply { this["ownerId"] = JsonPrimitive(permanentUid) })
 
 private fun String.deleted(): Boolean = asJsonObject().requiredBoolean("deleted")
 
-private fun JsonObject.requiredString(key: String): String = getValue(key).jsonPrimitive.content
+private fun JsonObject.requiredString(key: String): String {
+    val value = requiredPrimitive(key)
+    require(value.isString)
+    return value.content
+}
 
-private fun JsonObject.requiredLong(key: String): Long = getValue(key).jsonPrimitive.long
+private fun JsonObject.requiredLong(key: String): Long {
+    val value = requiredPrimitive(key)
+    require(!value.isString)
+    return requireNotNull(value.longOrNull)
+}
 
-private fun JsonObject.requiredBoolean(key: String): Boolean = getValue(key).jsonPrimitive.boolean
+private fun JsonObject.requiredBoolean(key: String): Boolean {
+    val value = requiredPrimitive(key)
+    require(!value.isString)
+    return requireNotNull(value.booleanOrNull)
+}
 
-private fun JsonObject.optionalString(key: String): String? =
-    get(key)?.takeUnless { it is JsonNull }?.jsonPrimitive?.contentOrNull
+private fun JsonObject.requiredPrimitive(key: String): JsonPrimitive {
+    val value = get(key)
+    require(value is JsonPrimitive)
+    return value
+}
 
-private fun JsonObject.optionalLong(key: String): Long? = get(key)?.takeUnless { it is JsonNull }?.jsonPrimitive?.long
+private fun JsonObject.optionalString(key: String): String? {
+    val value = get(key) ?: return null
+    if (value is JsonNull) return null
+    require(value is JsonPrimitive && value.isString)
+    return value.content
+}
+
+private fun JsonObject.optionalLong(key: String): Long? {
+    val value = get(key) ?: return null
+    if (value is JsonNull) return null
+    require(value is JsonPrimitive && !value.isString)
+    return requireNotNull(value.longOrNull)
+}

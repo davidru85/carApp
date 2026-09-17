@@ -452,7 +452,7 @@ This table is normative; it decides retry versus poison.
 | `Unauthenticated` | `AuthExpired` | retry after a valid auth session, `attemptCount` unchanged |
 | `PermissionDenied` | `PermissionDenied` | **poison** — a rules rejection does not fix itself |
 | `InvalidArgument` | `ValidationRejected` | **poison** |
-| `NotFound` on push | — | treated as success; the local row is marked `SYNCED` with `serverUpdatedAt = null` |
+| `NotFound` on push | — | treated as success; the local row is marked `SYNCED` with `serverUpdatedAt = null`, so the `§9.6` LWW comparison sees it as never-synced and the next pull may overwrite it |
 | `NotFound` on pull | — | ignored |
 | `Unknown` | `RetryableNetwork` | retry with backoff, `attemptCount++` |
 
@@ -493,20 +493,25 @@ Allowed transitions:
 | `SYNCED` | `PENDING` | Local create/update/delete. |
 | `PENDING` | `PENDING` | Further local edit. Payload coalesced, `attemptCount = 0`, `nextAttemptAt = 0`. |
 | `PENDING` | `SYNCING` | Sync engine starts push for the row. |
-| `SYNCING` | `SYNCING` | Local edit during an in-flight push. `localRevision` is incremented; the ack path detects the mismatch. |
+| `SYNCING` | `PENDING` | Local edit during an in-flight push — the editor sets `PENDING` in the same transaction, so the row never stays `SYNCING` after the edit — **or** a connectivity-only failure (`lastErrorCode` in `CONNECTIVITY_ERROR_CODES`, §9.7). |
 | `SYNCING` | `SYNCED` | Remote ack received and `localRevision` unchanged. |
-| `SYNCING` | `PENDING` | `localRevision` changed during push. |
-| `SYNCING` | `FAILED_RETRYABLE` | Retryable network or remote failure. |
-| `FAILED_RETRYABLE` | `PENDING` | Automatic due retry, manual retry, or a local edit. |
-| `FAILED_RETRYABLE` | `FAILED_POISONED` | `attemptCount` reaches `MAX_RETRYABLE_ATTEMPTS` **and** `lastErrorCode` is not a connectivity code (§9.7). |
-| `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure. |
+| `SYNCING` | `FAILED_RETRYABLE` | Non-connectivity retryable remote push failure. |
+| `FAILED_RETRYABLE` | `SYNCING` | Sync engine starts an automatic due retry for the row. |
+| `FAILED_RETRYABLE` | `PENDING` | Manual retry or a local edit. |
+| `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure, or a qualifying non-connectivity retryable remote failure reaches the §9.7 attempt ceiling. |
 | `FAILED_POISONED` | `PENDING` | User or repair flow edits the entity and re-enqueues a valid snapshot, **or** the user invokes `SyncController.retryFailed()` (§9.7). |
 
-`FAILED_POISONED` is never retried automatically.
+`FAILED_POISONED` is never retried automatically. Automatic selection (`selectDueOutbox`) MUST exclude a row whose entity `syncState` is `FAILED_POISONED`, regardless of `nextAttemptAt`, so the backoff expiring cannot reselect it. The push-start transition (`markVehicleSyncing` / `markFuelEntrySyncing`) MUST also fail closed: it MUST NOT move a `FAILED_POISONED` row to `SYNCING`, so a poisoned row cannot silently drop out of `countPoisonedSyncRows` and from the aggregate `SyncStatus.Failed` count. Only `SyncController.retryFailed()` (which resets those rows to `PENDING`) or a local edit that re-enqueues a valid snapshot makes a poisoned row due again. Consequently a `FAILED_POISONED -> SYNCING` transition is not reachable and the crash-reporting policy of `§17` fires once per poison transition, not once per cycle.
 
-While a row remains `SYNCING` after a local edit, its effective UI state is "pending sync after push": the user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
+The connectivity-code set that qualifies a failure as non-poisoning and counts it as `Pending` is defined once in `:core:common` (`CONNECTIVITY_ERROR_CODES`). The three statements that read it (`markConnectivityFailuresDue`, `countPendingSyncRows`, `countRetryableSyncRows`) spell the codes as SQL literals because a SQLDelight `IN` list cannot bind a Kotlin set without changing the query shape. A `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both sources and fails the build when they diverge, so adding a code to the constant without the SQL, or the reverse, is caught rather than silently changing behaviour.
 
-`FAILED_RETRYABLE -> FAILED_POISONED` is governed by the qualified poison rule of §9.7. A connectivity-only failure never poisons.
+A local edit during an in-flight push leaves the row `PENDING` (`§7` invariant, `§9.3`): the editor sets it in the same transaction, and the ack for the stale revision only stamps `serverUpdatedAt`. The user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
+
+The table above is the complete reachable set. An automatic due retry moves directly from `FAILED_RETRYABLE` to `SYNCING`; it does not pass through `PENDING`. Poison is stamped only after `markVehicleSyncing` / `markFuelEntrySyncing`, so `FAILED_RETRYABLE -> FAILED_POISONED` is not reachable; the qualified poison transition governed by §9.7 is `SYNCING -> FAILED_POISONED`. `SYNCING -> SYNCING` and `FAILED_POISONED -> SYNCING` are also not reachable. These unreachable transitions MUST NOT be represented as allowed or asserted as reachable in any document or test.
+
+**The `SYNCING` state is transient across a push, not a durable one.** If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row is left `SYNCING` with no startup statement that resets it. It is not stranded: the outbox row survives and is re-pushed on the next cycle, and `markSyncing` is idempotent, so the row resolves as soon as a cycle runs. The aggregate `SyncStatus` is unaffected because all three counts derive from the outbox, not from the entity `syncState`, so it is correct while the entity row still reads `SYNCING`. There is deliberately no startup reset in the MVP; an explicit reset is a possible future hardening, tracked by the `E3-21` backlog item.
+
+`SYNCING -> FAILED_POISONED` is governed by the qualified poison rule of §9.7. A connectivity-only failure never poisons.
 
 ## 8. Outbox Contract
 
@@ -521,7 +526,7 @@ Outbox payload format:
 Outbox coalescing:
 
 - At most one outbox row per `(entityType, entityId)`.
-- `ON CONFLICT DO UPDATE` replaces `payload` and `localRevision`, and resets `attemptCount = 0`, `nextAttemptAt = 0`, `lastError = NULL`, `lastErrorCode = NULL`.
+- `ON CONFLICT DO UPDATE` replaces `payload` and `localRevision`, and resets `attemptCount = 0`, `nextAttemptAt = 0`, `lastError = NULL`, `lastErrorCode = NULL`, `cycleId = NULL`, so a re-enqueued row carries no stale cycle correlation.
 - The original `seq` MUST be preserved to keep causal order.
 
 The coalesce is performed from the repository write path, inside the same transaction as the entity row write, using this statement shape:
@@ -535,7 +540,8 @@ ON CONFLICT(entityType, entityId) DO UPDATE SET
   attemptCount = 0,
   nextAttemptAt = 0,
   lastError = NULL,
-  lastErrorCode = NULL
+  lastErrorCode = NULL,
+  cycleId = NULL
 ```
 
 **The outbox MUST NOT be populated while `ownerId == LOCAL_OWNER`.** Before a real UID exists, local writes set `syncState = PENDING` but the outbox writer is a no-op. Outbox rows are created for those entities by local-owner adoption (§11.4).
@@ -572,10 +578,11 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 
 ### 9.3 Push
 
-- Batch limit: 50 outbox rows, selected where `nextAttemptAt <= now`, ordered by `seq`, then partitioned by the dependency order of §8.
+- Batch limit: 50 outbox rows, selected where `nextAttemptAt <= now`, ordered by the dependency order of §8 and then by `seq` **before** the batch limit is applied. The global order across batches matters: a vehicle tombstone whose outbox row predates its fuel-entry tombstones keeps a lower `seq`, so a `seq`-only selection could push it in an earlier batch, ahead of the entries it deletes. The selection therefore derives each row's dependency group from its entity table (`deleted`) and orders by group then `seq`, so the §8 order holds across batch boundaries.
 - Remote writes use the client-generated document ID and a server timestamp.
 - The authoritative `serverUpdatedAt` comes from the write result where the SDK provides it; otherwise the document is re-read. The ack timestamp is a **lower bound** on this device's write, never proof of content: a re-read returning newer content is not an error, and the next pull reconciles it.
-- Local confirmation happens in one transaction: if `outbox.localRevision == entity.localRevision`, delete the outbox row and mark `SYNCED`; otherwise keep the row and update only `serverUpdatedAt`.
+- Before each selected snapshot is pushed, its entity is marked `SYNCING` only when the entity still has the selected outbox row's `localRevision` and is not `FAILED_POISONED`. A local edit after batch selection therefore leaves the entity `PENDING`; the stale snapshot may finish its idempotent remote attempt, but the revision-guarded acknowledgement or failure cannot stamp the edited row.
+- Local confirmation happens in one transaction: if `outbox.localRevision == entity.localRevision`, delete the outbox row and mark `SYNCED`; otherwise the ack keeps the entity state unchanged — the local editor already set `PENDING` in the same transaction as its edit (`§7` invariant) — and updates only `serverUpdatedAt`. An ack never downgrades an edited row to a state it does not already have.
 
 ### 9.4 Pull
 
@@ -586,25 +593,37 @@ Once admitted, the order is deterministic, because the backup and recovery simul
 - The 30-second overlap window is applied **once per cycle**, not per page. At cycle start, compute `overlapSince = max(epoch, cursor.lastServerUpdatedAt - 30 s)`.
 - The first page of every cycle MUST use `startAt(overlapSince)`, including cycles that resume after the first pull. Firebase document-ID cursors reject an empty string, so the first boundary deliberately carries only the timestamp and therefore includes every document at that timestamp. Later pages MUST use both concrete cursor components with `startAfter(lastServerUpdatedAt, lastDocumentId)`. `null` MUST NOT be used as a cursor component passed to `startAt`/`startAfter`; the `RemoteCursor.INITIAL` sentinel is exempt because it is materialised as the timestamp-only first-page boundary before reaching Firestore (`§20.7`, D-50).
 - Subsequent pages in the same cycle MUST use `startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`, where `pageCursor` is the last real document returned by the previous non-empty page.
-- A first-page query that omits `startAt(overlapSince)`, or a later-page query that omits either concrete cursor component, is a contract violation. The complete later-page cursor prevents re-reading the same page forever whenever a timestamp cluster exceeds the page size.
+- **The in-cycle cursor carries the provider's full timestamp precision (`D-174`).** A Firestore server timestamp has microsecond resolution; `RemoteCursor.lastServerUpdatedAt` and `RemoteDocument.serverUpdatedAt` in the engine carry it without truncation, and the integration rebuilds the later-page boundary from it. Truncating the boundary to milliseconds would make `startAfter` compare a truncated value against the stored microsecond value, so the last document of the previous page would sort after the boundary and be re-delivered. The persisted `sync_cursor` anchor is an epoch-millisecond cycle anchor: the 30-second overlap re-includes anything at or after it, so cross-cycle truncation cannot skip a document, and no persisted unit change or data migration is required.
+- A first-page query that omits `startAt(overlapSince)`, or a later-page query that omits either concrete cursor component, is a contract violation. The complete later-page cursor advances every timestamp cluster distinguishable at the cursor's precision. Under D-169, a cluster larger than the page limit whose provider timestamps are not distinguishable at the cursor's precision is an unsupported shape: the progress invariant fails the cycle with `SyncError.ConflictUnresolved` rather than looping. The `>=` boundary cannot exclude data.
 - Tombstones are included.
 - Each page is applied in one local transaction; apply is idempotent.
 - If an outbox row exists for a remote entity, local data is not overwritten.
 - Otherwise the remote snapshot is applied iff `local.serverUpdatedAt == null || remote.updatedAt > local.serverUpdatedAt`. The comparison is made on epoch milliseconds as `Long`; Firestore `Timestamp` conversion happens in `:integration:firebase-firestore` at the boundary. **`local.updatedAt` MUST NOT participate in remote conflict arbitration.**
 - The cursor advances only after the local transaction succeeds.
-- Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. If not, the engine MUST fail the cycle with `SyncError.ConflictUnresolved` rather than loop.
+- **The stored cursor advance is monotonic.** `upsertSyncCursor` MUST NOT move `lastServerUpdatedAt` backwards: it keeps the greater of the stored and incoming timestamps, and on a tie keeps the greater `lastDocumentId`. A later page of the same cycle can fail after an earlier page already advanced the cursor, and a non-monotonic write would leave the anchor behind its pre-cycle position, so the next cycle's 30-second overlap would start even further back and the re-pull cost would grow with every failure.
+- Progress invariant: after a non-empty page, the resulting page cursor MUST be strictly greater than the cursor anchor that produced that page. A cursor whose `lastDocumentId` is `null` does not advance, even when its timestamp is later. If the invariant fails, the engine MUST fail the cycle closed with `SyncError.ConflictUnresolved`, MUST NOT loop, MUST leave the stored cursor unchanged, and MUST report the condition through the `onPoisoned` path (`§17`), because a stranded pull cursor is not a connectivity-only failure.
 - Orphan fuel entries (vehicle not yet pulled) are legal transient state. They MUST be persisted, and MUST be excluded from all UI queries and from consumption until their vehicle arrives.
 
 ### 9.5 Quarantine and malformed remote payloads
 
-A pulled document that cannot be safely applied MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance once the quarantine row is committed.
+A pulled `RemoteDocument` is transported as raw JSON and validated in `:core:sync` (`D-170`). A document that cannot be safely applied MUST be stored verbatim in a `quarantine` table keyed by `(entityType, id)`, MUST NOT be applied to the entity table, and MUST NOT block cursor advance once the quarantine row is committed. The integration MUST NOT classify a raw document as malformed or discard it because product decoding failed.
 
 Quarantine reasons are:
 
 - `UnsupportedSchemaVersion`: `schemaVersion > CLIENT_MAX_SCHEMA_VERSION`.
 - `MalformedPayload`: `schemaVersion <= CLIENT_MAX_SCHEMA_VERSION`, but the document is missing a required field, has an unknown enum value, violates nullability, has a primitive type mismatch, has an out-of-range value, violates `deleted == (deletedAt != null)`, has a document ID / payload ID mismatch, contains a malformed JSON payload, or cannot be deserialized into the supported DTO.
 
-Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
+Quarantine rows store `entityType`, `entityId`, `reason`, `schemaVersion`, `serverUpdatedAt`, raw payload JSON and `createdAt`. Re-delivery updates the diagnostic fields but preserves the original `createdAt`; the column records when the entity first entered quarantine, not when it was last observed. They MUST NOT store provider credentials, auth tokens or unredacted SDK error objects.
+
+`RemoteDocument.documentId` and `serverUpdatedAt` are transport metadata obtained from the provider
+document and query ordering. The engine reads `schemaVersion` from `rawJson`; when that field is
+missing or cannot be represented as an integer, a `MalformedPayload` quarantine row stores `0` as
+its diagnostic schema version. The provider ordering timestamp supplies the quarantine row's
+non-null `serverUpdatedAt` even when product fields are malformed.
+
+The classification MUST be total: every field read on the pull-validation path, including every top-level key required before entity-specific validation (`id`, `ownerId`, `updatedAt`, `deleted`, `deletedAt`, `schemaVersion`), MUST produce a `MalformedPayload` quarantine record when it is missing or has the wrong type. No malformed document MAY raise an unchecked exception to the cycle loop: a `MalformedPayload` document is quarantined and the cursor advances, whether the failure is a missing key, a wrong type, a nullability violation or an out-of-range value.
+
+The integration transports product fields without decoding or asserting them (`D-170`). Only the document id and the ordering `updatedAt` timestamp are strongly read; the provider exposes that timestamp through `orderingUpdatedAtMicros()` at microsecond precision, and a document whose ordering timestamp is missing or unusable at that precision fails the page as `RemoteError.InvalidArgument`, because the pull stream cannot be ordered without it. Every other field is carried into `rawJson` verbatim, including a missing or mistyped product field, so `:core:sync` can classify it.
 
 For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
@@ -636,9 +655,36 @@ poison  iff  attemptCount >= MAX_RETRYABLE_ATTEMPTS
         and  lastErrorCode not in CONNECTIVITY_ERROR_CODES
 ```
 
-A row failing only for connectivity reasons therefore stays `FAILED_RETRYABLE` indefinitely, with `attemptCount` pinned at the ceiling and the backoff at its 15-minute cap, and resumes as soon as the network returns. On `ConnectivityRecovered`, `SyncController.requestSync(ConnectivityRecovered)` sets `nextAttemptAt = now` for every `FAILED_RETRYABLE` row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`; `attemptCount` is preserved so later failures keep the correct backoff. Without this qualification the constants above poison every pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity repair.
+A connectivity-only failure is a deferred retry, not a row failure. The entity `syncState` therefore
+stays `PENDING` (it is never set to `FAILED_RETRYABLE`), and the retry context — `attemptCount`,
+`nextAttemptAt` and `lastErrorCode` — is kept in the outbox. `attemptCount` still increments on every
+failure, so the backoff exponent is correct, and it is pinned at the ceiling while the failure repeats.
+The row resumes as soon as the network returns.
 
-Manual retry through `SyncController.retryFailed()` resets every `FAILED_RETRYABLE` and `FAILED_POISONED` row to `PENDING`, sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and clears `lastError` and `lastErrorCode`. Connectivity-only failures already auto-resume, so this method is for user-initiated recovery from permanent failures. Preserving the count would make manual retry useless on exactly the rows that need it, because the count is already at the ceiling.
+On `ConnectivityRecovered`, `markConnectivityFailuresDue` sets `nextAttemptAt = now` for every outbox
+row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`. That statement selects on `lastErrorCode`
+alone and is therefore independent of the entity `syncState`: whether the row is `PENDING` (the
+connectivity case) or any other state, a matching code is made due. `attemptCount` is preserved so
+later failures keep the correct backoff. Without this qualification the constants above poison every
+pending row after roughly 17 minutes offline — the sum of the backoff series up to attempt 10 — which
+would violate `docs/SPECIFICATION.md §2` P2 and strand the user's data behind a manual per-entity
+repair. The `§9.9` rule that a connectivity failure never renders as `Failed` depends on this same
+qualification, and `§7` records the matching `PENDING` row state.
+
+`Unauthenticated` is the second non-poisoning deferred retry, per the normative `§6` mapping. A push that fails with `RemoteError.Unauthenticated` MUST NOT increment `attemptCount` and MUST NOT poison at any count: the row keeps its current count so the backoff exponent is unchanged, is rescheduled with the ordinary `retryDelayMillis` backoff computed from that unchanged count, and resolves once a valid auth session exists. Its entity `syncState` is `FAILED_RETRYABLE`, not the connectivity `PENDING`: `§7` reserves `PENDING` for the `CONNECTIVITY_ERROR_CODES` case, `§9.7`'s `PENDING` rule is explicitly connectivity-only, and `§9.9` renders a non-connectivity retryable failure as `Failed`, which is the honest signal that the session needs re-authentication. Because it never poisons, `SyncError.AuthExpired` (`§6`) is not reached on this path; it remains declared in `§20` as the taxonomy's mapping target for the `§6` table.
+
+Manual retry through `SyncController.retryFailed()` resets every `FAILED_RETRYABLE` and
+`FAILED_POISONED` row to `PENDING`, sets `nextAttemptAt = now`, **resets `attemptCount` to 0** and
+clears `lastError` and `lastErrorCode`. Preserving the count would make manual retry useless on
+exactly the rows that need it, because the count is already at the ceiling. An `Unauthenticated` row
+is `FAILED_RETRYABLE`, so `retryFailed()` does clear its retry context, which is the manual escape
+hatch for a stuck auth state.
+
+A connectivity-only row is `PENDING` with retry context in the outbox, so it is outside
+`resetFailedOutbox`'s `FAILED_RETRYABLE`/`FAILED_POISONED` selection and `retryFailed()` does not
+clear its retry context. Clearing that gap is a separate decision (`D-173`) and story (`E3-18`),
+because it requires deciding whether manual retry covers such a row; until then the row waits out its
+backoff, which is bounded by `MAX_BACKOFF_MS`.
 
 ### 9.8 Trigger constants
 
@@ -656,9 +702,18 @@ All five are `SyncTrigger` values passed to `requestSync(reason)` and logged wit
 
 `SyncController.status: StateFlow<SyncStatus>` with precedence `Failed > Syncing > Pending > Idle`.
 
-Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a row in `FAILED_RETRYABLE` whose `lastErrorCode` is a connectivity code (§9.7) counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
+Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a connectivity-only failure leaves the entity `PENDING` (`§9.7`), so it counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
 
-The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES`.
+The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES` and whose entity is `FAILED_RETRYABLE` or `FAILED_POISONED`. Every outbox row MUST belong to exactly one aggregate bucket. An outbox row in any other entity state counts as `Pending`, even when it retains a non-connectivity `lastErrorCode`; this includes a `SYNCING` row stranded by process death between `markSyncing` and its acknowledgement or failure. The surviving outbox row is outstanding work, so the aggregate MUST NOT publish `Idle`.
+
+The per-row `syncState` and the aggregate MUST agree for a connectivity failure. A push failure whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` leaves the entity `syncState = PENDING` (not `FAILED_RETRYABLE`) and keeps its retry context in the outbox; the aggregate therefore reports the row as `Pending`, and both representations say the same thing. `FAILED_RETRYABLE` is reserved for a non-connectivity retryable failure, including `Unauthenticated`, which the aggregate therefore reports as `Failed`. Poison classification is unchanged: a connectivity-only failure and an `Unauthenticated` failure never poison (`§6`, `§9.7`).
+
+The rule above is not only about per-row classification. It also governs **cycle-level** failures, which have no row of their own to classify. When a cycle fails because a remote call returned an error rather than because a row was rejected — a `pullChanges` failure is the case that matters, and `pushSnapshot` failures are already classified per row — the published aggregate MUST be derived from the error class, not from the mere fact that the cycle failed:
+
+- A cycle failure whose `RemoteError.code` is in `CONNECTIVITY_ERROR_CODES` MUST NOT publish `Failed`. The aggregate MUST fall through to the row-derived buckets exactly as if no cycle-level failure had occurred: `retryable > 0 || poisoned > 0` renders `Failed`, otherwise `pending > 0` renders `Pending`, otherwise `Idle`. A connectivity failure with an empty outbox therefore publishes `Idle`, and one with outstanding work publishes `Pending`. `RemoteError.DeadlineExceeded` is covered by the same rule.
+- A cycle failure whose code is not in `CONNECTIVITY_ERROR_CODES` — `RemoteError.Unknown`, and the `SyncError.ConflictUnresolved` progress-invariant failure of `§9.4`, which is a stranding condition and not a connectivity failure — keeps the representative failure aggregate: `Failed(max(retryable, 1), poisoned)` in the presence of zero failed rows.
+
+Publishing the aggregate MUST NOT weaken the cycle's own outcome: a pull failure MUST still return `Outcome.Err` carrying the underlying error to the caller of `sync(reason)`, so a pull-to-refresh can surface it (`§20.7`). Only the published `SyncStatus` follows the rule above.
 
 ## 10. RemoteSyncSource Contract
 
@@ -1468,6 +1523,12 @@ Injection is the **only** mechanism for anything present in `AppGraphDependencie
 Allowed `expect`/`actual`:
 
 - Internal platform factories for the SQLDelight AndroidX driver and database file location.
+- The internal provider-field extractor `DocumentSnapshot.untypedFields()` in
+  `:integration:firebase-firestore` (`D-170`). GitLive 2.6 exposes no neutral field-map accessor in
+  common code, and `§9.5` requires the integration to transport product fields without decoding or
+  asserting them. The declaration is `internal`, never appears in a public API, and returns a
+  provider-free map. It is a platform adapter, not business logic, and it is the only
+  `expect`/`actual` permitted outside the two entries above.
 
 Forbidden `expect`/`actual`:
 
@@ -1941,6 +2002,22 @@ Optional checks:
     Kotlin/Native exclusions equal the set derived by taking the transitive reverse dependency
     closure from `:integration:firebase-auth` and `:integration:firebase-firestore` across the
     Native-test project graph; equality fails on either addition or removal.
+25. The foundational GitHub Actions (`actions/checkout`, `actions/setup-java`, `actions/setup-node`
+    and `gradle/actions/setup-gradle`) use the immutable SHAs recorded in `docs/versions-matrix.md`;
+    floating refs, missing rows or unrecorded SHAs fail the check.
+26. The foundational GitHub Actions are recorded as Node.js 24 generations in the version matrix;
+    an obsolete runtime generation fails the check.
+27. Every protected CI job declares a `timeout-minutes` safety limit.
+28. No CI job declares a safety limit above 40 minutes. The limit kills a hung job; it is not a
+    bound on a healthy one and MUST retain headroom over the measured distribution, not sit near its
+    worst observed success. Over 58 sampled runs `ios-simulator-build` succeeded between 12.1 and
+    23.9 minutes, so its duration varies by nearly a factor of two with runner speed.
+29. The `shared-tests` Android-host and Kotlin/Native steps retain stricter platform-specific limits.
+30. Every protected check name required by branch protection remains present in `ci.yml`.
+31. The workflow-level GitHub permission is exactly `contents: read`.
+32. Only `contract-check` declares `contents: read` and `id-token: write`; no other job declares permissions.
+33. `gradle.properties` is the sole source of `org.gradle.jvmargs`; CI MUST NOT redefine it through
+    `GRADLE_OPTS` or another environment override.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -2005,6 +2082,9 @@ const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel en
 const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
 const val STATE_HOLDER_TIMEOUT_MS: Long = 5_000L          // §14   — WhileSubscribed timeout
 const val FOREGROUND_RESUME_THRESHOLD_MS: Long = 300_000L // §9.8  — 5 minutes
+const val SYNC_POST_WRITE_DEBOUNCE_MS: Long = 2_000L       // §9.8  — 2 seconds
+const val SYNC_MIN_AUTOMATIC_INTERVAL_MS: Long = 30_000L   // §9.8  — 30 seconds
+const val SYNC_PERIODIC_INTERVAL_MS: Long = 21_600_000L    // §9.8  — 6 hours
 const val FRESH_LOGIN_THRESHOLD_MS: Long = 300_000L       // §11.5 — 5 minutes
 
 // §2 — every supported MVP currency has exactly two decimal minor units, factor 100
@@ -2475,13 +2555,11 @@ data class EntitySnapshot(
     val json: String,
 )
 
-data class RemoteSnapshot(
+data class RemoteDocument(
     val entityType: EntityType,
-    val entityId: EntityId,
-    val schemaVersion: Int,
+    val documentId: EntityId,
     val serverUpdatedAt: Instant,
-    val deleted: Boolean,
-    val json: String,
+    val rawJson: String,
 )
 
 data class RemoteAck(
@@ -2500,7 +2578,7 @@ data class RemoteCursor(
 }
 
 data class RemotePage(
-    val items: List<RemoteSnapshot>,
+    val items: List<RemoteDocument>,
     val nextCursor: RemoteCursor,
     val hasMore: Boolean,
 )
@@ -2525,6 +2603,7 @@ data class QuarantineRecord(
 interface SyncController {
     val status: StateFlow<SyncStatus>
     fun requestSync(reason: SyncTrigger)
+    suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError>
     suspend fun retryFailed(): Outcome<Unit, AppError>
 }
 ```
@@ -2536,6 +2615,8 @@ selected by D-85.
 A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`. Deleting the row is the only supported way to force a full re-pull.
 
 `SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
+
+`SyncController.sync(reason)` is the awaitable, outcome-returning entry point (`D-171`). It suspends until the cycle that serves the request completes and returns that cycle's outcome. It follows the same serialization rules of `§9.1` as `requestSync`: one cycle at a time under the mutex, and concurrent triggers set the single pending flag. A caller that arrives while a cycle is running joins the single pending follow-up cycle — it MUST NOT start a second cycle and MUST NOT busy-wait on `status`. Its outcomes preserve the pre-`E3-03` `refresh` contract: offline or `LOCAL_OWNER` is `Ok(Unit)` with no error; a failed pull is `Err` carrying the failure (`RemoteError` or `SyncError.ConflictUnresolved`). A local post-write trigger MUST use `requestSync`, never `sync`, so a write never blocks on a network round trip.
 
 `RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises it as the timestamp-only `startAt(overlapSince)` first-page boundary per `§9.4`. The `null` prohibition in `§9.4` applies to cursor components passed to `startAt`/`startAfter`; `INITIAL` is exempt because no nullable document-ID component reaches Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
 
@@ -2715,8 +2796,10 @@ class SessionStateHolder {
 
 class SyncStateHolder {
     val state: StateFlow<SyncUiState>
+    val debugLines: StateFlow<List<String>>
     fun requestSync(reason: SyncTrigger)
     fun retryFailed()
+    fun refreshDebug()
     fun clearMessage()
     fun close()
 }

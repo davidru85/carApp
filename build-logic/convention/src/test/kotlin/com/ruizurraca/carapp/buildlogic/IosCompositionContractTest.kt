@@ -145,7 +145,12 @@ class IosCompositionContractTest {
                 "restore it or update D-109 and every command mirror",
         )
         assertTrue(
-            ci.contains("testAndroidHostTest iosSimulatorArm64Test"),
+            ci.contains(":androidApp:testDebugUnitTest testAndroidHostTest"),
+            "D-109 requires the Android-host aggregate in CI; restore it or update D-109 and every " +
+                "command mirror",
+        )
+        assertTrue(
+            ci.contains("./gradlew iosSimulatorArm64Test"),
             "D-109 requires the root Native test task in CI; restore it or update D-109 and every " +
                 "command mirror",
         )

@@ -179,7 +179,7 @@ class LocalOwnerAdoptionFailureTest {
             ownerContext.set(OwnerId(ADOPTING_UID))
 
             // The owner observer is the other trigger, and it still adopts.
-            while (database.localOwnerRowCount() > 0L) yield()
+            awaitCondition("the owner observer to adopt every waiting row") { database.localOwnerRowCount() == 0L }
             assertEquals(0L, database.localOwnerRowCount(), "the owner observer outlives the connectivity trigger")
         }
 

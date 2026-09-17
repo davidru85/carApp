@@ -183,8 +183,15 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-166 | Durable departure marker representation | A single-row schema v4 `account_departure_operation` table holding the departure kind, its owner and one flag per completed step, added by the additive `3.sqm` migration and deliberately excluded from the local-data clear | Accepted | Per-step flags are what let a relaunch repeat only what is owed, and an opaque blob could not be read back step by step. |
 | D-167 | Interrupted departure resumption | `AccountDepartureCoordinator.resumePending()` runs once at app-graph construction, finishes only the steps the marker does not record as done, reports nothing to the owner, and never repeats or starts the `D-23` operation | Accepted | The graph is the only place that runs exactly once per launch regardless of which host surface is created first. |
 | D-168 | Firestore authentication retry ownership | `:integration:firebase-firestore` forces the one token refresh required by `RemoteSyncSource` through the same accepted GitLive Firebase Auth client and retries the failed operation once inside the module | Accepted | It keeps the complete retry transaction behind the integration boundary without widening provider-free core or graph contracts. |
-| D-169 | Pull-cursor sub-millisecond truncation | Option A is recommended: accept the millisecond-truncated cursor and bound the `§9.4` later-page progress guarantee to timestamp clusters distinguishable at millisecond resolution; option B preserves provider precision but changes the `§20.7` cursor representation and the `§9.4`/`§9.6` arbitration contract | Proposed | Firestore `request.time` is microsecond-resolution but the cursor is epoch-millisecond. The downward-truncated `>=` boundary loses no data; the later-page cursor can fail to advance when a full page falls inside one millisecond. No option is selected; the owner chooses. See ADR-0170. |
-| D-170 | Malformed remote documents cannot be quarantined through `RemoteSyncSource` | Option A is recommended: `pullChanges` returns raw per-document results so the engine validates and quarantines; option B returns a per-document quarantine verdict from the source but moves `§9.5` classification into the integration. Both change `RemotePage` / `§20.7` | Proposed | `docs/CONTRACTS.md` line 403 and `§9.5` require a malformed document to be quarantined without failing the cycle, but `RemotePage.items: List<RemoteSnapshot>` cannot represent a rejected document. `UnsupportedSchemaVersion` is reachable; this is about `MalformedPayload`. Pre-existing from `E0-07`. No option is selected; the owner chooses. See ADR-0171. |
+| D-169 | Pull-cursor persisted anchor and progress bound (superseded in part by `D-174`) | Keep the persisted `sync_cursor` anchor in epoch milliseconds and fail closed with `SyncError.ConflictUnresolved` when a full page cannot advance at the active cursor's precision; `D-174` governs the provider-precision in-cycle boundary | Accepted | The owner selected option A on 2026-09-13. `D-174` later superseded the in-cycle precision part only: the active cursor carries the provider's microsecond boundary, while D-169 still governs the persisted anchor and fail-closed invariant. See ADR-0170 and ADR-0175. |
+| D-170 | Malformed remote document transport | Return raw per-document results and keep validation plus quarantine classification in `:core:sync` | Accepted | The owner selected option A on 2026-09-13. The integration transports raw JSON and stable ordering metadata without deciding `§9.5` domain classification. See ADR-0171. |
+| D-171 | Awaitable sync cycle for user-initiated refresh | Add `SyncController.sync(reason): Outcome<Unit, AppError>`; the user-initiated refresh awaits the cycle that serves it and joins the single pending follow-up, while writes stay fire-and-forget | Accepted | The owner selected option B on 2026-09-13 during the `E3-03` review. The status-flow alternative conflates a user refresh with background cycles and cannot carry the failed-pull error. See ADR-0172. |
+| D-172 | `AppGraph.close()` versus an in-flight sync cycle | Mechanism to make `AppGraph.close()` safe against a cycle still calling SQLite; the recommendation is an awaitable drain in `:core:sync` plus a bounded join before the `DatabaseHandle` closes, but no option is preselected | Proposed | `E3-03` invalidated the `E1-12` premise: `graphScope.cancel()` does not join, so a coroutine suspended in an asynchronous SQLite call can outlive `databaseHandle.close()` on both `MainActivity.onCleared()` and `SwiftAppGraph.close()`. A reachable crash hazard, not an observed crash. Needed by `E3-17`. See ADR-0173. |
+| D-173 | Manual retry coverage for parked connectivity rows | Extend `retryFailed()` so the outbox reset also clears rows whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` regardless of entity state; the recommendation is option B, but no option is preselected | Proposed | A connectivity-only row is `PENDING`, so `resetFailedOutbox`'s `FAILED_RETRYABLE`/`FAILED_POISONED` selection misses it and the manual retry control silently does nothing for it; a server-side failure with no connectivity transition parks it for up to `MAX_BACKOFF_MS` (900_000 ms). A bounded liveness gap, not a data-loss defect. Needed by `E3-18`. See ADR-0174. |
+| D-174 | Provider timestamp precision in the pull cursor | Deliver the provider's full-precision ordering timestamp and carry it untruncated in the in-cycle cursor; keep the persisted `sync_cursor` an epoch-millisecond anchor the 30-second overlap re-includes | Accepted | The owner selected option A with the in-memory scope on 2026-09-13. A millisecond later-page boundary makes `startAfter` non-exclusive and raises a false `SyncError.ConflictUnresolved` on an exact-page-multiple change set. No schema or tooling change, and `§9.6` LWW stays epoch milliseconds. See ADR-0175. |
+| D-175 | Silent `shared-tests` stall ownership | Fix the unbounded `awaitState` collector cleanup and the eight bare `while (…) yield()` polls inside `E3-03` as correction round 17, in test code only | Accepted | The unbounded cleanup and the busy-wait polls made `shared-tests` fail by step timeout with no test result, reproducibly on the previously green commit `8b76f6aa`. The fix bounds both and fails by expectation name. Test scaffolding only, so `E3-17` / `D-172` remains the separate production hazard. See ADR-0176. |
+| D-176 | CI job hang guard sizing | Raise `MAX_JOB_MINUTES` and every job's `timeout-minutes` to 40 so the guard sits well above the slowest measured success | Accepted | A flat 20-minute ceiling coupled the monitored whole-run objective to a hard kill and cancelled `ios-simulator-build` at 20m50s on run `35133388068`, in a run whose other nine checks had passed; across 58 sampled runs its 44 successes ranged 12.1 to 23.9 minutes, so 40 is 1.67x the worst success. The step-level limits stay stricter and `E0-05`'s 20-minute objective is unchanged. See ADR-0177. |
+| D-177 | Graph-backed test time advancement | Advance virtual time with the bounded `advanceGraphWork` helper in graph-backed tests instead of `advanceUntilIdle()` | Accepted | `advanceUntilIdle()` is non-terminating against work that re-arms itself in virtual time, and no test-scheduler timeout can rescue the run, so the failure is an unattributable killed task. Three graph tests called it; the trigger is latent because no graph test can inject a failing adoption. Production `scheduleAdoptionRetry` is unchanged. See ADR-0178. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -329,6 +336,13 @@ Synchronized entity control columns:
 | `localRevision` | Incremented on each local edit to detect in-flight edits. |
 | `localMutationSeq` | Monotonic database-local mutation order, shared across synchronized entity tables. |
 | `schemaVersion` | Payload schema version. |
+
+Automatic due retry does not rewrite an entity to `PENDING`: `selectDueOutbox` can select an
+elapsed `FAILED_RETRYABLE` row and `markVehicleSyncing` / `markFuelEntrySyncing` moves it directly to
+`SYNCING`. Manual retry and a local edit produce `FAILED_RETRYABLE -> PENDING`. A poison is always
+stamped after push start as `SYNCING -> FAILED_POISONED`; `FAILED_RETRYABLE -> FAILED_POISONED`,
+`SYNCING -> SYNCING` and `FAILED_POISONED -> SYNCING` are not reachable. The complete canonical set
+remains `docs/CONTRACTS.md §7`.
 
 Tables: `vehicle`, `fuel_entry`, `user_settings`, `local_sequence`, `outbox`, `sync_cursor`, `quarantine`, `anonymous_reminder`, `account_conversion_operation`, `account_conversion_snapshot`.
 
@@ -486,8 +500,10 @@ The engine lives fully in `commonMain`. Platform APIs only trigger it; they are 
        delete outbox row, set syncState = SYNCED, set serverUpdatedAt
    - else:
        keep outbox row, update only serverUpdatedAt
-6. Retry network and token failures with backoff, up to MAX_RETRYABLE_ATTEMPTS.
-7. Mark validation and permission failures as poisoned.
+6. On an automatic due retry, move `FAILED_RETRYABLE` directly to `SYNCING` before the remote push.
+7. Retry qualifying non-connectivity remote failures with backoff; stamp poison from `SYNCING` when
+   the §9.7 ceiling is reached. Connectivity and `Unauthenticated` failures never poison.
+8. Mark validation and permission failures as poisoned from `SYNCING`.
 ```
 
 ### Pull
@@ -502,6 +518,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
        later pages: startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)
        limit 200
   4. Apply the page in one local transaction.
+     - validate each raw remote document in `:core:sync`
      - quarantine documents whose schemaVersion is unsupported or whose supported-version payload is malformed
      - skip entities that have an outbox row
      - otherwise apply if remote.updatedAt > local.serverUpdatedAt, or local was never synced
@@ -516,7 +533,7 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
 - Push is idempotent by client-generated document ID.
 - Server `updatedAt` creates authoritative ordering; the local `updatedAt` never arbitrates.
 - `(updatedAt, documentId)` provides a deterministic total order over the pull stream.
-- Pull overlap prevents silent cursor loss; `startAt(overlapSince)` includes every document at the first-page boundary; `startAfter` on the previous page's timestamp/document-ID cursor prevents re-reading the same page forever.
+- Pull overlap prevents silent cursor loss; `startAt(overlapSince)` includes every document at the first-page boundary. Under `D-174`, `startAfter` carries the provider's microsecond timestamp plus document ID and advances every cluster distinguishable at that cursor precision. Under `D-169`, a full page that cannot advance at the active cursor's precision fails closed with `SyncError.ConflictUnresolved`; the persisted cross-cycle anchor remains epoch milliseconds.
 - Tombstones are regular LWW documents.
 
 ## 9. Backup and Recovery Tests
@@ -528,11 +545,11 @@ Required tests for `:core:sync`:
 3. A clean recovery device restores backed-up vehicles and fuel entries for the authenticated owner.
 4. Exact `updatedAt` tie paginates deterministically in the pull stream order.
 5. Tombstone wins over older update.
-6. Local edit during in-flight push is not lost, and the state machine follows `SYNCING -> SYNCING -> PENDING`.
+6. Local edit during in-flight push is not lost, and the state machine follows `SYNCING -> PENDING`: the editor sets `PENDING` in the same transaction (the `§7` invariant), and the stale ack only stamps `serverUpdatedAt` (`§9.3`).
 7. Pull overlap prevents missing a document with a timestamp before the cursor.
 8. Device clock one hour ahead does not win all conflicts.
 9. First sync of 1,000 records is paginated correctly.
-10. After `MAX_RETRYABLE_ATTEMPTS` consecutive **non-connectivity** retryable failures the row becomes `FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it.
+10. After `MAX_RETRYABLE_ATTEMPTS` consecutive qualifying **non-connectivity** retryable failures the row follows `SYNCING -> FAILED_POISONED`, and `SyncController.retryFailed()` resets `attemptCount` and revives it. Every automatic due retry before that poison follows `FAILED_RETRYABLE -> SYNCING`, never `FAILED_RETRYABLE -> PENDING`.
 11. More than 200 documents sharing one timestamp inside the overlap window paginate to completion instead of looping.
 12. A fuel entry arriving before its vehicle during recovery is persisted, hidden from the UI, and later becomes visible without stalling.
 13. Recovery data containing two vehicle documents with the same name restores both vehicles without a local uniqueness constraint failure.
@@ -540,7 +557,7 @@ Required tests for `:core:sync`:
 15. A document with an unsupported higher `schemaVersion` is quarantined and does not block cursor advance.
 16. A supported-version document with malformed payload is quarantined with `MalformedPayload`, is not applied to product tables and does not block cursor advance after quarantine is committed.
 17. Backoff with an injected jitter source produces deterministic, capped delays.
-18. A device offline for longer than the full backoff series keeps every row in a retryable state, poisons nothing, reports `Pending` rather than `Failed`, and backs up once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
+18. A device offline for longer than the full backoff series leaves every connectivity-failed row `PENDING` (not `FAILED_RETRYABLE`, `§7`/`§9.7`), poisons nothing, reports `Pending` rather than `Failed` (`§9.9`), and backs up once connectivity returns. This is the regression test for `docs/CONTRACTS.md §9.7`: with the ceiling and the backoff constants alone, rows would poison after roughly 17 minutes offline.
 
 Add a deterministic simulation with a fixed seed that interleaves local edits, push, recovery pull, network failure, duplicate delivery and lost responses, asserting that a clean recovery client can restore the source client's backed-up data.
 

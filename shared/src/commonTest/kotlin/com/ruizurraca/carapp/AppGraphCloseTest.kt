@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -63,7 +62,7 @@ class AppGraphCloseTest {
 
             try {
                 graph.close()
-                advanceUntilIdle()
+                advanceGraphWork()
 
                 assertEquals(1, recordingFactory.closeCalls)
             } finally {

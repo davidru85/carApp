@@ -2,24 +2,24 @@
 
 ## Status
 
-Proposed
+Accepted
 
-A recommendation is on the table (option A) and requires owner confirmation before `E3-03` starts.
-No option is selected here.
+The owner selected option A on 2026-09-13 before `E3-03` started.
+
+**Superseded in part by ADR-0175 / D-174.** D-169 still governs the persisted epoch-millisecond
+anchor and the fail-closed rule at the active cursor's precision. D-174 governs the in-cycle
+provider-precision boundary.
 
 ## Context
 
 `docs/CONTRACTS.md §9.4` requires later pages to advance with
-`startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)` and states that "the complete
-later-page cursor prevents re-reading the same page forever whenever a timestamp cluster exceeds the
-page size". `RemoteCursor.lastServerUpdatedAt` is typed as an epoch-millisecond `Instant`
-(`§20.7`), and conflict arbitration compares `serverUpdatedAt` as epoch milliseconds (`§9.4`,
-`§9.6`).
+`startAfter(pageCursor.lastServerUpdatedAt, pageCursor.lastDocumentId)`. The persisted
+`sync_cursor.lastServerUpdatedAt` anchor and conflict arbitration use epoch milliseconds, while the
+in-cycle `RemoteCursor.lastServerUpdatedAt` is an `Instant` capable of carrying provider precision.
 
-Firestore server timestamps (`request.time`) carry microsecond resolution. The integration converts
-them with `timestamp.toMilliseconds().toLong()`, which truncates the sub-millisecond component down
-to a whole millisecond. A cursor materialised from the last document of a page therefore stores a
-timestamp that is **at or below** that document's real provider timestamp.
+When D-169 was accepted, the integration converted Firestore server timestamps to milliseconds, so
+the later-page boundary could sit below the document's real provider timestamp. ADR-0175 subsequently
+removed that in-cycle truncation while deliberately retaining the persisted millisecond anchor.
 
 Later-page query:
 
@@ -63,44 +63,44 @@ times.
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| A. Accept the behavior and bound the guarantee to millisecond-distinguishable clusters | Preserves the epoch-millisecond `RemoteCursor` type and the millisecond-Long LWW rule of `§9.4`/`§9.6`; no change to `:core:sync`, the local schema or the remote schema; zero implementation cost. The documented bound states the exact condition under which the progress invariant is guaranteed. | The `§9.4` guarantee is weakened and MUST be restated, not merely annotated. A same-millisecond cluster larger than the page limit still fails the cycle with `SyncError.ConflictUnresolved`, and no mechanism recovers it; the owner accepts that an unsupported data shape can strand the pull cursor until the `sync_cursor` row is deleted. |
-| B. Preserve provider precision in the cursor | The later-page boundary is exact, so the progress invariant holds for every cluster, including one larger than the page limit. | Changes a representation contract: `RemoteCursor.lastServerUpdatedAt` (`§20.7`) would stop being an epoch-millisecond `Instant`, and `§9.4`/`§9.6` mandate millisecond-Long conflict arbitration, so the two comparisons would either diverge or both move. It also changes `RemoteSnapshot.serverUpdatedAt` unless conversion happens only at the cursor, which creates a second time representation at the boundary. Touches `:core:sync`, the integration, the golden Swift surface if exposed, and the `E3-02`/`E3-03` acceptance tests. Requires an owner decision and a contract change before any code. |
+| A. Keep the persisted millisecond anchor and fail closed when the cursor cannot advance | Preserves the local schema and epoch-millisecond LWW rule while making non-progress terminate deterministically instead of looping. | A full page whose ordering keys are not distinguishable at the active cursor's precision can strand the pull until the cursor row is deleted or the data shape changes. |
+| B. Persist provider precision and remove the bound | Makes the persisted and in-cycle cursor equally precise. | Requires a persisted-unit migration and a schema-tooling change; it does not remove the need to fail closed against a malformed or non-advancing provider cursor. |
 
 ## Decision
 
-Not yet taken. The recommendation is **option A**: accept the behavior and amend `§9.4` and `§20.7`
-to bound the later-page progress guarantee to timestamp clusters that are distinguishable at
-millisecond resolution, explicitly stating that a cluster larger than the page limit within one
-millisecond can fail the cycle with `SyncError.ConflictUnresolved`. The owner chooses; the decision
-is `Proposed`, not `Accepted`.
+**Option A for the persisted anchor and progress invariant.** Keep `sync_cursor` in epoch
+milliseconds and fail the cycle with `SyncError.ConflictUnresolved` when a full page cannot advance
+at the active cursor's precision. ADR-0175 supersedes this decision only for the in-cycle boundary:
+`RemoteCursor` carries Firestore's provider microseconds between pages.
 
 ## Consequences
 
 ### Positive
 
-- The contract no longer claims a guarantee the millisecond cursor cannot deliver, so a later story
-  cannot rest on it.
-- No representation change is required, and the millisecond-Long LWW rule stays single and coherent.
+- The contract bounds progress to the active cursor's precision, so a later story cannot assume
+  progress when the provider supplies a non-advancing ordering key.
+- No persisted representation change is required, and the millisecond-Long LWW rule stays coherent.
 
 ### Negative
 
-- Until the owner decides, `§9.4` overstates its guarantee and `E3-03` cannot start.
-- Under option A, an unsupported same-millisecond cluster can still strand the pull cursor.
+- A cluster larger than the page limit whose ordering keys are identical at the active cursor's
+  precision can still strand the pull cursor.
 
 ### Constraints Introduced
 
+- The persisted `sync_cursor` anchor remains epoch milliseconds unless a later accepted decision
+  supplies the schema migration and tooling change.
 - No document may claim the `§9.4` progress guarantee for a timestamp cluster that is not
-  distinguishable at millisecond resolution.
-- Option B MUST NOT be implemented before it is `Accepted`, because it changes the `RemoteCursor`
-  representation and the `§9.4`/`§9.6` arbitration contract.
+  distinguishable at the active cursor's precision.
+- ADR-0175 requires provider microseconds in the in-cycle `RemoteCursor`; this does not change the
+  persisted anchor or the `§9.6` millisecond LWW comparison.
 
 ## Verification
 
-- The no-data-loss argument above is the required confirmation: a downward-truncated lower bound on
-  an `>=` filter excludes nothing.
-- The defect is reproducible with the existing focused tests by constructing a page whose documents
-  share one truncated millisecond; the accepted option defines whether that becomes a `§9.4` caveat
-  test or an exact-boundary test.
+- `SyncDatabaseAccessTest` verifies that the persisted millisecond anchor advances monotonically;
+  the 30-second overlap makes its downward truncation safe across cycles.
+- `DefaultSyncControllerTest` verifies the fail-closed non-progress invariant at the active cursor's
+  precision, while ADR-0175's cases verify the provider-microsecond later-page boundary.
 
 ## References
 
