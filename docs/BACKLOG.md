@@ -912,6 +912,9 @@ Human review required.
 
 ### E3-08 - App Graph and Firebase Wiring - M
 
+Status: implemented on `story/E3-08-app-graph-and-firebase-wiring`, awaiting the owner's gated
+review. It introduced `D-178` through `D-180` and `docs/handoff-E3-08.md` holds its evidence.
+
 Complete the Kotlin-facing `AppGraph`, the Swift-facing `SwiftAppGraph` and
 `:wiring:firebase` in place. E0-07 already owns the provider-free `buildAppGraph`, the sole
 `createSwiftAppGraph(isDebugBuild)` declaration in `:composition:ios` and the framework topology
@@ -929,6 +932,25 @@ Acceptance criteria:
 - Tests build the graph through `buildAppGraph` and `testAppProviders(...)` without starting Koin.
 - The Swift facade exposes a sync state holder, not `SyncController`, and it owns/cancels the scopes for state holders it creates.
 - `SwiftAppGraph` state-holder factories are cached/idempotent for identical arguments, and throw after `SwiftAppGraph.close()`.
+
+What this story had to close, beyond enforcing the criteria above (`D-178` through `D-180`):
+
+- `E3-03` shipped `AppGraph.syncStateHolder(scope)` without declaring it in `docs/CONTRACTS.md
+  §20.10`; the interface is hidden from Objective-C export, so the golden header could not see the
+  divergence. `§20.10` now declares the member and `contract-check` assertion 34 compares the block
+  with the real interface.
+- `§18` assertion 14 was declared by `E0-05` and never implemented, so nothing guarded a default
+  argument on an exported member. Kotlin defaults do not appear in the generated header, so only a
+  source-level check can see them.
+- The `§4` "product logic" rule for `:wiring:firebase` was prose only; `E0-04` recorded it as
+  unowned. `D-178` executes it as a declaration-shape rule.
+
+Deferred out of this story: the Konsist fixture that `§20.10` requires to ban
+`PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from iOS `requestSync` call sites.
+`D-16` assigns package rules to Konsist, `E1-07` introduced it for the feature-layer rows and no
+iOS call site of that method exists yet, so the fixture belongs with the story that first adds one.
+Recorded as a follow-up in `docs/handoff-E3-08.md`; no rule of the contract is contradicted, because
+the banned call sites do not exist.
 
 ### E3-04 - Repository Sync Wiring - M
 
@@ -1873,7 +1895,7 @@ proof after E3-04.
 | E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
 | E3-02 Firestore RemoteSyncSource (completed, PR #68) | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
-| E3-08 App graph and wiring | 3 | M | — |
+| E3-08 App graph and wiring (implemented, PR pending) | 3 | M | Yes |
 | E3-04 Repository sync wiring | 3 | M | — |
 | E3-12 Permanent-account cross-device recovery proof | 3 | S | Yes |
 | E3-05 Backup status UI | 3 | S | — |

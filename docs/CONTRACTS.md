@@ -2018,6 +2018,10 @@ Optional checks:
 32. Only `contract-check` declares `contents: read` and `id-token: write`; no other job declares permissions.
 33. `gradle.properties` is the sole source of `org.gradle.jvmargs`; CI MUST NOT redefine it through
     `GRADLE_OPTS` or another environment override.
+34. The Kotlin-facing `AppGraph` block of `§20.10` and the real interface declare the same members,
+    in the same order, with the same parameter shapes. Both surfaces are hidden from the generated
+    Objective-C header, so no other assertion can see them drift; `E3-08` added this assertion after
+    `E3-03` shipped a member that the block did not declare.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

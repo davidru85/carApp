@@ -38,6 +38,49 @@
 
 ## Entries
 
+### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
+
+- **Type:** story
+- **Story / Decision:** `E3-08` / `D-178`, `D-179`, `D-180`
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** `story/E3-08-app-graph-and-firebase-wiring` makes the app-graph and wiring
+  invariants executable. The `:wiring:firebase` "product logic" rule of `docs/TECHNICAL_PLAN.md §4`,
+  recorded as unowned by `E0-04` because it needs a Kotlin declaration parser and the module, is now
+  a declaration-shape check (`D-178`). A new source rule keeps
+  `com.ruizurraca.carapp.integration.` out of every module except `:wiring:firebase` and
+  `:integration:*`, which closes the transitive hole a one-word `api` change opens (`D-179`).
+  `docs/CONTRACTS.md §18` assertion 14, declared by `E0-05` and never implemented, now guards the
+  exported state-holder surface, and assertion 34 compares the Kotlin-facing `AppGraph` block of
+  `§20.10` with the real interface (`D-180`). That last guard caught a divergence `E3-03` had
+  shipped: the interface declared `syncStateHolder(scope)` and the contract did not, and because the
+  interface is hidden from Objective-C export the golden header could not see it. `§20.10` now
+  declares the member, and `:shared` gained the cache-key, close-guard and Koin-free
+  graph-construction coverage the story's criteria name.
+- **Why:** each of the three rules covers a blind spot no existing check could reach. Kotlin default
+  arguments never appear in the generated header, so only a source-level check sees a default added
+  to an exported member; the Kotlin-facing `AppGraph` is hidden from export, so only a comparison
+  against the contract sees a member added in code alone; and the dependency graph sees declared
+  edges but not a type made transitively visible by an `api` edge. The two rejected alternatives for
+  each are recorded in ADR-0179, ADR-0180 and ADR-0181.
+- **Documents touched:** `docs/CONTRACTS.md` (`§11.6`, `§18`, `§20.10`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
+  `docs/adr/0179-…`, `docs/adr/0180-…`, `docs/adr/0181-…`, `docs/BACKLOG.md`, `AGENTS.md`,
+  `docs/handoff-E3-08.md`, this log.
+- **Verification:** the canonical CI command of `AGENTS.md` passes locally (`BUILD SUCCESSFUL`, 642
+  actionable tasks), including `contractCheck` with assertions 14 and 34 green and no `PENDING`
+  line, `architectureCheck` at `16 rules … 23 modules`, and `:build-logic:convention:test` at 34
+  tests. Every new rule and assertion was mutation-tested against the real repository: a stray
+  declaration in `:wiring:firebase`, a `:composition:ios` reference to a transitively visible
+  integration type, four default-argument injections and a removed `§20.10` member each failed the
+  check with the offending member named, and each restored a green build. Requires human review
+  before merge (gated path `docs/CONTRACTS.md` and `docs/adr/**`; gated topic "Swift-facing API
+  surface" and module dependency rules).
+- **Follow-ups / risks:** the Konsist fixture `docs/CONTRACTS.md §20.10` requires, banning
+  `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from iOS `requestSync` call sites, is
+  deferred to the story that first adds such a call site; none exists today, and Konsist is not yet
+  a dependency of any module. The declaration classifier is textual, so a shape it cannot see fails
+  open — bounded by `AppGraph` and `SwiftAppGraph` reporting an unparseable side rather than passing.
+
 ### 2026-09-17 — E3-03 merged, and pull request #70 brought onto the new `main`
 
 - **Type:** story

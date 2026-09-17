@@ -143,19 +143,19 @@ review.
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`, `E3-19`, `E3-20` and
+- **Remaining Phase 3:** `E3-04`, `E3-12`,
+  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`, `E3-20` and
   `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
-  #63, and `E3-03`, the `:core:sync` engine, merged on 2026-09-17 through pull request #69, so none of
-  them is outstanding. `E3-17` — making `AppGraph.close()` safe against an in-flight sync cycle, found
-  while reviewing `E3-03`, which invalidated the `E1-12` premise that no production path closes a
-  graph while work is live — is implemented on `story/E3-17-appgraph-close-safety` (pull request #70),
-  awaiting the owner's gated review. The owner accepted `D-172` as option D with a 5-second grace on
-  2026-09-17; the story and the acceptance are recorded together on that branch.
-  `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
-- **Three decisions remain open, and none of them blocks `E3-17`:** the tables below are the
+  #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
+  through pull request #70 with `D-172` accepted as option D, and `E3-03`, the `:core:sync` engine,
+  merged on 2026-09-17 through pull request #69, so none of them is outstanding. `E3-08`, the app
+  graph and Firebase wiring, is implemented on `story/E3-08-app-graph-and-firebase-wiring`, awaiting
+  the owner's gated review; it introduced `D-178` through `D-180` and its evidence is in
+  `docs/handoff-E3-08.md`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
+- **Three decisions remain open, and none of them blocks `E3-08`:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03` already merged, so no open decision gates merged work.
+  three documents. `E3-03` and `E3-17` already merged and `E3-08` introduced no open decision, so
+  no open decision gates merged or in-flight work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
     start until the owner decides.
@@ -264,8 +264,11 @@ invocation, including the `ARCHS=arm64` argument the project currently needs.
 can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made
-`testAppGraphDependencies` parity executable. `contractCheck` currently reports no `PENDING`
-assertions.
+`testAppGraphDependencies` parity executable. `E3-08` made the `:wiring:firebase` product-logic rule
+of `docs/TECHNICAL_PLAN.md §4` executable (`D-178`), added the source rule that keeps
+`:integration:*` types inside `:wiring:firebase` and `:integration:*` (`D-179`), and implemented
+`docs/CONTRACTS.md §18` assertion 14 while adding assertion 34 for the two `AppGraph` surfaces
+(`D-180`). `contractCheck` currently reports no `PENDING` assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
 provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).
