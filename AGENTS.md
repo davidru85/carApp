@@ -121,10 +121,11 @@ review.
   `docs/handoff-E2-08.md` holds its acceptance evidence. `E1-14` merged through pull request #66;
   its evidence lives in `docs/handoff-E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63.
-- **Next:** Phase 2 has no unstarted story. `E2-04`, the anonymous account conversion, merged
-  through pull request #64; it introduced `D-151` through `D-154` and its evidence lives in
-  `docs/handoff-E2-04.md`. `E2-05`, sign-out and account deletion, merged on 2026-09-10 through pull
-  request #65; it introduced `D-155` through `D-164` and its evidence lives in
+- **Next:** Phase 3. The remaining stories and the decisions that gate three of them are listed
+  below and in `docs/BACKLOG.md`. Phase 2 closed with `E2-04`, the anonymous account conversion, which
+  merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
+  `docs/handoff-E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
+  through pull request #65. It introduced `D-155` through `D-164`, and its evidence lives in
   `docs/handoff-E2-05.md`. `D-165` then superseded `D-163`: the durable departure recovery marker is
   delivered inside `E2-05` itself, so the `E2-09` follow-up `D-163` had created no longer exists. The
   fourth owner review accepted the three low-probability departure concurrency and lifecycle gaps as
@@ -133,9 +134,9 @@ review.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-15`, `E1-16` and `E1-17`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
-  inside a reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127`
-  superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` is complete
-  after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
+  inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16` is Ready only
+  because `D-127` superseded the `D-4` clause that kept the fuel type selector out of the MVP UI.
+  `E1-14` is complete after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
   through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
   `docs/handoff-E1-17.md`. `E1-15` remains open.
 - **Remaining Phase 2:** none. The phase is closed.
@@ -148,7 +149,8 @@ review.
   invalidated the `E1-12` premise that no production path closes a graph while work is live — is
   implemented on the open `story/E3-17-appgraph-close-safety` branch (pull request #70), stacked on
   `E3-03`, awaiting the owner's gated review. The owner accepted `D-172` as option D with a
-  5-second grace on 2026-09-17; that acceptance and the implementation are both on this branch.
+  5-second grace on 2026-09-17; the story and the acceptance are recorded together on
+  `story/E3-17-appgraph-close-safety`.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Three decisions remain open once both pull requests merge, and none of them blocks `E3-03` or
   `E3-17`:** the tables below are the authoritative rows; this paragraph exists so the outstanding
