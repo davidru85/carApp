@@ -138,8 +138,14 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - The documentation reconciliation commit `0e5c0c1` changed only `AGENTS.md`, `docs/BACKLOG.md`,
   `docs/PROJECT_LOG.md` and `docs/handoff-E3-03.md`. `contractCheck` reports the same 178 decisions,
   178 ADRs and zero `PENDING`; `ktlintCheck` passes.
-- Final CI on the current tip `ecbaccc`: run `35215623265` is green on all ten required checks after
-  one re-run of `shared-tests`. That job failed first with the Android/KMP host step killed at its
+- Final CI on the current tip `36ee3ec`: run `35218978911` is green on all ten required checks after
+  one re-run of `shared-tests`. That first attempt failed in
+  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
+  with a `kotlin.AssertionError` in the `shared:iosSimulatorArm64Test` task, alongside the
+  `The number of threads 4 is more than the number of processors 3` line: the `E1-14` flake class, on
+  the test and target that story's handoffs already record. This story touches neither that test nor
+  the onboarding UI, and the same job passed on re-run.
+- Earlier on `ecbaccc`, run `35215623265` was also green on all ten after one `shared-tests` re-run. That job failed first with the Android/KMP host step killed at its
   10-minute limit - not an assertion failure - the last task reported being
   `:wiring:firebase:testAndroidHostTest`, the module whose test closes a real `AppGraph`. The identical
   product code had passed `shared-tests` on `ef3dbef`, on `d5b3706` and on `7ebd3e6`, and 20

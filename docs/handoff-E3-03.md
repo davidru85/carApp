@@ -513,8 +513,15 @@ and it is not an explanation for any observed CI stall. What remains true and ac
   -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` pass, 234 tasks.
   `contractCheck --rerun-tasks` reports assertion 7 `PASS` and zero `PENDING`, and the regenerated
   header is byte-identical to the golden.
-- Final CI on the current tip `12294c3`: run `35215558738` is green on all ten required checks,
-  including `shared-tests` and `ios-simulator-build`.
+- Final CI on the current tip `cfedfdc`: run `35218963377` is green on all ten required checks after
+  one re-run of `provider-decoupling`. That first attempt failed
+  `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun` with
+  "Timed out after 5s waiting for second failed refresh cycle settled. Last value: Idle" - the
+  `GRAPH_STATE_EXPECTATION_TIMEOUT` ceiling in `FlowExpectation.kt`, hit because this documentation-only
+  commit added no Kotlin change over `12294c3`, whose identical product code passed the same job. Five
+  consecutive local runs of `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest
+  --rerun-tasks` passed, so the re-run is the evidence and the flake stays recorded rather than denied.
+- Earlier on `12294c3`, run `35215558738` was green on all ten checks.
 
 ## Contract Impact
 
