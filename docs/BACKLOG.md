@@ -912,8 +912,8 @@ Human review required.
 
 ### E3-08 - App Graph and Firebase Wiring - M
 
-Status: implemented on `story/E3-08-app-graph-and-firebase-wiring`, awaiting the owner's gated
-review. It introduced `D-178` through `D-180` and `docs/handoff-E3-08.md` holds its evidence.
+Status: implemented on `story/E3-08-app-graph-and-firebase-wiring` (pull request #71), awaiting the
+owner's gated review. It introduced `D-178` through `D-180` and `docs/handoff-E3-08.md` holds its evidence.
 
 Complete the Kotlin-facing `AppGraph`, the Swift-facing `SwiftAppGraph` and
 `:wiring:firebase` in place. E0-07 already owns the provider-free `buildAppGraph`, the sole

@@ -149,8 +149,8 @@ review.
   #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
   through pull request #70 with `D-172` accepted as option D, and `E3-03`, the `:core:sync` engine,
   merged on 2026-09-17 through pull request #69, so none of them is outstanding. `E3-08`, the app
-  graph and Firebase wiring, is implemented on `story/E3-08-app-graph-and-firebase-wiring`, awaiting
-  the owner's gated review; it introduced `D-178` through `D-180` and its evidence is in
+  graph and Firebase wiring, is implemented on `story/E3-08-app-graph-and-firebase-wiring` (pull
+  request #71), awaiting the owner's gated review; it introduced `D-178` through `D-180` and its evidence is in
   `docs/handoff-E3-08.md`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Three decisions remain open, and none of them blocks `E3-08`:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading

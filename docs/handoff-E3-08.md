@@ -50,10 +50,11 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: the RED, GREEN and REFACTOR phases are committed and the
-  records are written; the branch is complete and awaiting push.
-- Push and pull-request status: not pushed yet at the time of this checkpoint; the pull request is
-  opened immediately after it.
+- Current phase and latest commit: complete. RED `4c51b55`, GREEN `03f5f3f`, REFACTOR `5b48c4b`,
+  records `1a19448`.
+- Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
+  request #71 is open against `main` and awaiting the owner's gated review, with the ten required
+  checks running.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
   (assertions 14 and 34), the `§20.10` clarification, `D-178` through `D-180` with their ADRs and
   the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
