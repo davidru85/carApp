@@ -24,7 +24,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -155,7 +154,7 @@ class FuelEntryStateHolderTest {
                 val vehicleId = createVehicle(harness, initialOdometerKm = 1L)
                 val holder = graph.fuelEntryFormStateHolder(harness.scope, vehicleId, entryId = null)
                 harness.collect(holder.state)
-                advanceUntilIdle()
+                advanceGraphWork()
 
                 assertEquals("EUR", holder.state.value.currencyCode)
             } finally {

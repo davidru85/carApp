@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-16 — D-177: bound virtual time advancement in graph-backed tests
+
+- **Type:** decision
+- **Story / Decision:** `E3-03` / `D-177`
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** a shared helper `TestScope.advanceGraphWork(span)` advances virtual time by a
+  bounded span and then runs what became due. The three shared tests that mount a real `AppGraph` and
+  called `advanceUntilIdle()` - `FuelEntryStateHolderTest`, `AccountConversionAppGraphTest` and
+  `AppGraphCloseTest` - now use it.
+- **Why:** `advanceUntilIdle()` runs until no scheduled task remains, so a coroutine that re-arms
+  itself in virtual time makes it non-terminating, and because it never yields the thread back to the
+  scheduler neither `runTest`'s timeout nor a virtual `withTimeoutOrNull` can end the run. The test
+  task is killed with no result and no test name - the failure that cost the `E3-03` review rounds.
+  `DefaultSyncController.scheduleAdoptionRetry` is that shape and is the only self-re-arming `delay`
+  loop in production `commonMain`. Bounding the production loop instead was rejected here: the retry
+  is `§9` behaviour on the gated `core/sync/**` path, and no current caller reaches the hazard.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0178-…md`, `docs/handoff-E3-03.md` and
+  this log. Code: `shared/src/commonTest/**`.
+- **Verification:** the new
+  `GraphTestDependenciesTest.boundedAdvanceReturnsWhileWorkKeepsRearmingItselfInVirtualTime` runs a
+  self-re-arming coroutine and asserts the helper returns and stops at its span, which
+  `advanceUntilIdle()` cannot do. The three migrated classes pass, `:shared` `testAndroidHostTest` and
+  `iosSimulatorArm64Test` pass, and `contractCheck` reports 178 decisions and 178 ADRs.
+- **Follow-ups / risks:** the production `scheduleAdoptionRetry` loop is unchanged, so the hazard
+  stays latent for any future graph test that injects a failing adoption and for any non-graph caller.
+  Bounding it is a separate production story.
+
 ### 2026-09-16 — E3-03 eighteenth owner-review round: the hardcoded outbox-id assertion
 
 - **Type:** correction

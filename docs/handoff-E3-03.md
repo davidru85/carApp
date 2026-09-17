@@ -92,6 +92,21 @@
   `shared-tests` - whose Android-host step is the one that failed on `f9e04c8` - and
   `ios-simulator-build` in 19.0 minutes. Nineteen minutes is 95% of the old 20-minute cap, which is
   the second independent confirmation that the `D-176` ceiling had to move.
+
+- Nineteenth round (2026-09-16): the third stall mechanism was re-examined and the **attribution in the
+  round-17 note is withdrawn as wrong**. Three graph tests call `advanceUntilIdle()`
+  (`FuelEntryStateHolderTest:158`, `AccountConversionAppGraphTest:79`, `AppGraphCloseTest:66`), not
+  one, and none can re-arm the loop: the re-arm needs a persistently failing adoption, which needs a
+  non-sentinel owner whose `adoptRows` fails, and `DefaultAppGraph` constructs `LocalOwnerAdoption`
+  without `injectedAdoptRows`, whose only injection lives in `LocalOwnerAdoptionFailureTest`, a class
+  that never calls `buildAppGraph`. The hazard is therefore latent, not live, and explains no stall.
+  It was still worth bounding, because its failure mode is an unattributable killed task: `D-177`
+  adds `TestScope.advanceGraphWork(span)`, a bounded `advanceTimeBy` plus `runCurrent`, and routes the
+  three graph sites through it; `advanceUntilIdle` remains permitted where no `AppGraph` shares the
+  scheduler. The production `scheduleAdoptionRetry` loop is deliberately unchanged, because bounding
+  it is `§9` production behaviour and belongs to its own story. Reproduced before changing anything: a
+  self-re-arming `delay` loop makes `advanceUntilIdle()` non-terminating and a virtual
+  `withTimeoutOrNull` cannot rescue it, while `advanceTimeBy` returns at its span. See ADR-0178.
 - Completed since the previous checkpoint: added a deterministic shared-test reproduction that
   records the automatic post-write push, blocks the following pull and proves that a remote-effect-only
   wait returns while `SyncStatus.Syncing` is still active. The focused Android-host test fails at the

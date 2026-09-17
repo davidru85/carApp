@@ -26,7 +26,6 @@ import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import kotlin.test.Test
@@ -76,7 +75,7 @@ class AccountConversionAppGraphTest {
                 )
                 assertEquals(PERMANENT_UID, (authClient.authState.value as AuthState.SignedIn).session.uid)
                 awaitCondition("the conversion pull to start") { remote.pullCalls > 0 }
-                advanceUntilIdle()
+                advanceGraphWork()
 
                 assertEquals(AccountConversionPhase.SESSION_SWITCHED, store.load()?.phase)
                 assertEquals(1, remote.pullCalls)
