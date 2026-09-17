@@ -36,11 +36,10 @@
 
 - Date: 2026-09-17.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: complete at `4d9c5e1`, which carries the round-19 `D-177` commit
-  `b517dba` plus the documentation reconciliation and the status corrections. Pull request #69 is open
-  against `main`; the CI run for this branch's current tip is recorded in **Verification Run**, and
-  run `35209140983` on `242d0b9` passed all ten required checks before it. It is not merged and MUST
-  NOT be merged on agent judgement.
+- Current phase: complete. Product code frozen at `b517dba`; every later commit on this branch is
+  documentation-only, verifiable with `git diff b517dba <tip> -- '*.kt' '*.swift' '*.sq' '*.kts'
+  '*.yml'` returning nothing. Pull request #69 is open against `main`, is not merged, and MUST NOT be
+  merged on agent judgement.
 - Outstanding owner decisions: `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18` are open.
   **None of them blocks this pull request**; each blocks only its own story. They are consolidated in
   the "Outstanding Owner Decisions" section of `docs/BACKLOG.md`, and `D-172` / `E3-17` was resolved
@@ -513,10 +512,11 @@ and it is not an explanation for any observed CI stall. What remains true and ac
   -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` pass, 234 tasks.
   `contractCheck --rerun-tasks` reports assertion 7 `PASS` and zero `PENDING`, and the regenerated
   header is byte-identical to the golden.
-- Final CI: **every tip of this branch is green on all ten required checks**, and every run behind
-  that statement was green on re-run where the first attempt stalled. Run `35218963377` covers
-  `cfedfdc`; run `35222008972` covers `52eccdd`, whose only difference from `cfedfdc` is documentation,
-  so `git diff --stat cfedfdc 52eccdd` touches no Kotlin, Swift, SQL or workflow file. That first attempt failed
+- Final CI: **the product code under test has passed all ten required checks on repeated runs, on
+  this branch and on `main` alike.** Run `35235959797` on this branch's tip passed all ten, as did
+  `35218963377` (after one `provider-decoupling` re-run) and `35222008972` (after one `shared-tests`
+  re-run). The `shared-tests` step stalls intermittently in the CI runner and also hits
+  documentation-only commits; it is recorded in the risks below rather than treated as a regression. That first attempt failed
   `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun` with
   "Timed out after 5s waiting for second failed refresh cycle settled. Last value: Idle" - the
   `GRAPH_STATE_EXPECTATION_TIMEOUT` ceiling in `FlowExpectation.kt`, hit because this documentation-only
