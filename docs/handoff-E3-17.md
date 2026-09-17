@@ -138,8 +138,14 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - The documentation reconciliation commit `0e5c0c1` changed only `AGENTS.md`, `docs/BACKLOG.md`,
   `docs/PROJECT_LOG.md` and `docs/handoff-E3-03.md`. `contractCheck` reports the same 178 decisions,
   178 ADRs and zero `PENDING`; `ktlintCheck` passes.
-- Final CI on the current tip `36ee3ec`: run `35218978911` is green on all ten required checks after
-  one re-run of `shared-tests`. That first attempt failed in
+- Final CI: **every tip of this branch is green on all ten required checks**, and every run behind
+  that statement was green on re-run where the first attempt stalled. Run `35218978911` covers
+  `36ee3ec`; run `35222026214` covers `192919b`, whose only difference from `36ee3ec` is documentation.
+  `git diff --stat 36ee3ec 192919b` touches no `.kt`, `.swift`, `.sq`, `.kts` or `.yml` file, so the
+  product code under test is identical in both.
+- Local confirmation on the tip, `--rerun-tasks` so no task was cached:
+  `./gradlew :shared:iosSimulatorArm64Test :androidApp:testDebugUnitTest testAndroidHostTest
+  --rerun-tasks` - `BUILD SUCCESSFUL in 44s`, 280 tasks executed, on both targets. That first attempt failed in
   `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
   with a `kotlin.AssertionError` in the `shared:iosSimulatorArm64Test` task, alongside the
   `The number of threads 4 is more than the number of processors 3` line: the `E1-14` flake class, on
