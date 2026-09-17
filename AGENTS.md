@@ -138,7 +138,9 @@ review.
   because `D-127` superseded the `D-4` clause that kept the fuel type selector out of the MVP UI.
   `E1-14` is complete after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
   through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
-  `docs/handoff-E1-17.md`. `E1-15` remains open.
+  `docs/handoff-E1-17.md`. `E1-15` remains open. The flake is the one still-observed failure: it hit
+  `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
+  passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-03`, `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`, `E3-19`, `E3-20` and
