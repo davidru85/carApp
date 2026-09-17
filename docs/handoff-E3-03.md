@@ -36,11 +36,11 @@
 
 - Date: 2026-09-17.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: complete at `714aa5a`, which carries the round-19 `D-177` commit
-  `b517dba`, the repository-state and backlog reconciliation, and the `E2-01` / `E2-07` status
-  corrections. Pull request #69 is open against `main`; CI run `35209140983` on `242d0b9` passed all
-  ten required checks, and `35211399064` covers `714aa5a`. It is not merged and MUST NOT be merged on
-  agent judgement.
+- Current phase and latest commit: complete at `4d9c5e1`, which carries the round-19 `D-177` commit
+  `b517dba` plus the documentation reconciliation and the status corrections. Pull request #69 is open
+  against `main`; the CI run for this branch's current tip is recorded in **Verification Run**, and
+  run `35209140983` on `242d0b9` passed all ten required checks before it. It is not merged and MUST
+  NOT be merged on agent judgement.
 - Outstanding owner decisions: `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18` are open.
   **None of them blocks this pull request**; each blocks only its own story. They are consolidated in
   the "Outstanding Owner Decisions" section of `docs/BACKLOG.md`, and `D-172` / `E3-17` was resolved
