@@ -36,10 +36,11 @@
 
 - Date: 2026-09-17.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: complete at `242d0b9`, which adds the repository-state and
-  backlog reconciliation on top of the round-19 `D-177` commit `b517dba`. Pull request #69 is open
-  against `main` and `CLEAN`; CI run `35209140983` on `242d0b9` passes all ten required checks. It is
-  not merged and MUST NOT be merged on agent judgement.
+- Current phase and latest commit: complete at `4d9c5e1`, which carries the round-19 `D-177` commit
+  `b517dba` plus the documentation reconciliation and the status corrections. Pull request #69 is open
+  against `main`; the CI run for this branch's current tip is recorded in **Verification Run**, and
+  run `35209140983` on `242d0b9` passed all ten required checks before it. It is not merged and MUST
+  NOT be merged on agent judgement.
 - Outstanding owner decisions: `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18` are open.
   **None of them blocks this pull request**; each blocks only its own story. They are consolidated in
   the "Outstanding Owner Decisions" section of `docs/BACKLOG.md`, and `D-172` / `E3-17` was resolved
@@ -47,7 +48,8 @@
   unresolved decisions here; the stacked `E3-17` branch carries the acceptance and lists three.
 - Reconciliation since the previous checkpoint: `AGENTS.md` and `docs/BACKLOG.md` no longer describe
   `E2-05`, `E3-14`, `E1-17` or `E3-02` as awaiting review. `docs/BACKLOG.md` called `D-173` `Pending`
-  while the board and its four mirrors say `Proposed`; that was corrected.
+  while the board and its four mirrors say `Proposed`, and its `E2-07` and `E2-01` rows still read as
+  unmerged although pull requests #61 and #52 had merged; all three were corrected.
 - Completed since the previous checkpoint: the `shared-tests` silent stall was bounded in two proven
   mechanisms (`FlowExpectation` polls gained a real-time ceiling instead of hanging, `awaitState` no
   longer races a foreign scope during teardown with `UnboundedCoroutineJoin`), and `a900571` added
