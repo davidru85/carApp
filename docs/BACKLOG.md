@@ -1503,8 +1503,8 @@ Acceptance criteria:
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 
-**Not Ready.** Blocked on owner decision `D-172`, which is `Pending` in `docs/DECISION_BOARD.md`
-— no recommendation is preselected for the mechanism — with its analysis recorded by `E3-03`.
+Status: implemented on `story/E3-17-appgraph-close-safety`, awaiting the owner's gated review. The
+mechanism is the owner's accepted option D (`D-172`), with the grace fixed at 5 seconds.
 
 Tracked as the `E3-03` owner-review finding on [pull request
 #69](https://github.com/davidru85/carApp/pull/69). It is a **production** defect, unlike the
@@ -1513,35 +1513,36 @@ test-infrastructure defect `E1-12` closed.
 `E1-12` (GitHub issue #42) deferred making `AppGraph.close()` safe against live subscribers because,
 verbatim, "This story is a test-infrastructure defect, not a production defect: no production code
 path closes an `AppGraph` while its state holders are still collecting." `E3-03` invalidates that
-premise. `DefaultAppGraph.close()` now hosts long-running detached sync cycles on `graphScope`, each
+premise. `DefaultAppGraph.close()` hosts long-running detached sync cycles on `graphScope`, each
 performing many SQLite calls, started by `VehicleSliceRuntime.createVehicle`/`updateVehicle`
 (`PostWriteDebounce`), by `VehicleSliceRuntime.refresh` (`PullToRefresh`) and by
-`scheduleAdoptionRetry`. `DefaultAppGraph.close()` calls `graphScope.cancel()` and then
-`databaseHandle.close()`; `cancel()` does not join, so a coroutine suspended inside an asynchronous
-SQLite call is not finished when the driver closes. Both production close paths —
-`MainActivity.onCleared()` and `SwiftAppGraph.close()` — can therefore now run with a cycle in
-flight. `SyncStateHolder.close()` does not mitigate this: it cancels the holder's collectors, not the
-controller's cycle on `graphScope`.
+`scheduleAdoptionRetry`. `graphScope.cancel()` does not join, so a coroutine suspended inside an
+asynchronous SQLite call was not finished when the driver closed. Both production close paths —
+`MainActivity.onCleared()` and `SwiftAppGraph.close()` — could therefore run with a cycle in flight.
 
-This is a reachable hazard, not an observed production crash. The D-89 handle-ownership contract
-(`docs/CONTRACTS.md §20.3.2`) and the gated path `core/database/**` are in scope, so the fix MUST get
-its own human review gate.
+Acceptance criteria, and their evidence:
 
-Acceptance criteria (to be finalised once `D-172` is accepted):
-
-- The accepted option discharges its proof obligations: the close paths and the cycle lifecycle are
-  ordered explicitly, and the evidence states which mechanism joins, cancels or drains an in-flight
-  cycle before the `DatabaseHandle` closes.
+- The accepted option discharges its proof obligations. **Met.** `SyncController.shutdown()` refuses
+  every later trigger and completes every in-flight `sync()` awaiter with
+  `PersistenceError.DatabaseUnavailable`; `AppGraph.close()` calls it, then releases the
+  `DatabaseHandle` from a single bounded waiter that joins the cancelled scope, or from the 5-second
+  deadline. `AppGraphCloseSafetyTest` proves the ordering, the awaiter and the deadline.
 - The D-89 contract stays intact: exactly one owner closes the handle, closure is idempotent, and no
-  SQLite call is made after the driver is closed.
+  SQLite call is made after the driver is closed. **Met.** One waiter is the single releaser, the
+  `AppGraphCloseTest` idempotency cases still pass, and the order assertion covers the race.
 - `MainActivity.onCleared()` and `SwiftAppGraph.close()` are both covered, including a cycle
-  suspended inside a remote call and a cycle performing a local transaction.
-- The `E1-12` test-level mitigation stays valid; the production fix MUST NOT make it unnecessary in
-  a way that hides the underlying hazard.
+  suspended inside a remote call and a cycle performing a local transaction. **Met** for the remote
+  call, in both host shapes. **Partly deferred:** the local-transaction case is exercised by the same
+  ordering guarantee rather than by a dedicated cycle parked inside a SQLite statement, which no fake
+  can hold open without changing production code; recorded in the handoff.
+- The `E1-12` test-level mitigation stays valid. **Met.** `AppGraphTestHarnessTest` keeps its
+  collectors-before-handle ordering assertion.
 - The change is recorded as its own decision with its ADR and the four mirror rows, and touches the
-  gated `core/database/**` path under an owner review gate.
+  gated `core/database/**` path under an owner review gate. **Met** for the decision (`D-172`,
+  ADR-0173). `core/sync/**` and `shared/**` are touched; `core/database/**` is **not**, so the
+  handle's own contract is unchanged. The owner review gate applies and is still pending.
 
-Depends on: `D-172`, E1-12 (context), E3-03.
+Depends on: `D-172` (accepted), E1-12 (context), E3-03.
 
 Human review required.
 

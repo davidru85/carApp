@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -62,7 +63,9 @@ class AppGraphCloseTest {
 
             try {
                 graph.close()
-                advanceGraphWork()
+                // `D-172`: the handle is released once the graph's work has finished, so a close that
+                // races live bootstrap work releases on the scope's completion rather than inline.
+                awaitCondition("the database handle to be released") { recordingFactory.closeCalls == 1 }
 
                 assertEquals(1, recordingFactory.closeCalls)
             } finally {
@@ -128,7 +131,7 @@ class AppGraphCloseTest {
             assertEquals(AuthState.SignedIn(session1), client.authState.value)
         }
 
-    private fun assertGraphCloseReleasesDatabase(closeGraph: (AppGraph, DispatcherProvider) -> Unit) {
+    private suspend fun TestScope.assertGraphCloseReleasesDatabase(closeGraph: (AppGraph, DispatcherProvider) -> Unit) {
         val owningFactory = InMemoryDatabaseFactory()
         val recordingFactory = RecordingDatabaseFactory(owningFactory)
         val dependencies =
@@ -143,6 +146,11 @@ class AppGraphCloseTest {
 
         try {
             closeGraph(graph, dependencies.dispatchers)
+            // `D-172`: the handle is released when the graph's work has finished, not inline, because
+            // releasing it while live work is mid-call is the defect this story fixes. The graph's own
+            // bootstrap work runs on real SQLite here, so the wait is real-time and bounded rather
+            // than virtual - a virtual advance would expire before that work gets CPU.
+            awaitCondition("the database handle to be released") { recordingFactory.closeCalls == 1 }
             assertEquals(1, recordingFactory.closeCalls)
         } finally {
             owningFactory.close()

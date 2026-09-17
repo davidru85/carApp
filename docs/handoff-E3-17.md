@@ -1,0 +1,162 @@
+# Handoff - E3-17 Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle
+
+## Story
+
+`E3-17`. `DefaultAppGraph.close()` cancelled `graphScope` and then closed the `DatabaseHandle`
+immediately. `cancel()` does not join, and `E3-03` put long-running detached sync cycles on that same
+scope, so the driver could be released while a cycle was still reading or writing through it. Both
+production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()` — could hit it.
+
+## Ready Check
+
+- Backlog story: `E3-17 - Make AppGraph.close() Safe Against an In-Flight Sync Cycle`.
+- Acceptance criteria satisfied: the accepted option's obligations, the `D-89` ownership rules, both
+  host close paths, the preserved `E1-12` mitigation, and the recorded decision.
+- Dependency and decision rows checked: `D-172` (raised from `Proposed` to `Accepted` here, mechanism
+  option D with a 5-second grace), `E1-12` (context), `E3-03` (the change that introduced the hazard).
+- Normative sections: `docs/CONTRACTS.md §6`, `§9.1`, `§11`, `§18`, `§20.3.2`, `§20.7`; `docs/adr/0173`;
+  `docs/adr/0090` (`D-89`); `docs/SECURITY.md`.
+- Expected verification: both shared suites, `:core:sync` suites, the quality and contract gates, and
+  the complete non-instrumented command.
+- Human review gates: **this story is gated** (production close-path change on the `E3-03` review
+  finding) and MUST NOT merge on agent judgement.
+- Rule 0 acknowledged: chat replies for this story are in Spanish (es-ES); every artifact is in
+  technical English.
+
+## In-Progress Checkpoint
+
+- Date: 2026-09-17.
+- Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`
+  (`b517dba`), because the hazard exists only once `E3-03` puts cycles on `graphScope`.
+- Current phase and latest commit: GREEN complete; records in progress. Not pushed at the time of
+  writing this checkpoint.
+- Completed: `D-172` accepted as option D with a 5-second grace; `SyncController.shutdown()` added and
+  implemented; `AppGraph.close()` restructured; RED and GREEN for the close path; the residual window
+  recorded in `docs/SECURITY.md`.
+- Verification evidence: see **Verification Run**.
+- Known failures: none.
+- Open decisions or blockers: the owner review gate. Nothing else blocks.
+- Exact next step: push the branch, open the pull request, and hand it to the owner for review.
+
+## Scope Completed
+
+- `SyncController.shutdown()`: refuses every later trigger and completes every in-flight `sync()`
+  awaiter with `PersistenceError.DatabaseUnavailable`, idempotently and without waiting for a cycle.
+- `AppGraph.close()`: calls `shutdown()`, closes the auth client, cancels `graphScope`, and releases
+  the `DatabaseHandle` from a single bounded waiter that joins the cancelled scope or gives up at the
+  5-second deadline.
+- `PersistenceError.DatabaseUnavailable` is reused as the closed outcome. No new error leaf was added,
+  because `§6` gives that leaf the exact meaning required and a new one would need a gate of its own.
+- Tests: `AppGraphCloseSafetyTest` (four cases), `DefaultSyncControllerShutdownTest` (three cases),
+  and the two existing close-order tests adapted to await the ordered release instead of assuming it
+  is inline.
+
+## Acceptance Evidence
+
+- **The handle is not released while a non-cancellable cycle is still running.**
+  `AppGraphCloseSafetyTest.theHandleIsNotReleasedWhileANonCancellableCycleIsStillRunning` and
+  `theSwiftClosePathIsSafeToo` park a cycle in a `NonCancellable` remote call, close the graph, and
+  assert the recorded order is exactly `[cycle-finished, handle-closed]`. RED before the fix:
+  `events=[handle-closed]`.
+- **Every in-flight `sync()` awaiter returns.**
+  `AppGraphCloseSafetyTest.anInFlightSyncAwaiterReturnsInsteadOfHangingWhenTheGraphCloses` asserts the
+  caller receives `Err(PersistenceError.DatabaseUnavailable)` rather than suspending. RED before the
+  fix: "Timed out after 5s waiting for the sync() caller to return".
+  `DefaultSyncControllerShutdownTest.shutdownCompletesAnInFlightSyncAwaiterWithAClosedOutcome` is the
+  same contract at the controller level.
+- **Later triggers are refused.** `DefaultSyncControllerShutdownTest.shutdownRefusesEveryLaterTrigger`
+  proves no cycle reaches the remote after shutdown, and `shutdownIsIdempotent` proves a second call
+  is harmless.
+- **The deadline really fires.** `theHandleIsStillReleasedWhenACycleNeverObservesCancellation` asserts
+  the release happens at roughly the 5-second window while the cycle is still parked. Verified both
+  ways: measuring 5 011 ms with the bound, and failing when the bound is removed.
+- **The `E1-12` mitigation survives.** `AppGraphTestHarnessTest.closeCancelsCollectorsBeforeClosingTheGraph`
+  still asserts collectors are cancelled before the handle is released.
+- **`D-89` is intact.** `AppGraphCloseTest` idempotency cases pass, and the handle is released by
+  exactly one path.
+
+## Out of Scope / Not Done
+
+- **A cycle parked inside a local SQLite statement** is not covered by a dedicated test. The ordering
+  guarantee covers it — nothing reaches the driver before the scope finishes — but holding a real
+  SQLite call open requires either a production seam or a driver proxy, and both were rejected as
+  scope creep for this story. This is the one acceptance criterion that is satisfied by construction
+  rather than by a dedicated fixture, and it is stated here rather than implied.
+- **Bounding `scheduleAdoptionRetry` in production** is not done here. It is `§9` behaviour; `D-177`
+  bounds its observation in tests only.
+- `docs/BACKLOG.md` `E3-19`, `E3-20` and the other Phase 3 stories are untouched.
+
+## Files Changed
+
+- `core/sync/src/commonMain/.../SyncContracts.kt` — `shutdown()` on the interface, with its contract.
+- `core/sync/src/commonMain/.../SyncEngine.kt` — shutdown state, trigger refusal, awaiter completion.
+- `shared/src/commonMain/.../AppGraph.kt` — the close path and the bounded release waiter.
+- `shared/src/commonTest/.../AppGraphCloseSafetyTest.kt` — new; the four D-172 cases.
+- `core/sync/src/commonTest/.../DefaultSyncControllerTest.kt` — the shutdown test class.
+- `shared/src/commonTest/.../AppGraphCloseTest.kt`, `AppGraphTestHarnessTest.kt` — await the ordered
+  release.
+- `docs/CONTRACTS.md §20.7`, `docs/adr/0173-*.md`, `docs/adr/README.md`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/SECURITY.md`, `docs/BACKLOG.md`,
+  `docs/PROJECT_LOG.md`.
+
+## Decisions Made
+
+- `D-172` accepted as **option D** with a **5-second** grace. Both were the owner's explicit choice on
+  2026-09-17. Option D is recorded in the ADR alongside A, B and C, with the reason option B was not
+  taken: it makes the release asynchronous and breaks the synchronous close observation that
+  `AppGraphCloseTest` pins.
+- `PersistenceError.DatabaseUnavailable` is the closed outcome for an abandoned `sync()`. It was chosen
+  over a new `SyncError` leaf because `§6` already gives it this meaning and a new leaf would widen the
+  error taxonomy.
+- The release is deferred rather than inline whenever graph work is live. That is inherent to option D
+  and it changed two existing tests from asserting synchronous release to asserting ordered release.
+  Their property (the order) is preserved; only the timing assumption changed.
+- Rule 0 held throughout: chat replies were in Spanish, every artifact is in technical English.
+
+## Verification Run
+
+- RED, before the fix: all three original `AppGraphCloseSafetyTest` cases failed with
+  `events=[handle-closed]` and with the hung awaiter, which is the defect itself.
+- GREEN: `AppGraphCloseSafetyTest` 4/4, `DefaultSyncControllerShutdownTest` 3/3,
+  `AppGraphCloseTest` and `AppGraphTestHarnessTest` pass.
+- `:shared:testAndroidHostTest`, `:shared:iosSimulatorArm64Test` and `:core:sync` suites pass on both
+  targets.
+- `ktlintCheck detekt architectureCheck contractCheck koverVerify :build-logic:convention:test` pass;
+  `contractCheck` reports 178 decisions, 178 ADRs and zero `PENDING`.
+- The complete non-instrumented command of `AGENTS.md` passes.
+
+## Contract Impact
+
+- `docs/CONTRACTS.md §20.7` now declares `SyncController.shutdown()` and states its obligations. No
+  existing rule changed; the interface gained the entry point the close path needs.
+- `docs/SECURITY.md` gained the accepted residual window of `D-172`.
+
+## Decision Board Impact
+
+- `D-172`: `Proposed` → `Accepted`, mechanism option D, grace 5 seconds. ADR-0173 status updated, the
+  option added to its table, and removed from "Decisions Awaiting Owner Confirmation". The four mirror
+  rows (`DECISION_BOARD`, `SPECIFICATION §12`, `TECHNICAL_PLAN §2`, `adr/README`) are consistent.
+
+## Shared-Write Modules Touched
+
+- `core/sync/**` and `shared/**`. `docs/CONTRIBUTING.md` names `:core:database` as the shared-write
+  module, and it is **not** modified by this story, so the single-writer rule is not engaged.
+
+## Project Log Entry
+
+Appended: "E3-17 and D-172: `AppGraph.close()` no longer races an in-flight sync cycle".
+
+## Risks or Follow-ups
+
+- The residual window is real and recorded in `docs/SECURITY.md`: work that ignores cancellation can
+  keep the driver alive for up to 5 seconds after `close()` returns. The reverse — releasing the driver
+  underneath live work — is what this story removes.
+- The close path now releases the handle from a coroutine on the injected IO dispatcher. A caller that
+  needs to observe the release synchronously must await it, as the adapted tests do.
+- `D-177` bounds `advanceUntilIdle()` usage in tests so this story's parked-cycle fixtures cannot make
+  the suite non-terminating.
+
+## Human Review Gate
+
+**Required.** This is a gated story: it changes a production close path found during the `E3-03`
+review, on `:core:sync` and `:shared`. It MUST NOT be merged on agent judgement.

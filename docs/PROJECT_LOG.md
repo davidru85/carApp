@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-09-17 — E3-17 and D-172: `AppGraph.close()` no longer races an in-flight sync cycle
+
+- **Type:** story | decision
+- **Story / Decision:** `E3-17` / `D-172`
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** `AppGraph.close()` now calls `SyncController.shutdown()` — which refuses every
+  later trigger and completes every in-flight `sync()` awaiter with
+  `PersistenceError.DatabaseUnavailable` — and then releases the `DatabaseHandle` from a single
+  bounded waiter that joins the cancelled `graphScope`, or gives up at a 5-second deadline and
+  releases anyway.
+- **Why:** `close()` cancelled the scope and closed the handle in the same call, and `cancel()` does
+  not join. `E3-03` had put long-running sync cycles on that scope, so the driver could be released
+  while a cycle was still inside a SQLite call; both `MainActivity.onCleared()` and
+  `SwiftAppGraph.close()` could hit it. The owner selected option D over the ADR's recommended option
+  B because B makes the release asynchronous and would break the synchronous close observation the
+  suite pins, and over option A because a blocking bridge risks an ANR on the main thread.
+- **Documents touched:** `docs/CONTRACTS.md §20.7`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md
+  §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0173-…md`, `docs/SECURITY.md`,
+  `docs/BACKLOG.md`, `docs/handoff-E3-17.md` and this log.
+- **Verification:** RED first — three cases failed with `events=[handle-closed]` while a cycle was
+  live, and the `sync()` caller hung. GREEN: `AppGraphCloseSafetyTest` 4/4,
+  `DefaultSyncControllerShutdownTest` 3/3, both shared suites and the `:core:sync` suites pass on both
+  targets, all quality and contract gates pass (178 decisions, 178 ADRs, zero `PENDING`), and the
+  complete non-instrumented command passes. The 5-second bound was measured at 5 011 ms, and the test
+  that asserts it fails when the bound is removed.
+- **Follow-ups / risks:** the residual window is recorded in `docs/SECURITY.md`: work that ignores
+  cancellation can keep the driver alive for up to 5 seconds past `close()`. A cycle parked inside a
+  local SQLite statement is covered by the ordering guarantee rather than by a dedicated fixture,
+  which the handoff states explicitly. Owner review is required and the story MUST NOT merge on agent
+  judgement.
+
 ### 2026-09-16 — D-177: bound virtual time advancement in graph-backed tests
 
 - **Type:** decision

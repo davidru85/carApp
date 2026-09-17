@@ -152,8 +152,10 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   `E3-16` — the issuance lookup-to-write window found while reviewing that pull request — is **not
   Ready** until the owner resolves `D-150`. `E3-17` — making `AppGraph.close()` safe against an
   in-flight sync cycle, found while reviewing `E3-03`, which invalidated the `E1-12` premise that no
-  production path closes a graph while work is live — is **not Ready** until the owner resolves
-  `D-172`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
+  production path closes a graph while work is live — is implemented on the open
+  `story/E3-17-appgraph-close-safety` branch, stacked on `E3-03`, awaiting the owner's gated review;
+  the owner accepted `D-172` as option D with a 5-second grace on 2026-09-17. `E3-01`, `E3-06`,
+  `E3-10` and `E3-11` are already complete.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation

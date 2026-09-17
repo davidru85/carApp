@@ -35,6 +35,7 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormState
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleListStateHolder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,7 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.concurrent.Volatile
 import kotlin.native.HiddenFromObjC
 
@@ -259,10 +261,27 @@ internal class DefaultAppGraph(
     override fun close() {
         if (closed) return
         closed = true
+        // Refuse new cycles and release every in-flight `sync()` awaiter before the scope is cancelled:
+        // a caller of `sync()` lives outside `graphScope`, so cancelling that scope would leave it
+        // suspended on a deferred nothing else completes (`D-172`).
+        syncController.shutdown()
+        // The auth client is not the `D-172` hazard - the driver is - and closing it synchronously is
+        // the established contract, so it does not wait for graph work to drain.
+        (dependencies.authClient as? AutoCloseable)?.close()
+        val job = graphScope.coroutineContext[Job]
         graphScope.cancel()
-        try {
-            (dependencies.authClient as? AutoCloseable)?.close()
-        } finally {
+        if (job == null) {
+            databaseHandle.close()
+            return
+        }
+        // The handle must not be released while graph-owned work is still running, and `cancel()` does
+        // not join. One bounded waiter, on a scope that outlives the graph, is therefore the single
+        // place that releases it: it joins the cancelled scope and releases afterwards, or gives up at
+        // the deadline if the work never observes cancellation, so the handle can never be held for the
+        // life of the process. A single writer keeps the `D-89` "at most once" rule without needing a
+        // lock, which common code has no synchronous form of.
+        CoroutineScope(SupervisorJob() + dependencies.dispatchers.io).launch {
+            withTimeoutOrNull(RELEASE_BACKSTOP_MILLIS) { job.join() }
             databaseHandle.close()
         }
     }
@@ -290,6 +309,13 @@ internal class DefaultAppGraph(
         }
     }
 }
+
+/**
+ * How long `close()` waits for graph-owned work before releasing the `DatabaseHandle` anyway (`D-172`).
+ * A cooperative cycle unwinds during `cancel()` and releases the handle immediately, so this only
+ * bounds the residual case of work that ignores cancellation. `docs/SECURITY.md` records the window.
+ */
+private const val RELEASE_BACKSTOP_MILLIS = 5_000L
 
 internal fun Flow<Outcome<Vehicle?, AppError>>.fuelEntryOdometerSuggestions(): Flow<Long> =
     transform { result ->

@@ -73,6 +73,20 @@ Requirements:
 
 ## Accepted Residual Risks
 
+- **A sync cycle that ignores cancellation can outlive `AppGraph.close()` by up to five seconds**
+  (`D-172`, `E3-17`). `close()` cancels `graphScope` and releases the `DatabaseHandle` from a single
+  bounded waiter on a scope that outlives the graph: it joins the cancelled scope and releases
+  afterwards, or gives up at a 5-second deadline and releases anyway. A cooperative cycle - every
+  cycle the MVP actually runs - unwinds during cancellation and the handle is released as soon as it
+  finishes, so the deadline is not reached. The residual is the case of work that does not observe
+  cancellation at all, which is also the case that would otherwise hold the driver for the life of
+  the process. Inside that window the graph reports itself closed while its driver is still live, so
+  a call could still reach a driver that is about to be released; the reverse - releasing the driver
+  underneath live work - is the defect this decision removes. The window is bounded, needs no owner
+  action, and cannot lose or corrupt data: it is a lifetime question, not a durability one. No
+  document may describe the close path as race-free for non-cooperative work until that work is
+  bounded at its source.
+
 - **Three low-probability departure concurrency and lifecycle windows remain in the MVP**
   (`D-164`). First, delayed provider work and retained retries are not atomically bound to the owner
   that created the request, so a session switch in the remaining check-to-use window can make work

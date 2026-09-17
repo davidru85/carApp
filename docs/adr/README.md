@@ -178,7 +178,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-169 | [ADR-0170](0170-bound-the-pull-cursor-guarantee-to-millisecond-distinguishable-clusters.md) | Bound the pull-cursor guarantee to millisecond-distinguishable clusters. | Accepted |
 | D-170 | [ADR-0171](0171-quarantine-malformed-remote-documents-through-the-sync-source.md) | Quarantine malformed remote documents through the sync source. | Accepted |
 | D-171 | [ADR-0172](0172-make-the-sync-cycle-awaitable-for-user-initiated-refresh.md) | Make the sync cycle awaitable for user-initiated refresh. | Accepted |
-| D-172 | [ADR-0173](0173-make-app-graph-close-safe-against-an-in-flight-sync-cycle.md) | Make `AppGraph.close()` safe against an in-flight sync cycle. | Proposed |
+| D-172 | [ADR-0173](0173-make-app-graph-close-safe-against-an-in-flight-sync-cycle.md) | Release the `DatabaseHandle` from `graphScope` completion with a bounded backstop. | Accepted |
 | D-173 | [ADR-0174](0174-manual-retry-coverage-for-parked-connectivity-rows.md) | Manual retry coverage for parked connectivity rows. | Proposed |
 | D-174 | [ADR-0175](0175-carry-provider-timestamp-precision-in-the-pull-cursor.md) | Carry provider timestamp precision in the pull cursor. | Accepted |
 | D-175 | [ADR-0176](0176-fix-the-silent-shared-test-stall-inside-e3-03.md) | Fix the silent shared-test stall inside `E3-03`. | Accepted |

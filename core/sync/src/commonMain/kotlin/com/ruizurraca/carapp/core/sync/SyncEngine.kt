@@ -8,6 +8,7 @@ import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.MAX_RETRYABLE_ATTEMPTS
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
+import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SUPPORTED_CURRENCY_CODES
 import com.ruizurraca.carapp.core.common.SyncError
@@ -39,6 +40,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlin.concurrent.Volatile
 import kotlin.random.Random
 import kotlin.time.Instant
 
@@ -226,6 +228,12 @@ internal class DefaultSyncController(
     // would wedge `drainCycles` and suspend every later `sync()` forever (`§9.1`).
     private var pendingFollowUp: PendingFollowUp? = null
 
+    // The completion of the currently active cycle, held so `shutdown()` can complete it directly.
+    // `drainCycles` completes it in the normal path; this reference exists only for the shutdown path,
+    // where scope cancellation stops `drainCycles` before it gets there (`D-172`).
+    @Volatile
+    private var activeCycleCompletion: CompletableDeferred<Outcome<Unit, AppError>>? = null
+
     private var unexpectedFailure = false
     private var cycleFailure = false
     private var lastCycleError: AppError? = null
@@ -233,17 +241,38 @@ internal class DefaultSyncController(
     private var adoptionAttemptCount = 0
     private var adoptionRetryScheduled = false
 
+    // Set once by `shutdown()`. It refuses every later trigger, so a cycle cannot start after the
+    // graph has begun closing and reach the driver while it is being released (`D-172`).
+    @Volatile
+    private var shuttingDown = false
+
     override fun requestSync(reason: SyncTrigger) {
         scope.launch {
-            val registration = registerTrigger(reason)
+            val registration = registerTrigger(reason) ?: return@launch
             if (registration.startsCycle) drainCycles(registration.reasons, registration.completion)
         }
     }
 
     override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> {
-        val registration = registerTrigger(reason)
+        val registration =
+            registerTrigger(reason)
+                ?: return Outcome.Err(PersistenceError.DatabaseUnavailable)
         if (registration.startsCycle) scope.launch { drainCycles(registration.reasons, registration.completion) }
         return registration.completion.await()
+    }
+
+    override fun shutdown() {
+        // Publish the refusal first, then read the awaiters. `sync()` and `requestSync` publish their
+        // awaiter and then re-check `shuttingDown`, so at least one side observes the other: a caller
+        // is either completed here or refused there, and no caller is left suspended (`D-172`).
+        shuttingDown = true
+        val active = activeCycleCompletion
+        val pending = pendingFollowUp?.completion
+        // Cancelling the graph scope stops `drainCycles` before it reaches its `complete` call, and a
+        // `sync()` caller lives outside that scope, so its deferred must be completed here or it
+        // suspends forever. `complete` is idempotent: a cycle that did finish keeps its real outcome.
+        active?.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+        pending?.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
     }
 
     /**
@@ -253,17 +282,31 @@ internal class DefaultSyncController(
      * cycle (`§9.1`). Each trigger also contributes its own reason to the [PendingFollowUp], so the
      * follow-up cycle runs every reason-dependent step a joined trigger requires.
      */
-    private suspend fun registerTrigger(reason: SyncTrigger): TriggerRegistration =
+    private suspend fun registerTrigger(reason: SyncTrigger): TriggerRegistration? =
         cycleMutex.withLock {
+            if (shuttingDown) return@withLock null
             if (cycleRunning) {
                 val followUp =
                     pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
                 followUp.reasons += reason
+                // Publish the handle, then re-check: `shutdown()` reads it after setting the flag, so
+                // one of the two always observes the other and the caller cannot be left suspended.
+                if (shuttingDown) {
+                    followUp.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+                    return@withLock null
+                }
                 TriggerRegistration(followUp.completion, reasons = setOf(reason), startsCycle = false)
             } else {
                 cycleRunning = true
                 cycleGeneration += 1
-                TriggerRegistration(CompletableDeferred(), reasons = setOf(reason), startsCycle = true)
+                val completion = CompletableDeferred<Outcome<Unit, AppError>>()
+                activeCycleCompletion = completion
+                if (shuttingDown) {
+                    cycleRunning = false
+                    activeCycleCompletion = null
+                    return@withLock null
+                }
+                TriggerRegistration(completion, reasons = setOf(reason), startsCycle = true)
             }
         }
 
@@ -301,6 +344,9 @@ internal class DefaultSyncController(
                         pending to null
                     } else {
                         cycleRunning = false
+                        // The active cycle is no longer running, so its completion must not be held as
+                        // the "in-flight" awaiter `shutdown()` would complete.
+                        activeCycleCompletion = null
                         null to cycleGeneration
                     }
                 }
