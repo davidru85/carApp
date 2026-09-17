@@ -120,7 +120,8 @@ review.
   `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
   `docs/handoff-E2-08.md` holds its acceptance evidence. `E1-14` merged through pull request #66;
   its evidence lives in `docs/handoff-E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
-  hardening, merged on 2026-09-09 through pull request #63.
+  hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
+  on 2026-09-17 through pull request #69, after the owner's gated review.
 - **Next:** Phase 3. The remaining stories and the decisions that gate three of them are listed
   below and in `docs/BACKLOG.md`. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
@@ -142,22 +143,19 @@ review.
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-03`, `E3-08`, `E3-04`, `E3-12`,
+- **Remaining Phase 3:** `E3-08`, `E3-04`, `E3-12`,
   `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`, `E3-19`, `E3-20` and
-  `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68 and `E3-14` merged through pull
-  request #63, so neither is outstanding. `E3-03` is implemented on the open
-  `story/E3-03-core-sync-engine` branch and its gated pull request #69; `E3-17` — making
-  `AppGraph.close()` safe against an in-flight sync cycle, found while reviewing `E3-03`, which
-  invalidated the `E1-12` premise that no production path closes a graph while work is live — is
-  implemented on the open `story/E3-17-appgraph-close-safety` branch (pull request #70), stacked on
-  `E3-03`, awaiting the owner's gated review. The owner accepted `D-172` as option D with a
-  5-second grace on 2026-09-17; the story and the acceptance are recorded together on
-  `story/E3-17-appgraph-close-safety`.
+  `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
+  #63, and `E3-03`, the `:core:sync` engine, merged on 2026-09-17 through pull request #69, so none of
+  them is outstanding. `E3-17` — making `AppGraph.close()` safe against an in-flight sync cycle, found
+  while reviewing `E3-03`, which invalidated the `E1-12` premise that no production path closes a
+  graph while work is live — is implemented on `story/E3-17-appgraph-close-safety` (pull request #70),
+  awaiting the owner's gated review. The owner accepted `D-172` as option D with a 5-second grace on
+  2026-09-17; the story and the acceptance are recorded together on that branch.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
-- **Three decisions remain open once both pull requests merge, and none of them blocks `E3-03` or
-  `E3-17`:** the tables below are the authoritative rows; this paragraph exists so the outstanding
-  owner work is visible without reading three documents. Each pair is independent of the pull requests
-  awaiting merge now.
+- **Three decisions remain open, and none of them blocks `E3-17`:** the tables below are the
+  authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
+  three documents. `E3-03` already merged, so no open decision gates merged work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
     start until the owner decides.

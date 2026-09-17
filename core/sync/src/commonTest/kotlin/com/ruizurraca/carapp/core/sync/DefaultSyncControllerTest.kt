@@ -20,6 +20,8 @@ import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +31,8 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -39,6 +43,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -2262,3 +2267,75 @@ private class TestUuidGenerator : UuidGenerator {
 }
 
 private const val MICROS_PER_MILLISECOND = 1_000L
+
+/**
+ * The `D-172` shutdown contract: `AppGraph.close()` must be able to end the controller without
+ * leaving a `sync()` caller suspended and without admitting a cycle after the graph began closing.
+ * Kept in its own class so detekt's `LargeClass` bound stays meaningful.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class DefaultSyncControllerShutdownTest {
+    @Test
+    fun shutdownCompletesAnInFlightSyncAwaiterWithAClosedOutcome() =
+        runTest {
+            val pushStarted = CompletableDeferred<Unit>()
+            val releasePush = CompletableDeferred<Unit>()
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.remote.onPushSuspend = {
+                pushStarted.complete(Unit)
+                // Model work that does not observe cancellation, which is the case `D-172` bounds: a
+                // cooperative cycle would finish during the scope cancellation instead. The gate is
+                // released in the `finally`, so the test never leaves the worker without a way out.
+                withContext(NonCancellable) { releasePush.await() }
+            }
+
+            try {
+                val awaited = async { fixture.controller.sync(SyncTrigger.PullToRefresh) }
+                pushStarted.await()
+
+                fixture.controller.shutdown()
+
+                // The awaiter lives outside the graph scope, so cancelling that scope does not reach
+                // it. Shutdown must complete its deferred or the caller suspends forever (`D-172`).
+                val result = withTimeoutOrNull(5.seconds) { awaited.await() }
+                assertEquals(
+                    Outcome.Err(PersistenceError.DatabaseUnavailable),
+                    result,
+                    "shutdown must complete every in-flight sync() awaiter with a closed outcome",
+                )
+            } finally {
+                releasePush.complete(Unit)
+            }
+        }
+
+    @Test
+    fun shutdownRefusesEveryLaterTrigger() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.controller.shutdown()
+
+            // `requestSync` is fire-and-forget, so the assertion is that no cycle ran: a refused
+            // trigger must not reach the remote, because the graph may already be releasing its driver.
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            advanceUntilIdle()
+
+            assertEquals(emptyList(), fixture.remote.pushCalls)
+            assertEquals(
+                Outcome.Err(PersistenceError.DatabaseUnavailable),
+                fixture.controller.sync(SyncTrigger.AppForeground),
+            )
+        }
+
+    @Test
+    fun shutdownIsIdempotent() =
+        runTest {
+            val fixture = fixture()
+            fixture.controller.shutdown()
+            fixture.controller.shutdown()
+
+            assertEquals(
+                Outcome.Err(PersistenceError.DatabaseUnavailable),
+                fixture.controller.sync(SyncTrigger.AppForeground),
+            )
+        }
+}

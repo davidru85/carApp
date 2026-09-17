@@ -2,11 +2,10 @@
 
 ## Status
 
-Proposed
+Accepted
 
-The `E3-03` owner-review round raised this on 2026-09-13. `E3-17` MUST NOT start until the owner
-confirms the mechanism. No production fix is delivered by `E3-03`; this ADR records the hazard and
-the options only.
+The `E3-03` owner-review round raised this on 2026-09-13. The owner accepted **option D** on
+2026-09-16 and fixed the grace at 5 seconds, which unblocks `E3-17`.
 
 ## Context
 
@@ -52,6 +51,7 @@ defect `E1-12` deferred, and it touches the D-89 handle-ownership contract
 | A. Make `close()` await the graph scope (`cancelAndJoin`) before releasing the handle | Correct by construction: every graph-owned coroutine is finished before the driver closes. Reuses the exact ordering `AppGraphTestHarness` already proves for tests. | `close()` becomes suspending, but `MainActivity.onCleared()` and `SwiftAppGraph.close()` are synchronous. The synchronous hosts would need a bounded blocking bridge, which reintroduces its own liveness question on the main thread. A cycle waiting on a slow remote call would delay close. |
 | B. Have `:core:sync` expose an awaitable drain, and make the close path wait for the active cycle with a bounded deadline before closing the handle | Keeps the cycle lifecycle owned by `SyncController` and gives `close()` a well-defined upper bound; a bounded wait cannot hang the host forever. Directly builds on the `D-171` completion-handle shape. | A bounded deadline means a cycle exceeding it is abandoned, so the hazard is narrowed rather than eliminated; the residual window MUST be stated. The sync controller gains a drain entry point, and the graph close path becomes asynchronous or calls a suspend drain. |
 | C. Keep `close()` synchronous and never close the handle until the scope reports idle, by having each cycle own its own database access and release it last | No host API change: the graph simply does not close the driver while work is live. | Requires a reference count or per-cycle handle ownership, which spreads D-89 lifetime across the controller; a cycle that never completes strands the handle and leaks the connection. It also moves the handle-ownership contract out of `AppGraph`, which is where D-89 puts it. |
+| **D. Release the handle from `graphScope`'s completion handler, with a bounded backstop** | `close()` stays synchronous and the D-89 handle stays owned by `AppGraph`, so neither host changes shape and `AppGraphCloseTest`'s synchronous close observation keeps holding. Completion order is guaranteed by construction instead of by timing. | The handle is released from a completion callback rather than inline, so a cycle that ignores cancellation delays it; the 5-second backstop then releases the handle underneath that cycle and the residual window MUST be stated. |
 
 ## Recommendation
 

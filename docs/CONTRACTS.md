@@ -2605,6 +2605,7 @@ interface SyncController {
     fun requestSync(reason: SyncTrigger)
     suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError>
     suspend fun retryFailed(): Outcome<Unit, AppError>
+    fun shutdown()
 }
 ```
 
@@ -2616,7 +2617,9 @@ A `sync_cursor` row is created lazily on first pull with `RemoteCursor.INITIAL`.
 
 `SyncController.retryFailed()` returns `Err(PersistenceError.TransactionFailed)` if the reset transaction fails; otherwise `Ok(Unit)`. It MUST NOT return `SyncError` or `RemoteError` leaves because it performs no remote work. An `E3-03` fixture MUST assert the only failure path is local-transaction failure.
 
-`SyncController.sync(reason)` is the awaitable, outcome-returning entry point (`D-171`). It suspends until the cycle that serves the request completes and returns that cycle's outcome. It follows the same serialization rules of `§9.1` as `requestSync`: one cycle at a time under the mutex, and concurrent triggers set the single pending flag. A caller that arrives while a cycle is running joins the single pending follow-up cycle — it MUST NOT start a second cycle and MUST NOT busy-wait on `status`. Its outcomes preserve the pre-`E3-03` `refresh` contract: offline or `LOCAL_OWNER` is `Ok(Unit)` with no error; a failed pull is `Err` carrying the failure (`RemoteError` or `SyncError.ConflictUnresolved`). A local post-write trigger MUST use `requestSync`, never `sync`, so a write never blocks on a network round trip.
+`SyncController.shutdown()` is the close-path entry point (`D-172`). It is non-suspending, idempotent, and it MUST refuse every later `requestSync` and `sync(reason)` without admitting a cycle, so a graph that has begun closing cannot start work against a driver that is being released. It MUST also complete the outcome of every in-flight `sync(reason)` caller — the active cycle's and the pending follow-up's — with `Err(PersistenceError.DatabaseUnavailable)`, because cancelling the graph scope prevents `drainCycles` from reaching its completion and a `sync()` caller is outside that scope. A caller that was already running and did finish keeps its real outcome, because completing an already-completed deferred has no effect. `AppGraph.close()` MUST call it before it releases the `DatabaseHandle`, and MUST NOT release that handle while graph-owned work is still running; a bounded deadline MAY release it anyway, and the residual window MUST be stated in `docs/SECURITY.md`.
+
+`SyncController.sync(reason)` is the awaitable, outcome-returning entry point (`D-171`). It suspends until the cycle that serves the request completes and returns that cycle's outcome. It follows the same serialization rules of `§9.1` as `requestSync`: one cycle at a time under the mutex, and concurrent triggers set the single pending flag. A caller that arrives while a cycle is running joins the single pending follow-up cycle — it MUST NOT start a second cycle and MUST NOT busy-wait on `status`. Its outcomes preserve the pre-`E3-03` `refresh` contract: offline or `LOCAL_OWNER` is `Ok(Unit)` with no error; a failed pull is `Err` carrying the failure (`RemoteError` or `SyncError.ConflictUnresolved`). A local post-write trigger MUST use `requestSync`, ne…
 
 `RemoteCursor.INITIAL` is a sentinel representing "no cursor stored yet"; it is never passed to `RemoteSyncSource.pullChanges`. The sync engine materialises it as the timestamp-only `startAt(overlapSince)` first-page boundary per `§9.4`. The `null` prohibition in `§9.4` applies to cursor components passed to `startAt`/`startAfter`; `INITIAL` is exempt because no nullable document-ID component reaches Firestore. An `E3-03` test MUST prove `INITIAL` never reaches `RemoteSyncSource`.
 

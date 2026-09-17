@@ -90,6 +90,20 @@ interface SyncController {
 
     suspend fun retryFailed(): Outcome<Unit, AppError>
 
+    /**
+     * Refuses every later automatic trigger and completes the outcome of every in-flight [sync]
+     * caller with a closed error, so a shutdown cannot leave a caller suspended on a deferred nothing
+     * will ever complete (`D-172`).
+     *
+     * `AppGraph.close()` calls this before it releases the `DatabaseHandle`. The active cycle's own
+     * `sync` awaiter and the single pending follow-up's awaiter are both completed, because
+     * cancelling the graph scope stops [drainCycles] from reaching its `complete` call, and a caller
+     * of [sync] is outside that scope. Idempotent, and safe to call while a cycle is running: it does
+     * not wait for the cycle, it only makes sure no caller is left hanging. Non-suspending so
+     * `AppGraph.close()` can call it synchronously.
+     */
+    fun shutdown()
+
     /** Redacted local diagnostics. Production controllers return an empty list. */
     suspend fun debugLines(): List<String> = emptyList()
 }

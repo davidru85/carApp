@@ -50,6 +50,12 @@ class AppGraphTestHarnessTest {
                 } finally {
                     try {
                         harness.close()
+                        // `D-172`: the graph releases its handle after its own work has finished, so the
+                        // ordering assertion below waits for that release. The property under test is
+                        // the order - collectors before the handle - not that both happen inline.
+                        awaitCondition("the graph to release its handle") {
+                            events.contains("graph-closed")
+                        }
                     } finally {
                         assertEquals(
                             listOf("collectors-cancelled", "graph-closed"),

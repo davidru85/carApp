@@ -38,6 +38,74 @@
 
 ## Entries
 
+### 2026-09-17 — E3-03 merged, and pull request #70 brought onto the new `main`
+
+- **Type:** story
+- **Story / Decision:** `E3-03`, `E3-17` / no new decision
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** pull request #69 merged into `main` as merge commit `4cb83c5`, completing `E3-03`,
+  the `:core:sync` engine, after the owner's gated review and with all ten required checks green.
+  `story/E3-17-appgraph-close-safety` then merged the new `main` into itself, so pull request #70 is
+  now based on a `main` that already contains `E3-03`. The status documents were realigned: `AGENTS.md`
+  moved `E3-03` out of Remaining Phase 3 into Completed, `docs/BACKLOG.md` states the merge with its
+  pull request, and `docs/handoff-E3-03.md` records the story as complete.
+- **Why:** `AGENTS.md` §`Repository State` requires the story that changes the state to update it.
+  Before this change, six places still described `E3-03` as implemented and awaiting review, and the
+  "Outstanding Owner Decisions" section still said its three decisions gated both pull requests.
+  Leaving that would have told the next agent that merged work was in flight, and would have let an
+  open decision be cited against a pull request that no longer exists.
+- **Merge method:** merge commit, not squash. `E3-17` is stacked on `E3-03`, and squashing #69
+  rewrites its commit so the stack loses ancestry: `git merge-base main story/E3-17-...` returns
+  `fbc6d64` again and #70 would re-apply the 17 files of `E3-03`. Verified locally before the owner
+  merged.
+- **Rebase:** not required and not performed. `git merge-base origin/main story/E3-17-...` is
+  `cf86dd2`, the tip of #69, so `origin/main` is already an ancestor of #70's history. A simulated
+  `git merge --no-ff` of #70 into `main` produced no conflict and a tree **byte-identical** to #70's
+  tip. The branch tip is the merge commit `9d31d7f`, which records the `main` integration explicitly
+  rather than discarding it.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-03.md`, this log.
+- **Verification:** `contractCheck` reports the same 178 decisions and 178 ADRs; `ktlintCheck` passes.
+  The merge of `main` into the `E3-17` branch changed no `.kt`, `.swift`, `.sq`, `.kts` or `.yml`
+  file, so no product code was re-verified by this change.
+- **Follow-ups / risks:** `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18` remain open and
+  block only their own stories; none gates #70. `E3-17` / `D-172` remains a gated story awaiting the
+  owner's review.
+
+### 2026-09-17 — E3-17 and D-172: `AppGraph.close()` no longer races an in-flight sync cycle
+
+- **Type:** story | decision
+- **Story / Decision:** `E3-17` / `D-172`
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** `AppGraph.close()` now calls `SyncController.shutdown()` — which refuses every
+  later trigger and completes every in-flight `sync()` awaiter with
+  `PersistenceError.DatabaseUnavailable` — and then releases the `DatabaseHandle` from a single
+  bounded waiter that joins the cancelled `graphScope`, or gives up at a 5-second deadline and
+  releases anyway.
+- **Why:** `close()` cancelled the scope and closed the handle in the same call, and `cancel()` does
+  not join. `E3-03` had put long-running sync cycles on that scope, so the driver could be released
+  while a cycle was still inside a SQLite call; both `MainActivity.onCleared()` and
+  `SwiftAppGraph.close()` could hit it. The owner selected option D over the ADR's recommended option
+  B because B makes the release asynchronous and would break the synchronous close observation the
+  suite pins, and over option A because a blocking bridge risks an ANR on the main thread.
+- **Documents touched:** `docs/CONTRACTS.md §20.7`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md
+  §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0173-…md`, `docs/SECURITY.md`,
+  `docs/BACKLOG.md`, `docs/handoff-E3-17.md` and this log.
+- **Verification:** RED first — three cases failed with `events=[handle-closed]` while a cycle was
+  live, and the `sync()` caller hung. GREEN: `AppGraphCloseSafetyTest` 4/4,
+  `DefaultSyncControllerShutdownTest` 3/3, both shared suites and the `:core:sync` suites pass on both
+  targets, all quality and contract gates pass (178 decisions, 178 ADRs, zero `PENDING`), and the
+  complete non-instrumented command passes. The 5-second bound was measured at 5 011 ms, and the test
+  that asserts it fails when the bound is removed.
+- **Follow-ups / risks:** the residual window is recorded in `docs/SECURITY.md`: work that ignores
+  cancellation can keep the driver alive for up to 5 seconds past `close()`. A cycle parked inside a
+  local SQLite statement is covered by the ordering guarantee rather than by a dedicated fixture,
+  which the handoff states explicitly. Owner review is required and the story MUST NOT merge on agent
+  judgement.
+- **CI:** pull request [#70](https://github.com/davidru85/carApp/pull/70) reports `CLEAN`; run
+  `35201565587` on `7ebd3e6` is fully green on all ten required checks. The `E3-03` base branch is
+  green too: run `35194821814` passed all ten after one re-run of `ios-simulator-build`, which failed
+  once in `VehicleAndFuelFlowUITests` on a keyboard-focus step - the known `E1-17` UI flake, unrelated
+  to this story, and green on re-run.
 ### 2026-09-17 — Documentation reconciled for the E3-03 and E3-17 merges
 
 - **Type:** correction
