@@ -138,6 +138,12 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - The documentation reconciliation commit `0e5c0c1` changed only `AGENTS.md`, `docs/BACKLOG.md`,
   `docs/PROJECT_LOG.md` and `docs/handoff-E3-03.md`. `contractCheck` reports the same 178 decisions,
   178 ADRs and zero `PENDING`; `ktlintCheck` passes.
+- `ios-simulator-build` failed once on run `35212737926` while `E3-03`'s run `35212706941` was green
+  on the same product content: `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal`
+  reported "Guest session did not reach the vehicle list before the timeout within the 180.000-second
+  absolute cap". This is the known `E1-17` iOS UI flake, not a behaviour change of this story, which
+  touches `AppGraph.close()` and the sync controller and no onboarding UI code. The failed job was
+  re-run.
 - The `E3-03` base branch is also green: CI `35194821814` on `b517dba` passes all ten after one
   re-run of `ios-simulator-build`, which failed once in `VehicleAndFuelFlowUITests` on a keyboard-focus
   step. That is the known `E1-17` UI flake and is unrelated to this story; it passed on re-run.
