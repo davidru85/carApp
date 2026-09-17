@@ -73,6 +73,37 @@
   green too: run `35194821814` passed all ten after one re-run of `ios-simulator-build`, which failed
   once in `VehicleAndFuelFlowUITests` on a keyboard-focus step - the known `E1-17` UI flake, unrelated
   to this story, and green on re-run.
+### 2026-09-17 — Documentation reconciled for the E3-03 and E3-17 merges
+
+- **Type:** correction
+- **Story / Decision:** `E3-03`, `E3-17`; no new decision
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the repository state and the backlog were brought back in line with reality so
+  pull requests #69 and #70 can be reviewed and merged with the outstanding owner decisions visible
+  and correctly scoped. `AGENTS.md` now says Phases 1 and 2 are complete, records that `E3-14`,
+  `E2-05`, `E1-17` and `E3-02` merged, and lists all of `E3-18` through `E3-21` in Remaining Phase 3
+  for the first time. `docs/BACKLOG.md` gained an **Outstanding Owner Decisions** section covering
+  `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18`, each `Not Ready` entry states that it
+  does not block #69 or #70, and the index rows mark the completed stories and name each blocking
+  decision.
+- **Why:** four documents described already-merged work as open, and the three open decisions were
+  reachable only by reading three ADRs. A reviewer could not tell from the backlog alone which
+  decisions are outstanding, which story each one blocks, or whether either pull request depends on
+  them.
+- **Correction of a real inconsistency:** `docs/BACKLOG.md` described `D-173` as `Pending` while the
+  board, ADR-0174, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`
+  all say `Proposed`. The board's own vocabulary distinguishes them - `Proposed` carries a
+  recommendation, `Pending` does not - and `D-173` has a recommended option B, so the backlog was
+  wrong and was corrected to `Proposed`. The four mirrors were verified aligned for all three
+  decisions; `contractCheck` reports them unchanged in count and status.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` on both branches, and
+  `docs/handoff-E3-03.md` on `E3-03` alone.
+- **Verification:** `contractCheck` passes with the same decision and ADR counts and the same three
+  unresolved decisions; `ktlintCheck` passes. No code, test, dependency or decision status changed.
+- **Follow-ups / risks:** `D-149`, `D-150` and `D-173` remain the owner's to resolve, and each still
+  blocks only its own story. `E1-17`'s UI flake stayed reachable: it failed once more on 2026-09-17 in
+  `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` and passed on re-run, which is why a
+  red `ios-simulator-build` is not by itself evidence of a regression in this phase.
 
 ### 2026-09-16 — D-177: bound virtual time advancement in graph-backed tests
 

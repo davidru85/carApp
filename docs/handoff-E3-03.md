@@ -34,12 +34,15 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-16.
+- Date: 2026-09-17.
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
-- Current phase and latest commit: the seventeenth owner-review correction round is REFACTOR
-  complete at `d0fea48`; the round-17 fix, its diagnostics and the residual risk are recorded in the
-  repository head. Pull request #69 remains open against `main`; it is not merged and MUST NOT be
-  merged on agent judgement.
+- Current phase and latest commit: complete at `b517dba` (round 19, `D-177`). Pull request #69 is
+  open against `main` and `CLEAN`; CI run `35194821814` passes all ten required checks. It is not
+  merged and MUST NOT be merged on agent judgement.
+- Outstanding owner decisions: `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18` are open.
+  **None of them blocks this pull request**; each blocks only its own story. They are consolidated in
+  the "Outstanding Owner Decisions" section of `docs/BACKLOG.md`, and `D-172` / `E3-17` was resolved
+  on 2026-09-17.
 - Completed since the previous checkpoint: the `shared-tests` silent stall was bounded in two proven
   mechanisms (`FlowExpectation` polls gained a real-time ceiling instead of hanging, `awaitState` no
   longer races a foreign scope during teardown with `UnboundedCoroutineJoin`), and `a900571` added
