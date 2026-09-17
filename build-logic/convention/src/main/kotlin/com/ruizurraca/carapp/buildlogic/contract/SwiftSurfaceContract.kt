@@ -65,7 +65,7 @@ internal class SwiftSurfaceContract private constructor(
             function.parameters.firstOrNull { it.startsWith("scope") }?.let {
                 problems += "SwiftAppGraph.${function.name} takes $it"
             }
-            defaultedParameters(function).takeIf { it.isNotEmpty() }?.let {
+            function.defaulted.takeIf { it.isNotEmpty() }?.let {
                 problems += "SwiftAppGraph.${function.name} defaults ${it.joinToString()}"
             }
         }
@@ -76,14 +76,9 @@ internal class SwiftSurfaceContract private constructor(
             problems += "SwiftAppGraph references SyncController"
         }
 
-        inputs.sources.forEach { (path, source) ->
-            stateHolderClasses(source).forEach { holder ->
-                members(source, holder.declaration).filterNot { it.isPrivate }.forEach { function ->
-                    val defaulted = defaultedParameters(function)
-                    if (defaulted.isNotEmpty()) {
-                        problems += "$path: ${holder.declaration}.${function.name} defaults ${defaulted.joinToString()}"
-                    }
-                }
+        exportedStateHolderMembers().forEach { (path, declaration, function) ->
+            if (function.defaulted.isNotEmpty()) {
+                problems += "$path: $declaration.${function.name} defaults ${function.defaulted.joinToString()}"
             }
         }
 
@@ -122,30 +117,41 @@ internal class SwiftSurfaceContract private constructor(
         return inputs.contract.substring(start, closing + 1)
     }
 
-    /**
-     * The public members of one declaration, normalised to `name(parameter: Type)`.
-     *
-     * Private members are returned with [Member.isPrivate] set rather than dropped, because the
-     * default-argument check has to distinguish them while the surface checks do not.
-     */
+    /** The public members of one declaration, normalised to `name(parameter: Type)`. */
     private fun members(source: String, declaration: String): List<Member> {
         val body = bodyOf(source, declaration)
-        return FUN.findAll(body)
-            .map { match ->
-                val modifiers = body.substring(0, match.range.first).substringAfterLast('\n')
-                val raw = splitTopLevel(match.groupValues[2]).map { it.trim() }.filter { it.isNotEmpty() }
-                Member(
-                    name = match.groupValues[1],
-                    parameters = raw.mapNotNull(::normaliseParameter),
-                    rawParameters = raw,
-                    isPrivate = PRIVATE.containsMatchIn(modifiers),
-                )
-            }.toList()
+        return FUN.findAll(body).mapNotNull { match ->
+            val parameters = balancedParameters(body, match.range.last) ?: return@mapNotNull null
+            val modifiers = body.substring(0, match.range.first).substringAfterLast('\n')
+            Member(
+                name = match.groupValues[1],
+                rawParameters = splitTopLevel(parameters).map { it.trim() }.filter { it.isNotEmpty() },
+                isPrivate = PRIVATE.containsMatchIn(modifiers),
+            )
+        }.toList()
     }
 
-    /** The parameters of [function] that carry an inline default value. */
-    private fun defaultedParameters(function: Member): List<String> =
-        function.rawParameters.filter { DEFAULT_PARAMETER.containsMatchIn(it) }
+    /**
+     * The parameter list that opens at or after [from], with nested parentheses balanced.
+     *
+     * A plain `[^)]*` capture would stop inside a function-typed parameter such as
+     * `callback: (Int) -> Unit`, which would then hide any default that followed it.
+     */
+    private fun balancedParameters(source: String, from: Int): String? {
+        val opening = source.indexOf('(', from)
+        if (opening < 0) return null
+        var depth = 0
+        for (index in opening until source.length) {
+            when (source[index]) {
+                '(' -> depth += 1
+                ')' -> {
+                    depth -= 1
+                    if (depth == 0) return source.substring(opening + 1, index)
+                }
+            }
+        }
+        return null
+    }
 
     /** The braced body of one declaration, with the declaration header and its KDoc excluded. */
     private fun bodyOf(source: String, declaration: String): String {
@@ -175,15 +181,6 @@ internal class SwiftSurfaceContract private constructor(
         return -1
     }
 
-    /** `scope: CoroutineScope` for a declaration, or `null` for a parameter that is not one. */
-    private fun normaliseParameter(parameter: String): String? {
-        val trimmed = parameter.trim()
-        if (trimmed.isEmpty()) return null
-        val name = trimmed.substringBefore(':').trim().removePrefix("val ").removePrefix("var ")
-        val type = trimmed.substringAfter(':', "").substringBefore(DEFAULT_ARGUMENT).trim()
-        return if (type.isEmpty()) null else "$name: $type"
-    }
-
     private fun splitTopLevel(parameters: String): List<String> {
         val result = mutableListOf<String>()
         var start = 0
@@ -202,12 +199,16 @@ internal class SwiftSurfaceContract private constructor(
         return result
     }
 
-    /** Every `<Name>StateHolder` class declaration of one source file. */
-    private fun stateHolderClasses(source: String): List<StateHolderClass> =
-        STATE_HOLDER.findAll(source)
-            .map { match -> match.groupValues[0].trimEnd().removePrefix("internal ") }
-            .map { StateHolderClass(it) }
-            .toList()
+    /** Every `<Name>StateHolder` class declared in the sources that host the exported holders. */
+    private fun exportedStateHolderMembers(): List<Triple<String, String, Member>> =
+        HOLDER_SOURCES.flatMap { path ->
+            val source = inputs.sources[path].orEmpty()
+            stateHolderClasses(source).flatMap { holder ->
+                members(source, holder.declaration)
+                    .filterNot { it.isPrivate }
+                    .map { Triple(path, holder.declaration, it) }
+            }
+        }
 
     private fun result(id: Int, name: String, problems: List<String>): AssertionResult =
         if (problems.isEmpty()) {
@@ -218,14 +219,25 @@ internal class SwiftSurfaceContract private constructor(
 
     private data class StateHolderClass(val declaration: String)
 
+    /**
+     * One member of a declaration.
+     *
+     * [rawParameters] keeps the source text so a default argument remains visible; [parameters] is
+     * the normalised `name: Type` form the surface comparison uses, because a changed parameter
+     * name, type or order is a contract difference and a default value is not.
+     */
     private data class Member(
         val name: String,
-        val parameters: List<String>,
         val rawParameters: List<String>,
         val isPrivate: Boolean,
     ) {
-        /** `name(a: A, b: B?)`, so a changed parameter name, type or order is a difference. */
+        val parameters: List<String> = rawParameters.mapNotNull(::normaliseParameter)
+
+        /** `name(a: A, b: B?)`. */
         val signature: String get() = "$name(${parameters.joinToString()})"
+
+        /** The parameters carrying an inline default value, which only Kotlin-side members can. */
+        val defaulted: List<String> get() = rawParameters.filter { it.contains(DEFAULT_PARAMETER) }
     }
 
     internal data class Inputs(
@@ -241,7 +253,17 @@ internal class SwiftSurfaceContract private constructor(
         const val SWIFT_APP_GRAPH_DECLARATION = "class SwiftAppGraph"
         const val STATE_HOLDER_SUFFIX = "StateHolder"
         const val DEFAULT_ARGUMENT = "="
-        val DEFAULT_PARAMETER = Regex("""=\s*\w""")
+
+        /** `scope: CoroutineScope` for a declaration, or `null` for a parameter that is not one. */
+        private fun normaliseParameter(parameter: String): String? {
+            val trimmed = parameter.trim()
+            if (trimmed.isEmpty()) return null
+            val name = trimmed.substringBefore(':').trim().removePrefix("val ").removePrefix("var ")
+            val type = trimmed.substringAfter(':', "").substringBefore(DEFAULT_ARGUMENT).trim()
+            return if (type.isEmpty()) null else "$name: $type"
+        }
+        /** A parameter list entry carrying a default value, of any shape. */
+        const val DEFAULT_PARAMETER = "="
         const val ASSERTION_KOTLIN_FACTORIES_TAKE_SCOPE = 14
         const val ASSERTION_APP_GRAPH_MEMBERS = 34
         const val ASSERTION_14 =
@@ -250,16 +272,21 @@ internal class SwiftSurfaceContract private constructor(
         const val ASSERTION_34 =
             "the Kotlin-facing AppGraph of §20.10 declares exactly the members of the real interface"
         val NON_HOLDER_MEMBERS = setOf("close", "syncController")
-        val SOURCES = listOf(
-            APP_GRAPH,
-            SWIFT_APP_GRAPH,
+        val HOLDER_SOURCES = listOf(
             "shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt",
             "feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt",
             "feature/fuel/src/commonMain/kotlin/com/ruizurraca/carapp/feature/fuel/presentation/FuelEntryStateHolders.kt",
         )
-        val FUN = Regex("""fun\s+(?:\w+\s+)*(\w+)\s*\(([^)]*)\)""")
+        val SOURCES = listOf(APP_GRAPH, SWIFT_APP_GRAPH) + HOLDER_SOURCES
+        val FUN = Regex("""fun\s+(?:\w+\s+)*(\w+)\s*\(""")
         val PRIVATE = Regex("""\bprivate\b""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
         val STATE_HOLDER = Regex("""^(?:internal )?class \w+StateHolder\b""", RegexOption.MULTILINE)
     }
+
+    /** Every `<Name>StateHolder` class declaration of one source file. */
+    private fun stateHolderClasses(source: String): List<StateHolderClass> =
+        STATE_HOLDER.findAll(source)
+            .map { match -> StateHolderClass(match.groupValues[0].trimEnd().removePrefix("internal ")) }
+            .toList()
 }
