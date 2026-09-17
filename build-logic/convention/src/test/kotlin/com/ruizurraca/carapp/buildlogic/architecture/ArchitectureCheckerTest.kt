@@ -488,6 +488,74 @@ class ArchitectureCheckerTest {
     }
 
     @Test
+    fun wiringFirebaseDeclarationsAreBoundedToModulesFactoriesAndInitialisers() {
+        listOf(
+            "class VehicleRepositoryImpl : VehicleRepository",
+            "internal object FuelEntryMapper",
+            "interface LocalGate",
+            "enum class WiringMode",
+            "data class WiringSnapshot(val id: String)",
+            "sealed interface WiringState",
+            "fun interface WiringGate",
+            "typealias Providers = AppProviders",
+            "expect fun platformName(): String",
+            "expect class PlatformBridge",
+            "actual fun platformName(): String = \"ios\"",
+            "val repositories = mutableListOf<Any>()",
+            "internal val bindings = modules()",
+            "var counter = 0",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        listOf(
+            "fun firebaseAppProviders(): AppProviders = providers()",
+            "internal fun firebaseAppProviders(db: DatabaseFactory): AppProviders = providers()",
+            "private fun stagedLogger(): Logger = noop()",
+            "private const val UUID_BYTE_COUNT = 16",
+            "private var counter = 0",
+            "private class InlineHolder",
+            "val firebaseModule = module { single<AuthClient> { client } }",
+            "internal val firebaseBindings: Module = modules()",
+        ).forEach { source ->
+            assertRuleDoesNotFire(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+    }
+
+    @Test
+    fun firebaseImplementationsAreNamedOnlyByWiring() {
+        val references = listOf(
+            "import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient",
+            "import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource",
+            "val source = com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource()",
+        )
+        references.forEach { source ->
+            listOf(":shared", ":androidApp", ":composition:ios", ":feature:session").forEach { path ->
+                assertRejected(module(path, source = source), "firebase-implementation-outside-wiring")
+            }
+        }
+
+        assertRuleDoesNotFire(
+            module(
+                ":wiring:firebase",
+                source = "import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient",
+            ),
+            "firebase-implementation-outside-wiring",
+        )
+        assertRuleDoesNotFire(
+            module(
+                ":integration:firebase-auth",
+                source = "class FirebaseAuthClient internal constructor()",
+            ),
+            "firebase-implementation-outside-wiring",
+        )
+        assertRuleDoesNotFire(
+            module(":shared", source = "import com.ruizurraca.carapp.core.auth.AuthClient"),
+            "firebase-implementation-outside-wiring",
+        )
+    }
+
+    @Test
     fun anImageLoadingDependencyWithoutAStoryReferenceIsRejected() {
         val withoutStory = ArchitectureChecker.checkImageLoading("""coil = { module = "io.coil-kt:coil", version = "3.0.0" }""")
         assertEquals(1, withoutStory.size)
