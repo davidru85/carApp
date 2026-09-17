@@ -875,10 +875,11 @@ Acceptance criteria:
 
 ### E3-03 - `:core:sync` Engine - L
 
-Status: implemented on `story/E3-03-core-sync-engine` (pull request #69), awaiting the gated owner
-review. CI run `35194821814` is green on all ten required checks. See `docs/handoff-E3-03.md` for the
-RED, GREEN and REFACTOR commits and acceptance evidence. The seventeenth correction round (`D-175`, `ADR-0176`) fixed the silent `shared-tests`
-step-timeout stall in shared test scaffolding; the decision is recorded there.
+Status: merged on 2026-09-17 through [pull request
+#69](https://github.com/davidru85/carApp/pull/69), after the owner's gated review, with all ten
+required checks green. See `docs/handoff-E3-03.md` for the RED, GREEN and REFACTOR commits and
+acceptance evidence. The seventeenth correction round (`D-175`, `ADR-0176`) fixed the silent
+`shared-tests` step-timeout stall in shared test scaffolding; the decision is recorded there.
 
 Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quarantine, aggregate backup status and debug support according to `docs/CONTRACTS.md §7`–`§9`.
 
@@ -1098,8 +1099,8 @@ Human review required.
 
 `D-149` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
 "Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
-depends on it, and neither may be blocked by it.** `E3-14` merged through pull request #63, so this
-story's only remaining prerequisite is the decision itself.
+depends on it, and it may not be blocked by it.** `E3-03` merged through pull request #69 and
+`E3-14` through pull request #63, so this story's only remaining prerequisite is the decision itself.
 
 `E3-14` stops a stale token from minting a ticket, but it cannot by itself guarantee that no
 UID-bound authorization survives a successful account deletion. The normative deletion order of
@@ -1172,8 +1173,8 @@ Human review required.
 
 `D-150` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
 "Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
-depends on it, and neither may be blocked by it.** `E3-14` merged through pull request #63, so this
-story's only remaining prerequisite is the decision itself. `D-149` / `E3-15` is a **different**
+depends on it, and it may not be blocked by it.** `E3-03` merged through pull request #69 and
+`E3-14` through pull request #63, so this story's only remaining prerequisite is the decision itself. `D-149` / `E3-15` is a **different**
 decision and MUST NOT be broadened to cover this one.
 
 `E3-14` made the issuer resolve the caller's Admin record before writing (`D-148`), which rejects a
@@ -1581,9 +1582,9 @@ Human review required.
 
 `D-173` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
 "Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
-depends on it, and neither may be blocked by it.** `E3-17` touches `:core:sync` but not this
-story's surface: it adds `shutdown()` and never changes `retryFailed()` or the `resetFailedOutbox`
-selection, so the two are independent and `E3-18` does not rebase onto `E3-17`.
+depends on it, and it may not be blocked by it.** `E3-17` touches `:core:sync` but not this story's
+surface: it adds `shutdown()` and never changes `retryFailed()` or the `resetFailedOutbox` selection,
+so the two are independent and `E3-18` does not rebase onto `E3-17`.
 
 Tracked as the `E3-03` sixth owner-review finding on [pull request
 #69](https://github.com/davidru85/carApp/pull/69). The `E3-03` R5 round made a connectivity-only
@@ -1709,10 +1710,11 @@ Acceptance criteria:
 
 ## Outstanding Owner Decisions
 
-Three decisions are open once both pull requests merge. **None of them blocks pull request #69 or
-pull request #70, and neither pull request may be held for them.** Each one blocks only the single
-story named in its `Needed by` column. `D-172` is not among them: the owner accepted option D with a
-5-second grace on 2026-09-17, and that acceptance is recorded with `E3-17`.
+Three decisions are open. **None of them blocks pull request #70, and it MUST NOT be held for
+them.** `E3-03` already merged through pull request #69, so its own work is no longer gated by
+anything here. Each decision blocks only the single story named in its `Needed by` column. `D-172` is
+not among them: the owner accepted option D with a 5-second grace on 2026-09-17, and that acceptance
+merged with `E3-17`.
 
 | Decision | Status | Blocks | Recommended option | Analysis |
 |---|---|---|---|---|

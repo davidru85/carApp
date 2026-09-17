@@ -38,13 +38,13 @@
 - Branch and base: `story/E3-03-core-sync-engine` from `main` at `fbc6d64`.
 - Current phase: complete. Product code frozen at `b517dba`; every later commit on this branch is
   documentation-only, verifiable with `git diff b517dba <tip> -- '*.kt' '*.swift' '*.sq' '*.kts'
-  '*.yml'` returning nothing. Pull request #69 is open against `main`, is not merged, and MUST NOT be
-  merged on agent judgement.
+  '*.yml'` returning nothing. Pull request #69 **merged on 2026-09-17** as merge commit `4cb83c5`,
+  after the owner's gated review, with all ten required checks green. The story is complete.
 - Outstanding owner decisions: `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18` are open.
-  **None of them blocks this pull request**; each blocks only its own story. They are consolidated in
-  the "Outstanding Owner Decisions" section of `docs/BACKLOG.md`, and `D-172` / `E3-17` was resolved
-  on 2026-09-17. This branch alone still shows `D-172` as `Proposed`, so `contractCheck` lists four
-  unresolved decisions here; the stacked `E3-17` branch carries the acceptance and lists three.
+  **None of them blocked this story**; each blocks only its own story. They are consolidated in the
+  "Outstanding Owner Decisions" section of `docs/BACKLOG.md`, and `D-172` / `E3-17` was resolved on
+  2026-09-17. `main` still shows `D-172` as `Proposed` until `E3-17` merges, so `contractCheck` lists
+  four unresolved decisions there; the `E3-17` branch carries the acceptance and lists three.
 - Reconciliation since the previous checkpoint: `AGENTS.md` and `docs/BACKLOG.md` no longer describe
   `E2-05`, `E3-14`, `E1-17` or `E3-02` as awaiting review. `docs/BACKLOG.md` called `D-173` `Pending`
   while the board and its four mirrors say `Proposed`, and its `E2-07` and `E2-01` rows still read as
@@ -65,11 +65,11 @@
   `provider-decoupling`; CI `35127303504` on `a900571` was green the same way.
 - Known failures: none on the required checks. The residual third stall mechanism above is a proven
   hazard that no current shared test can reach, so it is not an explanation for any observed stall.
-- Open decisions or blockers: owner review of pull request #69 is the outstanding gate. `E3-17` /
-  `D-172` remains the separate, still-open production graph-close hazard and is unchanged by this
-  round.
-- Exact next step: the owner reviews pull request #69; if a `shared-tests` stall recurs, the per-test
-  log from `a900571` names the responsible test. The previously suggested candidate
+- Open decisions or blockers: none for this story; pull request #69 merged on 2026-09-17. The
+  still-open `D-172` production graph-close hazard was resolved by `E3-17` on the branch stacked on
+  this one.
+- Exact next step: none. If a `shared-tests` stall recurs on later work, the per-test log from
+  `a900571` names the responsible test. The previously suggested candidate
   (`FuelEntryStateHolderTest.unsupportedLocaleCurrencyFallsBackToEur`) is withdrawn as wrong.
 - Eighteenth round (2026-09-16): the cancelled required check on `c1fc6f0` was **not** `shared-tests`.
   That job passed in the same run (18:16:49 -> 18:23:37, its fourth consecutive green after the

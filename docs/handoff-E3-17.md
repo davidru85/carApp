@@ -26,12 +26,14 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 ## In-Progress Checkpoint
 
 - Date: 2026-09-17.
-- Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`,
-  because the hazard exists only once `E3-03` puts cycles on `graphScope`. The branch is kept a strict
-  superset of `E3-03`, so merging #69 then #70 cannot revert `E3-03`'s records.
-- Current phase: complete. Product code frozen at `7ebd3e6`; every later commit on this branch is
-  documentation-only, verifiable with `git diff 7ebd3e6 <tip> -- '*.kt' '*.swift' '*.sq' '*.kts'
-  '*.yml'` returning nothing. Pull request [#70](https://github.com/davidru85/carApp/pull/70) is open
+- Branch and base: `story/E3-17-appgraph-close-safety`, no longer stacked. `E3-03` merged on
+  2026-09-17 as `4cb83c5`, and the branch then merged that `main` into itself, so pull request #70 is
+  based on `main` and no longer depends on an unmerged branch. The branch had been a strict superset
+  of `E3-03` while it was stacked, which is why #70 never needed a rebase.
+- Current phase: complete and ready for the owner's review. Product code frozen at `7ebd3e6`; every
+  later commit on this branch is documentation-only, verifiable with `git diff 7ebd3e6 <tip> --
+  '*.kt' '*.swift' '*.sq' '*.kts' '*.yml'` returning nothing. Merging `main` into the branch changed
+  no product file, so the verified artifact is unchanged. Pull request [#70](https://github.com/davidru85/carApp/pull/70) is open
   against `main`, is a superset of #69, and awaits the owner's gated review.
 - Reconciliation since the previous checkpoint: `AGENTS.md` and `docs/BACKLOG.md` no longer describe
   `E2-05`, `E3-14`, `E1-17` or `E3-02` as awaiting review, and an "Outstanding Owner Decisions"
