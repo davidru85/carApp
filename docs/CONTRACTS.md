@@ -1251,7 +1251,7 @@ Rules:
 - `AppProviders` has exactly the same members and order as `AppGraphDependencies` after removing
   `isDebugBuild`. `buildAppGraph` supplies that flag and maps every other member without replacing
   or decorating it (`D-59`).
-- The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs.
+- The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs. `contract-check` assertion 34 compares that code block with the real interface member by member, because both are hidden from the generated Objective-C header and no other check could see them drift.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
 - Each `AppGraph` owns exactly one `DatabaseHandle` created by its `DatabaseFactory` and releases it
   idempotently from `close()`. `SwiftAppGraph.close()` closes its wrapped graph after its cached
@@ -2704,6 +2704,7 @@ interface AppGraph {
     fun fuelEntryListStateHolder(scope: CoroutineScope, vehicleId: String): FuelEntryListStateHolder
     fun fuelEntryFormStateHolder(scope: CoroutineScope, vehicleId: String, entryId: String?): FuelEntryFormStateHolder
     fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder
+    fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
     fun syncController(): SyncController
     fun close()
 }

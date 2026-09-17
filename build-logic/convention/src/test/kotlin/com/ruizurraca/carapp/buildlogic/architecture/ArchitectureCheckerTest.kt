@@ -375,7 +375,7 @@ class ArchitectureCheckerTest {
         assertAccepted(
             module(
                 ":wiring:firebase",
-                source = "class FirebaseAppProviders(override val databaseFactory: DatabaseFactory)",
+                source = "fun firebaseAppProviders(databaseFactory: DatabaseFactory): AppProviders = error(\"x\")",
             ),
         )
         assertRejected(
@@ -514,7 +514,6 @@ class ArchitectureCheckerTest {
             "private fun stagedLogger(): Logger = noop()",
             "private const val UUID_BYTE_COUNT = 16",
             "private var counter = 0",
-            "private class InlineHolder",
             "val firebaseModule = module { single<AuthClient> { client } }",
             "internal val firebaseBindings: Module = modules()",
         ).forEach { source ->

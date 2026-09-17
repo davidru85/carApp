@@ -42,6 +42,18 @@ object ArchitectureChecker {
 
     private val IMAGE_LOADING_COORDINATES = listOf("io.coil-kt", "com.github.bumptech.glide", "com.squareup.picasso")
 
+    private const val INTEGRATION_PACKAGE = "com.ruizurraca.carapp.integration."
+
+    private val MODULE_INITIALISER = Regex("""\bmodule\s*\{""")
+
+    /**
+     * Group 1 is everything before the keyword, group 2 the keyword itself and group 3 the
+     * modifiers written after it, which is how `fun interface` and `enum class` keep both words in
+     * `modifiers` while the keyword stays recognisable.
+     */
+    private val TOP_LEVEL_DECLARATION =
+        Regex("""^([\w\s]*?)\b(class|interface|object|typealias|val|var|fun)\b((?:\s+\w+)*)""")
+
     private val SYNCHRONIZED_ENTITY_MUTATION_FUNCTIONS =
         setOf(
             "insertVehicleRow",
@@ -73,6 +85,8 @@ object ArchitectureChecker {
         violations += checkDatabaseMutationFacade(module)
         violations += checkConsumptionTypesStayInCoreModel(module)
         violations += checkIntegrationsDoNotBuildTheGraph(module)
+        violations += checkWiringProductLogic(module)
+        violations += checkFirebaseImplementationsStayInWiring(module)
         violations += checkCalendarTypeBoundary(module)
 
         if (rule != null) {
@@ -482,6 +496,99 @@ object ArchitectureChecker {
                     "${it.file}:${it.number} references buildAppGraph. Integrations expose provider " +
                         "implementations; only platform composition builds the graph " +
                         "(docs/CONTRACTS.md §11.6).",
+                )
+            }
+    }
+
+    /**
+     * `docs/TECHNICAL_PLAN.md §4`: "product logic" in `:wiring:firebase` is defined checkably —
+     * every top-level declaration there MUST be a Koin `Module`, an abstraction factory or a
+     * platform initialiser. No use cases, repositories, mappers, validation or business
+     * `expect`/`actual`.
+     *
+     * A factory and a platform initialiser are both Kotlin functions, so the permissible top-level
+     * shapes are: any function, of any visibility, because the private ones are the helpers of the
+     * factories in the same file; a Koin `Module`; and a private property, which is the wiring
+     * module's own tuning data. Every other declaration — a class, an object, an interface, an
+     * enum, a typealias or a non-private property — is product logic wherever it lives, because a
+     * mapper, a repository or a use case is none of those three shapes even when it is `private`.
+     *
+     * `expect`/`actual` is rejected in every shape. Indentation decides what counts as top level:
+     * a member of an object expression or of a class the rule already rejected is inside a
+     * declaration, so only column-zero lines are inspected.
+     */
+    private fun checkWiringProductLogic(module: ModuleUnderCheck): List<Violation> {
+        if (module.path != ":wiring:firebase") return emptyList()
+        return module.sourceLines
+            .filter { it.text.isNotBlank() && !it.text.first().isWhitespace() }
+            .filterNot { it.isKoinModuleDeclaration() }
+            .mapNotNull { line -> line.topLevelDeclaration()?.let { line to it } }
+            .filter { (_, declaration) -> declaration.isProductLogic() }
+            .map { (line, declaration) ->
+                Violation(
+                    module.path,
+                    "wiring-product-logic",
+                    "${line.file}:${line.number} declares ${declaration.description}. " +
+                        "docs/TECHNICAL_PLAN.md §4 admits only a Koin Module, a factory returning an " +
+                        "abstraction or a platform initialiser in :wiring:firebase.",
+                )
+            }
+    }
+
+    /** A `val`/`var` whose declared type or initialiser makes it a Koin `Module` binding. */
+    private fun SourceLine.isKoinModuleDeclaration(): Boolean {
+        val text = text
+        val declaredType = text.substringAfter(':', "").substringBefore('=').trim()
+        return declaredType.startsWith("Module") || MODULE_INITIALISER.containsMatchIn(text)
+    }
+
+    /**
+     * The declaration a column-zero line introduces, or `null` when the line is a continuation, a
+     * closing brace or anything else that does not start one.
+     *
+     * `fun interface` is reported as `interface`: the `fun` there modifies the interface, and a
+     * functional interface is a type declaration rather than the abstraction factory that `§4`
+     * admits in this module.
+     */
+    private fun SourceLine.topLevelDeclaration(): Declaration? {
+        val match = TOP_LEVEL_DECLARATION.find(text) ?: return null
+        val afterKeyword = match.groupValues[3]
+        val keyword = if (match.groupValues[2] == "fun" && afterKeyword.trimStart().startsWith("interface")) "interface" else match.groupValues[2]
+        return Declaration(
+            keyword = keyword,
+            modifiers = match.groupValues[1] + afterKeyword,
+        )
+    }
+
+    private fun Declaration.isProductLogic(): Boolean {
+        if (modifiers.contains("expect ") || modifiers.contains("actual ")) return true
+        return when (keyword) {
+            "fun" -> false
+            "val", "var" -> !isPrivate
+            else -> true
+        }
+    }
+
+    private data class Declaration(
+        val keyword: String,
+        val modifiers: String,
+    ) {
+        val isPrivate: Boolean get() = Regex("""\bprivate\b""").containsMatchIn(modifiers)
+
+        val description: String get() = modifiers.trim().let { if (it.isEmpty()) keyword else "$it $keyword" }
+    }
+
+    /** `docs/CONTRACTS.md §11.6`: only `:wiring:firebase` constructs Firebase implementations. */
+    private fun checkFirebaseImplementationsStayInWiring(module: ModuleUnderCheck): List<Violation> {
+        if (module.path == ":wiring:firebase" || module.path.startsWith(":integration:")) return emptyList()
+        return module.sourceLines
+            .filter { it.text.contains(INTEGRATION_PACKAGE) }
+            .map {
+                Violation(
+                    module.path,
+                    "firebase-implementation-outside-wiring",
+                    "${it.file}:${it.number} names an :integration:* implementation. " +
+                        "docs/CONTRACTS.md §11.6 makes :wiring:firebase its only construction site.",
                 )
             }
     }

@@ -37,6 +37,7 @@ class ContractCheck(
         assertion15NoTbdInVersionMatrix(),
         assertion18AuthProviderDeclaredFirst(),
         assertion23NoDuplicatedDecisionIds(),
+        *SwiftSurfaceContract(repoRoot).validate().toTypedArray(),
         *GitHubActionsContract(repoRoot).validate().toTypedArray(),
         *WorkflowTimeoutContract(repoRoot).validate().toTypedArray(),
         *WorkflowPermissionsContract(repoRoot).validate().toTypedArray(),
