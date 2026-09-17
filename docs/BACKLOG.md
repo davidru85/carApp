@@ -709,6 +709,10 @@ Human review required.
 
 ### E2-05 - Sign-Out and Account Deletion F-5 - M
 
+Status: merged on 2026-09-10 through [pull request
+#65](https://github.com/davidru85/carApp/pull/65). It introduced `D-155` through `D-164` and its
+evidence lives in `docs/handoff-E2-05.md`. Phase 2 is closed.
+
 Implement sign-out, local-data deletion and account deletion.
 
 Acceptance criteria:
@@ -847,9 +851,9 @@ Human review required.
 
 ### E3-02 - Firestore RemoteSyncSource - M
 
-Status: implemented on [pull request #68](https://github.com/davidru85/carApp/pull/68), awaiting
-owner review and all ten required checks. See `docs/handoff-E3-02.md` for the TDD commits and
-acceptance evidence.
+Status: merged on 2026-09-13 through [pull request
+#68](https://github.com/davidru85/carApp/pull/68), with all ten required checks green. See
+`docs/handoff-E3-02.md` for the TDD commits and acceptance evidence.
 
 Implement the Firestore remote sync integration.
 
@@ -867,9 +871,9 @@ Acceptance criteria:
 
 ### E3-03 - `:core:sync` Engine - L
 
-Status: implemented on `story/E3-03-core-sync-engine`, awaiting the gated owner review and the ten
-required checks. See `docs/handoff-E3-03.md` for the RED, GREEN and REFACTOR commits and acceptance
-evidence. The seventeenth correction round (`D-175`, `ADR-0176`) fixed the silent `shared-tests`
+Status: implemented on `story/E3-03-core-sync-engine` (pull request #69), awaiting the gated owner
+review. CI run `35194821814` is green on all ten required checks. See `docs/handoff-E3-03.md` for the
+RED, GREEN and REFACTOR commits and acceptance evidence. The seventeenth correction round (`D-175`, `ADR-0176`) fixed the silent `shared-tests`
 step-timeout stall in shared test scaffolding; the decision is recorded there.
 
 Implement the outbox, cursor, push, pull, LWW, overlap window, backoff, quarantine, aggregate backup status and debug support according to `docs/CONTRACTS.md §7`–`§9`.
@@ -1034,6 +1038,11 @@ Depends on: E3-02 or later (whichever sync-engine story first consumes `entityTy
 
 ### E3-14 - Orphan Cleanup Ticket Issuance Hardening - M
 
+Status: merged on 2026-09-09 through [pull request
+#63](https://github.com/davidru85/carApp/pull/63). It is therefore **not** an outstanding
+prerequisite of `E3-15` or `E3-16`; see the "Outstanding Owner Decisions" section, where only the
+`D-149` and `D-150` decisions remain.
+
 Tracked as two post-merge security and privacy findings of the `E3-11` review of pull request #60.
 Both are defects in merged behaviour, not new features.
 
@@ -1082,6 +1091,11 @@ Human review required.
 **Not Ready.** Blocked on owner decision `D-149`, which is `Pending` in `docs/DECISION_BOARD.md`
 — no recommendation is offered and no option is pre-selected — with its options in
 [ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md).
+
+`D-149` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
+"Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
+depends on it, and neither may be blocked by it.** `E3-14` merged through pull request #63, so this
+story's only remaining prerequisite is the decision itself.
 
 `E3-14` stops a stale token from minting a ticket, but it cannot by itself guarantee that no
 UID-bound authorization survives a successful account deletion. The normative deletion order of
@@ -1151,6 +1165,12 @@ Human review required.
 **Not Ready.** Blocked on owner decision `D-150`, which is `Pending` in `docs/DECISION_BOARD.md`
 — no recommendation is offered and no option is pre-selected — with its analysis in
 [ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md).
+
+`D-150` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
+"Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
+depends on it, and neither may be blocked by it.** `E3-14` merged through pull request #63, so this
+story's only remaining prerequisite is the decision itself. `D-149` / `E3-15` is a **different**
+decision and MUST NOT be broadened to cover this one.
 
 `E3-14` made the issuer resolve the caller's Admin record before writing (`D-148`), which rejects a
 token whose identity was **already** linked, disabled, deleted or state-unknown when that lookup
@@ -1450,9 +1470,12 @@ Acceptance criteria:
 
 ### E1-17 - iOS Onboarding UI Test Flake in `ios-simulator-build` - S
 
-Status: implemented on [pull request #67](https://github.com/davidru85/carApp/pull/67), awaiting
-owner review and required CI. See `docs/handoff-E1-17.md` for the TDD commits, timing justification
-and repeated-run evidence. Not complete until the pull request merges.
+Status: merged on 2026-09-12 through [pull request
+#67](https://github.com/davidru85/carApp/pull/67). See `docs/handoff-E1-17.md` for the TDD commits,
+timing justification and repeated-run evidence. The flake is a test-infrastructure defect, not a
+product one, and it is the one that still fails occasionally: it was observed once more on
+2026-09-17 in `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` on a keyboard-focus
+step, and passed on re-run.
 
 Tracked as a defect observed on 2026-09-06 while merging `main` into pull request #57. It is a
 test-infrastructure defect in `iosApp/UITests`, not a product defect.
@@ -1503,8 +1526,13 @@ Acceptance criteria:
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 
-**Not Ready.** Blocked on owner decision `D-172`, which is `Pending` in `docs/DECISION_BOARD.md`
-— no recommendation is preselected for the mechanism — with its analysis recorded by `E3-03`.
+Status: implemented on `story/E3-17-appgraph-close-safety` (pull request #70), stacked on this
+branch and awaiting the owner's gated review. **That branch also carries the `D-172` acceptance**,
+because a story that depends on a `Proposed` decision is not Ready; this branch alone still shows
+`D-172` as `Proposed`, which is why its unresolved-decision list has four rows and this one three.
+
+Blocked on owner decision `D-172`, with its analysis recorded by `E3-03`. The owner accepted option D
+with a 5-second grace on 2026-09-17, and the acceptance lands with the stacked branch.
 
 Tracked as the `E3-03` owner-review finding on [pull request
 #69](https://github.com/davidru85/carApp/pull/69). It is a **production** defect, unlike the
@@ -1527,7 +1555,12 @@ This is a reachable hazard, not an observed production crash. The D-89 handle-ow
 (`docs/CONTRACTS.md §20.3.2`) and the gated path `core/database/**` are in scope, so the fix MUST get
 its own human review gate.
 
-Acceptance criteria (to be finalised once `D-172` is accepted):
+`D-172` becomes `Accepted` on the `story/E3-17-appgraph-close-safety` branch, together with the
+implementation. The RED/GREEN evidence and the status of each acceptance criterion are recorded in
+`docs/handoff-E3-17.md` and that branch's entry; they are not duplicated here, because this branch
+contains neither the acceptance nor the implementation.
+
+Acceptance criteria:
 
 - The accepted option discharges its proof obligations: the close paths and the cycle lifecycle are
   ordered explicitly, and the evidence states which mechanism joins, cancels or drains an in-flight
@@ -1547,9 +1580,15 @@ Human review required.
 
 ### E3-18 - Manual Retry Coverage for Parked Connectivity Rows - S
 
-**Not Ready.** Blocked on owner decision `D-173`, which is `Pending` in `docs/DECISION_BOARD.md`
+**Not Ready.** Blocked on owner decision `D-173`, which is `Proposed` in `docs/DECISION_BOARD.md`
 — option B is recommended but no option is preselected — with its analysis in
 [ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md).
+
+`D-173` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
+"Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
+depends on it, and neither may be blocked by it.** `E3-17` touches `:core:sync` but not this
+story's surface: it adds `shutdown()` and never changes `retryFailed()` or the `resetFailedOutbox`
+selection, so the two are independent and `E3-18` does not rebase onto `E3-17`.
 
 Tracked as the `E3-03` sixth owner-review finding on [pull request
 #69](https://github.com/davidru85/carApp/pull/69). The `E3-03` R5 round made a connectivity-only
@@ -1673,6 +1712,47 @@ Acceptance criteria:
 - Instrumented/UI tests on Android and iOS verify that selecting a non-default fuel type (e.g. `DIESEL`) persists correctly on vehicle creation and edit.
 - No database schema, migration, or sync rule changes are introduced (existing schema and rules already support all 5 values).
 
+## Outstanding Owner Decisions
+
+Three decisions are open once both pull requests merge. **None of them blocks pull request #69 or
+pull request #70, and neither pull request may be held for them.** Each one blocks only the single
+story named in its `Needed by` column. `D-172` is not among them: the owner accepted option D with a
+5-second grace on 2026-09-17, and that acceptance is recorded with `E3-17`.
+
+| Decision | Status | Blocks | Recommended option | Analysis |
+|---|---|---|---|---|
+| `D-149` Ticket issuance and account deletion race | `Pending` — no recommendation, no option pre-selected | `E3-15` | None offered | [ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md) |
+| `D-150` Issuance lookup-to-write window | `Pending` — no recommendation, no option pre-selected | `E3-16` | None offered | [ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md) |
+| `D-173` Manual retry does not cover parked connectivity rows | `Proposed` | `E3-18` | Option B | [ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md) |
+
+What each one is, in one line, so the backlog can be triaged without opening three ADRs:
+
+- **`D-149`.** The deletion order of `docs/CONTRACTS.md §11.5` is remote data, then the authorization
+  purge, then the Firebase Auth user. An issuance whose eligibility check passes before the purge and
+  whose write lands after it leaves a UID-bound authorization behind while `deleteAccount` still
+  returns success. No check inside the issuer closes that, because at write time the Auth user
+  legitimately still exists. Closing it means changing something outside the issuer — the deletion
+  order, an extra purge pass, or a server-side marker — and each option has different cost. Today the
+  only cleanup for a record that escapes is the provider-managed Firestore TTL, which is
+  asynchronous and has **no proven maximum**; it is not a hard 30-day bound and MUST NOT be cited as
+  one.
+- **`D-150`.** The issuer performs `auth.getUser`, the `D-148` eligibility predicate and the Firestore
+  authorization write as three operations across two services with no shared transaction, so the
+  account can be linked, disabled or deleted between the lookup and the write. `D-142` refuses the
+  destructive stage for a bound account that became linked, but it does not prevent the record being
+  created, does not remove it, and does not reject an account that stays anonymous and becomes
+  **disabled**. This is a **different** decision from `D-149` and MUST NOT be merged with it.
+- **`D-173`.** A connectivity-only failure leaves the entity `PENDING` with its retry context in the
+  outbox, which is the correct row state, but `resetFailedOutbox` only clears retry context for
+  `FAILED_RETRYABLE` and `FAILED_POISONED`, so `retryFailed()` silently does nothing for it. A
+  server-side `REMOTE.UNAVAILABLE` or `REMOTE.DEADLINE_EXCEEDED` while the device stays online fires
+  no `ConnectivityRecovered`, so the row waits out its backoff up to `MAX_BACKOFF_MS` (900 000 ms)
+  and the user cannot force it. A bounded liveness gap, not a data-loss defect. This is the smallest
+  of the three and the only one with a recommended option.
+
+Each row is mirrored in `docs/DECISION_BOARD.md`, where the `Needed by` column is authoritative; this
+section restates them for triage and MUST agree with it.
+
 ## Execution Order
 
 ```text
@@ -1794,7 +1874,7 @@ proof after E3-04.
 | E3-01 Firestore rules (completed) | 3 | M | Yes |
 | E3-10 Account deletion server operation | 3 | M | Yes |
 | E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
-| E3-02 Firestore RemoteSyncSource | 3 | M | — |
+| E3-02 Firestore RemoteSyncSource (completed, PR #68) | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring | 3 | M | — |
 | E3-04 Repository sync wiring | 3 | M | — |
@@ -1804,11 +1884,11 @@ proof after E3-04.
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
-| E3-14 Orphan cleanup ticket issuance hardening | 3 | M | Yes |
-| E3-15 Close the ticket issuance and account deletion interleaving | 3 | M | Yes |
-| E3-16 Close the issuance lookup-to-write window | 3 | M | Yes |
+| E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
+| E3-15 Close the ticket issuance and account deletion interleaving (blocked on `D-149`) | 3 | M | Yes |
+| E3-16 Close the issuance lookup-to-write window (blocked on `D-150`) | 3 | M | Yes |
 | E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle | 3 | M | Yes |
-| E3-18 Manual retry coverage for parked connectivity rows | 3 | S | Yes |
+| E3-18 Manual retry coverage for parked connectivity rows (blocked on `D-173`) | 3 | S | Yes |
 | E3-19 Push-boundary payload totality | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values | 3 | S | Yes |
 | E3-21 Explicit startup reset of stale `SYNCING` rows | 3 | S | Yes |

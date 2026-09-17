@@ -82,7 +82,7 @@ An agent that notices it has replied in the wrong language MUST:
 **This section describes what exists right now.** It is the fastest way for an incoming agent to
 tell what is already built from what is still a plan, and it is updated by the story that changes it.
 
-### Phase 1 is complete and Phase 2 is open
+### Phases 1 and 2 are complete and Phase 3 is open
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
 has made provider decoupling executable before any Firebase integration module exists. The owner
@@ -102,8 +102,10 @@ observation on both hosts are therefore live. `E3-10`, the Account Deletion Serv
 merged on 2026-09-07 through pull request #58, after two owner review rounds, with all ten required
 checks green. `E3-11`, the Anonymous Identity Cleanup Entry Points, merged on 2026-09-07 through
 pull request #60, after five owner review rounds, with all ten required checks green; its
-post-merge review findings are tracked as `E3-14` and `E3-15`. `E2-07`, the Anonymous Sign-In Benefit
-Reminders, merged on 2026-09-08 through pull request #61, after its gated owner review.
+post-merge review findings are `E3-14`, which merged on 2026-09-09 through pull request #63, and
+`E3-15`, which is still open and blocked on the `Pending` decision `D-149`. `E2-07`, the Anonymous
+Sign-In Benefit Reminders, merged on 2026-09-08 through pull request #61, after its gated owner
+review.
 
 ### Delivery status and remaining work
 
@@ -117,43 +119,49 @@ Reminders, merged on 2026-09-08 through pull request #61, after its gated owner 
   `docs/handoff-E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
   `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
   `docs/handoff-E2-08.md` holds its acceptance evidence. `E1-14` merged through pull request #66;
-  its evidence lives in `docs/handoff-E1-14.md`. `E3-14` is implemented on the open pull request
-  #63 awaiting the owner's gated review.
+  its evidence lives in `docs/handoff-E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
+  hardening, merged on 2026-09-09 through pull request #63.
 - **Next:** Phase 2 has no unstarted story. `E2-04`, the anonymous account conversion, merged
   through pull request #64; it introduced `D-151` through `D-154` and its evidence lives in
-  `docs/handoff-E2-04.md`. `E2-05`, sign-out and account deletion, is **implemented on the open pull
-  request #65 and awaiting the owner's gated review**; it is not complete until that pull request
-  merges. It introduced `D-155` through `D-164` and its evidence lives in `docs/handoff-E2-05.md`.
-`D-165` then superseded `D-163`: the durable departure recovery marker is delivered inside
-  `E2-05` itself, so the `E2-09` follow-up `D-163` had created no longer exists. The fourth owner review accepted the three
-  low-probability departure concurrency and lifecycle gaps as `D-164` and deferred them to the
-  post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block PR #65 or MVP completion.
+  `docs/handoff-E2-04.md`. `E2-05`, sign-out and account deletion, merged on 2026-09-10 through pull
+  request #65; it introduced `D-155` through `D-164` and its evidence lives in
+  `docs/handoff-E2-05.md`. `D-165` then superseded `D-163`: the durable departure recovery marker is
+  delivered inside `E2-05` itself, so the `E2-09` follow-up `D-163` had created no longer exists. The
+  fourth owner review accepted the three low-probability departure concurrency and lifecycle gaps as
+  `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
+  MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
 - **Follow-ups outside the phase milestones:** `E1-15`, `E1-16` and `E1-17`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocks Phase 2. `E1-16` is Ready only because `D-127`
   superseded the `D-4` clause that kept the fuel type selector out of the MVP UI. `E1-14` is complete
-  after pull request #66 merged. `E1-17` is implemented on open pull request #67, awaiting owner
-  review and required CI; its retry policy, diagnostic bounds and repeated-run evidence live in
-  `docs/handoff-E1-17.md`. Until that work merges, a red `ios-simulator-build` job is not by itself
-  evidence of a regression.
-- **Remaining Phase 2:** `E2-05` only, and only until pull request #65 is reviewed and merged; it
-  is implemented but MUST NOT be recorded as complete before then. `E2-04` merged through pull
-  request #64. `E2-07` is merged through pull request #61; `E2-08`, the anonymous reminder launch
-  and race fixes that followed it, merged on 2026-09-08 through pull request #62.
-- **Remaining Phase 3:** `E3-02`, `E3-03`, `E3-08`, `E3-04`, `E3-12`,
-  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-14`, `E3-15`, `E3-16` and `E3-17`. `E3-02` is implemented
-  on the open pull request #68 awaiting the owner's gated review and all ten required checks; `E3-03`
-  is implemented on the open `story/E3-03-core-sync-engine` branch and its gated pull request,
-  awaiting the owner's review and the same ten checks. `E3-14` and
-  `E3-15` are the two
-  post-merge findings of the `E3-11` review; `E3-14` is implemented on the open pull request #63
-  awaiting the owner's gated review, `E3-15` is **not Ready** until the owner resolves `D-149`, and
-  `E3-16` — the issuance lookup-to-write window found while reviewing that pull request — is **not
-  Ready** until the owner resolves `D-150`. `E3-17` — making `AppGraph.close()` safe against an
-  in-flight sync cycle, found while reviewing `E3-03`, which invalidated the `E1-12` premise that no
-  production path closes a graph while work is live — is **not Ready** until the owner resolves
-  `D-172`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
+  after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
+  through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
+  `docs/handoff-E1-17.md`. `E1-15` remains open.
+- **Remaining Phase 2:** none. The phase is closed.
+- **Remaining Phase 3:** `E3-03`, `E3-08`, `E3-04`, `E3-12`,
+  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`, `E3-19`, `E3-20` and
+  `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68 and `E3-14` merged through pull
+  request #63, so neither is outstanding. `E3-03` is implemented on the open
+  `story/E3-03-core-sync-engine` branch and its gated pull request #69; `E3-17` — making
+  `AppGraph.close()` safe against an in-flight sync cycle, found while reviewing `E3-03`, which
+  invalidated the `E1-12` premise that no production path closes a graph while work is live — is
+  implemented on the open `story/E3-17-appgraph-close-safety` branch (pull request #70), stacked on
+  `E3-03`, awaiting the owner's gated review. The owner accepted `D-172` as option D with a
+  5-second grace on 2026-09-17, and that acceptance is recorded with the story on the stacked branch.
+  `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
+- **Three decisions remain open once both pull requests merge, and none of them blocks `E3-03` or
+  `E3-17`:** the tables below are the authoritative rows; this paragraph exists so the outstanding
+  owner work is visible without reading three documents. Each pair is independent of the pull requests
+  awaiting merge now.
+  - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
+    no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
+    start until the owner decides.
+  - **`D-150` / `E3-16` — issuance lookup-to-write window.** `Pending`, no recommendation, no option
+    pre-selected; the analysis is in ADR-0151. `E3-16` cannot start until the owner decides.
+  - **`D-173` / `E3-18` — manual retry does not cover parked connectivity rows.** `Proposed`;
+    option B is recommended and no option is pre-selected. The analysis is in ADR-0174. `E3-18`
+    cannot start until the owner confirms an option.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
