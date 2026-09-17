@@ -43,7 +43,10 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
   implemented; `AppGraph.close()` restructured; RED and GREEN for the close path; the residual window
   recorded in `docs/SECURITY.md`.
 - Verification evidence: see **Verification Run**.
-- Known failures: none.
+- Known failures: none on this story's own checks. The `shared-tests` step stall described under
+  **Verification Run** is a pre-existing CI-environment failure that also hits `E3-03` and
+  documentation-only commits; it is not a failure of this story's behaviour, and the tip has been
+  green on it.
 - Open decisions or blockers: the owner review gate. Nothing else blocks.
 - Exact next step: the owner reviews pull request #70. Nothing else is outstanding.
 
@@ -138,26 +141,29 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - The documentation reconciliation commit `0e5c0c1` changed only `AGENTS.md`, `docs/BACKLOG.md`,
   `docs/PROJECT_LOG.md` and `docs/handoff-E3-03.md`. `contractCheck` reports the same 178 decisions,
   178 ADRs and zero `PENDING`; `ktlintCheck` passes.
-- Final CI: **every tip of this branch is green on all ten required checks**, and every run behind
-  that statement was green on re-run where the first attempt stalled. Run `35218978911` covers
-  `36ee3ec`; run `35222026214` covers `192919b`, whose only difference from `36ee3ec` is documentation.
-  `git diff --stat 36ee3ec 192919b` touches no `.kt`, `.swift`, `.sq`, `.kts` or `.yml` file, so the
-  product code under test is identical in both.
-- Local confirmation on the tip, `--rerun-tasks` so no task was cached:
-  `./gradlew :shared:iosSimulatorArm64Test :androidApp:testDebugUnitTest testAndroidHostTest
-  --rerun-tasks` - `BUILD SUCCESSFUL in 44s`, 280 tasks executed, on both targets. That first attempt failed in
-  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
-  with a `kotlin.AssertionError` in the `shared:iosSimulatorArm64Test` task, alongside the
-  `The number of threads 4 is more than the number of processors 3` line: the `E1-14` flake class, on
-  the test and target that story's handoffs already record. This story touches neither that test nor
-  the onboarding UI, and the same job passed on re-run.
-- Earlier on `ecbaccc`, run `35215623265` was also green on all ten after one `shared-tests` re-run. That job failed first with the Android/KMP host step killed at its
-  10-minute limit - not an assertion failure - the last task reported being
-  `:wiring:firebase:testAndroidHostTest`, the module whose test closes a real `AppGraph`. The identical
-  product code had passed `shared-tests` on `ef3dbef`, on `d5b3706` and on `7ebd3e6`, and 20
-  consecutive local runs of that module under `--max-workers=3` each completed in about 5 seconds, so
-  this is an intermittent environment stall, not a deterministic defect of the close path. It is
-  recorded as such; the re-run is the evidence, not a claim that the hazard is closed.
+- CI on the last tip that is fully green, `9d4ba49`: run `35226021529` passes all ten required
+  checks after one `shared-tests` re-run.
+- **The two commits after it are documentation-only and their runs have not gone green once.** They
+  are `5d185cc` and `804157b`, and `git diff --stat 9d4ba49 804157b` touches no `.kt`, `.swift`,
+  `.sq`, `.kts` or `.yml` file, so the product code under test is byte-identical to `9d4ba49`. Runs
+  `35229329896` and its re-run each had `shared-tests` killed at a step's 10-minute limit - once the
+  Android/KMP host step, once the Kotlin/Native step - with no failing test named in either. The
+  step takes 3 to 5 minutes when it passes, on this branch and on `main` alike.
+- **This stall is not attributable to this story.** It hit the same job on `E3-03`'s tip `0f88552`,
+  which does not contain this story's `AppGraph.close()` change at all, and on documentation-only
+  commits of both branches. Local runs pass every time, including a `--rerun-tasks` sweep of both
+  targets on this tip (`BUILD SUCCESSFUL in 44s`, 280 tasks executed) and 20 consecutive runs of
+  `:wiring:firebase:testAndroidHostTest` under `--max-workers=3` at about 5 seconds each. `D-175`
+  already records an open, unbounded `shared-tests` stall mechanism, and `docs/BACKLOG.md` already
+  states that `shared-tests` can go red without a regression until `E1-14` and `E1-17` are fixed.
+- **Consequence for this handoff, stated rather than hidden:** the acceptance evidence for this story
+  is the green run on `9d4ba49` plus the local sweeps, not a green run on the final documentation
+  commit. The pull request is not mergeable on this evidence until a run on its actual tip is green.
+- One earlier `shared-tests` failure on `ecbaccc` was an assertion, not a stall: the Android/KMP host
+  step was killed at its 10-minute limit with the last task reported as
+  `:wiring:firebase:testAndroidHostTest`, the module whose test closes a real `AppGraph`. The same
+  product code had passed `shared-tests` on `ef3dbef`, on `d5b3706` and on `7ebd3e6`, so that one is
+  also recorded as intermittent rather than as a close-path defect.
 - `ios-simulator-build` failed once on run `35212737926` while `E3-03`'s run `35212706941` was green
   on the same product content: `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal`
   reported "Guest session did not reach the vehicle list before the timeout within the 180.000-second
