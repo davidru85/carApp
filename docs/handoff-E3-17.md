@@ -26,12 +26,13 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 ## In-Progress Checkpoint
 
 - Date: 2026-09-17.
-- Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`
-  (`b517dba`), because the hazard exists only once `E3-03` puts cycles on `graphScope`.
-- Current phase and latest commit: complete at `a584d4f`, the tip that merges `E3-03`'s tip `582f244`
-  into this branch so that pull request #70 stays a superset of pull request #69; its run `35235972716`
-  passes all ten required checks. Pull request [#70](https://github.com/davidru85/carApp/pull/70) is
-  open against `main` and awaiting the owner's gated review.
+- Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`,
+  because the hazard exists only once `E3-03` puts cycles on `graphScope`. The branch is kept a strict
+  superset of `E3-03`, so merging #69 then #70 cannot revert `E3-03`'s records.
+- Current phase: complete. Product code frozen at `7ebd3e6`; every later commit on this branch is
+  documentation-only, verifiable with `git diff 7ebd3e6 <tip> -- '*.kt' '*.swift' '*.sq' '*.kts'
+  '*.yml'` returning nothing. Pull request [#70](https://github.com/davidru85/carApp/pull/70) is open
+  against `main`, is a superset of #69, and awaits the owner's gated review.
 - Reconciliation since the previous checkpoint: `AGENTS.md` and `docs/BACKLOG.md` no longer describe
   `E2-05`, `E3-14`, `E1-17` or `E3-02` as awaiting review, and an "Outstanding Owner Decisions"
   section in `docs/BACKLOG.md` lists `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18`
