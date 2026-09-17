@@ -28,9 +28,15 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - Date: 2026-09-17.
 - Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`
   (`b517dba`), because the hazard exists only once `E3-03` puts cycles on `graphScope`.
-- Current phase and latest commit: complete at `7ebd3e6`. Pushed; pull request
+- Current phase and latest commit: complete at `0e5c0c1`, which adds the repository-state and
+  backlog reconciliation on top of the story commits. Pushed; pull request
   [#70](https://github.com/davidru85/carApp/pull/70) is open against `main` and awaiting the owner's
   gated review.
+- Reconciliation since the previous checkpoint: `AGENTS.md` and `docs/BACKLOG.md` no longer describe
+  `E2-05`, `E3-14`, `E1-17` or `E3-02` as awaiting review, and an "Outstanding Owner Decisions"
+  section in `docs/BACKLOG.md` lists `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18`
+  together with the statement that none of them blocks this pull request. `docs/BACKLOG.md` also
+  called `D-173` `Pending` while the board and its four mirrors say `Proposed`; that was corrected.
 - Completed: `D-172` accepted as option D with a 5-second grace; `SyncController.shutdown()` added and
   implemented; `AppGraph.close()` restructured; RED and GREEN for the close path; the residual window
   recorded in `docs/SECURITY.md`.
@@ -127,6 +133,9 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - The complete non-instrumented command of `AGENTS.md` passes.
 - CI `35201565587` on `7ebd3e6` is **fully green**: all ten required checks pass, including
   `shared-tests` and `ios-simulator-build`. Pull request #70 reports `CLEAN`.
+- The documentation reconciliation commit `0e5c0c1` changed only `AGENTS.md`, `docs/BACKLOG.md`,
+  `docs/PROJECT_LOG.md` and `docs/handoff-E3-03.md`. `contractCheck` reports the same 178 decisions,
+  178 ADRs and zero `PENDING`; `ktlintCheck` passes.
 - The `E3-03` base branch is also green: CI `35194821814` on `b517dba` passes all ten after one
   re-run of `ios-simulator-build`, which failed once in `VehicleAndFuelFlowUITests` on a keyboard-focus
   step. That is the known `E1-17` UI flake and is unrelated to this story; it passed on re-run.
