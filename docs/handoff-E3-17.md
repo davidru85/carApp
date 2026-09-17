@@ -28,15 +28,16 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - Date: 2026-09-17.
 - Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`
   (`b517dba`), because the hazard exists only once `E3-03` puts cycles on `graphScope`.
-- Current phase and latest commit: GREEN complete; records in progress. Not pushed at the time of
-  writing this checkpoint.
+- Current phase and latest commit: complete at `7ebd3e6`. Pushed; pull request
+  [#70](https://github.com/davidru85/carApp/pull/70) is open against `main` and awaiting the owner's
+  gated review.
 - Completed: `D-172` accepted as option D with a 5-second grace; `SyncController.shutdown()` added and
   implemented; `AppGraph.close()` restructured; RED and GREEN for the close path; the residual window
   recorded in `docs/SECURITY.md`.
 - Verification evidence: see **Verification Run**.
 - Known failures: none.
 - Open decisions or blockers: the owner review gate. Nothing else blocks.
-- Exact next step: push the branch, open the pull request, and hand it to the owner for review.
+- Exact next step: the owner reviews pull request #70. Nothing else is outstanding.
 
 ## Scope Completed
 
@@ -124,6 +125,11 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - `ktlintCheck detekt architectureCheck contractCheck koverVerify :build-logic:convention:test` pass;
   `contractCheck` reports 178 decisions, 178 ADRs and zero `PENDING`.
 - The complete non-instrumented command of `AGENTS.md` passes.
+- CI `35201565587` on `7ebd3e6` is **fully green**: all ten required checks pass, including
+  `shared-tests` and `ios-simulator-build`. Pull request #70 reports `CLEAN`.
+- The `E3-03` base branch is also green: CI `35194821814` on `b517dba` passes all ten after one
+  re-run of `ios-simulator-build`, which failed once in `VehicleAndFuelFlowUITests` on a keyboard-focus
+  step. That is the known `E1-17` UI flake and is unrelated to this story; it passed on re-run.
 
 ## Contract Impact
 
