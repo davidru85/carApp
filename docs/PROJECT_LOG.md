@@ -86,13 +86,16 @@
   - the `E1-14` flake class on the test and target its handoffs already record. Both green runs are the
   evidence; neither re-run is offered as a claim that the underlying flake is fixed.
 - **Flake budget, stated plainly:** `E1-14` and `E1-17` are still open by design, so a red
-  `shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous. Across the
-  seven runs of these two tips, five single-job re-runs were needed: one `provider-decoupling` failing
-  at the five-second `GRAPH_STATE_EXPECTATION_TIMEOUT`, one `LocalOwnerAdoptionTriggerTest` failure in
-  the `E1-14` class, and three ten-minute step stalls on documentation-only commits. Local runs passed
-  every time, including a full `--rerun-tasks` sweep of both targets, which is what separates the
-  environment from the change. This matches what `docs/BACKLOG.md` already says about those two
-  stories: the reflex "re-run it" is exactly why a real regression can slip through.
+  `shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous. While landing
+  this documentation change, those three jobs went red repeatedly on commits that changed no Kotlin,
+  Swift, SQL or workflow file at all: one `provider-decoupling` failing at the five-second
+  `GRAPH_STATE_EXPECTATION_TIMEOUT`, one `LocalOwnerAdoptionTriggerTest` failure in the `E1-14` class,
+  and several ten-minute step stalls with no failing test named. Every one of them was green on re-run,
+  and every local run passed - including a full `--rerun-tasks` sweep of both targets on the final tip
+  - which is what separates the environment from the change. This matches what `docs/BACKLOG.md`
+  already says about those two stories, and it is the load-bearing reason this story's CI evidence is
+  recorded as "green on re-run" rather than as a clean first pass. The reflex "re-run it" is exactly
+  why a real regression can slip through, and neither flake is fixed by this change.
 - **Follow-ups / risks:** `D-149`, `D-150` and `D-173` remain the owner's to resolve, and each still
   blocks only its own story. `E1-17`'s UI flake stayed reachable: it failed once more on 2026-09-17 in
   `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` and passed on re-run, which is why a
