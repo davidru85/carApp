@@ -28,10 +28,10 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - Date: 2026-09-17.
 - Branch and base: `story/E3-17-appgraph-close-safety`, stacked on `story/E3-03-core-sync-engine`
   (`b517dba`), because the hazard exists only once `E3-03` puts cycles on `graphScope`.
-- Current phase and latest commit: complete at `069f36d`, which merges the `E3-03` tip `714aa5a`
-  into this branch so that pull request #70 stays a superset of pull request #69. Pushed; pull request
-  [#70](https://github.com/davidru85/carApp/pull/70) is open against `main` and awaiting the owner's
-  gated review.
+- Current phase and latest commit: complete at `a584d4f`, the tip that merges `E3-03`'s tip `582f244`
+  into this branch so that pull request #70 stays a superset of pull request #69; its run `35235972716`
+  passes all ten required checks. Pull request [#70](https://github.com/davidru85/carApp/pull/70) is
+  open against `main` and awaiting the owner's gated review.
 - Reconciliation since the previous checkpoint: `AGENTS.md` and `docs/BACKLOG.md` no longer describe
   `E2-05`, `E3-14`, `E1-17` or `E3-02` as awaiting review, and an "Outstanding Owner Decisions"
   section in `docs/BACKLOG.md` lists `D-149` / `E3-15`, `D-150` / `E3-16` and `D-173` / `E3-18`
