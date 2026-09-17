@@ -138,6 +138,14 @@ production close paths — `MainActivity.onCleared()` and `SwiftAppGraph.close()
 - The documentation reconciliation commit `0e5c0c1` changed only `AGENTS.md`, `docs/BACKLOG.md`,
   `docs/PROJECT_LOG.md` and `docs/handoff-E3-03.md`. `contractCheck` reports the same 178 decisions,
   178 ADRs and zero `PENDING`; `ktlintCheck` passes.
+- Final CI on the current tip `ecbaccc`: run `35215623265` is green on all ten required checks after
+  one re-run of `shared-tests`. That job failed first with the Android/KMP host step killed at its
+  10-minute limit - not an assertion failure - the last task reported being
+  `:wiring:firebase:testAndroidHostTest`, the module whose test closes a real `AppGraph`. The identical
+  product code had passed `shared-tests` on `ef3dbef`, on `d5b3706` and on `7ebd3e6`, and 20
+  consecutive local runs of that module under `--max-workers=3` each completed in about 5 seconds, so
+  this is an intermittent environment stall, not a deterministic defect of the close path. It is
+  recorded as such; the re-run is the evidence, not a claim that the hazard is closed.
 - `ios-simulator-build` failed once on run `35212737926` while `E3-03`'s run `35212706941` was green
   on the same product content: `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal`
   reported "Guest session did not reach the vehicle list before the timeout within the 180.000-second

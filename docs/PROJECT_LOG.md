@@ -105,6 +105,15 @@
   "implementation completed on 2026-09-03" although pull request #52 merged the same day. Both now
   name their merge and pull request, which is what makes the phase closure statements in `AGENTS.md`
   checkable against this file.
+- **Intermittent `shared-tests` stall, classified not fixed:** run `35215623265` on `ecbaccc` had the
+  Android/KMP host step killed at its 10-minute limit with the last task reported as
+  `:wiring:firebase:testAndroidHostTest`, and passed on re-run. The identical product code had passed
+  `shared-tests` three times before, and 20 consecutive local runs of that module under
+  `--max-workers=3` each took about 5 seconds, so this is an environment-dependent stall and not
+  evidence of a regression in `E3-03` or `E3-17`. Both handoffs state the classification.
+- **Final CI:** run `35215558738` is green on all ten checks for the `E3-03` tip `12294c3`, and run
+  `35215623265` is green on all ten for the `E3-17` tip `ecbaccc` after one `shared-tests` re-run.
+  Both pull requests report `MERGEABLE` and are blocked only on the owner's gated review.
 - **Follow-ups / risks:** `D-149`, `D-150` and `D-173` remain the owner's to resolve, and each still
   blocks only its own story. `E1-17`'s UI flake stayed reachable: it failed once more on 2026-09-17 in
   `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` and passed on re-run, which is why a

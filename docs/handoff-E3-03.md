@@ -513,6 +513,8 @@ and it is not an explanation for any observed CI stall. What remains true and ac
   -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test` pass, 234 tasks.
   `contractCheck --rerun-tasks` reports assertion 7 `PASS` and zero `PENDING`, and the regenerated
   header is byte-identical to the golden.
+- Final CI on the current tip `12294c3`: run `35215558738` is green on all ten required checks,
+  including `shared-tests` and `ios-simulator-build`.
 
 ## Contract Impact
 
@@ -550,6 +552,11 @@ and it is not an explanation for any observed CI stall. What remains true and ac
   `fbc6d64`); it now waits for the cycle to settle before teardown, the same mitigation E1-12 used
   for issue #42. The `:shared` Android-host suite passed 25/25 and the full iOS simulator suite
   25/25 after the change.
+- `shared-tests` has an intermittent, environment-dependent stall that is **not** attributable to this
+  story: the same product code was green on run `35212706941`, and a later run of the stacked `E3-17`
+  branch had the Android/KMP host step killed at its 10-minute limit with the last task reported as
+  `:wiring:firebase:testAndroidHostTest`, passing on re-run. A red `shared-tests` is not by itself
+  evidence of a regression here.
 - The pull request awaits the mandatory owner review and the ten required checks; E3-03 is
   implemented, not complete, until it merges.
 - Twelfth-round re-verification confirms the current `AppGraph.close()` still cancels `graphScope`
