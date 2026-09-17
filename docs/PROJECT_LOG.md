@@ -97,9 +97,14 @@
   wrong and was corrected to `Proposed`. The four mirrors were verified aligned for all three
   decisions; `contractCheck` reports them unchanged in count and status.
 - **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` on both branches, and
-  `docs/handoff-E3-03.md` on `E3-03` alone.
+  `docs/handoff-E3-03.md` and `docs/handoff-E3-17.md` on their own branches.
 - **Verification:** `contractCheck` passes with the same decision and ADR counts and the same three
   unresolved decisions; `ktlintCheck` passes. No code, test, dependency or decision status changed.
+- **Two further stale status lines corrected while sweeping the file:** `E2-07` read "awaiting the
+  gated owner review" although pull request #61 merged on 2026-09-08, and `E2-01` read only
+  "implementation completed on 2026-09-03" although pull request #52 merged the same day. Both now
+  name their merge and pull request, which is what makes the phase closure statements in `AGENTS.md`
+  checkable against this file.
 - **Follow-ups / risks:** `D-149`, `D-150` and `D-173` remain the owner's to resolve, and each still
   blocks only its own story. `E1-17`'s UI flake stayed reachable: it failed once more on 2026-09-17 in
   `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` and passed on re-run, which is why a

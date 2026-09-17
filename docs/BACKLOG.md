@@ -579,7 +579,8 @@ decision documentation.
 
 ### E2-01 - `:core:auth` - S
 
-Status: implementation completed on 2026-09-03.
+Status: completed on 2026-09-03 through [pull request
+#52](https://github.com/davidru85/carApp/pull/52). See `docs/handoff-E2-01.md`.
 
 Implement the auth interfaces and models.
 
@@ -684,7 +685,10 @@ Human review required.
 
 ### E2-07 - Anonymous Sign-In Benefit Reminders - S
 
-Status: implemented on 2026-09-07, awaiting the gated owner review. See `docs/handoff-E2-07.md`.
+Status: merged on 2026-09-08 through [pull request
+#61](https://github.com/davidru85/carApp/pull/61), after its gated owner review. `E2-08`, the
+anonymous reminder launch and race fixes that followed it, merged on 2026-09-08 through pull request
+#62. See `docs/handoff-E2-07.md`.
 
 Implement the foreground-only anonymous-account retention notices selected by `D-62`.
 
