@@ -109,17 +109,18 @@
   registers three; all four now name 34 and 35. `§20.10` reordered
   `@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
-  pushed as `3cac38e..cd1a8a4`. The ten required checks are green on run `35341762718`, which covers
-  the head `cd1a8a4` and passed on its **first attempt** with no re-run: `android-assemble`,
-  `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`,
-  `ios-simulator-build`, `ktlint`, `objc-header-golden-check`, `provider-decoupling` and
-  `shared-tests` (7m50s). Earlier green runs needed re-runs for `shared-tests` only:
-  `35338122967` covered `c834699` (third attempt), `35336079709` covered `a28174f` (second attempt),
-  `35333547781` covered `016a46b` (second attempt), `35332058609` covered `5d40994` and
-  `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1). Every later
-  commit is record-only and re-runs the identical set, so `gh pr checks 71` is authoritative for the
-  current head.
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 3 was
+  pushed as `9a9266a..cffd6ff`, and the ten required checks are green on run `35353870137`, which
+  covers the head `cffd6ff`, passed on its first attempt and needed no re-run. Review round 2 was
+  pushed as `3cac38e..cd1a8a4` and was green on run `35341762718`, which also passed on its first
+  attempt: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
+  `provider-decoupling` and `shared-tests` (7m50s). Earlier green runs needed re-runs for
+  `shared-tests` only: `35338122967` covered `c834699` (third attempt), `35336079709` covered
+  `a28174f` (second attempt), `35333547781` covered `016a46b` (second attempt), `35332058609`
+  covered `5d40994` and `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review
+  round 1). Every later commit is record-only and re-runs the identical set, so `gh pr checks 71`
+  is authoritative for the current head.
 - `shared-tests` needed re-runs on runs `35333547781`, `35336079709` and `35338122967`. Three
   distinct mechanisms, all pre-existing and all outside this round, whose Kotlin changes are
   confined to `build-logic`; the local suite is green on both targets, including
@@ -148,7 +149,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35341762718`; the story now waits for the owner's gated review of review round 2.
+  `35353870137`; the story now waits for the owner's gated review of review round 3.
 
 ## Scope Completed
 
@@ -358,7 +359,8 @@ class as finding 3 — a guard that reported `PASS` while covering less than it 
   Koin-free construction proof.
 - `docs/CONTRACTS.md` — `§11.6` names assertions 34 and 35 and the `@HiddenFromObjC` declaration
   convention, `§18` declares assertion 35, `§20.10` declares `syncStateHolder(scope)` plus the two
-  `@HiddenFromObjC` members of `FuelEntryFormStateHolder`.
+  `@HiddenFromObjC` members of `FuelEntryFormStateHolder`, and review round 3 moved
+  `observeSaveCompletions()` to its real position between `setNotes` and `save`.
 - `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/README.md` — `D-178` through `D-180`.
 - `docs/adr/0179-…`, `docs/adr/0180-…`, `docs/adr/0181-…` — new ADRs.
@@ -405,6 +407,10 @@ class as finding 3 — a guard that reported `PASS` while covering less than it 
   = 1 but was … defaults callback: (Int) -> Unit, retries: Int = 1`). Finding 4 is documentation
   only, proved by `contractCheck` assertion 1 staying `PASS`, and finding 6's two fixtures passed
   without a production change, which is what the review intended them to prove.
+- **No new TDD exemption was taken for review round 3.** The finding was a false negative, so both
+  fixtures were written first and observed RED (`expected a failure, got: expected:<FAIL>
+  but was:<PASS>`) before `bodyBrace` and the per-class guard were added. The end-to-end proof
+  remains the mutation run against the real repository.
 - **SHOULD-level deferral: the `§20.10` Konsist fixture.** Stated with its reason under Out of
   Scope above.
 
@@ -425,6 +431,22 @@ verification criteria are present and green. `./gradlew contractCheck` reports a
 `:wiring:firebase`. `./gradlew ktlintCheck detekt` passes with no new suppression. The three
 mutation proofs of the criteria were applied to the real repository and reverted, each recorded in
 the table above; `git status` reported nothing after every restore.
+
+**Review round 3, re-run.** The canonical command above passes again with 642 actionable tasks.
+`./gradlew :build-logic:convention:test` reports **121 tests, 0 failures** — the two fixtures this
+round added — and `./gradlew contractCheck` reports exit code 0 with assertions **1, 13, 14, 34 and
+35** `PASS` and no `PENDING` line. `SwiftSurfaceContract.kt` contains **zero** occurrences of
+`indexOf('{'`, so neither `bodyOf` nor `contractBlock` selects a brace by position any more.
+Mutation 16 reproduces the review's own proof: with
+`dismissAnonymousReminder(force: Boolean = false)` on `SessionStateHolder`, `contractCheck` exits 0
+before this round and exits 1 after it with
+`shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt: class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false`.
+Mutation 17 produces `class SessionStateHolder declares no parsed member`, and the control mutation
+on `VehicleListStateHolder.selectVehicle` still fails with
+`class VehicleListStateHolder.selectVehicle defaults vehicleId: String? = null`, so the coverage
+that already worked is unchanged. `git diff --name-only` lists no file under `shared/src`,
+`feature/`, `wiring/`, `integration/` or `composition/`: only the two `build-logic` Kotlin files and
+documentation.
 - `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest` — passes; the
   provider-free graph is unaffected.
 - Mutation runs recorded in the table under "Acceptance Evidence" — all twelve rows re-run after

@@ -114,6 +114,46 @@ and the decision mirrors are unchanged, because no decision changed.
   three remain reachable while `E1-14` and `E1-17` stay open. The final head run `35341762718` on
   `cd1a8a4` passed all ten checks on its first attempt, with no re-run.
 
+**Review round 3, appended to the same record.** One further finding, and it is a false negative
+rather than a false positive: assertion 14 reported `PASS` while covering **no member** of
+`SessionStateHolder`. `bodyOf` selected the body brace with `source.indexOf('{', start)`, and
+`class SessionStateHolder internal constructor(` declares `private val onLocalStartAccepted: () ->
+Unit = {}` before the class body, so the first brace opened that lambda, `matchingBrace` closed it on
+the next character and the parsed body was empty. All 17 non-private members of the class left the
+check, and nothing reported it because the existing guard fires only when a whole source file yields
+no `<Name>StateHolder` class. `contractBlock` had the same defect against the `§20.10` blocks. The fix
+is `bodyBrace`, which returns the first brace at parenthesis depth zero and is now the single brace
+selector for `bodyOf` and `contractBlock`; `SwiftSurfaceContract.kt` contains zero occurrences of
+`indexOf('{')`. A per-class guard reports `declares no parsed member`, so a recognised class that
+yields no member can no longer pass silently. Two fixtures join `SwiftSurfaceContractTest`
+(119 -> 121). Three of the four `D-180` mirror rows named only assertion 34 although the shipped
+check registers three assertions, and `assertion2DecisionParity` compares ids and statuses only, so
+nothing could see the drift; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+`docs/TECHNICAL_PLAN.md §2` and `AGENTS.md` now name 34 and 35. `§20.10` moved
+`@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`,
+because no assertion compares a state-holder block and the order is therefore hand-maintained.
+- **Why:** the review's own reproduction is the reason the fix matters more than its size: adding
+  `force: Boolean = false` to `SessionStateHolder.dismissAnonymousReminder` left `contractCheck` at
+  exit code 0 while the same kind of default on `VehicleListStateHolder.selectVehicle` failed as
+  designed. A guard that covers less than it claims is worse than a missing one, because it also
+  removes the reviewer's reason to look.
+- **Documents touched:** `docs/adr/0181-…`, `docs/CONTRACTS.md §20.10`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `AGENTS.md`, `docs/handoff-E3-08.md`,
+  this log. Code: `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. `D-180` is
+  unchanged as a decision; only its implementation and its mirror rows were corrected.
+- **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
+  actionable tasks); `:build-logic:convention:test` reports 121 tests and 0 failures; `contractCheck`
+  exits 0 with assertions 1, 13, 14, 34 and 35 `PASS` and no `PENDING`. Mutation 16 exits 1 with
+  `class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false`, mutation 17
+  with `class SessionStateHolder declares no parsed member`, and the control mutation on
+  `VehicleListStateHolder.selectVehicle` still fails unchanged. No file under `shared/src`,
+  `feature/`, `wiring/`, `integration/` or `composition/` is modified. Run `35353870137` on the head
+  `cffd6ff` passed all ten required checks on its first attempt.
+- **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
+  state-holder class is declared in `§20.10` still has no executable check — assertions 34 and 35
+  compare only the two `AppGraph` blocks — and is recorded in the handoff with `E3-05` as its
+  expected owner.
+
 ### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
 
 - **Type:** story
