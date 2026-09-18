@@ -102,6 +102,12 @@ change.
     line. An unrecognised modifier word, or an annotation whose `@` sits on its own preceding line
     with the `class` on the next, would drop the holder from the check; the no-parsed-class guard
     reports the source rather than passing silently, which is what makes this limit bounded.
+  - A declaration body is opened by the first brace at parenthesis depth zero, not by the first
+    brace. `class SessionStateHolder internal constructor(… onLocalStartAccepted: () -> Unit = {}, …)`
+    put a lambda default before the class body, and taking the first brace parsed an empty body, so
+    the class contributed no member and left assertion 14 with nothing to check. Review found this
+    live on the repository; `bodyBrace` selects the depth-zero brace and a per-class emptiness guard
+    reports any class that still yields no member.
   - `matchingBrace` counts braces without string- or character-literal awareness. A literal
     containing an unbalanced brace inside a guarded block would misplace the body. No such literal
     exists in the guarded sources, and the fix would be the same textual parser growing a scanner.
@@ -126,11 +132,14 @@ change.
 
 ## Verification
 
-`SwiftSurfaceContractTest` holds one fixture per problem branch of both assertions plus
+`SwiftSurfaceContractTest` holds one fixture per problem branch of the three assertions plus
 `contractCheckGuardsTheSwiftFacingSurface`, which runs the repository's real `contractCheck` and
 requires assertions 14, 34 and 35 to be present and `PASS`, so the fixtures cannot drift from the
 repository they guard. Mutation evidence is recorded in the story handoff; every mutation failed
 the named check with the offending member in the message.
+`aHolderWithALambdaDefaultInItsConstructorStillHasItsMembersChecked` and
+`aHolderClassWithNoParsedMemberIsReported` cover the constructor-brace defect and the per-class
+emptiness guard.
 
 ## References
 

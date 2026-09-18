@@ -2779,10 +2779,10 @@ class FuelEntryFormStateHolder {
     fun setFullTank(value: Boolean)
     fun setMissedEntries(value: Boolean)
     fun setNotes(value: String?)
+    @HiddenFromObjC fun observeSaveCompletions(): Flow<Unit>
     fun save()
     fun confirmSave(confirmation: Confirmation)
     fun clearMessage()
-    @HiddenFromObjC fun observeSaveCompletions(): Flow<Unit>
     fun close()
 }
 

@@ -50,10 +50,12 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 2 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 3 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
-  split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (this record).
+  split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
+  record); review fixes round 3 `b0b0f0a` (the depth-zero body brace, the per-class emptiness guard
+  and the round-3 record).
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -91,6 +93,21 @@
   `anUnparsedSwiftFacingClassIsReportedByAssertion14` now cover them. The `FUN` regex also gained a
   leading word boundary, so an identifier ending in `fun` followed by `(` no longer parses as a
   member.
+- Review round 3: one finding, a false negative in assertion 14. `bodyOf` took the first `{` after a
+  declaration, and `class SessionStateHolder internal constructor(… onLocalStartAccepted: () -> Unit
+  = {}, …)` puts a lambda default before the class body, so `matchingBrace` closed that lambda
+  immediately and the body parsed as empty. All 17 non-private members of `SessionStateHolder` left
+  assertion 14's coverage, and nothing reported it because the per-source guard only fires when a
+  file yields no class at all. The same defect applied to `contractBlock` for `§20.10`. Fixed by
+  `bodyBrace`, which returns the first brace at parenthesis depth zero, used by `bodyOf` and by
+  `contractBlock`; and by a per-class emptiness guard that reports `declares no parsed member`.
+  Proven by mutation 16, which exited 0 before the fix and now fails with
+  `class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false`, by mutation 17
+  (`class SessionStateHolder declares no parsed member`) and by the control mutation on
+  `VehicleListStateHolder`, which still fails unchanged. Two permanent fixtures added (119 -> 121
+  build-logic tests). The four mirror D-180 rows named only assertion 34 although the shipped check
+  registers three; all four now name 34 and 35. `§20.10` reordered
+  `@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
   pushed as `3cac38e..cd1a8a4`. The ten required checks are green on run `35341762718`, which covers
@@ -140,7 +157,7 @@
   Kotlin declaration parser and the module.
 - Added the source rule that keeps `com.ruizurraca.carapp.integration.` out of every module other
   than `:wiring:firebase` and `:integration:*` (`D-179`).
-- Implemented `docs/CONTRACTS.md §18` assertion 14 and added assertion 34, both in a new
+- Implemented `docs/CONTRACTS.md §18` assertion 14 and added assertions 34 and 35, both in a new
   `SwiftSurfaceContract` registered on `contractCheck` (`D-180`).
 - Closed the live divergence `E3-03` shipped: `docs/CONTRACTS.md §20.10` now declares
   `syncStateHolder(scope)` on the Kotlin-facing `AppGraph`, which the interface already had.
@@ -228,6 +245,8 @@ the observed output, not the intended one.
 | 13 | `class FirebaseWiring : Module` appended to `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:247 declares class FirebaseWiring` |
 | 14 | `@JvmField internal val leaked = mutableListOf<Any>()` appended to `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:247 declares internal val leaked` |
 | 15 | `fun syncStateHolder(): SyncStateHolder` removed from the `class SwiftAppGraph` block of `§20.10` | `contractCheck` | 35 FAIL `syncStateHolder() is declared but absent from §20.10` |
+| 16 | `dismissAnonymousReminder(force: Boolean = false)` on `SessionStateHolder` | `contractCheck` | 14 FAIL `shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt: class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false` |
+| 17 | `class SessionStateHolder` reduced to a body with no `fun` | `contractCheck` | 14 FAIL `shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt: class SessionStateHolder declares no parsed member` |
 
 Rows 2 and 10 are the two rows that previously passed while the change they were supposed to catch
 was in place: a default on an `AppGraph` factory's `scope` (the old `signature` stripped the default
@@ -251,6 +270,22 @@ fixes: 642 actionable tasks, `BUILD SUCCESSFUL`. `:build-logic:convention:test` 
   site of `requestSync` exists today (`iosApp/` and `iosMain` contain none), so no rule of the
   contract is contradicted; the fixture belongs with the story that first adds one. This is a
   SHOULD-level deferral, recorded here as its reason.
+- **The `§11.6` rule that a public `@HiddenFromObjC` member of an exported state-holder class is
+  declared in `§20.10` has no executable check.** Assertions 34 and 35 compare only the `class
+  AppGraph` and `class SwiftAppGraph` blocks of `§20.10`; no assertion compares a state-holder
+  block, and the generated Objective-C header cannot see a `@HiddenFromObjC` member at all. Exactly
+  two such members exist today, both in `FuelEntryFormStateHolder`: `isLoading` and
+  `observeSaveCompletions()`. Review round 2 declared both by hand, so no live divergence remains,
+  but the rule stays prose and the next hidden member added to an exported holder can go undeclared
+  with nothing failing. The two other `@HiddenFromObjC` declarations in the holder files are the
+  top-level `createVehicleListStateHolder` / `createVehicleFormStateHolder` factories, which this
+  rule does not cover because they are not class members.
+  **Expected owner: `E3-05` (Backup Status UI)** — the earliest remaining Phase 3 story that renders
+  a state-holder-backed surface (`SyncStateHolder`'s sync status), and therefore the first place a
+  hidden member is plausibly added; if another story touches the holder surface first, this transfers
+  to it. Making the rule executable also needs a `D-` decision on where it lives — `SwiftSurfaceContract`
+  beside assertions 34 and 35, or the `D-16` Konsist rules — because `D-16` assigns package-level
+  rules to Konsist while this is a document-block comparison.
 - `E3-04` owns enforcing `SYNC_POST_WRITE_DEBOUNCE_MS` and `SYNC_MIN_AUTOMATIC_INTERVAL_MS`; this
   story does not touch the trigger constants.
 - `E3-09` owns `:integration:firebase-analytics` and `E4-04` owns
@@ -290,8 +325,10 @@ unseen. The remaining two are documented, because closing them means the parser 
 
 ## Review Round 2
 
-The owner's second gated review of pull request #71 reproduced six findings against the real
+The owner's second gated review of pull request #71 reproduced seven findings against the real
 repository. All were fixed on the same branch, each after a failing fixture, and no decision changed.
+Finding 7 arrived in review round 3 and is recorded here with the same six; it is the same defect
+class as finding 3 — a guard that reported `PASS` while covering less than it claimed.
 
 | Finding | Defect | Fix |
 |---------|--------|-----|
@@ -301,6 +338,7 @@ repository. All were fixed on the same branch, each after a failing fixture, and
 | 4 | `FuelEntryFormStateHolder.isLoading` and `observeSaveCompletions()` are public `@HiddenFromObjC` members absent from `§20.10` — the same blind spot `AppGraph.syncStateHolder(scope)` was | Both are declared in `§20.10` carrying `@HiddenFromObjC`, and `§11.6` states the convention |
 | 5 | `splitTopLevel` decremented its depth on the `>` of `->`, so `callback: (Int) -> Unit` drove the depth to -1 and every later comma stopped splitting, reporting the default under the wrong name | The `>` of an arrow closes nothing; `aDefaultAfterAFunctionTypedParameterIsReportedUnderItsOwnName` proves it. `FUN` also gained a leading word boundary, so an identifier ending in `fun` followed by `(` is not read as a member declaration |
 | 6 | ADR-0181 states every problem branch has a fixture asserting its exact text, and the two assertion-14 emptiness branches had none; `bothSidesFailingToParseIsReported` asserted assertion 34 only | `anUnparsedKotlinFacingInterfaceIsReportedByAssertion14` and `anUnparsedSwiftFacingClassIsReportedByAssertion14` cover both branches, asserting the exact text |
+| 7 | Assertion 14 silently covered **no member** of `SessionStateHolder`: `bodyOf` took the first `{` after the declaration, which is the lambda default of the internal primary constructor's `onLocalStartAccepted` parameter, so `matchingBrace` closed it immediately and the class body parsed as empty. All 17 exported members were outside the check, and nothing reported it because the per-source guard only fires when a file yields no class | `bodyBrace` selects the first brace at parenthesis depth zero, so the class body is found with or without a primary constructor, and a per-class emptiness guard reports `declares no parsed member`. Proven by mutation 16, which passed before the fix and fails after it, and by mutation 17; `aHolderWithALambdaDefaultInItsConstructorStillHasItsMembersChecked` and `aHolderClassWithNoParsedMemberIsReported` are the permanent fixtures |
 
 ## Files Changed
 

@@ -267,7 +267,7 @@ E0-07 made the Objective-C golden-header job executable on macOS and made
 `testAppGraphDependencies` parity executable. `E3-08` made the `:wiring:firebase` product-logic rule
 of `docs/TECHNICAL_PLAN.md §4` executable (`D-178`), added the source rule that keeps
 `:integration:*` types inside `:wiring:firebase` and `:integration:*` (`D-179`), and implemented
-`docs/CONTRACTS.md §18` assertion 14 while adding assertion 34 for the two `AppGraph` surfaces
+`docs/CONTRACTS.md §18` assertion 14 while adding assertions 34 and 35 for the two `AppGraph` surfaces
 (`D-180`). `contractCheck` currently reports no `PENDING` assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase

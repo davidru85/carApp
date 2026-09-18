@@ -18,6 +18,10 @@ import kotlin.test.assertTrue
  * `AppGraph` is hidden from Objective-C export: the interface of `§20.10` and the real interface
  * MUST declare the same members, with the same parameter shapes.
  *
+ * Assertion 35 applies the same member comparison to the Swift-facing `class SwiftAppGraph` block of
+ * `§20.10`, which the generated header cannot keep honest because it is regenerated with the change
+ * that alters the class.
+ *
  * `D-16` requires a failing fixture per rejected shape, and the parser behind these assertions is
  * hand-written, so every branch that reports a problem has one below. The fabricated
  * [SwiftSurfaceContract.Inputs] keeps them runnable without mutating five real files. Each fixture
@@ -169,6 +173,46 @@ class SwiftSurfaceContractTest {
             KOTLIN_FACTORIES_TAKE_SCOPE,
             "$SESSION_HOLDERS declares no <Name>StateHolder class",
             results(holders = validHolders() - SESSION_HOLDERS),
+        )
+    }
+
+    /**
+     * A primary-constructor parameter with a lambda default puts a `{` before the class body. Taking
+     * the first brace closed that lambda instead, parsed an empty body, and removed every member of
+     * the real `SessionStateHolder` from assertion 14 with nothing reporting it.
+     */
+    @Test
+    fun aHolderWithALambdaDefaultInItsConstructorStillHasItsMembersChecked() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "$SESSION_HOLDERS: class SessionStateHolder.observe defaults retries: Int = 1",
+            results(
+                holders = validHolders() + (
+                    SESSION_HOLDERS to
+                        "class SessionStateHolder internal constructor(\n" +
+                        "    private val onLocalStartAccepted: () -> Unit = {},\n" +
+                        ") {\n" +
+                        "    fun observe(retries: Int = 1) {}\n" +
+                        "}\n"
+                    ),
+            ),
+        )
+    }
+
+    /**
+     * A recognised holder class whose body yields no member is the second silent path out of
+     * assertion 14, and the per-source guard cannot see it because the source does declare classes.
+     */
+    @Test
+    fun aHolderClassWithNoParsedMemberIsReported() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "$SESSION_HOLDERS: class SessionStateHolder declares no parsed member",
+            results(
+                holders = validHolders() + (
+                    SESSION_HOLDERS to "class SessionStateHolder {\n    val state: Int = 0\n}\n"
+                    ),
+            ),
         )
     }
 

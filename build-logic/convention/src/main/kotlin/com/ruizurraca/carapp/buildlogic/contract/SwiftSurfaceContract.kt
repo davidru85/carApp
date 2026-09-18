@@ -3,7 +3,7 @@ package com.ruizurraca.carapp.buildlogic.contract
 import java.io.File
 
 /**
- * Contract for the two `AppGraph` surfaces of `docs/CONTRACTS.md §20.10` (assertions 14 and 34).
+ * Contract for the two `AppGraph` surfaces of `docs/CONTRACTS.md §20.10` (assertions 14, 34 and 35).
  *
  * Both guard a surface the Objective-C golden header cannot see:
  *
@@ -89,7 +89,13 @@ internal class SwiftSurfaceContract(
                 problems += "$path declares no <Name>StateHolder class"
             }
             declarations.forEach { declaration ->
-                members(source, declaration).filterNot { it.isPrivate }.forEach { function ->
+                val holderMembers = members(source, declaration)
+                // A class whose body cannot be parsed yields no member and would pass silently. The
+                // per-source guard above cannot see it, because the source does declare classes.
+                if (holderMembers.isEmpty()) {
+                    problems += "$path: $declaration declares no parsed member"
+                }
+                holderMembers.filterNot { it.isPrivate }.forEach { function ->
                     function.defaultsProblem()?.let { problems += "$path: $declaration.${function.name} $it" }
                 }
             }
@@ -166,7 +172,7 @@ internal class SwiftSurfaceContract(
     private fun contractBlock(declaration: String = KOTLIN_APP_GRAPH): String {
         val start = inputs.contract.indexOf(declaration)
         check(start >= 0) { "Could not find '$declaration' in docs/CONTRACTS.md" }
-        val opening = inputs.contract.indexOf('{', start)
+        val opening = bodyBrace(inputs.contract, start)
         val closing = matchingBrace(inputs.contract, opening)
         check(closing > opening) { "Unbalanced braces in the $declaration block of docs/CONTRACTS.md" }
         return inputs.contract.substring(start, closing + 1)
@@ -212,7 +218,29 @@ internal class SwiftSurfaceContract(
     private fun bodyOf(source: String, declaration: String): String {
         val start = source.indexOf(declaration)
         if (start < 0) return ""
-        return braceBody(source, source.indexOf('{', start)).orEmpty()
+        return braceBody(source, bodyBrace(source, start)).orEmpty()
+    }
+
+    /**
+     * The index of the brace that opens the body of the declaration starting at [from], skipping a
+     * primary-constructor parameter list.
+     *
+     * `class SessionStateHolder internal constructor(… onLocalStartAccepted: () -> Unit = {}, …)`
+     * carries a lambda default, so the first `{` after the declaration sits inside the parameter
+     * list. [matchingBrace] closes that lambda on the next character, the body parses as empty, and
+     * every member of the class leaves assertion 14's coverage with nothing reporting it. Only a
+     * brace at parenthesis depth zero opens a declaration body.
+     */
+    private fun bodyBrace(source: String, from: Int): Int {
+        var parenthesisDepth = 0
+        for (index in from until source.length) {
+            when (source[index]) {
+                '(' -> parenthesisDepth += 1
+                ')' -> parenthesisDepth -= 1
+                '{' -> if (parenthesisDepth == 0) return index
+            }
+        }
+        return -1
     }
 
     private fun braceBody(source: String, opening: Int): String? {
