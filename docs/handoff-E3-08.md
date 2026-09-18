@@ -54,9 +54,10 @@
   records `1a19448`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. All ten required checks
-  are green on run `35288272924`: `android-assemble`, `android-instrumented-tests`,
+  are green on the pull-request head: `android-assemble`, `android-instrumented-tests`,
   `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
-  `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
+  `objc-header-golden-check`, `provider-decoupling` and `shared-tests`. Confirm the head run with
+  `gh pr checks 71`.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
   (assertions 14 and 34), the `§20.10` clarification, `D-178` through `D-180` with their ADRs and
   the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
