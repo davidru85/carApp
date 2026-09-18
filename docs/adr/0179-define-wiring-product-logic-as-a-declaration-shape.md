@@ -64,9 +64,15 @@ abstraction factory `§4` admits.
 - A private tuning constant must be written inside a factory or a companion rather than at top
   level. `:wiring:firebase` has fourteen such constants today, and they are all `private const val`
   so they pass, but a future non-constant private property would not.
-- The classification is textual. A declaration whose keyword the regular expression cannot see is
-  not reported. That is bounded by the rule's direction: a missed declaration fails open, and the
-  `:wiring:firebase` source is a small, reviewed file.
+- The classification is textual, and its limits are enumerated rather than left to one general
+  sentence:
+  - A leading annotation on the declaration line is removed before matching, so
+    `@JvmField internal val leaked = …` is classified. A line carrying only an annotation parses as
+    no declaration, which is correct.
+  - The Koin exemption applies only to a `val`/`var`. A type declaration that inherits a type named
+    `Module` — `class FirebaseWiring : Module` — is a `class` and is rejected.
+  - A declaration whose keyword the regular expression still cannot see is not reported. The rule
+    fails open by direction and `:wiring:firebase` is a single reviewed file.
 - The violation message names the declaration in source order, the way it is written:
   `internal class StrayMapper`, `enum class StrayMode`, `fun interface StrayCallback`. The earlier
   shape interleaved the declared name between the two keyword words and produced
@@ -88,6 +94,9 @@ uses today, and `koinModuleMatchingIsExactRatherThanAPrefixOrAMention` rejects
 and a line that mentions `module {` in an unrelated expression.
 `theViolationNamesTheDeclaredTypeInSourceOrder` asserts the message text for `class`, `enum class`,
 `fun interface` and a property.
+`aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule` rejects a `class`, an `object` and
+an `interface` inheriting `Module`, an annotated `class` and an annotated non-private property, and
+accepts an annotated Koin binding and an annotated private factory.
 
 The rule was also mutated against the real repository: appending `internal class StrayMapper` to
 `FirebaseAppProviders.kt` makes `architectureCheck` fail with

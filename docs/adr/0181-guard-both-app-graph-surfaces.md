@@ -49,6 +49,10 @@ The selected option is: **Option A**, for both assertions.
   the interface is a real divergence; because `AppGraph` is hidden from Objective-C export and
   Kotlin defaults never reach the generated header, this comparison is the only place it is
   visible.
+- **Assertion 35** applies the same member comparison to the Swift-facing `class SwiftAppGraph`
+  block of `§20.10`. The generated header does guard the class, but it is regenerated and committed
+  with the change that alters it, so it cannot report that `§20.10` has gone stale; `private`
+  members are excluded because they never reach Swift.
 
 The live divergence is closed in the same change by adding `syncStateHolder(scope)` to `§20.10`,
 which is a representational clarification of an interface that already shipped, not a behaviour
@@ -70,6 +74,9 @@ change.
   repository.
 - The `§20.10` block is now compared rather than trusted, so the next interface member added in code
   alone fails the build instead of passing review.
+- Assertion 35 applies the same comparison to the Swift-facing block of `§20.10`. The generated
+  header is regenerated with the change that alters the class, so it cannot report a stale block;
+  `private` members are excluded because they never reach Swift.
 - Default arguments are checked at the source, which is the only place they exist. Both an
   `AppGraph` factory's own default and a default on anything `§20.10` also declares are caught: the
   member comparison sees the divergence while `§20.10` differs, and assertion 14 catches the case
@@ -102,11 +109,18 @@ change.
     whose name is on a following line, or a parameter list opened on a following line; such a
     member would drop out of the comparison on both sides, which the emptiness guard reports for
     `AppGraph` and `SwiftAppGraph` but not for an individual holder.
+  - `splitTopLevel` ignores the `>` of `->` so a function-typed parameter cannot merge the
+    parameters after it. It is still not literal-aware, so a `>` inside a string default would be
+    counted.
 
 ### Constraints Introduced
 
 - `docs/CONTRACTS.md §20.10` and the real Kotlin-facing `AppGraph` MUST declare the same members in
   the same order; `§11.6` names assertion 34 as the check that keeps them equal.
+- `docs/CONTRACTS.md §20.10` and the real `SwiftAppGraph` MUST declare the same exported members in
+  the same order; `§11.6` names assertion 35 as the check that keeps them equal.
+- A public `@HiddenFromObjC` member of an exported state-holder class MUST be declared in `§20.10`
+  with that annotation.
 - No exported state-holder member and no `SwiftAppGraph` member MAY carry a Kotlin default argument.
 - `SwiftAppGraph` MUST NOT expose `SyncController`.
 
@@ -114,12 +128,12 @@ change.
 
 `SwiftSurfaceContractTest` holds one fixture per problem branch of both assertions plus
 `contractCheckGuardsTheSwiftFacingSurface`, which runs the repository's real `contractCheck` and
-requires assertions 14 and 34 to be present and `PASS`, so the fixtures cannot drift from the
+requires assertions 14, 34 and 35 to be present and `PASS`, so the fixtures cannot drift from the
 repository they guard. Mutation evidence is recorded in the story handoff; every mutation failed
 the named check with the offending member in the message.
 
 ## References
 
 - `docs/DECISION_BOARD.md` (decision ID `D-180`)
-- `docs/CONTRACTS.md §11.6`, `§18` (assertions 14 and 34) and `§20.10`
+- `docs/CONTRACTS.md §11.6`, `§18` (assertions 14, 34 and 35) and `§20.10`
 - `docs/BACKLOG.md` (`E3-08`)

@@ -1252,7 +1252,8 @@ Rules:
   `isDebugBuild`. `buildAppGraph` supplies that flag and maps every other member without replacing
   or decorating it (`D-59`).
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs. `contract-check` assertion 34 compares that code block with the real interface member by member, because both are hidden from the generated Objective-C header and no other check could see them drift.
-- The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`.
+- The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`. `contract-check` assertion 35 compares that code block with the real class member by member, because the generated Objective-C header is regenerated with the change that alters the class and therefore cannot report a stale block.
+- A public member of an exported state-holder class that is `@HiddenFromObjC` is still declared in `§20.10`, carrying that annotation. The generated header cannot show it, so leaving it undeclared makes the contract and the code diverge with nothing able to see it — the `E3-03` divergence that `E3-08` closed on the Kotlin-facing `AppGraph`.
 - Each `AppGraph` owns exactly one `DatabaseHandle` created by its `DatabaseFactory` and releases it
   idempotently from `close()`. `SwiftAppGraph.close()` closes its wrapped graph after its cached
   holders, so the same handle is released transitively (`D-89`).
@@ -2022,6 +2023,10 @@ Optional checks:
     in the same order, with the same parameter shapes. Both surfaces are hidden from the generated
     Objective-C header, so no other assertion can see them drift; `E3-08` added this assertion after
     `E3-03` shipped a member that the block did not declare.
+35. The Swift-facing `SwiftAppGraph` block of `§20.10` and the real class declare the same
+    exported members, in the same order, with the same parameter shapes. The generated
+    Objective-C header is regenerated with the change that alters the class, so it cannot report
+    that `§20.10` has gone stale; `private` members are excluded because they never reach Swift.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -2763,6 +2768,7 @@ class FuelEntryListStateHolder {
 
 class FuelEntryFormStateHolder {
     val state: StateFlow<FuelEntryFormUiState>
+    @HiddenFromObjC val isLoading: StateFlow<Boolean>
     fun setDateEpochMillis(value: Long)
     fun setOdometerKm(value: Long)
     fun setMoneyInputMode(value: MoneyInputMode)
@@ -2776,6 +2782,7 @@ class FuelEntryFormStateHolder {
     fun save()
     fun confirmSave(confirmation: Confirmation)
     fun clearMessage()
+    @HiddenFromObjC fun observeSaveCompletions(): Flow<Unit>
     fun close()
 }
 
