@@ -93,11 +93,13 @@
   member.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
-  pushed as `3cac38e..0551c10`. The ten required checks are green on run `35330477631`, which
-  covered commit `0551c10`: `android-assemble` (2m15s), `android-instrumented-tests` (5m46s),
-  `architecture-check` (1m33s), `contract-check` (2m20s), `detekt` (1m16s), `ios-simulator-build`
-  (17m14s), `ktlint` (1m18s), `objc-header-golden-check` (4m27s), `provider-decoupling` (4m57s) and
-  `shared-tests` (7m14s). The previous run, `35324474324`, covered `cb46b0b` (review round 1).
+  pushed as `3cac38e..5d40994`. The ten required checks are green on two runs, each named with the
+  commit it covered: `35330477631` covered `0551c10`, and `35332058609` covered `5d40994` —
+  `android-assemble` (3m1s), `android-instrumented-tests` (5m31s), `architecture-check` (1m34s),
+  `contract-check` (2m34s), `detekt` (1m6s), `ios-simulator-build` (15m55s), `ktlint` (1m29s),
+  `objc-header-golden-check` (3m18s), `provider-decoupling` (5m47s) and `shared-tests` (6m24s).
+  Run `35324474324` covered `cb46b0b` (review round 1). Commits after a fix are record-only and
+  re-run the same set; the run for the latest record commit is the head of pull request #71.
   Re-check the current head with `gh pr checks 71`.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
   (assertions 14, 34 and 35), the `§20.10` clarifications, `D-178` through `D-180` with their ADRs
@@ -106,7 +108,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35330477631`; the story now waits for the owner's gated review of review round 2.
+  `35332058609`; the story now waits for the owner's gated review of review round 2.
 
 ## Scope Completed
 
