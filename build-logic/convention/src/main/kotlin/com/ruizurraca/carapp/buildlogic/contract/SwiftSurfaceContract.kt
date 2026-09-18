@@ -114,12 +114,22 @@ internal class SwiftSurfaceContract(
      * from Objective-C export and defaults never reach the generated header.
      */
     private fun appGraphMembersMatch(): AssertionResult {
+        if (inputs.contract.indexOf(KOTLIN_APP_GRAPH) < 0) {
+            return result(
+                ASSERTION_APP_GRAPH_MEMBERS,
+                ASSERTION_34,
+                listOf("§20.10 declares no $KOTLIN_APP_GRAPH block"),
+            )
+        }
         val contractMembers = members(contractBlock(), KOTLIN_APP_GRAPH).map { it.signature }
         val declaredMembers = members(inputs.sources.getValue(APP_GRAPH), KOTLIN_APP_GRAPH).map { it.signature }
 
         val problems = mutableListOf<String>()
-        if (contractMembers.isEmpty() || declaredMembers.isEmpty()) {
-            problems += "the AppGraph members could not be parsed on both sides"
+        when {
+            contractMembers.isEmpty() && declaredMembers.isEmpty() ->
+                problems += "the AppGraph members could not be parsed on both sides"
+            contractMembers.isEmpty() -> problems += "no AppGraph members were parsed from §20.10"
+            declaredMembers.isEmpty() -> problems += "no AppGraph members were parsed from the interface"
         }
         (declaredMembers - contractMembers.toSet()).forEach { problems += "$it is declared but absent from §20.10" }
         (contractMembers - declaredMembers.toSet()).forEach { problems += "$it is declared in §20.10 but absent from the interface" }
@@ -156,8 +166,11 @@ internal class SwiftSurfaceContract(
                 .map { it.signature }
 
         val problems = mutableListOf<String>()
-        if (contractMembers.isEmpty() || declaredMembers.isEmpty()) {
-            problems += "the SwiftAppGraph members could not be parsed on both sides"
+        when {
+            contractMembers.isEmpty() && declaredMembers.isEmpty() ->
+                problems += "the SwiftAppGraph members could not be parsed on both sides"
+            contractMembers.isEmpty() -> problems += "no SwiftAppGraph members were parsed from §20.10"
+            declaredMembers.isEmpty() -> problems += "no SwiftAppGraph members were parsed from the class"
         }
         (declaredMembers - contractMembers.toSet()).forEach { problems += "$it is declared but absent from §20.10" }
         (contractMembers - declaredMembers.toSet()).forEach { problems += "$it is declared in §20.10 but absent from the class" }

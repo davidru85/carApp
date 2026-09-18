@@ -494,8 +494,8 @@ class SwiftSurfaceContractTest {
      * Runs the assertions over a fabricated `§20.10` Swift block and a fabricated class, derived
      * from the real inputs so the untouched paths stay the repository's.
      *
-     * The fabricated contract keeps the Kotlin-facing block, so assertion 34 runs beside 35 rather
-     * than throwing on a contract that never declared it.
+     * The fabricated contract keeps the Kotlin-facing block, so assertion 34 reports a real member
+     * comparison beside 35 instead of the missing-block result.
      */
     private fun swiftResults(
         contractMembers: List<String> = DEFAULT_SWIFT_MEMBERS,
