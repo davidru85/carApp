@@ -110,8 +110,8 @@
   `@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 3 was
-  pushed as `9a9266a..bbb0797`. The ten required checks are green on run `35359981624`, which covers
-  the head `bbb0797` and passed on its first attempt with no re-run, `shared-tests` included:
+  pushed as `9a9266a..62d348a`. The ten required checks are green on run `35362042665`, which covers
+  the head `62d348a` and passed on its first attempt with no re-run, `shared-tests` included:
   `android-assemble`, `android-instrumented-tests`, `architecture-check`, `contract-check`,
   `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`, `provider-decoupling` and
   `shared-tests`. Run `35353870137` covered the fix commit `cffd6ff` and was also green on its first
@@ -149,7 +149,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35359981624`; the story now waits for the owner's gated review of review round 3.
+  `35362042665`; the story now waits for the owner's gated review of review round 3.
 
 ## Scope Completed
 
