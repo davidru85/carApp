@@ -147,12 +147,15 @@ because no assertion compares a state-holder block and the order is therefore ha
   `class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false`, mutation 17
   with `class SessionStateHolder declares no parsed member`, and the control mutation on
   `VehicleListStateHolder.selectVehicle` still fails unchanged. No file under `shared/src`,
-  `feature/`, `wiring/`, `integration/` or `composition/` is modified. The round-3 runs
-  `35353870137`, `35356040406` and `35358232151` each passed all ten required checks on their first
-  attempt. Run `35363599393` on the head `703571a` needed one `shared-tests` re-run: its first
-  attempt was killed by the ten-minute Native-step stall with no test result, the same silent-stall
-  class the 2026-09-17 entry below classified, and the re-run passed in 6m50s, completing the ten.
-  `shared-tests` remains the ambiguous check while `E1-14` and `E1-17` stay open.
+  `feature/`, `wiring/`, `integration/` or `composition/` is modified. Runs `35353870137`,
+  `35356040406`, `35358232151`, `35359981624` and `35362042665` each passed all ten required checks
+  on their first attempt. Run `35363599393` (`703571a`) needed one Native-step re-run, and run
+  `35366069672` on the head `58311fa` needed two: its first attempt was killed by the host stall and
+  its second by the Native stall, both at the ten-minute cap with no test result, and the third
+  passed in 4m55s, completing the ten. Those are the silent-stall classes the 2026-09-17 entry below
+  classified and `D-175`/`D-177` left latent; re-running the exact two steps locally with
+  `--rerun-tasks` on this branch completes them in about 3 minutes and 36 seconds. `shared-tests`
+  remains the ambiguous check while `E1-14` and `E1-17` stay open.
 - **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
   state-holder class is declared in `§20.10` still has no executable check — assertions 34 and 35
   compare only the two `AppGraph` blocks — and is recorded in the handoff with `E3-05` as its

@@ -110,42 +110,47 @@
   `@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 3 was
-  pushed as `9a9266a..703571a`. The ten required checks are green on run `35363599393`, which covers
-  the head `703571a`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+  pushed as `9a9266a..58311fa`. The ten required checks are green on run `35366069672`, which covers
+  the head `58311fa`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
   `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
-  `provider-decoupling` and `shared-tests`, the last green on its second attempt (6m50s) after the
-  first was killed by the ten-minute Native-step stall. The three earlier round-3 fix runs
-  `35353870137` (`cffd6ff`), `35356040406` (`d48cb6d`) and `35358232151` (`5531cd6`) each passed all
-  ten on their first attempt. Review round 2 was pushed as `3cac38e..cd1a8a4` and was green on run
-  `35341762718`.
+  `provider-decoupling` and `shared-tests`, the last green on its third attempt (4m55s) after a host
+  stall and then a Native stall, both with no test result. Run `35363599393` (`703571a`) needed one
+  Native-stall re-run; runs `35353870137` (`cffd6ff`), `35356040406` (`d48cb6d`), `35358232151`
+  (`5531cd6`), `35359981624` (`bbb0797`) and `35362042665` (`62d348a`) each passed all ten on their
+  first attempt. Review round 2 was pushed as `3cac38e..cd1a8a4` and was green on run `35341762718`.
   Earlier green runs needed re-runs for `shared-tests` only: `35338122967` covered `c834699` (third
   attempt), `35336079709` covered `a28174f` (second attempt), `35333547781` covered `016a46b`
   (second attempt), `35332058609` covered `5d40994` and `35330477631` covered `0551c10`;
   `35324474324` covered `cb46b0b` (review round 1). Every later commit is record-only and re-runs
   the identical set, so `gh pr checks 71` is authoritative for the current head.
-- `shared-tests` needed re-runs on runs `35333547781`, `35336079709`, `35338122967` and
-  `35363599393`. Four pre-existing mechanisms, all outside this round, whose Kotlin changes are
-  confined to `build-logic`; the local suite is green on both targets, including
+- `shared-tests` needed re-runs on runs `35333547781`, `35336079709`, `35338122967`, `35363599393`
+  and `35366069672` — every other required check was green on its first attempt throughout. The
+  mechanisms are pre-existing and outside this round, whose Kotlin changes are confined to
+  `build-logic`; the local suite is green on both targets, including
   `:shared:iosSimulatorArm64Test --rerun-tasks`.
-  - **Host-step stall**, runs `35333547781` and `35336079709`: the `Run Android application and KMP
-    host tests` step was killed at its 10-minute limit with no test result and no assertion failure.
-    This is the silent stall classified in `docs/PROJECT_LOG.md` (2026-09-17, "Intermittent
-    `shared-tests` stall, classified not fixed") and left latent by `D-175`/`D-177`. The final
-    `STARTED` line before each kill,
+  - **Host-step stall**: the `Run Android application and KMP host tests` step killed at its
+    10-minute limit with no test result and no assertion failure, on runs `35333547781`,
+    `35336079709` and `35366069672` (first attempt). This is the silent stall classified in
+    `docs/PROJECT_LOG.md` (2026-09-17, "Intermittent `shared-tests` stall, classified not fixed")
+    and left latent by `D-175`/`D-177`. The final `STARTED` line before each kill,
     `VehicleStateHoldersTest > anEmptyResultForOneOwnerDoesNotResolveTheNextOwnersList`, is a
     buffering artifact, not the culprit: the same line is the last in the successful run of that
-    task, which completes in 2m32s there.
-  - **Native-step stall**, runs `35338122967` (second attempt) and `35363599393` (first attempt):
-    the `Run Kotlin/Native simulator tests` step was killed at the same limit, after `> Task
-    :shared:iosSimulatorArm64Test`, again with no test result. Same silent-stall class, on the
-    Native step instead of the host one.
-  - **`E1-14` assertion failure**, run `35338122967` (first attempt): a real
+    task, which completes in about 3 minutes there.
+  - **Native-step stall**: the `Run Kotlin/Native simulator tests` step killed at the same limit
+    after `> Task :shared:iosSimulatorArm64Test`, again with no test result, on runs `35338122967`
+    (second attempt), `35363599393` (first) and `35366069672` (second). Same silent-stall class, on
+    the Native step instead of the host one.
+  - **`E1-14` assertion failure**: a real
     `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
-    failure (`188 tests completed, 1 failed`, `kotlin.AssertionError`), the Kotlin/Native flake on
-    the test and target `docs/BACKLOG.md` (`E1-14`), `docs/handoff-E3-14.md` and `docs/PROJECT_LOG.md`
-    already record. The branch does not modify that file.
-  - Every failed job passed on re-run. `E1-14` and `E1-17` remain open by design, which is why a red
-    `shared-tests` is ambiguous; this round neither fixed nor worsened any mechanism.
+    failure (`188 tests completed, 1 failed`, `kotlin.AssertionError`) on run `35338122967` (first
+    attempt), the Kotlin/Native flake on the test and target `docs/BACKLOG.md` (`E1-14`),
+    `docs/handoff-E3-14.md` and `docs/PROJECT_LOG.md` already record.
+  - **Environment, not regression.** The exact two steps of the job were re-run locally on this
+    branch with `--rerun-tasks`: the host step and `iosSimulatorArm64Test` with the four `-x`
+    exclusions complete in about 3 minutes and 36 seconds respectively, against a 10-minute CI cap.
+    This round's Kotlin changes are confined to `build-logic/convention/` — two files, neither of
+    which is compiled into any test task on either target — and every failed job passed on re-run.
+    `E1-14` and `E1-17` remain open by design, which is why a red `shared-tests` is ambiguous.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
   (assertions 14, 34 and 35), the `§20.10` clarifications, `D-178` through `D-180` with their ADRs
   and the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
@@ -153,7 +158,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35363599393`; the story now waits for the owner's gated review of review round 3.
+  `35366069672`; the story now waits for the owner's gated review of review round 3.
 
 ## Scope Completed
 
@@ -512,14 +517,15 @@ documentation.
 - **Two silent-stall classes and one known assertion flake were observed across review rounds 2 and
   3; every failed job passed on re-run.** The `E1-14` Kotlin/Native assertion
   (`LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`)
-  failed once on run `35338122967`; the Android/KMP host step was killed at its 10-minute limit with
-  no test result on runs `35333547781` and `35336079709`, the silent stall classified in
-  `docs/PROJECT_LOG.md` and left latent by `D-175`/`D-177`; and the same stall hit the Native step on
-  run `35338122967`'s second attempt and on run `35363599393`'s first. None is a regression: this
-  round's Kotlin changes are confined to `build-logic`, `:shared:iosSimulatorArm64Test --rerun-tasks`
-  and the Android-host suite pass locally, and every failed job passed on re-run. Fixing any is
-  outside `E3-08`, but the owner should know all are reachable, because `E1-14` and `E1-17` being
-  open is what makes a red required job ambiguous.
+  failed once on run `35338122967`; the Android/KMP host step was killed at its 10-minute cap with no
+  test result on runs `35333547781`, `35336079709` and `35366069672` (first attempt), the silent
+  stall classified in `docs/PROJECT_LOG.md` and left latent by `D-175`/`D-177`; and the same stall
+  hit the Native step on run `35338122967`'s second attempt and on `35363599393`'s first and
+  `35366069672`'s second. Nothing is a regression: this round's Kotlin changes are confined to
+  `build-logic/convention/`, the exact two CI steps re-run locally with `--rerun-tasks` complete in
+  about 3 minutes and 36 seconds, and every failed job passed on re-run. Fixing any is outside
+  `E3-08`, but the owner should know all are reachable, because `E1-14` and `E1-17` being open is
+  what makes a red required job ambiguous.
 - **Review round 3 corrected an implementation of an accepted decision, not the decision.**
   `D-180` is unchanged; only its implementation and its four mirror rows were corrected, because
   the rows named only assertion 34 while the shipped check registers three assertions and no check
