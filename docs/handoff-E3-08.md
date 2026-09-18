@@ -50,8 +50,10 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 1 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
-  REFACTOR `5b48c4b`, records `1a19448`; review fix `4857ee9`.
+- Current phase and latest commit: review round 2 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+  REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
+  `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
+  split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (this record).
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -227,12 +229,14 @@ fixes: 642 actionable tasks, `BUILD SUCCESSFUL`. `:build-logic:convention:test` 
   `:integration:firebase-crashlytics`; `:wiring:firebase` keeps the no-op analytics tracker and
   the `CrashReporter` no-op already bound by `E0-08`.
 - `E3-12` owns the permanent-account cross-device recovery proof.
-- **The four `SwiftSurfaceContract` coverage limits are documented, not closed** (ADR-0181,
+- **The five `SwiftSurfaceContract` coverage limits are documented, not closed** (ADR-0181,
   Negative): `HOLDER_SOURCES` hardcodes three files; `STATE_HOLDER` recognises a fixed modifier set;
   `matchingBrace` counts braces without string-literal awareness; `FUN` cannot match a declaration
-  whose name or parameter list continues on the next line. The no-parsed-class guard bounds the first
-  two by reporting a source that yields no holder rather than passing. Closing the third and fourth
-  means the textual parser growing a scanner, which the review did not require.
+  whose name or parameter list continues on the next line; `splitTopLevel` ignores the `>` of `->`
+  but is not literal-aware, so a `>` inside a string default would still be counted. The
+  no-parsed-class guard bounds the first two by reporting a source that yields no holder rather than
+  passing. Closing the rest means the textual parser growing a scanner, which neither review round
+  required.
 
 ## Review Round 1
 
@@ -256,24 +260,39 @@ source that yields no recognised class is now reported instead of dropping out o
 `FUN` regex was widened to match `fun <T> name(` and `fun Foo.name(` rather than documenting them as
 unseen. The remaining two are documented, because closing them means the parser growing a scanner.
 
+## Review Round 2
+
+The owner's second gated review of pull request #71 reproduced six findings against the real
+repository. All were fixed on the same branch, each after a failing fixture, and no decision changed.
+
+| Finding | Defect | Fix |
+|---------|--------|-----|
+| 1 | `isKoinModuleDeclaration` read the text after the first `:` on every column-zero line, before the keyword was known, so `class FirebaseWiring : Module`, `internal object FuelEntryMapper : Module` and `interface LocalGate : Module` claimed the Koin exemption and were admitted | The declaration is classified first and the exemption applies only to a `val`/`var`; `aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule` rejects a `class`, an `object` and an `interface` inheriting `Module` |
+| 2 | The same matcher could not see past `@`, so `@Suppress("unused") internal class StrayMapper` and `@JvmField internal val leaked = …` parsed as no declaration at all and escaped the rule | `LEADING_ANNOTATIONS` is stripped before matching, so the modifier group stays annotation-free; the same fixture rejects both shapes and accepts an annotated Koin binding and an annotated private factory |
+| 3 | Assertion 34 guarded only the Kotlin-facing interface. The Swift-facing `class SwiftAppGraph` block of `§20.10` had no member comparison, because the golden header is regenerated and committed with the change that alters the class and so can never report a stale block | `§18` assertion 35 compares the Swift-facing block with the real class, `private` members excluded; six fixtures and mutation C prove it |
+| 4 | `FuelEntryFormStateHolder.isLoading` and `observeSaveCompletions()` are public `@HiddenFromObjC` members absent from `§20.10` — the same blind spot `AppGraph.syncStateHolder(scope)` was | Both are declared in `§20.10` carrying `@HiddenFromObjC`, and `§11.6` states the convention |
+| 5 | `splitTopLevel` decremented its depth on the `>` of `->`, so `callback: (Int) -> Unit` drove the depth to -1 and every later comma stopped splitting, reporting the default under the wrong name | The `>` of an arrow closes nothing; `aDefaultAfterAFunctionTypedParameterIsReportedUnderItsOwnName` proves it. `FUN` also gained a leading word boundary, so an identifier ending in `fun` followed by `(` is not read as a member declaration |
+| 6 | ADR-0181 states every problem branch has a fixture asserting its exact text, and the two assertion-14 emptiness branches had none; `bothSidesFailingToParseIsReported` asserted assertion 34 only | `anUnparsedKotlinFacingInterfaceIsReportedByAssertion14` and `anUnparsedSwiftFacingClassIsReportedByAssertion14` cover both branches, asserting the exact text |
+
 ## Files Changed
 
 - `build-logic/convention/src/main/kotlin/.../architecture/ArchitectureChecker.kt` — the two new
   rules, their classification helpers and constants.
 - `build-logic/convention/src/main/kotlin/.../contract/SwiftSurfaceContract.kt` — new; assertions
-  14 and 34.
+  14, 34 and 35.
 - `build-logic/convention/src/main/kotlin/.../contract/ContractCheck.kt` — registers it.
 - `build-logic/convention/src/test/kotlin/.../architecture/ArchitectureCheckerTest.kt` — the two
   rule fixtures, the exact-`Module` fixtures and the message-text assertions.
 - `build-logic/convention/src/test/kotlin/.../contract/SwiftSurfaceContractTest.kt` — new; one
-  fixture per problem branch of assertions 14 and 34 plus the regression that requires both present
-  and passing against the real repository.
+  fixture per problem branch of assertions 14, 34 and 35 plus the regression that requires all three
+  present and passing against the real repository.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/SwiftAppGraphLifecycleTest.kt` — cache-key
   and close-guard coverage.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/TestAppGraphDependenciesTest.kt` — the
   Koin-free construction proof.
-- `docs/CONTRACTS.md` — `§11.6` names assertion 34, `§18` declares it, `§20.10` declares
-  `syncStateHolder(scope)`.
+- `docs/CONTRACTS.md` — `§11.6` names assertions 34 and 35 and the `@HiddenFromObjC` declaration
+  convention, `§18` declares assertion 35, `§20.10` declares `syncStateHolder(scope)` plus the two
+  `@HiddenFromObjC` members of `FuelEntryFormStateHolder`.
 - `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/README.md` — `D-178` through `D-180`.
 - `docs/adr/0179-…`, `docs/adr/0180-…`, `docs/adr/0181-…` — new ADRs.
@@ -310,6 +329,16 @@ unseen. The remaining two are documented, because closing them means the parser 
   exemption no longer applies to the parser: `SwiftSurfaceContractTest` now holds one failing
   fixture per problem branch of both assertions, and only the *end-to-end* proof that the
   repository itself is green remains the mutation run and the real-`contractCheck` test.
+- **No new TDD exemption was taken for review round 2.** Every one of the six corrections was made
+  after a failing fixture was written, run and observed RED: findings 1 and 2 by
+  `aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule` (`Expected rule
+  'wiring-product-logic' to fire … got: []`), finding 3 by the six assertion-35 fixtures
+  (`assertion 35 is missing`) and `contractCheckGuardsTheSwiftFacingSurface` (`contract-check
+  assertion 35 is not implemented`), finding 5 by
+  `aDefaultAfterAFunctionTypedParameterIsReportedUnderItsOwnName` (`expected … defaults retries: Int
+  = 1 but was … defaults callback: (Int) -> Unit, retries: Int = 1`). Finding 4 is documentation
+  only, proved by `contractCheck` assertion 1 staying `PASS`, and finding 6's two fixtures passed
+  without a production change, which is what the review intended them to prove.
 - **SHOULD-level deferral: the `§20.10` Konsist fixture.** Stated with its reason under Out of
   Scope above.
 
@@ -321,6 +350,15 @@ unseen. The remaining two are documented, because closing them means the parser 
   `PENDING` line.
 - `./gradlew :build-logic:convention:test` — 109 tests, 0 failures, including the fixture per
   problem branch of assertions 14 and 34.
+
+**Review round 2, re-run.** The canonical command above passes again with 642 actionable tasks.
+`./gradlew :build-logic:convention:test` reports **119 tests, 0 failures**; the ten test names of the
+verification criteria are present and green. `./gradlew contractCheck` reports assertions **1, 13, 14,
+34 and 35** `PASS`, with 35 present in the output, and no `PENDING` line.
+`./gradlew architectureCheck` passes with no `wiring-product-logic` violation for the real
+`:wiring:firebase`. `./gradlew ktlintCheck detekt` passes with no new suppression. The three
+mutation proofs of the criteria were applied to the real repository and reverted, each recorded in
+the table above; `git status` reported nothing after every restore.
 - `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest` — passes; the
   provider-free graph is unaffected.
 - Mutation runs recorded in the table under "Acceptance Evidence" — all twelve rows re-run after
@@ -335,9 +373,15 @@ unseen. The remaining two are documented, because closing them means the parser 
   is a representational clarification of an already-implemented interface, not a behaviour change,
   and it is the contract being corrected to match the code rather than the reverse.
 - `docs/CONTRACTS.md §11.6` — the `AppGraph` rule names assertion 34 as the check that keeps the
-  block and the interface equal.
+  block and the interface equal, names assertion 35 for the Swift-facing block and the real class,
+  and states that a public `@HiddenFromObjC` member of an exported state-holder class is declared in
+  `§20.10` carrying the annotation.
 - `docs/CONTRACTS.md §18` — assertion 34 is declared, with the reason no other assertion can
-  replace it.
+  replace it; assertion 35 is declared for the Swift-facing block, because the generated header is
+  regenerated with the change that alters the class and cannot report a stale block.
+- `docs/CONTRACTS.md §20.10` — review round 2 declared the two public `@HiddenFromObjC` members of
+  `FuelEntryFormStateHolder`, `isLoading` and `observeSaveCompletions()`, which the generated header
+  cannot show. Both already exist in code; this is the contract being corrected to match it.
 
 ## Decision Board Impact
 
@@ -365,9 +409,14 @@ unseen. The remaining two are documented, because closing them means the parser 
   unparseable `AppGraph` or `SwiftAppGraph` reports that it could not be parsed rather than passing.
 - **`SwiftSurfaceContract`'s coverage limits are enumerated in ADR-0181 under Negative**, after
   review found they were covered only by one general sentence: the hardcoded three-file
-  `HOLDER_SOURCES` list, the `STATE_HOLDER` modifier set, the string-literal-unaware `matchingBrace`
-  and the shapes `FUN` cannot match. The no-parsed-class guard bounds the first two by reporting a
-  source that yields no holder rather than passing.
+  `HOLDER_SOURCES` list, the `STATE_HOLDER` modifier set, the string-literal-unaware `matchingBrace`,
+  the shapes `FUN` cannot match, and the literal-unaware `splitTopLevel` after the arrow fix. The
+  no-parsed-class guard bounds the first two by reporting a source that yields no holder rather than
+  passing.
+- **Review round 2 corrected the round-1 records, not the decisions.** `D-178` and `D-180` are
+  unchanged; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
+  `docs/adr/README.md` were not edited, and no decision ID, ADR file or mirror row was added,
+  because every finding was a defect in an implementation of an accepted decision.
 - **`docs/DECISION_BOARD.md` and `AGENTS.md` are the authoritative state.** This handoff preserves
   what was observed on 2026-09-18 at `story/E3-08-app-graph-and-firebase-wiring`.
 
