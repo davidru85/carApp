@@ -93,14 +93,24 @@
   member.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
-  pushed as `3cac38e..5d40994`. The ten required checks are green on two runs, each named with the
-  commit it covered: `35330477631` covered `0551c10`, and `35332058609` covered `5d40994` —
-  `android-assemble` (3m1s), `android-instrumented-tests` (5m31s), `architecture-check` (1m34s),
-  `contract-check` (2m34s), `detekt` (1m6s), `ios-simulator-build` (15m55s), `ktlint` (1m29s),
-  `objc-header-golden-check` (3m18s), `provider-decoupling` (5m47s) and `shared-tests` (6m24s).
-  Run `35324474324` covered `cb46b0b` (review round 1). Commits after a fix are record-only and
-  re-run the same set; the run for the latest record commit is the head of pull request #71.
-  Re-check the current head with `gh pr checks 71`.
+  pushed as `3cac38e..016a46b`. The ten required checks are green on run `35333547781`, which
+  covered the head `016a46b` and re-ran record-only commits: `android-assemble` (3m20s),
+  `android-instrumented-tests` (5m39s), `architecture-check` (1m27s), `contract-check` (2m49s),
+  `detekt` (1m12s), `ios-simulator-build` (20m50s), `ktlint` (1m26s), `objc-header-golden-check`
+  (2m17s), `provider-decoupling` (5m4s) and `shared-tests` (6m33s). Earlier green runs:
+  `35332058609` covered `5d40994` and `35330477631` covered `0551c10`; `35324474324` covered
+  `cb46b0b` (review round 1). A record-only commit after a green run re-runs the identical set, so
+  the run attached to the head of pull request #71 is the current evidence; re-check it with
+  `gh pr checks 71`.
+- `shared-tests` timed out on the first attempt of run `35333547781`: the `Run Android application
+  and KMP host tests` step hit its 10-minute limit while `VehicleStateHoldersTest >
+  anEmptyResultForOneOwnerDoesNotResolveTheNextOwnersList` was running, and the step's success
+  elapsed time on that same commit is 2m16s (`35332058609`) and 2m26s (`35330477631`). No assertion
+  failed and no test reported an error, so this is the step-limit flake, not a regression: the head
+  commit `016a46b` changes only `docs/handoff-E3-08.md`, and the same test class passes locally in
+  1.8s. The failed job was re-run and passed in 6m33s, which completes the required set. Unlike the
+  `E1-17` iOS UI-test flake, this one is not yet an owned follow-up; it should be recorded against
+  the step limit if it recurs.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
   (assertions 14, 34 and 35), the `§20.10` clarifications, `D-178` through `D-180` with their ADRs
   and the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
@@ -108,7 +118,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35332058609`; the story now waits for the owner's gated review of review round 2.
+  `35333547781`; the story now waits for the owner's gated review of review round 2.
 
 ## Scope Completed
 
