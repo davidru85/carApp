@@ -111,7 +111,8 @@ and the decision mirrors are unchanged, because no decision changed.
   stall of the Native step on the same run's re-attempt. This round changes no Kotlin outside
   `build-logic`, the local suite is green on both targets including
   `:shared:iosSimulatorArm64Test --rerun-tasks`, and no mechanism is fixed or worsened here — but all
-  three remain reachable while `E1-14` and `E1-17` stay open.
+  three remain reachable while `E1-14` and `E1-17` stay open. The final head run `35341762718` on
+  `cd1a8a4` passed all ten checks on its first attempt, with no re-run.
 
 ### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
 

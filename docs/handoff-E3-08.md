@@ -93,14 +93,14 @@
   member.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
-  pushed as `3cac38e..c834699`. The ten required checks are green on run `35338122967`, which covers
-  the head `c834699`: `android-assemble` (3m21s), `android-instrumented-tests` (5m31s),
-  `architecture-check` (1m28s), `contract-check` (2m33s), `detekt` (1m5s), `ios-simulator-build`
-  (16m17s), `ktlint` (1m31s), `objc-header-golden-check` (3m26s), `provider-decoupling` (3m39s) and
-  `shared-tests` (green on the third attempt, 8m50s). Earlier green runs: `35336079709` covered
-  `a28174f`, `35333547781` covered `016a46b`, `35332058609` covered `5d40994` and `35330477631`
-  covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1). Every commit after the first
-  green run is record-only and re-runs the identical set.
+  pushed as `3cac38e..cd1a8a4`. The ten required checks are green on run `35341762718`, which covers
+  the head `cd1a8a4` and passed on its **first attempt** with no re-run: `android-assemble`,
+  `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`,
+  `ios-simulator-build`, `ktlint`, `objc-header-golden-check`, `provider-decoupling` and
+  `shared-tests` (7m50s). Earlier green runs needed re-runs for `shared-tests` only:
+  `35338122967` covered `c834699` (third attempt), `35336079709` covered `a28174f` (second attempt),
+  `35333547781` covered `016a46b` (second attempt), `35332058609` covered `5d40994` and
+  `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1).
 - `shared-tests` needed re-runs on runs `35333547781`, `35336079709` and `35338122967`. Three
   distinct mechanisms, all pre-existing and all outside this round, whose Kotlin changes are
   confined to `build-logic`; the local suite is green on both targets, including
@@ -129,7 +129,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35338122967`; the story now waits for the owner's gated review of review round 2.
+  `35341762718`; the story now waits for the owner's gated review of review round 2.
 
 ## Scope Completed
 
