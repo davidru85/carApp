@@ -103,10 +103,9 @@ and the decision mirrors are unchanged, because no decision changed.
   mutableListOf<Any>()` fails it with `declares internal val leaked`, and deleting
   `fun syncStateHolder(): SyncStateHolder` from the `class SwiftAppGraph` block of `§20.10` fails
   assertion 35 with `syncStateHolder() is declared but absent from §20.10`. On CI, the first attempt
-  of run `35333547781` hit the `shared-tests` step's 10-minute limit while
-  `VehicleStateHoldersTest > anEmptyResultForOneOwnerDoesNotResolveTheNextOwnersList` was running —
-  no assertion failed and the same step succeeds in about 2m20s on the same commit — so the failed
-  job was re-run and passed in 6m33s, completing the ten required checks.
+  of runs `35333547781` and `35336079709` each hit the `shared-tests` step's 10-minute limit with no
+  test result and no assertion failure — the residual third stall mechanism recorded by `D-175` — so
+  each failed job was re-run and passed, completing the ten required checks.
 
 ### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
 
