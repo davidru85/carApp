@@ -148,8 +148,8 @@ because no assertion compares a state-holder block and the order is therefore ha
   with `class SessionStateHolder declares no parsed member`, and the control mutation on
   `VehicleListStateHolder.selectVehicle` still fails unchanged. No file under `shared/src`,
   `feature/`, `wiring/`, `integration/` or `composition/` is modified. Runs `35353870137` on
-  `cffd6ff`, `35356040406` on `d48cb6d` and `35358232151` on the head `5531cd6` each passed all ten
-  required checks on the first attempt, `shared-tests` included.
+  `cffd6ff`, `35356040406` on `d48cb6d`, `35358232151` on `5531cd6` and `35359981624` on the head
+  `bbb0797` each passed all ten required checks on the first attempt, `shared-tests` included.
 - **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
   state-holder class is declared in `§20.10` still has no executable check — assertions 34 and 35
   compare only the two `AppGraph` blocks — and is recorded in the handoff with `E3-05` as its
