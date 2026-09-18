@@ -952,6 +952,14 @@ iOS call site of that method exists yet, so the fixture belongs with the story t
 Recorded as a follow-up in `docs/handoff-E3-08.md`; no rule of the contract is contradicted, because
 the banned call sites do not exist.
 
+Also deferred: the `§11.6` rule that a public `@HiddenFromObjC` member of an exported state-holder
+class is declared in `§20.10` has no executable check. Assertions 34 and 35 compare only the
+`AppGraph` and `SwiftAppGraph` blocks, and the generated Objective-C header cannot see a hidden
+member. The two that exist today, `FuelEntryFormStateHolder.isLoading` and
+`observeSaveCompletions()`, were declared by hand in this story, so no divergence is live. Expected
+owner: `E3-05`; making the rule executable first needs a `D-` decision on whether it lives in
+`SwiftSurfaceContract` or in the `D-16` Konsist rules.
+
 ### E3-04 - Repository Sync Wiring - M
 
 Replace no-op remote sources with real sync wiring and platform triggers.
@@ -998,6 +1006,10 @@ Acceptance criteria:
 - `SyncStatus` is rendered with the precedence `Failed > Syncing > Pending > Idle`.
 - Being offline with pending rows, or with only connectivity-code retryable failures, renders as `Pending`, never as an error.
 - The failed state offers manual retry through `SyncController.retryFailed()`.
+- Inherited from `E3-08`: make the `docs/CONTRACTS.md §11.6` rule executable — a public
+  `@HiddenFromObjC` member of an exported state-holder class is declared in `§20.10` carrying that
+  annotation. Requires a new `D-` decision on where the check lives. If another story touches the
+  state-holder surface first, the follow-up transfers to it.
 
 ### E3-07 - Tombstone Purge - S
 

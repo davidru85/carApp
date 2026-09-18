@@ -50,12 +50,14 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 3 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 4 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
   record); review fixes round 3 `03d8d7f` (the depth-zero body brace, the per-class emptiness guard
-  and the round-3 record).
+  and the round-3 record); review fixes round 4 `b9b0d0e`, `a90bef1` (the annotation scanner),
+  `6b338bb`, `d7187a2` (the scope detected by declared type), `8860e48`, `95066e2` (the missing
+  `AppGraph` block and the one-sided parse messages), each a red/green pair.
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -108,6 +110,20 @@
   build-logic tests). The four mirror D-180 rows named only assertion 34 although the shipped check
   registers three; all four now name 34 and 35. `§20.10` reordered
   `@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`.
+- Review round 4: three fail-open defects, all in this story's checks and all fixed after a failing
+  fixture each, with no decision changed. (1) `LEADING_ANNOTATIONS` could not balance parentheses
+  and could not see a use-site target, so `@Deprecated("x", ReplaceWith("y")) internal class
+  StrayMapper` and `@get:JvmName("leak") internal val leaked = …` left the `@` on the line and
+  parsed as no declaration; a scanner replaces the regular expression and `isKoinModuleDeclaration`
+  reads the stripped text too. (2) `Member.scopeParameter` matched the parameter name `scope`
+  instead of the declared type, so `syncStateHolder(coroutineScope: CoroutineScope)` passed
+  assertions 14, 34 and 35 together; `Parameter.isCoroutineScope` now tests the type and
+  `const val SCOPE` became `const val COROUTINE_SCOPE`. (3) `appGraphMembersMatch` threw
+  `IllegalStateException` on a `§20.10` without `interface AppGraph`, aborting the whole report and
+  suppressing every other assertion; it now returns that result the way assertion 35 did, and both
+  functions name the side that failed to parse. Five fixtures added (124 -> 129 build-logic tests),
+  three mutation rows re-run, and the `§11.6` `@HiddenFromObjC` deferral recorded in `docs/BACKLOG.md`
+  under both `E3-08` and `E3-05`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 3 was
   pushed as `9a9266a..58311fa`. The ten required checks are green on run `35366069672`, which covers
@@ -257,6 +273,9 @@ the observed output, not the intended one.
 | 15 | `fun syncStateHolder(): SyncStateHolder` removed from the `class SwiftAppGraph` block of `§20.10` | `contractCheck` | 35 FAIL `syncStateHolder() is declared but absent from §20.10` |
 | 16 | `dismissAnonymousReminder(force: Boolean = false)` on `SessionStateHolder` | `contractCheck` | 14 FAIL `shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt: class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false` |
 | 17 | `class SessionStateHolder` reduced to a body with no `fun` | `contractCheck` | 14 FAIL `shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt: class SessionStateHolder declares no parsed member` |
+| 18 | `@Deprecated("x", ReplaceWith("y")) internal class StrayMapper` appended to `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:247 declares internal class StrayMapper` |
+| 19 | `syncStateHolder()` -> `syncStateHolder(coroutineScope: CoroutineScope)` in `SwiftAppGraph.kt` and the matching `§20.10` line | `contractCheck` | 14 FAIL `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`; 34 and 35 PASS; all 31 assertion lines still printed |
+| 20 | `interface AppGraph {` -> `interface KotlinAppGraphSurface {` in `§20.10` | `contractCheck` | 34 FAIL `§20.10 declares no interface AppGraph block`; all 31 assertion lines still printed, no stack trace and no `IllegalStateException` |
 
 Rows 2 and 10 are the two rows that previously passed while the change they were supposed to catch
 was in place: a default on an `AppGraph` factory's `scope` (the old `signature` stripped the default
@@ -343,12 +362,37 @@ class as finding 3 — a guard that reported `PASS` while covering less than it 
 | Finding | Defect | Fix |
 |---------|--------|-----|
 | 1 | `isKoinModuleDeclaration` read the text after the first `:` on every column-zero line, before the keyword was known, so `class FirebaseWiring : Module`, `internal object FuelEntryMapper : Module` and `interface LocalGate : Module` claimed the Koin exemption and were admitted | The declaration is classified first and the exemption applies only to a `val`/`var`; `aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule` rejects a `class`, an `object` and an `interface` inheriting `Module` |
-| 2 | The same matcher could not see past `@`, so `@Suppress("unused") internal class StrayMapper` and `@JvmField internal val leaked = …` parsed as no declaration at all and escaped the rule | `LEADING_ANNOTATIONS` is stripped before matching, so the modifier group stays annotation-free; the same fixture rejects both shapes and accepts an annotated Koin binding and an annotated private factory |
+| 2 | The same matcher could not see past `@`, so `@Suppress("unused") internal class StrayMapper` and `@JvmField internal val leaked = …` parsed as no declaration at all and escaped the rule | `LEADING_ANNOTATIONS` is stripped before matching, so the modifier group stays annotation-free; the same fixture rejects both shapes and accepts an annotated Koin binding and an annotated private factory. **Superseded by review round 4**, which replaced that regular expression with `stripLeadingAnnotations`: it could not balance parentheses and could not see a use-site target |
 | 3 | Assertion 34 guarded only the Kotlin-facing interface. The Swift-facing `class SwiftAppGraph` block of `§20.10` had no member comparison, because the golden header is regenerated and committed with the change that alters the class and so can never report a stale block | `§18` assertion 35 compares the Swift-facing block with the real class, `private` members excluded; six fixtures and mutation C prove it |
 | 4 | `FuelEntryFormStateHolder.isLoading` and `observeSaveCompletions()` are public `@HiddenFromObjC` members absent from `§20.10` — the same blind spot `AppGraph.syncStateHolder(scope)` was | Both are declared in `§20.10` carrying `@HiddenFromObjC`, and `§11.6` states the convention |
 | 5 | `splitTopLevel` decremented its depth on the `>` of `->`, so `callback: (Int) -> Unit` drove the depth to -1 and every later comma stopped splitting, reporting the default under the wrong name | The `>` of an arrow closes nothing; `aDefaultAfterAFunctionTypedParameterIsReportedUnderItsOwnName` proves it. `FUN` also gained a leading word boundary, so an identifier ending in `fun` followed by `(` is not read as a member declaration |
 | 6 | ADR-0181 states every problem branch has a fixture asserting its exact text, and the two assertion-14 emptiness branches had none; `bothSidesFailingToParseIsReported` asserted assertion 34 only | `anUnparsedKotlinFacingInterfaceIsReportedByAssertion14` and `anUnparsedSwiftFacingClassIsReportedByAssertion14` cover both branches, asserting the exact text |
 | 7 | Assertion 14 silently covered **no member** of `SessionStateHolder`: `bodyOf` took the first `{` after the declaration, which is the lambda default of the internal primary constructor's `onLocalStartAccepted` parameter, so `matchingBrace` closed it immediately and the class body parsed as empty. All 17 exported members were outside the check, and nothing reported it because the per-source guard only fires when a file yields no class | `bodyBrace` selects the first brace at parenthesis depth zero, so the class body is found with or without a primary constructor, and a per-class emptiness guard reports `declares no parsed member`. Proven by mutation 16, which passed before the fix and fails after it, and by mutation 17; `aHolderWithALambdaDefaultInItsConstructorStillHasItsMembersChecked` and `aHolderClassWithNoParsedMemberIsReported` are the permanent fixtures |
+
+## Review Round 4
+
+The owner's fourth gated review of pull request #71 reproduced three fail-open defects, all in the
+checks this story added, and all three fixed on the same branch after a failing fixture each. No
+decision changed: `D-178`, `D-179` and `D-180` keep their wording and `Accepted` status.
+
+| Finding | Defect | Fix |
+|---------|--------|-----|
+| 1 | `LEADING_ANNOTATIONS` was the regular expression `^(?:@\w+(?:\([^)]*\))?\s+)+`. It cannot balance parentheses, so `@Deprecated("x", ReplaceWith("y")) internal class StrayMapper` left the `@` on the line and `TOP_LEVEL_DECLARATION` parsed no declaration at all; `@get:JvmName("leak") internal val leaked = …` escaped the same way. Both shapes passed the rule silently | A scanner replaces the regular expression: `stripLeadingAnnotations`, `skipOneAnnotation`, `skipBalancedParentheses` and `Char.isAnnotationNameChar` (`@` names admit the `:` of a use-site target). `isKoinModuleDeclaration` also reads the stripped text, because a use-site target carries its own colon and the raw read took `JvmName(…)` for the declared type. Fixture: `anAnnotationWithNestedParenthesesOrAUseSiteTargetDoesNotHideTheDeclaration` |
+| 2 | `Member.scopeParameter` matched the parameter **name** `scope`, not the declared type. `§11.6` constrains the type: `SwiftAppGraph.syncStateHolder(coroutineScope: CoroutineScope)` passed assertions 14, 34 and 35 together once `§20.10` was edited in the same change, because the member comparison agreed with itself | `Parameter.isCoroutineScope` tests `type.removeSuffix("?") == "CoroutineScope"` and `scopeParameter` selects by that; `const val SCOPE` is replaced by `const val COROUTINE_SCOPE`. Fixtures: `aSwiftFacingMemberTakingAScopeUnderAnotherNameIsRejected` and `aKotlinFacingFactoryWhoseScopeParameterIsNotACoroutineScopeIsRejected` |
+| 3 | `appGraphMembersMatch` called `contractBlock()`, which `check`s for `interface AppGraph` and throws. A `§20.10` without that block aborted the whole `contract-check` run with `IllegalStateException`, suppressing every other assertion's result. The one-sided parse case also blamed "both sides" when only one had failed, and assertion 35's counterpart did too | `appGraphMembersMatch` returns the missing-block result the way assertion 35 already did, and both functions report which side failed. Fixtures: `aContractWithNoKotlinFacingBlockIsReported`, `aContractSideThatParsesToNothingIsNamedRatherThanBlamedOnBothSides`, `anInterfaceSideThatParsesToNothingIsNamedRatherThanBlamedOnBothSides` and their two Swift-facing counterparts |
+
+**Mutation evidence for round 4** is rows 18 to 20 of the table under "Acceptance Evidence", which
+is the canonical one. Each row was applied to the real repository, the named check run, and the
+file restored with `git checkout --`; `git status --porcelain` printed nothing afterwards.
+
+Rows 18 and 19 passed before this round's fixes and fail after them. Row 20 is the one that
+previously aborted the report: it now degrades to a single failed assertion, which is what lets a
+reviewer see the other thirty results.
+
+**Documentation.** `docs/adr/0179-…` reworded its annotation limit and named the new fixture;
+`docs/adr/0181-…` gained the two new coverage limits. The `§11.6` `@HiddenFromObjC` rule is
+recorded as a deferral in `docs/BACKLOG.md` under both `E3-08` (with its reason) and `E3-05` (as an
+inherited acceptance criterion), expected owner `E3-05`.
 
 ## Files Changed
 

@@ -118,6 +118,13 @@ change.
   - `splitTopLevel` ignores the `>` of `->` so a function-typed parameter cannot merge the
     parameters after it. It is still not literal-aware, so a `>` inside a string default would be
     counted.
+  - The scope parameter is recognised by its declared type `CoroutineScope`, not by the identifier
+    `scope`. Review round 4 proved that the name match let
+    `SwiftAppGraph.syncStateHolder(coroutineScope: CoroutineScope)` pass assertions 14, 34 and 35
+    together once `§20.10` was edited in the same change.
+  - A `§20.10` that declares no `interface AppGraph` block reports assertion 34 as a failure, the
+    way assertion 35 already reported a missing `class SwiftAppGraph` block. It previously threw
+    and aborted the whole `contract-check` report, suppressing every other assertion's result.
 
 ### Constraints Introduced
 

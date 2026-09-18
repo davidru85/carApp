@@ -38,6 +38,51 @@
 
 ## Entries
 
+### 2026-09-18 — E3-08 review round 4: three fail-open checks, and the §11.6 deferral in the backlog
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178`, `D-179` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's fourth gated review of pull request #71 reproduced three defects in
+  the checks `E3-08` added, all *fail-open* — the rule reported `PASS` while covering less than it
+  claimed — and all fixed on `story/E3-08-app-graph-and-firebase-wiring` after a failing fixture
+  each. The annotation stripper was the regular expression `^(?:@\w+(?:\([^)]*\))?\s+)+`, which
+  cannot balance parentheses: `@Deprecated("x", ReplaceWith("y")) internal class StrayMapper` left
+  the `@` on the line and the declaration parsed as nothing, and `@get:JvmName("leak") internal val
+  leaked = …` escaped the same way. A scanner replaces it and the Koin exemption now reads the
+  stripped text too, because a use-site target carries its own colon. `Member.scopeParameter`
+  matched the parameter **name** `scope` rather than the declared type, so
+  `SwiftAppGraph.syncStateHolder(coroutineScope: CoroutineScope)` passed assertions 14, 34 and 35
+  together once `§20.10` was edited in the same change; the check now tests the declared
+  `CoroutineScope` type. `appGraphMembersMatch` called `contractBlock()`, which `check`s for
+  `interface AppGraph` and throws, so a `§20.10` without that block aborted the entire
+  `contract-check` run with `IllegalStateException` and suppressed every other assertion's result;
+  it now returns that result the way assertion 35 already did, and both member comparisons name the
+  side that failed to parse instead of blaming both.
+- **Why:** all three were invisible to a `PASS`. Two let an offending declaration or parameter
+  through, and the third replaced thirty-one results with a stack trace, which is the worst failure
+  shape for a report a reviewer reads. The `§11.6` deferral was also recorded for the first time in
+  `docs/BACKLOG.md` under both `E3-08` and `E3-05`, where the owner will see it, rather than only in
+  the handoff.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/BACKLOG.md`,
+  `docs/handoff-E3-08.md`, this log, and the pull-request description. Code:
+  `ArchitectureChecker.kt`, `SwiftSurfaceContract.kt`, `ArchitectureCheckerTest.kt` and
+  `SwiftSurfaceContractTest.kt` only. `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` are unchanged:
+  no decision changed, only its implementation.
+- **Verification:** `:build-logic:convention:test` reports 129 tests and 0 failures;
+  `architectureCheck` still prints `16 rules … 23 modules`; `contractCheck` reports 14, 34 and 35
+  `PASS` with no `PENDING`; `ktlintCheck detekt` pass. Mutation 18 fails `architectureCheck` with
+  `declares internal class StrayMapper`, mutation 19 fails assertion 14 with
+  `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, and mutation 20 degrades to
+  a single `34 FAIL` while all 31 assertion lines still print — no stack trace. Each mutation was
+  reverted and `git status --porcelain` printed nothing. The canonical CI command passes.
+- **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
+  state-holder class is declared in `§20.10` still has no executable check; it is recorded in
+  `docs/BACKLOG.md` under `E3-08` and `E3-05`, and making it executable needs a `D-` decision on
+  whether it lives in `SwiftSurfaceContract` or in the `D-16` Konsist rules. The `shared-tests`
+  silent stalls of the previous round are unchanged and remain owned by `E1-14`/`E1-17`.
+
 ### 2026-09-18 — E3-08 review round 1: four defects in the story's own checks, and a fixture per branch
 
 - **Type:** correction

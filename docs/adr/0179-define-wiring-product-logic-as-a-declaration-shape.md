@@ -66,9 +66,12 @@ abstraction factory `§4` admits.
   so they pass, but a future non-constant private property would not.
 - The classification is textual, and its limits are enumerated rather than left to one general
   sentence:
-  - A leading annotation on the declaration line is removed before matching, so
-    `@JvmField internal val leaked = …` is classified. A line carrying only an annotation parses as
-    no declaration, which is correct.
+  - Every leading annotation is removed before matching by a scanner rather than a regular
+    expression, so a use-site target (`@get:JvmName("x")`) and nested parentheses
+    (`@Deprecated("x", ReplaceWith("y"))`) no longer leave the `@` on the line and hide the whole
+    declaration. Review round 4 found both shapes passing silently. A line carrying only an
+    annotation still parses as no declaration, which is correct, and an annotation whose
+    parenthesis never closes on the line is left untouched and parses as no declaration.
   - The Koin exemption applies only to a `val`/`var`. A type declaration that inherits a type named
     `Module` — `class FirebaseWiring : Module` — is a `class` and is rejected.
   - A declaration whose keyword the regular expression still cannot see is not reported. The rule
@@ -97,6 +100,9 @@ and a line that mentions `module {` in an unrelated expression.
 `aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule` rejects a `class`, an `object` and
 an `interface` inheriting `Module`, an annotated `class` and an annotated non-private property, and
 accepts an annotated Koin binding and an annotated private factory.
+`anAnnotationWithNestedParenthesesOrAUseSiteTargetDoesNotHideTheDeclaration` rejects a `class`
+annotated with nested parentheses, a property carrying a use-site target, and a doubly annotated
+`object`, and accepts a use-site-targeted Koin binding.
 
 The rule was also mutated against the real repository: appending `internal class StrayMapper` to
 `FirebaseAppProviders.kt` makes `architectureCheck` fail with
