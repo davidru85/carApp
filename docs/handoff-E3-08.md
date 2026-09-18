@@ -50,8 +50,22 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: complete. RED `4c51b55`, GREEN `03f5f3f`, REFACTOR `5b48c4b`,
-  records `1a19448`.
+- Current phase and latest commit: review round 1 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+  REFACTOR `5b48c4b`, records `1a19448`; review fix `4857ee9`.
+- Review round 1: five findings, four of them defects in the checks this story added, all fixed
+  after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
+  Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
+  `Member.defaulted` for the interface and assertion 34 stripped the default before comparing.
+  Assertion 34 now compares the default as part of the parameter shape and assertion 14 reports the
+  interface's own defaults. Finding 2: assertion 14 false-positived on a private `SwiftAppGraph`
+  member, which is not exported and therefore not constrained by `§18`; private members are filtered
+  out and a fixture proves it. Finding 3: `isKoinModuleDeclaration` admitted any type whose name
+  begins with `Module` and any line mentioning `module {`; the `Module` type is now matched exactly
+  and the initialiser must be the declaration's own. Finding 4: the violation put the declared name
+  between the modifiers and the keyword (`declares enum  StrayMode class`); it is now in source
+  order and the fixtures assert the message text. Finding 5: `SwiftSurfaceContractTest` gained one
+  fixture per problem branch of both assertions and the dead `fixture: Boolean = true` parameter was
+  removed; the fixtures fabricate `Inputs` and assert the exact problem text.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. All ten required checks
   are green on the pull-request head: `android-assemble`, `android-instrumented-tests`,
@@ -135,26 +149,38 @@ per-vehicle form holders; `everyFactoryThrowsAfterCloseExceptCloseItself` assert
 `IllegalStateException` from all six factories after `close()` and that a second `close()` is
 idempotent.
 
-**Assertion 14 and 34 mutation evidence.** Each mutation was applied to the real repository, the
-check run, and the file restored:
+**Mutation evidence, re-run after review round 1.** Every row was applied to the real
+repository, the named check run, and the mutated file restored. `git status` reported only the one
+mutated path after every restore, and the tree is clean at the end of the run. The message column is
+the observed output, not the intended one.
 
-| Mutation | Result |
-|----------|--------|
-| `vehicleFormStateHolder(vehicleId: String? = null)` on `SwiftAppGraph` | assertion 14 FAILs, naming the member |
-| `scope: CoroutineScope = CoroutineScope(Job())` on `AppGraph` | assertion 14 FAILs |
-| `selectVehicle(vehicleId: String? = null)` on `VehicleListStateHolder` | assertion 14 FAILs, naming file and class |
-| `requestDelete(entryId: String = "")` on `FuelEntryListStateHolder` | assertion 14 FAILs |
-| `syncController()` added to `SwiftAppGraph` | assertion 14 FAILs, `SwiftAppGraph references SyncController` |
-| `withCallback(callback: (Int) -> Unit = {})` added to `AppGraph` | assertions 14 and 34 FAIL |
-| `syncStateHolder(scope)` removed from `§20.10` | assertion 34 FAILs, naming the member |
+| # | Mutation | Task | Observed |
+|---|----------|------|----------|
+| 1 | `sessionStateHolder(scope: CoroutineScope = CoroutineScope(Job()))` on `AppGraph` | `contractCheck` | 14 FAIL `AppGraph.sessionStateHolder defaults scope: CoroutineScope = CoroutineScope(Job())`; 34 FAIL `sessionStateHolder(scope: CoroutineScope = CoroutineScope(Job())) is declared but absent from §20.10; sessionStateHolder(scope: CoroutineScope) is declared in §20.10 but absent from the interface` |
+| 2 | `vehicleListStateHolder(scope: CoroutineScope = CoroutineScope(Job()))` on `AppGraph` | `contractCheck` | 14 FAIL `AppGraph.vehicleListStateHolder defaults scope: CoroutineScope = CoroutineScope(Job())`; 34 FAIL with both signatures |
+| 3 | `vehicleListStateHolder(vehicleId: String = "")` on `SwiftAppGraph` | `contractCheck` | 14 FAIL `SwiftAppGraph.vehicleListStateHolder defaults vehicleId: String = ""`; 34 PASS |
+| 4 | `syncStateHolder(scope: CoroutineScope)` on `SwiftAppGraph` | `contractCheck` | 14 FAIL `SwiftAppGraph.syncStateHolder takes scope: CoroutineScope`; 34 PASS |
+| 5 | `SyncController` referenced inside `SwiftAppGraph` | `contractCheck` | 14 FAIL `SwiftAppGraph references SyncController`; 34 PASS |
+| 6 | `selectVehicle(vehicleId: String? = null)` on `VehicleListStateHolder` | `contractCheck` | 14 FAIL `feature/vehicle/…/VehicleStateHolders.kt: class VehicleListStateHolder.selectVehicle defaults vehicleId: String? = null` |
+| 7 | `requestDelete(entryId: String = "")` on `FuelEntryListStateHolder` | `contractCheck` | 14 FAIL `feature/fuel/…/FuelEntryStateHolders.kt: class FuelEntryListStateHolder.requestDelete defaults entryId: String = ""` |
+| 8 | `syncStateHolder(scope)` removed from `§20.10` | `contractCheck` | 34 FAIL `syncStateHolder(scope: CoroutineScope) is declared but absent from §20.10` |
+| 9 | `internal class StrayMapper` in `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:233 declares internal class StrayMapper` |
+| 10 | `val moduleRegistry: ModuleRegistry = ModuleRegistry()` in `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `declares internal val moduleRegistry` |
+| 11 | `val mentioned = stagedLogger() + module { }` in `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `declares internal val mentioned` |
+| 12 | `implementation` -> `api` on the integration edge, plus `FirebaseAuthClient` named in `:composition:ios` | `architectureCheck` | FAIL `:composition:ios: firebase-implementation-outside-wiring` |
 
-The last two mutations are the regression tests for the two defects found during this story's own
-refactor: a `[^)]*` parameter capture truncated a list at a function-typed parameter and hid a
-later default, and a string-literal default escaped a `=\s*\w` heuristic. Both are fixed and both
-mutations now fail the check.
+Rows 2 and 10 are the two rows that previously passed while the change they were supposed to catch
+was in place: a default on an `AppGraph` factory's `scope` (the old `signature` stripped the default
+before comparing, so assertion 34 saw nothing) and a property whose type merely begins with
+`Module`. Row 1 is the exact mutation review round 1 reported as not failing. Rows 10 and 11 were
+confirmed to pass before the fix and to fail after it.
 
-**Canonical verification.** The full CI command of `AGENTS.md` passes locally: 642 actionable
-tasks, `BUILD SUCCESSFUL`.
+The two rows that the review found were not covered at all are rows 1 and 10 above: rows 2, 10 and
+11 were confirmed to pass before the fix and to fail after it.
+
+**Canonical verification.** The full CI command of `AGENTS.md` passes locally after the review
+fixes: 642 actionable tasks, `BUILD SUCCESSFUL`. `:build-logic:convention:test` reports 109 tests,
+0 failures, and `contractCheck` reports every assertion `PASS` with no `PENDING` line.
 
 ## Out of Scope / Not Done
 
@@ -171,6 +197,34 @@ tasks, `BUILD SUCCESSFUL`.
   `:integration:firebase-crashlytics`; `:wiring:firebase` keeps the no-op analytics tracker and
   the `CrashReporter` no-op already bound by `E0-08`.
 - `E3-12` owns the permanent-account cross-device recovery proof.
+- **The four `SwiftSurfaceContract` coverage limits are documented, not closed** (ADR-0181,
+  Negative): `HOLDER_SOURCES` hardcodes three files; `STATE_HOLDER` recognises a fixed modifier set;
+  `matchingBrace` counts braces without string-literal awareness; `FUN` cannot match a declaration
+  whose name or parameter list continues on the next line. The no-parsed-class guard bounds the first
+  two by reporting a source that yields no holder rather than passing. Closing the third and fourth
+  means the textual parser growing a scanner, which the review did not require.
+
+## Review Round 1
+
+The owner's gated review of pull request #71 reproduced five findings against the real repository.
+All were fixed on the same branch, each after a failing fixture, and each is recorded in the
+mutation table above.
+
+| Finding | Defect | Fix |
+|---------|--------|-----|
+| 1 | `docs/handoff-E3-08.md` and ADR-0181 both claimed a Kotlin default on `AppGraph` fails assertion 14; it did not. Assertion 14 never read the interface's defaults, and assertion 34 stripped the default before comparing | Assertion 34 compares the default as part of the parameter shape; assertion 14 reports the interface's own defaults. ADR-0181 and the table corrected, every row re-run |
+| 2 | Assertion 14 false-positived on a private `SwiftAppGraph` member, which is not exported | Private members filtered out of the Swift-facing loop; a fixture proves a private helper with a `scope` and a default is accepted while a public one is rejected |
+| 3 | `isKoinModuleDeclaration` admitted any type beginning with `Module` and any line mentioning `module {`; proved side by side with `moduleRegistry` vs `otherRegistry` | The `Module` type is matched exactly (`Module`, `Module?`, `org.koin.core.module.Module`) and the initialiser must be the declaration's own; four rejecting fixtures added |
+| 4 | The violation put the declared name between the modifiers and the keyword: `declares enum  StrayMode class` | The description is rebuilt in source order; the fixtures assert the exact message text rather than only the rule id |
+| 5 | `SwiftSurfaceContractTest` had one test and no failing fixture on any parser branch; `Inputs` and the `fixture` marker parameter had zero call sites | One fixture per problem branch of both assertions, asserting the exact problem text; the marker parameter removed |
+
+**Additional request, recorded and addressed.** The coverage limits the review listed — the
+hardcoded three-file `HOLDER_SOURCES`, the `STATE_HOLDER` modifier set, the string-literal-unaware
+`matchingBrace`, and the generic/extension `FUN` shapes — are enumerated in ADR-0181 under Negative.
+The chosen mitigation for the two that can fail silently is the no-parsed-class guard: a holder
+source that yields no recognised class is now reported instead of dropping out of assertion 14. The
+`FUN` regex was widened to match `fun <T> name(` and `fun Foo.name(` rather than documenting them as
+unseen. The remaining two are documented, because closing them means the parser growing a scanner.
 
 ## Files Changed
 
@@ -180,9 +234,10 @@ tasks, `BUILD SUCCESSFUL`.
   14 and 34.
 - `build-logic/convention/src/main/kotlin/.../contract/ContractCheck.kt` — registers it.
 - `build-logic/convention/src/test/kotlin/.../architecture/ArchitectureCheckerTest.kt` — the two
-  rule fixtures.
-- `build-logic/convention/src/test/kotlin/.../contract/SwiftSurfaceContractTest.kt` — new; the
-  regression that requires both assertions present and passing.
+  rule fixtures, the exact-`Module` fixtures and the message-text assertions.
+- `build-logic/convention/src/test/kotlin/.../contract/SwiftSurfaceContractTest.kt` — new; one
+  fixture per problem branch of assertions 14 and 34 plus the regression that requires both present
+  and passing against the real repository.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/SwiftAppGraphLifecycleTest.kt` — cache-key
   and close-guard coverage.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/TestAppGraphDependenciesTest.kt` — the
@@ -218,9 +273,13 @@ tasks, `BUILD SUCCESSFUL`.
 - **TDD order exemption used for architecture-rule fixtures**, exactly as permitted by
   `docs/SPECIFICATION.md §11`: the fixtures and their checker implementation were completed in the
   same RED/GREEN cycle, and each forbidden shape has an executable failing fixture (`D-16`).
-- **TDD order exemption used for the contract-check rules**, for the same reason: assertion 14 and
-  assertion 34 are checks over committed repository files, and their failing fixtures are the
-  mutation runs recorded above rather than a test that could fail before the check exists.
+- **TDD order exemption used for the contract-check rules (review round 1 removed its scope).**
+  The original exemption read that assertion 14 and assertion 34 are checks over committed
+  repository files, so their failing evidence was mutation runs rather than a test. Review found
+  that left every branch of `SwiftSurfaceContract` without a fixture, contrary to `D-16`. The
+  exemption no longer applies to the parser: `SwiftSurfaceContractTest` now holds one failing
+  fixture per problem branch of both assertions, and only the *end-to-end* proof that the
+  repository itself is green remains the mutation run and the real-`contractCheck` test.
 - **SHOULD-level deferral: the `§20.10` Konsist fixture.** Stated with its reason under Out of
   Scope above.
 
@@ -230,12 +289,14 @@ tasks, `BUILD SUCCESSFUL`.
 - `./gradlew architectureCheck` — `16 rules from docs/TECHNICAL_PLAN.md §4, 23 modules`; passes.
 - `./gradlew contractCheck` — every assertion `PASS`, including the new 14 and 34, with no
   `PENDING` line.
-- `./gradlew :build-logic:convention:test` — 34 tests, 0 failures.
+- `./gradlew :build-logic:convention:test` — 109 tests, 0 failures, including the fixture per
+  problem branch of assertions 14 and 34.
 - `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest` — passes; the
   provider-free graph is unaffected.
-- Mutation runs recorded in the table under "Acceptance Evidence" — every new rule and assertion
-  fails on a real injected defect and passes once the file is restored.
-- `git status` after each mutation run — clean, with the working tree restored.
+- Mutation runs recorded in the table under "Acceptance Evidence" — all twelve rows re-run after
+  review round 1, each failing with the message recorded there and each restoring a clean tree.
+- `git status` after each mutation row — only the single mutated path was reported before the
+  restore, and nothing after it.
 
 ## Contract Impact
 
@@ -272,6 +333,11 @@ tasks, `BUILD SUCCESSFUL`.
 - **The declaration classifier is textual.** A declaration shape the regular expression cannot see
   fails open. Bounded by the rule's direction and by the two modules it guards being small: an
   unparseable `AppGraph` or `SwiftAppGraph` reports that it could not be parsed rather than passing.
+- **`SwiftSurfaceContract`'s coverage limits are enumerated in ADR-0181 under Negative**, after
+  review found they were covered only by one general sentence: the hardcoded three-file
+  `HOLDER_SOURCES` list, the `STATE_HOLDER` modifier set, the string-literal-unaware `matchingBrace`
+  and the shapes `FUN` cannot match. The no-parsed-class guard bounds the first two by reporting a
+  source that yields no holder rather than passing.
 - **`docs/DECISION_BOARD.md` and `AGENTS.md` are the authoritative state.** This handoff preserves
   what was observed on 2026-09-18 at `story/E3-08-app-graph-and-firebase-wiring`.
 

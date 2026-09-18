@@ -37,7 +37,11 @@ Every column-zero declaration in `:wiring:firebase` is classified from its keywo
 admitted, because a factory and a platform initialiser are both functions and the private ones are
 the helpers of the factories in the same file. A `val`/`var` is admitted when it is `private`, which
 is the wiring module's own tuning data, and rejected otherwise. A Koin `Module` is admitted by its
-declared type or its `module { … }` initialiser. Every other declaration — `class`, `interface`,
+declared type, matched **exactly** — `Module`, `Module?` or the fully-qualified
+`org.koin.core.module.Module`, never a type whose name merely begins with `Module`, so
+`ModuleRegistry` and `ModuleUsage` are rejected — or by a `module { … }` initialiser that is the
+initialiser of the declaration (`=\s*module\s*\{`), never an incidental mention of `module {`
+inside an unrelated expression. Every other declaration — `class`, `interface`,
 `object`, `enum class`, `typealias`, `fun interface`, and any `expect`/`actual` — is rejected, at
 any visibility, because none of them is one of the three admitted shapes.
 
@@ -63,6 +67,10 @@ abstraction factory `§4` admits.
 - The classification is textual. A declaration whose keyword the regular expression cannot see is
   not reported. That is bounded by the rule's direction: a missed declaration fails open, and the
   `:wiring:firebase` source is a small, reviewed file.
+- The violation message names the declaration in source order, the way it is written:
+  `internal class StrayMapper`, `enum class StrayMode`, `fun interface StrayCallback`. The earlier
+  shape interleaved the declared name between the two keyword words and produced
+  `declares enum  StrayMode class`; the fixtures now assert the message text, not only the rule id.
 
 ### Constraints Introduced
 
@@ -74,11 +82,19 @@ abstraction factory `§4` admits.
 ## Verification
 
 `ArchitectureCheckerTest.wiringFirebaseDeclarationsAreBoundedToModulesFactoriesAndInitialisers`
-asserts rejection for twelve shapes and acceptance for eight, including every shape the real module
-uses today. The rule was also mutated against the real repository: appending
-`internal data class StrayMapping(val id: String)` to `FirebaseAppProviders.kt` makes
-`architectureCheck` fail with `:wiring:firebase: wiring-product-logic` and removing it restores a
-green build.
+asserts rejection for fourteen shapes and acceptance for ten, including every shape the real module
+uses today, and `koinModuleMatchingIsExactRatherThanAPrefixOrAMention` rejects
+`val moduleRegistry: ModuleRegistry`, `var modulesUsed: ModuleUsage`, `val suffixed: ModuleWiring`
+and a line that mentions `module {` in an unrelated expression.
+`theViolationNamesTheDeclaredTypeInSourceOrder` asserts the message text for `class`, `enum class`,
+`fun interface` and a property.
+
+The rule was also mutated against the real repository: appending `internal class StrayMapper` to
+`FirebaseAppProviders.kt` makes `architectureCheck` fail with
+`:wiring:firebase: wiring-product-logic` and the message `declares internal class StrayMapper`;
+`internal val moduleRegistry: ModuleRegistry = ModuleRegistry()` and
+`internal val mentioned = … + module { }` each fail with the property named. Removing each mutation
+restores a green build. The rows and their observed output are in the story handoff.
 
 ## References
 

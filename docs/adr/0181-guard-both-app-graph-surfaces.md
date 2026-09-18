@@ -36,13 +36,19 @@ The selected option is: **Option A**, for both assertions.
 `SwiftSurfaceContract` is a new contract check registered on `contractCheck`:
 
 - **Assertion 14** requires every Kotlin-facing `AppGraph` state-holder factory to take a `scope`
-  parameter, no `SwiftAppGraph` member to take one, no `SwiftAppGraph` member to carry a default
-  argument, no state-holder class method to carry one, and `SwiftAppGraph` to reference no
-  `SyncController`. A default is detected by the presence of `=` in the parameter text, of any
-  shape, so a literal, an empty lambda and a constructor call are all caught.
+  parameter, no **exported** `SwiftAppGraph` member to take one, no exported `SwiftAppGraph` member
+  to carry a default argument, no exported state-holder class method to carry one, and
+  `SwiftAppGraph` to reference no `SyncController`. A default is detected from a parsed parameter
+  shape, so a literal, an empty lambda and a constructor call are all caught. A `private` member of
+  `SwiftAppGraph` never reaches Swift, so it is filtered out: reporting one would be a false
+  positive, and the facade's own `newScopedHolder` takes a scope. A holder source that yields no
+  parsed `<Name>StateHolder` class is reported rather than silently dropping out of the check.
 - **Assertion 34** requires the `interface AppGraph { … }` block of `docs/CONTRACTS.md §20.10` and
-  the real interface to declare the same members, in the same order, with the same
-  `name(parameter: Type)` signatures.
+  the real interface to declare the same members, in the same order, with the same parameter
+  shapes **including an inline default value**. `§20.10` declares no default, so a default added to
+  the interface is a real divergence; because `AppGraph` is hidden from Objective-C export and
+  Kotlin defaults never reach the generated header, this comparison is the only place it is
+  visible.
 
 The live divergence is closed in the same change by adding `syncStateHolder(scope)` to `§20.10`,
 which is a representational clarification of an interface that already shipped, not a behaviour
@@ -53,21 +59,49 @@ change.
 ### Positive
 
 - Both assertions have the failing behaviour they were declared for, and each was proved by mutating
-  the real sources: a scoped default on `AppGraph`, a default on `SwiftAppGraph`, a default on a
-  state-holder method, and a `SyncController` member each fail assertion 14; removing
-  `syncStateHolder` from `§20.10` fails assertion 34.
+  the real sources: a scoped default on `AppGraph`, a default on an `AppGraph` factory's `scope`, a
+  default on `SwiftAppGraph`, a `SwiftAppGraph` member taking a scope, a `SyncController` reference
+  and a default on a state-holder method each fail assertion 14; removing `syncStateHolder` from
+  `§20.10` fails assertion 34. Every row and its observed message are in the story handoff.
+- Every branch that reports a problem has a fixture in `SwiftSurfaceContractTest`, per `D-16`. The
+  fixtures fabricate `SwiftSurfaceContract.Inputs` rather than mutating five real files, and each
+  asserts the **exact** problem text, so a fixture cannot pass by matching a different failure. One
+  fixture mutates the real `AppGraph` source so the default-argument case is proved against the
+  repository.
 - The `§20.10` block is now compared rather than trusted, so the next interface member added in code
   alone fails the build instead of passing review.
-- Default arguments are checked at the source, which is the only place they exist.
+- Default arguments are checked at the source, which is the only place they exist. Both an
+  `AppGraph` factory's own default and a default on anything `§20.10` also declares are caught: the
+  member comparison sees the divergence while `§20.10` differs, and assertion 14 catches the case
+  where a default is added to both sides and they agree again.
 
 ### Negative
 
-- The parser is textual and reads braces and parentheses itself. It is exercised against the five
-  real files it guards on every `contractCheck` run, so a shape it cannot parse fails loudly instead
-  of passing: an unparsed side reports "the AppGraph members could not be parsed on both sides".
+- The parser is textual and reads braces and parentheses itself. It is exercised against the
+  `AppGraph` and `SwiftAppGraph` sources it guards on every `contractCheck` run, so a shape it
+  cannot parse fails loudly instead of passing: an unparsed side reports "the AppGraph members could
+  not be parsed on both sides".
 - The state-holder members are discovered by the `<Name>StateHolder` naming convention. A holder
   renamed away from that suffix would stop being checked by assertion 14. The convention is already
   load-bearing for the `§20.10` export list and the golden header.
+- **The coverage limits, enumerated after review found they were only covered by one general
+  sentence.** Each silently reduces what these assertions see:
+  - `HOLDER_SOURCES` hardcodes three files. A state holder added in a new module is not covered.
+    The mitigation is the no-parsed-class guard: the three named sources are each checked to yield
+    at least one `<Name>StateHolder`, so a source that stops being recognised is reported. Adding a
+    fourth holder module still requires adding it here, and nothing detects that omission.
+  - `STATE_HOLDER` matches a `class …StateHolder` at the start of a line with the known modifiers
+    (`public`/`internal`/`private`/`abstract`/`open`/`sealed`/`data`) and an annotation on the same
+    line. An unrecognised modifier word, or an annotation whose `@` sits on its own preceding line
+    with the `class` on the next, would drop the holder from the check; the no-parsed-class guard
+    reports the source rather than passing silently, which is what makes this limit bounded.
+  - `matchingBrace` counts braces without string- or character-literal awareness. A literal
+    containing an unbalanced brace inside a guarded block would misplace the body. No such literal
+    exists in the guarded sources, and the fix would be the same textual parser growing a scanner.
+  - `FUN` matches `fun name(`, `fun <T> name(` and `fun Foo.name(`. It cannot match a declaration
+    whose name is on a following line, or a parameter list opened on a following line; such a
+    member would drop out of the comparison on both sides, which the emptiness guard reports for
+    `AppGraph` and `SwiftAppGraph` but not for an individual holder.
 
 ### Constraints Introduced
 
@@ -78,10 +112,11 @@ change.
 
 ## Verification
 
-`SwiftSurfaceContractTest.contractCheckGuardsTheSwiftFacingSurface` runs the repository's real
-`contractCheck` and requires assertions 14 and 34 to be present and `PASS`. Mutation evidence is
-recorded in the story handoff; the four assertion-14 mutations and the assertion-34 mutation each
-failed the check with the offending member named.
+`SwiftSurfaceContractTest` holds one fixture per problem branch of both assertions plus
+`contractCheckGuardsTheSwiftFacingSurface`, which runs the repository's real `contractCheck` and
+requires assertions 14 and 34 to be present and `PASS`, so the fixtures cannot drift from the
+repository they guard. Mutation evidence is recorded in the story handoff; every mutation failed
+the named check with the offending member in the message.
 
 ## References
 

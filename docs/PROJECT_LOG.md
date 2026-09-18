@@ -38,6 +38,42 @@
 
 ## Entries
 
+### 2026-09-18 — E3-08 review round 1: four defects in the story's own checks, and a fixture per branch
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / `D-178`, `D-179`, `D-180` (no new decision)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's gated review of pull request #71 reproduced four defects in the checks
+  `E3-08` added, all fixed on `story/E3-08-app-graph-and-firebase-wiring` after a failing fixture
+  each. The recorded mutation evidence was false: neither assertion could see a Kotlin default on the
+  Kotlin-facing `AppGraph`, because assertion 14 never read the interface's own defaults and
+  assertion 34 stripped the default before comparing signatures. Assertion 34 now compares the
+  default as part of the parameter shape and assertion 14 reports the interface's defaults.
+  Assertion 14 no longer false-positives on a private `SwiftAppGraph` member, which is not exported
+  and therefore not constrained by `§18`. The Koin `Module` matcher matches the `Module` type exactly
+  instead of by prefix, and requires `module {` to be the declaration's own initialiser, so
+  `val moduleRegistry: ModuleRegistry` and an incidental `module {` are rejected. The violation
+  message names the declared type in source order (`declares enum class StrayMode`, not
+  `declares enum  StrayMode class`). `SwiftSurfaceContractTest` gained one failing fixture per
+  problem branch of both assertions and lost its dead `fixture: Boolean = true` parameter. The
+  coverage limits review asked about are enumerated in ADR-0181 under Negative, with the
+  no-parsed-class guard added so a holder source that stops being recognised is reported.
+- **Why:** a check that cannot fail for the defect it names is not coverage. Three of the four
+  defects were false negatives or false positives in the check itself; the recorded evidence table
+  had not been re-run after the refactor that introduced them.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log.
+  `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md` and the decision mirrors are unchanged: no decision
+  changed, only its implementation.
+- **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
+  actionable tasks), `:build-logic:convention:test` reports 109 tests and 0 failures, and
+  `contractCheck` reports every assertion `PASS` with no `PENDING` line. All twelve mutation rows
+  were re-run after the fixes and each one fails with the message recorded in the handoff; the tree
+  is clean after every restore.
+- **Follow-ups / risks:** the four `SwiftSurfaceContract` coverage limits (hardcoded holder sources,
+  the holder modifier set, the string-literal-unaware brace matcher, and the shapes `FUN` cannot
+  match) are enumerated in ADR-0181; the Konsist fixture of `§20.10` stays deferred to the story that
+  first adds an iOS `requestSync` call site.
+
 ### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
 
 - **Type:** story
