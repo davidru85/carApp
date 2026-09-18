@@ -580,6 +580,30 @@ class ArchitectureCheckerTest {
     }
 
     /**
+     * An annotation with nested parentheses and an annotation with a use-site target both left the
+     * `@` on the line, and `TOP_LEVEL_DECLARATION` cannot cross an `@`, so the declaration parsed
+     * as nothing at all and the rule passed it silently.
+     */
+    @Test
+    fun anAnnotationWithNestedParenthesesOrAUseSiteTargetDoesNotHideTheDeclaration() {
+        listOf(
+            "@Deprecated(\"x\", ReplaceWith(\"y\")) internal class StrayMapper",
+            "@get:JvmName(\"leak\") internal val leaked = mutableListOf<Any>()",
+            "@Suppress(\"unused\") @Deprecated(\"x\", ReplaceWith(\"y\")) internal object FuelEntryMapper",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        assertRuleDoesNotFire(
+            module(
+                ":wiring:firebase",
+                source = "@get:JvmName(\"bindings\") internal val firebaseBindings: Module = modules()",
+            ),
+            "wiring-product-logic",
+        )
+    }
+
+    /**
      * The message names what was declared, in source order: modifiers first, then the keyword with
      * its second word (`enum class`, `fun interface`) and then the declared name. The previous
      * shape put the name between the two, producing `declares enum  StrayMode class`.
