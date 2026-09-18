@@ -77,7 +77,7 @@
   `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, and mutation 20 degrades to
   a single `34 FAIL` while all 31 assertion lines still print — no stack trace. Each mutation was
   reverted and `git status --porcelain` printed nothing. The canonical CI command passes, and run
-  `35378967519` on the head `69f6fc6` is green on all ten required checks on their first attempt.
+  `35380402742` on the head `7db3ef7` is green on all ten required checks on their first attempt.
   Run `35376856797` on `f8b8406` had also needed one re-run, when the pre-existing silent stall
   reached `provider-decoupling`'s 8-minute Android-host step with no test result.
 - **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
