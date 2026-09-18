@@ -341,6 +341,39 @@ class SwiftSurfaceContractTest {
         )
     }
 
+    @Test
+    fun aContractWithNoKotlinFacingBlockIsReported() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "§20.10 declares no interface AppGraph block",
+            SwiftSurfaceContract(
+                real.copy(contract = block(SWIFT_APP_GRAPH_DECLARATION, DEFAULT_SWIFT_MEMBERS)),
+            ).validate(),
+        )
+    }
+
+    @Test
+    fun aContractSideThatParsesToNothingIsNamedRatherThanBlamedOnBothSides() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "no AppGraph members were parsed from §20.10; " +
+                "vehicleListStateHolder(scope: CoroutineScope) is declared but absent from §20.10; " +
+                "close() is declared but absent from §20.10",
+            results(contractMembers = emptyList()),
+        )
+    }
+
+    @Test
+    fun anInterfaceSideThatParsesToNothingIsNamedRatherThanBlamedOnBothSides() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "no AppGraph members were parsed from the interface; " +
+                "vehicleListStateHolder(scope: CoroutineScope) is declared in §20.10 but absent from the interface; " +
+                "close() is declared in §20.10 but absent from the interface",
+            results(interfaceMembers = emptyList()),
+        )
+    }
+
     // --- Assertion 35 ------------------------------------------------------------------------
 
     @Test
@@ -377,6 +410,28 @@ class SwiftSurfaceContractTest {
             SWIFT_APP_GRAPH_MEMBERS,
             "the SwiftAppGraph members could not be parsed on both sides",
             swiftResults(contractMembers = emptyList(), classMembers = emptyList()),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingContractSideThatParsesToNothingIsNamedRatherThanBlamedOnBothSides() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "no SwiftAppGraph members were parsed from §20.10; " +
+                "vehicleListStateHolder() is declared but absent from §20.10; " +
+                "close() is declared but absent from §20.10",
+            swiftResults(contractMembers = emptyList()),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingClassSideThatParsesToNothingIsNamedRatherThanBlamedOnBothSides() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "no SwiftAppGraph members were parsed from the class; " +
+                "vehicleListStateHolder() is declared in §20.10 but absent from the class; " +
+                "close() is declared in §20.10 but absent from the class",
+            swiftResults(classMembers = emptyList()),
         )
     }
 
