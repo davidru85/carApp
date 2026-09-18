@@ -92,18 +92,21 @@
   leading word boundary, so an identifier ending in `fun` followed by `(` no longer parses as a
   member.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. The ten required checks
-  were green on run `35324474324`, which covered commit `cb46b0b`: `android-assemble`,
-  `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`,
-  `ios-simulator-build`, `ktlint`, `objc-header-golden-check`, `provider-decoupling` and
-  `shared-tests`. Re-check the current head with `gh pr checks 71`.
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
+  pushed as `3cac38e..0551c10`. The ten required checks are green on run `35330477631`, which
+  covered commit `0551c10`: `android-assemble` (2m15s), `android-instrumented-tests` (5m46s),
+  `architecture-check` (1m33s), `contract-check` (2m20s), `detekt` (1m16s), `ios-simulator-build`
+  (17m14s), `ktlint` (1m18s), `objc-header-golden-check` (4m27s), `provider-decoupling` (4m57s) and
+  `shared-tests` (7m14s). The previous run, `35324474324`, covered `cb46b0b` (review round 1).
+  Re-check the current head with `gh pr checks 71`.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
-  (assertions 14 and 34), the `§20.10` clarification, `D-178` through `D-180` with their ADRs and
-  the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
+  (assertions 14, 34 and 35), the `§20.10` clarifications, `D-178` through `D-180` with their ADRs
+  and the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
 - Verification evidence and known failures: the canonical CI command passes locally; mutation
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
-- Exact next step: push the branch and open the pull request against `main`.
+- Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
+  `35330477631`; the story now waits for the owner's gated review of review round 2.
 
 ## Scope Completed
 
