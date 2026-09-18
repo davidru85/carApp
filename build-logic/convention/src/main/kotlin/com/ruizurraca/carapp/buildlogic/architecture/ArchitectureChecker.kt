@@ -67,14 +67,6 @@ object ArchitectureChecker {
     private val TOP_LEVEL_DECLARATION =
         Regex("""^([\w\s]*?)\b(class|interface|object|typealias|val|var|fun)\b((?:\s+\w+)*)""")
 
-    /**
-     * Leading annotations on a declaration line. `TOP_LEVEL_DECLARATION` matches from the start of
-     * the line and `[\w\s]*?` cannot cross an `@`, so `@JvmField internal val leaked = …` would
-     * otherwise parse as no declaration at all and escape the rule. A line that carries nothing but
-     * an annotation still parses as no declaration, which is correct.
-     */
-    private val LEADING_ANNOTATIONS = Regex("""^(?:@\w+(?:\([^)]*\))?\s+)+""")
-
     private val SYNCHRONIZED_ENTITY_MUTATION_FUNCTIONS =
         setOf(
             "insertVehicleRow",
@@ -562,11 +554,16 @@ object ArchitectureChecker {
      * The keyword is part of the test. A type declaration also carries a type after its first
      * colon — `class FirebaseWiring : Module` — and `§4` rejects it at any visibility, so only a
      * property may claim the Koin exemption.
+     *
+     * The annotations are stripped first: `@get:JvmName("bindings") internal val bindings: Module`
+     * carries a colon inside the use-site target, so reading the raw line would take `JvmName(…)`
+     * for the declared type and reject a legitimate binding.
      */
     private fun SourceLine.isKoinModuleDeclaration(declaration: Declaration): Boolean {
         if (declaration.keyword != "val" && declaration.keyword != "var") return false
-        val declaredType = text.substringAfter(':', "").substringBefore('=').trim()
-        return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(text)
+        val body = stripLeadingAnnotations(text)
+        val declaredType = body.substringAfter(':', "").substringBefore('=').trim()
+        return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(body)
     }
 
     /**
@@ -579,7 +576,7 @@ object ArchitectureChecker {
      * and leaves `enum` in the modifiers, which is the order the description is rebuilt in.
      */
     private fun SourceLine.topLevelDeclaration(): Declaration? {
-        val match = TOP_LEVEL_DECLARATION.find(text.replace(LEADING_ANNOTATIONS, "")) ?: return null
+        val match = TOP_LEVEL_DECLARATION.find(stripLeadingAnnotations(text)) ?: return null
         val modifiers = match.groupValues[1].trim()
         val declared = match.groupValues[2]
         val following = match.groupValues[3].trim()
@@ -590,6 +587,59 @@ object ArchitectureChecker {
             Declaration(declared, modifiers, following)
         }
     }
+
+    /**
+     * The line with every leading annotation removed, including a use-site target
+     * (`@get:JvmName("x")`) and nested parentheses (`@Deprecated("x", ReplaceWith("y"))`).
+     *
+     * A regular expression cannot balance parentheses: `\([^)]*\)` stopped at the first `)`, the
+     * annotation stayed on the line, `TOP_LEVEL_DECLARATION` could not cross the `@`, and the
+     * declaration escaped the rule entirely. An annotation whose parenthesis never closes on this
+     * line leaves the text untouched, which parses as no declaration.
+     */
+    private fun stripLeadingAnnotations(text: String): String {
+        var index = 0
+        while (index < text.length && text[index] == '@') {
+            val next = skipOneAnnotation(text, index)
+            if (next <= index) break
+            index = next
+        }
+        return text.substring(index)
+    }
+
+    /** The index just past the annotation starting at [from] and its trailing whitespace. */
+    private fun skipOneAnnotation(text: String, from: Int): Int {
+        var cursor = from + 1
+        while (cursor < text.length && text[cursor].isAnnotationNameChar()) {
+            cursor += 1
+        }
+        if (cursor < text.length && text[cursor] == '(') {
+            cursor = skipBalancedParentheses(text, cursor)
+            if (cursor < 0) return from
+        }
+        while (cursor < text.length && text[cursor].isWhitespace()) {
+            cursor += 1
+        }
+        return cursor
+    }
+
+    /** The index just past the `)` closing the `(` at [opening], or `-1` when it never closes. */
+    private fun skipBalancedParentheses(text: String, opening: Int): Int {
+        var depth = 0
+        var cursor = opening
+        while (cursor < text.length) {
+            if (text[cursor] == '(') depth += 1
+            if (text[cursor] == ')') {
+                depth -= 1
+                if (depth == 0) return cursor + 1
+            }
+            cursor += 1
+        }
+        return -1
+    }
+
+    /** A character admitted inside an annotation name, including the `:` of a use-site target. */
+    private fun Char.isAnnotationNameChar(): Boolean = isLetterOrDigit() || this == '_' || this == ':'
 
     private fun Declaration.isProductLogic(): Boolean {
         if ("expect" in modifierWords || "actual" in modifierWords) return true
