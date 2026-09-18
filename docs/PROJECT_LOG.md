@@ -76,7 +76,9 @@
   `declares internal class StrayMapper`, mutation 19 fails assertion 14 with
   `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, and mutation 20 degrades to
   a single `34 FAIL` while all 31 assertion lines still print — no stack trace. Each mutation was
-  reverted and `git status --porcelain` printed nothing. The canonical CI command passes.
+  reverted and `git status --porcelain` printed nothing. The canonical CI command passes, and run
+  `35373955424` on the head `a5989a1` is green on all ten required checks — `shared-tests` on its
+  second attempt after one Native-step stall, the pre-existing `D-175`/`D-177` mechanism.
 - **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
   state-holder class is declared in `§20.10` still has no executable check; it is recorded in
   `docs/BACKLOG.md` under `E3-08` and `E3-05`, and making it executable needs a `D-` decision on

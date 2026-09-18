@@ -125,24 +125,23 @@
   three mutation rows re-run, and the `§11.6` `@HiddenFromObjC` deferral recorded in `docs/BACKLOG.md`
   under both `E3-08` and `E3-05`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. Review round 3 was
-  pushed as `9a9266a..58311fa`. The ten required checks are green on run `35366069672`, which covers
-  the head `58311fa`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 4 was
+  pushed as `cb34b35..a5989a1`, and the ten required checks are green on run `35373955424`, which
+  covers the head `a5989a1`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
   `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
-  `provider-decoupling` and `shared-tests`, the last green on its third attempt (4m55s) after a host
-  stall and then a Native stall, both with no test result. Run `35363599393` (`703571a`) needed one
-  Native-stall re-run; runs `35353870137` (`cffd6ff`), `35356040406` (`d48cb6d`), `35358232151`
-  (`5531cd6`), `35359981624` (`bbb0797`) and `35362042665` (`62d348a`) each passed all ten on their
-  first attempt. Review round 2 was pushed as `3cac38e..cd1a8a4` and was green on run `35341762718`.
+  `provider-decoupling` and `shared-tests`, the last green on its second attempt (7m27s) after a
+  Native-step stall with no test result. Review round 3 was pushed as `9a9266a..58311fa` and was
+  green on run `35366069672`. Review round 2 was pushed as `3cac38e..cd1a8a4` and was green on run
+  `35341762718`.
   Earlier green runs needed re-runs for `shared-tests` only: `35338122967` covered `c834699` (third
   attempt), `35336079709` covered `a28174f` (second attempt), `35333547781` covered `016a46b`
   (second attempt), `35332058609` covered `5d40994` and `35330477631` covered `0551c10`;
   `35324474324` covered `cb46b0b` (review round 1). Every later commit is record-only and re-runs
   the identical set, so `gh pr checks 71` is authoritative for the current head.
-- `shared-tests` needed re-runs on runs `35333547781`, `35336079709`, `35338122967`, `35363599393`
-  and `35366069672` — every other required check was green on its first attempt throughout. The
-  mechanisms are pre-existing and outside this round, whose Kotlin changes are confined to
-  `build-logic`; the local suite is green on both targets, including
+- `shared-tests` needed re-runs on runs `35333547781`, `35336079709`, `35338122967`, `35363599393`,
+  `35366069672` and `35373955424` — every other required check was green on its first attempt
+  throughout. The mechanisms are pre-existing and outside this round, whose Kotlin changes are
+  confined to `build-logic`; the local suite is green on both targets, including
   `:shared:iosSimulatorArm64Test --rerun-tasks`.
   - **Host-step stall**: the `Run Android application and KMP host tests` step killed at its
     10-minute limit with no test result and no assertion failure, on runs `35333547781`,
@@ -154,8 +153,8 @@
     task, which completes in about 3 minutes there.
   - **Native-step stall**: the `Run Kotlin/Native simulator tests` step killed at the same limit
     after `> Task :shared:iosSimulatorArm64Test`, again with no test result, on runs `35338122967`
-    (second attempt), `35363599393` (first) and `35366069672` (second). Same silent-stall class, on
-    the Native step instead of the host one.
+    (second attempt), `35363599393` (first), `35366069672` (second) and `35373955424` (first). Same
+    silent-stall class, on the Native step instead of the host one.
   - **`E1-14` assertion failure**: a real
     `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
     failure (`188 tests completed, 1 failed`, `kotlin.AssertionError`) on run `35338122967` (first
@@ -174,7 +173,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35366069672`; the story now waits for the owner's gated review of review round 3.
+  `35373955424`; the story now waits for the owner's gated review of review round 4.
 
 ## Scope Completed
 
@@ -558,18 +557,18 @@ documentation.
   unchanged; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
   `docs/adr/README.md` were not edited, and no decision ID, ADR file or mirror row was added,
   because every finding was a defect in an implementation of an accepted decision.
-- **Two silent-stall classes and one known assertion flake were observed across review rounds 2 and
-  3; every failed job passed on re-run.** The `E1-14` Kotlin/Native assertion
+- **Two silent-stall classes and one known assertion flake were observed across review rounds 2, 3
+  and 4; every failed job passed on re-run.** The `E1-14` Kotlin/Native assertion
   (`LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`)
   failed once on run `35338122967`; the Android/KMP host step was killed at its 10-minute cap with no
   test result on runs `35333547781`, `35336079709` and `35366069672` (first attempt), the silent
   stall classified in `docs/PROJECT_LOG.md` and left latent by `D-175`/`D-177`; and the same stall
-  hit the Native step on run `35338122967`'s second attempt and on `35363599393`'s first and
-  `35366069672`'s second. Nothing is a regression: this round's Kotlin changes are confined to
-  `build-logic/convention/`, the exact two CI steps re-run locally with `--rerun-tasks` complete in
-  about 3 minutes and 36 seconds, and every failed job passed on re-run. Fixing any is outside
-  `E3-08`, but the owner should know all are reachable, because `E1-14` and `E1-17` being open is
-  what makes a red required job ambiguous.
+  hit the Native step on run `35338122967`'s second attempt and on `35363599393`'s first,
+  `35366069672`'s second and `35373955424`'s first. Nothing is a regression: this round's Kotlin
+  changes are confined to `build-logic/convention/`, the exact two CI steps re-run locally with
+  `--rerun-tasks` complete in about 3 minutes and 36 seconds, and every failed job passed on
+  re-run. Fixing any is outside `E3-08`, but the owner should know all are reachable, because
+  `E1-14` and `E1-17` being open is what makes a red required job ambiguous.
 - **Review round 3 corrected an implementation of an accepted decision, not the decision.**
   `D-180` is unchanged; only its implementation and its four mirror rows were corrected, because
   the rows named only assertion 34 while the shipped check registers three assertions and no check
