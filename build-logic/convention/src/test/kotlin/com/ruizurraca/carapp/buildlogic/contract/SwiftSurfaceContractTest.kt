@@ -81,6 +81,38 @@ class SwiftSurfaceContractTest {
         )
     }
 
+    /**
+     * `§11.6` constrains the declared *type*: the Swift-facing graph exposes state-holder factories
+     * without `CoroutineScope`. Matching the identifier `scope` let a renamed parameter pass
+     * assertions 14, 34 and 35 together once `§20.10` was edited in the same change.
+     */
+    @Test
+    fun aSwiftFacingMemberTakingAScopeUnderAnotherNameIsRejected() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "SwiftAppGraph.reviewProbe takes coroutineScope: CoroutineScope",
+            results(
+                swiftAppGraph = swiftSource(
+                    "fun vehicleListStateHolder(): VehicleListStateHolder",
+                    "fun reviewProbe(coroutineScope: CoroutineScope): Int = 0",
+                ),
+            ),
+        )
+    }
+
+    /** A parameter named `scope` that is not a `CoroutineScope` is not the scope `§20.10` requires. */
+    @Test
+    fun aKotlinFacingFactoryWhoseScopeParameterIsNotACoroutineScopeIsRejected() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "AppGraph.vehicleListStateHolder does not take a scope",
+            results(
+                contractMembers = listOf("vehicleListStateHolder(scope: Any): VehicleListStateHolder", "close()"),
+                interfaceMembers = listOf("vehicleListStateHolder(scope: Any): VehicleListStateHolder", "close()"),
+            ),
+        )
+    }
+
     @Test
     fun aSwiftFacingMemberWithADefaultArgumentIsRejected() {
         assertFails(
