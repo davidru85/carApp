@@ -102,10 +102,16 @@ and the decision mirrors are unchanged, because no decision changed.
   `architectureCheck` with `declares class FirebaseWiring`, `@JvmField internal val leaked =
   mutableListOf<Any>()` fails it with `declares internal val leaked`, and deleting
   `fun syncStateHolder(): SyncStateHolder` from the `class SwiftAppGraph` block of `§20.10` fails
-  assertion 35 with `syncStateHolder() is declared but absent from §20.10`. On CI, the first attempt
-  of runs `35333547781` and `35336079709` each hit the `shared-tests` step's 10-minute limit with no
-  test result and no assertion failure — the residual third stall mechanism recorded by `D-175` — so
-  each failed job was re-run and passed, completing the ten required checks.
+  assertion 35 with `syncStateHolder() is declared but absent from §20.10`. On CI, `shared-tests`
+  needed re-runs on runs `35333547781`, `35336079709` and `35338122967` under three pre-existing
+  mechanisms, and every failed job passed on re-run: a ten-minute host-step stall with no test
+  result (`35333547781`, `35336079709`), the `E1-14` Kotlin/Native flake
+  (`LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`,
+  a real assertion failure on the test and target that story already records), and a ten-minute
+  stall of the Native step on the same run's re-attempt. This round changes no Kotlin outside
+  `build-logic`, the local suite is green on both targets including
+  `:shared:iosSimulatorArm64Test --rerun-tasks`, and no mechanism is fixed or worsened here — but all
+  three remain reachable while `E1-14` and `E1-17` stay open.
 
 ### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
 

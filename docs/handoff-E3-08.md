@@ -93,29 +93,35 @@
   member.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 2 was
-  pushed as `3cac38e..a28174f`. The ten required checks are green on run `35336079709`, which covers
-  the head `a28174f` and its record-only ancestors: `android-assemble` (3m11s),
-  `android-instrumented-tests` (4m53s), `architecture-check` (1m32s), `contract-check` (2m42s),
-  `detekt` (1m12s), `ios-simulator-build` (12m56s), `ktlint` (1m23s), `objc-header-golden-check`
-  (3m25s), `provider-decoupling` (3m55s) and `shared-tests` (7m40s, first attempt killed by the step
-  limit and re-run). Earlier green runs: `35333547781` covered `016a46b`, `35332058609` covered
-  `5d40994` and `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1).
-  Every commit after the first green run is record-only and re-runs the identical set.
-- `shared-tests` hit its step limit on the first attempt of run `35333547781` and of run
-  `35336079709`: the `Run Android application and KMP host tests` step was killed at its 10-minute
-  limit with **no test result and no assertion failure**, which is the silent stall recorded as the
-  residual third mechanism of `D-175` (`docs/handoff-E3-03.md`, "Residual risk: a third mechanism,
-  proven but not reachable today"). The final `STARTED` line before each kill —
-  `VehicleStateHoldersTest > anEmptyResultForOneOwnerDoesNotResolveTheNextOwnersList` in both — is a
-  buffering artifact, not the culprit: the same line is the last one in the successful rerun of the
-  same task, and that task completes in 2m32s there. The mechanism is
-  `kotlinx.coroutines.test.advanceUntilIdle()` never terminating when work keeps rescheduling itself
-  in virtual time, so the stall has no name. Neither attempt is a regression from this round: the
-  head commits after the first green run change only `docs/handoff-E3-08.md`, the same test task
-  passes locally, and the first failed job passed on re-run in 6m33s. Both failed jobs were re-run to
-  complete the required set. This is a second observed occurrence of a known open mechanism, so the
-  `D-175` residual risk is **more reachable than its record states** — but bounding it is production
-  behaviour (`§9` requires the retry), so it stays outside `E3-08`.
+  pushed as `3cac38e..c834699`. The ten required checks are green on run `35338122967`, which covers
+  the head `c834699`: `android-assemble` (3m21s), `android-instrumented-tests` (5m31s),
+  `architecture-check` (1m28s), `contract-check` (2m33s), `detekt` (1m5s), `ios-simulator-build`
+  (16m17s), `ktlint` (1m31s), `objc-header-golden-check` (3m26s), `provider-decoupling` (3m39s) and
+  `shared-tests` (green on the third attempt, 8m50s). Earlier green runs: `35336079709` covered
+  `a28174f`, `35333547781` covered `016a46b`, `35332058609` covered `5d40994` and `35330477631`
+  covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1). Every commit after the first
+  green run is record-only and re-runs the identical set.
+- `shared-tests` needed re-runs on runs `35333547781`, `35336079709` and `35338122967`. Three
+  distinct mechanisms, all pre-existing and all outside this round, whose Kotlin changes are
+  confined to `build-logic`; the local suite is green on both targets, including
+  `:shared:iosSimulatorArm64Test --rerun-tasks`.
+  - Two ten-minute step stalls with **no test result and no assertion failure**, on the `Run Android
+    application and KMP host tests` step of runs `35333547781` and `35336079709`. This is the silent
+    stall classified in `docs/PROJECT_LOG.md` (2026-09-17, "Intermittent `shared-tests` stall,
+    classified not fixed") and left latent by `D-175`/`D-177`. The final `STARTED` line before each
+    kill, `VehicleStateHoldersTest > anEmptyResultForOneOwnerDoesNotResolveTheNextOwnersList`, is a
+    buffering artifact, not the culprit: the same line is the last in the successful run of that
+    task, which completes in 2m32s there.
+  - A real assertion failure on run `35338122967`, first attempt:
+    `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
+    (`188 tests completed, 1 failed`, `kotlin.AssertionError`) — the `E1-14` Kotlin/Native flake
+    class, on the test and target `docs/BACKLOG.md` (`E1-14`), `docs/handoff-E3-14.md` and
+    `docs/PROJECT_LOG.md` already record. The branch does not modify that file.
+  - A ten-minute stall of the `Run Kotlin/Native simulator tests` step on the same run's second
+    attempt, stopping after `> Task :shared:iosSimulatorArm64Test` with no test result — the same
+    silent-stall class as above, on the Native step instead of the host one.
+  - The third attempt passed. `E1-14` and `E1-17` remain open by design, which is why a red
+    `shared-tests` is ambiguous; this round neither fixed nor worsened any of the three.
 - Completed since the previous checkpoint: the two architecture rules, the Swift surface contract
   (assertions 14, 34 and 35), the `§20.10` clarifications, `D-178` through `D-180` with their ADRs
   and the four mirror tables, the backlog and `AGENTS.md` reconciliation, and the story handoff.
@@ -123,7 +129,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35336079709`; the story now waits for the owner's gated review of review round 2.
+  `35338122967`; the story now waits for the owner's gated review of review round 2.
 
 ## Scope Completed
 
@@ -437,14 +443,17 @@ the table above; `git status` reported nothing after every restore.
   unchanged; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
   `docs/adr/README.md` were not edited, and no decision ID, ADR file or mirror row was added,
   because every finding was a defect in an implementation of an accepted decision.
-- **The `D-175` residual `shared-tests` stall was observed twice in this round**, on the first
-  attempt of run `35333547781` and of run `35336079709`, each killed at the step's 10-minute limit
-  with no test result. Both jobs passed on re-run. The residual risk's own record says the third
-  mechanism is "proven but not reachable today"; this round is evidence that it is reachable on CI.
-  It is not owned by `E3-08`: the mechanism is `advanceUntilIdle()` not terminating while work
-  re-arms itself in virtual time, and the production retry loop that can re-arm it is required by
-  `§9`, so bounding it is a production change. It is recorded here for the owner, who owns the
-  decision to open a story or to bound the step.
+- **Three known flake mechanisms were observed while landing this round; every failed job passed on
+  re-run.** Run `35338122967` first failed a real assertion in
+  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`
+  — the `E1-14` Kotlin/Native flake class, on the test and target `docs/BACKLOG.md` already names —
+  and its re-run stalled the Native step at the 10-minute limit with no test result. Runs
+  `35333547781` and `35336079709` each had the Android/KMP host step killed at its limit, the same
+  silent stall classified in `docs/PROJECT_LOG.md` and left latent by `D-175`/`D-177`. None is a
+  regression: this round's Kotlin changes are confined to `build-logic`, `:shared:iosSimulatorArm64Test
+  --rerun-tasks` and the Android-host suite pass locally, and every failed job passed on re-run.
+  Fixing them is outside `E3-08`, but the owner should know all three are reachable, because
+  `E1-14` and `E1-17` being open is what makes a red required job ambiguous.
 - **`docs/DECISION_BOARD.md` and `AGENTS.md` are the authoritative state.** This handoff preserves
   what was observed on 2026-09-18 at `story/E3-08-app-graph-and-firebase-wiring`.
 
