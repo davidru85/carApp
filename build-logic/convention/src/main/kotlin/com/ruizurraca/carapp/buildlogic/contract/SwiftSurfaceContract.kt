@@ -312,7 +312,8 @@ internal class SwiftSurfaceContract(
         /** `name(a: A, b: B? = default)`. */
         val signature: String get() = "$name(${parameters.joinToString { it.shape }})"
 
-        val scopeParameter: String? get() = parameters.firstOrNull { it.name == SCOPE }?.shape
+        /** `§11.6` constrains the declared type, not the parameter name. */
+        val scopeParameter: String? get() = parameters.firstOrNull { it.isCoroutineScope }?.shape
 
         /** `defaults b: B? = default`, or `null` when no parameter carries one. */
         fun defaultsProblem(): String? =
@@ -326,6 +327,13 @@ internal class SwiftSurfaceContract(
         val shape: String get() = if (default == null) "$name: $type" else "$name: $type = $default"
 
         val hasDefault: Boolean get() = default != null
+
+        /**
+         * The declared type is `CoroutineScope`, nullable or not. Matching the identifier `scope`
+         * instead let `syncStateHolder(coroutineScope: CoroutineScope)` pass assertion 14 while
+         * `§11.6` forbids a `CoroutineScope` on the Swift-facing surface by type.
+         */
+        val isCoroutineScope: Boolean get() = type.removeSuffix("?").trim() == COROUTINE_SCOPE
     }
 
     internal data class Inputs(
@@ -340,7 +348,7 @@ internal class SwiftSurfaceContract(
         const val KOTLIN_APP_GRAPH = "interface AppGraph"
         const val SWIFT_APP_GRAPH_DECLARATION = "class SwiftAppGraph"
         const val STATE_HOLDER_SUFFIX = "StateHolder"
-        const val SCOPE = "scope"
+        const val COROUTINE_SCOPE = "CoroutineScope"
 
         /** `scope: CoroutineScope = …` for one parameter, or `null` when it is not a parameter. */
         private fun parameter(raw: String): Parameter? {
