@@ -28,7 +28,8 @@ internal class SwiftSurfaceContract(
         ),
     )
 
-    fun validate(): List<AssertionResult> = listOf(exportedFactoriesAreScopeFree(), appGraphMembersMatch())
+    fun validate(): List<AssertionResult> =
+        listOf(exportedFactoriesAreScopeFree(), appGraphMembersMatch(), swiftAppGraphMembersMatch())
 
     /**
      * `§18` assertion 14: Kotlin-facing `AppGraph` factories take `scope: CoroutineScope`,
@@ -123,13 +124,51 @@ internal class SwiftSurfaceContract(
         return result(ASSERTION_APP_GRAPH_MEMBERS, ASSERTION_34, problems)
     }
 
-    /** The `interface AppGraph { … }` block of `docs/CONTRACTS.md §20.10`, braces included. */
-    private fun contractBlock(): String {
-        val start = inputs.contract.indexOf(KOTLIN_APP_GRAPH)
-        check(start >= 0) { "Could not find '$KOTLIN_APP_GRAPH' in docs/CONTRACTS.md" }
+    /**
+     * `§18` assertion 35: the Swift-facing `SwiftAppGraph` block of `§20.10` and the real class
+     * declare the same exported members, in the same order, with the same parameter shapes.
+     *
+     * The generated Objective-C header guards the class against an unintended change, but it is
+     * regenerated and committed together with the change that alters it, so it can never report
+     * that `§20.10` has gone stale. That is the same drift assertion 34 closes on the Kotlin-facing
+     * side. `private` members are excluded: they never reach Swift and `§20.10` does not declare
+     * them.
+     */
+    private fun swiftAppGraphMembersMatch(): AssertionResult {
+        if (inputs.contract.indexOf(SWIFT_APP_GRAPH_DECLARATION) < 0) {
+            return result(
+                ASSERTION_SWIFT_APP_GRAPH_MEMBERS,
+                ASSERTION_35,
+                listOf("§20.10 declares no $SWIFT_APP_GRAPH_DECLARATION block"),
+            )
+        }
+        val contractMembers =
+            members(contractBlock(SWIFT_APP_GRAPH_DECLARATION), SWIFT_APP_GRAPH_DECLARATION).map { it.signature }
+        val declaredMembers =
+            members(inputs.sources.getValue(SWIFT_APP_GRAPH), SWIFT_APP_GRAPH_DECLARATION)
+                .filterNot { it.isPrivate }
+                .map { it.signature }
+
+        val problems = mutableListOf<String>()
+        if (contractMembers.isEmpty() || declaredMembers.isEmpty()) {
+            problems += "the SwiftAppGraph members could not be parsed on both sides"
+        }
+        (declaredMembers - contractMembers.toSet()).forEach { problems += "$it is declared but absent from §20.10" }
+        (contractMembers - declaredMembers.toSet()).forEach { problems += "$it is declared in §20.10 but absent from the class" }
+        if (problems.isEmpty() && contractMembers != declaredMembers) {
+            problems += "§20.10 declares $contractMembers, the class declares $declaredMembers"
+        }
+
+        return result(ASSERTION_SWIFT_APP_GRAPH_MEMBERS, ASSERTION_35, problems)
+    }
+
+    /** The `<declaration> { … }` block of `docs/CONTRACTS.md §20.10`, braces included. */
+    private fun contractBlock(declaration: String = KOTLIN_APP_GRAPH): String {
+        val start = inputs.contract.indexOf(declaration)
+        check(start >= 0) { "Could not find '$declaration' in docs/CONTRACTS.md" }
         val opening = inputs.contract.indexOf('{', start)
         val closing = matchingBrace(inputs.contract, opening)
-        check(closing > opening) { "Unbalanced braces in the $KOTLIN_APP_GRAPH block of docs/CONTRACTS.md" }
+        check(closing > opening) { "Unbalanced braces in the $declaration block of docs/CONTRACTS.md" }
         return inputs.contract.substring(start, closing + 1)
     }
 
@@ -201,15 +240,20 @@ internal class SwiftSurfaceContract(
         val result = mutableListOf<String>()
         var start = 0
         var depth = 0
+        var previous = ' '
         parameters.forEachIndexed { index, character ->
-            when (character) {
-                '(', '[', '{', '<' -> depth += 1
-                ')', ']', '}', '>' -> depth -= 1
-                ',' -> if (depth == 0) {
+            when {
+                character == '(' || character == '[' || character == '{' || character == '<' -> depth += 1
+                // The `>` of an arrow closes nothing. Decrementing on it drives the depth negative
+                // inside `callback: (Int) -> Unit` and hides every comma after it.
+                character == '>' && previous == '-' -> Unit
+                character == ')' || character == ']' || character == '}' || character == '>' -> depth -= 1
+                character == ',' && depth == 0 -> {
                     result += parameters.substring(start, index)
                     start = index + 1
                 }
             }
+            previous = character
         }
         result += parameters.substring(start)
         return result.map { it.trim() }.filter { it.isNotEmpty() }
@@ -284,11 +328,14 @@ internal class SwiftSurfaceContract(
         const val DEFAULT_SEPARATOR = "="
         const val ASSERTION_KOTLIN_FACTORIES_TAKE_SCOPE = 14
         const val ASSERTION_APP_GRAPH_MEMBERS = 34
+        const val ASSERTION_SWIFT_APP_GRAPH_MEMBERS = 35
         const val ASSERTION_14 =
             "Kotlin-facing factories take a scope, Swift-facing ones do not, and no exported " +
                 "state-holder function has a Kotlin default argument"
         const val ASSERTION_34 =
             "the Kotlin-facing AppGraph of §20.10 declares exactly the members of the real interface"
+        const val ASSERTION_35 =
+            "the Swift-facing SwiftAppGraph of §20.10 declares exactly the exported members of the real class"
         val NON_HOLDER_MEMBERS = setOf("close", "syncController")
         val HOLDER_SOURCES = listOf(
             "shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt",
@@ -303,7 +350,7 @@ internal class SwiftSurfaceContract(
          * after review found the narrower shape skipped generic and extension declarations and so
          * silently removed them from assertion 14's coverage.
          */
-        val FUN = Regex("""fun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(\w+)\s*\(""")
+        val FUN = Regex("""\bfun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(\w+)\s*\(""")
         val PRIVATE = Regex("""\bprivate\b""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
 

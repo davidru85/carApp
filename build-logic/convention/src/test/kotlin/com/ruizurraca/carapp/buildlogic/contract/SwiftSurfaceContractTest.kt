@@ -33,7 +33,7 @@ class SwiftSurfaceContractTest {
     fun contractCheckGuardsTheSwiftFacingSurface() {
         val results = ContractCheck(repositoryRoot, emptyMap()).runAll()
 
-        listOf(KOTLIN_FACTORIES_TAKE_SCOPE, APP_GRAPH_MEMBERS).forEach { id ->
+        listOf(KOTLIN_FACTORIES_TAKE_SCOPE, APP_GRAPH_MEMBERS, SWIFT_APP_GRAPH_MEMBERS).forEach { id ->
             val result = results.singleOrNull { it.id == id }
             assertNotNull(result, "contract-check assertion $id is not implemented")
             assertEquals(AssertionResult.Status.PASS, result.status, result.detail)
@@ -138,6 +138,27 @@ class SwiftSurfaceContractTest {
     }
 
     /**
+     * A function-typed parameter must not swallow the parameters after it. The `>` of `->` closes
+     * nothing, and treating it as a closing delimiter merged the whole list into one parameter and
+     * reported the default under the wrong name.
+     */
+    @Test
+    fun aDefaultAfterAFunctionTypedParameterIsReportedUnderItsOwnName() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "$SESSION_HOLDERS: class SessionStateHolder.observe defaults retries: Int = 1",
+            results(
+                holders = validHolders() + (
+                    SESSION_HOLDERS to
+                        "class SessionStateHolder {\n" +
+                        "    fun observe(callback: (Int) -> Unit, retries: Int = 1) {}\n" +
+                        "}\n"
+                    ),
+            ),
+        )
+    }
+
+    /**
      * A holder source that yields no parsed class silently drops out of assertion 14's coverage — a
      * new state holder in a new module, or one whose declaration the classifier cannot read, would
      * never be checked. That is reported rather than passing.
@@ -148,6 +169,24 @@ class SwiftSurfaceContractTest {
             KOTLIN_FACTORIES_TAKE_SCOPE,
             "$SESSION_HOLDERS declares no <Name>StateHolder class",
             results(holders = validHolders() - SESSION_HOLDERS),
+        )
+    }
+
+    @Test
+    fun anUnparsedKotlinFacingInterfaceIsReportedByAssertion14() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "no members were parsed from the Kotlin-facing AppGraph",
+            results(interfaceMembers = emptyList()),
+        )
+    }
+
+    @Test
+    fun anUnparsedSwiftFacingClassIsReportedByAssertion14() {
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "no members were parsed from the Swift-facing SwiftAppGraph",
+            results(swiftAppGraph = swiftSource()),
         )
     }
 
@@ -226,6 +265,69 @@ class SwiftSurfaceContractTest {
         )
     }
 
+    // --- Assertion 35 ------------------------------------------------------------------------
+
+    @Test
+    fun aSwiftFacingMemberAbsentFromTheContractIsRejected() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "vehicleListStateHolder() is declared but absent from §20.10",
+            swiftResults(contractMembers = listOf("close()")),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingMemberDeclaredOnlyInTheContractIsRejected() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "vehicleListStateHolder() is declared in §20.10 but absent from the class",
+            swiftResults(classMembers = listOf("close()")),
+        )
+    }
+
+    @Test
+    fun anOutOfOrderSwiftFacingMemberListIsRejected() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "§20.10 declares [close(), vehicleListStateHolder()], " +
+                "the class declares [vehicleListStateHolder(), close()]",
+            swiftResults(contractMembers = listOf("close()", "vehicleListStateHolder(): VehicleListStateHolder")),
+        )
+    }
+
+    @Test
+    fun bothSwiftFacingSidesFailingToParseIsReported() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "the SwiftAppGraph members could not be parsed on both sides",
+            swiftResults(contractMembers = emptyList(), classMembers = emptyList()),
+        )
+    }
+
+    @Test
+    fun aContractWithNoSwiftFacingBlockIsReported() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "§20.10 declares no class SwiftAppGraph block",
+            results(),
+        )
+    }
+
+    /** A `private` helper of the facade never reaches Swift, so `§20.10` MUST NOT declare it. */
+    @Test
+    fun aPrivateSwiftFacingHelperIsNotComparedAgainstTheContract() {
+        assertPasses(
+            SWIFT_APP_GRAPH_MEMBERS,
+            swiftResults(
+                classSource = swiftSource(
+                    "fun vehicleListStateHolder(): VehicleListStateHolder",
+                    "fun close()",
+                    "private fun reviewProbe(scope: CoroutineScope): Int = 0",
+                ),
+            ),
+        )
+    }
+
     private fun assertFails(assertion: Int, expected: String, results: List<AssertionResult>) {
         val result = assertNotNull(results.singleOrNull { it.id == assertion }, "assertion $assertion is missing")
         assertEquals(AssertionResult.Status.FAIL, result.status, "expected a failure, got: ${result.detail}")
@@ -257,6 +359,24 @@ class SwiftSurfaceContractTest {
         ),
     ).validate()
 
+    /**
+     * Runs the assertions over a fabricated `§20.10` Swift block and a fabricated class, derived
+     * from the real inputs so the untouched paths stay the repository's.
+     *
+     * The fabricated contract keeps the Kotlin-facing block, so assertion 34 runs beside 35 rather
+     * than throwing on a contract that never declared it.
+     */
+    private fun swiftResults(
+        contractMembers: List<String> = DEFAULT_SWIFT_MEMBERS,
+        classMembers: List<String> = DEFAULT_SWIFT_MEMBERS,
+        classSource: String = block(SWIFT_APP_GRAPH_DECLARATION, classMembers),
+    ): List<AssertionResult> = SwiftSurfaceContract(
+        real.copy(
+            contract = block(SWIFT_APP_GRAPH_DECLARATION, contractMembers) + block("interface AppGraph", DEFAULT_MEMBERS),
+            sources = real.sources + (SWIFT_APP_GRAPH to classSource),
+        ),
+    ).validate()
+
     private fun block(declaration: String, members: List<String>): String =
         (listOf("$declaration {") + members.map { "    fun $it" } + listOf("}"))
             .joinToString("\n", postfix = "\n")
@@ -278,6 +398,7 @@ class SwiftSurfaceContractTest {
     private companion object {
         const val KOTLIN_FACTORIES_TAKE_SCOPE = 14
         const val APP_GRAPH_MEMBERS = 34
+        const val SWIFT_APP_GRAPH_MEMBERS = 35
 
         const val APP_GRAPH = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/AppGraph.kt"
         const val SWIFT_APP_GRAPH = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/SwiftAppGraph.kt"
@@ -291,5 +412,10 @@ class SwiftSurfaceContractTest {
             "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder",
             "close()",
         )
+        val DEFAULT_SWIFT_MEMBERS = listOf(
+            "vehicleListStateHolder(): VehicleListStateHolder",
+            "close()",
+        )
+        const val SWIFT_APP_GRAPH_DECLARATION = "class SwiftAppGraph"
     }
 }
