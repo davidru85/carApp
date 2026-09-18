@@ -67,6 +67,14 @@ object ArchitectureChecker {
     private val TOP_LEVEL_DECLARATION =
         Regex("""^([\w\s]*?)\b(class|interface|object|typealias|val|var|fun)\b((?:\s+\w+)*)""")
 
+    /**
+     * Leading annotations on a declaration line. `TOP_LEVEL_DECLARATION` matches from the start of
+     * the line and `[\w\s]*?` cannot cross an `@`, so `@JvmField internal val leaked = …` would
+     * otherwise parse as no declaration at all and escape the rule. A line that carries nothing but
+     * an annotation still parses as no declaration, which is correct.
+     */
+    private val LEADING_ANNOTATIONS = Regex("""^(?:@\w+(?:\([^)]*\))?\s+)+""")
+
     private val SYNCHRONIZED_ENTITY_MUTATION_FUNCTIONS =
         setOf(
             "insertVehicleRow",
@@ -534,8 +542,8 @@ object ArchitectureChecker {
         if (module.path != ":wiring:firebase") return emptyList()
         return module.sourceLines
             .filter { it.text.isNotBlank() && !it.text.first().isWhitespace() }
-            .filterNot { it.isKoinModuleDeclaration() }
             .mapNotNull { line -> line.topLevelDeclaration()?.let { line to it } }
+            .filterNot { (line, declaration) -> line.isKoinModuleDeclaration(declaration) }
             .filter { (_, declaration) -> declaration.isProductLogic() }
             .map { (line, declaration) ->
                 Violation(
@@ -548,8 +556,15 @@ object ArchitectureChecker {
             }
     }
 
-    /** A `val`/`var` whose declared type or initialiser makes it a Koin `Module` binding. */
-    private fun SourceLine.isKoinModuleDeclaration(): Boolean {
+    /**
+     * A `val`/`var` whose declared type or initialiser makes it a Koin `Module` binding.
+     *
+     * The keyword is part of the test. A type declaration also carries a type after its first
+     * colon — `class FirebaseWiring : Module` — and `§4` rejects it at any visibility, so only a
+     * property may claim the Koin exemption.
+     */
+    private fun SourceLine.isKoinModuleDeclaration(declaration: Declaration): Boolean {
+        if (declaration.keyword != "val" && declaration.keyword != "var") return false
         val declaredType = text.substringAfter(':', "").substringBefore('=').trim()
         return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(text)
     }
@@ -564,7 +579,7 @@ object ArchitectureChecker {
      * and leaves `enum` in the modifiers, which is the order the description is rebuilt in.
      */
     private fun SourceLine.topLevelDeclaration(): Declaration? {
-        val match = TOP_LEVEL_DECLARATION.find(text) ?: return null
+        val match = TOP_LEVEL_DECLARATION.find(text.replace(LEADING_ANNOTATIONS, "")) ?: return null
         val modifiers = match.groupValues[1].trim()
         val declared = match.groupValues[2]
         val following = match.groupValues[3].trim()

@@ -552,6 +552,34 @@ class ArchitectureCheckerTest {
     }
 
     /**
+     * A type declaration that merely inherits a type named `Module` is not a Koin binding, and an
+     * annotation on the declaration line does not stop it being a declaration. Both escaped the
+     * rule while the Koin exemption ran before the keyword was known and the declaration matcher
+     * could not see past `@`.
+     */
+    @Test
+    fun aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule() {
+        listOf(
+            "class FirebaseWiring : Module",
+            "internal object FuelEntryMapper : Module",
+            "interface LocalGate : Module",
+            "@Suppress(\"unused\") internal class StrayMapper : Mapper",
+            "@JvmField internal val leaked = mutableListOf<Any>()",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        assertRuleDoesNotFire(
+            module(":wiring:firebase", source = "@JvmField internal val firebaseBindings: Module = modules()"),
+            "wiring-product-logic",
+        )
+        assertRuleDoesNotFire(
+            module(":wiring:firebase", source = "@Suppress(\"unused\") private fun stagedLogger(): Logger = noop()"),
+            "wiring-product-logic",
+        )
+    }
+
+    /**
      * The message names what was declared, in source order: modifiers first, then the keyword with
      * its second word (`enum class`, `fun interface`) and then the declared name. The previous
      * shape put the name between the two, producing `declares enum  StrayMode class`.
