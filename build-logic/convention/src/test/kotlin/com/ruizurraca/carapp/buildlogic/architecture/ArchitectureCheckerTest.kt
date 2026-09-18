@@ -62,6 +62,16 @@ class ArchitectureCheckerTest {
         )
     }
 
+    /** Asserts the rule fires *and* that its message names what was declared. */
+    private fun assertRejectedWithDetail(module: ModuleUnderCheck, rule: String, expected: String) {
+        val found = violations(module).filter { it.rule == rule }
+        assertTrue(found.isNotEmpty(), "Expected rule '$rule' to fire for ${module.path}, got nothing")
+        assertTrue(
+            found.any { it.detail.contains(expected) },
+            "Expected a '$rule' message containing \"$expected\", got: ${found.map { it.detail }}",
+        )
+    }
+
     /**
      * Asserts that one specific rule does not fire. Used where the fixture module legitimately
      * trips a different rule — `:core:sync` always trips `phase-0-module-set` today, which is the
@@ -516,9 +526,58 @@ class ArchitectureCheckerTest {
             "private var counter = 0",
             "val firebaseModule = module { single<AuthClient> { client } }",
             "internal val firebaseBindings: Module = modules()",
+            "internal val maybeBindings: Module? = null",
+            "internal val qualified: org.koin.core.module.Module = modules()",
+            "internal val fromInitialiser = module { }",
         ).forEach { source ->
             assertRuleDoesNotFire(module(":wiring:firebase", source = source), "wiring-product-logic")
         }
+    }
+
+    /**
+     * A declared type whose name merely begins with `Module` is not the Koin type, and a line that
+     * mentions `module {` in an expression is not a binding. Both were admitted silently while the
+     * matcher used `startsWith("Module")` and looked for `module {` anywhere on the line.
+     */
+    @Test
+    fun koinModuleMatchingIsExactRatherThanAPrefixOrAMention() {
+        listOf(
+            "internal val moduleRegistry: ModuleRegistry = ModuleRegistry()",
+            "internal var modulesUsed: ModuleUsage = usage()",
+            "internal val mentioned = otherValue + module { }",
+            "internal val suffixed: ModuleWiring = ModuleWiring()",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+    }
+
+    /**
+     * The message names what was declared, in source order: modifiers first, then the keyword with
+     * its second word (`enum class`, `fun interface`) and then the declared name. The previous
+     * shape put the name between the two, producing `declares enum  StrayMode class`.
+     */
+    @Test
+    fun theViolationNamesTheDeclaredTypeInSourceOrder() {
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "internal class StrayMapper : Mapper"),
+            "wiring-product-logic",
+            "declares internal class StrayMapper",
+        )
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "enum class StrayMode { A }"),
+            "wiring-product-logic",
+            "declares enum class StrayMode",
+        )
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "fun interface StrayCallback { fun onEvent() }"),
+            "wiring-product-logic",
+            "declares fun interface StrayCallback",
+        )
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "internal val moduleRegistry: ModuleRegistry = ModuleRegistry()"),
+            "wiring-product-logic",
+            "declares internal val moduleRegistry",
+        )
     }
 
     @Test

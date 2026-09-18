@@ -44,12 +44,25 @@ object ArchitectureChecker {
 
     private const val INTEGRATION_PACKAGE = "com.ruizurraca.carapp.integration."
 
-    private val MODULE_INITIALISER = Regex("""\bmodule\s*\{""")
+    /**
+     * The Koin `Module` type, exactly. `[A-Za-z0-9_]*` after `Module` would admit any type whose
+     * name merely begins with `Module` — `ModuleRegistry`, `ModuleUsage` — and a Koin binding is
+     * precisely the `Module` type, its nullable form or its fully-qualified spelling.
+     */
+    private val KOIN_MODULE_TYPE =
+        Regex("""(?:org\.koin\.core\.module\.)?Module\??$""")
 
     /**
-     * Group 1 is everything before the keyword, group 2 the keyword itself and group 3 the
-     * modifiers written after it, which is how `fun interface` and `enum class` keep both words in
-     * `modifiers` while the keyword stays recognisable.
+     * `= module {` as the initialiser of a declaration, rather than any occurrence of `module {` on
+     * the line. A `val mentioned = otherValue + module { … }` is not a Koin binding.
+     */
+    private val MODULE_INITIALISER = Regex("""=\s*module\s*\{""")
+
+    /**
+     * Group 1 is everything before the keyword, group 2 the keyword itself and group 3 the words
+     * that follow it. `enum class` and `fun interface` keep both words recognisable: for those the
+     * keyword is the first word and the second one is a modifier, so `Declaration` can report
+     * `enum class StrayMode` rather than `enum StrayMode class`.
      */
     private val TOP_LEVEL_DECLARATION =
         Regex("""^([\w\s]*?)\b(class|interface|object|typealias|val|var|fun)\b((?:\s+\w+)*)""")
@@ -537,31 +550,34 @@ object ArchitectureChecker {
 
     /** A `val`/`var` whose declared type or initialiser makes it a Koin `Module` binding. */
     private fun SourceLine.isKoinModuleDeclaration(): Boolean {
-        val text = text
         val declaredType = text.substringAfter(':', "").substringBefore('=').trim()
-        return declaredType.startsWith("Module") || MODULE_INITIALISER.containsMatchIn(text)
+        return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(text)
     }
 
     /**
      * The declaration a column-zero line introduces, or `null` when the line is a continuation, a
      * closing brace or anything else that does not start one.
      *
-     * `fun interface` is reported as `interface`: the `fun` there modifies the interface, and a
+     * `fun interface` keeps both words as the keyword: the `fun` there modifies the interface, and a
      * functional interface is a type declaration rather than the abstraction factory that `§4`
-     * admits in this module.
+     * admits in this module. `enum class` needs no special case, because the regex matches `class`
+     * and leaves `enum` in the modifiers, which is the order the description is rebuilt in.
      */
     private fun SourceLine.topLevelDeclaration(): Declaration? {
         val match = TOP_LEVEL_DECLARATION.find(text) ?: return null
-        val afterKeyword = match.groupValues[3]
-        val keyword = if (match.groupValues[2] == "fun" && afterKeyword.trimStart().startsWith("interface")) "interface" else match.groupValues[2]
-        return Declaration(
-            keyword = keyword,
-            modifiers = match.groupValues[1] + afterKeyword,
-        )
+        val modifiers = match.groupValues[1].trim()
+        val declared = match.groupValues[2]
+        val following = match.groupValues[3].trim()
+
+        return if (declared == "fun" && following.startsWith("interface")) {
+            Declaration("fun interface", modifiers, following.removePrefix("interface").trim())
+        } else {
+            Declaration(declared, modifiers, following)
+        }
     }
 
     private fun Declaration.isProductLogic(): Boolean {
-        if (modifiers.contains("expect ") || modifiers.contains("actual ")) return true
+        if ("expect" in modifierWords || "actual" in modifierWords) return true
         return when (keyword) {
             "fun" -> false
             "val", "var" -> !isPrivate
@@ -572,10 +588,16 @@ object ArchitectureChecker {
     private data class Declaration(
         val keyword: String,
         val modifiers: String,
+        val name: String,
     ) {
-        val isPrivate: Boolean get() = Regex("""\bprivate\b""").containsMatchIn(modifiers)
+        val isPrivate: Boolean get() = "private" in modifierWords
 
-        val description: String get() = modifiers.trim().let { if (it.isEmpty()) keyword else "$it $keyword" }
+        val modifierWords: Set<String>
+            get() = modifiers.split(' ', '\t', '\n').filter { it.isNotBlank() }.toSet()
+
+        /** `internal class StrayMapper`, with the declared name in its source position. */
+        val description: String
+            get() = listOf(modifiers, keyword, name).filter { it.isNotEmpty() }.joinToString(" ")
     }
 
     /** `docs/CONTRACTS.md §11.6`: only `:wiring:firebase` constructs Firebase implementations. */

@@ -13,10 +13,13 @@ import java.io.File
  * - The Kotlin-facing `AppGraph` is hidden from Objective-C export, so a member present in code but
  *   absent from the contract changes no header either. That divergence was live when `E3-08`
  *   started: `syncStateHolder(scope)` existed in the interface and not in `§20.10`. Assertion 34 is
- *   the guard that keeps the two from drifting again.
+ *   the guard that keeps the two from drifting again, and it compares parameter shapes *including*
+ *   inline default values, which is the only place a default on the hidden interface is visible.
+ *
+ * The parser is textual, and its limits are enumerated in ADR-0181.
  */
-internal class SwiftSurfaceContract private constructor(
-    private val inputs: Inputs,
+internal class SwiftSurfaceContract(
+    val inputs: Inputs,
 ) {
     constructor(repoRoot: File) : this(
         Inputs(
@@ -24,10 +27,6 @@ internal class SwiftSurfaceContract private constructor(
             sources = SOURCES.associateWith { repoRoot.resolve(it).readText() },
         ),
     )
-
-    constructor(inputs: Inputs, fixture: Boolean = true) : this(inputs) {
-        check(fixture) { "The fixture marker prevents constructor signature ambiguity" }
-    }
 
     fun validate(): List<AssertionResult> = listOf(exportedFactoriesAreScopeFree(), appGraphMembersMatch())
 
@@ -39,6 +38,10 @@ internal class SwiftSurfaceContract private constructor(
      * The exported factories are the methods of the state-holder classes. The `createXStateHolder`
      * helpers beside them are `@HiddenFromObjC` and are therefore Kotlin-side implementation
      * details, which is why they may keep their default arguments.
+     *
+     * Only exported members are constrained. A `private` member of `SwiftAppGraph` never reaches
+     * Swift, so reporting one would be a false positive on a legitimate helper. The private
+     * filtering is the same for the state-holder classes.
      */
     private fun exportedFactoriesAreScopeFree(): AssertionResult {
         val problems = mutableListOf<String>()
@@ -52,22 +55,22 @@ internal class SwiftSurfaceContract private constructor(
                 function.name in NON_HOLDER_MEMBERS -> Unit
                 !function.name.endsWith(STATE_HOLDER_SUFFIX) ->
                     problems += "AppGraph.${function.name} is neither a state-holder factory nor a non-holder member"
-                function.parameters.none { it.startsWith("scope:") } ->
+                function.scopeParameter == null ->
                     problems += "AppGraph.${function.name} does not take a scope"
             }
+            // Reported here as well as by assertion 34: when the same default is added to `§20.10`
+            // the two sides agree, so the member comparison cannot see it and this is the only
+            // check that still does.
+            function.defaultsProblem()?.let { problems += "AppGraph.${function.name} $it" }
         }
 
         val swiftFactories = members(inputs.sources.getValue(SWIFT_APP_GRAPH), SWIFT_APP_GRAPH_DECLARATION)
         if (swiftFactories.isEmpty()) {
             problems += "no members were parsed from the Swift-facing SwiftAppGraph"
         }
-        swiftFactories.forEach { function ->
-            function.parameters.firstOrNull { it.startsWith("scope") }?.let {
-                problems += "SwiftAppGraph.${function.name} takes $it"
-            }
-            function.defaulted.takeIf { it.isNotEmpty() }?.let {
-                problems += "SwiftAppGraph.${function.name} defaults ${it.joinToString()}"
-            }
+        swiftFactories.filterNot { it.isPrivate }.forEach { function ->
+            function.scopeParameter?.let { problems += "SwiftAppGraph.${function.name} takes $it" }
+            function.defaultsProblem()?.let { problems += "SwiftAppGraph.${function.name} $it" }
         }
         // `§11.6`: the Swift-facing graph exposes a sync state holder instead of `SyncController`.
         // The generated header also forbids it, but this catches the drift at the source, before a
@@ -76,9 +79,18 @@ internal class SwiftSurfaceContract private constructor(
             problems += "SwiftAppGraph references SyncController"
         }
 
-        exportedStateHolderMembers().forEach { (path, declaration, function) ->
-            if (function.defaulted.isNotEmpty()) {
-                problems += "$path: $declaration.${function.name} defaults ${function.defaulted.joinToString()}"
+        HOLDER_SOURCES.forEach { path ->
+            val source = inputs.sources[path].orEmpty()
+            val declarations = stateHolderClasses(source)
+            // A holder source that yields no class drops out of this assertion silently. That is
+            // how a state holder added to a new module would escape it, so it is reported.
+            if (declarations.isEmpty()) {
+                problems += "$path declares no <Name>StateHolder class"
+            }
+            declarations.forEach { declaration ->
+                members(source, declaration).filterNot { it.isPrivate }.forEach { function ->
+                    function.defaultsProblem()?.let { problems += "$path: $declaration.${function.name} $it" }
+                }
             }
         }
 
@@ -89,6 +101,10 @@ internal class SwiftSurfaceContract private constructor(
      * `§18` assertion 34: the Kotlin-facing `AppGraph` block of `§20.10` and the real interface
      * declare exactly the same members, in the same order, with the same parameter shapes. Order is
      * part of the comparison because a reviewer reads the contract as the surface definition.
+     *
+     * The shape includes an inline default value. `§20.10` declares none, so a default added to the
+     * interface is a divergence, and this is the only check that can see one: `AppGraph` is hidden
+     * from Objective-C export and defaults never reach the generated header.
      */
     private fun appGraphMembersMatch(): AssertionResult {
         val contractMembers = members(contractBlock(), KOTLIN_APP_GRAPH).map { it.signature }
@@ -117,7 +133,7 @@ internal class SwiftSurfaceContract private constructor(
         return inputs.contract.substring(start, closing + 1)
     }
 
-    /** The public members of one declaration, normalised to `name(parameter: Type)`. */
+    /** The members of one declaration, with their parameter shapes and their visibility. */
     private fun members(source: String, declaration: String): List<Member> {
         val body = bodyOf(source, declaration)
         return FUN.findAll(body).mapNotNull { match ->
@@ -125,7 +141,7 @@ internal class SwiftSurfaceContract private constructor(
             val modifiers = body.substring(0, match.range.first).substringAfterLast('\n')
             Member(
                 name = match.groupValues[1],
-                rawParameters = splitTopLevel(parameters).map { it.trim() }.filter { it.isNotEmpty() },
+                parameters = splitTopLevel(parameters).mapNotNull(::parameter),
                 isPrivate = PRIVATE.containsMatchIn(modifiers),
             )
         }.toList()
@@ -196,19 +212,12 @@ internal class SwiftSurfaceContract private constructor(
             }
         }
         result += parameters.substring(start)
-        return result
+        return result.map { it.trim() }.filter { it.isNotEmpty() }
     }
 
-    /** Every `<Name>StateHolder` class declared in the sources that host the exported holders. */
-    private fun exportedStateHolderMembers(): List<Triple<String, String, Member>> =
-        HOLDER_SOURCES.flatMap { path ->
-            val source = inputs.sources[path].orEmpty()
-            stateHolderClasses(source).flatMap { holder ->
-                members(source, holder.declaration)
-                    .filterNot { it.isPrivate }
-                    .map { Triple(path, holder.declaration, it) }
-            }
-        }
+    /** Every `<Name>StateHolder` class declaration of one source file, normalised to `class Name`. */
+    private fun stateHolderClasses(source: String): List<String> =
+        STATE_HOLDER.findAll(source).map { "class ${it.groupValues[1]}" }.toList()
 
     private fun result(id: Int, name: String, problems: List<String>): AssertionResult =
         if (problems.isEmpty()) {
@@ -217,27 +226,34 @@ internal class SwiftSurfaceContract private constructor(
             AssertionResult(id, name, AssertionResult.Status.FAIL, problems.joinToString("; "))
         }
 
-    private data class StateHolderClass(val declaration: String)
-
     /**
      * One member of a declaration.
      *
-     * [rawParameters] keeps the source text so a default argument remains visible; [parameters] is
-     * the normalised `name: Type` form the surface comparison uses, because a changed parameter
-     * name, type or order is a contract difference and a default value is not.
+     * The parameters keep their inline default value in [Parameter.shape], because that shape is
+     * what `§20.10` and the interface are compared on, and a default is a real divergence.
      */
     private data class Member(
         val name: String,
-        val rawParameters: List<String>,
+        val parameters: List<Parameter>,
         val isPrivate: Boolean,
     ) {
-        val parameters: List<String> = rawParameters.mapNotNull(::normaliseParameter)
+        /** `name(a: A, b: B? = default)`. */
+        val signature: String get() = "$name(${parameters.joinToString { it.shape }})"
 
-        /** `name(a: A, b: B?)`. */
-        val signature: String get() = "$name(${parameters.joinToString()})"
+        val scopeParameter: String? get() = parameters.firstOrNull { it.name == SCOPE }?.shape
 
-        /** The parameters carrying an inline default value, which only Kotlin-side members can. */
-        val defaulted: List<String> get() = rawParameters.filter { it.contains(DEFAULT_PARAMETER) }
+        /** `defaults b: B? = default`, or `null` when no parameter carries one. */
+        fun defaultsProblem(): String? =
+            parameters.filter { it.hasDefault }
+                .takeIf { it.isNotEmpty() }
+                ?.joinToString(prefix = "defaults ", separator = ", ") { it.shape }
+    }
+
+    /** One parameter, normalised so a renamed parameter or a changed type is a difference. */
+    private data class Parameter(val name: String, val type: String, val default: String?) {
+        val shape: String get() = if (default == null) "$name: $type" else "$name: $type = $default"
+
+        val hasDefault: Boolean get() = default != null
     }
 
     internal data class Inputs(
@@ -252,18 +268,20 @@ internal class SwiftSurfaceContract private constructor(
         const val KOTLIN_APP_GRAPH = "interface AppGraph"
         const val SWIFT_APP_GRAPH_DECLARATION = "class SwiftAppGraph"
         const val STATE_HOLDER_SUFFIX = "StateHolder"
-        const val DEFAULT_ARGUMENT = "="
+        const val SCOPE = "scope"
 
-        /** `scope: CoroutineScope` for a declaration, or `null` for a parameter that is not one. */
-        private fun normaliseParameter(parameter: String): String? {
-            val trimmed = parameter.trim()
+        /** `scope: CoroutineScope = …` for one parameter, or `null` when it is not a parameter. */
+        private fun parameter(raw: String): Parameter? {
+            val trimmed = raw.trim()
             if (trimmed.isEmpty()) return null
             val name = trimmed.substringBefore(':').trim().removePrefix("val ").removePrefix("var ")
-            val type = trimmed.substringAfter(':', "").substringBefore(DEFAULT_ARGUMENT).trim()
-            return if (type.isEmpty()) null else "$name: $type"
+            val afterColon = trimmed.substringAfter(':', "")
+            val type = afterColon.substringBefore(DEFAULT_SEPARATOR).trim()
+            val default = afterColon.substringAfter(DEFAULT_SEPARATOR, "").trim()
+            return if (type.isEmpty()) null else Parameter(name, type, default.ifEmpty { null })
         }
-        /** A parameter list entry carrying a default value, of any shape. */
-        const val DEFAULT_PARAMETER = "="
+
+        const val DEFAULT_SEPARATOR = "="
         const val ASSERTION_KOTLIN_FACTORIES_TAKE_SCOPE = 14
         const val ASSERTION_APP_GRAPH_MEMBERS = 34
         const val ASSERTION_14 =
@@ -278,15 +296,26 @@ internal class SwiftSurfaceContract private constructor(
             "feature/fuel/src/commonMain/kotlin/com/ruizurraca/carapp/feature/fuel/presentation/FuelEntryStateHolders.kt",
         )
         val SOURCES = listOf(APP_GRAPH, SWIFT_APP_GRAPH) + HOLDER_SOURCES
-        val FUN = Regex("""fun\s+(?:\w+\s+)*(\w+)\s*\(""")
+
+        /**
+         * A function declaration, tolerating leading modifiers, a generic parameter list and an
+         * extension receiver: `fun name(`, `fun <T> name(` and `fun Foo.name(` all match. Widened
+         * after review found the narrower shape skipped generic and extension declarations and so
+         * silently removed them from assertion 14's coverage.
+         */
+        val FUN = Regex("""fun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(\w+)\s*\(""")
         val PRIVATE = Regex("""\bprivate\b""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
-        val STATE_HOLDER = Regex("""^(?:internal )?class \w+StateHolder\b""", RegexOption.MULTILINE)
-    }
 
-    /** Every `<Name>StateHolder` class declaration of one source file. */
-    private fun stateHolderClasses(source: String): List<StateHolderClass> =
-        STATE_HOLDER.findAll(source)
-            .map { match -> StateHolderClass(match.groupValues[0].trimEnd().removePrefix("internal ")) }
-            .toList()
+        /**
+         * A `<Name>StateHolder` class at the start of a line, tolerating the `public`/`internal`/
+         * `private`/`abstract`/`open`/`sealed`/`data` modifiers and an annotation on the same line.
+         * A declaration whose annotation sits on its own line is still matched, because the regex
+         * anchors to the line carrying `class`. Recorded in ADR-0181 under Negative.
+         */
+        val STATE_HOLDER = Regex(
+            """^(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|abstract|open|sealed|data)\s+)*class\s+(\w+StateHolder)\b""",
+            RegexOption.MULTILINE,
+        )
+    }
 }
