@@ -110,17 +110,17 @@
   `@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 3 was
-  pushed as `9a9266a..cffd6ff`, and the ten required checks are green on run `35353870137`, which
-  covers the head `cffd6ff`, passed on its first attempt and needed no re-run. Review round 2 was
-  pushed as `3cac38e..cd1a8a4` and was green on run `35341762718`, which also passed on its first
-  attempt: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
-  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
-  `provider-decoupling` and `shared-tests` (7m50s). Earlier green runs needed re-runs for
-  `shared-tests` only: `35338122967` covered `c834699` (third attempt), `35336079709` covered
-  `a28174f` (second attempt), `35333547781` covered `016a46b` (second attempt), `35332058609`
-  covered `5d40994` and `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review
-  round 1). Every later commit is record-only and re-runs the identical set, so `gh pr checks 71`
-  is authoritative for the current head.
+  pushed as `9a9266a..d48cb6d`. The ten required checks are green on run `35356040406`, which covers
+  the head `d48cb6d` and passed on its first attempt with no re-run, `shared-tests` included:
+  `android-assemble`, `android-instrumented-tests`, `architecture-check`, `contract-check`,
+  `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`, `provider-decoupling` and
+  `shared-tests`. Run `35353870137` covered the fix commit `cffd6ff` and was also green on its first
+  attempt. Review round 2 was pushed as `3cac38e..cd1a8a4` and was green on run `35341762718`.
+  Earlier green runs needed re-runs for `shared-tests` only: `35338122967` covered `c834699` (third
+  attempt), `35336079709` covered `a28174f` (second attempt), `35333547781` covered `016a46b`
+  (second attempt), `35332058609` covered `5d40994` and `35330477631` covered `0551c10`;
+  `35324474324` covered `cb46b0b` (review round 1). Every later commit is record-only and re-runs
+  the identical set, so `gh pr checks 71` is authoritative for the current head.
 - `shared-tests` needed re-runs on runs `35333547781`, `35336079709` and `35338122967`. Three
   distinct mechanisms, all pre-existing and all outside this round, whose Kotlin changes are
   confined to `build-logic`; the local suite is green on both targets, including
@@ -149,7 +149,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35353870137`; the story now waits for the owner's gated review of review round 3.
+  `35356040406`; the story now waits for the owner's gated review of review round 3.
 
 ## Scope Completed
 
