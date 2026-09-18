@@ -100,7 +100,9 @@
   `shared-tests` (7m50s). Earlier green runs needed re-runs for `shared-tests` only:
   `35338122967` covered `c834699` (third attempt), `35336079709` covered `a28174f` (second attempt),
   `35333547781` covered `016a46b` (second attempt), `35332058609` covered `5d40994` and
-  `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1).
+  `35330477631` covered `0551c10`; `35324474324` covered `cb46b0b` (review round 1). Every later
+  commit is record-only and re-runs the identical set, so `gh pr checks 71` is authoritative for the
+  current head.
 - `shared-tests` needed re-runs on runs `35333547781`, `35336079709` and `35338122967`. Three
   distinct mechanisms, all pre-existing and all outside this round, whose Kotlin changes are
   confined to `build-logic`; the local suite is green on both targets, including
