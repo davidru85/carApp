@@ -54,7 +54,7 @@
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
-  record); review fixes round 3 `b0b0f0a` (the depth-zero body brace, the per-class emptiness guard
+  record); review fixes round 3 `03d8d7f` (the depth-zero body brace, the per-class emptiness guard
   and the round-3 record).
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
