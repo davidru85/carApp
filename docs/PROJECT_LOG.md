@@ -74,6 +74,36 @@
   match) are enumerated in ADR-0181; the Konsist fixture of `§20.10` stays deferred to the story that
   first adds an iOS `requestSync` call site.
 
+**Review round 2, appended to the same record.** The owner's second gated review of pull request #71
+found six further defects, all fixed on the same branch after a failing fixture each and with no new
+decision. Two were evasions of the `:wiring:firebase` rule: `isKoinModuleDeclaration` read the text
+after the first `:` before the declaration keyword was known, so `class FirebaseWiring : Module`,
+`internal object FuelEntryMapper : Module` and `interface LocalGate : Module` claimed the Koin
+exemption, and the declaration matcher could not cross `@`, so an annotated `class` and
+`@JvmField internal val leaked` parsed as no declaration at all; the exemption now applies only to a
+`val`/`var` and a leading-annotation prefix is stripped before matching. One was a missing guard: the
+Swift-facing `class SwiftAppGraph` block of `§20.10` had no member comparison because the generated
+Objective-C header is regenerated with the change that alters the class, so it can never report a
+stale block; `§18` assertion 35 now compares it member by member, with `private` members excluded.
+One was a live contract divergence of the same kind `E3-03` shipped: `FuelEntryFormStateHolder`'s
+public `@HiddenFromObjC` `isLoading` and `observeSaveCompletions()` were absent from `§20.10`; both
+are now declared carrying the annotation and `§11.6` states the convention. One was a parser defect:
+`splitTopLevel` decremented its depth on the `>` of `->`, so `callback: (Int) -> Unit` drove the
+depth negative and merged every subsequent parameter, reporting a default under the wrong name; the
+arrow now closes nothing, and `FUN` gained a leading word boundary. One was missing coverage:
+ADR-0181 claims every problem branch has a fixture asserting its exact text, and the two
+assertion-14 emptiness branches had none. `docs/adr/0179-…` and `docs/adr/0181-…` were corrected in
+their Negative, Positive, Constraints Introduced and Verification sections; `docs/DECISION_BOARD.md`
+and the decision mirrors are unchanged, because no decision changed.
+- **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
+  actionable tasks), `:build-logic:convention:test` reports 119 tests and 0 failures, and
+  `contractCheck` reports assertions 1, 13, 14, 34 and 35 `PASS` with no `PENDING` line. Three
+  mutations were applied to the real repository and reverted: `class FirebaseWiring : Module` fails
+  `architectureCheck` with `declares class FirebaseWiring`, `@JvmField internal val leaked =
+  mutableListOf<Any>()` fails it with `declares internal val leaked`, and deleting
+  `fun syncStateHolder(): SyncStateHolder` from the `class SwiftAppGraph` block of `§20.10` fails
+  assertion 35 with `syncStateHolder() is declared but absent from §20.10`.
+
 ### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
 
 - **Type:** story

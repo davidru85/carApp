@@ -66,6 +66,29 @@
   order and the fixtures assert the message text. Finding 5: `SwiftSurfaceContractTest` gained one
   fixture per problem branch of both assertions and the dead `fixture: Boolean = true` parameter was
   removed; the fixtures fabricate `Inputs` and assert the exact problem text.
+- Review round 2: six findings, all in the checks and records this story added, all fixed after a
+  failing fixture each. Finding 1: `isKoinModuleDeclaration` read the text after the first colon
+  before the keyword was known, so `class FirebaseWiring : Module`, `internal object
+  FuelEntryMapper : Module` and `interface LocalGate : Module` were admitted as Koin bindings; the
+  exemption now applies only to a `val`/`var`, proved by
+  `aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule`. Finding 2: the same matcher
+  could not cross `@`, so `@JvmField internal val leaked` and an annotated `class` parsed as no
+  declaration at all; a leading-annotation prefix is stripped before matching, proved by the same
+  fixture. Finding 3: assertion 34 guarded only the Kotlin-facing interface, leaving the
+  Swift-facing `class SwiftAppGraph` block of `§20.10` unguarded because the golden header is
+  regenerated with the change that alters the class; assertion 35 now compares it member by member,
+  proved by six fixtures and by mutation C. Finding 4: `FuelEntryFormStateHolder.isLoading` and
+  `observeSaveCompletions()` are public `@HiddenFromObjC` members absent from `§20.10`, the same
+  blind spot `AppGraph.syncStateHolder(scope)` was; both are now declared carrying the annotation
+  and `§11.6` states the convention. Finding 5: `splitTopLevel` decremented its depth on the `>` of
+  `->`, so `callback: (Int) -> Unit` drove the depth negative and merged every later parameter,
+  reporting the default under the wrong name; the arrow is now ignored, proved by
+  `aDefaultAfterAFunctionTypedParameterIsReportedUnderItsOwnName`. Finding 6: ADR-0181 claims every
+  problem branch has a fixture asserting the exact text, and the two assertion-14 emptiness branches
+  had none; `anUnparsedKotlinFacingInterfaceIsReportedByAssertion14` and
+  `anUnparsedSwiftFacingClassIsReportedByAssertion14` now cover them. The `FUN` regex also gained a
+  leading word boundary, so an identifier ending in `fun` followed by `(` no longer parses as a
+  member.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. The ten required checks
   were green on run `35324474324`, which covered commit `cb46b0b`: `android-assemble`,
@@ -102,7 +125,7 @@
 
 Each criterion, and the evidence that proves it.
 
-**1. The surfaces match `§11.6` and `§20.10`.** `contractCheck` assertions 14 and 34 both report
+**1. The surfaces match `§11.6` and `§20.10`.** `contractCheck` assertions 14, 34 and 35 all report
 `PASS` on the real repository. A read-only audit of every block of both sections against the real
 declarations and the committed golden header found the surface otherwise conformant: the
 Kotlin-facing `AppGraph`'s eight members, `createSwiftAppGraph`, all ten `SwiftAppGraph` members,
@@ -111,7 +134,11 @@ enums, and the whole `§11.6` block (`AppGraphDependencies`, `AppProviders`, `bu
 `testAppGraphDependencies`) match member for member, in order, with identical types and
 nullability. The two extras that remain — `FuelEntryFormStateHolder.isLoading` and
 `observeSaveCompletions()` — are `@HiddenFromObjC`, absent from the golden header, and are the
-Kotlin-side seam the Android host consumes.
+Kotlin-side seam the Android host consumes. Review round 2 found them undeclared in `§20.10`, which
+is the same blind spot `AppGraph.syncStateHolder(scope)` was: a public member the generated header
+cannot show, so the contract and the code diverge with nothing able to see it. Both are now declared
+in `§20.10` carrying `@HiddenFromObjC`, and `§11.6` states the convention that a public
+`@HiddenFromObjC` member of an exported state-holder class is still declared in `§20.10`.
 
 **2. `:shared:testing` factory parity.** `contractCheck` assertion 13 reports `PASS` with
 `16 parameters in canonical order; every parameter defaulted`.
@@ -168,6 +195,9 @@ the observed output, not the intended one.
 | 10 | `val moduleRegistry: ModuleRegistry = ModuleRegistry()` in `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `declares internal val moduleRegistry` |
 | 11 | `val mentioned = stagedLogger() + module { }` in `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `declares internal val mentioned` |
 | 12 | `implementation` -> `api` on the integration edge, plus `FirebaseAuthClient` named in `:composition:ios` | `architectureCheck` | FAIL `:composition:ios: firebase-implementation-outside-wiring` |
+| 13 | `class FirebaseWiring : Module` appended to `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:247 declares class FirebaseWiring` |
+| 14 | `@JvmField internal val leaked = mutableListOf<Any>()` appended to `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:247 declares internal val leaked` |
+| 15 | `fun syncStateHolder(): SyncStateHolder` removed from the `class SwiftAppGraph` block of `§20.10` | `contractCheck` | 35 FAIL `syncStateHolder() is declared but absent from §20.10` |
 
 Rows 2 and 10 are the two rows that previously passed while the change they were supposed to catch
 was in place: a default on an `AppGraph` factory's `scope` (the old `signature` stripped the default
