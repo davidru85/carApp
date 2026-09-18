@@ -77,13 +77,16 @@
   `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, and mutation 20 degrades to
   a single `34 FAIL` while all 31 assertion lines still print — no stack trace. Each mutation was
   reverted and `git status --porcelain` printed nothing. The canonical CI command passes, and run
-  `35373955424` on the head `a5989a1` is green on all ten required checks — `shared-tests` on its
-  second attempt after one Native-step stall, the pre-existing `D-175`/`D-177` mechanism.
+  `35376856797` on the head `f8b8406` is green on all ten required checks: nine on their first
+  attempt, `provider-decoupling` on its second after the pre-existing silent stall reached the
+  8-minute `Run provider-free Android host tests` step with no test result.
 - **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
   state-holder class is declared in `§20.10` still has no executable check; it is recorded in
   `docs/BACKLOG.md` under `E3-08` and `E3-05`, and making it executable needs a `D-` decision on
   whether it lives in `SwiftSurfaceContract` or in the `D-16` Konsist rules. The `shared-tests`
-  silent stalls of the previous round are unchanged and remain owned by `E1-14`/`E1-17`.
+  silent stalls are unchanged and remain owned by `E1-14`/`E1-17`; on this round's head run the
+  stall also reached `provider-decoupling`'s 8-minute Android-host step, so it is not specific to
+  `shared-tests` and a re-run there hides as much as one everywhere else.
 
 ### 2026-09-18 — E3-08 review round 1: four defects in the story's own checks, and a fixture per branch
 

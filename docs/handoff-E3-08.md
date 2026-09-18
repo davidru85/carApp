@@ -126,13 +126,13 @@
   under both `E3-08` and `E3-05`.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 4 was
-  pushed as `cb34b35..a5989a1`, and the ten required checks are green on run `35373955424`, which
-  covers the head `a5989a1`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
-  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check`,
-  `provider-decoupling` and `shared-tests`, the last green on its second attempt (7m27s) after a
-  Native-step stall with no test result. Review round 3 was pushed as `9a9266a..58311fa` and was
-  green on run `35366069672`. Review round 2 was pushed as `3cac38e..cd1a8a4` and was green on run
-  `35341762718`.
+  pushed as `cb34b35..f8b8406`. The ten required checks are green on run `35376856797`, which covers
+  the head `f8b8406`: `android-assemble`, `android-instrumented-tests`, `architecture-check`,
+  `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`, `objc-header-golden-check` and
+  `shared-tests` on their first attempt, and `provider-decoupling` on its second after the
+  8-minute `Run provider-free Android host tests` step was killed with no test result — the same
+  silent-stall class as `shared-tests`, at a new site. Run `35373955424` covered `a5989a1` and run
+  `35366069672` covered `58311fa`; both needed one `shared-tests` re-run.
   Earlier green runs needed re-runs for `shared-tests` only: `35338122967` covered `c834699` (third
   attempt), `35336079709` covered `a28174f` (second attempt), `35333547781` covered `016a46b`
   (second attempt), `35332058609` covered `5d40994` and `35330477631` covered `0551c10`;
@@ -173,7 +173,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35373955424`; the story now waits for the owner's gated review of review round 4.
+  `35376856797`; the story now waits for the owner's gated review of review round 4.
 
 ## Scope Completed
 
@@ -564,9 +564,12 @@ documentation.
   test result on runs `35333547781`, `35336079709` and `35366069672` (first attempt), the silent
   stall classified in `docs/PROJECT_LOG.md` and left latent by `D-175`/`D-177`; and the same stall
   hit the Native step on run `35338122967`'s second attempt and on `35363599393`'s first,
-  `35366069672`'s second and `35373955424`'s first. Nothing is a regression: this round's Kotlin
-  changes are confined to `build-logic/convention/`, the exact two CI steps re-run locally with
-  `--rerun-tasks` complete in about 3 minutes and 36 seconds, and every failed job passed on
+  `35366069672`'s second and `35373955424`'s first. It also reached a **new site** on run
+  `35376856797`: the `Run provider-free Android host tests` step of `provider-decoupling` was killed
+  at its 8-minute cap with no test result and passed on re-run in 3m52s. So the stall is not specific
+  to `shared-tests`, which widens what a re-run can hide. Nothing is a regression: this round's
+  Kotlin changes are confined to `build-logic/convention/`, the exact two CI steps re-run locally
+  with `--rerun-tasks` complete in about 3 minutes and 36 seconds, and every failed job passed on
   re-run. Fixing any is outside `E3-08`, but the owner should know all are reachable, because
   `E1-14` and `E1-17` being open is what makes a red required job ambiguous.
 - **Review round 3 corrected an implementation of an accepted decision, not the decision.**
