@@ -50,14 +50,16 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 4 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 5 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
   record); review fixes round 3 `03d8d7f` (the depth-zero body brace, the per-class emptiness guard
   and the round-3 record); review fixes round 4 `b9b0d0e`, `a90bef1` (the annotation scanner),
   `6b338bb`, `d7187a2` (the scope detected by declared type), `8860e48`, `95066e2` (the missing
-  `AppGraph` block and the one-sided parse messages), each a red/green pair.
+  `AppGraph` block and the one-sided parse messages), each a red/green pair; review fixes round 5
+  `316cb52`, `ee925ba` (the member kind, declared type and exported-visibility comparison) and the
+  round-5 record.
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
