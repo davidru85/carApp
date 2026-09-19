@@ -69,7 +69,7 @@ internal class SwiftSurfaceContract(
         if (swiftFactories.isEmpty()) {
             problems += "no members were parsed from the Swift-facing SwiftAppGraph"
         }
-        swiftFactories.filterNot { it.isPrivate }.forEach { function ->
+        swiftFactories.filter { it.isExported }.forEach { function ->
             function.scopeParameter?.let { problems += "SwiftAppGraph.${function.name} takes $it" }
             function.defaultsProblem()?.let { problems += "SwiftAppGraph.${function.name} $it" }
         }
@@ -95,7 +95,7 @@ internal class SwiftSurfaceContract(
                 if (holderMembers.isEmpty()) {
                     problems += "$path: $declaration declares no parsed member"
                 }
-                holderMembers.filterNot { it.isPrivate }.forEach { function ->
+                holderMembers.filter { it.isExported }.forEach { function ->
                     function.defaultsProblem()?.let { problems += "$path: $declaration.${function.name} $it" }
                 }
             }
@@ -162,7 +162,7 @@ internal class SwiftSurfaceContract(
             members(contractBlock(SWIFT_APP_GRAPH_DECLARATION), SWIFT_APP_GRAPH_DECLARATION).map { it.signature }
         val declaredMembers =
             members(inputs.sources.getValue(SWIFT_APP_GRAPH), SWIFT_APP_GRAPH_DECLARATION)
-                .filterNot { it.isPrivate }
+                .filter { it.isExported }
                 .map { it.signature }
 
         val problems = mutableListOf<String>()
@@ -191,27 +191,103 @@ internal class SwiftSurfaceContract(
         return inputs.contract.substring(start, closing + 1)
     }
 
-    /** The members of one declaration, with their parameter shapes and their visibility. */
+    /** The members of one declaration, with their signatures and their visibility. */
     private fun members(source: String, declaration: String): List<Member> {
         val body = bodyOf(source, declaration)
-        return FUN.findAll(body).mapNotNull { match ->
-            val parameters = balancedParameters(body, match.range.last) ?: return@mapNotNull null
-            val modifiers = body.substring(0, match.range.first).substringAfterLast('\n')
-            Member(
-                name = match.groupValues[1],
-                parameters = splitTopLevel(parameters).mapNotNull(::parameter),
-                isPrivate = PRIVATE.containsMatchIn(modifiers),
-            )
-        }.toList()
+        return functionMembers(body) + propertyMembers(body)
     }
 
     /**
-     * The parameter list that opens at or after [from], with nested parentheses balanced.
+     * The `fun` declarations of one body. The modifiers are read from the declaration header, the
+     * parameters from the balanced parenthesis pair, and the return type from the `:` that follows
+     * it — which is what `§20.10` compares, because a factory returning another holder is a
+     * different surface even when its name and parameters are unchanged.
+     */
+    private fun functionMembers(body: String): List<Member> =
+        FUN.findAll(body).mapNotNull { match ->
+            val parameters = balancedParameters(body, match.range.last) ?: return@mapNotNull null
+            Member(
+                kind = MemberKind.FUNCTION,
+                name = match.groupValues[1],
+                parameters = splitTopLevel(parameters.text).mapNotNull(::parameter),
+                returnType = returnTypeAfter(body, parameters.closingIndex),
+                visibility = visibilityOf(headerBefore(body, match.range.first)),
+            )
+        }.toList()
+
+    /**
+     * The `val`/`var` declarations that are members of the body rather than local variables. A
+     * member sits at brace depth zero inside [body]; a local variable inside a function or a lambda
+     * is nested and is skipped. A property without an explicit declared type is not part of the
+     * compared surface: `§20.10` declares the type, and inferring one textually could disagree.
+     */
+    private fun propertyMembers(body: String): List<Member> {
+        val result = mutableListOf<Member>()
+        var braceDepth = 0
+        body.lineSequence().forEach { line ->
+            val declaration = if (braceDepth == 0) PROPERTY.find(line) else null
+            if (declaration != null) {
+                // The keyword offset, not the match start: `PROPERTY` begins with `\s*`, so the
+                // match starts at column zero and the modifiers sit between it and the keyword.
+                val keywordOffset = declaration.groups[1]?.range?.first ?: 0
+                result += Member(
+                    kind = MemberKind.PROPERTY,
+                    name = declaration.groupValues[2],
+                    parameters = emptyList(),
+                    returnType = declaration.groupValues[3].trim(),
+                    visibility = visibilityOf(line.substring(0, keywordOffset)),
+                    // `val` and `var` are different members: a `var` is write access, which `§11.6`
+                    // does not expose, so the keyword is part of the signature.
+                    keyword = declaration.groupValues[1],
+                )
+            }
+            braceDepth += line.count { it == '{' } - line.count { it == '}' }
+        }
+        return result
+    }
+
+    /** The header text that carries a declaration's modifiers, up to the declaration itself. */
+    private fun headerBefore(body: String, offset: Int): String =
+        body.substring(0, offset).substringAfterLast('{').substringAfterLast('\n')
+
+    /**
+     * The declared return type of the `fun` whose parameter list closes at [closingIndex], or `null`
+     * when the declaration carries none.
+     *
+     * The search is bounded to this declaration's own tail. An unbounded `indexOf(':')` runs past
+     * `fun close()` into the next member and reports its colon as this one's return type, which
+     * produced signs like `close(): String` and hid every real drift behind it.
+     */
+    private fun returnTypeAfter(body: String, closingIndex: Int): String? {
+        val rest = body.substring(closingIndex + 1)
+        val bound = listOf(rest.indexOf('{'), rest.indexOf('='), rest.indexOf('\n'), nextFunctionOffset(rest))
+            .filter { it >= 0 }
+            .minOrNull() ?: rest.length
+        val window = rest.substring(0, bound)
+        if (!window.trimStart().startsWith(':')) return null
+        return window.trimStart().removePrefix(":").trim().replace(WHITESPACE, " ").ifEmpty { null }
+    }
+
+    /** The offset of the next `fun` declaration inside [rest], or `-1` when there is none. */
+    private fun nextFunctionOffset(rest: String): Int = FUN.find(rest)?.range?.first ?: -1
+
+    /** The visibility a declaration's own header carries, defaulting to `public`. */
+    private fun visibilityOf(header: String): MemberVisibility =
+        when {
+            PRIVATE.containsMatchIn(header) -> MemberVisibility.PRIVATE
+            INTERNAL.containsMatchIn(header) -> MemberVisibility.INTERNAL
+            PROTECTED.containsMatchIn(header) -> MemberVisibility.PROTECTED
+            else -> MemberVisibility.PUBLIC
+        }
+
+    /**
+     * The parameter list that opens at or after [from], with nested parentheses balanced. The
+     * closing index is returned so the return type can be read from the same scan.
      *
      * A plain `[^)]*` capture would stop inside a function-typed parameter such as
      * `callback: (Int) -> Unit`, which would then hide any default that followed it.
      */
-    private fun balancedParameters(source: String, from: Int): String? {
+    private fun balancedParameters(source: String, from: Int): ParsedParameters? {
         val opening = source.indexOf('(', from)
         if (opening < 0) return null
         var depth = 0
@@ -220,7 +296,7 @@ internal class SwiftSurfaceContract(
                 '(' -> depth += 1
                 ')' -> {
                     depth -= 1
-                    if (depth == 0) return source.substring(opening + 1, index)
+                    if (depth == 0) return ParsedParameters(source.substring(opening + 1, index), index)
                 }
             }
         }
@@ -311,19 +387,67 @@ internal class SwiftSurfaceContract(
             AssertionResult(id, name, AssertionResult.Status.FAIL, problems.joinToString("; "))
         }
 
+    /** Whether a member is a function or a property. `§20.10` declares both. */
+    private enum class MemberKind {
+        FUNCTION,
+        PROPERTY,
+    }
+
+    /** The visibility keyword a declaration carries, defaulting to `public` when it carries none. */
+    private enum class MemberVisibility {
+        PUBLIC,
+        INTERNAL,
+        PROTECTED,
+        PRIVATE,
+    }
+
+    /** The parameter source text and the index of the `)` that closes it. */
+    private data class ParsedParameters(
+        val text: String,
+        val closingIndex: Int,
+    )
+
     /**
      * One member of a declaration.
+     *
+     * The signature carries the kind, the name, the parameter shapes and the declared type, because
+     * that is what `§20.10` defines. A changed return type or property type is a different surface
+     * even when the name and the parameters are unchanged, and a `var` is not a `val`.
      *
      * The parameters keep their inline default value in [Parameter.shape], because that shape is
      * what `§20.10` and the interface are compared on, and a default is a real divergence.
      */
     private data class Member(
+        val kind: MemberKind,
         val name: String,
         val parameters: List<Parameter>,
-        val isPrivate: Boolean,
+        val returnType: String?,
+        val visibility: MemberVisibility,
+        val keyword: String? = null,
     ) {
-        /** `name(a: A, b: B? = default)`. */
-        val signature: String get() = "$name(${parameters.joinToString { it.shape }})"
+        /**
+         * `§11.6` exports the public surface only. An `internal` or `protected` member never
+         * reaches Swift, so comparing it would report a divergence the header cannot show either.
+         */
+        val isExported: Boolean get() = visibility == MemberVisibility.PUBLIC
+
+        /** `name(a: A, b: B? = default)`, `name(): Return`, or `val name: Type`. */
+        val signature: String
+            get() =
+                when (kind) {
+                    MemberKind.FUNCTION ->
+                        buildString {
+                            append(name)
+                            append("(")
+                            append(parameters.joinToString { it.shape })
+                            append(")")
+                            returnType?.let {
+                                append(": ")
+                                append(it)
+                            }
+                        }
+                    MemberKind.PROPERTY -> "$keyword $name: $returnType"
+                }
 
         /** `§11.6` constrains the declared type, not the parameter name. */
         val scopeParameter: String? get() = parameters.firstOrNull { it.isCoroutineScope }?.shape
@@ -401,6 +525,17 @@ internal class SwiftSurfaceContract(
          */
         val FUN = Regex("""\bfun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(\w+)\s*\(""")
         val PRIVATE = Regex("""\bprivate\b""")
+        val INTERNAL = Regex("""\binternal\b""")
+        val PROTECTED = Regex("""\bprotected\b""")
+
+        /**
+         * A `val`/`var` member: group 1 is the declaration keyword, group 2 the name and group 3
+         * the declared type. The leading `\s*` is required — a class member is indented, and an
+         * anchored pattern without it silently matched nothing. A property with no explicit type is
+         * not matched at all, because `§20.10` declares the type and inferring one could disagree.
+         */
+        val PROPERTY = Regex("""^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|protected|override|open|final)\s+)?(val|var)\s+(\w+)\s*:\s*([^=]+)""")
+        val WHITESPACE = Regex("""\s+""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
 
         /**
