@@ -62,6 +62,16 @@ class ArchitectureCheckerTest {
         )
     }
 
+    /** Asserts the rule fires *and* that its message names what was declared. */
+    private fun assertRejectedWithDetail(module: ModuleUnderCheck, rule: String, expected: String) {
+        val found = violations(module).filter { it.rule == rule }
+        assertTrue(found.isNotEmpty(), "Expected rule '$rule' to fire for ${module.path}, got nothing")
+        assertTrue(
+            found.any { it.detail.contains(expected) },
+            "Expected a '$rule' message containing \"$expected\", got: ${found.map { it.detail }}",
+        )
+    }
+
     /**
      * Asserts that one specific rule does not fire. Used where the fixture module legitimately
      * trips a different rule — `:core:sync` always trips `phase-0-module-set` today, which is the
@@ -375,7 +385,7 @@ class ArchitectureCheckerTest {
         assertAccepted(
             module(
                 ":wiring:firebase",
-                source = "class FirebaseAppProviders(override val databaseFactory: DatabaseFactory)",
+                source = "fun firebaseAppProviders(databaseFactory: DatabaseFactory): AppProviders = error(\"x\")",
             ),
         )
         assertRejected(
@@ -485,6 +495,174 @@ class ArchitectureCheckerTest {
             "integration-builds-app-graph",
         )
         assertAccepted(module(":integration:firebase-auth", source = "val authModule = module { single<AuthClient> { FirebaseAuthClient() } }"))
+    }
+
+    @Test
+    fun wiringFirebaseDeclarationsAreBoundedToModulesFactoriesAndInitialisers() {
+        listOf(
+            "class VehicleRepositoryImpl : VehicleRepository",
+            "internal object FuelEntryMapper",
+            "interface LocalGate",
+            "enum class WiringMode",
+            "data class WiringSnapshot(val id: String)",
+            "sealed interface WiringState",
+            "fun interface WiringGate",
+            "typealias Providers = AppProviders",
+            "expect fun platformName(): String",
+            "expect class PlatformBridge",
+            "actual fun platformName(): String = \"ios\"",
+            "val repositories = mutableListOf<Any>()",
+            "internal val bindings = modules()",
+            "var counter = 0",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        listOf(
+            "fun firebaseAppProviders(): AppProviders = providers()",
+            "internal fun firebaseAppProviders(db: DatabaseFactory): AppProviders = providers()",
+            "private fun stagedLogger(): Logger = noop()",
+            "private const val UUID_BYTE_COUNT = 16",
+            "private var counter = 0",
+            "val firebaseModule = module { single<AuthClient> { client } }",
+            "internal val firebaseBindings: Module = modules()",
+            "internal val maybeBindings: Module? = null",
+            "internal val qualified: org.koin.core.module.Module = modules()",
+            "internal val fromInitialiser = module { }",
+        ).forEach { source ->
+            assertRuleDoesNotFire(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+    }
+
+    /**
+     * A declared type whose name merely begins with `Module` is not the Koin type, and a line that
+     * mentions `module {` in an expression is not a binding. Both were admitted silently while the
+     * matcher used `startsWith("Module")` and looked for `module {` anywhere on the line.
+     */
+    @Test
+    fun koinModuleMatchingIsExactRatherThanAPrefixOrAMention() {
+        listOf(
+            "internal val moduleRegistry: ModuleRegistry = ModuleRegistry()",
+            "internal var modulesUsed: ModuleUsage = usage()",
+            "internal val mentioned = otherValue + module { }",
+            "internal val suffixed: ModuleWiring = ModuleWiring()",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+    }
+
+    /**
+     * A type declaration that merely inherits a type named `Module` is not a Koin binding, and an
+     * annotation on the declaration line does not stop it being a declaration. Both escaped the
+     * rule while the Koin exemption ran before the keyword was known and the declaration matcher
+     * could not see past `@`.
+     */
+    @Test
+    fun aSupertypeNamedModuleAndAnAnnotatedDeclarationDoNotEscapeTheRule() {
+        listOf(
+            "class FirebaseWiring : Module",
+            "internal object FuelEntryMapper : Module",
+            "interface LocalGate : Module",
+            "@Suppress(\"unused\") internal class StrayMapper : Mapper",
+            "@JvmField internal val leaked = mutableListOf<Any>()",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        assertRuleDoesNotFire(
+            module(":wiring:firebase", source = "@JvmField internal val firebaseBindings: Module = modules()"),
+            "wiring-product-logic",
+        )
+        assertRuleDoesNotFire(
+            module(":wiring:firebase", source = "@Suppress(\"unused\") private fun stagedLogger(): Logger = noop()"),
+            "wiring-product-logic",
+        )
+    }
+
+    /**
+     * An annotation with nested parentheses and an annotation with a use-site target both left the
+     * `@` on the line, and `TOP_LEVEL_DECLARATION` cannot cross an `@`, so the declaration parsed
+     * as nothing at all and the rule passed it silently.
+     */
+    @Test
+    fun anAnnotationWithNestedParenthesesOrAUseSiteTargetDoesNotHideTheDeclaration() {
+        listOf(
+            "@Deprecated(\"x\", ReplaceWith(\"y\")) internal class StrayMapper",
+            "@get:JvmName(\"leak\") internal val leaked = mutableListOf<Any>()",
+            "@Suppress(\"unused\") @Deprecated(\"x\", ReplaceWith(\"y\")) internal object FuelEntryMapper",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        assertRuleDoesNotFire(
+            module(
+                ":wiring:firebase",
+                source = "@get:JvmName(\"bindings\") internal val firebaseBindings: Module = modules()",
+            ),
+            "wiring-product-logic",
+        )
+    }
+
+    /**
+     * The message names what was declared, in source order: modifiers first, then the keyword with
+     * its second word (`enum class`, `fun interface`) and then the declared name. The previous
+     * shape put the name between the two, producing `declares enum  StrayMode class`.
+     */
+    @Test
+    fun theViolationNamesTheDeclaredTypeInSourceOrder() {
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "internal class StrayMapper : Mapper"),
+            "wiring-product-logic",
+            "declares internal class StrayMapper",
+        )
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "enum class StrayMode { A }"),
+            "wiring-product-logic",
+            "declares enum class StrayMode",
+        )
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "fun interface StrayCallback { fun onEvent() }"),
+            "wiring-product-logic",
+            "declares fun interface StrayCallback",
+        )
+        assertRejectedWithDetail(
+            module(":wiring:firebase", source = "internal val moduleRegistry: ModuleRegistry = ModuleRegistry()"),
+            "wiring-product-logic",
+            "declares internal val moduleRegistry",
+        )
+    }
+
+    @Test
+    fun firebaseImplementationsAreNamedOnlyByWiring() {
+        val references = listOf(
+            "import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient",
+            "import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource",
+            "val source = com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource()",
+        )
+        references.forEach { source ->
+            listOf(":shared", ":androidApp", ":composition:ios", ":feature:session").forEach { path ->
+                assertRejected(module(path, source = source), "firebase-implementation-outside-wiring")
+            }
+        }
+
+        assertRuleDoesNotFire(
+            module(
+                ":wiring:firebase",
+                source = "import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient",
+            ),
+            "firebase-implementation-outside-wiring",
+        )
+        assertRuleDoesNotFire(
+            module(
+                ":integration:firebase-auth",
+                source = "class FirebaseAuthClient internal constructor()",
+            ),
+            "firebase-implementation-outside-wiring",
+        )
+        assertRuleDoesNotFire(
+            module(":shared", source = "import com.ruizurraca.carapp.core.auth.AuthClient"),
+            "firebase-implementation-outside-wiring",
+        )
     }
 
     @Test

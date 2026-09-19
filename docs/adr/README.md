@@ -184,5 +184,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-175 | [ADR-0176](0176-fix-the-silent-shared-test-stall-inside-e3-03.md) | Fix the silent shared-test stall inside `E3-03`. | Accepted |
 | D-176 | [ADR-0177](0177-size-the-ci-job-hang-guard-above-the-slowest-healthy-run.md) | Size the CI job hang guard above the slowest healthy run. | Accepted |
 | D-177 | [ADR-0178](0178-bound-virtual-time-advancement-in-graph-backed-tests.md) | Bound virtual time advancement in graph-backed tests. | Accepted |
+| D-178 | [ADR-0179](0179-define-wiring-product-logic-as-a-declaration-shape.md) | Define `:wiring:firebase` product logic as a declaration shape. | Accepted |
+| D-179 | [ADR-0180](0180-name-integration-implementations-in-wiring-only.md) | Name `:integration:*` implementations in `:wiring:firebase` only. | Accepted |
+| D-180 | [ADR-0181](0181-guard-both-app-graph-surfaces.md) | Guard both `AppGraph` surfaces by parsing the contract. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
