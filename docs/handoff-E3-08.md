@@ -141,9 +141,11 @@
   (129 -> 141 build-logic tests), five mutation rows re-run including two controls that prove the
   fix did not trade one silent gap for another.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. Review round 4 was
-  pushed as `cb34b35..faa9357`. The ten required checks are green on run `35381816775`, which covers
-  the head `faa9357` and passed on its **first attempt** with no re-run. Run `35376856797` covered
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 5 was
+  pushed as `faa9357..a99d7b7`. The ten required checks are green on run `35430529028`, which covers
+  the head `a99d7b7` and passed on its **first attempt** with no re-run: all ten, `shared-tests` and
+  `provider-decoupling` included. Review round 4 was pushed as `cb34b35..faa9357` and was green on
+  run `35381816775`. Run `35376856797` covered
   `f8b8406`: nine checks on their first attempt and `provider-decoupling` on its second, after the
   8-minute `Run provider-free Android host tests` step was killed with no test result — the same
   silent-stall class as `shared-tests`, at a new site. Run `35373955424` covered `a5989a1` and run
@@ -188,7 +190,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35381816775`; the story now waits for the owner's gated review of review round 4.
+  `35430529028`; the story now waits for the owner's gated review of review round 5.
 
 ## Scope Completed
 

@@ -73,7 +73,8 @@
   from §20.10`, and two controls confirm the fix did not trade one silent gap for another — a
   `private` property is not compared, and the assertion-14 scope mutation still fails. No dependency
   appears in any `build.gradle.kts` or the version catalog, and the diff is confined to the two
-  `build-logic` files. The canonical CI command passes.
+  `build-logic` files. The canonical CI command passes, and run `35430529028` on the head `a99d7b7`
+  is green on all ten required checks on their first attempt.
 - **Follow-ups / risks:** a property without an explicit declared type yields no member; the
   per-class emptiness guard reports the class rather than comparing it against nothing, and
   `§20.10` always declares the type. The `§11.6` `@HiddenFromObjC` deferral and the `shared-tests`
