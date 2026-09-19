@@ -234,6 +234,8 @@ class SwiftSurfaceContractTest {
     /**
      * A recognised holder class whose body yields no member is the second silent path out of
      * assertion 14, and the per-source guard cannot see it because the source does declare classes.
+     * A body whose only declaration is an untyped property yields no member: the property parser
+     * requires an explicit type, so the class is reported rather than passing with zero coverage.
      */
     @Test
     fun aHolderClassWithNoParsedMemberIsReported() {
@@ -242,7 +244,7 @@ class SwiftSurfaceContractTest {
             "$SESSION_HOLDERS: class SessionStateHolder declares no parsed member",
             results(
                 holders = validHolders() + (
-                    SESSION_HOLDERS to "class SessionStateHolder {\n    val state: Int = 0\n}\n"
+                    SESSION_HOLDERS to "class SessionStateHolder {\n    val state = 0\n}\n"
                     ),
             ),
         )
@@ -285,8 +287,8 @@ class SwiftSurfaceContractTest {
 
         assertFails(
             APP_GRAPH_MEMBERS,
-            "sessionStateHolder(scope: CoroutineScope = CoroutineScope(Job())) is declared but " +
-                "absent from §20.10; sessionStateHolder(scope: CoroutineScope) is declared in " +
+            "sessionStateHolder(scope: CoroutineScope = CoroutineScope(Job())): SessionStateHolder is declared but " +
+                "absent from §20.10; sessionStateHolder(scope: CoroutineScope): SessionStateHolder is declared in " +
                 "§20.10 but absent from the interface",
             SwiftSurfaceContract(real.withSource(APP_GRAPH, mutated)).validate(),
         )
@@ -296,7 +298,7 @@ class SwiftSurfaceContractTest {
     fun aMemberDeclaredInTheContractButAbsentFromTheInterfaceIsRejected() {
         assertFails(
             APP_GRAPH_MEMBERS,
-            "syncStateHolder(scope: CoroutineScope) is declared in §20.10 but absent from the interface",
+            "syncStateHolder(scope: CoroutineScope): SyncStateHolder is declared in §20.10 but absent from the interface",
             results(
                 contractMembers = listOf(
                     "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder",
@@ -311,7 +313,7 @@ class SwiftSurfaceContractTest {
     fun aMemberDeclaredInTheInterfaceButAbsentFromTheContractIsRejected() {
         assertFails(
             APP_GRAPH_MEMBERS,
-            "syncStateHolder(scope: CoroutineScope) is declared but absent from §20.10",
+            "syncStateHolder(scope: CoroutineScope): SyncStateHolder is declared but absent from §20.10",
             results(
                 interfaceMembers = listOf(
                     "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder",
@@ -326,8 +328,8 @@ class SwiftSurfaceContractTest {
     fun anOutOfOrderMemberListIsRejected() {
         assertFails(
             APP_GRAPH_MEMBERS,
-            "§20.10 declares [close(), vehicleListStateHolder(scope: CoroutineScope)], " +
-                "the interface declares [vehicleListStateHolder(scope: CoroutineScope), close()]",
+            "§20.10 declares [close(), vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder], " +
+                "the interface declares [vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder, close()]",
             results(contractMembers = listOf("close()", "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder")),
         )
     }
@@ -357,7 +359,7 @@ class SwiftSurfaceContractTest {
         assertFails(
             APP_GRAPH_MEMBERS,
             "no AppGraph members were parsed from §20.10; " +
-                "vehicleListStateHolder(scope: CoroutineScope) is declared but absent from §20.10; " +
+                "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder is declared but absent from §20.10; " +
                 "close() is declared but absent from §20.10",
             results(contractMembers = emptyList()),
         )
@@ -368,7 +370,7 @@ class SwiftSurfaceContractTest {
         assertFails(
             APP_GRAPH_MEMBERS,
             "no AppGraph members were parsed from the interface; " +
-                "vehicleListStateHolder(scope: CoroutineScope) is declared in §20.10 but absent from the interface; " +
+                "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder is declared in §20.10 but absent from the interface; " +
                 "close() is declared in §20.10 but absent from the interface",
             results(interfaceMembers = emptyList()),
         )
@@ -380,7 +382,7 @@ class SwiftSurfaceContractTest {
     fun aSwiftFacingMemberAbsentFromTheContractIsRejected() {
         assertFails(
             SWIFT_APP_GRAPH_MEMBERS,
-            "vehicleListStateHolder() is declared but absent from §20.10",
+            "vehicleListStateHolder(): VehicleListStateHolder is declared but absent from §20.10",
             swiftResults(contractMembers = listOf("close()")),
         )
     }
@@ -389,7 +391,7 @@ class SwiftSurfaceContractTest {
     fun aSwiftFacingMemberDeclaredOnlyInTheContractIsRejected() {
         assertFails(
             SWIFT_APP_GRAPH_MEMBERS,
-            "vehicleListStateHolder() is declared in §20.10 but absent from the class",
+            "vehicleListStateHolder(): VehicleListStateHolder is declared in §20.10 but absent from the class",
             swiftResults(classMembers = listOf("close()")),
         )
     }
@@ -398,8 +400,8 @@ class SwiftSurfaceContractTest {
     fun anOutOfOrderSwiftFacingMemberListIsRejected() {
         assertFails(
             SWIFT_APP_GRAPH_MEMBERS,
-            "§20.10 declares [close(), vehicleListStateHolder()], " +
-                "the class declares [vehicleListStateHolder(), close()]",
+            "§20.10 declares [close(), vehicleListStateHolder(): VehicleListStateHolder], " +
+                "the class declares [vehicleListStateHolder(): VehicleListStateHolder, close()]",
             swiftResults(contractMembers = listOf("close()", "vehicleListStateHolder(): VehicleListStateHolder")),
         )
     }
@@ -418,7 +420,7 @@ class SwiftSurfaceContractTest {
         assertFails(
             SWIFT_APP_GRAPH_MEMBERS,
             "no SwiftAppGraph members were parsed from §20.10; " +
-                "vehicleListStateHolder() is declared but absent from §20.10; " +
+                "vehicleListStateHolder(): VehicleListStateHolder is declared but absent from §20.10; " +
                 "close() is declared but absent from §20.10",
             swiftResults(contractMembers = emptyList()),
         )
@@ -429,7 +431,7 @@ class SwiftSurfaceContractTest {
         assertFails(
             SWIFT_APP_GRAPH_MEMBERS,
             "no SwiftAppGraph members were parsed from the class; " +
-                "vehicleListStateHolder() is declared in §20.10 but absent from the class; " +
+                "vehicleListStateHolder(): VehicleListStateHolder is declared in §20.10 but absent from the class; " +
                 "close() is declared in §20.10 but absent from the class",
             swiftResults(classMembers = emptyList()),
         )
@@ -455,6 +457,197 @@ class SwiftSurfaceContractTest {
                     "fun close()",
                     "private fun reviewProbe(scope: CoroutineScope): Int = 0",
                 ),
+            ),
+        )
+    }
+
+    // --- Return type, property and visibility drift ------------------------------------------
+
+    /**
+     * The member comparison compared `name(parameters)` and nothing else, so a changed return type
+     * left both assertions at `PASS`. `§11.6` and `§20.10` define the surface by its full
+     * signatures: a factory that returns another holder is a different surface.
+     */
+    @Test
+    fun aKotlinFacingReturnTypeChangeIsRejected() {
+        val declared = real.sources.getValue(APP_GRAPH)
+        val mutated = declared.replace(
+            "fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder",
+            "fun vehicleListStateHolder(scope: CoroutineScope): SessionStateHolder",
+        )
+        assertTrue(mutated != declared, "the fixture did not mutate the real AppGraph source")
+
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "vehicleListStateHolder(scope: CoroutineScope): SessionStateHolder is declared but absent from §20.10; " +
+                "vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder is declared in §20.10 but absent from the interface",
+            SwiftSurfaceContract(real.withSource(APP_GRAPH, mutated)).validate(),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingReturnTypeChangeIsRejected() {
+        val declared = real.sources.getValue(SWIFT_APP_GRAPH)
+        val mutated = declared.replace(
+            "fun vehicleListStateHolder(): VehicleListStateHolder",
+            "fun vehicleListStateHolder(): SessionStateHolder",
+        )
+        assertTrue(mutated != declared, "the fixture did not mutate the real SwiftAppGraph source")
+
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "vehicleListStateHolder(): SessionStateHolder is declared but absent from §20.10; " +
+                "vehicleListStateHolder(): VehicleListStateHolder is declared in §20.10 but absent from the class",
+            SwiftSurfaceContract(real.withSource(SWIFT_APP_GRAPH, mutated)).validate(),
+        )
+    }
+
+    /** A public property is part of the exported surface, so `§20.10` must declare it. */
+    @Test
+    fun aKotlinFacingPropertyOnlyInTheContractIsRejected() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "val extra: String is declared in §20.10 but absent from the interface",
+            SwiftSurfaceContract(
+                real.withSource(APP_GRAPH, rawBlock("interface AppGraph", CORE_MEMBERS)).copy(
+                    contract = rawBlock("interface AppGraph", CORE_MEMBERS + "val extra: String"),
+                ),
+            ).validate(),
+        )
+    }
+
+    @Test
+    fun aKotlinFacingPropertyOnlyInTheInterfaceIsRejected() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "val extra: String is declared but absent from §20.10",
+            SwiftSurfaceContract(
+                real.withSource(APP_GRAPH, rawBlock("interface AppGraph", CORE_MEMBERS + "val extra: String")).copy(
+                    contract = rawBlock("interface AppGraph", CORE_MEMBERS),
+                ),
+            ).validate(),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingPropertyOnlyInTheContractIsRejected() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "val extra: String is declared in §20.10 but absent from the class",
+            SwiftSurfaceContract(
+                real.withSource(
+                    SWIFT_APP_GRAPH,
+                    rawBlock(SWIFT_APP_GRAPH_DECLARATION, CORE_SWIFT_MEMBERS),
+                ).copy(
+                    contract = rawBlock(SWIFT_APP_GRAPH_DECLARATION, CORE_SWIFT_MEMBERS + "val extra: String"),
+                ),
+            ).validate(),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingPropertyOnlyInTheClassIsRejected() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "val extra: String is declared but absent from §20.10",
+            SwiftSurfaceContract(
+                real.withSource(
+                    SWIFT_APP_GRAPH,
+                    rawBlock(SWIFT_APP_GRAPH_DECLARATION, CORE_SWIFT_MEMBERS + "val extra: String"),
+                ).copy(
+                    contract = rawBlock(SWIFT_APP_GRAPH_DECLARATION, CORE_SWIFT_MEMBERS),
+                ),
+            ).validate(),
+        )
+    }
+
+    /**
+     * A `var` is a different member from a `val` of the same name and type: it is write access, and
+     * `§11.6` exposes no mutable state holder property.
+     */
+    @Test
+    fun aPropertyKindChangeIsRejected() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "var extra: String is declared but absent from §20.10; " +
+                "val extra: String is declared in §20.10 but absent from the interface",
+            SwiftSurfaceContract(
+                real.withSource(APP_GRAPH, rawBlock("interface AppGraph", CORE_MEMBERS + "var extra: String")).copy(
+                    contract = rawBlock("interface AppGraph", CORE_MEMBERS + "val extra: String"),
+                ),
+            ).validate(),
+        )
+    }
+
+    /** `internal` never reaches Swift, so it is not part of the compared surface. */
+    @Test
+    fun anInternalSwiftFacingHelperIsNotComparedAgainstTheContract() {
+        assertPasses(
+            SWIFT_APP_GRAPH_MEMBERS,
+            swiftResults(
+                classSource = swiftSource(
+                    "fun vehicleListStateHolder(): VehicleListStateHolder",
+                    "fun close()",
+                    "internal fun reviewProbe(scope: CoroutineScope): Int = 0",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun aProtectedSwiftFacingHelperIsNotComparedAgainstTheContract() {
+        assertPasses(
+            SWIFT_APP_GRAPH_MEMBERS,
+            swiftResults(
+                classSource = swiftSource(
+                    "fun vehicleListStateHolder(): VehicleListStateHolder",
+                    "fun close()",
+                    "protected fun reviewProbe(scope: CoroutineScope): Int = 0",
+                ),
+            ),
+        )
+    }
+
+    /** Neither does an `internal` or `protected` helper carry a checked default argument. */
+    @Test
+    fun anInternalSwiftFacingHelperWithAScopeAndADefaultIsAccepted() {
+        assertPasses(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            results(
+                swiftAppGraph = swiftSource(
+                    "fun vehicleListStateHolder(): VehicleListStateHolder",
+                    "internal fun reviewProbe(scope: CoroutineScope, retries: Int = 1): Int = retries",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun aProtectedSwiftFacingHelperWithAScopeAndADefaultIsAccepted() {
+        assertPasses(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            results(
+                swiftAppGraph = swiftSource(
+                    "fun vehicleListStateHolder(): VehicleListStateHolder",
+                    "protected fun reviewProbe(scope: CoroutineScope, retries: Int = 1): Int = retries",
+                ),
+            ),
+        )
+    }
+
+    /** An exported state-holder member that is `internal` is not part of the Swift surface. */
+    @Test
+    fun anInternalStateHolderFunctionWithADefaultIsAccepted() {
+        assertPasses(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            results(
+                holders = validHolders() + (
+                    SESSION_HOLDERS to
+                        "class SessionStateHolder {\n" +
+                        "    fun observe() {}\n" +
+                        "    internal fun reviewProbe(retries: Int = 1) {}\n" +
+                        "}\n"
+                    ),
             ),
         )
     }
@@ -512,6 +705,14 @@ class SwiftSurfaceContractTest {
         (listOf("$declaration {") + members.map { "    fun $it" } + listOf("}"))
             .joinToString("\n", postfix = "\n")
 
+    /**
+     * A fabricated `§20.10` block whose members are written verbatim, so a fixture can express a
+     * property, a `var` or a visibility modifier that `block(...)` always writes as a `fun`.
+     */
+    private fun rawBlock(declaration: String, members: List<String>): String =
+        (listOf("$declaration {") + members.map { "    $it" } + listOf("}"))
+            .joinToString("\n", postfix = "\n")
+
     private fun swiftSource(vararg members: String): String =
         (listOf("class SwiftAppGraph {") + members.map { "    $it" } + listOf("}"))
             .joinToString("\n", postfix = "\n")
@@ -547,6 +748,15 @@ class SwiftSurfaceContractTest {
             "vehicleListStateHolder(): VehicleListStateHolder",
             "close()",
         )
+
+        /**
+         * [DEFAULT_MEMBERS] written the way a raw block needs them. Derived rather than repeated,
+         * so a property fixture cannot drift from the surface declaration it sits beside.
+         */
+        val CORE_MEMBERS = DEFAULT_MEMBERS.map { "fun $it" }
+
+        /** [DEFAULT_SWIFT_MEMBERS] written the way a raw block needs them. */
+        val CORE_SWIFT_MEMBERS = DEFAULT_SWIFT_MEMBERS.map { "fun $it" }
         const val SWIFT_APP_GRAPH_DECLARATION = "class SwiftAppGraph"
     }
 }
