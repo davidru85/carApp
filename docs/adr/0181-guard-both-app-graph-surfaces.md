@@ -125,6 +125,18 @@ change.
   - A `§20.10` that declares no `interface AppGraph` block reports assertion 34 as a failure, the
     way assertion 35 already reported a missing `class SwiftAppGraph` block. It previously threw
     and aborted the whole `contract-check` report, suppressing every other assertion's result.
+  - The member signature is `kind`, name, parameter shapes and declared type. A function return
+    type and a property type are compared, because a factory returning another holder is a
+    different surface even when its name and parameters are unchanged; before review round 5 the
+    comparison stopped at the parameter list and a return-type change left both assertions at
+    `PASS`.
+  - A property is recognised only when it declares its type explicitly. A `val name = …` carries no
+    textual type to compare, so it yields no member; if an exported state holder ever gains one, the
+    per-class emptiness guard reports the class rather than comparing it against nothing.
+  - Visibility is classified four ways and only `public` members reach the comparison. An `internal`
+    or `protected` helper is not exported to Swift, so it is neither compared against `§20.10` nor
+    held to the scope and default-argument rules. Before review round 5 only `private` was filtered,
+    which compared `internal` helpers that the header can never show.
 
 ### Constraints Introduced
 
@@ -147,6 +159,11 @@ the named check with the offending member in the message.
 `aHolderWithALambdaDefaultInItsConstructorStillHasItsMembersChecked` and
 `aHolderClassWithNoParsedMemberIsReported` cover the constructor-brace defect and the per-class
 emptiness guard.
+`aKotlinFacingReturnTypeChangeIsRejected` and `aSwiftFacingReturnTypeChangeIsRejected` prove the
+declared type is compared on both surfaces; the four property fixtures prove a `val` present on only
+one side is a divergence and `aPropertyKindChangeIsRejected` proves a `var` is not a `val`; the four
+visibility fixtures prove an `internal` or `protected` helper is neither compared nor held to the
+scope and default rules.
 
 ## References
 

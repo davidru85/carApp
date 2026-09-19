@@ -124,6 +124,20 @@
   functions name the side that failed to parse. Five fixtures added (124 -> 129 build-logic tests),
   three mutation rows re-run, and the `§11.6` `@HiddenFromObjC` deferral recorded in `docs/BACKLOG.md`
   under both `E3-08` and `E3-05`.
+- Review round 5: three gaps in the two graph-surface comparisons, all of the "reported `PASS`
+  while covering less than it claimed" class, all fixed after a failing fixture each, no decision
+  changed. (1) `Member.signature` was `name(parameters)` and dropped the return type, so a factory
+  changed to return another holder left assertions 34 and 35 green; the signature now carries the
+  declaration kind and the declared type, and `balancedParameters` returns the parameter text with
+  its closing index so the type is read in the same scan. (2) `FUN` matched functions only, so an
+  exported `val`/`var` member was invisible to both; `propertyMembers` now parses direct properties
+  at brace depth zero — a local variable in a function or lambda is not collected — requires an
+  explicit declared type, and keeps the keyword, because a `var` is write access `§11.6` does not
+  expose. (3) Only `private` was filtered, so an `internal` or `protected` helper was compared
+  against `§20.10` and held to the scope and default rules although it never reaches Swift;
+  visibility is now four-way and the exported filters keep only `public`. Twelve fixtures added
+  (129 -> 141 build-logic tests), five mutation rows re-run including two controls that prove the
+  fix did not trade one silent gap for another.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 4 was
   pushed as `cb34b35..faa9357`. The ten required checks are green on run `35381816775`, which covers
@@ -274,6 +288,11 @@ the observed output, not the intended one.
 | 18 | `@Deprecated("x", ReplaceWith("y")) internal class StrayMapper` appended to `:wiring:firebase` | `architectureCheck` | FAIL `:wiring:firebase: wiring-product-logic` / `FirebaseAppProviders.kt:247 declares internal class StrayMapper` |
 | 19 | `syncStateHolder()` -> `syncStateHolder(coroutineScope: CoroutineScope)` in `SwiftAppGraph.kt` and the matching `§20.10` line | `contractCheck` | 14 FAIL `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`; 34 and 35 PASS; all 31 assertion lines still printed |
 | 20 | `interface AppGraph {` -> `interface KotlinAppGraphSurface {` in `§20.10` | `contractCheck` | 34 FAIL `§20.10 declares no interface AppGraph block`; all 31 assertion lines still printed, no stack trace and no `IllegalStateException` |
+| 21 | `vehicleListStateHolder(scope)` return type changed to `SessionStateHolder` in `AppGraph.kt` | `contractCheck` | 34 FAIL `vehicleListStateHolder(scope: CoroutineScope): SessionStateHolder is declared but absent from §20.10; vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder is declared in §20.10 but absent from the interface` |
+| 22 | `vehicleListStateHolder()` return type changed to `SessionStateHolder` in `SwiftAppGraph.kt` | `contractCheck` | 35 FAIL `vehicleListStateHolder(): SessionStateHolder is declared but absent from §20.10; vehicleListStateHolder(): VehicleListStateHolder is declared in §20.10 but absent from the class` |
+| 23 | `val extra: String = ""` added to `SwiftAppGraph` | `contractCheck` | 35 FAIL `val extra: String is declared but absent from §20.10` |
+| 24 | `private val unreviewed: String = ""` added to `SwiftAppGraph` (control) | `contractCheck` | PASS, no diagnostic: a non-exported property is not compared |
+| 25 | `syncStateHolder(coroutineScope: CoroutineScope)` in `SwiftAppGraph` (control) | `contractCheck` | 14 FAIL `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, unchanged by this round |
 
 Rows 2 and 10 are the two rows that previously passed while the change they were supposed to catch
 was in place: a default on an `AppGraph` factory's `scope` (the old `signature` stripped the default
@@ -391,6 +410,28 @@ reviewer see the other thirty results.
 `docs/adr/0181-…` gained the two new coverage limits. The `§11.6` `@HiddenFromObjC` rule is
 recorded as a deferral in `docs/BACKLOG.md` under both `E3-08` (with its reason) and `E3-05` (as an
 inherited acceptance criterion), expected owner `E3-05`.
+
+## Review Round 5
+
+The owner's fifth gated review of pull request #71 reproduced three gaps in the two graph-surface
+assertions, all of the same class: the comparison reported `PASS` while covering less than it
+claimed. All three were fixed on the same branch after a failing fixture each, and no decision
+changed — `D-180` keeps its wording and `Accepted` status.
+
+| Finding | Defect | Fix |
+|---------|--------|-----|
+| 1 | `Member.signature` was `name(parameters)` and discarded the return type. A factory changed to return another holder left assertions 34 and 35 at `PASS`, because the name and the parameters still matched | The signature carries the declaration kind and the declared type; `balancedParameters` returns the parameter text with its closing index so the return type is read from the same scan. Fixtures: `aKotlinFacingReturnTypeChangeIsRejected`, `aSwiftFacingReturnTypeChangeIsRejected` |
+| 2 | `FUN` recognises functions only, so a public `val`/`var` member was invisible to both assertions — the surface could gain an exported property with nothing failing | `propertyMembers` parses direct `val`/`var` members at brace depth zero, so a local variable in a function or lambda is not collected, and it requires an explicit declared type. The keyword is part of the signature, because a `var` is write access that `§11.6` does not expose. Fixtures: the four one-sided property fixtures and `aPropertyKindChangeIsRejected` |
+| 3 | Only `private` was filtered, so an `internal` or `protected` helper was compared against `§20.10` and held to the scope and default-argument rules, even though it never reaches Swift | Visibility is classified four ways and the exported-surface filters keep only `public`. Fixtures: `anInternalSwiftFacingHelperIsNotComparedAgainstTheContract`, `aProtectedSwiftFacingHelperIsNotComparedAgainstTheContract`, `anInternalSwiftFacingHelperWithAScopeAndADefaultIsAccepted`, `aProtectedSwiftFacingHelperWithAScopeAndADefaultIsAccepted`, `anInternalStateHolderFunctionWithADefaultIsAccepted` |
+
+**Mutation evidence for round 5** is rows 21 to 23 of the table under "Acceptance Evidence". Each
+row was applied to the real repository, the check run, and the file restored; `git status`
+reported only the two intended files afterwards.
+
+Two controls prove the fix did not trade one silent gap for another: appending `private val
+unreviewed: String` to `SwiftAppGraph` leaves `contractCheck` at `PASS`, and the assertion-14
+scope mutation on `syncStateHolder` still fails. Assertion ids, names, the member order and the
+missing-side diagnostics are unchanged; only the compared signature grew.
 
 ## Files Changed
 

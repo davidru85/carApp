@@ -38,6 +38,47 @@
 
 ## Entries
 
+### 2026-09-19 — E3-08 review round 5: the graph-surface comparison missed return types, properties and visibility
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's fifth gated review of pull request #71 found three gaps in the two
+  graph-surface assertions, all reporting `PASS` while covering less than they claimed, and all
+  fixed on `story/E3-08-app-graph-and-firebase-wiring` after a failing fixture each.
+  `Member.signature` was `name(parameters)` and discarded the return type, so a factory changed to
+  return another holder left assertions 34 and 35 green; the signature now carries the declaration
+  kind and the declared type, and `balancedParameters` returns the parameter text with its closing
+  index so the type is read from the same scan. `FUN` matched functions only, so an exported
+  `val`/`var` member was invisible to both assertions; `propertyMembers` now parses direct
+  properties at brace depth zero — a local variable inside a function or a lambda is not collected —
+  requires an explicit declared type, and keeps the keyword because a `var` is write access that
+  `§11.6` does not expose. Only `private` was filtered, so an `internal` or `protected` helper was
+  compared against `§20.10` and held to the scope and default-argument rules although it never
+  reaches Swift; visibility is now classified four ways and the exported filters keep only `public`.
+- **Why:** each gap was a false negative on a surface the generated Objective-C header cannot see,
+  and together they meant the surface definition could drift in three independent ways without a
+  single failing check. The same class of defect drove review rounds 3 and 4, so the fixtures now
+  cover the three axes the comparison had left open — declared type, member kind as property, and
+  visibility — rather than only the shapes that happened to be exercised when the parser was first
+  written.
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log, and the pull-request
+  description. Code: `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. Assertion ids,
+  names, member order and the missing-side diagnostics are unchanged.
+- **Verification:** `:build-logic:convention:test` reports 141 tests and 0 failures;
+  `contractCheck` reports 14, 34 and 35 `PASS` with no `PENDING`; `architectureCheck` still prints
+  `16 rules … 23 modules`; `ktlintCheck detekt` pass. Five mutation rows were applied to the real
+  repository and reverted: a return-type change on each surface fails its assertion with the changed
+  signature named, an added public property fails with `val extra: String is declared but absent
+  from §20.10`, and two controls confirm the fix did not trade one silent gap for another — a
+  `private` property is not compared, and the assertion-14 scope mutation still fails. No dependency
+  appears in any `build.gradle.kts` or the version catalog, and the diff is confined to the two
+  `build-logic` files. The canonical CI command passes.
+- **Follow-ups / risks:** a property without an explicit declared type yields no member; the
+  per-class emptiness guard reports the class rather than comparing it against nothing, and
+  `§20.10` always declares the type. The `§11.6` `@HiddenFromObjC` deferral and the `shared-tests`
+  and `provider-decoupling` silent stalls are unchanged from the previous rounds.
+
 ### 2026-09-18 — E3-08 review round 4: three fail-open checks, and the §11.6 deferral in the backlog
 
 - **Type:** correction
