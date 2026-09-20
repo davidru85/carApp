@@ -1,5 +1,7 @@
 package com.ruizurraca.carapp.buildlogic.architecture
 
+import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
+
 /**
  * Executable module and source architecture rules, as pure functions over [ModuleUnderCheck].
  *
@@ -42,6 +44,31 @@ object ArchitectureChecker {
 
     private val IMAGE_LOADING_COORDINATES = listOf("io.coil-kt", "com.github.bumptech.glide", "com.squareup.picasso")
 
+    private const val INTEGRATION_PACKAGE = "com.ruizurraca.carapp.integration."
+
+    /**
+     * The Koin `Module` type, exactly. `[A-Za-z0-9_]*` after `Module` would admit any type whose
+     * name merely begins with `Module` — `ModuleRegistry`, `ModuleUsage` — and a Koin binding is
+     * precisely the `Module` type, its nullable form or its fully-qualified spelling.
+     */
+    private val KOIN_MODULE_TYPE =
+        Regex("""(?:org\.koin\.core\.module\.)?Module\??$""")
+
+    /**
+     * `= module {` as the initialiser of a declaration, rather than any occurrence of `module {` on
+     * the line. A `val mentioned = otherValue + module { … }` is not a Koin binding.
+     */
+    private val MODULE_INITIALISER = Regex("""^module\s*\{""")
+
+    /**
+     * Group 1 is everything before the keyword, group 2 the keyword itself and group 3 the words
+     * that follow it. `enum class` and `fun interface` keep both words recognisable: for those the
+     * keyword is the first word and the second one is a modifier, so `Declaration` can report
+     * `enum class StrayMode` rather than `enum StrayMode class`.
+     */
+    private val TOP_LEVEL_DECLARATION =
+        Regex("""^([\w\s]*?)\b(class|interface|object|typealias|val|var|fun)\b((?:\s+\w+)*)""")
+
     private val SYNCHRONIZED_ENTITY_MUTATION_FUNCTIONS =
         setOf(
             "insertVehicleRow",
@@ -73,6 +100,8 @@ object ArchitectureChecker {
         violations += checkDatabaseMutationFacade(module)
         violations += checkConsumptionTypesStayInCoreModel(module)
         violations += checkIntegrationsDoNotBuildTheGraph(module)
+        violations += checkWiringProductLogic(module)
+        violations += checkFirebaseImplementationsStayInWiring(module)
         violations += checkCalendarTypeBoundary(module)
 
         if (rule != null) {
@@ -482,6 +511,162 @@ object ArchitectureChecker {
                     "${it.file}:${it.number} references buildAppGraph. Integrations expose provider " +
                         "implementations; only platform composition builds the graph " +
                         "(docs/CONTRACTS.md §11.6).",
+                )
+            }
+    }
+
+    /**
+     * `docs/TECHNICAL_PLAN.md §4`: "product logic" in `:wiring:firebase` is defined checkably —
+     * every top-level declaration there MUST be a Koin `Module`, an abstraction factory or a
+     * platform initialiser. No use cases, repositories, mappers, validation or business
+     * `expect`/`actual`.
+     *
+     * A factory and a platform initialiser are both Kotlin functions, so the permissible top-level
+     * shapes are: any function, of any visibility, because the private ones are the helpers of the
+     * factories in the same file; a Koin `Module`; and a private property, which is the wiring
+     * module's own tuning data. Every other declaration — a class, an object, an interface, an
+     * enum, a typealias or a non-private property — is product logic wherever it lives, because a
+     * mapper, a repository or a use case is none of those three shapes even when it is `private`.
+     *
+     * `expect`/`actual` is rejected in every shape. Indentation decides what counts as top level:
+     * a member of an object expression or of a class the rule already rejected is inside a
+     * declaration, so only column-zero lines are inspected.
+     */
+    private fun checkWiringProductLogic(module: ModuleUnderCheck): List<Violation> {
+        if (module.path != ":wiring:firebase") return emptyList()
+        val continuations = continuationLines(module.sourceLines)
+        return module.sourceLines
+            .filter { it.text.isNotBlank() && !it.text.first().isWhitespace() }
+            .mapNotNull { line -> line.topLevelDeclaration()?.let { line to it } }
+            .filter { (line, declaration) ->
+                declaration.isExpectOrActual ||
+                    (
+                        declaration.isProductLogic() &&
+                            !line.isKoinModuleDeclaration(declaration, continuations[line].orEmpty())
+                    )
+            }
+            .map { (line, declaration) ->
+                Violation(
+                    module.path,
+                    "wiring-product-logic",
+                    "${line.file}:${line.number} declares ${declaration.description}. " +
+                        "docs/TECHNICAL_PLAN.md §4 admits only a Koin Module, a factory returning an " +
+                        "abstraction or a platform initialiser in :wiring:firebase.",
+                )
+            }
+    }
+
+    /**
+     * A `val`/`var` whose declared type or initialiser makes it a Koin `Module` binding.
+     *
+     * The keyword is part of the test. A type declaration also carries a type after its first
+     * colon — `class FirebaseWiring : Module` — and `§4` rejects it at any visibility, so only a
+     * property may claim the Koin exemption.
+     *
+     * The annotations are stripped first: `@get:JvmName("bindings") internal val bindings: Module`
+     * carries a colon inside the use-site target, so reading the raw line would take `JvmName(…)`
+     * for the declared type and reject a legitimate binding.
+     */
+    private fun SourceLine.isKoinModuleDeclaration(
+        declaration: Declaration,
+        continuation: String,
+    ): Boolean {
+        if (declaration.keyword != "val" && declaration.keyword != "var") return false
+        val body = KotlinSourceText.code(stripLeadingAnnotations(text))
+        val declaredType = body.substringAfter(':', "").substringBefore('=').trim()
+        if (KOIN_MODULE_TYPE.matches(declaredType)) return true
+        val initialiser = body.substringAfter('=', "").trimStart()
+        if (MODULE_INITIALISER.containsMatchIn(initialiser)) return true
+        // `val bindings =` with `module { … }` on the next line is the idiomatic wrapped form and is
+        // the shape `§4` admits. The continuation is masked before it is matched, so a wrapped
+        // string literal spelling `module {` is not a binding, and the anchored pattern still
+        // requires the initialiser to *be* the module rather than to mention one.
+        return body.contains('=') &&
+            initialiser.isEmpty() &&
+            MODULE_INITIALISER.containsMatchIn(KotlinSourceText.code(continuation).trimStart())
+    }
+
+    /**
+     * The next recorded source line of the same file, keyed by the line it follows. Blank lines are
+     * already absent from [ModuleUnderCheck.sourceLines], so a declaration separated from its
+     * initialiser by an empty line still finds it.
+     */
+    private fun continuationLines(lines: List<SourceLine>): Map<SourceLine, String> =
+        lines.zipWithNext()
+            .filter { (current, next) -> current.file == next.file }
+            .associate { (current, next) -> current to next.text }
+
+    /**
+     * The declaration a column-zero line introduces, or `null` when the line is a continuation, a
+     * closing brace or anything else that does not start one.
+     *
+     * `fun interface` keeps both words as the keyword: the `fun` there modifies the interface, and a
+     * functional interface is a type declaration rather than the abstraction factory that `§4`
+     * admits in this module. `enum class` needs no special case, because the regex matches `class`
+     * and leaves `enum` in the modifiers, which is the order the description is rebuilt in.
+     */
+    private fun SourceLine.topLevelDeclaration(): Declaration? {
+        val match = TOP_LEVEL_DECLARATION.find(stripLeadingAnnotations(text)) ?: return null
+        val modifiers = match.groupValues[1].trim()
+        val declared = match.groupValues[2]
+        val following = match.groupValues[3].trim()
+
+        return if (declared == "fun" && following.startsWith("interface")) {
+            Declaration("fun interface", modifiers, following.removePrefix("interface").trim())
+        } else {
+            Declaration(declared, modifiers, following)
+        }
+    }
+
+    /**
+     * The line with every leading annotation removed, including a use-site target
+     * (`@get:JvmName("x")`) and nested parentheses (`@Deprecated("x", ReplaceWith("y"))`).
+     *
+     * A regular expression cannot balance parentheses: `\([^)]*\)` stopped at the first `)`, the
+     * annotation stayed on the line, `TOP_LEVEL_DECLARATION` could not cross the `@`, and the
+     * declaration escaped the rule entirely. An annotation whose parenthesis never closes on this
+     * line leaves the text untouched, which parses as no declaration.
+     */
+    private fun stripLeadingAnnotations(text: String): String =
+        KotlinSourceText.stripLeadingAnnotations(text)
+
+    private fun Declaration.isProductLogic(): Boolean {
+        if (isExpectOrActual) return true
+        return when (keyword) {
+            "fun" -> false
+            "val", "var" -> !isPrivate
+            else -> true
+        }
+    }
+
+    private data class Declaration(
+        val keyword: String,
+        val modifiers: String,
+        val name: String,
+    ) {
+        val isExpectOrActual: Boolean get() = "expect" in modifierWords || "actual" in modifierWords
+
+        val isPrivate: Boolean get() = "private" in modifierWords
+
+        val modifierWords: Set<String>
+            get() = modifiers.split(' ', '\t', '\n').filter { it.isNotBlank() }.toSet()
+
+        /** `internal class StrayMapper`, with the declared name in its source position. */
+        val description: String
+            get() = listOf(modifiers, keyword, name).filter { it.isNotEmpty() }.joinToString(" ")
+    }
+
+    /** `docs/CONTRACTS.md §11.6`: only `:wiring:firebase` constructs Firebase implementations. */
+    private fun checkFirebaseImplementationsStayInWiring(module: ModuleUnderCheck): List<Violation> {
+        if (module.path == ":wiring:firebase" || module.path.startsWith(":integration:")) return emptyList()
+        return module.sourceLines
+            .filter { it.text.contains(INTEGRATION_PACKAGE) }
+            .map {
+                Violation(
+                    module.path,
+                    "firebase-implementation-outside-wiring",
+                    "${it.file}:${it.number} names an :integration:* implementation. " +
+                        "docs/CONTRACTS.md §11.6 makes :wiring:firebase its only construction site.",
                 )
             }
     }

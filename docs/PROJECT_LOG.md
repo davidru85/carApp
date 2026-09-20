@@ -38,6 +38,432 @@
 
 ## Entries
 
+### 2026-09-20 — E3-08 review round 9: two blind spots in the new guards and two document divergences
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the ninth review of pull request #71 found four defects, two executable and two
+  documentary, and all four were closed on the same branch. `Member.signature` compared kind, name,
+  parameter shapes and declared type but discarded the `suspend` modifier, so mutating
+  `AppGraph.syncController()` to `suspend fun syncController(): SyncController` with `§20.10`
+  unchanged left assertions 14, 34 and 35 all at `PASS`; `interface AppGraph` is `@HiddenFromObjC`,
+  so the generated golden header could not see it either. `suspend` is now read from the
+  annotation-masked declaration header and compared. `ArchitectureChecker.isKoinModuleDeclaration`
+  read the initialiser from the declaration's own physical line, so the idiomatic wrapped form
+  `val firebaseModule =` followed by `    module { … }` was reported as `wiring-product-logic` — a
+  false positive against the exact shape `docs/TECHNICAL_PLAN.md §4` admits, which would have blocked
+  the first story to add a Koin module to `:wiring:firebase`; the initialiser is now read from the
+  next recorded source line of the same file when the declaration line ends at its `=`, on masked
+  text. The `§20.10` `SyncStateHolder` block declared `refreshDebug()` before `clearMessage()` while
+  the class declares the reverse, and the contract was reordered rather than the class, so the
+  generated header is untouched. The `E3-08` backlog section lacked the `Human review required.`
+  line its story-index row claims; the gate is correct by path and by topic, so only the line was
+  added.
+- **Why:** the first defect is the exact drift class assertion 34 was created to prevent after
+  `E3-03` shipped `syncStateHolder(scope)` undeclared, and the surface it hides on is the one no
+  other check can observe. The second was not a rejected shape but a rejection of the permitted one,
+  which is worse than a missing check because it would fail a correct implementation. The third and
+  fourth are documentation that no longer described reality: a contract block out of order with the
+  code it defines, and a gate claim in the index without the gate line in the section.
+- **Documents touched:** `docs/CONTRACTS.md §20.10`, `docs/BACKLOG.md`, `docs/adr/0179-…`,
+  `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code: `SwiftSurfaceContract.kt`,
+  `ArchitectureChecker.kt` and their two test files. No production source, no decision, no
+  dependency, no assertion number and no golden header changed.
+- **Verification:** `:build-logic:convention:test` reports 162 tests and 0 failures; the two
+  regressions and the six asserted shapes were observed RED first (3 failing tests, no compilation
+  error). `architectureCheck` prints `16 rules … 23 modules`, `contractCheck` reports assertions 1,
+  5, 7, 14, 34 and 35 `PASS` with no `PENDING`, and `ktlintCheck detekt koverVerify` pass. Two
+  behavioural proofs were run against the real repository: the `suspend` mutation fails assertion 34
+  with `suspend syncController(): SyncController is declared but absent from §20.10; syncController():
+  SyncController is declared in §20.10 but absent from the interface` and reverts to green, and a
+  wrapped `module { }` appended to `:wiring:firebase` passes `architectureCheck` while the same
+  wrapper with `listOf(1)` fails it with `declares internal val wrappedProbe`. Commits `d1df795`
+  (RED) and `bd92724` (GREEN); run `35520555700` on the head `50919d8` is green on all ten required
+  checks on its first attempt.
+- **Follow-ups / risks:** no other declaration modifier is modelled — `operator`, `infix`, `inline`
+  and `tailrec` do not change the exported call shape, and a function type parameter list is not
+  compared, so adding one on a single side is not detected; `§20.10` declares none of them today.
+  No assertion compares state-holder blocks, which is why the `SyncStateHolder` order was found by
+  review rather than by a check; that gap stays recorded as the `§11.6` hidden-member follow-up.
+
+### 2026-09-20 — E3-08 review round 8: six fail-open and false-positive paths in the surface comparison
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178`, `D-179` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the eighth review of pull request #71 reproduced six defects in the two checks
+  this story added and one false documentation claim, and all seven were closed on the same branch
+  after the regression suite was observed RED. Both member matchers enumerated their modifiers, so a
+  public property carrying `abstract`, `inline`, `expect`, `actual` or `external` was invisible to
+  assertions 34 and 35, and `expect class VehicleFormStateHolder` dropped out of assertion 14 with
+  its real default argument. `bodyOf` and `contractBlock` located a declaration with `indexOf`, which
+  matches a name prefix, so `class SessionStateHolderShim` shadowed the real holder body. An accessor
+  written on the declaration line was captured as part of the property type, so
+  `val isClosed: Boolean get()` could never equal any `§20.10` spelling. `propertyMembers` tracked
+  brace depth only, so a nested class's constructor `val` parameters were collected as public members
+  of the enclosing declaration; it now tracks parenthesis depth too. A leading `context(…)` clause
+  put a `(` before the keyword, which `TOP_LEVEL_DECLARATION` cannot cross, so the declaration was
+  skipped with no report; the clause is now stripped with the annotations, in the lexical module
+  rather than duplicated in `ArchitectureChecker`.
+- **Why:** five of the six let a real surface violation through the check that exists to report it,
+  and the sixth made a legal declaration impossible to write in the contract. The recorded mitigation
+  for the `STATE_HOLDER` modifier limit — that the no-parsed-class guard bounded it — was simply
+  wrong: the guard fires only when a source yields no holder at all, and each of the three
+  `HOLDER_SOURCES` declares two, so a holder could disappear unnoticed. A check that reports `PASS`
+  while covering less than it claims is not coverage, and a documented mitigation that does not hold
+  is worse than an undocumented limit.
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code:
+  `SwiftSurfaceContract.kt`, `source/KotlinSourceText.kt` and `ArchitectureCheckerTest.kt`. No
+  production source, no contract text, no decision, no dependency and no baseline changed.
+- **Verification:** `:build-logic:convention:test` reports 160 tests and 0 failures (153 before this
+  round plus 7); the six regressions and the rule-level context fixture were observed RED as seven
+  failing tests with no compilation error. `ktlintCheck detekt` pass, `architectureCheck` prints
+  `16 rules … 23 modules`, and `contractCheck` reports 14, 34 and 35 `PASS` with no `PENDING` and no
+  `FAIL`. The accessor regression was re-verified RED with its own fix reverted, so it proves the
+  defect rather than passing incidentally. Commits `c322c6e` (RED) and `84d376a` (GREEN).
+- **Follow-ups / risks:** the `:wiring:firebase` rule still fails open on a column-zero line it cannot
+  classify: it reports nothing for such a line rather than reporting that it could not parse it. The
+  fixed holder-source inventory, textual type recognition and the property-without-an-explicit-type
+  limit are unchanged and are not part of this correction.
+
+### 2026-09-20 — E3-08 review round 7: eight fail-open paths in the wiring rule and the surface comparison
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178`, `D-179` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the review of pull request #71 at `72392dd` reproduced eight further defects in
+  the two checks this story added. The `:wiring:firebase` rule admitted `expect`/`actual` whenever a
+  Koin binding matched, because the exemption ran before the modifier test; it could not see a
+  qualified annotation or a parenthesis inside a literal, because the annotation scanner did not
+  accept `.` and counted delimiters on raw text; and it accepted an inner assignment or a string as a
+  property's own `module { }` initialiser, because `containsMatchIn` searched the whole line. The
+  Swift-surface comparison classified visibility from raw header text, so a word inside an annotation
+  message such as `internal` made a public function look internal and skipped its forbidden default;
+  it scanned function declarations without the brace-depth filter the property scanner already had
+  and read raw comment text, so a local helper or a commented-out declaration became an exported
+  member; it could not read a property with repeated modifiers or a qualified annotation; it could
+  not see a backtick-escaped function name, which bypassed the default-argument check; and a
+  malformed `§20.10` block threw, losing the remainder of the `contract-check` report. All eight are
+  closed behind one shared offset-preserving lexical mask,
+  `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/source/KotlinSourceText.kt`,
+  which blanks comments and string, character and template literals while keeping every character
+  position, so the existing patterns and diagnostics are unchanged.
+- **Why:** every defect let a real surface violation through the check that exists to report it, and
+  the last one replaced the whole assertion report with an exception. The mask is the smaller and
+  more honest fix than widening each regular expression: it keeps the checks textual, adds no
+  dependency, and makes the delimiter counting correct for the bodies, parameter lists and blocks
+  that already relied on it.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log, and
+  the pull-request description. Code: `ArchitectureChecker.kt`, `SwiftSurfaceContract.kt`, the new
+  `source/KotlinSourceText.kt` and the new test-only `Pr71ReviewRegressionTest.kt`. No production
+  source, no contract text, no decision, no dependency and no baseline changed.
+- **Verification:** the regression suite was added alone first and observed RED: 10 tests, 10
+  failures, none a compilation error. After the fix the three suites report **92 tests and 0
+  failures** — 82 pre-existing plus the 10 new ones. `contractCheck` reports 14, 34 and 35 `PASS`
+  with no `PENDING`; `architectureCheck` still prints `16 rules … 23 modules`; `ktlintCheck detekt`
+  pass; `git diff --check` is clean. The two ADR-0181 claims removed here were refuted by running the
+  check before removal. The canonical CI command passes, and the round-7 commits are `f8b5c26` (RED)
+  and `63b0d47` (GREEN). Run `35512948905` on the corrected head `2c258c1` is green on all ten
+  required checks on its first attempt; the reviewed head `72392dd` was green on its own run
+  `35508457783`, which is exactly why the eight defects needed reproducing by hand.
+- **Follow-ups / risks:** the fixed holder-source inventory, textual type recognition, the
+  property-without-an-explicit-type limit and the `§11.6` hidden-member and Konsist deferrals are
+  unchanged and are not part of this correction.
+
+### 2026-09-20 — E3-08 review round 6: declaration order is compared across both member kinds
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's sixth gated review of pull request #71 found that `members(...)`
+  concatenated `functionMembers(body) + propertyMembers(body)`, so every function was ordered
+  before every property. A contract declaring `fun A`, `val B`, `fun C` and an implementation
+  declaring `fun A`, `fun C`, `val B` both normalized to `[A, C, B]`, and assertions 34 and 35
+  reported `PASS` on an ordering violation that `docs/CONTRACTS.md` and `D-180` make part of the
+  surface definition. `Member` gained a `sourceOffset` that both producers populate in the same
+  character space — functions from the match start, properties from the absolute line offset plus
+  the keyword offset — and the combined list is sorted by it. `sourceOffset` is excluded from
+  `signature`, so the comparison still rests on kind, name, parameters, declared type, defaults and
+  visibility.
+- **Why:** the surface contract states exact member parity *in order*, and the two scanners were
+  written independently in review round 5, which is what made the concatenation look harmless. A
+  property and a function are ordered against each other by the reader, so the check has to order
+  them the same way.
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code:
+  `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. No production source, no
+  contract text, no decision and no dependency changed.
+- **Verification:** `:build-logic:convention:test` reports 143 tests and 0 failures (141 + 2);
+  `contractCheck` reports 14, 34 and 35 `PASS` with no `PENDING`; `architectureCheck` still prints
+  `16 rules … 23 modules`; `ktlintCheck detekt` pass. On the real repository, adding `val extra:
+  String` to `SwiftAppGraph` before `fun close()` while `§20.10` declares it after fails assertion
+  35 with both real orders quoted, and placing it at the same position on both sides passes — the
+  control that shows the fix reports position rather than inventing a mismatch. Both mutations were
+  reverted and `git status --porcelain` reported only the intended files. The canonical CI command
+  passes, and run `35507688023` on the head `c1fc7b4` is green on all ten required checks on their
+  first attempt.
+- **Follow-ups / risks:** none new. The property-without-an-explicit-type limit, the `§11.6`
+  `@HiddenFromObjC` deferral and the `shared-tests` and `provider-decoupling` silent stalls are
+  unchanged from the previous rounds.
+
+### 2026-09-19 — E3-08 review round 5: the graph-surface comparison missed return types, properties and visibility
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's fifth gated review of pull request #71 found three gaps in the two
+  graph-surface assertions, all reporting `PASS` while covering less than they claimed, and all
+  fixed on `story/E3-08-app-graph-and-firebase-wiring` after a failing fixture each.
+  `Member.signature` was `name(parameters)` and discarded the return type, so a factory changed to
+  return another holder left assertions 34 and 35 green; the signature now carries the declaration
+  kind and the declared type, and `balancedParameters` returns the parameter text with its closing
+  index so the type is read from the same scan. `FUN` matched functions only, so an exported
+  `val`/`var` member was invisible to both assertions; `propertyMembers` now parses direct
+  properties at brace depth zero — a local variable inside a function or a lambda is not collected —
+  requires an explicit declared type, and keeps the keyword because a `var` is write access that
+  `§11.6` does not expose. Only `private` was filtered, so an `internal` or `protected` helper was
+  compared against `§20.10` and held to the scope and default-argument rules although it never
+  reaches Swift; visibility is now classified four ways and the exported filters keep only `public`.
+- **Why:** each gap was a false negative on a surface the generated Objective-C header cannot see,
+  and together they meant the surface definition could drift in three independent ways without a
+  single failing check. The same class of defect drove review rounds 3 and 4, so the fixtures now
+  cover the three axes the comparison had left open — declared type, member kind as property, and
+  visibility — rather than only the shapes that happened to be exercised when the parser was first
+  written.
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log, and the pull-request
+  description. Code: `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. Assertion ids,
+  names, member order and the missing-side diagnostics are unchanged.
+- **Verification:** `:build-logic:convention:test` reports 141 tests and 0 failures;
+  `contractCheck` reports 14, 34 and 35 `PASS` with no `PENDING`; `architectureCheck` still prints
+  `16 rules … 23 modules`; `ktlintCheck detekt` pass. Five mutation rows were applied to the real
+  repository and reverted: a return-type change on each surface fails its assertion with the changed
+  signature named, an added public property fails with `val extra: String is declared but absent
+  from §20.10`, and two controls confirm the fix did not trade one silent gap for another — a
+  `private` property is not compared, and the assertion-14 scope mutation still fails. No dependency
+  appears in any `build.gradle.kts` or the version catalog, and the diff is confined to the two
+  `build-logic` files. The canonical CI command passes, and run `35430529028` on the head `a99d7b7`
+  is green on all ten required checks on their first attempt.
+- **Follow-ups / risks:** a property without an explicit declared type yields no member; the
+  per-class emptiness guard reports the class rather than comparing it against nothing, and
+  `§20.10` always declares the type. The `§11.6` `@HiddenFromObjC` deferral and the `shared-tests`
+  and `provider-decoupling` silent stalls are unchanged from the previous rounds.
+
+### 2026-09-18 — E3-08 review round 4: three fail-open checks, and the §11.6 deferral in the backlog
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178`, `D-179` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's fourth gated review of pull request #71 reproduced three defects in
+  the checks `E3-08` added, all *fail-open* — the rule reported `PASS` while covering less than it
+  claimed — and all fixed on `story/E3-08-app-graph-and-firebase-wiring` after a failing fixture
+  each. The annotation stripper was the regular expression `^(?:@\w+(?:\([^)]*\))?\s+)+`, which
+  cannot balance parentheses: `@Deprecated("x", ReplaceWith("y")) internal class StrayMapper` left
+  the `@` on the line and the declaration parsed as nothing, and `@get:JvmName("leak") internal val
+  leaked = …` escaped the same way. A scanner replaces it and the Koin exemption now reads the
+  stripped text too, because a use-site target carries its own colon. `Member.scopeParameter`
+  matched the parameter **name** `scope` rather than the declared type, so
+  `SwiftAppGraph.syncStateHolder(coroutineScope: CoroutineScope)` passed assertions 14, 34 and 35
+  together once `§20.10` was edited in the same change; the check now tests the declared
+  `CoroutineScope` type. `appGraphMembersMatch` called `contractBlock()`, which `check`s for
+  `interface AppGraph` and throws, so a `§20.10` without that block aborted the entire
+  `contract-check` run with `IllegalStateException` and suppressed every other assertion's result;
+  it now returns that result the way assertion 35 already did, and both member comparisons name the
+  side that failed to parse instead of blaming both.
+- **Why:** all three were invisible to a `PASS`. Two let an offending declaration or parameter
+  through, and the third replaced thirty-one results with a stack trace, which is the worst failure
+  shape for a report a reviewer reads. The `§11.6` deferral was also recorded for the first time in
+  `docs/BACKLOG.md` under both `E3-08` and `E3-05`, where the owner will see it, rather than only in
+  the handoff.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/BACKLOG.md`,
+  `docs/handoff-E3-08.md`, this log, and the pull-request description. Code:
+  `ArchitectureChecker.kt`, `SwiftSurfaceContract.kt`, `ArchitectureCheckerTest.kt` and
+  `SwiftSurfaceContractTest.kt` only. `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` are unchanged:
+  no decision changed, only its implementation.
+- **Verification:** `:build-logic:convention:test` reports 129 tests and 0 failures;
+  `architectureCheck` still prints `16 rules … 23 modules`; `contractCheck` reports 14, 34 and 35
+  `PASS` with no `PENDING`; `ktlintCheck detekt` pass. Mutation 18 fails `architectureCheck` with
+  `declares internal class StrayMapper`, mutation 19 fails assertion 14 with
+  `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, and mutation 20 degrades to
+  a single `34 FAIL` while all 31 assertion lines still print — no stack trace. Each mutation was
+  reverted and `git status --porcelain` printed nothing. The canonical CI command passes, and run
+  `35381816775` on the head `faa9357` is green on all ten required checks on their first attempt.
+  Run `35376856797` on `f8b8406` had also needed one re-run, when the pre-existing silent stall
+  reached `provider-decoupling`'s 8-minute Android-host step with no test result.
+- **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
+  state-holder class is declared in `§20.10` still has no executable check; it is recorded in
+  `docs/BACKLOG.md` under `E3-08` and `E3-05`, and making it executable needs a `D-` decision on
+  whether it lives in `SwiftSurfaceContract` or in the `D-16` Konsist rules. The `shared-tests`
+  silent stalls are unchanged and remain owned by `E1-14`/`E1-17`; on this round's head run the
+  stall also reached `provider-decoupling`'s 8-minute Android-host step, so it is not specific to
+  `shared-tests` and a re-run there hides as much as one everywhere else.
+
+### 2026-09-18 — E3-08 review round 1: four defects in the story's own checks, and a fixture per branch
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / `D-178`, `D-179`, `D-180` (no new decision)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's gated review of pull request #71 reproduced four defects in the checks
+  `E3-08` added, all fixed on `story/E3-08-app-graph-and-firebase-wiring` after a failing fixture
+  each. The recorded mutation evidence was false: neither assertion could see a Kotlin default on the
+  Kotlin-facing `AppGraph`, because assertion 14 never read the interface's own defaults and
+  assertion 34 stripped the default before comparing signatures. Assertion 34 now compares the
+  default as part of the parameter shape and assertion 14 reports the interface's defaults.
+  Assertion 14 no longer false-positives on a private `SwiftAppGraph` member, which is not exported
+  and therefore not constrained by `§18`. The Koin `Module` matcher matches the `Module` type exactly
+  instead of by prefix, and requires `module {` to be the declaration's own initialiser, so
+  `val moduleRegistry: ModuleRegistry` and an incidental `module {` are rejected. The violation
+  message names the declared type in source order (`declares enum class StrayMode`, not
+  `declares enum  StrayMode class`). `SwiftSurfaceContractTest` gained one failing fixture per
+  problem branch of both assertions and lost its dead `fixture: Boolean = true` parameter. The
+  coverage limits review asked about are enumerated in ADR-0181 under Negative, with the
+  no-parsed-class guard added so a holder source that stops being recognised is reported.
+- **Why:** a check that cannot fail for the defect it names is not coverage. Three of the four
+  defects were false negatives or false positives in the check itself; the recorded evidence table
+  had not been re-run after the refactor that introduced them.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log.
+  `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md` and the decision mirrors are unchanged: no decision
+  changed, only its implementation.
+- **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
+  actionable tasks), `:build-logic:convention:test` reports 109 tests and 0 failures, and
+  `contractCheck` reports every assertion `PASS` with no `PENDING` line. All twelve mutation rows
+  were re-run after the fixes and each one fails with the message recorded in the handoff; the tree
+  is clean after every restore.
+- **Follow-ups / risks:** the four `SwiftSurfaceContract` coverage limits (hardcoded holder sources,
+  the holder modifier set, the string-literal-unaware brace matcher, and the shapes `FUN` cannot
+  match) are enumerated in ADR-0181; the Konsist fixture of `§20.10` stays deferred to the story that
+  first adds an iOS `requestSync` call site.
+
+**Review round 2, appended to the same record.** The owner's second gated review of pull request #71
+found six further defects, all fixed on the same branch after a failing fixture each and with no new
+decision. Two were evasions of the `:wiring:firebase` rule: `isKoinModuleDeclaration` read the text
+after the first `:` before the declaration keyword was known, so `class FirebaseWiring : Module`,
+`internal object FuelEntryMapper : Module` and `interface LocalGate : Module` claimed the Koin
+exemption, and the declaration matcher could not cross `@`, so an annotated `class` and
+`@JvmField internal val leaked` parsed as no declaration at all; the exemption now applies only to a
+`val`/`var` and a leading-annotation prefix is stripped before matching. One was a missing guard: the
+Swift-facing `class SwiftAppGraph` block of `§20.10` had no member comparison because the generated
+Objective-C header is regenerated with the change that alters the class, so it can never report a
+stale block; `§18` assertion 35 now compares it member by member, with `private` members excluded.
+One was a live contract divergence of the same kind `E3-03` shipped: `FuelEntryFormStateHolder`'s
+public `@HiddenFromObjC` `isLoading` and `observeSaveCompletions()` were absent from `§20.10`; both
+are now declared carrying the annotation and `§11.6` states the convention. One was a parser defect:
+`splitTopLevel` decremented its depth on the `>` of `->`, so `callback: (Int) -> Unit` drove the
+depth negative and merged every subsequent parameter, reporting a default under the wrong name; the
+arrow now closes nothing, and `FUN` gained a leading word boundary. One was missing coverage:
+ADR-0181 claims every problem branch has a fixture asserting its exact text, and the two
+assertion-14 emptiness branches had none. `docs/adr/0179-…` and `docs/adr/0181-…` were corrected in
+their Negative, Positive, Constraints Introduced and Verification sections; `docs/DECISION_BOARD.md`
+and the decision mirrors are unchanged, because no decision changed.
+- **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
+  actionable tasks), `:build-logic:convention:test` reports 119 tests and 0 failures, and
+  `contractCheck` reports assertions 1, 13, 14, 34 and 35 `PASS` with no `PENDING` line. Three
+  mutations were applied to the real repository and reverted: `class FirebaseWiring : Module` fails
+  `architectureCheck` with `declares class FirebaseWiring`, `@JvmField internal val leaked =
+  mutableListOf<Any>()` fails it with `declares internal val leaked`, and deleting
+  `fun syncStateHolder(): SyncStateHolder` from the `class SwiftAppGraph` block of `§20.10` fails
+  assertion 35 with `syncStateHolder() is declared but absent from §20.10`. On CI, `shared-tests`
+  needed re-runs on runs `35333547781`, `35336079709` and `35338122967` under three pre-existing
+  mechanisms, and every failed job passed on re-run: a ten-minute host-step stall with no test
+  result (`35333547781`, `35336079709`), the `E1-14` Kotlin/Native flake
+  (`LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`,
+  a real assertion failure on the test and target that story already records), and a ten-minute
+  stall of the Native step on the same run's re-attempt. This round changes no Kotlin outside
+  `build-logic`, the local suite is green on both targets including
+  `:shared:iosSimulatorArm64Test --rerun-tasks`, and no mechanism is fixed or worsened here — but all
+  three remain reachable while `E1-14` and `E1-17` stay open. The final head run `35341762718` on
+  `cd1a8a4` passed all ten checks on its first attempt, with no re-run.
+
+**Review round 3, appended to the same record.** One further finding, and it is a false negative
+rather than a false positive: assertion 14 reported `PASS` while covering **no member** of
+`SessionStateHolder`. `bodyOf` selected the body brace with `source.indexOf('{', start)`, and
+`class SessionStateHolder internal constructor(` declares `private val onLocalStartAccepted: () ->
+Unit = {}` before the class body, so the first brace opened that lambda, `matchingBrace` closed it on
+the next character and the parsed body was empty. All 17 non-private members of the class left the
+check, and nothing reported it because the existing guard fires only when a whole source file yields
+no `<Name>StateHolder` class. `contractBlock` had the same defect against the `§20.10` blocks. The fix
+is `bodyBrace`, which returns the first brace at parenthesis depth zero and is now the single brace
+selector for `bodyOf` and `contractBlock`; `SwiftSurfaceContract.kt` contains zero occurrences of
+`indexOf('{')`. A per-class guard reports `declares no parsed member`, so a recognised class that
+yields no member can no longer pass silently. Two fixtures join `SwiftSurfaceContractTest`
+(119 -> 121). Three of the four `D-180` mirror rows named only assertion 34 although the shipped
+check registers three assertions, and `assertion2DecisionParity` compares ids and statuses only, so
+nothing could see the drift; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+`docs/TECHNICAL_PLAN.md §2` and `AGENTS.md` now name 34 and 35. `§20.10` moved
+`@HiddenFromObjC fun observeSaveCompletions()` to its real position between `setNotes` and `save`,
+because no assertion compares a state-holder block and the order is therefore hand-maintained.
+- **Why:** the review's own reproduction is the reason the fix matters more than its size: adding
+  `force: Boolean = false` to `SessionStateHolder.dismissAnonymousReminder` left `contractCheck` at
+  exit code 0 while the same kind of default on `VehicleListStateHolder.selectVehicle` failed as
+  designed. A guard that covers less than it claims is worse than a missing one, because it also
+  removes the reviewer's reason to look.
+- **Documents touched:** `docs/adr/0181-…`, `docs/CONTRACTS.md §20.10`, `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `AGENTS.md`, `docs/handoff-E3-08.md`,
+  this log. Code: `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. `D-180` is
+  unchanged as a decision; only its implementation and its mirror rows were corrected.
+- **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
+  actionable tasks); `:build-logic:convention:test` reports 121 tests and 0 failures; `contractCheck`
+  exits 0 with assertions 1, 13, 14, 34 and 35 `PASS` and no `PENDING`. Mutation 16 exits 1 with
+  `class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false`, mutation 17
+  with `class SessionStateHolder declares no parsed member`, and the control mutation on
+  `VehicleListStateHolder.selectVehicle` still fails unchanged. No file under `shared/src`,
+  `feature/`, `wiring/`, `integration/` or `composition/` is modified. Runs `35353870137`,
+  `35356040406`, `35358232151`, `35359981624` and `35362042665` each passed all ten required checks
+  on their first attempt. Run `35363599393` (`703571a`) needed one Native-step re-run, and run
+  `35366069672` on the head `58311fa` needed two: its first attempt was killed by the host stall and
+  its second by the Native stall, both at the ten-minute cap with no test result, and the third
+  passed in 4m55s, completing the ten. Those are the silent-stall classes the 2026-09-17 entry below
+  classified and `D-175`/`D-177` left latent; re-running the exact two steps locally with
+  `--rerun-tasks` on this branch completes them in about 3 minutes and 36 seconds. `shared-tests`
+  remains the ambiguous check while `E1-14` and `E1-17` stay open.
+- **Follow-ups / risks:** the `§11.6` rule that a public `@HiddenFromObjC` member of an exported
+  state-holder class is declared in `§20.10` still has no executable check — assertions 34 and 35
+  compare only the two `AppGraph` blocks — and is recorded in the handoff with `E3-05` as its
+  expected owner.
+
+### 2026-09-18 — E3-08 implemented: the app graph and wiring boundaries become executable
+
+- **Type:** story
+- **Story / Decision:** `E3-08` / `D-178`, `D-179`, `D-180`
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** `story/E3-08-app-graph-and-firebase-wiring` makes the app-graph and wiring
+  invariants executable. The `:wiring:firebase` "product logic" rule of `docs/TECHNICAL_PLAN.md §4`,
+  recorded as unowned by `E0-04` because it needs a Kotlin declaration parser and the module, is now
+  a declaration-shape check (`D-178`). A new source rule keeps
+  `com.ruizurraca.carapp.integration.` out of every module except `:wiring:firebase` and
+  `:integration:*`, which closes the transitive hole a one-word `api` change opens (`D-179`).
+  `docs/CONTRACTS.md §18` assertion 14, declared by `E0-05` and never implemented, now guards the
+  exported state-holder surface, and assertion 34 compares the Kotlin-facing `AppGraph` block of
+  `§20.10` with the real interface (`D-180`). That last guard caught a divergence `E3-03` had
+  shipped: the interface declared `syncStateHolder(scope)` and the contract did not, and because the
+  interface is hidden from Objective-C export the golden header could not see it. `§20.10` now
+  declares the member, and `:shared` gained the cache-key, close-guard and Koin-free
+  graph-construction coverage the story's criteria name.
+- **Why:** each of the three rules covers a blind spot no existing check could reach. Kotlin default
+  arguments never appear in the generated header, so only a source-level check sees a default added
+  to an exported member; the Kotlin-facing `AppGraph` is hidden from export, so only a comparison
+  against the contract sees a member added in code alone; and the dependency graph sees declared
+  edges but not a type made transitively visible by an `api` edge. The two rejected alternatives for
+  each are recorded in ADR-0179, ADR-0180 and ADR-0181.
+- **Documents touched:** `docs/CONTRACTS.md` (`§11.6`, `§18`, `§20.10`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
+  `docs/adr/0179-…`, `docs/adr/0180-…`, `docs/adr/0181-…`, `docs/BACKLOG.md`, `AGENTS.md`,
+  `docs/handoff-E3-08.md`, this log.
+- **Verification:** the canonical CI command of `AGENTS.md` passes locally (`BUILD SUCCESSFUL`, 642
+  actionable tasks), including `contractCheck` with assertions 14 and 34 green and no `PENDING`
+  line, `architectureCheck` at `16 rules … 23 modules`, and `:build-logic:convention:test` at 34
+  tests. Every new rule and assertion was mutation-tested against the real repository: a stray
+  declaration in `:wiring:firebase`, a `:composition:ios` reference to a transitively visible
+  integration type, four default-argument injections and a removed `§20.10` member each failed the
+  check with the offending member named, and each restored a green build. Requires human review
+  before merge (gated path `docs/CONTRACTS.md` and `docs/adr/**`; gated topic "Swift-facing API
+  surface" and module dependency rules).
+- **Follow-ups / risks:** the Konsist fixture `docs/CONTRACTS.md §20.10` requires, banning
+  `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from iOS `requestSync` call sites, is
+  deferred to the story that first adds such a call site; none exists today, and Konsist is not yet
+  a dependency of any module. The declaration classifier is textual, so a shape it cannot see fails
+  open — bounded by `AppGraph` and `SwiftAppGraph` reporting an unparseable side rather than passing.
+
 ### 2026-09-17 — E3-03 merged, and pull request #70 brought onto the new `main`
 
 - **Type:** story
