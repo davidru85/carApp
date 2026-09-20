@@ -169,6 +169,26 @@ internal class DefaultAppGraph(
         }
         localOwnerAdoption.launchIn(graphScope)
         observeConnectivityRecovery()
+        arrangePeriodicScheduling()
+    }
+
+    /**
+     * Hands the `§9.8` `Periodic` trigger to the platform scheduler through the injected
+     * `SyncTriggerAdapter` (`§20.10`).
+     *
+     * This is the one trigger that genuinely needs a platform scheduler: a 6-hour cadence survives
+     * process death only as `WorkManager` unique periodic work or a `BGAppRefreshTask`, and neither is
+     * reachable from shared code. `PostWriteDebounce` and `ConnectivityRecovered` are deliberately
+     * *not* routed here: both are in-process events the graph already observes directly (a commit and
+     * a connectivity edge), so sending them to a platform scheduler would add latency and duplicate a
+     * trigger that is already exact.
+     *
+     * Arranged once per graph. The scheduler is asked to *hold* the cadence, not to fire a cycle now;
+     * when the platform fires, its worker calls `requestSync(Periodic)` on this same controller, which
+     * is what keeps `§9.1`'s single in-process controller authoritative.
+     */
+    private fun arrangePeriodicScheduling() {
+        dependencies.syncTriggerAdapter.schedule(SyncTrigger.Periodic)
     }
 
     /**

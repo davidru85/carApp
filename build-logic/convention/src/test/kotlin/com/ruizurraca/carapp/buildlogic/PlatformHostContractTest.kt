@@ -10,16 +10,28 @@ class PlatformHostContractTest {
 
     @Test
     fun androidHostBindsThePersistentGraphToSharedStateHolders() {
+        // The graph is process-scoped (`§9.1`): a WorkManager worker has no Activity to borrow one
+        // from, so construction, the real platform adapters and the release path are asserted against
+        // the files that now own them instead of against the Activity alone.
         val host =
             repositoryRoot
                 .resolve("androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt")
                 .readText()
+        val graphOwner =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt")
+                .readText()
+        val application =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/CarAppApplication.kt")
+                .readText()
         val english = repositoryRoot.resolve("androidApp/src/main/res/values/strings.xml").readText()
         val spanish = repositoryRoot.resolve("androidApp/src/main/res/values-es/strings.xml").readText()
 
-        assertTrue(host.contains("firebaseAppProviders("))
-        assertTrue(host.contains("getDatabasePath(DATABASE_FILE_NAME).absolutePath"))
-        assertTrue(host.contains("buildAppGraph("))
+        assertTrue(graphOwner.contains("firebaseAppProviders("))
+        assertTrue(graphOwner.contains("getDatabasePath(DATABASE_FILE_NAME).absolutePath"))
+        assertTrue(graphOwner.contains("buildAppGraph("))
+        assertTrue(application.contains("AndroidAppGraph.install(this)"))
         assertTrue(host.contains("graph.vehicleListStateHolder(scope = viewModelScope)"))
         assertTrue(host.contains("graph.vehicleFormStateHolder(scope = viewModelScope, vehicleId = vehicleId)"))
         assertTrue(host.contains("NavHost("))
@@ -30,7 +42,9 @@ class PlatformHostContractTest {
         assertTrue(host.contains("setName"))
         assertTrue(host.contains("stateHolder::save"))
         assertTrue(host.contains("stateHolder::refresh"))
-        assertTrue(host.contains("graph.close()"))
+        // The graph outlives the Activity, so the Activity MUST NOT close it: releasing it on
+        // `onCleared` would leave the process-scoped graph holding a released driver.
+        assertFalse(host.contains("graph.close()"))
         assertFalse(host.contains("setFuelType"))
         assertFalse(host.contains("Greeting"))
         assertTrue(english.contains("name=\"vehicle_list_title\""))

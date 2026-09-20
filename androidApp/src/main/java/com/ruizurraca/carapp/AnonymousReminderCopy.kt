@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -71,12 +72,20 @@ internal fun AnonymousReminderBanner(
 }
 
 /**
- * Runs [onForeground] on every entry into the foreground, including the first one after launch.
+ * Runs [onForeground] on every entry into the foreground, including the first one after launch, and
+ * supplies how long the app spent in the background (`null` on the cold start).
+ *
  * This is the whole trigger of `docs/CONTRACTS.md §11.3`: no scheduler, alarm or operating-system
- * notification is involved.
+ * notification is involved. The same lifecycle edge is also the `§9.8` `AppForeground` trigger, so the
+ * duration is measured once here and passed to its consumer rather than observed twice.
+ *
+ * `ON_STOP` is the correct background edge because the app is a single-Activity host: the Activity
+ * stops exactly when the app stops being visible. The clock is monotonic, so a wall-clock change while
+ * the app is backgrounded cannot distort the duration.
  */
 @Composable
-internal fun OnForegroundReturn(onForeground: () -> Unit) {
+internal fun OnForegroundReturn(onForeground: (backgroundMillis: Long?) -> Unit) {
+    val duration = remember { AndroidForegroundDuration() }
     val activity = LocalContext.current as? ComponentActivity
     DisposableEffect(activity, onForeground) {
         val lifecycle = activity?.lifecycle
@@ -85,7 +94,11 @@ internal fun OnForegroundReturn(onForeground: () -> Unit) {
         } else {
             val observer =
                 LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_START) onForeground()
+                    when (event) {
+                        Lifecycle.Event.ON_STOP -> duration.onBackgrounded()
+                        Lifecycle.Event.ON_START -> onForeground(duration.onForegrounded())
+                        else -> Unit
+                    }
                 }
             lifecycle.addObserver(observer)
             onDispose { lifecycle.removeObserver(observer) }

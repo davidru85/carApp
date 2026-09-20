@@ -159,7 +159,9 @@ class IosCompositionContractTest {
     @Test
     fun bothHostsInjectRealPlatformConnectivityIntoTheProviderGraph() {
         val swiftFactory = repositoryRoot.resolve(CREATE_SWIFT_APP_GRAPH_PATH).readText()
-        val androidHost = repositoryRoot.resolve(ANDROID_MAIN_ACTIVITY_PATH).readText()
+        // The Android graph is process-scoped (`§9.1`), so the real connectivity observer is
+        // constructed by the file that builds the graph rather than by the Activity.
+        val androidHost = repositoryRoot.resolve(ANDROID_APP_GRAPH_PATH).readText()
         val androidManifest = repositoryRoot.resolve(ANDROID_MANIFEST_PATH).readText()
         val firebaseProviders = repositoryRoot.resolve(FIREBASE_PROVIDERS_PATH).readText()
         val iosObserverDirectory = repositoryRoot.resolve(IOS_CONNECTIVITY_SOURCE_DIRECTORY)
@@ -230,8 +232,8 @@ class IosCompositionContractTest {
     private companion object {
         const val CREATE_SWIFT_APP_GRAPH_PATH =
             "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/CreateSwiftAppGraph.kt"
-        const val ANDROID_MAIN_ACTIVITY_PATH =
-            "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
+        const val ANDROID_APP_GRAPH_PATH =
+            "androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt"
         const val ANDROID_MANIFEST_PATH = "androidApp/src/main/AndroidManifest.xml"
         const val FIREBASE_PROVIDERS_PATH =
             "wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt"

@@ -65,11 +65,19 @@ fun firebaseAppProviders(): AppProviders {
     )
 }
 
-/** Creates the production Firebase boundaries for a platform-owned persistent database path. */
+/**
+ * Creates the production Firebase boundaries for a platform-owned persistent database path.
+ *
+ * [syncTriggerAdapter] is supplied by the host composition boundary, the same shape `D-108` and
+ * `D-126` established for `LocaleProvider` and `ConnectivityObserver`: arranging a 6-hour cadence
+ * needs `WorkManager` on Android and `BGTaskScheduler` on iOS, and neither is reachable from shared
+ * code.
+ */
 fun firebaseAppProviders(
     databaseFilePath: String,
     localeProvider: LocaleProvider,
     connectivityObserver: ConnectivityObserver,
+    syncTriggerAdapter: SyncTriggerAdapter = noSyncScheduling,
 ): AppProviders {
     val dispatchers = stagedDispatcherProvider()
     val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
@@ -83,8 +91,22 @@ fun firebaseAppProviders(
         localeProvider = localeProvider,
         dispatchers = dispatchers,
         connectivityObserver = connectivityObserver,
+        syncTriggerAdapter = syncTriggerAdapter,
     )
 }
+
+/**
+ * Accepts platform scheduling without arranging it.
+ *
+ * It is the staged default so a provider graph can still be built without a host, and it is
+ * deliberately *not* a silent success: nothing is scheduled, which is the honest state for a build
+ * that has no platform scheduler behind it.
+ *
+ * `private` because `docs/TECHNICAL_PLAN.md §4` admits only a Koin `Module`, a factory or a platform
+ * initialiser at this module's top level (`D-178`); a file-private helper for a default argument is
+ * none of those, so it stays invisible outside this file.
+ */
+private val noSyncScheduling: SyncTriggerAdapter = SyncTriggerAdapter { }
 
 internal fun firebaseAppProviders(
     databaseFactory: DatabaseFactory,
@@ -98,6 +120,7 @@ internal fun firebaseAppProviders(
     // `D-108` established for `LocaleProvider`. The staged default is offline-safe: it reports
     // nothing rather than claiming a network that was never observed.
     connectivityObserver: ConnectivityObserver = stagedConnectivityObserver(),
+    syncTriggerAdapter: SyncTriggerAdapter = noSyncScheduling,
 ): AppProviders =
     object : AppProviders {
         override val databaseFactory = databaseFactory
@@ -114,7 +137,7 @@ internal fun firebaseAppProviders(
         override val logger = stagedLogger()
         override val localeProvider = localeProvider
         override val connectivityObserver = connectivityObserver
-        override val syncTriggerAdapter = SyncTriggerAdapter { }
+        override val syncTriggerAdapter = syncTriggerAdapter
     }
 
 private fun stagedAuthClient(authState: StateFlow<AuthState>): AuthClient =

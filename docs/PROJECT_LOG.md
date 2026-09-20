@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-21 — `E3-04` repository sync wiring
+
+- **Type:** story
+- **Story / Decision:** `E3-04` / `D-181`, `D-182`, `D-183`, `D-184`, `D-185`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
+- **What changed:** the two `§9.8` admission windows are now enforced in `DefaultSyncController` instead of being declarative constants; the graph derives `ConnectivityRecovered` from the injected connectivity observer and hands `Periodic` to the real `SyncTriggerAdapter`, which arranges `enqueueUniqueWork(SYNC_WORK, KEEP)` on Android and a `BGTaskScheduler` request on iOS; `SyncStateHolder.onForegroundReturn(backgroundMillis)` applies the foreground threshold with a nullable duration carrying the cold start; the Android app graph became process-scoped so a WorkManager worker and the UI share one `SyncController`; and `§20.10`'s trigger ban became an executable source rule over both iOS platform file kinds, replacing the Konsist fixture the contract had promised but which cannot see Swift.
+- **Why:** the adapter was dead wiring — the provider graph supplied an empty lambda, so the `§9.8` six-hour cadence was unreachable on both hosts and two of the five trigger constants had no consumer at all. The process-scoped graph was required by `§9.1` (a worker has no Activity) and is also what `D-89` demands, since an `AppGraph` owns the single `DatabaseHandle`.
+- **Documents touched:** `docs/CONTRACTS.md §20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0182`–`0186`, `docs/versions-matrix.md`, `docs/BACKLOG.md`, `gradle/libs.versions.toml`, `docs/handoff-E3-04.md`, `shared/build/generated/objc-header/Shared.h.golden`.
+- **Verification:** `contractCheck` all `PASS` with no `PENDING` (186 decisions, 186 ADRs); `:build-logic:convention:test` green including five new trigger-surface fixtures; `:shared:testAndroidHostTest` 191 tests green; `:androidApp:testDebugUnitTest` green. The full `AGENTS.md` command, the golden-header comparison and the API 36 instrumented suite are pending the iOS host files.
+- **Follow-ups / risks:** `BGAppRefresh` is best-effort by platform design, so the six-hour request is not a six-hour guarantee; the iOS host implementation landed late in the story, so the end-to-end gate run and the instrumented evidence are recorded in the handoff as pending. Human review applies: `core/sync/**` is a CODEOWNERS-gated path and the synchronization admission behaviour is a gated topic.
+
+
 ### 2026-09-20 — E3-08 review round 9: two blind spots in the new guards and two document divergences
 
 - **Type:** correction
