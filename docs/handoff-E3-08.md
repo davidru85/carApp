@@ -184,8 +184,6 @@
   unchanged and every item above is a defect in an implementation of an already-Accepted decision.
   The accessor regression was re-verified RED with its own fix reverted, so it proves the defect
   rather than passing incidentally.
-- Exact next step: the owner's gated review of review round 8. No agent action remains; the branch is
-  pushed and no further commit is pending.
 - Review round 9: four findings, two executable and two documentary, none of which changed a
   decision. (1) `Member.signature` discarded `suspend`, so mutating `AppGraph.syncController()` to a
   suspending declaration with `§20.10` unchanged left `[14:PASS, 34:PASS, 35:PASS]`; `suspend` is now
@@ -205,9 +203,10 @@
   SyncController is declared in §20.10 but absent from the interface` and reverts to green; a wrapped
   `module { }` appended to `:wiring:firebase` passes `architectureCheck` while the same wrapper with
   `listOf(1)` fails it with `declares internal val wrappedProbe`.
-- Exact next step: the owner's gated review of review round 9.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. Review round 7 was
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 9 was
+  pushed as `bccd841..50919d8`. The ten required checks are green on run `35520555700`, which covers
+  the head `50919d8` and passed on its **first attempt** with no re-run. Review round 7 was
   pushed as `72392dd..2c258c1`. The ten required checks are green on run `35512948905`, which covers
   the corrected head `2c258c1` and passed on its **first attempt** with no re-run: all ten,
   `shared-tests` and `provider-decoupling` included. That run belongs to the correction commit, not
@@ -259,7 +258,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35512948905`; the story now waits for the owner's gated review of review round 7.
+  `35520555700`; the story now waits for the owner's gated review of review round 9.
 
 ## Scope Completed
 

@@ -79,7 +79,8 @@
   SyncController is declared in §20.10 but absent from the interface` and reverts to green, and a
   wrapped `module { }` appended to `:wiring:firebase` passes `architectureCheck` while the same
   wrapper with `listOf(1)` fails it with `declares internal val wrappedProbe`. Commits `d1df795`
-  (RED) and `bd92724` (GREEN).
+  (RED) and `bd92724` (GREEN); run `35520555700` on the head `50919d8` is green on all ten required
+  checks on its first attempt.
 - **Follow-ups / risks:** no other declaration modifier is modelled — `operator`, `infix`, `inline`
   and `tailrec` do not change the exported call shape, and a function type parameter list is not
   compared, so adding one on a single side is not detected; `§20.10` declares none of them today.
