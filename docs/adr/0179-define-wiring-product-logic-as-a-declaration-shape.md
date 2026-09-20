@@ -81,7 +81,14 @@ abstraction factory `§4` admits.
   - The `module { … }` initialiser is matched on the text after the declaration's own assignment,
     anchored to the start of that initialiser and masked of literals and comments, so
     `val leaked = run { val bindings = module { }; 1 }` and `val leaked = "= module {"` are not
-    bindings. The exemption also still requires the declared type to be exactly `Module`.
+    bindings. The exemption also still requires the declared type to be exactly `Module`. When the
+    declaration line ends at its `=`, the initialiser is read from the next recorded line of the
+    same file, so the idiomatic wrapped form used throughout this repository is admitted:
+    `val firebaseModule =` followed by `    module { … }`. Review round 9 found the same-line-only
+    match rejecting that shape, which is a false positive against the exact shape `§4` permits, not
+    a rejected shape. The continuation is masked before it is matched, so `val wrappedLiteral =`
+    followed by `    "module {"` is still rejected, and `expect`/`actual` is still evaluated before
+    the exemption can apply.
   - A declaration whose keyword the regular expression still cannot see is not reported. The rule
     fails open by direction and `:wiring:firebase` is a single reviewed file.
 - The violation message names the declaration in source order, the way it is written:
@@ -111,6 +118,11 @@ accepts an annotated Koin binding and an annotated private factory.
 `anAnnotationWithNestedParenthesesOrAUseSiteTargetDoesNotHideTheDeclaration` rejects a `class`
 annotated with nested parentheses, a property carrying a use-site target, and a doubly annotated
 `object`, and accepts a use-site-targeted Koin binding.
+
+`wiringFirebaseDeclarationsAreBoundedToModulesFactoriesAndInitialisers` also accepts three wrapped
+Koin bindings — a `val`, a `var` and one whose declaration line ends in a trailing comment — and
+rejects a wrapped non-module initialiser, a wrapped string literal spelling `module {` and a
+wrapped `expect val`.
 
 The rule was also mutated against the real repository: appending `internal class StrayMapper` to
 `FirebaseAppProviders.kt` makes `architectureCheck` fail with

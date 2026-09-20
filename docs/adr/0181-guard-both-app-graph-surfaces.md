@@ -126,11 +126,17 @@ change.
   - A `§20.10` that declares no `interface AppGraph` block reports assertion 34 as a failure, the
     way assertion 35 already reported a missing `class SwiftAppGraph` block. It previously threw
     and aborted the whole `contract-check` report, suppressing every other assertion's result.
-  - The member signature is `kind`, name, parameter shapes and declared type. A function return
-    type and a property type are compared, because a factory returning another holder is a
+  - The member signature is `kind`, `suspend`, name, parameter shapes and declared type. A function
+    return type and a property type are compared, because a factory returning another holder is a
     different surface even when its name and parameters are unchanged; before review round 5 the
     comparison stopped at the parameter list and a return-type change left both assertions at
-    `PASS`.
+    `PASS`. Review round 9 added `suspend`: it changes the call contract of a member, and on the
+    `@HiddenFromObjC` Kotlin-facing surface no other check can see it, so
+    `suspend fun syncController(): SyncController` against a `§20.10` declaring
+    `fun syncController(): SyncController` left all three assertions at `PASS`. No other declaration
+    modifier is modelled: `operator`, `infix`, `inline` and `tailrec` do not change the exported
+    call shape, and a function type parameter list (`fun <T> name()`) is not compared, so adding one
+    on a single side is not detected. `§20.10` declares none of them today.
   - Order spans both member kinds. Functions and properties are parsed by two scanners and the
     combined list is sorted by a source offset that both producers report in the same character
     space, so `fun A`, `val B`, `fun C` and `fun A`, `fun C`, `val B` compare as the different
@@ -204,6 +210,10 @@ function or a commented-out declaration is not a member, repeated modifiers and 
 annotations cannot hide a property, an escaped function name still reports its default argument,
 expect/actual is not exempted by the Koin rule, and a malformed contract block returns a FAIL result
 instead of aborting the report.
+
+`aKotlinFacingSuspendModifierIsPartOfTheComparedSurface` and
+`aSwiftFacingSuspendModifierIsPartOfTheComparedSurface` prove `suspend` is compared on both
+surfaces.
 
 `Pr71ReviewRegressionTest` also holds the six regressions of review round 8: an unrecognised class
 modifier no longer hides a state holder, an unrecognised property modifier no longer hides an

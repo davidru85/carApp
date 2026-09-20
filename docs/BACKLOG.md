@@ -960,6 +960,8 @@ member. The two that exist today, `FuelEntryFormStateHolder.isLoading` and
 owner: `E3-05`; making the rule executable first needs a `D-` decision on whether it lives in
 `SwiftSurfaceContract` or in the `D-16` Konsist rules.
 
+Human review required.
+
 ### E3-04 - Repository Sync Wiring - M
 
 Replace no-op remote sources with real sync wiring and platform triggers.

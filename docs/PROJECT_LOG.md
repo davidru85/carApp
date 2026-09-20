@@ -38,6 +38,54 @@
 
 ## Entries
 
+### 2026-09-20 — E3-08 review round 9: two blind spots in the new guards and two document divergences
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the ninth review of pull request #71 found four defects, two executable and two
+  documentary, and all four were closed on the same branch. `Member.signature` compared kind, name,
+  parameter shapes and declared type but discarded the `suspend` modifier, so mutating
+  `AppGraph.syncController()` to `suspend fun syncController(): SyncController` with `§20.10`
+  unchanged left assertions 14, 34 and 35 all at `PASS`; `interface AppGraph` is `@HiddenFromObjC`,
+  so the generated golden header could not see it either. `suspend` is now read from the
+  annotation-masked declaration header and compared. `ArchitectureChecker.isKoinModuleDeclaration`
+  read the initialiser from the declaration's own physical line, so the idiomatic wrapped form
+  `val firebaseModule =` followed by `    module { … }` was reported as `wiring-product-logic` — a
+  false positive against the exact shape `docs/TECHNICAL_PLAN.md §4` admits, which would have blocked
+  the first story to add a Koin module to `:wiring:firebase`; the initialiser is now read from the
+  next recorded source line of the same file when the declaration line ends at its `=`, on masked
+  text. The `§20.10` `SyncStateHolder` block declared `refreshDebug()` before `clearMessage()` while
+  the class declares the reverse, and the contract was reordered rather than the class, so the
+  generated header is untouched. The `E3-08` backlog section lacked the `Human review required.`
+  line its story-index row claims; the gate is correct by path and by topic, so only the line was
+  added.
+- **Why:** the first defect is the exact drift class assertion 34 was created to prevent after
+  `E3-03` shipped `syncStateHolder(scope)` undeclared, and the surface it hides on is the one no
+  other check can observe. The second was not a rejected shape but a rejection of the permitted one,
+  which is worse than a missing check because it would fail a correct implementation. The third and
+  fourth are documentation that no longer described reality: a contract block out of order with the
+  code it defines, and a gate claim in the index without the gate line in the section.
+- **Documents touched:** `docs/CONTRACTS.md §20.10`, `docs/BACKLOG.md`, `docs/adr/0179-…`,
+  `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code: `SwiftSurfaceContract.kt`,
+  `ArchitectureChecker.kt` and their two test files. No production source, no decision, no
+  dependency, no assertion number and no golden header changed.
+- **Verification:** `:build-logic:convention:test` reports 162 tests and 0 failures; the two
+  regressions and the six asserted shapes were observed RED first (3 failing tests, no compilation
+  error). `architectureCheck` prints `16 rules … 23 modules`, `contractCheck` reports assertions 1,
+  5, 7, 14, 34 and 35 `PASS` with no `PENDING`, and `ktlintCheck detekt koverVerify` pass. Two
+  behavioural proofs were run against the real repository: the `suspend` mutation fails assertion 34
+  with `suspend syncController(): SyncController is declared but absent from §20.10; syncController():
+  SyncController is declared in §20.10 but absent from the interface` and reverts to green, and a
+  wrapped `module { }` appended to `:wiring:firebase` passes `architectureCheck` while the same
+  wrapper with `listOf(1)` fails it with `declares internal val wrappedProbe`. Commits `d1df795`
+  (RED) and `bd92724` (GREEN).
+- **Follow-ups / risks:** no other declaration modifier is modelled — `operator`, `infix`, `inline`
+  and `tailrec` do not change the exported call shape, and a function type parameter list is not
+  compared, so adding one on a single side is not detected; `§20.10` declares none of them today.
+  No assertion compares state-holder blocks, which is why the `SyncStateHolder` order was found by
+  review rather than by a check; that gap stays recorded as the `§11.6` hidden-member follow-up.
+
 ### 2026-09-20 — E3-08 review round 8: six fail-open and false-positive paths in the surface comparison
 
 - **Type:** correction

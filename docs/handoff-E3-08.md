@@ -50,7 +50,7 @@
 - Date: 2026-09-20
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 8 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 9 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
@@ -62,7 +62,8 @@
   round-5 record; review fixes round 6 `ac35860`, `0971edc` (the interleaved declaration order), the
   round-6 record; review fixes round 7 `f8b5c26` (the ten regressions, RED) and `63b0d47` (the eight
   fixes, GREEN); review fixes round 8 `c322c6e` (the six regressions plus one rule-level fixture,
-  RED) and `84d376a` (the six fixes, GREEN).
+  RED) and `84d376a` (the six fixes, GREEN); review fixes round 9 `d1df795` (the two regressions,
+  RED) and `bd92724` (the two fixes, GREEN).
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -185,6 +186,26 @@
   rather than passing incidentally.
 - Exact next step: the owner's gated review of review round 8. No agent action remains; the branch is
   pushed and no further commit is pending.
+- Review round 9: four findings, two executable and two documentary, none of which changed a
+  decision. (1) `Member.signature` discarded `suspend`, so mutating `AppGraph.syncController()` to a
+  suspending declaration with `§20.10` unchanged left `[14:PASS, 34:PASS, 35:PASS]`; `suspend` is now
+  read from the masked header and compared. (2) `isKoinModuleDeclaration` read the initialiser from
+  the declaration's own line, so the idiomatic wrapped form `val bindings =` followed by
+  `module { … }` was reported as `wiring-product-logic` — a false positive against the exact shape
+  `docs/TECHNICAL_PLAN.md §4` admits. (3) The `§20.10` `SyncStateHolder` block declared
+  `refreshDebug()` before `clearMessage()` while the class declares the reverse; the contract was
+  reordered, not the class, so the golden header is untouched. (4) The `E3-08` backlog section lacked
+  the `Human review required.` line its index row claims.
+- Round 9 evidence: two fixtures added to `SwiftSurfaceContractTest` and six asserted shapes to
+  `ArchitectureCheckerTest`, observed RED first (3 failing tests, no compilation error) and GREEN
+  afterwards. `:build-logic:convention:test` reports 162 tests and 0 failures.
+  `architectureCheck` prints `16 rules … 23 modules`; `contractCheck` reports assertions 1, 5, 7, 14,
+  34 and 35 `PASS` with no `PENDING`. Behavioural proofs: the `suspend` mutation fails assertion 34
+  with `suspend syncController(): SyncController is declared but absent from §20.10; syncController():
+  SyncController is declared in §20.10 but absent from the interface` and reverts to green; a wrapped
+  `module { }` appended to `:wiring:firebase` passes `architectureCheck` while the same wrapper with
+  `listOf(1)` fails it with `declares internal val wrappedProbe`.
+- Exact next step: the owner's gated review of review round 9.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 7 was
   pushed as `72392dd..2c258c1`. The ten required checks are green on run `35512948905`, which covers
@@ -555,6 +576,41 @@ status. The table shape follows Review Round 1.
 | E | `propertyMembers` tracked brace depth only, so a nested class's constructor `val` parameters became members of the enclosing declaration | Parenthesis depth is tracked too; `constructorParametersOfANestedClassAreNotMembersOfTheEnclosingDeclaration` |
 | F | A leading `context(…)` clause put a `(` before the keyword, which `TOP_LEVEL_DECLARATION` cannot cross, so the declaration was skipped with no report | The clause is stripped with the annotations in the lexical module; `aContextParameterClauseDoesNotHideAWiringDeclaration` plus a rule-level fixture in `ArchitectureCheckerTest` |
 | Doc | ADR-0181 and this handoff recorded the no-parsed-class guard as bounding the `STATE_HOLDER` modifier limit. It does not: the guard fires only when a source yields no holder at all | Both sentences corrected, and the `STATE_HOLDER` limit recorded as closed rather than open |
+
+## Review Round 9
+
+Four findings, all in artifacts this story introduced. Two are executable defects, two are
+documentation divergences. No decision changed: `D-178` and `D-180` are corrected in their
+implementation, not in their choice, which is the precedent set by review round 3.
+
+- **Finding 1 — assertions 34 and 35 discarded `suspend`.** `Member.signature` carried kind, name,
+  parameter shapes and declared type. Mutating `AppGraph.syncController()` to
+  `suspend fun syncController(): SyncController` with `§20.10` unchanged left `[14:PASS, 34:PASS,
+  35:PASS]`. `interface AppGraph` is `@HiddenFromObjC`, so the golden header could not see it
+  either — the exact blind spot assertion 34 exists to close. `suspend` is now read from the
+  annotation-masked declaration header and prefixed to the signature. Two fixtures added.
+- **Finding 2 — the wiring rule rejected a wrapped Koin binding.** `isKoinModuleDeclaration` read
+  the initialiser from the declaration's own line only, so `val firebaseModule =` followed by
+  `    module { … }` was reported as `wiring-product-logic`. That is a false positive against the
+  exact shape `docs/TECHNICAL_PLAN.md §4` admits, and it would have blocked the first story to add
+  a Koin module to `:wiring:firebase`. The initialiser is now read from the next recorded source
+  line of the same file when the declaration line ends at its `=`, on masked text. Six fixtures
+  added, three accepting and three still rejecting.
+- **Finding 3 — the `§20.10` `SyncStateHolder` block was out of order.** It declared
+  `refreshDebug()` before `clearMessage()`; the class declares the reverse. The member sets were
+  equal, so only the order diverged, and no assertion compares state-holder blocks. The contract
+  block was reordered to the class order; the class and the golden header are unchanged.
+- **Finding 4 — the `E3-08` story section carried no gate line.** The story index row was changed to
+  `Yes` in this pull request without the matching `Human review required.` line in the section. The
+  gate is correct by path and by topic under `AGENTS.md § Human Review Gates`, so the line was added
+  and the canonical gate list is unchanged.
+
+Both ADRs were corrected where their text no longer described the code: ADR-0181's enumerated
+signature limit now names `suspend` and states which modifiers remain unmodelled, and ADR-0179 no
+longer implies the Koin initialiser must sit on the declaration line.
+
+**No new TDD exemption.** Findings 1 and 2 are behaviour changes in check code, so both went
+through RED before GREEN. Findings 3 and 4 are documentation.
 
 ## Files Changed
 
