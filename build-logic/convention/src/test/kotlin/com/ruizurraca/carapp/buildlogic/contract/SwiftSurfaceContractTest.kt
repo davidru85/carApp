@@ -334,6 +334,44 @@ class SwiftSurfaceContractTest {
         )
     }
 
+    /**
+     * Declaration order is part of the surface definition and it spans both member kinds. The
+     * comparison concatenated every function before every property, so a contract that interleaves
+     * them and an implementation that groups them were normalized to the same list and the
+     * assertion passed without seeing the ordering violation.
+     */
+    @Test
+    fun anInterleavedFunctionAndPropertyOrderIsRejectedOnTheKotlinFacingSurface() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "§20.10 declares [vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder, " +
+                "val extra: String, close()], the interface declares " +
+                "[vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder, close(), val extra: String]",
+            SwiftSurfaceContract(
+                real.withSource(
+                    APP_GRAPH,
+                    rawBlock(
+                        "interface AppGraph",
+                        listOf(
+                            "fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder",
+                            "fun close()",
+                            "val extra: String",
+                        ),
+                    ),
+                ).copy(
+                    contract = rawBlock(
+                        "interface AppGraph",
+                        listOf(
+                            "fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder",
+                            "val extra: String",
+                            "fun close()",
+                        ),
+                    ),
+                ),
+            ).validate(),
+        )
+    }
+
     @Test
     fun bothSidesFailingToParseIsReported() {
         assertFails(
@@ -403,6 +441,31 @@ class SwiftSurfaceContractTest {
             "§20.10 declares [close(), vehicleListStateHolder(): VehicleListStateHolder], " +
                 "the class declares [vehicleListStateHolder(): VehicleListStateHolder, close()]",
             swiftResults(contractMembers = listOf("close()", "vehicleListStateHolder(): VehicleListStateHolder")),
+        )
+    }
+
+    /** The same interleaved-ordering gap on the Swift-facing surface. */
+    @Test
+    fun anInterleavedFunctionAndPropertyOrderIsRejectedOnTheSwiftFacingSurface() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "§20.10 declares [vehicleListStateHolder(): VehicleListStateHolder, val extra: String, close()], " +
+                "the class declares [vehicleListStateHolder(): VehicleListStateHolder, close(), val extra: String]",
+            swiftResults(
+                contractMembers = listOf(
+                    "vehicleListStateHolder(): VehicleListStateHolder",
+                    "val extra: String",
+                    "close()",
+                ),
+                classSource = rawBlock(
+                    SWIFT_APP_GRAPH_DECLARATION,
+                    listOf(
+                        "fun vehicleListStateHolder(): VehicleListStateHolder",
+                        "fun close()",
+                        "val extra: String",
+                    ),
+                ),
+            ),
         )
     }
 
