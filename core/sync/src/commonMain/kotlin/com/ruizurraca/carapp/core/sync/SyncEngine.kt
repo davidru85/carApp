@@ -11,6 +11,8 @@ import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SUPPORTED_CURRENCY_CODES
+import com.ruizurraca.carapp.core.common.SYNC_MIN_AUTOMATIC_INTERVAL_MS
+import com.ruizurraca.carapp.core.common.SYNC_POST_WRITE_DEBOUNCE_MS
 import com.ruizurraca.carapp.core.common.SyncError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
@@ -180,20 +182,64 @@ fun createSyncController(
     )
 }
 
-/** A reservation of a cycle: either the caller runs it, or it joins the pending follow-up. */
-private data class TriggerRegistration(
-    val completion: CompletableDeferred<Outcome<Unit, AppError>>,
-    val reasons: Set<SyncTrigger>,
-    val startsCycle: Boolean,
-)
+/**
+ * One trigger, whether it is waiting for a `§9.8` window to open or for the cycle that already owns
+ * it. Its own completion is what every admission path resolves through, so no caller needs to know
+ * which kind of wait it is in.
+ *
+ * A trigger that arrives inside a window is parked rather than refused: it is *served* at the
+ * boundary, because dropping it would leave the write outstanding until the next trigger. Parking is
+ * also what makes coalescing exact - whichever claim finds the windows open answers the whole parked
+ * batch with one cycle's outcome.
+ */
+private class SyncRequest(
+    val reason: SyncTrigger,
+) {
+    val completion = CompletableDeferred<Outcome<Unit, AppError>>()
+}
 
 /**
- * The single pending follow-up cycle a coalesced trigger joins. The joined reasons and the completion
- * handle are held together so the follow-up cannot be flagged without a handle to complete (`§9.1`).
+ * A cycle this caller claimed and must run. [served] holds every trigger the cycle's outcome answers:
+ * the one that claimed the window plus everything that parked behind it, which is what makes a burst
+ * of writes one cycle instead of one cycle per write (`§9.8`).
+ */
+private data class CycleRun(
+    val reasons: Set<SyncTrigger>,
+    val completion: CompletableDeferred<Outcome<Unit, AppError>>,
+    val served: List<SyncRequest>,
+)
+
+/** How a trigger was admitted (`§9.1`, `§9.8`). */
+private sealed interface Admission {
+    /** This caller claimed the cycle and runs it. */
+    data class Run(
+        val cycle: CycleRun,
+    ) : Admission
+
+    /** Another cycle answers this trigger: its completion resolves when that cycle finishes. */
+    data object Awaiting : Admission
+
+    /** The graph is closing, or its driver is already released. No cycle is admitted (`D-172`). */
+    data object Refused : Admission
+}
+
+/**
+ * The single pending follow-up cycle a coalesced trigger joins. The joined reasons and the requests
+ * to answer are held together so the follow-up cannot be flagged without the triggers it owes a
+ * result to (`§9.1`).
  */
 private class PendingFollowUp {
     val reasons = mutableSetOf<SyncTrigger>()
-    val completion = CompletableDeferred<Outcome<Unit, AppError>>()
+    val requests = mutableListOf<SyncRequest>()
+}
+
+/**
+ * One `§9.8` admission window. [generation] identifies the timer that owns it, so a restarted
+ * trailing debounce cannot have its predecessor close the window the newer one is still holding.
+ */
+private class AdmissionWindow {
+    var pending = false
+    var generation = 0L
 }
 
 internal class DefaultSyncController(
@@ -228,11 +274,29 @@ internal class DefaultSyncController(
     // would wedge `drainCycles` and suspend every later `sync()` forever (`§9.1`).
     private var pendingFollowUp: PendingFollowUp? = null
 
+    // The `§9.8` admission windows. `debounceWindow` defers an automatic cycle until 2 s after the
+    // last post-write trigger; `floorWindow` defers it until 30 s after the previous cycle started.
+    // Both are `delay`-driven, so they measure the same way under a test scheduler and on a device,
+    // and both are claimed under `cycleMutex` so a window cannot be observed open by two claimants.
+    private val debounceWindow = AdmissionWindow()
+    private val floorWindow = AdmissionWindow()
+
+    // Automatic triggers that arrived inside a window and are waiting for it to open. Parked, never
+    // refused: whichever claim finds the windows open takes the whole batch, so a burst becomes one
+    // cycle and no trigger is lost.
+    private var parkedRequests = emptyList<SyncRequest>()
+
     // The completion of the currently active cycle, held so `shutdown()` can complete it directly.
     // `drainCycles` completes it in the normal path; this reference exists only for the shutdown path,
     // where scope cancellation stops `drainCycles` before it gets there (`D-172`).
     @Volatile
     private var activeCycleCompletion: CompletableDeferred<Outcome<Unit, AppError>>? = null
+
+    // Every trigger the active cycle owes a result to, including the one that claimed it. `shutdown()`
+    // must complete these too: their callers await a per-trigger deferred, and a cancelled
+    // `drainCycles` never reaches the loop that would complete them (`D-172`).
+    @Volatile
+    private var activeCycleRequests = emptyList<SyncRequest>()
 
     private var unexpectedFailure = false
     private var cycleFailure = false
@@ -247,68 +311,161 @@ internal class DefaultSyncController(
     private var shuttingDown = false
 
     override fun requestSync(reason: SyncTrigger) {
-        scope.launch {
-            val registration = registerTrigger(reason) ?: return@launch
-            if (registration.startsCycle) drainCycles(registration.reasons, registration.completion)
-        }
+        scope.launch { admitThenDrain(reason) }
     }
 
     override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> {
-        val registration =
-            registerTrigger(reason)
-                ?: return Outcome.Err(PersistenceError.DatabaseUnavailable)
-        if (registration.startsCycle) scope.launch { drainCycles(registration.reasons, registration.completion) }
-        return registration.completion.await()
+        val request = SyncRequest(reason)
+        val admission = admit(reason, request)
+        if (admission is Admission.Run) {
+            scope.launch { drainCycles(admission.cycle) }
+        }
+        return request.completion.await()
     }
+
+    /**
+     * Admits [reason] and, when this call claimed the cycle, runs it. Every other path resolves when
+     * the cycle that owns the request finishes, so a trigger never needs to know whether it claimed a
+     * window, joined an in-flight cycle or parked behind a window.
+     */
+    private suspend fun admitThenDrain(reason: SyncTrigger) {
+        val request = SyncRequest(reason)
+        val admission = admit(reason, request)
+        if (admission is Admission.Run) drainCycles(admission.cycle)
+    }
+
+    /**
+     * Decides how [reason] is admitted, under `cycleMutex` so the windows and the cycle reservation are
+     * one atomic decision rather than a check a concurrent claimant could slip through.
+     *
+     * The precedence is deliberate. An in-flight cycle wins over any window, because coalescing into
+     * its single follow-up is what keeps exactly one active and one pending cycle (`§9.1`); the
+     * follow-up is not throttled, since it exists precisely because work is already due. Only then do
+     * the `§9.8` windows apply, and only to automatic triggers: pull-to-refresh is user-initiated, so
+     * it bypasses the minimum interval while still serializing on the same mutex.
+     */
+    private suspend fun admit(
+        reason: SyncTrigger,
+        request: SyncRequest,
+    ): Admission =
+        cycleMutex.withLock {
+            if (shuttingDown) {
+                request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+                return@withLock Admission.Refused
+            }
+            if (cycleRunning) {
+                val followUp = pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
+                followUp.reasons += reason
+                followUp.requests += request
+                return@withLock Admission.Awaiting
+            }
+            // The request joins the parked batch before any window is read, so every admission path
+            // ends with it served by a cycle: either the claim below, or a window timer that opens the
+            // window it is waiting on. Parking unconditionally is also what makes coalescing exact -
+            // `claim()` answers every parked trigger, never only the one that happened to arrive last.
+            parkedRequests += request
+            if (reason != SyncTrigger.PullToRefresh) {
+                // A post-write trigger is what opens the debounce window, armed before the window is
+                // read so the delay is measured from the mutation that caused the trigger.
+                if (reason == SyncTrigger.PostWriteDebounce) armDebounceWindow()
+                if (!windowsOpen()) return@withLock Admission.Awaiting
+            }
+            Admission.Run(claim())
+        }
+
+    /**
+     * Reserves a cycle for every parked trigger at once. Called under `cycleMutex`, by a caller that
+     * has established a cycle may start. Taking the whole parked batch is what turns a burst into a
+     * single cycle: each of those triggers was waiting for this same window.
+     */
+    private fun claim(): CycleRun {
+        val claimed = parkedRequests.toList()
+        parkedRequests = emptyList()
+        cycleRunning = true
+        cycleGeneration += 1
+        val completion = CompletableDeferred<Outcome<Unit, AppError>>()
+        activeCycleCompletion = completion
+        activeCycleRequests = claimed
+        return CycleRun(
+            reasons = claimed.mapTo(mutableSetOf()) { it.reason },
+            completion = completion,
+            served = claimed,
+        )
+    }
+
+    /** Arms the trailing post-write debounce, restarted by every write so a burst shares one window. */
+    private fun armDebounceWindow() {
+        armWindow(debounceWindow, SYNC_POST_WRITE_DEBOUNCE_MS)
+    }
+
+    /** Arms the minimum interval between automatic cycles, anchored to a cycle start. */
+    private fun armFloorWindow() {
+        armWindow(floorWindow, SYNC_MIN_AUTOMATIC_INTERVAL_MS)
+    }
+
+    /**
+     * Opens [window] after [millis] and then serves whatever parked behind it. A superseded timer
+     * closes nothing: the newer generation still owns the window, so admission keeps finding it
+     * closed and the parked triggers keep waiting for the window that will actually serve them.
+     */
+    private fun armWindow(
+        window: AdmissionWindow,
+        millis: Long,
+    ) {
+        window.pending = true
+        window.generation += 1
+        val generation = window.generation
+        scope.launch {
+            delay(millis)
+            val owned =
+                cycleMutex.withLock {
+                    if (window.generation != generation) return@withLock false
+                    window.pending = false
+                    true
+                }
+            if (owned) serveParkedWhenWindowsOpen()
+        }
+    }
+
+    /**
+     * Runs a cycle for the triggers parked behind a window, once no window remains. A window timer is
+     * the only caller and a trigger parks only while a window is pending, so this is reached by the
+     * timer that parked it, and the loop in [drainCycles] keeps the mutex busy until then.
+     */
+    private suspend fun serveParkedWhenWindowsOpen() {
+        val cycle =
+            cycleMutex.withLock {
+                if (canClaimForParkedRequests()) claim() else null
+            }
+        if (cycle != null) drainCycles(cycle)
+    }
+
+    /** Under `cycleMutex`: a cycle may start only with no window pending and work still parked. */
+    private fun canClaimForParkedRequests(): Boolean =
+        !shuttingDown && !cycleRunning && parkedRequests.isNotEmpty() && windowsOpen()
+
+    /** True when neither `§9.8` window is pending. Called under `cycleMutex`. */
+    private fun windowsOpen(): Boolean = !debounceWindow.pending && !floorWindow.pending
 
     override fun shutdown() {
         // Publish the refusal first, then read the awaiters. `sync()` and `requestSync` publish their
-        // awaiter and then re-check `shuttingDown`, so at least one side observes the other: a caller
-        // is either completed here or refused there, and no caller is left suspended (`D-172`).
+        // awaiter and then re-check `shuttingDown`, so at least one side observes the other, and a
+        // caller is either completed here or refused there (`D-172`).
         shuttingDown = true
         val active = activeCycleCompletion
-        val pending = pendingFollowUp?.completion
+        val activeRequests = activeCycleRequests
+        val followUp = pendingFollowUp
+        val parked = parkedRequests.toList()
         // Cancelling the graph scope stops `drainCycles` before it reaches its `complete` call, and a
         // `sync()` caller lives outside that scope, so its deferred must be completed here or it
         // suspends forever. `complete` is idempotent: a cycle that did finish keeps its real outcome.
         active?.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-        pending?.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+        activeRequests.forEach { it.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable)) }
+        followUp?.requests?.forEach { it.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable)) }
+        parked.forEach { it.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable)) }
+        activeCycleRequests = emptyList()
+        parkedRequests = emptyList()
     }
-
-    /**
-     * Reserves either a new active cycle or a join on the single pending follow-up. Only the caller
-     * that receives `startsCycle = true` runs [drainCycles]; every other concurrent trigger joins the
-     * follow-up completion, so multiple triggers still produce exactly one active and one pending
-     * cycle (`§9.1`). Each trigger also contributes its own reason to the [PendingFollowUp], so the
-     * follow-up cycle runs every reason-dependent step a joined trigger requires.
-     */
-    private suspend fun registerTrigger(reason: SyncTrigger): TriggerRegistration? =
-        cycleMutex.withLock {
-            if (shuttingDown) return@withLock null
-            if (cycleRunning) {
-                val followUp =
-                    pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
-                followUp.reasons += reason
-                // Publish the handle, then re-check: `shutdown()` reads it after setting the flag, so
-                // one of the two always observes the other and the caller cannot be left suspended.
-                if (shuttingDown) {
-                    followUp.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-                    return@withLock null
-                }
-                TriggerRegistration(followUp.completion, reasons = setOf(reason), startsCycle = false)
-            } else {
-                cycleRunning = true
-                cycleGeneration += 1
-                val completion = CompletableDeferred<Outcome<Unit, AppError>>()
-                activeCycleCompletion = completion
-                if (shuttingDown) {
-                    cycleRunning = false
-                    activeCycleCompletion = null
-                    return@withLock null
-                }
-                TriggerRegistration(completion, reasons = setOf(reason), startsCycle = true)
-            }
-        }
 
     override suspend fun retryFailed(): Outcome<Unit, AppError> {
         val result = persistence.resetFailed(clock.now())
@@ -324,15 +481,14 @@ internal class DefaultSyncController(
 
     override suspend fun debugLines(): List<String> = if (debugEnabled) debugLoader() else emptyList()
 
-    private suspend fun drainCycles(
-        firstReasons: Set<SyncTrigger>,
-        firstCompletion: CompletableDeferred<Outcome<Unit, AppError>>,
-    ) {
-        var reasons = firstReasons
-        var completion = firstCompletion
+    private suspend fun drainCycles(first: CycleRun) {
+        var run = first
         while (true) {
-            val outcome = runCycle(reasons)
-            completion.complete(outcome)
+            val outcome = runCycle(run.reasons)
+            run.completion.complete(outcome)
+            // Every trigger parked behind this cycle's window shares its outcome, which is what makes
+            // a burst of writes one cycle instead of one cycle per write (`§9.8`).
+            run.served.forEach { it.completion.complete(outcome) }
             // Capture the generation under the same lock that clears the active-cycle reservation.
             // The terminal publish then skips if a newer cycle started in the window between releasing
             // the lock and publishing, so it cannot overwrite that cycle's `Syncing` (`§9.9`).
@@ -347,6 +503,7 @@ internal class DefaultSyncController(
                         // The active cycle is no longer running, so its completion must not be held as
                         // the "in-flight" awaiter `shutdown()` would complete.
                         activeCycleCompletion = null
+                        activeCycleRequests = emptyList()
                         null to cycleGeneration
                     }
                 }
@@ -354,9 +511,24 @@ internal class DefaultSyncController(
                 refreshStatus(expectedGeneration = finishingGeneration)
                 return
             }
-            completion = nextFollowUp.completion
-            reasons = nextFollowUp.reasons.toSet()
+            run = nextFollowUp.toCycleRun()
         }
+    }
+
+    /**
+     * Turns the pending follow-up into the next cycle. Its own completion is a fresh deferred: it is
+     * the handle `shutdown()` completes for the active cycle of that follow-up (`D-172`), separate
+     * from the per-trigger completions the cycle's outcome already answers.
+     */
+    private fun PendingFollowUp.toCycleRun(): CycleRun {
+        val completion = CompletableDeferred<Outcome<Unit, AppError>>()
+        activeCycleCompletion = completion
+        activeCycleRequests = requests.toList()
+        return CycleRun(
+            reasons = reasons.toSet(),
+            completion = completion,
+            served = requests.toList(),
+        )
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -409,6 +581,12 @@ internal class DefaultSyncController(
         }
         adoptionFailure = false
         adoptionAttemptCount = 0
+        // The floor is armed here, not at admission, because it bounds remote backup traffic: a cycle
+        // refused for offline or `LOCAL_OWNER`, or one that failed before any remote call, performed
+        // no work to space out, and spacing it out would only delay the retry that follows a failure
+        // which is not about the network. `§9.8` measures the interval between automatic cycles that
+        // ran, so it is anchored to the moment this one reached the remote steps.
+        armFloorWindow()
         val pullFirst = persistence.isOwnerDatabaseEmpty(ownerId)
         if (pullFirst) {
             pull(ownerId, cycleId)

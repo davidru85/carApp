@@ -16,6 +16,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,10 +40,10 @@ import kotlin.time.Instant
  * `SYNC_MIN_AUTOMATIC_INTERVAL_MS` (30 s) is the floor between automatic cycles. Pull-to-refresh
  * bypasses the floor and never the mutex.
  *
- * The waits are built from `delay`, so the scheduler's virtual time drives them and the boundaries
- * are asserted exactly: one millisecond early stays inside the window, the boundary itself admits
- * the cycle. The assertions read the injected clock, so a deferred trigger is proven to be *served*
- * rather than merely late.
+ * Time is driven explicitly. `advanceUntilIdle()` is deliberately avoided wherever a window is being
+ * measured: it advances until no task remains, so it would fast-forward straight through the 2 s and
+ * 30 s windows these tests are about. `runCurrent()` plus `advanceTimeBy` keeps every boundary exact,
+ * and the assertions read cycles at the transport, which is what a window actually governs.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SyncAdmissionPolicyTest {
@@ -51,9 +52,10 @@ class SyncAdmissionPolicyTest {
         runTest {
             val fixture = fixture()
 
-            // Three writes inside one debounce window. Coalescing is the point of `§9.8`: the delay
-            // is measured from the last write, so all three share one cycle.
+            // Three writes inside one debounce window. Coalescing is the point of `§9.8`: the delay is
+            // measured from the last write, so all three share one cycle.
             fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            runCurrent()
             advanceTimeBy(SYNC_POST_WRITE_DEBOUNCE_MS - 1)
             runCurrent()
             fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
@@ -62,14 +64,10 @@ class SyncAdmissionPolicyTest {
             fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
             runCurrent()
 
-            assertEquals(
-                0,
-                fixture.remote.cycles,
-                "no cycle may start before the debounce window elapses",
-            )
+            assertEquals(0, fixture.remote.cycles, "no cycle may start before the debounce window elapses")
 
             advanceTimeBy(SYNC_POST_WRITE_DEBOUNCE_MS)
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(
                 1,
@@ -84,6 +82,7 @@ class SyncAdmissionPolicyTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            runCurrent()
             advanceTimeBy(SYNC_POST_WRITE_DEBOUNCE_MS - 1)
             runCurrent()
             assertEquals(
@@ -93,7 +92,7 @@ class SyncAdmissionPolicyTest {
             )
 
             advanceTimeBy(1)
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(1, fixture.remote.cycles, "the debounce boundary admits the cycle")
         }
 
@@ -103,14 +102,11 @@ class SyncAdmissionPolicyTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
-            assertEquals(
-                1,
-                fixture.remote.cycles,
-                "the first automatic cycle is admitted without a preceding cycle to space it from",
-            )
+            runCurrent()
+            assertEquals(1, fixture.remote.cycles, "a first automatic trigger has no preceding cycle")
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
+            runCurrent()
             advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS - 1)
             runCurrent()
             assertEquals(
@@ -120,7 +116,7 @@ class SyncAdmissionPolicyTest {
             )
 
             advanceTimeBy(1)
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(2, fixture.remote.cycles, "the floor expiry admits exactly one more cycle")
         }
 
@@ -130,18 +126,19 @@ class SyncAdmissionPolicyTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(1, fixture.remote.cycles)
 
             // The trigger arrives inside the floor. It MUST be deferred, not discarded: dropping it
             // would leave the write outstanding until the next trigger, which `§9.2` and P2 forbid.
             fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            runCurrent()
             advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS - 1)
             runCurrent()
             assertEquals(1, fixture.remote.cycles)
 
             advanceTimeBy(1)
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(2, fixture.remote.cycles, "a deferred trigger is served, never dropped")
         }
 
@@ -151,39 +148,45 @@ class SyncAdmissionPolicyTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(1, fixture.remote.cycles)
 
-            // A user-initiated refresh must not be held back by the floor (`§9.8`) ...
+            // A user-initiated refresh must not be held back by the floor (`§9.8`), and it still runs
+            // one cycle at a time because it serializes on the same mutex.
             val result = fixture.controller.sync(SyncTrigger.PullToRefresh)
-            advanceUntilIdle()
+            runCurrent()
             assertEquals(Outcome.Ok(Unit), result)
             assertEquals(2, fixture.remote.cycles, "pull-to-refresh bypasses the minimum interval")
-
-            // ... and it still runs one cycle at a time.
             assertEquals(1, fixture.remote.maxConcurrentCycles, "pull-to-refresh never bypasses the mutex")
         }
 
     @Test
     fun theFloorIsMeasuredFromTheStartOfThePreviousAutomaticCycle() =
         runTest {
-            val fixture = fixture()
+            // The first cycle's remote work takes real virtual time. The floor is anchored to the
+            // moment the cycle reached the remote steps, so it expires 30 s after that start and not
+            // 30 s after the cycle finished - otherwise a slow cycle would push the next one further
+            // out the longer it took, which is not what "minimum interval between cycles" means.
+            val fixture = fixture(pullDelayMillis = FIRST_CYCLE_PULL_MILLIS)
 
-            fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
-            advanceTimeBy(SYNC_POST_WRITE_DEBOUNCE_MS)
-            advanceUntilIdle()
-            assertEquals(1, fixture.remote.cycles)
-
-            // The floor runs from that cycle's start, so the next automatic trigger is admitted
-            // `SYNC_MIN_AUTOMATIC_INTERVAL_MS` after it, not after its completion.
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS - SYNC_POST_WRITE_DEBOUNCE_MS - 1)
             runCurrent()
-            assertEquals(1, fixture.remote.cycles)
+            advanceTimeBy(FIRST_CYCLE_PULL_MILLIS)
+            runCurrent()
+            assertEquals(1, fixture.remote.cycles, "the first cycle completed")
 
-            advanceTimeBy(1)
-            advanceUntilIdle()
-            assertEquals(2, fixture.remote.cycles)
+            // 30 s after the start of that cycle; the cycle itself ended
+            // `FIRST_CYCLE_PULL_MILLIS` after it started.
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            runCurrent()
+            advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS - FIRST_CYCLE_PULL_MILLIS)
+            runCurrent()
+
+            assertEquals(
+                2,
+                fixture.remote.cycles,
+                "the floor is measured from the previous cycle's start, not from its completion",
+            )
         }
 
     @Test
@@ -192,12 +195,14 @@ class SyncAdmissionPolicyTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
+            runCurrent()
 
-            // Deferred by the floor, but the cycle it is served by MUST still make connectivity
-            // failures due, because that step is reason-dependent (`§9.7`, `§9.8`).
+            // Deferred by the floor, but the cycle that serves it MUST still make connectivity failures
+            // due, because that step is reason-dependent (`§9.7`, `§9.8`).
             fixture.controller.requestSync(SyncTrigger.ConnectivityRecovered)
-            advanceUntilIdle()
+            runCurrent()
+            advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS)
+            runCurrent()
 
             assertTrue(
                 fixture.persistence.connectivityDueCalls.isNotEmpty(),
@@ -211,13 +216,15 @@ class SyncAdmissionPolicyTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
+            runCurrent()
+            assertEquals(1, fixture.remote.cycles)
 
             // `sync()` honours the same admission policy as `requestSync`; there is no second path
             // around the floor. It resolves with the serving cycle's outcome rather than hanging.
             val awaited = async { fixture.controller.sync(SyncTrigger.PostWriteDebounce) }
+            runCurrent()
             advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS)
-            advanceUntilIdle()
+            runCurrent()
 
             assertEquals(Outcome.Ok(Unit), awaited.await())
             assertEquals(2, fixture.remote.cycles)
@@ -240,7 +247,9 @@ class SyncAdmissionPolicyTest {
             // A write that lands while a cycle is running is coalesced into the single pending
             // follow-up rather than starting an unthrottled second cycle (`§9.1`).
             fixture.controller.requestSync(SyncTrigger.PostWriteDebounce)
+            runCurrent()
             releaseCycle.complete(Unit)
+            runCurrent()
             advanceUntilIdle()
 
             assertEquals(
@@ -251,19 +260,18 @@ class SyncAdmissionPolicyTest {
         }
 
     @Test
-    fun shutdownCompletesAnAutomaticTriggerParkedOnTheFloor() =
+    fun shutdownCompletesATriggerParkedOnAnAdmissionWindow() =
         runTest {
             val fixture = fixture()
 
             fixture.controller.requestSync(SyncTrigger.AppForeground)
-            advanceUntilIdle()
+            runCurrent()
 
-            // Park an automatic trigger inside the floor, then close the graph (`D-172`): the
-            // awaitable caller lives outside the graph scope, so shutdown MUST complete it.
+            // Park an automatic trigger inside the floor, then close the graph (`D-172`): the awaitable
+            // caller lives outside the graph scope, so shutdown MUST complete it.
             val parked = async { fixture.controller.sync(SyncTrigger.Periodic) }
             runCurrent()
             fixture.controller.shutdown()
-            advanceUntilIdle()
 
             val result = withTimeoutOrNull(5.seconds) { parked.await() }
             assertEquals(
@@ -273,11 +281,11 @@ class SyncAdmissionPolicyTest {
             )
         }
 
-    private fun TestScope.fixture(): AdmissionFixture {
+    private fun TestScope.fixture(pullDelayMillis: Long = 0): AdmissionFixture {
         val clock = AdmissionClock(Instant.fromEpochMilliseconds(0))
         val connectivity = AdmissionConnectivity(true)
         val persistence = AdmissionPersistence()
-        val remote = AdmissionRemote()
+        val remote = AdmissionRemote(pullDelayMillis)
         val controller =
             DefaultSyncController(
                 scope = this,
@@ -292,6 +300,9 @@ class SyncAdmissionPolicyTest {
         return AdmissionFixture(controller, persistence, remote, connectivity, clock)
     }
 }
+
+/** Virtual milliseconds the first cycle's remote pull consumes in the floor-anchor test. */
+private const val FIRST_CYCLE_PULL_MILLIS = 5_000L
 
 private data class AdmissionFixture(
     val controller: DefaultSyncController,
@@ -341,7 +352,9 @@ private class AdmissionUuidGenerator : UuidGenerator {
 }
 
 /** Counts cycles at the transport, which is the only observable an admission window governs. */
-private class AdmissionRemote : RemoteSyncSource {
+private class AdmissionRemote(
+    private val pullDelayMillis: Long,
+) : RemoteSyncSource {
     var cycles = 0
     var maxConcurrentCycles = 0
     var onPull: (suspend () -> Unit)? = null
@@ -363,6 +376,7 @@ private class AdmissionRemote : RemoteSyncSource {
             activeCycles += 1
             maxConcurrentCycles = maxOf(maxConcurrentCycles, activeCycles)
             onPull?.invoke()
+            if (pullDelayMillis > 0) delay(pullDelayMillis)
             activeCycles -= 1
         }
         return Outcome.Ok(RemotePage(items = emptyList(), nextCursor = cursor, hasMore = false))
