@@ -162,10 +162,12 @@
   regexes keep working and diagnostics keep their original text. Ten permanent regressions were
   added; the three suites report 92 tests and zero failures.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. Review round 6 was
-  pushed as `8f843bd..c1fc7b4`. The ten required checks are green on run `35507688023`, which covers
-  the head `c1fc7b4` and passed on its **first attempt** with no re-run: all ten, `shared-tests` and
-  `provider-decoupling` included. Review round 5 was pushed as `faa9357..a99d7b7` and was green on
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 7 was
+  pushed as `72392dd..2c258c1`. The ten required checks are green on run `35512948905`, which covers
+  the corrected head `2c258c1` and passed on its **first attempt** with no re-run: all ten,
+  `shared-tests` and `provider-decoupling` included. That run belongs to the correction commit, not
+  to the reviewed head: the reviewed head `72392dd` has its own green run `35508457783`, and it is
+  green precisely while the eight defects were reproducing against it. Review round 5 was pushed as `faa9357..a99d7b7` and was green on
   run `35430529028`. Review round 4 was pushed as `cb34b35..faa9357` and was green on
   run `35381816775`. Run `35376856797` covered
   `f8b8406`: nine checks on their first attempt and `provider-decoupling` on its second, after the
@@ -212,7 +214,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35507688023`; the story now waits for the owner's gated review of review round 6.
+  `35512948905`; the story now waits for the owner's gated review of review round 7.
 
 ## Scope Completed
 

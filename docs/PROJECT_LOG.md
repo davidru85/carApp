@@ -75,7 +75,9 @@
   with no `PENDING`; `architectureCheck` still prints `16 rules … 23 modules`; `ktlintCheck detekt`
   pass; `git diff --check` is clean. The two ADR-0181 claims removed here were refuted by running the
   check before removal. The canonical CI command passes, and the round-7 commits are `f8b5c26` (RED)
-  and `63b0d47` (GREEN).
+  and `63b0d47` (GREEN). Run `35512948905` on the corrected head `2c258c1` is green on all ten
+  required checks on its first attempt; the reviewed head `72392dd` was green on its own run
+  `35508457783`, which is exactly why the eight defects needed reproducing by hand.
 - **Follow-ups / risks:** the fixed holder-source inventory, textual type recognition, the
   property-without-an-explicit-type limit and the `§11.6` hidden-member and Konsist deferrals are
   unchanged and are not part of this correction.
