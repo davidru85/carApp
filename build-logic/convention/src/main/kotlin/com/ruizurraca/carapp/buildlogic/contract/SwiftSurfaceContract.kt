@@ -191,10 +191,17 @@ internal class SwiftSurfaceContract(
         return inputs.contract.substring(start, closing + 1)
     }
 
-    /** The members of one declaration, with their signatures and their visibility. */
+    /**
+     * The members of one declaration, in declaration order.
+     *
+     * Functions and properties are parsed by two scanners, so the combined list is sorted by source
+     * offset: `docs/CONTRACTS.md` and `D-180` make the order part of the surface definition, and
+     * concatenating one kind before the other normalized an interleaved contract and a grouped
+     * implementation to the same list.
+     */
     private fun members(source: String, declaration: String): List<Member> {
         val body = bodyOf(source, declaration)
-        return functionMembers(body) + propertyMembers(body)
+        return (functionMembers(body) + propertyMembers(body)).sortedBy(Member::sourceOffset)
     }
 
     /**
@@ -212,6 +219,7 @@ internal class SwiftSurfaceContract(
                 parameters = splitTopLevel(parameters.text).mapNotNull(::parameter),
                 returnType = returnTypeAfter(body, parameters.closingIndex),
                 visibility = visibilityOf(headerBefore(body, match.range.first)),
+                sourceOffset = match.range.first,
             )
         }.toList()
 
@@ -224,6 +232,9 @@ internal class SwiftSurfaceContract(
     private fun propertyMembers(body: String): List<Member> {
         val result = mutableListOf<Member>()
         var braceDepth = 0
+        // The absolute offset of the current line inside `body`. A line index alone cannot order a
+        // property against a function: both producers must report a position in the same space.
+        var lineOffset = 0
         body.lineSequence().forEach { line ->
             val declaration = if (braceDepth == 0) PROPERTY.find(line) else null
             if (declaration != null) {
@@ -239,9 +250,11 @@ internal class SwiftSurfaceContract(
                     // `val` and `var` are different members: a `var` is write access, which `§11.6`
                     // does not expose, so the keyword is part of the signature.
                     keyword = declaration.groupValues[1],
+                    sourceOffset = lineOffset + keywordOffset,
                 )
             }
             braceDepth += line.count { it == '{' } - line.count { it == '}' }
+            lineOffset += line.length + 1
         }
         return result
     }
@@ -424,6 +437,12 @@ internal class SwiftSurfaceContract(
         val returnType: String?,
         val visibility: MemberVisibility,
         val keyword: String? = null,
+        /**
+         * Where the declaration starts inside the parsed body. Used only to preserve source order
+         * when the two producers are combined, so it is deliberately excluded from [signature]: the
+         * comparison stays on kind, name, parameters, declared type, defaults and visibility.
+         */
+        val sourceOffset: Int = 0,
     ) {
         /**
          * `§11.6` exports the public surface only. An `internal` or `protected` member never
