@@ -130,6 +130,11 @@ change.
     different surface even when its name and parameters are unchanged; before review round 5 the
     comparison stopped at the parameter list and a return-type change left both assertions at
     `PASS`.
+  - Order spans both member kinds. Functions and properties are parsed by two scanners and the
+    combined list is sorted by a source offset that both producers report in the same character
+    space, so `fun A`, `val B`, `fun C` and `fun A`, `fun C`, `val B` compare as the different
+    surfaces they are. Before review round 6 the two lists were concatenated, which normalized an
+    interleaved contract and a grouped implementation to the same order and passed both assertions.
   - A property is recognised only when it declares its type explicitly. A `val name = …` carries no
     textual type to compare, so it yields no member; if an exported state holder ever gains one, the
     per-class emptiness guard reports the class rather than comparing it against nothing.
@@ -164,6 +169,9 @@ declared type is compared on both surfaces; the four property fixtures prove a `
 one side is a divergence and `aPropertyKindChangeIsRejected` proves a `var` is not a `val`; the four
 visibility fixtures prove an `internal` or `protected` helper is neither compared nor held to the
 scope and default rules.
+`anInterleavedFunctionAndPropertyOrderIsRejectedOnTheKotlinFacingSurface` and its Swift-facing
+counterpart prove a function property function order is distinguished from a function function
+property order on both surfaces.
 
 ## References
 

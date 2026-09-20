@@ -50,7 +50,7 @@
 - Date: 2026-09-18
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 5 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 6 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
@@ -58,8 +58,9 @@
   and the round-3 record); review fixes round 4 `b9b0d0e`, `a90bef1` (the annotation scanner),
   `6b338bb`, `d7187a2` (the scope detected by declared type), `8860e48`, `95066e2` (the missing
   `AppGraph` block and the one-sided parse messages), each a red/green pair; review fixes round 5
-  `316cb52`, `ee925ba` (the member kind, declared type and exported-visibility comparison) and the
-  round-5 record.
+  `316cb52`, `ee925ba` (the member kind, declared type and exported-visibility comparison), the
+  round-5 record; review fixes round 6 `ac35860`, `0971edc` (the interleaved declaration order) and
+  the round-6 record.
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -140,6 +141,14 @@
   visibility is now four-way and the exported filters keep only `public`. Twelve fixtures added
   (129 -> 141 build-logic tests), five mutation rows re-run including two controls that prove the
   fix did not trade one silent gap for another.
+- Review round 6: one finding, the same class as rounds 3 to 5 — a comparison reporting `PASS`
+  while covering less than it claimed. `members(...)` concatenated every function before every
+  property, so a contract declaring `fun A`, `val B`, `fun C` and an implementation declaring
+  `fun A`, `fun C`, `val B` normalized to the same order and both assertions passed. `Member` now
+  carries a `sourceOffset` that both producers report in the same character space, and the combined
+  list is sorted by it; the offset is excluded from `signature`, so what is compared is unchanged.
+  Two fixtures added (141 -> 143 build-logic tests), and two mutation rows — one real-repository
+  divergent order that fails with both orders quoted, one control at the same position that passes.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 5 was
   pushed as `faa9357..a99d7b7`. The ten required checks are green on run `35430529028`, which covers
@@ -297,6 +306,8 @@ the observed output, not the intended one.
 | 23 | `val extra: String = ""` added to `SwiftAppGraph` | `contractCheck` | 35 FAIL `val extra: String is declared but absent from §20.10` |
 | 24 | `private val unreviewed: String = ""` added to `SwiftAppGraph` (control) | `contractCheck` | PASS, no diagnostic: a non-exported property is not compared |
 | 25 | `syncStateHolder(coroutineScope: CoroutineScope)` in `SwiftAppGraph` (control) | `contractCheck` | 14 FAIL `SwiftAppGraph.syncStateHolder takes coroutineScope: CoroutineScope`, unchanged by this round |
+| 26 | `val extra: String` added to `SwiftAppGraph` **before** `fun close()`, while `§20.10` declares it **after** `fun close()` | `contractCheck` | 35 FAIL, quoting both real orders: `§20.10 declares [… close(), val extra: String], the class declares [… val extra: String, close()]` |
+| 27 | The same declaration placed at the **same** position on both sides (control) | `contractCheck` | PASS: order agrees, so the member is a real match rather than a positional artefact |
 
 Rows 2 and 10 are the two rows that previously passed while the change they were supposed to catch
 was in place: a default on an `AppGraph` factory's `scope` (the old `signature` stripped the default
@@ -436,6 +447,21 @@ Two controls prove the fix did not trade one silent gap for another: appending `
 unreviewed: String` to `SwiftAppGraph` leaves `contractCheck` at `PASS`, and the assertion-14
 scope mutation on `syncStateHolder` still fails. Assertion ids, names, the member order and the
 missing-side diagnostics are unchanged; only the compared signature grew.
+
+## Review Round 6
+
+The owner's sixth gated review of pull request #71 found one more gap of the same class as rounds 3
+to 5 — a comparison reporting `PASS` while covering less than it claimed — and it was fixed on the
+same branch after a failing fixture each. `D-180` keeps its wording and `Accepted` status.
+
+| Finding | Defect | Fix |
+|---------|--------|-----|
+| 1 | `members(...)` concatenated `functionMembers(body) + propertyMembers(body)`, so every function was ordered before every property. A contract declaring `fun A`, `val B`, `fun C` and an implementation declaring `fun A`, `fun C`, `val B` both normalized to `[A, C, B]` and assertions 34 and 35 passed on a documented ordering violation. Order is part of the surface definition in `docs/CONTRACTS.md` and `D-180` | `Member` gained a `sourceOffset` that both producers populate in the same character space — functions from the match start, properties from the absolute line offset plus the keyword offset — and the combined list is sorted by it. `sourceOffset` is excluded from `signature`, so the comparison stays on kind, name, parameters, declared type, defaults and visibility. Fixtures: `anInterleavedFunctionAndPropertyOrderIsRejectedOnTheKotlinFacingSurface` and its Swift-facing counterpart |
+
+**Mutation evidence for round 6** is rows 26 and 27 of the table under "Acceptance Evidence". Row 26
+is the real-repository proof: the member exists on both sides and only its position differs, and
+the diagnostic quotes both real orders. Row 27 is the control that shows the fix does not report a
+false positive when the orders agree.
 
 ## Files Changed
 

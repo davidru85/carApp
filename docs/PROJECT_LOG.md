@@ -38,6 +38,40 @@
 
 ## Entries
 
+### 2026-09-20 — E3-08 review round 6: declaration order is compared across both member kinds
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the owner's sixth gated review of pull request #71 found that `members(...)`
+  concatenated `functionMembers(body) + propertyMembers(body)`, so every function was ordered
+  before every property. A contract declaring `fun A`, `val B`, `fun C` and an implementation
+  declaring `fun A`, `fun C`, `val B` both normalized to `[A, C, B]`, and assertions 34 and 35
+  reported `PASS` on an ordering violation that `docs/CONTRACTS.md` and `D-180` make part of the
+  surface definition. `Member` gained a `sourceOffset` that both producers populate in the same
+  character space — functions from the match start, properties from the absolute line offset plus
+  the keyword offset — and the combined list is sorted by it. `sourceOffset` is excluded from
+  `signature`, so the comparison still rests on kind, name, parameters, declared type, defaults and
+  visibility.
+- **Why:** the surface contract states exact member parity *in order*, and the two scanners were
+  written independently in review round 5, which is what made the concatenation look harmless. A
+  property and a function are ordered against each other by the reader, so the check has to order
+  them the same way.
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code:
+  `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. No production source, no
+  contract text, no decision and no dependency changed.
+- **Verification:** `:build-logic:convention:test` reports 143 tests and 0 failures (141 + 2);
+  `contractCheck` reports 14, 34 and 35 `PASS` with no `PENDING`; `architectureCheck` still prints
+  `16 rules … 23 modules`; `ktlintCheck detekt` pass. On the real repository, adding `val extra:
+  String` to `SwiftAppGraph` before `fun close()` while `§20.10` declares it after fails assertion
+  35 with both real orders quoted, and placing it at the same position on both sides passes — the
+  control that shows the fix reports position rather than inventing a mismatch. Both mutations were
+  reverted and `git status --porcelain` reported only the intended files. The canonical CI command
+  passes.
+- **Follow-ups / risks:** none new. The property-without-an-explicit-type limit, the `§11.6`
+  `@HiddenFromObjC` deferral and the `shared-tests` and `provider-decoupling` silent stalls are
+  unchanged from the previous rounds.
+
 ### 2026-09-19 — E3-08 review round 5: the graph-surface comparison missed return types, properties and visibility
 
 - **Type:** correction

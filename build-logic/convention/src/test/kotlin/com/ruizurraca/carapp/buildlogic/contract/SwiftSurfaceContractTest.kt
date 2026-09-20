@@ -451,21 +451,28 @@ class SwiftSurfaceContractTest {
             SWIFT_APP_GRAPH_MEMBERS,
             "§20.10 declares [vehicleListStateHolder(): VehicleListStateHolder, val extra: String, close()], " +
                 "the class declares [vehicleListStateHolder(): VehicleListStateHolder, close(), val extra: String]",
-            swiftResults(
-                contractMembers = listOf(
-                    "vehicleListStateHolder(): VehicleListStateHolder",
-                    "val extra: String",
-                    "close()",
-                ),
-                classSource = rawBlock(
-                    SWIFT_APP_GRAPH_DECLARATION,
-                    listOf(
-                        "fun vehicleListStateHolder(): VehicleListStateHolder",
-                        "fun close()",
-                        "val extra: String",
+            SwiftSurfaceContract(
+                real.withSource(
+                    SWIFT_APP_GRAPH,
+                    rawBlock(
+                        SWIFT_APP_GRAPH_DECLARATION,
+                        listOf(
+                            "fun vehicleListStateHolder(): VehicleListStateHolder",
+                            "fun close()",
+                            "val extra: String",
+                        ),
+                    ),
+                ).copy(
+                    contract = rawBlock(
+                        SWIFT_APP_GRAPH_DECLARATION,
+                        listOf(
+                            "fun vehicleListStateHolder(): VehicleListStateHolder",
+                            "val extra: String",
+                            "fun close()",
+                        ),
                     ),
                 ),
-            ),
+            ).validate(),
         )
     }
 
