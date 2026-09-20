@@ -2,6 +2,8 @@ package com.ruizurraca.carapp.buildlogic.source
 
 /** Offset-preserving lexical views for the existing textual source checks. */
 internal object KotlinSourceText {
+    private const val CONTEXT_CLAUSE = "context("
+
     fun code(source: String): String {
         val result = source.toCharArray()
         var cursor = 0
@@ -33,15 +35,24 @@ internal object KotlinSourceText {
         return String(result)
     }
 
+    /**
+     * The text with every leading annotation and every leading `context(…)` clause removed. A
+     * context clause puts a `(` before the declaration keyword, and the declaration matchers cannot
+     * cross one, so the declaration parsed as nothing at all and its rule passed it silently.
+     */
     fun stripLeadingAnnotations(source: String): String {
         val masked = code(source)
         var cursor = 0
-        while (cursor < masked.length && masked[cursor].isWhitespace()) cursor += 1
-        while (cursor < masked.length && masked[cursor] == '@') {
-            val end = annotationEnd(masked, cursor)
+        while (true) {
+            while (cursor < masked.length && masked[cursor].isWhitespace()) cursor += 1
+            val end = when {
+                cursor < masked.length && masked[cursor] == '@' -> annotationEnd(masked, cursor)
+                masked.startsWith(CONTEXT_CLAUSE, cursor) ->
+                    balancedParenthesisEnd(masked, cursor + CONTEXT_CLAUSE.length - 1)
+                else -> cursor
+            }
             if (end <= cursor) break
             cursor = end
-            while (cursor < masked.length && masked[cursor].isWhitespace()) cursor += 1
         }
         return source.substring(cursor)
     }
@@ -78,6 +89,21 @@ internal object KotlinSourceText {
             }
         }
         return from
+    }
+
+    /** The index just past the `)` that closes the `(` at [opening], or [opening] when it never closes. */
+    private fun balancedParenthesisEnd(code: String, opening: Int): Int {
+        var depth = 0
+        for (index in opening until code.length) {
+            when (code[index]) {
+                '(' -> depth += 1
+                ')' -> {
+                    depth -= 1
+                    if (depth == 0) return index + 1
+                }
+            }
+        }
+        return opening
     }
 
     private fun blank(result: CharArray, from: Int, until: Int) {

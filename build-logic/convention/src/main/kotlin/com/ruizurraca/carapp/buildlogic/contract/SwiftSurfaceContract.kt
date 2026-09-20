@@ -115,7 +115,7 @@ internal class SwiftSurfaceContract(
      * from Objective-C export and defaults never reach the generated header.
      */
     private fun appGraphMembersMatch(): AssertionResult {
-        if (inputs.contract.indexOf(KOTLIN_APP_GRAPH) < 0) {
+        if (declarationIndex(inputs.contract, KOTLIN_APP_GRAPH) < 0) {
             return result(
                 ASSERTION_APP_GRAPH_MEMBERS,
                 ASSERTION_34,
@@ -157,7 +157,7 @@ internal class SwiftSurfaceContract(
      * them.
      */
     private fun swiftAppGraphMembersMatch(): AssertionResult {
-        if (inputs.contract.indexOf(SWIFT_APP_GRAPH_DECLARATION) < 0) {
+        if (declarationIndex(inputs.contract, SWIFT_APP_GRAPH_DECLARATION) < 0) {
             return result(
                 ASSERTION_SWIFT_APP_GRAPH_MEMBERS,
                 ASSERTION_35,
@@ -193,7 +193,7 @@ internal class SwiftSurfaceContract(
 
     /** The `<declaration> { … }` block of `docs/CONTRACTS.md §20.10`, braces included. */
     private fun contractBlock(declaration: String = KOTLIN_APP_GRAPH): String? {
-        val start = inputs.contract.indexOf(declaration)
+        val start = declarationIndex(inputs.contract, declaration)
         if (start < 0) return null
         val source = inputs.contract.substring(start)
         val opening = bodyBrace(source, 0)
@@ -248,11 +248,14 @@ internal class SwiftSurfaceContract(
     private fun propertyMembers(body: String): List<Member> {
         val result = mutableListOf<Member>()
         var braceDepth = 0
+        // Parentheses matter as well as braces: the constructor parameters of a nested class sit at
+        // brace depth zero, so their `val`s were collected as members of the enclosing declaration.
+        var parenthesisDepth = 0
         // The absolute offset of the current line inside `body`. A line index alone cannot order a
         // property against a function: both producers must report a position in the same space.
         var lineOffset = 0
         KotlinSourceText.declarations(body).lineSequence().forEach { line ->
-            val declaration = if (braceDepth == 0) PROPERTY.find(line) else null
+            val declaration = if (braceDepth == 0 && parenthesisDepth == 0) PROPERTY.find(line) else null
             if (declaration != null) {
                 // The keyword offset, not the match start: `PROPERTY` begins with `\s*`, so the
                 // match starts at column zero and the modifiers sit between it and the keyword.
@@ -261,7 +264,7 @@ internal class SwiftSurfaceContract(
                     kind = MemberKind.PROPERTY,
                     name = declaration.groupValues[2].removeSurrounding("`"),
                     parameters = emptyList(),
-                    returnType = declaration.groupValues[3].trim(),
+                    returnType = declaredPropertyType(declaration.groupValues[3]),
                     visibility = visibilityOf(line.substring(0, keywordOffset)),
                     // `val` and `var` are different members: a `var` is write access, which `§11.6`
                     // does not expose, so the keyword is part of the signature.
@@ -270,10 +273,23 @@ internal class SwiftSurfaceContract(
                 )
             }
             braceDepth += line.count { it == '{' } - line.count { it == '}' }
+            parenthesisDepth += line.count { it == '(' } - line.count { it == ')' }
             lineOffset += line.length + 1
         }
         return result
     }
+
+    /**
+     * The declared type of a property, with an accessor or a delegate written on the declaration
+     * line removed. `val isClosed: Boolean get() = closed` produced the type `Boolean get()`, which
+     * no `§20.10` spelling can equal, so the property could never be declared in the contract.
+     */
+    private fun declaredPropertyType(captured: String): String =
+        captured.trim()
+            .substringBefore(" get(")
+            .substringBefore(" set(")
+            .substringBefore(" by ")
+            .trim()
 
     /** The header text that carries a declaration's modifiers, up to the declaration itself. */
     private fun headerBefore(body: String, offset: Int): String =
@@ -333,9 +349,17 @@ internal class SwiftSurfaceContract(
         return null
     }
 
+    /**
+     * The index at which [declaration] appears in [text] as a whole declaration. `indexOf` matched a
+     * name prefix, so `class SessionStateHolderShim` shadowed `class SessionStateHolder` and the
+     * wrong body was parsed.
+     */
+    private fun declarationIndex(text: String, declaration: String): Int =
+        Regex(Regex.escape(declaration) + """\b""").find(text)?.range?.first ?: -1
+
     /** The braced body of one declaration, with the declaration header and its KDoc excluded. */
     private fun bodyOf(source: String, declaration: String): String {
-        val start = KotlinSourceText.code(source).indexOf(declaration)
+        val start = declarationIndex(KotlinSourceText.code(source), declaration)
         if (start < 0) return ""
         return braceBody(source, bodyBrace(source, start)).orEmpty()
     }
@@ -572,19 +596,18 @@ internal class SwiftSurfaceContract(
          * anchored pattern without it silently matched nothing. A property with no explicit type is
          * not matched at all, because `§20.10` declares the type and inferring one could disagree.
          */
-        val PROPERTY = Regex("""^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|protected|override|open|final|lateinit|const)\s+)*(val|var)\s+(`[^`\r\n]+`|\w+)\s*:\s*([^=]+)""")
+        val PROPERTY = Regex("""^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|protected|override|open|final|abstract|lateinit|const|expect|actual|external|inline)\s+)*(val|var)\s+(`[^`\r\n]+`|\w+)\s*:\s*([^=]+)""")
         val WHITESPACE = Regex("""\s+""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
 
         /**
-         * A `<Name>StateHolder` class at the start of a line, tolerating the `public`/`internal`/
-         * `private`/`abstract`/`open`/`sealed`/`data` modifiers and an annotation on the same line.
-         * A declaration whose annotation sits on its own line is still matched, because the regex
-         * anchors to the line carrying `class`. Recorded in ADR-0181 under Negative.
+         * A `class <Name>StateHolder` declaration anywhere in the lexically masked source. The
+         * modifiers are deliberately not enumerated: the previous pattern listed seven of them and
+         * dropped a holder carrying any other word, and the per-source no-parsed-class guard could
+         * not bound that, because it fires only when a source yields no holder at all and each of
+         * the three `HOLDER_SOURCES` declares two. Comments and string literals are already masked
+         * by `KotlinSourceText.declarations`, so prose naming a holder is not matched.
          */
-        val STATE_HOLDER = Regex(
-            """^(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|abstract|open|sealed|data)\s+)*class\s+(\w+StateHolder)\b""",
-            RegexOption.MULTILINE,
-        )
+        val STATE_HOLDER = Regex("""\bclass\s+(\w+StateHolder)\b""")
     }
 }
