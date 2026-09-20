@@ -150,10 +150,11 @@
   Two fixtures added (141 -> 143 build-logic tests), and two mutation rows — one real-repository
   divergent order that fails with both orders quoted, one control at the same position that passes.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
-  request #71 is open against `main` and awaiting the owner's gated review. Review round 5 was
-  pushed as `faa9357..a99d7b7`. The ten required checks are green on run `35430529028`, which covers
-  the head `a99d7b7` and passed on its **first attempt** with no re-run: all ten, `shared-tests` and
-  `provider-decoupling` included. Review round 4 was pushed as `cb34b35..faa9357` and was green on
+  request #71 is open against `main` and awaiting the owner's gated review. Review round 6 was
+  pushed as `8f843bd..c1fc7b4`. The ten required checks are green on run `35507688023`, which covers
+  the head `c1fc7b4` and passed on its **first attempt** with no re-run: all ten, `shared-tests` and
+  `provider-decoupling` included. Review round 5 was pushed as `faa9357..a99d7b7` and was green on
+  run `35430529028`. Review round 4 was pushed as `cb34b35..faa9357` and was green on
   run `35381816775`. Run `35376856797` covered
   `f8b8406`: nine checks on their first attempt and `provider-decoupling` on its second, after the
   8-minute `Run provider-free Android host tests` step was killed with no test result — the same
@@ -199,7 +200,7 @@
   evidence for every new rule is recorded under "Acceptance Evidence" below. No known failure.
 - Open decisions or blockers: none. `E3-08` introduced no open decision.
 - Exact next step: none for the agent. The branch is pushed and pull request #71 is green on run
-  `35430529028`; the story now waits for the owner's gated review of review round 5.
+  `35507688023`; the story now waits for the owner's gated review of review round 6.
 
 ## Scope Completed
 

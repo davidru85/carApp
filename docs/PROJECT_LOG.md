@@ -67,7 +67,8 @@
   35 with both real orders quoted, and placing it at the same position on both sides passes — the
   control that shows the fix reports position rather than inventing a mismatch. Both mutations were
   reverted and `git status --porcelain` reported only the intended files. The canonical CI command
-  passes.
+  passes, and run `35507688023` on the head `c1fc7b4` is green on all ten required checks on their
+  first attempt.
 - **Follow-ups / risks:** none new. The property-without-an-explicit-type limit, the `§11.6`
   `@HiddenFromObjC` deferral and the `shared-tests` and `provider-decoupling` silent stalls are
   unchanged from the previous rounds.
