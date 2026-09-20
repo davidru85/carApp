@@ -228,12 +228,18 @@ internal class SwiftSurfaceContract(
             .filter { depths[it.range.first] == 0 }
             .mapNotNull { match ->
                 val parameters = balancedParameters(body, match.range.last) ?: return@mapNotNull null
+                // The header carries every modifier of this declaration and nothing else: it is the
+                // text after the last `{` and the last newline before the `fun` keyword, on
+                // annotation-masked code, so an annotation argument spelling `suspend` cannot
+                // classify a blocking member.
+                val header = headerBefore(code, match.range.first)
                 Member(
                     kind = MemberKind.FUNCTION,
                     name = match.groupValues[1].removeSurrounding("`"),
                     parameters = splitTopLevel(parameters.text).mapNotNull(::parameter),
                     returnType = returnTypeAfter(body, parameters.closingIndex),
-                    visibility = visibilityOf(headerBefore(code, match.range.first)),
+                    visibility = visibilityOf(header),
+                    isSuspend = SUSPEND.containsMatchIn(header),
                     sourceOffset = match.range.first,
                 )
             }.toList()
@@ -479,11 +485,19 @@ internal class SwiftSurfaceContract(
         val parameters: List<Parameter>,
         val returnType: String?,
         val visibility: MemberVisibility,
+        /**
+         * `suspend` is part of the member's call contract on both surfaces and is invisible to the
+         * generated Objective-C header on the `@HiddenFromObjC` Kotlin-facing one, so it is
+         * compared. Properties never carry it and keep the default.
+         */
+        val isSuspend: Boolean = false,
         val keyword: String? = null,
         /**
          * Where the declaration starts inside the parsed body. Used only to preserve source order
          * when the two producers are combined, so it is deliberately excluded from [signature]: the
-         * comparison stays on kind, name, parameters, declared type, defaults and visibility.
+         * comparison stays on kind, `suspend`, name, parameters, declared type and defaults.
+         * Visibility is a filter rather than part of the signature — an unexported member never
+         * reaches the comparison on the Swift-facing surface.
          */
         val sourceOffset: Int = 0,
     ) {
@@ -499,6 +513,7 @@ internal class SwiftSurfaceContract(
                 when (kind) {
                     MemberKind.FUNCTION ->
                         buildString {
+                            if (isSuspend) append("suspend ")
                             append(name)
                             append("(")
                             append(parameters.joinToString { it.shape })
@@ -586,6 +601,7 @@ internal class SwiftSurfaceContract(
          * silently removed them from assertion 14's coverage.
          */
         val FUN = Regex("""\bfun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(`[^`\r\n]+`|\w+)\s*\(""")
+        val SUSPEND = Regex("""\bsuspend\b""")
         val PRIVATE = Regex("""\bprivate\b""")
         val INTERNAL = Regex("""\binternal\b""")
         val PROTECTED = Regex("""\bprotected\b""")

@@ -534,12 +534,16 @@ object ArchitectureChecker {
      */
     private fun checkWiringProductLogic(module: ModuleUnderCheck): List<Violation> {
         if (module.path != ":wiring:firebase") return emptyList()
+        val continuations = continuationLines(module.sourceLines)
         return module.sourceLines
             .filter { it.text.isNotBlank() && !it.text.first().isWhitespace() }
             .mapNotNull { line -> line.topLevelDeclaration()?.let { line to it } }
             .filter { (line, declaration) ->
                 declaration.isExpectOrActual ||
-                    (declaration.isProductLogic() && !line.isKoinModuleDeclaration(declaration))
+                    (
+                        declaration.isProductLogic() &&
+                            !line.isKoinModuleDeclaration(declaration, continuations[line].orEmpty())
+                    )
             }
             .map { (line, declaration) ->
                 Violation(
@@ -563,12 +567,34 @@ object ArchitectureChecker {
      * carries a colon inside the use-site target, so reading the raw line would take `JvmName(…)`
      * for the declared type and reject a legitimate binding.
      */
-    private fun SourceLine.isKoinModuleDeclaration(declaration: Declaration): Boolean {
+    private fun SourceLine.isKoinModuleDeclaration(
+        declaration: Declaration,
+        continuation: String,
+    ): Boolean {
         if (declaration.keyword != "val" && declaration.keyword != "var") return false
         val body = KotlinSourceText.code(stripLeadingAnnotations(text))
         val declaredType = body.substringAfter(':', "").substringBefore('=').trim()
-        return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(body.substringAfter('=', "").trimStart())
+        if (KOIN_MODULE_TYPE.matches(declaredType)) return true
+        val initialiser = body.substringAfter('=', "").trimStart()
+        if (MODULE_INITIALISER.containsMatchIn(initialiser)) return true
+        // `val bindings =` with `module { … }` on the next line is the idiomatic wrapped form and is
+        // the shape `§4` admits. The continuation is masked before it is matched, so a wrapped
+        // string literal spelling `module {` is not a binding, and the anchored pattern still
+        // requires the initialiser to *be* the module rather than to mention one.
+        return body.contains('=') &&
+            initialiser.isEmpty() &&
+            MODULE_INITIALISER.containsMatchIn(KotlinSourceText.code(continuation).trimStart())
     }
+
+    /**
+     * The next recorded source line of the same file, keyed by the line it follows. Blank lines are
+     * already absent from [ModuleUnderCheck.sourceLines], so a declaration separated from its
+     * initialiser by an empty line still finds it.
+     */
+    private fun continuationLines(lines: List<SourceLine>): Map<SourceLine, String> =
+        lines.zipWithNext()
+            .filter { (current, next) -> current.file == next.file }
+            .associate { (current, next) -> current to next.text }
 
     /**
      * The declaration a column-zero line introduces, or `null` when the line is a continuation, a
