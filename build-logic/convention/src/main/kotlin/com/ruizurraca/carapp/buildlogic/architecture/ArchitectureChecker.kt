@@ -1,5 +1,7 @@
 package com.ruizurraca.carapp.buildlogic.architecture
 
+import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
+
 /**
  * Executable module and source architecture rules, as pure functions over [ModuleUnderCheck].
  *
@@ -56,7 +58,7 @@ object ArchitectureChecker {
      * `= module {` as the initialiser of a declaration, rather than any occurrence of `module {` on
      * the line. A `val mentioned = otherValue + module { … }` is not a Koin binding.
      */
-    private val MODULE_INITIALISER = Regex("""=\s*module\s*\{""")
+    private val MODULE_INITIALISER = Regex("""^module\s*\{""")
 
     /**
      * Group 1 is everything before the keyword, group 2 the keyword itself and group 3 the words
@@ -535,8 +537,10 @@ object ArchitectureChecker {
         return module.sourceLines
             .filter { it.text.isNotBlank() && !it.text.first().isWhitespace() }
             .mapNotNull { line -> line.topLevelDeclaration()?.let { line to it } }
-            .filterNot { (line, declaration) -> line.isKoinModuleDeclaration(declaration) }
-            .filter { (_, declaration) -> declaration.isProductLogic() }
+            .filter { (line, declaration) ->
+                declaration.isExpectOrActual ||
+                    (declaration.isProductLogic() && !line.isKoinModuleDeclaration(declaration))
+            }
             .map { (line, declaration) ->
                 Violation(
                     module.path,
@@ -561,9 +565,9 @@ object ArchitectureChecker {
      */
     private fun SourceLine.isKoinModuleDeclaration(declaration: Declaration): Boolean {
         if (declaration.keyword != "val" && declaration.keyword != "var") return false
-        val body = stripLeadingAnnotations(text)
+        val body = KotlinSourceText.code(stripLeadingAnnotations(text))
         val declaredType = body.substringAfter(':', "").substringBefore('=').trim()
-        return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(body)
+        return KOIN_MODULE_TYPE.matches(declaredType) || MODULE_INITIALISER.containsMatchIn(body.substringAfter('=', "").trimStart())
     }
 
     /**
@@ -597,52 +601,11 @@ object ArchitectureChecker {
      * declaration escaped the rule entirely. An annotation whose parenthesis never closes on this
      * line leaves the text untouched, which parses as no declaration.
      */
-    private fun stripLeadingAnnotations(text: String): String {
-        var index = 0
-        while (index < text.length && text[index] == '@') {
-            val next = skipOneAnnotation(text, index)
-            if (next <= index) break
-            index = next
-        }
-        return text.substring(index)
-    }
-
-    /** The index just past the annotation starting at [from] and its trailing whitespace. */
-    private fun skipOneAnnotation(text: String, from: Int): Int {
-        var cursor = from + 1
-        while (cursor < text.length && text[cursor].isAnnotationNameChar()) {
-            cursor += 1
-        }
-        if (cursor < text.length && text[cursor] == '(') {
-            cursor = skipBalancedParentheses(text, cursor)
-            if (cursor < 0) return from
-        }
-        while (cursor < text.length && text[cursor].isWhitespace()) {
-            cursor += 1
-        }
-        return cursor
-    }
-
-    /** The index just past the `)` closing the `(` at [opening], or `-1` when it never closes. */
-    private fun skipBalancedParentheses(text: String, opening: Int): Int {
-        var depth = 0
-        var cursor = opening
-        while (cursor < text.length) {
-            if (text[cursor] == '(') depth += 1
-            if (text[cursor] == ')') {
-                depth -= 1
-                if (depth == 0) return cursor + 1
-            }
-            cursor += 1
-        }
-        return -1
-    }
-
-    /** A character admitted inside an annotation name, including the `:` of a use-site target. */
-    private fun Char.isAnnotationNameChar(): Boolean = isLetterOrDigit() || this == '_' || this == ':'
+    private fun stripLeadingAnnotations(text: String): String =
+        KotlinSourceText.stripLeadingAnnotations(text)
 
     private fun Declaration.isProductLogic(): Boolean {
-        if ("expect" in modifierWords || "actual" in modifierWords) return true
+        if (isExpectOrActual) return true
         return when (keyword) {
             "fun" -> false
             "val", "var" -> !isPrivate
@@ -655,6 +618,8 @@ object ArchitectureChecker {
         val modifiers: String,
         val name: String,
     ) {
+        val isExpectOrActual: Boolean get() = "expect" in modifierWords || "actual" in modifierWords
+
         val isPrivate: Boolean get() = "private" in modifierWords
 
         val modifierWords: Set<String>

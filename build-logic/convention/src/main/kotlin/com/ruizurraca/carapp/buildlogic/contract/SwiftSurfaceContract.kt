@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp.buildlogic.contract
 
+import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 import java.io.File
 
 /**
@@ -121,7 +122,12 @@ internal class SwiftSurfaceContract(
                 listOf("§20.10 declares no $KOTLIN_APP_GRAPH block"),
             )
         }
-        val contractMembers = members(contractBlock(), KOTLIN_APP_GRAPH).map { it.signature }
+        val contract = contractBlock() ?: return result(
+            ASSERTION_APP_GRAPH_MEMBERS,
+            ASSERTION_34,
+            listOf("Unbalanced braces in the $KOTLIN_APP_GRAPH block of §20.10"),
+        )
+        val contractMembers = members(contract, KOTLIN_APP_GRAPH).map { it.signature }
         val declaredMembers = members(inputs.sources.getValue(APP_GRAPH), KOTLIN_APP_GRAPH).map { it.signature }
 
         val problems = mutableListOf<String>()
@@ -158,8 +164,12 @@ internal class SwiftSurfaceContract(
                 listOf("§20.10 declares no $SWIFT_APP_GRAPH_DECLARATION block"),
             )
         }
-        val contractMembers =
-            members(contractBlock(SWIFT_APP_GRAPH_DECLARATION), SWIFT_APP_GRAPH_DECLARATION).map { it.signature }
+        val contract = contractBlock(SWIFT_APP_GRAPH_DECLARATION) ?: return result(
+            ASSERTION_SWIFT_APP_GRAPH_MEMBERS,
+            ASSERTION_35,
+            listOf("Unbalanced braces in the $SWIFT_APP_GRAPH_DECLARATION block of §20.10"),
+        )
+        val contractMembers = members(contract, SWIFT_APP_GRAPH_DECLARATION).map { it.signature }
         val declaredMembers =
             members(inputs.sources.getValue(SWIFT_APP_GRAPH), SWIFT_APP_GRAPH_DECLARATION)
                 .filter { it.isExported }
@@ -182,13 +192,14 @@ internal class SwiftSurfaceContract(
     }
 
     /** The `<declaration> { … }` block of `docs/CONTRACTS.md §20.10`, braces included. */
-    private fun contractBlock(declaration: String = KOTLIN_APP_GRAPH): String {
+    private fun contractBlock(declaration: String = KOTLIN_APP_GRAPH): String? {
         val start = inputs.contract.indexOf(declaration)
-        check(start >= 0) { "Could not find '$declaration' in docs/CONTRACTS.md" }
-        val opening = bodyBrace(inputs.contract, start)
-        val closing = matchingBrace(inputs.contract, opening)
-        check(closing > opening) { "Unbalanced braces in the $declaration block of docs/CONTRACTS.md" }
-        return inputs.contract.substring(start, closing + 1)
+        if (start < 0) return null
+        val source = inputs.contract.substring(start)
+        val opening = bodyBrace(source, 0)
+        val closing = matchingBrace(source, opening)
+        if (opening < 0 || closing <= opening) return null
+        return source.substring(0, closing + 1)
     }
 
     /**
@@ -210,18 +221,23 @@ internal class SwiftSurfaceContract(
      * it — which is what `§20.10` compares, because a factory returning another holder is a
      * different surface even when its name and parameters are unchanged.
      */
-    private fun functionMembers(body: String): List<Member> =
-        FUN.findAll(body).mapNotNull { match ->
-            val parameters = balancedParameters(body, match.range.last) ?: return@mapNotNull null
-            Member(
-                kind = MemberKind.FUNCTION,
-                name = match.groupValues[1],
-                parameters = splitTopLevel(parameters.text).mapNotNull(::parameter),
-                returnType = returnTypeAfter(body, parameters.closingIndex),
-                visibility = visibilityOf(headerBefore(body, match.range.first)),
-                sourceOffset = match.range.first,
-            )
-        }.toList()
+    private fun functionMembers(body: String): List<Member> {
+        val code = KotlinSourceText.declarations(body)
+        val depths = KotlinSourceText.braceDepths(code)
+        return FUN.findAll(code)
+            .filter { depths[it.range.first] == 0 }
+            .mapNotNull { match ->
+                val parameters = balancedParameters(body, match.range.last) ?: return@mapNotNull null
+                Member(
+                    kind = MemberKind.FUNCTION,
+                    name = match.groupValues[1].removeSurrounding("`"),
+                    parameters = splitTopLevel(parameters.text).mapNotNull(::parameter),
+                    returnType = returnTypeAfter(body, parameters.closingIndex),
+                    visibility = visibilityOf(headerBefore(code, match.range.first)),
+                    sourceOffset = match.range.first,
+                )
+            }.toList()
+    }
 
     /**
      * The `val`/`var` declarations that are members of the body rather than local variables. A
@@ -235,7 +251,7 @@ internal class SwiftSurfaceContract(
         // The absolute offset of the current line inside `body`. A line index alone cannot order a
         // property against a function: both producers must report a position in the same space.
         var lineOffset = 0
-        body.lineSequence().forEach { line ->
+        KotlinSourceText.declarations(body).lineSequence().forEach { line ->
             val declaration = if (braceDepth == 0) PROPERTY.find(line) else null
             if (declaration != null) {
                 // The keyword offset, not the match start: `PROPERTY` begins with `\s*`, so the
@@ -243,7 +259,7 @@ internal class SwiftSurfaceContract(
                 val keywordOffset = declaration.groups[1]?.range?.first ?: 0
                 result += Member(
                     kind = MemberKind.PROPERTY,
-                    name = declaration.groupValues[2],
+                    name = declaration.groupValues[2].removeSurrounding("`"),
                     parameters = emptyList(),
                     returnType = declaration.groupValues[3].trim(),
                     visibility = visibilityOf(line.substring(0, keywordOffset)),
@@ -301,11 +317,12 @@ internal class SwiftSurfaceContract(
      * `callback: (Int) -> Unit`, which would then hide any default that followed it.
      */
     private fun balancedParameters(source: String, from: Int): ParsedParameters? {
-        val opening = source.indexOf('(', from)
+        val code = KotlinSourceText.code(source)
+        val opening = code.indexOf('(', from)
         if (opening < 0) return null
         var depth = 0
         for (index in opening until source.length) {
-            when (source[index]) {
+            when (code[index]) {
                 '(' -> depth += 1
                 ')' -> {
                     depth -= 1
@@ -318,7 +335,7 @@ internal class SwiftSurfaceContract(
 
     /** The braced body of one declaration, with the declaration header and its KDoc excluded. */
     private fun bodyOf(source: String, declaration: String): String {
-        val start = source.indexOf(declaration)
+        val start = KotlinSourceText.code(source).indexOf(declaration)
         if (start < 0) return ""
         return braceBody(source, bodyBrace(source, start)).orEmpty()
     }
@@ -334,9 +351,10 @@ internal class SwiftSurfaceContract(
      * brace at parenthesis depth zero opens a declaration body.
      */
     private fun bodyBrace(source: String, from: Int): Int {
+        val code = KotlinSourceText.code(source)
         var parenthesisDepth = 0
         for (index in from until source.length) {
-            when (source[index]) {
+            when (code[index]) {
                 '(' -> parenthesisDepth += 1
                 ')' -> parenthesisDepth -= 1
                 '{' -> if (parenthesisDepth == 0) return index
@@ -353,9 +371,10 @@ internal class SwiftSurfaceContract(
     /** The index of the brace that closes the one at [opening], or `-1` when it never closes. */
     private fun matchingBrace(source: String, opening: Int): Int {
         if (opening < 0) return -1
+        val code = KotlinSourceText.code(source)
         var depth = 0
         for (index in opening until source.length) {
-            when (source[index]) {
+            when (code[index]) {
                 '{' -> depth += 1
                 '}' -> {
                     depth -= 1
@@ -371,7 +390,7 @@ internal class SwiftSurfaceContract(
         var start = 0
         var depth = 0
         var previous = ' '
-        parameters.forEachIndexed { index, character ->
+        KotlinSourceText.code(parameters).forEachIndexed { index, character ->
             when {
                 character == '(' || character == '[' || character == '{' || character == '<' -> depth += 1
                 // The `>` of an arrow closes nothing. Decrementing on it drives the depth negative
@@ -391,7 +410,7 @@ internal class SwiftSurfaceContract(
 
     /** Every `<Name>StateHolder` class declaration of one source file, normalised to `class Name`. */
     private fun stateHolderClasses(source: String): List<String> =
-        STATE_HOLDER.findAll(source).map { "class ${it.groupValues[1]}" }.toList()
+        STATE_HOLDER.findAll(KotlinSourceText.declarations(source)).map { "class ${it.groupValues[1]}" }.toList()
 
     private fun result(id: Int, name: String, problems: List<String>): AssertionResult =
         if (problems.isEmpty()) {
@@ -542,7 +561,7 @@ internal class SwiftSurfaceContract(
          * after review found the narrower shape skipped generic and extension declarations and so
          * silently removed them from assertion 14's coverage.
          */
-        val FUN = Regex("""\bfun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(\w+)\s*\(""")
+        val FUN = Regex("""\bfun\s*(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?(`[^`\r\n]+`|\w+)\s*\(""")
         val PRIVATE = Regex("""\bprivate\b""")
         val INTERNAL = Regex("""\binternal\b""")
         val PROTECTED = Regex("""\bprotected\b""")
@@ -553,7 +572,7 @@ internal class SwiftSurfaceContract(
          * anchored pattern without it silently matched nothing. A property with no explicit type is
          * not matched at all, because `§20.10` declares the type and inferring one could disagree.
          */
-        val PROPERTY = Regex("""^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|protected|override|open|final)\s+)?(val|var)\s+(\w+)\s*:\s*([^=]+)""")
+        val PROPERTY = Regex("""^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|protected|override|open|final|lateinit|const)\s+)*(val|var)\s+(`[^`\r\n]+`|\w+)\s*:\s*([^=]+)""")
         val WHITESPACE = Regex("""\s+""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
 
