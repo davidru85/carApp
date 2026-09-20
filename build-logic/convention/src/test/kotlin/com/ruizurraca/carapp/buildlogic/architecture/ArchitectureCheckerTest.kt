@@ -676,4 +676,24 @@ class ArchitectureCheckerTest {
         )
         assertTrue(withStory.isEmpty())
     }
+
+    /**
+     * A context-parameter clause puts a `(` before the keyword, and `TOP_LEVEL_DECLARATION` cannot
+     * cross one, so the declaration parsed as nothing at all and the rule passed it silently.
+     */
+    @Test
+    fun aContextParameterClauseDoesNotHideATopLevelDeclaration() {
+        listOf(
+            "context(scope: CoroutineScope) internal class StrayMapper",
+            "context(CoroutineScope) object StrayCache",
+            "context(scope: CoroutineScope) internal val leaked = mutableListOf<Any>()",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        assertRuleDoesNotFire(
+            module(":wiring:firebase", source = "context(scope: CoroutineScope) private fun stagedLogger(): Logger = noop()"),
+            "wiring-product-logic",
+        )
+    }
 }

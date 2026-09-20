@@ -122,6 +122,121 @@ class Pr71ReviewRegressionTest {
         assertWiringAccepted("val bindings = module { }")
     }
 
+    /**
+     * Round 8, finding B. `STATE_HOLDER` enumerated its modifiers, so `expect class …StateHolder`
+     * dropped out of assertion 14. The per-source guard cannot see it: `VehicleStateHolders.kt`
+     * still yields `VehicleListStateHolder`, so the source is not empty and nothing is reported.
+     */
+    @Test
+    fun anUnrecognisedClassModifierDoesNotHideAStateHolderFromAssertion14() {
+        val mutated = real.sources.getValue(VEHICLE)
+            .replace("fun setName(value: String)", "fun setName(value: String = \"\")")
+            .replace(
+                "class VehicleFormStateHolder internal constructor(",
+                "expect class VehicleFormStateHolder internal constructor(",
+            )
+        val results = SwiftSurfaceContract(real.copy(sources = real.sources + (VEHICLE to mutated))).validate()
+        val detail = results.single { it.id == 14 }.detail
+        assertEquals(AssertionResult.Status.FAIL, results.single { it.id == 14 }.status, "assertion 14 passed: $detail")
+        assertTrue(
+            detail!!.contains("class VehicleFormStateHolder.setName defaults value: String = \"\""),
+            "Expected the hidden holder's default to be reported, got: $detail",
+        )
+    }
+
+    /**
+     * Round 8, finding A. `PROPERTY` enumerated its modifiers, so a public property carrying
+     * `abstract`, `inline`, `expect`, `actual` or `external` never reached assertions 34 and 35.
+     */
+    @Test
+    fun anUnrecognisedPropertyModifierDoesNotHideAnExportedMember() {
+        listOf(
+            "abstract val extra: String",
+            "inline val extra: String get() = \"\"",
+            "actual val extra: String = \"\"",
+            "external val extra: String",
+        ).forEach { declaration ->
+            val results = mutate(SWIFT, "    fun close() {", "    $declaration\n\n    fun close() {")
+            val detail = results.single { it.id == 35 }.detail
+            assertEquals(
+                AssertionResult.Status.FAIL,
+                results.single { it.id == 35 }.status,
+                "assertion 35 passed for `$declaration`: $detail",
+            )
+            assertTrue(
+                detail!!.contains("val extra: String is declared but absent from §20.10"),
+                "Expected `$declaration` to be reported, got: $detail",
+            )
+        }
+    }
+
+    /**
+     * Round 8, finding C. `bodyOf` located a declaration with `indexOf`, which matches a name
+     * prefix, so a class whose name extends a holder's name shadowed the real holder's body.
+     */
+    @Test
+    fun aClassWhoseNameExtendsAHolderNameDoesNotShadowTheRealHolder() {
+        val mutated = real.sources.getValue(SESSION)
+            .replace("fun dismissAnonymousReminder()", "fun dismissAnonymousReminder(force: Boolean = false)")
+            .replace(
+                "class SessionStateHolder internal constructor(",
+                "class SessionStateHolderShim {\n    fun clean() = Unit\n}\n\nclass SessionStateHolder internal constructor(",
+            )
+        val results = SwiftSurfaceContract(real.copy(sources = real.sources + (SESSION to mutated))).validate()
+        val detail = results.single { it.id == 14 }.detail
+        assertEquals(AssertionResult.Status.FAIL, results.single { it.id == 14 }.status, "assertion 14 passed: $detail")
+        assertTrue(
+            detail!!.contains("class SessionStateHolder.dismissAnonymousReminder defaults force: Boolean = false"),
+            "Expected the shadowed holder's default to be reported, got: $detail",
+        )
+    }
+
+    /**
+     * Round 8, finding D. A property whose accessor sits on the declaration line produced the
+     * signature `val isClosed: Boolean get()`, which no `§20.10` spelling can ever equal.
+     */
+    @Test
+    fun anAccessorOnTheDeclarationLineIsNotPartOfThePropertyType() {
+        val source = real.sources.getValue(SWIFT)
+            .replace("    fun close() {", "    val isClosed: Boolean get() = closed\n\n    fun close() {")
+        val contract = real.contract.replace(
+            "    fun sessionStateHolder(): SessionStateHolder",
+            "    val isClosed: Boolean\n    fun sessionStateHolder(): SessionStateHolder",
+        )
+        val results = SwiftSurfaceContract(
+            real.copy(sources = real.sources + (SWIFT to source), contract = contract),
+        ).validate()
+        assertAllPass(results)
+    }
+
+    /**
+     * Round 8, finding E. `propertyMembers` tracked brace depth only, so the constructor `val`
+     * parameters of a nested class were collected as public members of the enclosing declaration.
+     */
+    @Test
+    fun constructorParametersOfANestedClassAreNotMembersOfTheEnclosingDeclaration() {
+        assertAllPass(
+            mutate(
+                SWIFT,
+                "    fun close() {",
+                "    private data class Key(\n        val vehicleId: String,\n        val entryId: String?,\n    )\n\n    fun close() {",
+            ),
+        )
+    }
+
+    /**
+     * Round 8, finding F. A context-parameter clause put a `(` before the keyword, and
+     * `TOP_LEVEL_DECLARATION` cannot cross one, so the declaration was skipped with no report.
+     */
+    @Test
+    fun aContextParameterClauseDoesNotHideAWiringDeclaration() {
+        listOf(
+            "context(scope: CoroutineScope) internal class StrayMapper",
+            "context(CoroutineScope) object StrayCache",
+        ).forEach(::assertWiringRejected)
+        assertWiringAccepted("context(scope: CoroutineScope) private fun stagedLogger(): Logger = noop()")
+    }
+
     private fun mutate(path: String, from: String, to: String): List<AssertionResult> {
         val source = real.sources.getValue(path)
         assertTrue(source.contains(from), "Missing mutation anchor: $from")
@@ -158,5 +273,7 @@ class Pr71ReviewRegressionTest {
     private companion object {
         const val SWIFT = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/SwiftAppGraph.kt"
         const val SESSION = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt"
+        const val VEHICLE =
+            "feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt"
     }
 }
