@@ -38,6 +38,46 @@
 
 ## Entries
 
+### 2026-09-20 — E3-08 review round 8: six fail-open and false-positive paths in the surface comparison
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178`, `D-179` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the eighth review of pull request #71 reproduced six defects in the two checks
+  this story added and one false documentation claim, and all seven were closed on the same branch
+  after the regression suite was observed RED. Both member matchers enumerated their modifiers, so a
+  public property carrying `abstract`, `inline`, `expect`, `actual` or `external` was invisible to
+  assertions 34 and 35, and `expect class VehicleFormStateHolder` dropped out of assertion 14 with
+  its real default argument. `bodyOf` and `contractBlock` located a declaration with `indexOf`, which
+  matches a name prefix, so `class SessionStateHolderShim` shadowed the real holder body. An accessor
+  written on the declaration line was captured as part of the property type, so
+  `val isClosed: Boolean get()` could never equal any `§20.10` spelling. `propertyMembers` tracked
+  brace depth only, so a nested class's constructor `val` parameters were collected as public members
+  of the enclosing declaration; it now tracks parenthesis depth too. A leading `context(…)` clause
+  put a `(` before the keyword, which `TOP_LEVEL_DECLARATION` cannot cross, so the declaration was
+  skipped with no report; the clause is now stripped with the annotations, in the lexical module
+  rather than duplicated in `ArchitectureChecker`.
+- **Why:** five of the six let a real surface violation through the check that exists to report it,
+  and the sixth made a legal declaration impossible to write in the contract. The recorded mitigation
+  for the `STATE_HOLDER` modifier limit — that the no-parsed-class guard bounded it — was simply
+  wrong: the guard fires only when a source yields no holder at all, and each of the three
+  `HOLDER_SOURCES` declares two, so a holder could disappear unnoticed. A check that reports `PASS`
+  while covering less than it claims is not coverage, and a documented mitigation that does not hold
+  is worse than an undocumented limit.
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code:
+  `SwiftSurfaceContract.kt`, `source/KotlinSourceText.kt` and `ArchitectureCheckerTest.kt`. No
+  production source, no contract text, no decision, no dependency and no baseline changed.
+- **Verification:** `:build-logic:convention:test` reports 160 tests and 0 failures (153 before this
+  round plus 7); the six regressions and the rule-level context fixture were observed RED as seven
+  failing tests with no compilation error. `ktlintCheck detekt` pass, `architectureCheck` prints
+  `16 rules … 23 modules`, and `contractCheck` reports 14, 34 and 35 `PASS` with no `PENDING` and no
+  `FAIL`. The accessor regression was re-verified RED with its own fix reverted, so it proves the
+  defect rather than passing incidentally. Commits `c322c6e` (RED) and `84d376a` (GREEN).
+- **Follow-ups / risks:** the `:wiring:firebase` rule still fails open on a column-zero line it cannot
+  classify: it reports nothing for such a line rather than reporting that it could not parse it. The
+  fixed holder-source inventory, textual type recognition and the property-without-an-explicit-type
+  limit are unchanged and are not part of this correction.
+
 ### 2026-09-20 — E3-08 review round 7: eight fail-open paths in the wiring rule and the surface comparison
 
 - **Type:** correction

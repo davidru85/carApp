@@ -50,7 +50,7 @@
 - Date: 2026-09-20
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 7 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 8 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
@@ -61,7 +61,8 @@
   `316cb52`, `ee925ba` (the member kind, declared type and exported-visibility comparison), the
   round-5 record; review fixes round 6 `ac35860`, `0971edc` (the interleaved declaration order), the
   round-6 record; review fixes round 7 `f8b5c26` (the ten regressions, RED) and `63b0d47` (the eight
-  fixes, GREEN).
+  fixes, GREEN); review fixes round 8 `c322c6e` (the six regressions plus one rule-level fixture,
+  RED) and `84d376a` (the six fixes, GREEN).
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -161,6 +162,29 @@
   offset-preserving lexical mask (`build-logic/.../source/KotlinSourceText.kt`) so the existing
   regexes keep working and diagnostics keep their original text. Ten permanent regressions were
   added; the three suites report 92 tests and zero failures.
+- Review round 8: six defects, each a member or a declaration the two checks could not see, plus one
+  false documentation claim. (A) `PROPERTY` enumerated its modifiers, so a public property carrying
+  `abstract`, `inline`, `expect`, `actual` or `external` never reached assertions 34 and 35.
+  (B) `STATE_HOLDER` enumerated seven modifiers, so `expect class VehicleFormStateHolder` dropped out
+  of assertion 14 and removed a real default argument from its coverage. (C) `bodyOf` and
+  `contractBlock` located a declaration with `indexOf`, so `class SessionStateHolderShim` shadowed
+  `class SessionStateHolder` and the wrong body was parsed. (D) An accessor on the declaration line
+  was part of the captured type, so `val isClosed: Boolean get()` could not equal any `§20.10`
+  spelling. (E) `propertyMembers` tracked brace depth only, so a nested class's constructor `val`
+  parameters were collected as public members of the enclosing declaration. (F) A leading
+  `context(…)` clause put a `(` before the keyword, which `TOP_LEVEL_DECLARATION` cannot cross, so
+  the declaration was skipped with no report. The recorded mitigation for the `STATE_HOLDER` modifier
+  limit is false and is corrected in ADR-0181 and below: the guard does not bound it.
+- Round 8 evidence: the six regressions and the rule-level context fixture were observed RED as seven
+  failing tests with no compilation error, and GREEN afterwards. `:build-logic:convention:test`
+  reports 160 tests and 0 failures (153 before this round plus 7). `ktlintCheck detekt` pass,
+  `architectureCheck` prints `16 rules … 23 modules`, and `contractCheck` reports 14, 34 and 35
+  `PASS` with no `PENDING` and no `FAIL`. No decision changed: `D-178`, `D-179` and `D-180` are
+  unchanged and every item above is a defect in an implementation of an already-Accepted decision.
+  The accessor regression was re-verified RED with its own fix reverted, so it proves the defect
+  rather than passing incidentally.
+- Exact next step: the owner's gated review of review round 8. No agent action remains; the branch is
+  pushed and no further commit is pending.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 7 was
   pushed as `72392dd..2c258c1`. The ten required checks are green on run `35512948905`, which covers
@@ -368,14 +392,11 @@ fixes: 642 actionable tasks, `BUILD SUCCESSFUL`. `:build-logic:convention:test` 
   `:integration:firebase-crashlytics`; `:wiring:firebase` keeps the no-op analytics tracker and
   the `CrashReporter` no-op already bound by `E0-08`.
 - `E3-12` owns the permanent-account cross-device recovery proof.
-- **The five `SwiftSurfaceContract` coverage limits are documented, not closed** (ADR-0181,
-  Negative): `HOLDER_SOURCES` hardcodes three files; `STATE_HOLDER` recognises a fixed modifier set;
-  `matchingBrace` counts braces without string-literal awareness; `FUN` cannot match a declaration
-  whose name or parameter list continues on the next line; `splitTopLevel` ignores the `>` of `->`
-  but is not literal-aware, so a `>` inside a string default would still be counted. The
-  no-parsed-class guard bounds the first two by reporting a source that yields no holder rather than
-  passing. Closing the rest means the textual parser growing a scanner, which neither review round
-  required.
+- **The `SwiftSurfaceContract` coverage limits are documented in ADR-0181, Negative.** What remains
+  open after review rounds 5 to 8: `HOLDER_SOURCES` hardcodes three files, a property without an
+  explicit declared type is not compared, and recognition stays textual. The
+  no-parsed-class guard reports only a source that yields no holder at all; review round 8 proved it
+  does not bound a single holder going missing, and closed the `STATE_HOLDER` modifier limit instead.
 
 ## Review Round 1
 
@@ -518,6 +539,22 @@ the state-holder class, and `FUN` **does** already cross whitespace and newlines
 whose name is on the following line is matched. The claim that the emptiness guard detects every
 inferred property was replaced by the accurate limitation. ADR-0179's first Negative bullet was
 corrected: private non-constant top-level properties are admitted, not rejected.
+
+## Review Round 8
+
+The owner's eighth gated review reproduced six defects and one false documentation claim. All six
+were fixed after the regression suite was observed RED, and `D-180` keeps its wording and `Accepted`
+status. The table shape follows Review Round 1.
+
+| Finding | Defect | Fix |
+|---------|--------|-----|
+| A | `PROPERTY` enumerated its modifiers, so a public property carrying `abstract`, `inline`, `expect`, `actual` or `external` was invisible to assertions 34 and 35 | The modifier list carries them; `anUnrecognisedPropertyModifierDoesNotHideAnExportedMember` |
+| B | `STATE_HOLDER` enumerated seven modifiers, so `expect class VehicleFormStateHolder` dropped out of assertion 14. The per-source guard could not bound it: each of the three `HOLDER_SOURCES` declares two holders | The pattern is `class <Name>StateHolder` on masked source; `anUnrecognisedClassModifierDoesNotHideAStateHolderFromAssertion14` |
+| C | `bodyOf` and `contractBlock` located a declaration with `indexOf`, which matches a name prefix, so `SessionStateHolderShim` shadowed the real holder body | `declarationIndex` matches the whole declaration; `aClassWhoseNameExtendsAHolderNameDoesNotShadowTheRealHolder` |
+| D | An accessor or delegate on the declaration line was part of the captured type, producing `val isClosed: Boolean get()` | `declaredPropertyType` strips ` get(`, ` set(` and ` by `; `anAccessorOnTheDeclarationLineIsNotPartOfThePropertyType` |
+| E | `propertyMembers` tracked brace depth only, so a nested class's constructor `val` parameters became members of the enclosing declaration | Parenthesis depth is tracked too; `constructorParametersOfANestedClassAreNotMembersOfTheEnclosingDeclaration` |
+| F | A leading `context(…)` clause put a `(` before the keyword, which `TOP_LEVEL_DECLARATION` cannot cross, so the declaration was skipped with no report | The clause is stripped with the annotations in the lexical module; `aContextParameterClauseDoesNotHideAWiringDeclaration` plus a rule-level fixture in `ArchitectureCheckerTest` |
+| Doc | ADR-0181 and this handoff recorded the no-parsed-class guard as bounding the `STATE_HOLDER` modifier limit. It does not: the guard fires only when a source yields no holder at all | Both sentences corrected, and the `STATE_HOLDER` limit recorded as closed rather than open |
 
 ## Files Changed
 
@@ -678,11 +715,11 @@ documentation.
   fails open. Bounded by the rule's direction and by the two modules it guards being small: an
   unparseable `AppGraph` or `SwiftAppGraph` reports that it could not be parsed rather than passing.
 - **`SwiftSurfaceContract`'s coverage limits are enumerated in ADR-0181 under Negative**, after
-  review found they were covered only by one general sentence: the hardcoded three-file
-  `HOLDER_SOURCES` list, the `STATE_HOLDER` modifier set, the string-literal-unaware `matchingBrace`,
-  the shapes `FUN` cannot match, and the literal-unaware `splitTopLevel` after the arrow fix. The
-  no-parsed-class guard bounds the first two by reporting a source that yields no holder rather than
-  passing.
+  review found they were covered only by one general sentence. Review rounds 5 to 8 closed the
+  modifier and delimiter limits; what remains open is the hardcoded three-file `HOLDER_SOURCES`
+  list, a property without an explicit declared type, and textual type recognition. The
+  no-parsed-class guard reports only a source that yields no holder at all; review round 8 proved it
+  does not bound a single holder going missing, and closed the `STATE_HOLDER` modifier limit instead.
 - **Review round 2 corrected the round-1 records, not the decisions.** `D-178` and `D-180` are
   unchanged; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
   `docs/adr/README.md` were not edited, and no decision ID, ADR file or mirror row was added,

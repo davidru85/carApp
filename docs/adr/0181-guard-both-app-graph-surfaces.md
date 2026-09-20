@@ -94,14 +94,16 @@ change.
 - **The coverage limits, enumerated after review found they were only covered by one general
   sentence.** Each silently reduces what these assertions see:
   - `HOLDER_SOURCES` hardcodes three files. A state holder added in a new module is not covered.
-    The mitigation is the no-parsed-class guard: the three named sources are each checked to yield
-    at least one `<Name>StateHolder`, so a source that stops being recognised is reported. Adding a
-    fourth holder module still requires adding it here, and nothing detects that omission.
-  - `STATE_HOLDER` matches a `class …StateHolder` at the start of a line with the known modifiers
-    (`public`/`internal`/`private`/`abstract`/`open`/`sealed`/`data`). An unrecognised modifier word
-    would drop the holder from the check; the no-parsed-class guard reports the source rather than
-    passing silently, which is what makes this limit bounded. An annotation on its own preceding
-    line does not hide the class, because the pattern anchors to the line that carries `class`.
+    The no-parsed-class guard reports a named source that yields no holder at all. It does not
+    detect one holder of several going missing, and it cannot see a holder added in a new module, so
+    adding a fourth holder module still requires adding it here and nothing detects that omission.
+  - `STATE_HOLDER` matches `class <Name>StateHolder` anywhere in the lexically masked source, so no
+    modifier word can hide a holder. The pattern previously enumerated seven modifiers, and review
+    round 8 proved the no-parsed-class guard did **not** bound that limit: the guard fires only when
+    a source yields no holder at all, and each of the three `HOLDER_SOURCES` declares two, so
+    `expect class VehicleFormStateHolder` removed a real default argument from assertion 14 while
+    every assertion reported `PASS`. Comments and string literals are masked, so prose naming a
+    holder is not matched.
   - A declaration body is opened by the first brace at parenthesis depth zero, not by the first
     brace. `class SessionStateHolder internal constructor(… onLocalStartAccepted: () -> Unit = {}, …)`
     put a lambda default before the class body, and taking the first brace parsed an empty body, so
@@ -149,6 +151,21 @@ change.
   - A malformed `§20.10` block — one whose braces never close — reports assertion 34 or 35 as a
     failure with an unbalanced-block diagnostic, so `validate()` always returns results for 14, 34
     and 35 instead of throwing and truncating the `contract-check` report.
+  - A public property carrying `abstract`, `expect`, `actual`, `external` or `inline` was invisible
+    to assertions 34 and 35, because `PROPERTY` enumerated its modifiers. The list now carries them.
+  - A declaration is located by a whole-word match, not by `indexOf`. A class whose name extends a
+    holder's name — `SessionStateHolderShim` before `SessionStateHolder` — shadowed the real body
+    and removed its members from assertion 14.
+  - `propertyMembers` tracks parenthesis depth as well as brace depth. The constructor parameters of
+    a nested class sit at brace depth zero, so their `val`s were reported as public members of the
+    enclosing declaration.
+  - An accessor or a delegate written on the declaration line is not part of the declared type. The
+    signature `val isClosed: Boolean get()` could not equal any `§20.10` spelling, so such a
+    property could never be declared in the contract.
+  - A leading `context(…)` clause is stripped with the annotations. It put a `(` before the keyword,
+    which `TOP_LEVEL_DECLARATION` cannot cross, so the declaration was skipped with no report.
+  - The `:wiring:firebase` rule still fails open on a column-zero line it cannot classify: it
+    reports nothing for such a line rather than reporting that it could not parse it.
 
 ### Constraints Introduced
 
@@ -187,6 +204,12 @@ function or a commented-out declaration is not a member, repeated modifiers and 
 annotations cannot hide a property, an escaped function name still reports its default argument,
 expect/actual is not exempted by the Koin rule, and a malformed contract block returns a FAIL result
 instead of aborting the report.
+
+`Pr71ReviewRegressionTest` also holds the six regressions of review round 8: an unrecognised class
+modifier no longer hides a state holder, an unrecognised property modifier no longer hides an
+exported member, a name-extending class no longer shadows a holder body, an accessor on the
+declaration line is no longer part of the type, a nested class's constructor parameters are no longer
+members of the enclosing declaration, and a `context(…)` clause no longer hides a wiring declaration.
 
 ## References
 

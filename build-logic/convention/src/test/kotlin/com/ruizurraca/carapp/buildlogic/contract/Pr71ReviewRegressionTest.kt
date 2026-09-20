@@ -193,15 +193,16 @@ class Pr71ReviewRegressionTest {
 
     /**
      * Round 8, finding D. A property whose accessor sits on the declaration line produced the
-     * signature `val isClosed: Boolean get()`, which no `§20.10` spelling can ever equal.
+     * signature `val isClosed: Boolean get()`, which no `§20.10` spelling can ever equal. The
+     * member is inserted at the same position on both sides, because order is compared too.
      */
     @Test
     fun anAccessorOnTheDeclarationLineIsNotPartOfThePropertyType() {
         val source = real.sources.getValue(SWIFT)
             .replace("    fun close() {", "    val isClosed: Boolean get() = closed\n\n    fun close() {")
         val contract = real.contract.replace(
-            "    fun sessionStateHolder(): SessionStateHolder",
-            "    val isClosed: Boolean\n    fun sessionStateHolder(): SessionStateHolder",
+            "    fun syncStateHolder(): SyncStateHolder\n    fun close()",
+            "    fun syncStateHolder(): SyncStateHolder\n    val isClosed: Boolean\n    fun close()",
         )
         val results = SwiftSurfaceContract(
             real.copy(sources = real.sources + (SWIFT to source), contract = contract),
