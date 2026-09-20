@@ -47,10 +47,10 @@
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-18
+- Date: 2026-09-20
 - Branch and base: `story/E3-08-app-graph-and-firebase-wiring`, based on `origin/main` at `588ad00`
   (the `E3-17` merge).
-- Current phase and latest commit: review round 6 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
+- Current phase and latest commit: review round 7 addressed. Story RED `4c51b55`, GREEN `03f5f3f`,
   REFACTOR `5b48c4b`, records `1a19448`; review fixes round 1 `4857ee9`; review fixes round 2
   `b7ebd87` (declaration classified before the Koin exemption), `9b27f80` (assertion 35, the arrow
   split and the two emptiness fixtures), `41da711` (`§20.10` and the ADRs), `3a6a5d7` (the round-2
@@ -59,8 +59,9 @@
   `6b338bb`, `d7187a2` (the scope detected by declared type), `8860e48`, `95066e2` (the missing
   `AppGraph` block and the one-sided parse messages), each a red/green pair; review fixes round 5
   `316cb52`, `ee925ba` (the member kind, declared type and exported-visibility comparison), the
-  round-5 record; review fixes round 6 `ac35860`, `0971edc` (the interleaved declaration order) and
-  the round-6 record.
+  round-5 record; review fixes round 6 `ac35860`, `0971edc` (the interleaved declaration order), the
+  round-6 record; review fixes round 7 `f8b5c26` (the ten regressions, RED) and `63b0d47` (the eight
+  fixes, GREEN).
 - Review round 1: five findings, four of them defects in the checks this story added, all fixed
   after a failing fixture each. Finding 1 was false recorded evidence: neither assertion could see a
   Kotlin default on the Kotlin-facing `AppGraph`, because assertion 14 never read
@@ -149,6 +150,17 @@
   list is sorted by it; the offset is excluded from `signature`, so what is compared is unchanged.
   Two fixtures added (141 -> 143 build-logic tests), and two mutation rows — one real-repository
   divergent order that fails with both orders quoted, one control at the same position that passes.
+- Review round 7: eight defects reproduced by the review of `72392dd`, all in the two checks and all
+  fixed after the ten-regression suite was observed RED (10 tests, 10 failures, no compilation
+  error). F1 the Koin exemption overrode the expect/actual prohibition; F2 qualified annotations and
+  literal parentheses hid wiring declarations; F3 an inner assignment or a string passed as a
+  property's Koin initialiser; F4 annotation text set an exported function's visibility; F5 local
+  functions and comments became exported members; F6 public properties with repeated modifiers or a
+  qualified annotation were invisible; F7 escaped function names bypassed the default-argument
+  check; F8 malformed contract braces aborted the whole `contract-check` report. The fixes share one
+  offset-preserving lexical mask (`build-logic/.../source/KotlinSourceText.kt`) so the existing
+  regexes keep working and diagnostics keep their original text. Ten permanent regressions were
+  added; the three suites report 92 tests and zero failures.
 - Push and pull-request status: pushed to `origin/story/E3-08-app-graph-and-firebase-wiring`; pull
   request #71 is open against `main` and awaiting the owner's gated review. Review round 6 was
   pushed as `8f843bd..c1fc7b4`. The ten required checks are green on run `35507688023`, which covers
@@ -464,12 +476,57 @@ is the real-repository proof: the member exists on both sides and only its posit
 the diagnostic quotes both real orders. Row 27 is the control that shows the fix does not report a
 false positive when the orders agree.
 
+## Review Round 7
+
+The review of pull request #71 at `72392dd` reproduced eight further defects, all in the two checks
+this story added and all of the same class as rounds 3 to 6: the check reported `PASS` while covering
+less than it claimed, or it aborted instead of reporting. All eight were closed on the same branch
+after the ten-regression suite was observed RED, and no decision changed — `D-178`, `D-179` and
+`D-180` keep their wording, their policy and their `Accepted` status.
+
+| # | Defect | Fix |
+|---|--------|-----|
+| F1 | The Koin exemption removed a declaration before `isProductLogic` could see its modifiers, so `expect val bindings: Module` and `actual val bindings: Module = module { }` passed although `D-178` rejects `expect`/`actual` in every shape | `isExpectOrActual` is evaluated first in the filter and never behind the Koin exemption |
+| F2 | The annotation-name scanner did not accept `.` and its delimiter scanner counted parentheses inside literals, so `@kotlin.Deprecated("legacy") internal class StrayMapper` and `@Deprecated("(") internal class StrayMapper` were invisible | A shared offset-preserving lexical mask; annotation names accept `_`, `:` and `.`, delimiters are counted on masked text |
+| F3 | `containsMatchIn` could find a later `= module {` anywhere on the line, so `internal val leaked = run { val bindings = module { }; 1 }` and `internal val leaked = "= module {"` passed as Koin bindings | The initialiser is matched on the text after the declaration's own assignment, anchored to the start of that initialiser, on masked text |
+| F4 | Visibility was classified from raw header text, so a word inside an annotation message made a public function look `internal` and its forbidden default was skipped | Visibility reads masked lexical header text; the real parameter text is still reported |
+| F5 | Function scanning had no brace-depth filter and searched raw comment text, so a local function or a commented-out declaration became an exported member | Functions are matched in masked code and only at brace depth zero |
+| F6 | `PROPERTY` accepted at most one modifier and could not read a qualified annotation, so `public final val extra: String` and `@kotlin.Deprecated("temporary") val extra: String` were invisible to assertion 35 | Repeated legal modifiers and qualified annotations are recognised, with source offsets and the `val`/`var` kind preserved |
+| F7 | An escaped identifier bypassed the default-argument check, so `` fun `dismissAnonymousReminder`(force: Boolean = false) `` passed | `FUN` accepts a backticked name, the comparison key drops the backticks, and the parameters are still inspected |
+| F8 | A malformed `§20.10` block threw `IllegalStateException`, and `ContractCheck.runAll()` lost the remainder of its report | `contractBlock` returns null and the calling assertion emits a FAIL with an unbalanced-block diagnostic; `validate()` always returns 14, 34 and 35 |
+
+**RED evidence.** `Pr71ReviewRegressionTest` was added alone and run before any production change: 10
+tests, 10 failures, none of them a compilation error. The observed causes were
+`Expected wiring-product-logic for expect val bindings: Module; got []`,
+`Expected wiring-product-logic for @kotlin.Deprecated("legacy") internal class StrayMapper; got []`,
+`Expected wiring-product-logic for internal val leaked = run { val bindings = module { }; 1 }; got []`,
+`expected:<FAIL> but was:<PASS>` for the visibility and property cases,
+`SwiftAppGraph.localProbe defaults retries: Int = 1 expected:<PASS> but was:<FAIL>` for the local
+function, `SwiftAppGraph.ghost defaults retries: Int = 1 expected:<PASS> but was:<FAIL>` for the
+commented-out declaration, and `IllegalStateException: Unbalanced braces in the interface AppGraph
+block of docs/CONTRACTS.md` plus its Swift counterpart for the malformed blocks.
+
+**GREEN evidence.** After the implementation change the three suites report 92 tests and zero
+failures on the reviewed baseline: 82 pre-existing (46 in `SwiftSurfaceContractTest`, 36 in
+`ArchitectureCheckerTest`) plus the 10 regressions.
+
+**Documentation.** Two ADR-0181 claims were removed because they are false, and both were refuted
+against the running check before removal: an annotation on its own preceding line does **not** hide
+the state-holder class, and `FUN` **does** already cross whitespace and newlines, so a declaration
+whose name is on the following line is matched. The claim that the emptiness guard detects every
+inferred property was replaced by the accurate limitation. ADR-0179's first Negative bullet was
+corrected: private non-constant top-level properties are admitted, not rejected.
+
 ## Files Changed
 
 - `build-logic/convention/src/main/kotlin/.../architecture/ArchitectureChecker.kt` — the two new
   rules, their classification helpers and constants.
 - `build-logic/convention/src/main/kotlin/.../contract/SwiftSurfaceContract.kt` — new; assertions
   14, 34 and 35.
+- `build-logic/convention/src/main/kotlin/.../source/KotlinSourceText.kt` — new; the
+  offset-preserving lexical mask shared by the architecture and contract checks.
+- `build-logic/convention/src/test/kotlin/.../contract/Pr71ReviewRegressionTest.kt` — new; the ten
+  regressions the PR #71 review reproduced.
 - `build-logic/convention/src/main/kotlin/.../contract/ContractCheck.kt` — registers it.
 - `build-logic/convention/src/test/kotlin/.../architecture/ArchitectureCheckerTest.kt` — the two
   rule fixtures, the exact-`Module` fixtures and the message-text assertions.

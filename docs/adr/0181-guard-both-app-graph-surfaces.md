@@ -98,26 +98,25 @@ change.
     at least one `<Name>StateHolder`, so a source that stops being recognised is reported. Adding a
     fourth holder module still requires adding it here, and nothing detects that omission.
   - `STATE_HOLDER` matches a `class …StateHolder` at the start of a line with the known modifiers
-    (`public`/`internal`/`private`/`abstract`/`open`/`sealed`/`data`) and an annotation on the same
-    line. An unrecognised modifier word, or an annotation whose `@` sits on its own preceding line
-    with the `class` on the next, would drop the holder from the check; the no-parsed-class guard
-    reports the source rather than passing silently, which is what makes this limit bounded.
+    (`public`/`internal`/`private`/`abstract`/`open`/`sealed`/`data`). An unrecognised modifier word
+    would drop the holder from the check; the no-parsed-class guard reports the source rather than
+    passing silently, which is what makes this limit bounded. An annotation on its own preceding
+    line does not hide the class, because the pattern anchors to the line that carries `class`.
   - A declaration body is opened by the first brace at parenthesis depth zero, not by the first
     brace. `class SessionStateHolder internal constructor(… onLocalStartAccepted: () -> Unit = {}, …)`
     put a lambda default before the class body, and taking the first brace parsed an empty body, so
     the class contributed no member and left assertion 14 with nothing to check. Review found this
     live on the repository; `bodyBrace` selects the depth-zero brace and a per-class emptiness guard
     reports any class that still yields no member.
-  - `matchingBrace` counts braces without string- or character-literal awareness. A literal
-    containing an unbalanced brace inside a guarded block would misplace the body. No such literal
-    exists in the guarded sources, and the fix would be the same textual parser growing a scanner.
-  - `FUN` matches `fun name(`, `fun <T> name(` and `fun Foo.name(`. It cannot match a declaration
-    whose name is on a following line, or a parameter list opened on a following line; such a
-    member would drop out of the comparison on both sides, which the emptiness guard reports for
-    `AppGraph` and `SwiftAppGraph` but not for an individual holder.
-  - `splitTopLevel` ignores the `>` of `->` so a function-typed parameter cannot merge the
-    parameters after it. It is still not literal-aware, so a `>` inside a string default would be
-    counted.
+  - `matchingBrace`, `bodyBrace` and `splitTopLevel` count delimiters on masked text, so a brace,
+    parenthesis or a `>` inside a comment or a string literal no longer misplaces a body or merges a
+    parameter list. The masking covers line and block comments, single-quoted, double-quoted and raw
+    strings, escapes and `${…}` templates; it is a lexical mask, not a Kotlin parser, so an unusual
+    construct it does not recognise is treated as code.
+  - `FUN` matches `fun name(`, `fun <T> name(`, `fun Foo.name(` and a backticked `` fun `name`( ``.
+    A declaration whose name or parameter list continues on a following line is still matched,
+    because the pattern tolerates whitespace between the tokens. The name is normalized without its
+    backticks for the comparison key.
   - The scope parameter is recognised by its declared type `CoroutineScope`, not by the identifier
     `scope`. Review round 4 proved that the name match let
     `SwiftAppGraph.syncStateHolder(coroutineScope: CoroutineScope)` pass assertions 14, 34 and 35
@@ -135,13 +134,21 @@ change.
     space, so `fun A`, `val B`, `fun C` and `fun A`, `fun C`, `val B` compare as the different
     surfaces they are. Before review round 6 the two lists were concatenated, which normalized an
     interleaved contract and a grouped implementation to the same order and passed both assertions.
-  - A property is recognised only when it declares its type explicitly. A `val name = …` carries no
-    textual type to compare, so it yields no member; if an exported state holder ever gains one, the
-    per-class emptiness guard reports the class rather than comparing it against nothing.
+  - A property without an explicit declared type is not compared. The emptiness guard reports a
+    class only when no member is parsed; it does not detect an omitted property beside other parsed
+    members.
   - Visibility is classified four ways and only `public` members reach the comparison. An `internal`
     or `protected` helper is not exported to Swift, so it is neither compared against `§20.10` nor
     held to the scope and default-argument rules. Before review round 5 only `private` was filtered,
-    which compared `internal` helpers that the header can never show.
+    which compared `internal` helpers that the header can never show. The classification reads
+    lexical declaration text with comments, annotations and literals masked, so a word such as
+    `internal` inside an annotation message cannot classify a public member. Functions are direct
+    members only: a local function or a lambda body is excluded by brace depth, and a commented-out
+    declaration is not a member at all. Repeated legal modifiers (`public final val`) and qualified
+    annotations are recognised on properties.
+  - A malformed `§20.10` block — one whose braces never close — reports assertion 34 or 35 as a
+    failure with an unbalanced-block diagnostic, so `validate()` always returns results for 14, 34
+    and 35 instead of throwing and truncating the `contract-check` report.
 
 ### Constraints Introduced
 
@@ -172,6 +179,14 @@ scope and default rules.
 `anInterleavedFunctionAndPropertyOrderIsRejectedOnTheKotlinFacingSurface` and its Swift-facing
 counterpart prove a function property function order is distinguished from a function function
 property order on both surfaces.
+
+`Pr71ReviewRegressionTest` holds the ten regressions the PR #71 review reproduced, one per defect:
+annotation messages cannot set visibility, qualified annotations and literal parentheses cannot hide
+a wiring declaration, an inner assignment or a literal is not a property's Koin initialiser, a local
+function or a commented-out declaration is not a member, repeated modifiers and qualified
+annotations cannot hide a property, an escaped function name still reports its default argument,
+expect/actual is not exempted by the Koin rule, and a malformed contract block returns a FAIL result
+instead of aborting the report.
 
 ## References
 

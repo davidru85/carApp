@@ -61,19 +61,27 @@ abstraction factory `§4` admits.
 
 ### Negative
 
-- A private tuning constant must be written inside a factory or a companion rather than at top
-  level. `:wiring:firebase` has fourteen such constants today, and they are all `private const val`
-  so they pass, but a future non-constant private property would not.
+- Private top-level properties, including non-constant properties, are admitted as wiring-owned
+  data. Type declarations remain forbidden at every visibility. The Koin property exemption never
+  overrides the expect/actual prohibition: both are evaluated before it can apply, so
+  `expect val bindings: Module` and `actual val bindings: Module = module { }` are reported.
 - The classification is textual, and its limits are enumerated rather than left to one general
   sentence:
-  - Every leading annotation is removed before matching by a scanner rather than a regular
-    expression, so a use-site target (`@get:JvmName("x")`) and nested parentheses
+  - Every leading annotation is removed before matching by a lexical scanner that masks comments,
+    string and character literals while preserving character offsets, so a use-site target
+    (`@get:JvmName("x")`), a qualified name (`@kotlin.Deprecated("x")`) and nested parentheses
     (`@Deprecated("x", ReplaceWith("y"))`) no longer leave the `@` on the line and hide the whole
-    declaration. Review round 4 found both shapes passing silently. A line carrying only an
-    annotation still parses as no declaration, which is correct, and an annotation whose
+    declaration. Because delimiters are counted on masked text, a parenthesis inside a literal is
+    not a delimiter either. Review round 4 found the nested shape passing silently and the review of
+    PR #71 found the qualified and literal-parenthesis shapes doing the same. A line carrying only
+    an annotation still parses as no declaration, which is correct, and an annotation whose
     parenthesis never closes on the line is left untouched and parses as no declaration.
   - The Koin exemption applies only to a `val`/`var`. A type declaration that inherits a type named
     `Module` — `class FirebaseWiring : Module` — is a `class` and is rejected.
+  - The `module { … }` initialiser is matched on the text after the declaration's own assignment,
+    anchored to the start of that initialiser and masked of literals and comments, so
+    `val leaked = run { val bindings = module { }; 1 }` and `val leaked = "= module {"` are not
+    bindings. The exemption also still requires the declared type to be exactly `Module`.
   - A declaration whose keyword the regular expression still cannot see is not reported. The rule
     fails open by direction and `:wiring:firebase` is a single reviewed file.
 - The violation message names the declaration in source order, the way it is written:

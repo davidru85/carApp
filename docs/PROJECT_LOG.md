@@ -38,6 +38,48 @@
 
 ## Entries
 
+### 2026-09-20 — E3-08 review round 7: eight fail-open paths in the wiring rule and the surface comparison
+
+- **Type:** correction
+- **Story / Decision:** `E3-08` / no new decision (`D-178`, `D-179` and `D-180` unchanged)
+- **Author:** Claude, on behalf of David Ruiz
+- **What changed:** the review of pull request #71 at `72392dd` reproduced eight further defects in
+  the two checks this story added. The `:wiring:firebase` rule admitted `expect`/`actual` whenever a
+  Koin binding matched, because the exemption ran before the modifier test; it could not see a
+  qualified annotation or a parenthesis inside a literal, because the annotation scanner did not
+  accept `.` and counted delimiters on raw text; and it accepted an inner assignment or a string as a
+  property's own `module { }` initialiser, because `containsMatchIn` searched the whole line. The
+  Swift-surface comparison classified visibility from raw header text, so a word inside an annotation
+  message such as `internal` made a public function look internal and skipped its forbidden default;
+  it scanned function declarations without the brace-depth filter the property scanner already had
+  and read raw comment text, so a local helper or a commented-out declaration became an exported
+  member; it could not read a property with repeated modifiers or a qualified annotation; it could
+  not see a backtick-escaped function name, which bypassed the default-argument check; and a
+  malformed `§20.10` block threw, losing the remainder of the `contract-check` report. All eight are
+  closed behind one shared offset-preserving lexical mask,
+  `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/source/KotlinSourceText.kt`,
+  which blanks comments and string, character and template literals while keeping every character
+  position, so the existing patterns and diagnostics are unchanged.
+- **Why:** every defect let a real surface violation through the check that exists to report it, and
+  the last one replaced the whole assertion report with an exception. The mask is the smaller and
+  more honest fix than widening each regular expression: it keeps the checks textual, adds no
+  dependency, and makes the delimiter counting correct for the bodies, parameter lists and blocks
+  that already relied on it.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log, and
+  the pull-request description. Code: `ArchitectureChecker.kt`, `SwiftSurfaceContract.kt`, the new
+  `source/KotlinSourceText.kt` and the new test-only `Pr71ReviewRegressionTest.kt`. No production
+  source, no contract text, no decision, no dependency and no baseline changed.
+- **Verification:** the regression suite was added alone first and observed RED: 10 tests, 10
+  failures, none a compilation error. After the fix the three suites report **92 tests and 0
+  failures** — 82 pre-existing plus the 10 new ones. `contractCheck` reports 14, 34 and 35 `PASS`
+  with no `PENDING`; `architectureCheck` still prints `16 rules … 23 modules`; `ktlintCheck detekt`
+  pass; `git diff --check` is clean. The two ADR-0181 claims removed here were refuted by running the
+  check before removal. The canonical CI command passes, and the round-7 commits are `f8b5c26` (RED)
+  and `63b0d47` (GREEN).
+- **Follow-ups / risks:** the fixed holder-source inventory, textual type recognition, the
+  property-without-an-explicit-type limit and the `§11.6` hidden-member and Konsist deferrals are
+  unchanged and are not part of this correction.
+
 ### 2026-09-20 — E3-08 review round 6: declaration order is compared across both member kinds
 
 - **Type:** correction
