@@ -1238,6 +1238,19 @@ __attribute__((swift_name("SyncStateHolder")))
 @property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
 - (void)clearMessage __attribute__((swift_name("clearMessage()")));
 - (void)close __attribute__((swift_name("close()")));
+
+/**
+ * Reports entering the foreground and applies the `§9.8` foreground rule.
+ *
+ * [backgroundMillis] is how long the app spent in the background, or `null` for a cold start,
+ * which has no measurable background duration and is always a trigger (`§9.8` names both cases).
+ * The host observes the platform lifecycle and supplies that fact; the rule is applied here so
+ * both hosts report the same primitive and neither repeats the comparison, which also keeps the
+ * behaviour under one shared test instead of two platform-specific ones. A return of exactly the
+ * threshold is not a trigger, because `§9.8` requires **more than**
+ * `FOREGROUND_RESUME_THRESHOLD_MS` in the background.
+ */
+- (void)onForegroundReturnBackgroundMillis:(SharedLong * _Nullable)backgroundMillis __attribute__((swift_name("onForegroundReturn(backgroundMillis:)")));
 - (void)refreshDebug __attribute__((swift_name("refreshDebug()")));
 - (void)requestSyncReason:(SharedSyncTrigger *)reason __attribute__((swift_name("requestSync(reason:)")));
 - (void)retryFailed __attribute__((swift_name("retryFailed()")));

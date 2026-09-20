@@ -2813,6 +2813,7 @@ class SyncStateHolder {
     val state: StateFlow<SyncUiState>
     val debugLines: StateFlow<List<String>>
     fun requestSync(reason: SyncTrigger)
+    fun onForegroundReturn(backgroundMillis: Long?)
     fun retryFailed()
     fun clearMessage()
     fun refreshDebug()
@@ -2950,6 +2951,8 @@ observation. Owner-scoped navigation MUST be reset only when a known list become
 message, which is the owner transition.
 
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. A Konsist fixture MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any `iosMain` call site of `SyncStateHolder.requestSync`.
+
+`SyncStateHolder.onForegroundReturn(backgroundMillis)` is the `§9.8` foreground entry point, and `backgroundMillis` is nullable on purpose. Each host observes its own lifecycle and calls this member with how long the app spent in the background, or with `null` on a cold start: a cold start has no measurable background duration and `§9.8` names it as a trigger in its own right, so it MUST NOT be encoded as a duration. The `FOREGROUND_RESUME_THRESHOLD_MS` comparison is applied here, so both hosts share one rule and one test instead of repeating the comparison, and a return of exactly the threshold is not a trigger because `§9.8` requires **more than** the threshold in the background. The member fires `SyncTrigger.AppForeground`, never `Periodic` or `ConnectivityRecovered`, and it is a no-op after `close()`. `SyncTrigger.ConnectivityRecovered` remains platform-owned and is derived by the graph from the `ConnectivityObserver` offline-to-online edge, never invoked from Swift UI code.
 
 `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
 

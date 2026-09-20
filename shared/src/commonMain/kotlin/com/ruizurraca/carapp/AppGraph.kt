@@ -4,9 +4,11 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.FOREGROUND_RESUME_THRESHOLD_MS
 import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
 import com.ruizurraca.carapp.core.database.AccountDepartureDatabaseAccess
@@ -35,10 +37,12 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormState
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleListStateHolder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.transform
@@ -164,6 +168,35 @@ internal class DefaultAppGraph(
                 }
         }
         localOwnerAdoption.launchIn(graphScope)
+        observeConnectivityRecovery()
+    }
+
+    /**
+     * Fires the `§9.8` `ConnectivityRecovered` trigger on the offline-to-online edge.
+     *
+     * The trigger is the *transition*, not the value: a device that is already online produces no
+     * recovery, so the observer's current value is the baseline and only a later change can trigger.
+     * That is also why the trigger is derived here rather than in the controller: only the graph owns
+     * the observer, and the engine must not depend on a platform signal to decide its own admission
+     * (`§9.1`).
+     *
+     * Collection starts undispatched so the baseline is read synchronously inside construction. With a
+     * plain `launch` the collector could subscribe after the device had already recovered, `drop(1)`
+     * would discard that recovery as if it were the baseline, and the trigger would be lost until the
+     * next connectivity change - which for a device that stays online is never.
+     *
+     * The cycle is requested, never awaited, so the collector keeps observing.
+     * `ConnectivityRecovered` is also the reason-dependent step that makes connectivity-only failures
+     * due again (`§9.7`).
+     */
+    private fun observeConnectivityRecovery() {
+        graphScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            dependencies.connectivityObserver.isOnline
+                .drop(1)
+                .collect { online ->
+                    if (online) syncController.requestSync(SyncTrigger.ConnectivityRecovered)
+                }
+        }
     }
 
     override fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder {

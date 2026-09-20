@@ -209,19 +209,16 @@ private data class CycleRun(
     val served: List<SyncRequest>,
 )
 
-/** How a trigger was admitted (`§9.1`, `§9.8`). */
-private sealed interface Admission {
-    /** This caller claimed the cycle and runs it. */
-    data class Run(
-        val cycle: CycleRun,
-    ) : Admission
-
-    /** Another cycle answers this trigger: its completion resolves when that cycle finishes. */
-    data object Awaiting : Admission
-
-    /** The graph is closing, or its driver is already released. No cycle is admitted (`D-172`). */
-    data object Refused : Admission
-}
+/**
+ * The outcome of admitting one trigger (`§9.1`, `§9.8`): the request whose completion always carries
+ * the answer, and the cycle this caller must run when it claimed one. A `null` [cycle] means another
+ * cycle - the pending follow-up, a window timer, or the shutdown path - publishes that completion, so
+ * callers never need to distinguish those cases.
+ */
+private data class Admission(
+    val request: SyncRequest,
+    val cycle: CycleRun?,
+)
 
 /**
  * The single pending follow-up cycle a coalesced trigger joins. The joined reasons and the requests
@@ -311,27 +308,20 @@ internal class DefaultSyncController(
     private var shuttingDown = false
 
     override fun requestSync(reason: SyncTrigger) {
-        scope.launch { admitThenDrain(reason) }
+        scope.launch {
+            val admission = admit(reason)
+            // Fire-and-forget: the trigger's own completion is nobody's to await, but the cycle it
+            // claimed still must run.
+            admission.cycle?.let { drainCycles(it) }
+        }
     }
 
     override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> {
-        val request = SyncRequest(reason)
-        val admission = admit(reason, request)
-        if (admission is Admission.Run) {
-            scope.launch { drainCycles(admission.cycle) }
-        }
-        return request.completion.await()
-    }
-
-    /**
-     * Admits [reason] and, when this call claimed the cycle, runs it. Every other path resolves when
-     * the cycle that owns the request finishes, so a trigger never needs to know whether it claimed a
-     * window, joined an in-flight cycle or parked behind a window.
-     */
-    private suspend fun admitThenDrain(reason: SyncTrigger) {
-        val request = SyncRequest(reason)
-        val admission = admit(reason, request)
-        if (admission is Admission.Run) drainCycles(admission.cycle)
+        val admission = admit(reason)
+        // The cycle runs on the controller's scope, so the caller observes only its outcome. A refused
+        // trigger is already completed with the closed `D-172` error.
+        admission.cycle?.let { scope.launch { drainCycles(it) } }
+        return admission.request.completion.await()
     }
 
     /**
@@ -344,34 +334,35 @@ internal class DefaultSyncController(
      * the `§9.8` windows apply, and only to automatic triggers: pull-to-refresh is user-initiated, so
      * it bypasses the minimum interval while still serializing on the same mutex.
      */
-    private suspend fun admit(
-        reason: SyncTrigger,
-        request: SyncRequest,
-    ): Admission =
-        cycleMutex.withLock {
-            if (shuttingDown) {
-                request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-                return@withLock Admission.Refused
+    private suspend fun admit(reason: SyncTrigger): Admission {
+        val request = SyncRequest(reason)
+        val cycle =
+            cycleMutex.withLock {
+                if (shuttingDown) {
+                    request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+                    return Admission(request, cycle = null)
+                }
+                if (cycleRunning) {
+                    val followUp = pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
+                    followUp.reasons += reason
+                    followUp.requests += request
+                    return Admission(request, cycle = null)
+                }
+                // The request joins the parked batch before any window is read, so every admission
+                // path ends with it served by a cycle: either the claim below, or a window timer that
+                // opens the window it waits on. Parking unconditionally is also what makes coalescing
+                // exact - `claim()` answers every parked trigger, never only the last arrival.
+                parkedRequests += request
+                if (reason != SyncTrigger.PullToRefresh) {
+                    // A post-write trigger is what opens the debounce window, armed before the window
+                    // is read so the delay is measured from the mutation that caused the trigger.
+                    if (reason == SyncTrigger.PostWriteDebounce) armDebounceWindow()
+                    if (!windowsOpen()) return Admission(request, cycle = null)
+                }
+                claim()
             }
-            if (cycleRunning) {
-                val followUp = pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
-                followUp.reasons += reason
-                followUp.requests += request
-                return@withLock Admission.Awaiting
-            }
-            // The request joins the parked batch before any window is read, so every admission path
-            // ends with it served by a cycle: either the claim below, or a window timer that opens the
-            // window it is waiting on. Parking unconditionally is also what makes coalescing exact -
-            // `claim()` answers every parked trigger, never only the one that happened to arrive last.
-            parkedRequests += request
-            if (reason != SyncTrigger.PullToRefresh) {
-                // A post-write trigger is what opens the debounce window, armed before the window is
-                // read so the delay is measured from the mutation that caused the trigger.
-                if (reason == SyncTrigger.PostWriteDebounce) armDebounceWindow()
-                if (!windowsOpen()) return@withLock Admission.Awaiting
-            }
-            Admission.Run(claim())
-        }
+        return Admission(request, cycle)
+    }
 
     /**
      * Reserves a cycle for every parked trigger at once. Called under `cycleMutex`, by a caller that
