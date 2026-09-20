@@ -649,6 +649,41 @@ class SwiftSurfaceContractTest {
         )
     }
 
+    /**
+     * `suspend` changes the call contract of a member on both surfaces, and it is invisible to the
+     * generated Objective-C header on the Kotlin-facing one, which is `@HiddenFromObjC`. It is
+     * therefore part of the compared signature rather than a modifier the parser discards.
+     */
+    @Test
+    fun aKotlinFacingSuspendModifierIsPartOfTheComparedSurface() {
+        assertFails(
+            APP_GRAPH_MEMBERS,
+            "suspend close() is declared but absent from §20.10; " +
+                "close() is declared in §20.10 but absent from the interface",
+            SwiftSurfaceContract(
+                real.withSource(
+                    APP_GRAPH,
+                    rawBlock("interface AppGraph", CORE_MEMBERS.dropLast(1) + "suspend fun close()"),
+                ).copy(contract = rawBlock("interface AppGraph", CORE_MEMBERS)),
+            ).validate(),
+        )
+    }
+
+    @Test
+    fun aSwiftFacingSuspendModifierIsPartOfTheComparedSurface() {
+        assertFails(
+            SWIFT_APP_GRAPH_MEMBERS,
+            "suspend close() is declared but absent from §20.10; " +
+                "close() is declared in §20.10 but absent from the class",
+            SwiftSurfaceContract(
+                real.withSource(
+                    SWIFT_APP_GRAPH,
+                    rawBlock(SWIFT_APP_GRAPH_DECLARATION, CORE_SWIFT_MEMBERS.dropLast(1) + "suspend fun close()"),
+                ).copy(contract = rawBlock(SWIFT_APP_GRAPH_DECLARATION, CORE_SWIFT_MEMBERS)),
+            ).validate(),
+        )
+    }
+
     /** `internal` never reaches Swift, so it is not part of the compared surface. */
     @Test
     fun anInternalSwiftFacingHelperIsNotComparedAgainstTheContract() {

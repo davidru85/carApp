@@ -529,8 +529,23 @@ class ArchitectureCheckerTest {
             "internal val maybeBindings: Module? = null",
             "internal val qualified: org.koin.core.module.Module = modules()",
             "internal val fromInitialiser = module { }",
+            // The initialiser on the following line is the idiomatic wrapped form and is the shape
+            // `§4` admits. Rejecting it was a false positive, not a rejected shape.
+            "val wrappedBindings =\n    module {\n        single { client }\n    }",
+            "internal var wrappedVar =\n    module { }",
+            "internal val wrappedAfterComment = // deferred\n    module { }",
         ).forEach { source ->
             assertRuleDoesNotFire(module(":wiring:firebase", source = source), "wiring-product-logic")
+        }
+
+        // A wrapped initialiser that is not a Koin module, and a wrapped literal that only spells
+        // one, stay rejected: the continuation is read as code, not as text.
+        listOf(
+            "val wrappedRegistry =\n    listOf(1)",
+            "val wrappedLiteral =\n    \"module {\"",
+            "expect val wrappedExpect: Module",
+        ).forEach { source ->
+            assertRejected(module(":wiring:firebase", source = source), "wiring-product-logic")
         }
     }
 
