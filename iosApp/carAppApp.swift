@@ -49,9 +49,12 @@ struct carAppApp: App {
                     // `SyncStateHolder`, so returning from a dialog reports a stay far below five
                     // minutes and requests no cycle; only a real background stay does.
                     if newPhase == .active {
-                        if let backgroundMillis = backgroundDuration.consumeBackgroundMillis() {
-                            model.onSceneActivated(backgroundMillis: backgroundMillis)
-                        }
+                        // The entry point is called unconditionally, exactly as the Android host calls
+                        // it on every ON_START. `consumeBackgroundMillis()` returning nil means "no
+                        // recorded departure", which is the cold-start case §9.8 names as a trigger in
+                        // its own right, and the §11.3 reminder evaluation MUST NOT be conditional on
+                        // a value that only the sync trigger reads.
+                        model.onSceneActivated(backgroundMillis: backgroundDuration.consumeBackgroundMillis())
                     } else {
                         backgroundDuration.recordDeparture()
                     }
