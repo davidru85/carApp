@@ -29,6 +29,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -281,7 +282,84 @@ class SyncAdmissionPolicyTest {
             )
         }
 
-    private fun TestScope.fixture(pullDelayMillis: Long = 0): AdmissionFixture {
+    @Test
+    fun pullToRefreshDoesNotServeAnAutomaticTriggerBeforeItsWindowBoundary() =
+        runTest {
+            val fixture = fixture()
+
+            fixture.controller.requestSync(SyncTrigger.AppForeground)
+            runCurrent()
+            assertEquals(1, fixture.remote.cycles)
+
+            val parked = async { fixture.controller.sync(SyncTrigger.PostWriteDebounce) }
+            runCurrent()
+            val manual = async { fixture.controller.sync(SyncTrigger.PullToRefresh) }
+            runCurrent()
+
+            assertEquals(Outcome.Ok(Unit), manual.await())
+            assertFalse(parked.isCompleted, "manual refresh MUST leave the automatic request parked")
+            assertEquals(2, fixture.remote.cycles, "only the initial and manual cycles may have run")
+
+            advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS)
+            runCurrent()
+
+            assertEquals(Outcome.Ok(Unit), parked.await())
+            assertEquals(3, fixture.remote.cycles, "the automatic request runs at the floor boundary")
+        }
+
+    @Test
+    fun shutdownBetweenClaimPublicationAndAdmissionReturnCompletesTheAwaiter() =
+        runTest {
+            lateinit var controller: DefaultSyncController
+            val fixture =
+                fixture(
+                    hooks =
+                        SyncConcurrencyHooks(
+                            afterClaimPublished = { controller.shutdown() },
+                        ),
+                )
+            controller = fixture.controller
+
+            val result = controller.sync(SyncTrigger.AppForeground)
+
+            assertEquals(Outcome.Err(PersistenceError.DatabaseUnavailable), result)
+            assertEquals(0, fixture.remote.cycles, "shutdown MUST prevent the claimed cycle from starting")
+        }
+
+    @Test
+    fun shutdownDuringFollowUpPromotionCompletesThePromotedAwaiter() =
+        runTest {
+            lateinit var controller: DefaultSyncController
+            val fixture =
+                fixture(
+                    hooks =
+                        SyncConcurrencyHooks(
+                            afterFollowUpPromotionPublished = { controller.shutdown() },
+                        ),
+                )
+            controller = fixture.controller
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            fixture.remote.onPull = {
+                entered.complete(Unit)
+                release.await()
+            }
+
+            val first = async { controller.sync(SyncTrigger.AppForeground) }
+            entered.await()
+            val followUp = async { controller.sync(SyncTrigger.PostWriteDebounce) }
+            runCurrent()
+            release.complete(Unit)
+            runCurrent()
+
+            assertEquals(Outcome.Ok(Unit), first.await())
+            assertEquals(Outcome.Err(PersistenceError.DatabaseUnavailable), followUp.await())
+        }
+
+    private fun TestScope.fixture(
+        pullDelayMillis: Long = 0,
+        hooks: SyncConcurrencyHooks = SyncConcurrencyHooks(),
+    ): AdmissionFixture {
         val clock = AdmissionClock(Instant.fromEpochMilliseconds(0))
         val connectivity = AdmissionConnectivity(true)
         val persistence = AdmissionPersistence()
@@ -296,6 +374,7 @@ class SyncAdmissionPolicyTest {
                 clock = clock,
                 uuidGenerator = AdmissionUuidGenerator(),
                 jitter = JitterSource { _, _ -> 200 },
+                concurrencyHooks = hooks,
             )
         return AdmissionFixture(controller, persistence, remote, connectivity, clock)
     }

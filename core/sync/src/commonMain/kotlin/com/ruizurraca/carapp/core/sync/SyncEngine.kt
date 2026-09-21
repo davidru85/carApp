@@ -247,6 +247,21 @@ private class AdmissionWindow {
     var generation = 0L
 }
 
+/**
+ * Deterministic interleaving points for the admission-versus-shutdown handshake.
+ *
+ * `shutdown()` runs on the caller's thread while `admit` and `drainCycles` run on the graph scope, so
+ * the windows that matter are the instructions between a publication and the re-read that follows it.
+ * A single-threaded test scheduler cannot reach them by itself, and a real-time sleep would test
+ * nothing reliably, so the sequence is made observable instead: each hook runs at one handshake
+ * boundary and every one defaults to a no-op.
+ */
+internal data class SyncConcurrencyHooks(
+    val afterClaimPublished: () -> Unit = {},
+    val afterFollowUpPublished: () -> Unit = {},
+    val afterFollowUpPromotionPublished: () -> Unit = {},
+)
+
 internal class DefaultSyncController(
     private val scope: CoroutineScope,
     private val ownerContext: OwnerContext,
@@ -261,6 +276,7 @@ internal class DefaultSyncController(
     private val onQuarantined: (QuarantineRecord) -> Unit = {},
     private val debugEnabled: Boolean = false,
     private val debugLoader: suspend () -> List<String> = { emptyList() },
+    private val concurrencyHooks: SyncConcurrencyHooks = SyncConcurrencyHooks(),
 ) : SyncController {
     private val mutableStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
     override val status: StateFlow<SyncStatus> = mutableStatus
