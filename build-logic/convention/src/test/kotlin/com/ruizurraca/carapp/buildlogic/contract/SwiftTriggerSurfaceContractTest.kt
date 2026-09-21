@@ -54,6 +54,39 @@ class SwiftTriggerSurfaceContractTest {
         )
     }
 
+    @Test
+    fun aNestedBlockCommentDoesNotMakeCommentedTextLookLikeACallSite() {
+        // Swift and Kotlin both allow a block comment inside a block comment. A masker that stops at
+        // the first `*/` treats the tail of the outer comment as code and reports a violation that
+        // does not exist.
+        val source =
+            """
+            /* outer /* inner */
+            syncStateHolder.requestSync(reason: .periodic)
+            */
+            """.trimIndent()
+
+        assertEquals(
+            emptyList(),
+            SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
+            "a fully commented-out call site is not a violation",
+        )
+    }
+
+    @Test
+    fun aSlashSlashInsideAStringLiteralDoesNotHideARealCallSite() {
+        // A masker that treats `//` inside a string as a line comment blanks the rest of the line and
+        // stops seeing the violation that follows it.
+        val source =
+            """let endpoint = "https://example.invalid"; syncStateHolder.requestSync(reason: .periodic)"""
+
+        assertEquals(
+            listOf("$FIXTURE_PATH:1 requests Periodic"),
+            SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
+            "§20.10 bans Periodic even on a line that also contains a URL string",
+        )
+    }
+
     private fun assertRejected(trigger: String) {
         val violations =
             SwiftTriggerSurfaceRule.violations(
