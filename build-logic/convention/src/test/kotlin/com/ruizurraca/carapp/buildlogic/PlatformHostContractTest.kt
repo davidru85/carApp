@@ -25,6 +25,14 @@ class PlatformHostContractTest {
             repositoryRoot
                 .resolve("androidApp/src/main/java/com/ruizurraca/carapp/CarAppApplication.kt")
                 .readText()
+        val foregroundReturn =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AnonymousReminderCopy.kt")
+                .readText()
+        val foregroundDuration =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidForegroundDuration.kt")
+                .readText()
         val english = repositoryRoot.resolve("androidApp/src/main/res/values/strings.xml").readText()
         val spanish = repositoryRoot.resolve("androidApp/src/main/res/values-es/strings.xml").readText()
 
@@ -45,6 +53,13 @@ class PlatformHostContractTest {
         // The graph outlives the Activity, so the Activity MUST NOT close it: releasing it on
         // `onCleared` would leave the process-scoped graph holding a released driver.
         assertFalse(host.contains("graph.close()"))
+        // `§9.8` fires the foreground trigger on a cold start or after more than
+        // `FOREGROUND_RESUME_THRESHOLD_MS`, never on an Activity recreation. The measurement is
+        // therefore process-scoped; holding it in the composition made a recreation report `null`,
+        // which the shared holder reads as a cold start.
+        assertTrue(foregroundDuration.contains("internal object AndroidForegroundTracking"))
+        assertTrue(foregroundReturn.contains("AndroidForegroundTracking.duration"))
+        assertFalse(foregroundReturn.contains("remember { AndroidForegroundDuration() }"))
         assertFalse(host.contains("setFuelType"))
         assertFalse(host.contains("Greeting"))
         assertTrue(english.contains("name=\"vehicle_list_title\""))
