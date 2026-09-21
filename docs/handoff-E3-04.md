@@ -99,7 +99,30 @@ Exact commands, and their result.
 - The `ios-simulator-build` test action locally: `xcodebuild … test` — `** TEST SUCCEEDED **`, 27 tests with 1 skipped and 0 failures, including `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` (41.7 s) which drives the real app against the real graph.
 - `./iosApp/generate-project.sh` reproduces the committed `project.pbxproj` byte for byte, so the four-line delta is the deterministic output of the repo's own generator.
 - Pull request #72, run `35577147782`: `ktlint`, `detekt`, `architecture-check`, `contract-check`, `android-assemble`, `android-instrumented-tests`, `ios-simulator-build`, `objc-header-golden-check`, `provider-decoupling` and `shared-tests` all green.
-- **One re-run was needed, and it is the known pre-existing stall, not a defect of this story.** `shared-tests` first failed with `The action 'Run Android application and KMP host tests' has timed out after 10 minutes`: the log has 731 `STARTED` lines, **zero** `PASSED`, **zero** `FAILED`, and no test result — the signature `D-175` and `D-177` describe. That same step passes locally in under a minute, so it is not deterministic, and the re-run passed in 9m30s. It is the mechanism `docs/PROJECT_LOG.md` already records for runs `35333547781` and `35336079709` and owns to `E1-14`/`E1-17`; it is also not confined to this story, since the same stall reached `provider-decoupling` on that round. It is recorded rather than re-pinned, and it is not evidence against this change: no test of this story failed and no assertion was involved.
+- **`shared-tests` failed by the pre-existing ten-minute host-step stall, and the evidence below shows it is not caused by this change.** **What failed.** `The action 'Run Android application and KMP host tests' has timed out after 10 minutes`. It failed on three of four attempts (two distinct commits, and one commit that changed nothing but Markdown). Every one of those logs has several hundred `STARTED` lines, **zero** `PASSED`, **zero** `FAILED`, and no test result: the step never reported a single test outcome, so no assertion ever ran to completion and no test of this story failed. It passed on re-run twice. The stall is always in the same place — after `> Task :feature:vehicle:testAndroidHostTest`, on `VehicleStateHoldersTest` — and it is intermittent: the set of test names in a failed log is a strict subset of the set in a passing one, so no test is uniquely red.
+
+**Why it is not this change.**
+
+- `:feature:vehicle` imports no symbol this story touched. It declares a Gradle dependency on `:core:sync` but imports nothing from it (`grep` for `core.sync`/`SyncController` under its sources returns only the build-file line), and `VehicleListStateHolder` takes no `SyncController` and requests no sync. The stalled test class exercises holders that never reach the controller whose admission path this story changed.
+- The change is additive and confined to `:core:sync`, `:shared`, `:wiring:firebase`, `androidApp` and `build-logic`. Nothing in it is on the code path the stalled test executes.
+- The third failure was on commit `46784ff`, whose only changes are two Markdown files and **zero** Kotlin files. A documentation-only commit cannot introduce a Kotlin hang, and the same step failed on it.
+- Locally the identical step passes in 40 s with `--rerun-tasks --no-build-cache`, and the complete required command passes in 31 s. The failure therefore depends on the CI environment, not on the sources.
+- The base commit of this branch (`c38d1fc`, the merge of PR #71) also failed its own `shared-tests`. It is a repository condition, not one introduced here.
+- The mechanism is the one `docs/PROJECT_LOG.md` already records, for runs `35333547781` and `35336079709`, and assigns to the test-infrastructure stories `E1-14`/`E1-17`. The same stall reached `provider-decoupling` on that round, so it is not specific to any one job.
+
+**Measured headroom, which is what settles the attribution.** The stalled step is bimodal, not gradually slow:
+
+| Run | Android-host step | Kotlin/Native step |
+|---|---|---|
+| `main` at `c38d1fc` (this branch's base) | 230 s, success | 613 s, **failed** its 600 s limit |
+| This branch on a green attempt | 246 s, success | 266 s, success |
+| Limit | 600 s | 600 s |
+
+The healthy time is 246 s — **41 % of the limit**, so this change leaves 59 % headroom and does not sit near any ceiling. The change adds about 16 s to a step that took 230 s on the base, which cannot convert 354 s of headroom into a hang that produces no test result at all. The failure is qualitatively different from a slow step, and the base commit had its own `shared-tests` failure on a *different* step (Native, 613 s against the same 600 s limit), while this branch runs that same Native step in 266 s.
+
+**It outlives its owning stories.** `docs/PROJECT_LOG.md` assigns the stall to `E1-14` and `E1-17`, and both have merged (PR #66 and PR #67). The mechanism therefore still reproduces after its owners closed, which means it now needs a new owner rather than another citation of the old one. That reassignment is an owner decision, so it is reported here and not minted as a new backlog ID.
+
+**What was done about it.** Nothing in this story's sources, deliberately. The failure reports no test result and no assertion, so there is nothing to fix in a passing test and re-pinning one would be inventing a cause. It is recorded here and in `docs/PROJECT_LOG.md` as the pre-existing stall, which keeps it owned by `E1-14`/`E1-17` instead of quietly transferring ownership to `E3-04`. `D-175` and `D-177` already fixed the two mechanisms that were found inside `E3-03` itself; what remains is the environment-level stall those decisions left open.
 
 ## Contract Impact
 
