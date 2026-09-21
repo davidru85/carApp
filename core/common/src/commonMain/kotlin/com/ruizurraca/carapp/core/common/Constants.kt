@@ -24,7 +24,7 @@ const val MAX_RETRYABLE_ATTEMPTS: Int = 10
 @HiddenFromObjC
 const val MAX_ENTRIES_IN_MEMORY: Int = 5_000
 
-/** Android `enqueueUniqueWork` name (`§9.1`). */
+/** Android `enqueueUniquePeriodicWork` name (`§9.1`). */
 @HiddenFromObjC
 const val SYNC_WORK: String = "carapp-sync"
 

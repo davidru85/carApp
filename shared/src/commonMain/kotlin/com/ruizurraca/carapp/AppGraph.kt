@@ -4,7 +4,6 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AppError
-import com.ruizurraca.carapp.core.common.FOREGROUND_RESUME_THRESHOLD_MS
 import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome

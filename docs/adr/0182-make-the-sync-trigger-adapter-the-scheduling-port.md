@@ -8,7 +8,7 @@ Accepted
 
 `docs/CONTRACTS.md §20.10` and `§9.8` describe a `SyncTriggerAdapter` that fires `Periodic` from
 platform wiring, and `§9.1` requires the Android platform trigger to use
-`enqueueUniqueWork(SYNC_WORK, KEEP)` and the iOS one a single `BGTaskScheduler` identifier. When
+`enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, …)` and the iOS one a single `BGTaskScheduler` identifier. When
 `E3-04` started, the adapter was dead wiring: the provider graph supplied `SyncTriggerAdapter { }`,
 an empty lambda, so no host ever arranged a periodic cycle. The `Periodic` trigger existed as an enum
 member and as a declaration in prose, and nothing reached it. The 6-hour cadence of `§9.8` was
@@ -86,7 +86,7 @@ the same cycle. The Android library that cadence needs is pinned by `D-184`.
   A second call site would reset the platform schedule.
 - A platform trigger MUST request its cycle on the graph's own `SyncController`. A worker or handler
   MUST NOT construct a second `AppGraph`.
-- The Android platform trigger MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)`.
+- The Android platform trigger MUST use `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, …)`.
 - A provider graph built without a host arranges no background scheduling and MUST NOT be presented
   as a build that does.
 

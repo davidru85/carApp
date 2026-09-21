@@ -1,5 +1,7 @@
 package com.ruizurraca.carapp.buildlogic.contract
 
+import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
+
 /**
  * `docs/CONTRACTS.md §20.10`: `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` are fired
  * exclusively by platform wiring and MUST NOT be requested from Swift UI code.
@@ -41,7 +43,10 @@ internal object SwiftTriggerSurfaceRule {
         sources.entries.flatMap { (path, text) -> violationsIn(path, text) }
 
     private fun violationsIn(path: String, text: String): List<String> {
-        val code = stripComments(text)
+        // `KotlinSourceText.code` is the offset-preserving masker the other source rules already use:
+        // it blanks comments AND string literals and it handles nested block comments, which are legal
+        // in Kotlin and in Swift. A local re-implementation of it drifted from both.
+        val code = KotlinSourceText.code(text)
         val found = mutableListOf<String>()
         var index = code.indexOf(REQUEST_SYNC)
         while (index >= 0) {
@@ -60,37 +65,6 @@ internal object SwiftTriggerSurfaceRule {
             index = code.indexOf(REQUEST_SYNC, index + REQUEST_SYNC.length)
         }
         return found
-    }
-
-    /**
-     * Blanks out comments while preserving offsets, so a line number still points at the real line and
-     * a trigger named in documentation cannot be mistaken for a call site.
-     */
-    private fun stripComments(text: String): String {
-        val result = StringBuilder(text.length)
-        var index = 0
-        while (index < text.length) {
-            val rest = text.substring(index)
-            when {
-                rest.startsWith("//") -> {
-                    val end = text.indexOf('\n', index).let { if (it < 0) text.length else it }
-                    repeat(end - index) { result.append(' ') }
-                    index = end
-                }
-
-                rest.startsWith("/*") -> {
-                    val end = text.indexOf("*/", index + 2).let { if (it < 0) text.length else it + 2 }
-                    text.substring(index, end).forEach { char -> result.append(if (char == '\n') '\n' else ' ') }
-                    index = end
-                }
-
-                else -> {
-                    result.append(text[index])
-                    index += 1
-                }
-            }
-        }
-        return result.toString()
     }
 
     private fun lineOf(text: String, offset: Int): Int = text.take(offset).count { it == '\n' } + 1

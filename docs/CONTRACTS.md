@@ -565,7 +565,7 @@ Tombstone purge: a tombstone is purgeable locally only when `syncState == SYNCED
 
 ### 9.1 Concurrency
 
-`SyncController` is a singleton in the app graph holding a single `Mutex` and a single `Boolean` pending flag. All triggers call `requestSync(reason)`. Calling `requestSync` while a cycle is in progress sets the pending flag and returns immediately; when the cycle completes, the flag is checked and, if set, cleared and followed by another cycle. Android platform triggers MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)` and MUST route through the same in-process `SyncController`; iOS uses a single `BGTaskScheduler` identifier. Cross-process sync is not supported and MUST NOT be introduced.
+`SyncController` is a singleton in the app graph holding a single `Mutex` and a single `Boolean` pending flag. All triggers call `requestSync(reason)`. Calling `requestSync` while a cycle is in progress sets the pending flag and returns immediately; when the cycle completes, the flag is checked and, if set, cleared and followed by another cycle. Android platform triggers MUST use `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, <periodic request>)` for the `Periodic` cadence and `enqueueUniqueWork(SYNC_WORK, KEEP)` for any one-shot platform trigger, and MUST route through the same in-process `SyncController`; iOS uses a single `BGTaskScheduler` identifier. Cross-process sync is not supported and MUST NOT be introduced.
 
 ### 9.2 Cycle admission and order
 
@@ -2088,7 +2088,7 @@ Constants referred to by name elsewhere in this document. Writing the literal in
 const val CLIENT_MAX_SCHEMA_VERSION: Int = 1   // §9.5  — highest schemaVersion this client applies
 const val MAX_RETRYABLE_ATTEMPTS: Int = 10     // §9.7  — attemptCount ceiling
 const val MAX_ENTRIES_IN_MEMORY: Int = 5_000   // §12   — per-vehicle fuel entry load ceiling
-const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android enqueueUniqueWork name
+const val SYNC_WORK: String = "carapp-sync"    // §9.1  — Android periodic sync work name
 const val STATE_HOLDER_TIMEOUT_MS: Long = 5_000L          // §14   — WhileSubscribed timeout
 const val FOREGROUND_RESUME_THRESHOLD_MS: Long = 300_000L // §9.8  — 5 minutes
 const val SYNC_POST_WRITE_DEBOUNCE_MS: Long = 2_000L       // §9.8  — 2 seconds

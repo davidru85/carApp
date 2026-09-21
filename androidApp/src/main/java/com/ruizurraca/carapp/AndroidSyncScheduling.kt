@@ -15,7 +15,8 @@ import java.util.concurrent.TimeUnit
 /**
  * The Android side of the `docs/CONTRACTS.md §9.8` `Periodic` trigger.
  *
- * `§9.1` requires the Android platform triggers to use `enqueueUniqueWork(SYNC_WORK, KEEP)` and to
+ * `§9.1` requires the Android `Periodic` cadence to use
+ * `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, <periodic request>)` and to
  * route through *the same in-process* `SyncController`. The adapter arranges the cadence; the worker
  * performs the trigger by asking the process graph for its controller, so a background wake-up runs
  * the very controller the UI is using instead of building a second graph (which would also break the

@@ -7,7 +7,7 @@ Accepted
 ## Context
 
 `docs/CONTRACTS.md §9.1` requires the Android platform trigger to use
-`enqueueUniqueWork(SYNC_WORK, KEEP)`, and `§9.8` sets the periodic interval at 6 hours. Implementing
+`enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, …)`, and `§9.8` sets the periodic interval at 6 hours. Implementing
 that needs a background-work library: nothing in the current dependency set can arrange work that
 survives process death, and `§9.1` explicitly forbids the alternatives (an in-process timer would die
 with the process, and an `AlarmManager` registration is not the shape the contract names).
@@ -21,7 +21,7 @@ repeated as a literal in CI.
 
 | Option | Benefits | Costs / Risks |
 |--------|----------|---------------|
-| Option A: `androidx.work:work-runtime` `2.11.2` | It is the library `§9.1` already names by its API (`enqueueUniqueWork`), it is the AndroidX-endorsed background-work API, its `CoroutineWorker` matches the coroutine model the rest of the app uses, and 2.11.2 is the newest **stable** release rather than the 2.12.0-rc line | Adds a dependency to `:androidApp` only, so it does not touch the shared or iOS graphs. It is a Google-authored artifact with no transitive conflict with the pinned AGP/Compose set |
+| Option A: `androidx.work:work-runtime` `2.11.2` | It is the library `§9.1` already names by its periodic API (`enqueueUniquePeriodicWork`), it is the AndroidX-endorsed background-work API, its `CoroutineWorker` matches the coroutine model the rest of the app uses, and 2.11.2 is the newest **stable** release rather than the 2.12.0-rc line | Adds a dependency to `:androidApp` only, so it does not touch the shared or iOS graphs. It is a Google-authored artifact with no transitive conflict with the pinned AGP/Compose set |
 | Option B: pin `2.12.0-rc` for the newer API | Newer API surface | A release candidate in a product dependency is contrary to the repository's preference for the boring, stable choice. Nothing in `E3-04` needs an API that 2.11.2 lacks |
 | Option C: an in-process scheduler without a platform library | No new dependency | Does not survive process death, which is the entire point of the periodic trigger, and does not satisfy `§9.1`'s named API |
 
@@ -60,7 +60,7 @@ graph or the iOS composition, so it changes no shared API and no generated heade
 - `androidx.work:work-runtime` MUST be pinned only in `gradle/libs.versions.toml` and documented in
   `docs/versions-matrix.md`.
 - No module other than `:androidApp` MAY depend on `androidx.work`.
-- The Android periodic work MUST use `enqueueUniqueWork(SYNC_WORK, KEEP)`.
+- The Android periodic work MUST use `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, …)`.
 
 ## Verification
 
