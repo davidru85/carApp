@@ -23,7 +23,7 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-21
 - Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc` (the merge of PR #71).
-- Current phase and latest commit: complete and verified; latest commit is `8319539` (`feat(E3-04): wire the platform triggers and scope the graph to the process`), on top of `be6794b` and `921df0f`. The iOS host files are in the tree and uncommitted at the time of writing.
+- Current phase and latest commit: complete and verified; latest commit is `37401e1` (`feat(E3-04): schedule the periodic trigger on the iOS host`), on top of `8319539`, `be6794b` and `921df0f`.
 - Push and pull-request status: not pushed; no pull request opened. The owner's gated review is the gate, so the branch is held.
 - Completed since the previous checkpoint: the `§9.8` admission windows are enforced in the controller; the graph wires the connectivity edge, the local-owner adoption and the `Periodic` arrangement; `SyncStateHolder.onForegroundReturn` applies the foreground threshold; the real `SyncTriggerAdapter` is consumed on both hosts; the graph is process-scoped on Android; `D-181`–`D-185` are registered with ADRs and all four mirror rows; `§20.10` is corrected; the trigger-ban source rule and its five fixtures exist; the backlog, the versions matrix and the catalog are updated.
 - Verification evidence and known failures: no known failures. `contractCheck` reports every assertion `PASS` with no `PENDING` (186 decisions, 186 ADRs); the complete `AGENTS.md` command, `:build-logic:convention:test`, `:shared:testAndroidHostTest` (191), `iosSimulatorArm64Test` (198), `koverVerify`, the golden-header comparison (byte-identical), the iOS simulator build and the 17-test API 36 instrumented suite are all green.
@@ -66,7 +66,8 @@ Update this section at every material state change and before yielding unfinishe
 - `androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt`, `CarAppApplication.kt`, `MainActivity.kt`, `AndroidSyncScheduling.kt`, `AndroidForegroundDuration.kt`, `AnonymousReminderCopy.kt`.
 - `androidApp/src/test/java/com/ruizurraca/carapp/AndroidForegroundDurationTest.kt`.
 - `androidApp/src/androidTest/java/com/ruizurraca/carapp/FirstVehicleOnboardingTest.kt` — the test-only reset.
-- `iosApp/**` and `composition/ios/**` — the iOS platform path.
+- `iosApp/carAppApp.swift`, `iosApp/WalkingSkeletonModel.swift`, `iosApp/SceneBackgroundTracking.swift` (new), `iosApp/Info.plist`, `iosApp/project.yml` and the regenerated `iosApp/carApp.xcodeproj/project.pbxproj`.
+- `composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/scheduling/IosSyncScheduling.kt` (new) and `CreateSwiftAppGraph.kt`.
 - `build-logic/convention/src/main/kotlin/.../contract/SwiftTriggerSurfaceRule.kt` and its test; `PlatformHostContractTest.kt`, `IosCompositionContractTest.kt`.
 - `docs/CONTRACTS.md §20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, five ADRs, `docs/versions-matrix.md`, `gradle/libs.versions.toml`, `docs/BACKLOG.md`, `shared/build/generated/objc-header/Shared.h.golden`.
 
@@ -116,7 +117,7 @@ Exact commands, and their result.
 
 Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
-- [ ] Entry appended
+- [x] Entry appended
 
 ## Risks or Follow-ups
 
