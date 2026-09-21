@@ -33,3 +33,24 @@ internal class AndroidForegroundDuration(
         return (elapsedRealtimeMillis() - backgroundedAt).coerceAtLeast(0L)
     }
 }
+
+/**
+ * The process-scoped [AndroidForegroundDuration] of this host.
+ *
+ * The measurement MUST outlive the Activity and its composition. `docs/CONTRACTS.md §9.8` fires the
+ * foreground trigger on a cold start and on a resume after more than `FOREGROUND_RESUME_THRESHOLD_MS`
+ * in the background, and on nothing else. A tracker owned by the composition is discarded whenever
+ * the Activity is recreated - `AndroidManifest.xml` deliberately leaves `locale` out of
+ * `configChanges`, so a language change recreates it - and `LifecycleRegistry` re-dispatches
+ * `ON_START` to the observer the new composition adds. The reading would then be `null`, which
+ * `SyncStateHolder.onForegroundReturn` reads as a cold start, and the host would request a cycle
+ * `§9.8` does not permit.
+ *
+ * Holding it for the process is also what makes the two hosts agree: on iOS `SceneBackgroundDuration`
+ * is a stored property of the `App` value and already lives for the process.
+ *
+ * It is touched only from the main thread, by `Lifecycle` callbacks, so it needs no synchronisation.
+ */
+internal object AndroidForegroundTracking {
+    val duration = AndroidForegroundDuration()
+}
