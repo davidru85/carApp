@@ -25,6 +25,14 @@ class PlatformHostContractTest {
             repositoryRoot
                 .resolve("androidApp/src/main/java/com/ruizurraca/carapp/CarAppApplication.kt")
                 .readText()
+        val scheduling =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidSyncScheduling.kt")
+                .readText()
+        val graphContainer =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt")
+                .readText()
         val foregroundReturn =
             repositoryRoot
                 .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AnonymousReminderCopy.kt")
@@ -53,6 +61,17 @@ class PlatformHostContractTest {
         // The graph outlives the Activity, so the Activity MUST NOT close it: releasing it on
         // `onCleared` would leave the process-scoped graph holding a released driver.
         assertFalse(host.contains("graph.close()"))
+        // `D-187`: the execution lease must outlive the cycle it triggered. WorkManager releases the
+        // process when `doWork()` returns, so the worker awaits the controller through the pure
+        // `runPeriodicWork` helper instead of firing and forgetting.
+        assertTrue(scheduling.contains("internal suspend fun runPeriodicWork"))
+        assertTrue(scheduling.contains("runPeriodicWork(AndroidAppGraph::runPeriodicSync)"))
+        assertTrue(graphContainer.contains("suspend fun runPeriodicSync()"))
+        assertTrue(graphContainer.contains("syncController().sync(SyncTrigger.Periodic)"))
+        // The fire-and-forget periodic entry point is gone: production code must not report the
+        // platform task complete before the cycle it triggered has finished.
+        assertFalse(scheduling.contains("requestPeriodicSync"))
+        assertFalse(graphContainer.contains("requestPeriodicSync"))
         // `§9.8` fires the foreground trigger on a cold start or after more than
         // `FOREGROUND_RESUME_THRESHOLD_MS`, never on an Activity recreation. The measurement is
         // therefore process-scoped; holding it in the composition made a recreation report `null`,

@@ -973,7 +973,10 @@ Acceptance criteria:
 
 - The UI still observes only local database flows.
 - The five triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
-- Platform workers only call `SyncController.requestSync(reason)`.
+- Platform workers and handlers enter only the process graph's `SyncController`: foreground and
+  in-process triggers use `requestSync(reason)`, while a platform-owned periodic execution lease
+  awaits `sync(Periodic)` before reporting completion. They hold no repository, database handle or
+  second graph (`D-187`).
 - No state holder change is required for sync correctness.
 - **`E3-03` wired the post-write `requestSync(PostWriteDebounce)` call sites in
   `VehicleSliceRuntime`, so enforcement is what remains here.** `SYNC_POST_WRITE_DEBOUNCE_MS` (2 s)

@@ -157,6 +157,44 @@ class IosCompositionContractTest {
     }
 
     @Test
+    fun bothPlatformLeasesAwaitThePeriodicCycleBeforeReportingCompletion() {
+        val ios = repositoryRoot.resolve(IOS_SCHEDULING_PATH).readText()
+
+        // `D-187`: `setTaskCompletedWithSuccess` tells iOS the task has ended, so completing before
+        // the cycle finished would let the system suspend the process mid-cycle.
+        assertTrue(
+            ios.contains("sync(SyncTrigger.Periodic)"),
+            "the iOS handler MUST await the periodic cycle on the process graph",
+        )
+        assertTrue(
+            ios.contains("expirationHandler"),
+            "the iOS handler MUST install an expiration handler for an overrunning cycle",
+        )
+        // The handler is installed before the job starts, so an expiry arriving immediately cannot
+        // leave the task with nothing to complete it.
+        assertTrue(
+            ios.indexOf("expirationHandler") < ios.indexOf("syncJob.start()"),
+            "the expiration handler MUST be installed before the cycle is started",
+        )
+        // Exactly one completion call site, guarded so the expiry and the cycle cannot both complete
+        // it. The receiver is part of the pattern so a mention inside a comment is not counted.
+        val completions = Regex("\\.setTaskCompletedWithSuccess\\(").findAll(ios).count()
+        assertTrue(
+            completions == 1,
+            "iOS MUST call setTaskCompletedWithSuccess exactly once, from the idempotent gate; found $completions",
+        )
+        assertTrue(
+            ios.contains("class BackgroundTaskCompletion"),
+            "the single completion MUST be guarded by the idempotent gate",
+        )
+        // The fire-and-forget periodic request is gone from the platform path.
+        assertFalse(
+            ios.contains("requestSync(SyncTrigger.Periodic)"),
+            "the iOS platform lease MUST NOT fire and forget the periodic cycle",
+        )
+    }
+
+    @Test
     fun bothHostsInjectRealPlatformConnectivityIntoTheProviderGraph() {
         val swiftFactory = repositoryRoot.resolve(CREATE_SWIFT_APP_GRAPH_PATH).readText()
         // The Android graph is process-scoped (`§9.1`), so the real connectivity observer is
@@ -235,6 +273,8 @@ class IosCompositionContractTest {
         const val ANDROID_APP_GRAPH_PATH =
             "androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt"
         const val ANDROID_MANIFEST_PATH = "androidApp/src/main/AndroidManifest.xml"
+        const val IOS_SCHEDULING_PATH =
+            "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/scheduling/IosSyncScheduling.kt"
         const val FIREBASE_PROVIDERS_PATH =
             "wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt"
         const val IOS_CONNECTIVITY_SOURCE_DIRECTORY =

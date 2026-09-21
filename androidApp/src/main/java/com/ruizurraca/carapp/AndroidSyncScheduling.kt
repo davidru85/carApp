@@ -3,6 +3,7 @@ package com.ruizurraca.carapp
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ListenableWorker
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -43,16 +44,30 @@ internal val androidSyncScheduling: SyncTriggerAdapter =
     }
 
 /**
+ * Runs a periodic cycle while the worker's execution lease is active.
+ *
+ * `WorkManager` keeps the process alive only while `doWork()` executes, so reporting success before
+ * the cycle finished would let the system reclaim the process mid-cycle and leave outbox rows marked
+ * `SYNCING`. The helper is pure so that ordering is testable without `work-testing`: the lease is held
+ * for exactly as long as `runSync` runs (`D-187`).
+ *
+ * A failed cycle is still reported as success. The controller owns persistence, backoff and retry, so
+ * a failure is not a worker failure and a WorkManager retry would only duplicate the controller's own
+ * schedule.
+ */
+internal suspend fun runPeriodicWork(runSync: suspend () -> Unit): ListenableWorker.Result {
+    runSync()
+    return ListenableWorker.Result.success()
+}
+
+/**
  * Wakes the process for its `Periodic` sync. It carries no scheduling policy of its own
- * (`docs/DECISION_BOARD.md` "Android background work"): it requests the cycle and reports success,
- * because a deferred cycle is not a worker failure and a retry would only duplicate it.
+ * (`docs/DECISION_BOARD.md` "Android background work") and holds no repository or database: it enters
+ * the process graph's controller and awaits the cycle there (`D-187`).
  */
 class PeriodicSyncWorker(
     context: Context,
     parameters: WorkerParameters,
 ) : CoroutineWorker(context, parameters) {
-    override suspend fun doWork(): Result {
-        AndroidAppGraph.requestPeriodicSync()
-        return Result.success()
-    }
+    override suspend fun doWork(): Result = runPeriodicWork(AndroidAppGraph::runPeriodicSync)
 }

@@ -679,6 +679,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-184 | Android background-work library | `androidx.work:work-runtime` is pinned at `2.11.2` and consumed by `:androidApp` only, for the `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, …)` periodic cadence of `§9.1`. | Accepted |
 | D-185 | iOS trigger-ban enforcement mechanism | The platform-owned triggers are banned from `SyncStateHolder` call sites on the whole iOS platform boundary, Kotlin and Swift, by an executable source rule with a failing fixture. | Accepted |
 | D-186 | `§9.8` admission policy | A trigger inside an open window is parked and served at the boundary; the minimum interval is anchored to the moment a cycle reaches its remote steps; the single pending follow-up is exempt from both windows; and a pull-to-refresh cycle still re-arms the floor. | Accepted |
+| D-187 | Platform lease completion | A platform-owned periodic execution lease awaits `SyncController.sync(SyncTrigger.Periodic)` on the process graph before reporting completion, and iOS installs an expiration handler; the lease has no repository, database handle or second graph. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

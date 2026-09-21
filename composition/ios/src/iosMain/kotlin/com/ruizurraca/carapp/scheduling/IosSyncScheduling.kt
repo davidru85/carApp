@@ -3,13 +3,20 @@
 package com.ruizurraca.carapp.scheduling
 
 import com.ruizurraca.carapp.AppGraph
+import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SYNC_PERIODIC_INTERVAL_MS
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.SyncTriggerAdapter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import platform.BackgroundTasks.BGAppRefreshTaskRequest
 import platform.BackgroundTasks.BGTask
 import platform.BackgroundTasks.BGTaskScheduler
 import platform.Foundation.NSDate
+import platform.Foundation.NSLock
 import platform.Foundation.NSLog
 import platform.Foundation.dateWithTimeIntervalSinceNow
 import kotlin.concurrent.Volatile
@@ -49,6 +56,10 @@ internal object IosPeriodicSyncScheduling {
 
     @Volatile
     private var handlerRegistered = false
+
+    // Owned by the process, not by the task: the periodic cycle outlives the handler call that
+    // started it, and cancelling this scope cancels an overrunning cycle when the task expires.
+    private val taskScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /**
      * Registers the launch handler. Called by `createSwiftAppGraph`, which runs inside the app's
@@ -92,18 +103,54 @@ internal object IosPeriodicSyncScheduling {
     }
 
     /**
-     * The launch handler: resubmit the next request, request the cycle on the process graph, and
-     * always report the task as completed.
+     * The launch handler: resubmit the next request, then run the cycle and report the task completed
+     * only once it has finished.
      *
-     * `requestSync` is fire-and-forget by `§9.1`: it returns immediately and the cycle it admits is
-     * the graph's deferred work, so there is nothing for this handler to wait for and no expiration
-     * handler to install. A cycle admitted late is not a task failure, which is the same reading the
-     * Android worker takes when it returns success without awaiting its cycle.
+     * `setTaskCompletedWithSuccess` tells iOS the task has ended and the system may then suspend the
+     * process, so completing before the cycle finished would cut it off mid-flight. The handler
+     * therefore awaits `sync(SyncTrigger.Periodic)` on the one process graph (`D-187`), and installs an
+     * expiration handler that cancels an overrunning cycle and reports the task completed as a
+     * failure. A sync `Outcome.Err` is not converted into anything: the controller owns persistence,
+     * backoff and retry, and the lease exists to keep the process runnable.
      */
     private fun onPeriodicTask(task: BGTask?) {
         submitRequest()
-        graph?.syncController()?.requestSync(SyncTrigger.Periodic)
-        task?.setTaskCompletedWithSuccess(true)
+        val backgroundTask = task ?: return
+        val completion = BackgroundTaskCompletion(backgroundTask)
+        val syncJob =
+            taskScope.launch(start = CoroutineStart.LAZY) {
+                val outcome = graph?.syncController()?.sync(SyncTrigger.Periodic)
+                completion.complete(outcome is Outcome.Ok<*>)
+            }
+        // Installed before the job starts, so an expiry that arrives immediately after launch cannot
+        // leave the task with nothing to complete it.
+        backgroundTask.expirationHandler = {
+            syncJob.cancel()
+            completion.complete(success = false)
+        }
+        syncJob.start()
+    }
+}
+
+/**
+ * Completes a `BGTask` at most once, whichever of the two paths arrives first.
+ *
+ * `setTaskCompletedWithSuccess` must be called exactly once per task: a second call is a programming
+ * error, and the expiry handler and the sync job race by construction, so the winner is decided under
+ * a lock rather than by ordering.
+ */
+private class BackgroundTaskCompletion(
+    private val task: BGTask,
+) {
+    private val lock = NSLock()
+    private var completed = false
+
+    fun complete(success: Boolean) {
+        lock.lock()
+        val shouldComplete = !completed
+        if (shouldComplete) completed = true
+        lock.unlock()
+        if (shouldComplete) task.setTaskCompletedWithSuccess(success)
     }
 }
 

@@ -48,9 +48,9 @@ internal object AndroidAppGraph {
      */
     fun applicationOrNull(): Application? = installedApplication
 
-    /** The `§9.8` `Periodic` trigger, requested against the graph in force. */
-    fun requestPeriodicSync() {
-        require().syncController().requestSync(SyncTrigger.Periodic)
+    /** Runs the `§9.8` periodic cycle while the WorkManager execution lease is active. */
+    suspend fun runPeriodicSync() {
+        require().syncController().sync(SyncTrigger.Periodic)
     }
 
     /** The single controller of this process, for a trigger that needs to reason about the cycle. */
