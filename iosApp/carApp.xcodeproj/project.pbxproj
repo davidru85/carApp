@@ -32,6 +32,7 @@
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
 		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
 		B60291A05FD5B3F2CBAE944E /* AnonymousReminderCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */; };
+		BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */; };
 		C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */; };
 		C29BDB90C0C08E04E47A95FD /* ViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B4DDF68481A819B505F8816 /* ViewModels.swift */; };
 		C49F85496B65345D1DE9DB27 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */; };
@@ -104,6 +105,7 @@
 		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
 		F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTracking.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +203,7 @@
 				386580F3F32E7C04067DEE4E /* NativeSignIn.swift */,
 				33485CD8468B0FE42AC9A0DE /* Onboarding.swift */,
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
+				FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */,
 				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
 				031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */,
 				B896BC0A600D06C316462EF0 /* VehicleFormView.swift */,
@@ -392,6 +395,7 @@
 				DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */,
 				0114D2546E157F273C216787 /* Onboarding.swift in Sources */,
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
+				BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */,
 				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,
 				EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */,
 				5DD3FA0766D149AEDEB1E011 /* VehicleFormView.swift in Sources */,

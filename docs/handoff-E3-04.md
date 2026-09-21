@@ -12,7 +12,7 @@ Fill in every section. This template is the canonical field list; `AGENTS.md` li
 - Acceptance criteria reviewed: the five criteria of the backlog entry — (1) the UI observes only local database flows, (2) the five `§9.8` triggers exist with the stated constants, (3) platform workers only call `SyncController.requestSync(reason)`, (4) no state-holder change is required for sync correctness, and (5) `SYNC_POST_WRITE_DEBOUNCE_MS` and `SYNC_MIN_AUTOMATIC_INTERVAL_MS` are enforced or the reason each is not is recorded.
 - Dependencies checked: `E3-03` (merged, PR #69) supplied the engine and the post-write call sites; `E3-17`/`D-172` (merged, PR #70) fixed `AppGraph.close()` against an in-flight cycle; `E3-08` (merged, PR #71) supplied the app graph and the provider wiring; `E2-06` (merged) supplied local owner adoption.
 - Decisions checked: no blocking `Proposed`/`Pending` decision. `D-89`, `D-172`, `D-108`, `D-126` and `D-146` were read as precedents. Five new decisions were taken in this story: `D-181`–`D-185`.
-- Normative sections reviewed: `docs/CONTRACTS.md §9.1` (single controller, `enqueueUniqueWork(SYNC_WORK, KEEP)`, one iOS `BGTaskScheduler` identifier), `§9.2` (admission and order), `§9.8` (the five triggers and their constants), `§9.9` (aggregate status), `§10` (`RemoteSyncSource`), `§11.1` (one `AppGraph` per process), `§20.7`/`§20.10` (exported sync surface), `§18` assertions 14, 34 and 35, and `docs/TECHNICAL_PLAN.md §4`.
+- Normative sections reviewed: `docs/CONTRACTS.md §9.1` (single controller, `enqueueUniqueWork(SYNC_WORK, KEEP)`, one iOS `BGTaskScheduler` identifier), `§9.2` (admission and order), `§9.8` (the five triggers and their constants), `§9.9` (aggregate status), `§10` (`RemoteSyncSource`), `§11.6` (one `AppGraph` per process, one `DatabaseHandle` owned and released by its `close()`), `§20.7`/`§20.10` (exported sync surface), `§18` assertions 14, 34 and 35, and `docs/TECHNICAL_PLAN.md §4`.
 - Expected verification: the complete required command of `AGENTS.md` (`ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test` with the four `D-75` `-x` paths), plus the Objective-C golden-header comparison and the API 36 instrumented suite.
 - Human review gates identified before work: **applies**. `core/sync/**` is a CODEOWNERS-gated path, and `E3-04` changes the synchronization algorithm's admission behaviour, which is a gated topic. The story is therefore not merged on agent judgement alone.
 - Rule 0 acknowledged: chat replies for this story are in Spanish (es-ES) and every artifact it produces is in technical English.
@@ -23,12 +23,12 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-21
 - Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc` (the merge of PR #71).
-- Current phase and latest commit: implementation and repository records; latest commit before this handoff is `be6794b` (`refactor(E3-04): admit through one funnel and wire the graph-owned triggers`). The decision records, the trigger-ban rule, the Android host scheduling, the process-scoped graph and the §20.10 correction are uncommitted in the working tree at the time of writing.
+- Current phase and latest commit: complete and verified; latest commit is `8319539` (`feat(E3-04): wire the platform triggers and scope the graph to the process`), on top of `be6794b` and `921df0f`. The iOS host files are in the tree and uncommitted at the time of writing.
 - Push and pull-request status: not pushed; no pull request opened. The owner's gated review is the gate, so the branch is held.
 - Completed since the previous checkpoint: the `§9.8` admission windows are enforced in the controller; the graph wires the connectivity edge, the local-owner adoption and the `Periodic` arrangement; `SyncStateHolder.onForegroundReturn` applies the foreground threshold; the real `SyncTriggerAdapter` is consumed on both hosts; the graph is process-scoped on Android; `D-181`–`D-185` are registered with ADRs and all four mirror rows; `§20.10` is corrected; the trigger-ban source rule and its five fixtures exist; the backlog, the versions matrix and the catalog are updated.
-- Verification evidence and known failures: `contractCheck` reports every assertion `PASS` with no `PENDING` (186 decisions, 186 ADRs); `:build-logic:convention:test` passes including the five new fixtures; `:shared:testAndroidHostTest` passes with 191 tests; `:androidApp:testDebugUnitTest` passes. The iOS host implementation (BGTaskScheduler registration, Info.plist keys, the Swift monotonic duration) was delegated to a subagent and its files are not yet in the tree, so the full gate command has not been run end to end.
+- Verification evidence and known failures: no known failures. `contractCheck` reports every assertion `PASS` with no `PENDING` (186 decisions, 186 ADRs); the complete `AGENTS.md` command, `:build-logic:convention:test`, `:shared:testAndroidHostTest` (191), `iosSimulatorArm64Test` (198), `koverVerify`, the golden-header comparison (byte-identical), the iOS simulator build and the 17-test API 36 instrumented suite are all green.
 - Open decisions or blockers: none. The five decisions of this story are `Accepted`.
-- Exact next step: land the iOS host files, then run the complete `AGENTS.md` command, the golden-header comparison and the API 36 instrumented suite, and fill in the two evidence sections above.
+- Exact next step: commit the iOS host files, then open the pull request for the owner's gated review.
 
 ## Scope Completed
 
@@ -37,7 +37,8 @@ Update this section at every material state change and before yielding unfinishe
 - `Periodic` is handed to the platform through the real `SyncTriggerAdapter`: `DefaultAppGraph` asks once per graph, the Android adapter arranges `enqueueUniqueWork(SYNC_WORK, KEEP)` and the Android worker requests the cycle on the process graph's controller.
 - `SyncStateHolder.onForegroundReturn(backgroundMillis: Long?)` applies `FOREGROUND_RESUME_THRESHOLD_MS`, with `null` meaning a cold start, which is always a trigger.
 - The Android host graph is process-scoped, built once by `CarAppApplication` and consumed by the Activity without being closed.
-- The iOS platform path: BGTaskScheduler registration and submission under a single identifier, the Info.plist keys for background fetch, and the scene-phase foreground duration.
+- The iOS platform path: `BGTaskScheduler` registration and the first submission folded into `createSwiftAppGraph` (so no new exported symbol and the golden header is untouched), the handler resubmitting from inside itself before requesting the cycle on the process graph's `SyncController`, the two `Info.plist` keys, and the scene-phase foreground duration with a monotonic `ProcessInfo.systemUptime` clock.
+- `WalkingSkeletonModel.evaluateAnonymousReminder()` was replaced by `onSceneActivated(backgroundMillis:)`, which performs the reminder evaluation and the `§9.8` foreground trigger for one foreground entry. The old wrapper had no remaining caller, and leaving it would have been a second entry point that silently skips the sync trigger.
 
 ## Acceptance Evidence
 
@@ -90,7 +91,12 @@ Exact commands, and their result.
 - `./gradlew :shared:testAndroidHostTest` — `BUILD SUCCESSFUL`, 191 tests, 0 failures.
 - `./gradlew :androidApp:testDebugUnitTest :androidApp:compileDebugAndroidTestKotlin` — `BUILD SUCCESSFUL`.
 - `./gradlew :wiring:firebase:compileAndroidHostTest :wiring:firebase:compileKotlinIosSimulatorArm64` — `BUILD SUCCESSFUL`.
-- Pending: the complete `AGENTS.md` command, the golden-header comparison and `:androidApp:connectedDebugAndroidTest` on the D-84 API 36 emulator.
+- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test` with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks.
+- The `objc-header-golden-check` step locally: `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64`, then `diff -u shared/build/generated/objc-header/Shared.h.golden composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework/Headers/Shared.h` — byte-identical, 1766 lines.
+- `:androidApp:connectedDebugAndroidTest` on the `E1_07_API_36` emulator — `BUILD SUCCESSFUL`, 17 tests, 0 failures, including both `FirstVehicleOnboardingTest` cases that now reset through the graph.
+- The `ios-simulator-build` step locally: `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator -destination "id=$DEVICE_ID" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — `** BUILD SUCCEEDED **`, and the built bundle's `Info.plist` carries both keys.
+- The `ios-simulator-build` test action locally: `xcodebuild … test` — `** TEST SUCCEEDED **`, 27 tests with 1 skipped and 0 failures, including `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` (41.7 s) which drives the real app against the real graph.
+- `./iosApp/generate-project.sh` reproduces the committed `project.pbxproj` byte for byte, so the four-line delta is the deterministic output of the repo's own generator.
 
 ## Contract Impact
 
