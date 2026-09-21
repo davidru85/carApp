@@ -23,12 +23,12 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-21 (correction round, review of pull request #72)
 - Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc`; not rebased, not force-pushed.
-- Current phase and latest commit: correction round for the nine defects the review of pull request #72 found. Latest commit at this checkpoint is `c791122`; the corrections below are staged for commit.
+- Current phase and latest commit: correction round for the nine defects the review of pull request #72 found, complete and verified. The round is `58bba23` (concurrency), `cbb2818` (red fixtures), `7d6d063` (green rule), `4d9d2d2` (API name, `D-186`, iOS entry point, consistency) and the handoff commit that follows; it sits on `c791122`.
 - Push and pull-request status: pull request #72 open, not merged; the owner's gated review is the merge gate. Of the ten required checks, nine were green on the first attempt and `shared-tests` was green only on re-run after the pre-existing ten-minute host-step stall, which the Verification Run section analyses and attributes.
 - Completed since the previous checkpoint: `armFloorWindowLocked` takes `cycleMutex` before arming the `§9.8` floor; `admit` re-checks `shuttingDown` after publishing in both the follow-up and the parked branch and completes the request with `PersistenceError.DatabaseUnavailable`; `pendingFollowUp` and `parkedRequests` are `@Volatile`; the `§9.8` admission policy is recorded as `D-186` with ADR-0187 and all four mirror rows; `§9.1` and every document repeating it now name `enqueueUniquePeriodicWork` for the periodic cadence while keeping `enqueueUniqueWork` for a one-shot trigger; the catalog cites `D-184` instead of `D-181`; the unused `FOREGROUND_RESUME_THRESHOLD_MS` import is gone from `AppGraph.kt`; the trigger-ban rule reuses `KotlinSourceText.code`; and the iOS foreground entry point is unconditional.
-- Verification evidence and known failures: `:core:sync:testAndroidHostTest` green (101 tests, 0 failures) after the two concurrency fixes. The two new masker tests were observed **failing** against the old `stripComments` (`aNestedBlockCommentDoesNotMakeCommentedTextLookLikeACallSite` expected `[]` but got `[iosApp/Fixture.swift:2 requests Periodic]`; `aSlashSlashInsideAStringLiteralDoesNotHideARealCallSite` expected the violation but got `[]`) and pass against `KotlinSourceText.code`. The step 11 sweep is recorded below.
+- Verification evidence and known failures: no known failures. Every command of step 11 was run and each result is recorded in the Verification Run section: `:core:sync:testAndroidHostTest` 101 tests green, `:build-logic:convention:test` green with 7 trigger-surface fixtures, `contractCheck` all `PASS` with no `PENDING` at **187 decisions and 187 ADRs**, the complete `AGENTS.md` command green at 642 tasks, the golden header byte-identical, the iOS build and test green on the first attempt (27 tests, 0 failures) after erasing the simulator, and the API 36 instrumented suite green at 17 tests. The two new masker fixtures were observed failing against the old `stripComments` and passing against `KotlinSourceText.code`.
 - Open decisions or blockers: none. `D-186` is `Accepted`. The `shared-tests` stall still needs a new owner, which is an owner decision and is recorded rather than minted.
-- Exact next step: run the step 11 sweep, record every result in the Verification Run section, and hand the branch back for the owner's gated review.
+- Exact next step: commit this handoff, push, and hand the branch back for the owner's gated review of pull request #72. The branch is not merged, not rebased and not force-pushed.
 
 ## Scope Completed
 
@@ -125,6 +125,47 @@ The healthy time is 246 s — **41 % of the limit**, so this change leaves 59 % 
 **It outlives its owning stories.** `docs/PROJECT_LOG.md` assigns the stall to `E1-14` and `E1-17`, and both have merged (PR #66 and PR #67). The mechanism therefore still reproduces after its owners closed, which means it now needs a new owner rather than another citation of the old one. That reassignment is an owner decision, so it is reported here and not minted as a new backlog ID.
 
 **What was done about it.** Nothing in this story's sources, deliberately. The failure reports no test result and no assertion, so there is nothing to fix in a passing test and re-pinning one would be inventing a cause. It is recorded here and in `docs/PROJECT_LOG.md` as the pre-existing stall, which keeps it owned by `E1-14`/`E1-17` instead of quietly transferring ownership to `E3-04`. `D-175` and `D-177` already fixed the two mechanisms that were found inside `E3-03` itself; what remains is the environment-level stall those decisions left open.
+
+### Correction round (review of pull request #72)
+
+Every command of the review's step 11 was run from the repository root, and each result is the
+observed one.
+
+- `./gradlew :core:sync:testAndroidHostTest` — `BUILD SUCCESSFUL`, 101 tests, 0 failures. This is the
+  regression guard for the two concurrency fixes.
+- `./gradlew :build-logic:convention:test` — `BUILD SUCCESSFUL`; `SwiftTriggerSurfaceContractTest`
+  reports **7** tests, the five original fixtures plus the two added for the masker defects.
+  Both new fixtures were observed **failing** against the old local `stripComments` before the fix
+  commit, and passing after the rule reused `KotlinSourceText.code`. The observed failures were
+  `aNestedBlockCommentDoesNotMakeCommentedTextLookLikeACallSite` expecting `[]` and receiving
+  `[iosApp/Fixture.swift:2 requests Periodic]` — a commented-out call site read as code — and
+  `aSlashSlashInsideAStringLiteralDoesNotHideARealCallSite` expecting
+  `[iosApp/Fixture.swift:1 requests Periodic]` and receiving `[]` — a real call site hidden by a `//`
+  inside a URL string. The test commit `cbb2818` precedes the fix commit `7d6d063`.
+- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`,
+  and the decision registry reports **187 decisions and 187 ADRs**, one more than the 186 recorded
+  before, so `D-186` is complete.
+- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks.
+- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by `diff -u` against
+  `shared/build/generated/objc-header/Shared.h.golden` — no output, so the golden header is
+  byte-identical. The correction round does not appear in `git diff c791122..HEAD` for that file, so
+  no exported declaration moved in it.
+- The iOS simulator was erased first, then built and tested with the `docs/handoff-E0-06.md`
+  invocation including `ARCHS=arm64`: `** BUILD SUCCEEDED **` and `** TEST SUCCEEDED **`, 27 tests
+  with 1 skipped and 0 failures. No re-run was needed, so the `E1-15` flake did not fire.
+- `./gradlew :androidApp:connectedDebugAndroidTest` with `ANDROID_SERIAL=emulator-5554` on the `D-84`
+  API 36 device — `BUILD SUCCESSFUL`, 17 tests, 0 failures.
+
+**One deviation inside the correction round, recorded because it changes a line the review specified.**
+`admit` was restructured from the specified sequence of guard statements into a single
+`if / else if / else` expression. The specified form adds a third `return` to the function and
+`:core:sync:detekt` fails it with `Function admit has 5 return statements which exceeds the limit of 4
+[ReturnCount]`. A baseline or suppression file is forbidden, so the function was rewritten to have two
+exits while keeping the specified semantics exactly: the parker is still removed from
+`parkedRequests` and completed with `PersistenceError.DatabaseUnavailable` on the re-check, the
+debounce window is still armed before it is read, `PullToRefresh` still bypasses the window check, and
+`windowsOpen()` is still the condition that decides a claim. `:core:sync:testAndroidHostTest` stays
+green, which is the guard for that behaviour.
 
 ## Contract Impact
 

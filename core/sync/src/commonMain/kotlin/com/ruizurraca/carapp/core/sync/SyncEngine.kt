@@ -368,18 +368,22 @@ internal class DefaultSyncController(
                 // The same publish-then-re-check as the follow-up branch above: the parked request is
                 // visible to `shutdown()` before the flag is read a second time, so a shutdown that
                 // raced this admission cannot leave it unanswered (`D-172`).
+                //
+                // Each branch yields the cycle this trigger may start, or `null` when it must be
+                // served later, so the whole admission has two exits rather than one per refusal.
+                // detekt's `ReturnCount` allows four and the refusal paths alone would need three.
                 if (shuttingDown) {
                     parkedRequests -= request
                     request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-                    return Admission(request, cycle = null)
-                }
-                if (reason != SyncTrigger.PullToRefresh) {
+                    null
+                } else if (reason != SyncTrigger.PullToRefresh) {
                     // A post-write trigger is what opens the debounce window, armed before the window
                     // is read so the delay is measured from the mutation that caused the trigger.
                     if (reason == SyncTrigger.PostWriteDebounce) armDebounceWindow()
-                    if (!windowsOpen()) return Admission(request, cycle = null)
+                    if (windowsOpen()) claim() else null
+                } else {
+                    claim()
                 }
-                claim()
             }
         return Admission(request, cycle)
     }
