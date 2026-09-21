@@ -210,6 +210,26 @@ private data class CycleRun(
 )
 
 /**
+ * One immutable view of everything `shutdown()` must refuse.
+ *
+ * `shutdown()` runs on a caller's thread, so it cannot take `cycleMutex` without risking a lock held
+ * across a cycle. It therefore reads a snapshot instead of the live fields. The snapshot is published
+ * only after a complete state transition, under the mutex, and every publication is followed by a
+ * re-read of `shuttingDown`, so a request that was admitted concurrently is either completed by the
+ * snapshot its own publication installed or refused by the re-read - never left suspended.
+ */
+private data class ShutdownSnapshot(
+    val activeCompletion: CompletableDeferred<Outcome<Unit, AppError>>?,
+    val requests: List<SyncRequest>,
+) {
+    fun completeClosed() {
+        val closed = Outcome.Err(PersistenceError.DatabaseUnavailable)
+        activeCompletion?.complete(closed)
+        requests.forEach { it.completion.complete(closed) }
+    }
+}
+
+/**
  * The outcome of admitting one trigger (`§9.1`, `§9.8`): the request whose completion always carries
  * the answer, and the cycle this caller must run when it claimed one. A `null` [cycle] means another
  * cycle - the pending follow-up, a window timer, or the shutdown path - publishes that completion, so
@@ -334,6 +354,11 @@ internal class DefaultSyncController(
     @Volatile
     private var shuttingDown = false
 
+    // The single immutable view `shutdown()` consumes. The live fields beside it stay owned by the
+    // locked state machine; this one exists so a closure never has to read them independently.
+    @Volatile
+    private var shutdownSnapshot = ShutdownSnapshot(activeCompletion = null, requests = emptyList())
+
     override fun requestSync(reason: SyncTrigger) {
         scope.launch {
             val admission = admit(reason)
@@ -365,61 +390,111 @@ internal class DefaultSyncController(
         val request = SyncRequest(reason)
         val cycle =
             cycleMutex.withLock {
-                if (shuttingDown) {
-                    request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-                    return Admission(request, cycle = null)
-                }
-                if (cycleRunning) {
-                    val followUp = pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
-                    followUp.reasons += reason
-                    followUp.requests += request
-                    // Publish the awaiter, then re-check. `shutdown()` sets `shuttingDown` before it
-                    // reads the awaiters, so with this order one of the two sides always observes the
-                    // other: a caller of `sync()` is either completed there or refused here, and is
-                    // never left suspended on a deferred nothing completes (`D-172`). Checking the
-                    // flag only on entry reopens exactly that gap.
-                    if (shuttingDown) {
-                        followUp.requests -= request
+                when {
+                    // Already closing: refuse before anything is published for this request.
+                    shuttingDown -> {
                         request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+                        null
                     }
-                    return Admission(request, cycle = null)
-                }
-                // The request joins the parked batch before any window is read, so every admission
-                // path ends with it served by a cycle: either the claim below, or a window timer that
-                // opens the window it waits on. Parking unconditionally is also what makes coalescing
-                // exact - `claim()` answers every parked trigger, never only the last arrival.
-                parkedRequests += request
-                // The same publish-then-re-check as the follow-up branch above: the parked request is
-                // visible to `shutdown()` before the flag is read a second time, so a shutdown that
-                // raced this admission cannot leave it unanswered (`D-172`).
-                //
-                // Each branch yields the cycle this trigger may start, or `null` when it must be
-                // served later, so the whole admission has two exits rather than one per refusal.
-                // detekt's `ReturnCount` allows four and the refusal paths alone would need three.
-                if (shuttingDown) {
-                    parkedRequests -= request
-                    request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-                    null
-                } else if (reason != SyncTrigger.PullToRefresh) {
-                    // A post-write trigger is what opens the debounce window, armed before the window
-                    // is read so the delay is measured from the mutation that caused the trigger.
-                    if (reason == SyncTrigger.PostWriteDebounce) armDebounceWindow()
-                    if (windowsOpen()) claim() else null
-                } else {
-                    claim()
+
+                    // A cycle is running: this trigger joins the single follow-up of `§9.1`.
+                    cycleRunning -> {
+                        val followUp = pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
+                        followUp.reasons += reason
+                        followUp.requests += request
+                        // Publish the snapshot `shutdown()` reads BEFORE re-reading the flag, so a
+                        // closure that lands here still sees this request and completes it.
+                        publishShutdownSnapshot()
+                        concurrencyHooks.afterFollowUpPublished()
+                        refuseIfShuttingDown(null)
+                    }
+
+                    // User-initiated: `§9.8` lets it bypass the floor, and only for itself. It never
+                    // reads or clears `parkedRequests`, so automatic requests keep waiting for their
+                    // `D-186` boundary.
+                    reason == SyncTrigger.PullToRefresh -> {
+                        val immediate = claimImmediate(request)
+                        publishShutdownSnapshot()
+                        concurrencyHooks.afterClaimPublished()
+                        refuseIfShuttingDown(immediate)
+                    }
+
+                    // Automatic: park first, then claim the whole parked batch only when no window is
+                    // open. Parking unconditionally is what makes coalescing exact, because the claim
+                    // answers every parked trigger rather than only the last arrival.
+                    else -> {
+                        parkedRequests += request
+                        // A post-write trigger opens the debounce window, armed before the window is
+                        // read so the delay is measured from the mutation that caused the trigger.
+                        if (reason == SyncTrigger.PostWriteDebounce) armDebounceWindow()
+                        val claimed = if (windowsOpen()) claimParked() else null
+                        publishShutdownSnapshot()
+                        concurrencyHooks.afterClaimPublished()
+                        refuseIfShuttingDown(claimed)
+                    }
                 }
             }
         return Admission(request, cycle)
     }
 
     /**
-     * Reserves a cycle for every parked trigger at once. Called under `cycleMutex`, by a caller that
-     * has established a cycle may start. Taking the whole parked batch is what turns a burst into a
-     * single cycle: each of those triggers was waiting for this same window.
+     * The second half of the shutdown handshake: publish, then re-read the flag.
+     *
+     * When a closure won the race, every request in the published snapshot is refused, a cycle this
+     * trigger had just reserved is unreserved, and the cleared state is republished, so the next
+     * reader cannot observe a reserved cycle that will never run. Returns the cycle when no closure
+     * intervened. Called under `cycleMutex`.
      */
-    private fun claim(): CycleRun {
-        val claimed = parkedRequests.toList()
+    private fun refuseIfShuttingDown(cycle: CycleRun?): CycleRun? {
+        if (!shuttingDown) return cycle
+        shutdownSnapshot.completeClosed()
+        if (cycle != null) {
+            cycleRunning = false
+            activeCycleCompletion = null
+            activeCycleRequests = emptyList()
+        }
+        publishShutdownSnapshot()
+        return null
+    }
+
+    /**
+     * Republishes the single immutable view `shutdown()` consumes. Called under `cycleMutex`, after a
+     * complete state transition has been written and never in the middle of one.
+     */
+    private fun publishShutdownSnapshot() {
+        shutdownSnapshot =
+            ShutdownSnapshot(
+                activeCompletion = activeCycleCompletion,
+                requests =
+                    buildList {
+                        addAll(activeCycleRequests)
+                        pendingFollowUp?.let { addAll(it.requests) }
+                        addAll(parkedRequests)
+                    },
+            )
+    }
+
+    /**
+     * Reserves a cycle for every parked trigger at once. Taking the whole parked batch is what turns a
+     * burst into a single cycle: each of those triggers was waiting for this same window. Called under
+     * `cycleMutex`.
+     */
+    private fun claimParked(): CycleRun {
+        val claimed = parkedRequests
         parkedRequests = emptyList()
+        return claim(claimed)
+    }
+
+    /**
+     * Reserves a cycle for one manual request alone.
+     *
+     * `PullToRefresh` is user-initiated, so `§9.8` lets it bypass the floor - but only for itself. It
+     * MUST NOT read or clear `parkedRequests`: those automatic requests are waiting for a boundary
+     * `D-186` defines, and draining them here would serve them early.
+     */
+    private fun claimImmediate(request: SyncRequest): CycleRun = claim(listOf(request))
+
+    private fun claim(claimed: List<SyncRequest>): CycleRun {
         cycleRunning = true
         cycleGeneration += 1
         val completion = CompletableDeferred<Outcome<Unit, AppError>>()
@@ -489,7 +564,14 @@ internal class DefaultSyncController(
     private suspend fun serveParkedWhenWindowsOpen() {
         val cycle =
             cycleMutex.withLock {
-                if (canClaimForParkedRequests()) claim() else null
+                if (!canClaimForParkedRequests()) {
+                    null
+                } else {
+                    val claimed = claimParked()
+                    publishShutdownSnapshot()
+                    concurrencyHooks.afterClaimPublished()
+                    refuseIfShuttingDown(claimed)
+                }
             }
         if (cycle != null) drainCycles(cycle)
     }
@@ -502,23 +584,14 @@ internal class DefaultSyncController(
     private fun windowsOpen(): Boolean = !debounceWindow.pending && !floorWindow.pending
 
     override fun shutdown() {
-        // Publish the refusal first, then read the awaiters. `sync()` and `requestSync` publish their
-        // awaiter and then re-check `shuttingDown`, so at least one side observes the other, and a
-        // caller is either completed here or refused there (`D-172`).
+        // Publish the refusal first, then complete everything the last publication saw. `admit` and
+        // `drainCycles` publish a complete snapshot under `cycleMutex` and re-read `shuttingDown`
+        // afterwards, so one of the two sides always observes the other: a request is either completed
+        // by a snapshot that already contained it or refused by the re-read that followed its own
+        // publication (`D-172`). Nothing is cleared here, because clearing the live fields outside the
+        // mutex would race the state machine that owns them.
         shuttingDown = true
-        val active = activeCycleCompletion
-        val activeRequests = activeCycleRequests
-        val followUp = pendingFollowUp
-        val parked = parkedRequests.toList()
-        // Cancelling the graph scope stops `drainCycles` before it reaches its `complete` call, and a
-        // `sync()` caller lives outside that scope, so its deferred must be completed here or it
-        // suspends forever. `complete` is idempotent: a cycle that did finish keeps its real outcome.
-        active?.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
-        activeRequests.forEach { it.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable)) }
-        followUp?.requests?.forEach { it.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable)) }
-        parked.forEach { it.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable)) }
-        activeCycleRequests = emptyList()
-        parkedRequests = emptyList()
+        shutdownSnapshot.completeClosed()
     }
 
     override suspend fun retryFailed(): Outcome<Unit, AppError> {
@@ -550,24 +623,31 @@ internal class DefaultSyncController(
                 cycleMutex.withLock {
                     val pending = pendingFollowUp
                     if (pending != null) {
-                        // Publish the next cycle's awaiters BEFORE the follow-up stops being
-                        // reachable, and do both inside this critical section. `shutdown()` reads
-                        // `pendingFollowUp` and `activeCycleRequests` without the mutex, so with this
-                        // order it observes the follow-up, the new active cycle, or both - never
-                        // neither. Building the run after the lock was released, with
-                        // `pendingFollowUp` already cleared, left exactly that gap: a `shutdown()`
-                        // landing in it completed nothing for the follow-up's triggers and the
-                        // `graphScope.cancel()` that follows stopped `drainCycles` before it could,
-                        // leaving a `sync()` caller suspended forever (`D-172`).
+                        // The promotion writes the new active-cycle state, then clears the follow-up,
+                        // then publishes one complete snapshot of the result and re-reads the flag. A
+                        // closure that lands between the clear and the publication is still answered,
+                        // because the snapshot it completes carries the promoted requests.
                         val next = pending.toCycleRun()
                         pendingFollowUp = null
-                        next to null
+                        publishShutdownSnapshot()
+                        concurrencyHooks.afterFollowUpPromotionPublished()
+                        if (shuttingDown) {
+                            shutdownSnapshot.completeClosed()
+                            cycleRunning = false
+                            activeCycleCompletion = null
+                            activeCycleRequests = emptyList()
+                            publishShutdownSnapshot()
+                            null to cycleGeneration
+                        } else {
+                            next to null
+                        }
                     } else {
                         cycleRunning = false
                         // The active cycle is no longer running, so its completion must not be held as
                         // the "in-flight" awaiter `shutdown()` would complete.
                         activeCycleCompletion = null
                         activeCycleRequests = emptyList()
+                        publishShutdownSnapshot()
                         null to cycleGeneration
                     }
                 }
