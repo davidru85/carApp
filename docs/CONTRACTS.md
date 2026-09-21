@@ -2716,6 +2716,7 @@ interface AppGraph {
     fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
     fun syncController(): SyncController
     fun close()
+    suspend fun awaitClosed()
 }
 
 // Swift-facing construction API. Declared once in :composition:ios and exported.

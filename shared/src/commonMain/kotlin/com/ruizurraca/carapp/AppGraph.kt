@@ -35,6 +35,7 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleListStateHolder
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -77,6 +78,16 @@ interface AppGraph {
     fun syncController(): SyncController
 
     fun close()
+
+    /**
+     * Releases the graph, then suspends until the `DatabaseHandle` has actually been closed.
+     *
+     * `close()` returns as soon as the scope is cancelled: the handle is released by a bounded waiter
+     * on another coroutine, because releasing it before graph-owned work has drained is the `D-172`
+     * hazard. A caller that needs the file to be genuinely free - deleting it, for instance - MUST
+     * await this instead of assuming `close()` finished the release.
+     */
+    suspend fun awaitClosed()
 }
 
 internal class DefaultAppGraph(
@@ -84,6 +95,10 @@ internal class DefaultAppGraph(
 ) : AppGraph {
     @Volatile
     private var closed = false
+
+    // Completed by whichever path releases the handle, so `awaitClosed()` can observe the release
+    // rather than assume it.
+    private val closeCompletion = CompletableDeferred<Unit>()
     private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
     private val accountConversion =
@@ -323,7 +338,7 @@ internal class DefaultAppGraph(
         val job = graphScope.coroutineContext[Job]
         graphScope.cancel()
         if (job == null) {
-            databaseHandle.close()
+            releaseDatabase()
             return
         }
         // The handle must not be released while graph-owned work is still running, and `cancel()` does
@@ -334,8 +349,24 @@ internal class DefaultAppGraph(
         // lock, which common code has no synchronous form of.
         CoroutineScope(SupervisorJob() + dependencies.dispatchers.io).launch {
             withTimeoutOrNull(RELEASE_BACKSTOP_MILLIS) { job.join() }
-            databaseHandle.close()
+            releaseDatabase()
         }
+    }
+
+    /**
+     * The single release path, so the handle is closed once and `awaitClosed()` observes it.
+     *
+     * `close()` is idempotent, so the backstop and the join can both reach the waiter; only the first
+     * one closes and completes, which keeps the `D-89` "at most once" rule.
+     */
+    private fun releaseDatabase() {
+        databaseHandle.close()
+        closeCompletion.complete(Unit)
+    }
+
+    override suspend fun awaitClosed() {
+        close()
+        closeCompletion.await()
     }
 
     private fun checkOpen() {

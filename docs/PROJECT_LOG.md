@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-21 — `E3-04` correction: platform lease completion, shutdown snapshot and iOS clock
+
+- **Type:** correction
+- **Story / Decision:** `E3-04` / `D-187`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
+- **What changed:** a correction round on the still-open pull request #72. `shutdown()` now consumes one immutable `ShutdownSnapshot` published under `cycleMutex` instead of reading four volatile fields separately, and every publication is followed by a re-read of `shuttingDown`, so an admitted request can no longer be published after the shutdown snapshot and stay suspended. `PullToRefresh` claims its own cycle and no longer drains the parked automatic batch, which had been serving those requests before their `D-186` boundary. The Android `CoroutineWorker` and the iOS `BGTask` handler now await `sync(SyncTrigger.Periodic)` before reporting platform completion, with an iOS expiration handler and an idempotent completion gate. iOS background time is measured with `ContinuousClock` instead of `ProcessInfo.systemUptime`, which stopped during device sleep and could report a real return as a cold start, and the cold start is consumed exactly once. `AppGraph.awaitClosed()` makes the database release awaitable so the instrumented reset no longer deletes the file under an open handle.
+- **Why:** the platform leases were ending before the cycles they triggered, so WorkManager could release the process and iOS could suspend it mid-cycle, leaving outbox rows marked `SYNCING`. The four independent shutdown reads were the remaining gap in the `D-172` protocol. This corrects the previous entry: it omitted `D-186`, and it recorded the concurrency changes as needing no tests, which `docs/SPECIFICATION.md §11` does not permit. `D-186` is now registered, and the concurrency guarantees carry three deterministic tests through the `SyncConcurrencyHooks` seam.
+- **Documents touched:** `docs/CONTRACTS.md §9.1`, `§9.8`, `§20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0188`, `docs/BACKLOG.md`, `docs/handoff-E3-04.md`.
+- **Verification:** the full step-8 command set, recorded in `docs/handoff-E3-04.md`. The three admission and shutdown tests were observed failing against the pre-correction controller; the Android and iOS source fixtures were each observed failing against a deliberately reverted production file.
+- **Follow-ups / risks:** the `shared-tests` stall of the previous entries still needs an owner, since `E1-14` and `E1-17` are merged. Platform lease completion now depends on the cycle finishing, so the cycle is bounded by the platform's own deadline rather than by the worker returning early; iOS cancels an overrunning cycle on expiration and the work survives in the outbox.
+
 ### 2026-09-21 — `E3-04` repository sync wiring
 
 - **Type:** story

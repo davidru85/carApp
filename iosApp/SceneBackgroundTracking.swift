@@ -1,42 +1,61 @@
 import Foundation
 
-/// Measures how long the iOS app spent in the background, for the `docs/CONTRACTS.md §9.8`
-/// foreground trigger.
+/// Monotonic elapsed time that keeps counting while the system is asleep.
 ///
-/// The elapsed time is read from a monotonic source, so a wall-clock or time-zone change while the
-/// app is in the background cannot produce a negative or wildly wrong duration.
-/// `ProcessInfo.systemUptime` is the iOS counterpart of Android's `SystemClock.elapsedRealtime()`:
-/// it counts from boot and never jumps. It stops while the *device* is asleep, where the Android
-/// clock keeps running, so a stay that spans device sleep is measured as the awake part of it. That
-/// is the safe direction for the threshold it feeds: an under-counted stay reports no foreground
-/// trigger, and the reminder evaluation on the same transition is unconditional.
+/// `ProcessInfo.systemUptime` was the obvious choice and is wrong here twice over. It stops while the
+/// *device* is asleep, so a background stay that spans a screen lock is measured as only its awake
+/// part: a phone put down for an hour could report a few minutes and land below the five-minute
+/// threshold of `docs/CONTRACTS.md §9.8`, turning a real foreground return into a cold start. It is
+/// also a required-reason API, which would oblige the target to declare an access reason for a
+/// measurement that does not need one.
 ///
-/// The reader is injected so the arithmetic can be exercised off-device by a throwaway harness;
-/// production passes `ProcessInfo.processInfo.systemUptime`.
-///
-/// `nil` is the cold start: the first foreground entry has no preceding background stay, and `§9.8`
-/// names the cold start as a trigger in its own right (`D-183`).
-final class SceneBackgroundDuration {
-    private var departureUptime: TimeInterval?
-    private let monotonicNow: () -> TimeInterval
+/// `ContinuousClock` is monotonic, does not jump with the wall clock or a time-zone change, and
+/// continues across device sleep, which is exactly the interval `§9.8` measures. Reading it from a
+/// stored origin keeps the subtraction in the same clock domain as the readings.
+private enum ContinuousElapsedTime {
+    private static let clock = ContinuousClock()
+    private static let origin = clock.now
 
-    init(monotonicNow: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
-        self.monotonicNow = monotonicNow
+    static func nowMilliseconds() -> Int64 {
+        let components = origin.duration(to: clock.now).components
+        return components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000
+    }
+}
+
+/// Process-scoped scene timing for the `docs/CONTRACTS.md §9.8` foreground trigger.
+///
+/// Two facts are consumed here, each exactly once, because each may be reported twice by the platform:
+/// the process cold start, and one completed background stay. `consumeColdStart` makes the cold-start
+/// trigger idempotent, and `consumeBackgroundMillis` clears the departure it reports so a later
+/// transition cannot reuse it.
+final class SceneBackgroundDuration {
+    private var departureMillis: Int64?
+    private var coldStartConsumed = false
+    private let monotonicNowMillis: () -> Int64
+
+    init(monotonicNowMillis: @escaping () -> Int64 = ContinuousElapsedTime.nowMilliseconds) {
+        self.monotonicNowMillis = monotonicNowMillis
     }
 
-    /// Records when the scene stopped being active. A repeated call keeps the earliest moment, so a
-    /// stay is measured from its first departure rather than from the last one before the return.
+    /// Reports the one process cold start. Every later call reports `false`, so a launch that also
+    /// delivers an active scene-phase change cannot emit the cold-start trigger twice.
+    func consumeColdStart() -> Bool {
+        guard !coldStartConsumed else { return false }
+        coldStartConsumed = true
+        return true
+    }
+
+    /// Records the moment the scene left the foreground. A repeated call keeps the earliest moment.
     func recordDeparture() {
-        if departureUptime == nil {
-            departureUptime = monotonicNow()
+        if departureMillis == nil {
+            departureMillis = monotonicNowMillis()
         }
     }
 
-    /// Reports the completed background stay in whole milliseconds and clears it, or `nil` when there
-    /// is none to report. The measurement describes one transition and is never reused.
+    /// Reports the completed background stay and clears it, or `nil` when there is none to report.
     func consumeBackgroundMillis() -> Int64? {
-        guard let departureUptime else { return nil }
-        self.departureUptime = nil
-        return Int64(max(0, (monotonicNow() - departureUptime) * 1000))
+        guard let departureMillis else { return nil }
+        self.departureMillis = nil
+        return max(0, monotonicNowMillis() - departureMillis)
     }
 }

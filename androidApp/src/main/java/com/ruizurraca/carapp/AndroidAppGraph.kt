@@ -69,12 +69,16 @@ internal object AndroidAppGraph {
      * graph by the time a test starts, and closing the shared graph from a test would leave every later
      * test without one. An instrumented test that needs a clean database calls this instead.
      */
-    internal fun resetForTests() {
-        synchronized(this) {
-            instance?.close()
-            instance = null
-            installedApplication?.deleteDatabase(DATABASE_FILE_NAME)
-        }
+    internal suspend fun resetForTests() {
+        val closing =
+            synchronized(this) {
+                instance.also { instance = null }
+            }
+        // `close()` returns before the handle is released - the release happens on a bounded waiter -
+        // so deleting the file straight after it would remove the database under a driver that is
+        // still open, which is the `D-172` hazard. Awaiting the completion makes the deletion safe.
+        closing?.awaitClosed()
+        installedApplication?.deleteDatabase(DATABASE_FILE_NAME)
     }
 
     private fun create(): AppGraph {

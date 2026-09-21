@@ -26,6 +26,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -33,6 +34,9 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
+
+/** Bounded yields that let a suspension point be reached without waiting on a real clock. */
+private const val RELEASE_OBSERVATION_YIELDS = 8
 
 /**
  * `E3-17` / `D-172`. `DefaultAppGraph.close()` cancels `graphScope` and then closes the
@@ -110,6 +114,52 @@ class AppGraphCloseSafetyTest {
                 awaitCondition("the handle to be released after the cycle finished") { factory.closeCalls == 1 }
                 assertEquals(listOf(CYCLE_FINISHED, HANDLE_CLOSED), events)
                 assertEquals(1, factory.closeCalls, "the handle is released exactly once")
+            } finally {
+                remote.release()
+                factory.closeOwningFactory()
+            }
+        }
+
+    @Test
+    fun awaitClosedSuspendsUntilTheHandleIsActuallyReleased() =
+        runTest {
+            val factory = OrderRecordingDatabaseFactory(mutableListOf())
+            val remote = NonCancellableRemote {}
+            val graph = buildGraph(factory, remote)
+
+            try {
+                val controller: SyncController = graph.syncController()
+                val running = async { controller.sync(SyncTrigger.PullToRefresh) }
+                awaitCondition("the cycle to reach the remote call") { remote.entered.isCompleted }
+
+                // `close()` returns as soon as the scope is cancelled; the handle is released later by
+                // the bounded waiter. A caller that deletes the database file needs the release, not
+                // the cancellation, so `awaitClosed()` MUST still be suspended here.
+                val closed = async { graph.awaitClosed() }
+                // Let `awaitClosed()` reach its suspension point. The cycle is still blocked on
+                // `remote`, so the scope cannot drain and the handle cannot have been released.
+                repeat(RELEASE_OBSERVATION_YIELDS) { yield() }
+                assertFalse(
+                    closed.isCompleted,
+                    "awaitClosed() MUST NOT report a release the graph has not performed yet",
+                )
+                assertEquals(0, factory.closeCalls, "the handle MUST still be open while the cycle runs")
+
+                remote.release()
+                awaitCondition("the release to complete") { closed.isCompleted }
+                closed.await()
+                assertEquals(
+                    1,
+                    factory.closeCalls,
+                    "the single DatabaseHandle MUST be released exactly once",
+                )
+                // The cycle that was running when the closure started is refused, not left suspended:
+                // that is the same `D-172` guarantee, observed through the second caller.
+                val outcome = running.await()
+                assertTrue(
+                    outcome is Outcome.Err && outcome.error == PersistenceError.DatabaseUnavailable,
+                    "expected a closed DatabaseUnavailable outcome, got $outcome",
+                )
             } finally {
                 remote.release()
                 factory.closeOwningFactory()
