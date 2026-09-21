@@ -24,11 +24,11 @@ Update this section at every material state change and before yielding unfinishe
 - Date: 2026-09-21
 - Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc` (the merge of PR #71).
 - Current phase and latest commit: complete and verified; latest commit is `37401e1` (`feat(E3-04): schedule the periodic trigger on the iOS host`), on top of `8319539`, `be6794b` and `921df0f`.
-- Push and pull-request status: not pushed; no pull request opened. The owner's gated review is the gate, so the branch is held.
+- Push and pull-request status: pushed and opened as pull request #72 (`feat(E3-04): repository sync wiring`), all ten required checks green. The owner's gated review is the merge gate, so the branch is not merged on agent judgement.
 - Completed since the previous checkpoint: the `§9.8` admission windows are enforced in the controller; the graph wires the connectivity edge, the local-owner adoption and the `Periodic` arrangement; `SyncStateHolder.onForegroundReturn` applies the foreground threshold; the real `SyncTriggerAdapter` is consumed on both hosts; the graph is process-scoped on Android; `D-181`–`D-185` are registered with ADRs and all four mirror rows; `§20.10` is corrected; the trigger-ban source rule and its five fixtures exist; the backlog, the versions matrix and the catalog are updated.
 - Verification evidence and known failures: no known failures. `contractCheck` reports every assertion `PASS` with no `PENDING` (186 decisions, 186 ADRs); the complete `AGENTS.md` command, `:build-logic:convention:test`, `:shared:testAndroidHostTest` (191), `iosSimulatorArm64Test` (198), `koverVerify`, the golden-header comparison (byte-identical), the iOS simulator build and the 17-test API 36 instrumented suite are all green.
 - Open decisions or blockers: none. The five decisions of this story are `Accepted`.
-- Exact next step: commit the iOS host files, then open the pull request for the owner's gated review.
+- Exact next step: the owner's gated review of pull request #72.
 
 ## Scope Completed
 
@@ -98,6 +98,8 @@ Exact commands, and their result.
 - The `ios-simulator-build` step locally: `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator -destination "id=$DEVICE_ID" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — `** BUILD SUCCEEDED **`, and the built bundle's `Info.plist` carries both keys.
 - The `ios-simulator-build` test action locally: `xcodebuild … test` — `** TEST SUCCEEDED **`, 27 tests with 1 skipped and 0 failures, including `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` (41.7 s) which drives the real app against the real graph.
 - `./iosApp/generate-project.sh` reproduces the committed `project.pbxproj` byte for byte, so the four-line delta is the deterministic output of the repo's own generator.
+- Pull request #72, run `35577147782`: `ktlint`, `detekt`, `architecture-check`, `contract-check`, `android-assemble`, `android-instrumented-tests`, `ios-simulator-build`, `objc-header-golden-check`, `provider-decoupling` and `shared-tests` all green.
+- **One re-run was needed, and it is the known pre-existing stall, not a defect of this story.** `shared-tests` first failed with `The action 'Run Android application and KMP host tests' has timed out after 10 minutes`: the log has 731 `STARTED` lines, **zero** `PASSED`, **zero** `FAILED`, and no test result — the signature `D-175` and `D-177` describe. That same step passes locally in under a minute, so it is not deterministic, and the re-run passed in 9m30s. It is the mechanism `docs/PROJECT_LOG.md` already records for runs `35333547781` and `35336079709` and owns to `E1-14`/`E1-17`; it is also not confined to this story, since the same stall reached `provider-decoupling` on that round. It is recorded rather than re-pinned, and it is not evidence against this change: no test of this story failed and no assertion was involved.
 
 ## Contract Impact
 
