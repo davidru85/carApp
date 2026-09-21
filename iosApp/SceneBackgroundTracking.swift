@@ -2,12 +2,12 @@ import Foundation
 
 /// Monotonic elapsed time that keeps counting while the system is asleep.
 ///
-/// `ProcessInfo.systemUptime` was the obvious choice and is wrong here twice over. It stops while the
-/// *device* is asleep, so a background stay that spans a screen lock is measured as only its awake
-/// part: a phone put down for an hour could report a few minutes and land below the five-minute
-/// threshold of `docs/CONTRACTS.md §9.8`, turning a real foreground return into a cold start. It is
-/// also a required-reason API, which would oblige the target to declare an access reason for a
-/// measurement that does not need one.
+/// The obvious choice was `ProcessInfo`'s boot-time uptime reading, and it is wrong here twice over. It
+/// stops while the *device* is asleep, so a background stay that spans a screen lock is measured as
+/// only its awake part: a phone put down for an hour could report a few minutes and land below the
+/// five-minute threshold of `docs/CONTRACTS.md §9.8`, turning a real foreground return into a cold
+/// start. That reading is also a required-reason API, which would oblige the target to declare an
+/// access reason for a measurement that does not need one.
 ///
 /// `ContinuousClock` is monotonic, does not jump with the wall clock or a time-zone change, and
 /// continues across device sleep, which is exactly the interval `§9.8` measures. Reading it from a
