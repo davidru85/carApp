@@ -21,15 +21,14 @@ Fill in every section. This template is the canonical field list; `AGENTS.md` li
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-21 (correction round, review of pull request #72)
-- Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc`; not rebased, not force-pushed.
-- Current phase and latest commit: correction round for the nine defects the review of pull request #72 found, complete and verified. The round is `58bba23` (concurrency), `cbb2818` (red fixtures), `7d6d063` (green rule), `4d9d2d2` (API name, `D-186`, iOS entry point, consistency) and the handoff commit that follows; it sits on `c791122`.
-- Push and pull-request status: pull request #72 open, not merged; the owner's gated review is the merge gate. Of the ten required checks, nine were green on the first attempt and `shared-tests` was green only on re-run after the pre-existing ten-minute host-step stall, which the Verification Run section analyses and attributes.
-- Completed since the previous checkpoint: `armFloorWindowLocked` takes `cycleMutex` before arming the `§9.8` floor; `admit` re-checks `shuttingDown` after publishing in both the follow-up and the parked branch and completes the request with `PersistenceError.DatabaseUnavailable`; `pendingFollowUp` and `parkedRequests` are `@Volatile`; the `§9.8` admission policy is recorded as `D-186` with ADR-0187 and all four mirror rows; `§9.1` and every document repeating it now name `enqueueUniquePeriodicWork` for the periodic cadence while keeping `enqueueUniqueWork` for a one-shot trigger; the catalog cites `D-184` instead of `D-181`; the unused `FOREGROUND_RESUME_THRESHOLD_MS` import is gone from `AppGraph.kt`; the trigger-ban rule reuses `KotlinSourceText.code`; and the iOS foreground entry point is unconditional.
-- Verification evidence and known failures: no known failures. Every command of step 11 was run and each result is recorded in the Verification Run section: `:core:sync:testAndroidHostTest` 101 tests green, `:build-logic:convention:test` green with 7 trigger-surface fixtures, `contractCheck` all `PASS` with no `PENDING` at **187 decisions and 187 ADRs**, the complete `AGENTS.md` command green at 642 tasks, the golden header byte-identical, the iOS build and test green on the first attempt (27 tests, 0 failures) after erasing the simulator, and the API 36 instrumented suite green at 17 tests. The two new masker fixtures were observed failing against the old `stripComments` and passing against `KotlinSourceText.code`.
-- Open decisions or blockers: none. `D-186` is `Accepted`. The `shared-tests` stall still needs a new owner, which is an owner decision and is recorded rather than minted.
-- CI on the correction round: runs `35588801389` (`b63f2e7`) and `35592825516` (`3784c84`) both report **all ten required checks green**, the second after three stalled attempts of `shared-tests`. The stall is bimodal and machine-dependent, and the measurements are in the Verification Run section: the Android-host step takes 167-253 s when it succeeds and exactly 613 s when it stalls, a full 13 s past its 600 s limit, so it is an all-or-nothing hang and not a slow step. The same job passes on other machines of the same branch, and this branch's local step passed eight consecutive cold-daemon, no-cache runs in 19-45 s. The correction round does not touch the module that stalls: `:core:sync` completes its 101 tests inside the failing logs, and the stall reaches the Android-host step of `provider-decoupling` on `main` at `c38d1fc`.
-- Exact next step: commit this handoff, push, and hand the branch back for the owner's gated review of pull request #72. The branch is not merged, not rebased and not force-pushed.
+- Date: 2026-09-21 (second correction round, review of pull request #72)
+- Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc`; not rebased, not force-pushed, not merged.
+- Current phase and latest commit: the second correction round, complete and verified. The round is `f51f77f` (the two shutdown races), `f0d4c53` (the red host assertion), `5850e4f` (the process-scoped foreground measurement and the `§20.10` sentence) and the handoff commit that follows; it sits on `b2f7044`.
+- Push and pull-request status: pull request #72 open and not merged; the owner's gated review is the merge gate.
+- Completed since the previous checkpoint: five defects found in the review of pull request #72 are closed. `PendingFollowUp.requests` is a copy-on-write `@Volatile` `List`, so `shutdown()` can no longer iterate a list `admit` is adding to. `drainCycles` builds the next cycle's run inside the same critical section that clears `pendingFollowUp`, and before clearing it, so a concurrent `shutdown()` observes the follow-up, the new active cycle, or both, and never neither. The Android foreground measurement moved from the composition to a process-scoped holder, so an Activity recreation no longer reads as a cold start and no longer requests a `SyncTrigger.AppForeground` that `§9.8` does not permit. `§20.10` states that host-scope obligation explicitly. `PlatformHostContractTest` gained the executable guard for it, and ADR-0186 and this handoff no longer carry the stale five-fixture and 186-decision claims.
+- Verification evidence and known failures: no known failures. Every command of step 10 was run and each literal result is in the Verification Run section: `:core:sync:testAndroidHostTest` 101 tests green, `:shared:testAndroidHostTest` 191 tests green, `:build-logic:convention:test` 169 tests green with `androidHostBindsThePersistentGraphToSharedStateHolders` passing, `:androidApp:testDebugUnitTest` green, `contractCheck --rerun-tasks` all `PASS` with no `PENDING` at 187 decisions and 187 ADRs, the complete `AGENTS.md` command green at 642 tasks, the golden header byte-identical, and the API 36 instrumented suite green at 17 tests. The new host assertion was proved to fire by temporarily restoring the composition-scoped construction, which failed `androidHostBindsThePersistentGraphToSharedStateHolders` with `Expected value to be true.`, and passing again after the restore.
+- Open decisions or blockers: none. `D-186` is `Accepted` and this round mints no decision ID. The `shared-tests` stall still needs a new owner, which is an owner decision and is recorded rather than minted.
+- Exact next step: the owner's gated review of pull request #72.
 
 ## Scope Completed
 
@@ -48,7 +47,7 @@ Update this section at every material state change and before yielding unfinishe
 - **Platform workers only call `SyncController.requestSync(reason)`.** `PeriodicSyncWorker.doWork()` calls `androidAppGraph.requestPeriodicSync()`, which is `require().syncController().requestSync(SyncTrigger.Periodic)`; the iOS handler does the same through `syncController()`. The worker holds no repositories, no database and no second graph. `SwiftTriggerSurfaceContractTest` is the executable ban that keeps a UI-layer `SyncStateHolder.requestSync` call site from reappearing.
 - **No state holder change is required for sync correctness.** No state-holder change was made for that purpose; the only holder change is the new foreground entry point, which is the `§9.8` trigger itself rather than a correctness dependency.
 - **Both constants are enforced (criterion 5).** Enforcement is in the controller's admission path, tested by `SyncAdmissionPolicyTest`; neither is recorded as unenforced.
-- `contractCheck` output: assertions 14, 34 and 35 `PASS`; decision registry `PASS` at 186 decisions and 186 ADRs; no `PENDING` assertion.
+- `contractCheck` output: assertions 14, 34 and 35 `PASS`; decision registry `PASS` at 187 decisions and 187 ADRs, which is the final count after `D-186` was added in the first correction round; no `PENDING` assertion. The `186` figures under Verification Run are the readings of the runs that preceded `D-186` and are left as observed.
 
 ## Out of Scope / Not Done
 
@@ -83,6 +82,8 @@ Include any `SHOULD` you deviated from, and why.
 - `D-185` — the iOS trigger ban is enforced as a source rule over both file kinds, not as the Konsist fixture `§20.10` declared, and `§20.10` is corrected to require what is executable. See ADR-0186.
 - `D-186` — the `§9.8` admission policy is recorded as a decision rather than living only in code comments and this handoff: a trigger inside an open window is parked rather than refused, the interval is anchored to the moment a cycle reaches its remote steps, the single follow-up is exempt from both windows, and a pull-to-refresh cycle still re-arms the floor. See ADR-0187.
 - **TDD exemption for the two concurrency fixes.** The `armFloorWindowLocked` change and the `admit` publish-then-re-check are exempt from the TDD workflow, and no test accompanies them. Their reason is the harness: both are data races between a graph-scope coroutine on a multi-threaded dispatcher and a caller of `shutdown()`, while `runTest` drives a single-threaded virtual scheduler whose interleavings are deterministic, so no failing test can be written for either race and a test that passed before and after the fix would assert nothing. The regression guard is the existing `SyncAdmissionPolicyTest` and `DefaultSyncControllerTest` suites, which step 11.1 runs and which must stay green. Steps 7 and 8 were **not** exempt: step 7 carries two new fixtures that were observed failing against the old masker before the fix, and step 8 is covered by the existing iOS UI suite on a real host.
+- **TDD exemption for the second round's two concurrency fixes.** The `PendingFollowUp.requests` copy-on-write change and the `drainCycles` publish-before-clear change carry the same exemption already recorded for the earlier concurrency fixes, for the same reason: `runTest` drives a single-threaded virtual scheduler, and `drainCycles` has no suspension point between the `withLock` and the former `toCycleRun()` call, so neither interleaving with `shutdown()` can be expressed by a failing test. The regression guard is `:core:sync:testAndroidHostTest` plus `AppGraphCloseSafetyTest` staying green, and both do.
+- **The Android foreground measurement is process-scoped.** This is a defect fix against `§9.8`, not a new decision, so it mints no ID: `§9.8` already determines which returns are triggers, and holding the measurement in the composition made an Activity recreation report `null`, which the shared holder reads as a cold start. `§20.10` now states the host-scope obligation explicitly, and `PlatformHostContractTest` is the executable guard. It was observed failing on the composition-scoped construction (`Expected value to be true.`) and passing on the process-scoped one.
 - Deviation: `§20.10` promised a Konsist fixture, and the enforcement is a source rule. The deviation is a **MUST** that could not be satisfied as written — Konsist parses Kotlin only and the prohibited surface includes Swift — so the normative text was corrected in the same change rather than the rule being narrowed to what Konsist can see. Recorded as `D-185` with its ADR.
 - `PostWriteDebounce` and `ConnectivityRecovered` are deliberately **not** routed through the platform adapter, although `§20.10` groups the three together. Both are in-process events the graph already observes exactly, and a platform scheduler would add latency to a trigger whose cause is already known. The grouping in `§20.10` is about which layer may fire them (never Swift UI), which this story preserves.
 
@@ -168,8 +169,39 @@ debounce window is still armed before it is read, `PullToRefresh` still bypasses
 `windowsOpen()` is still the condition that decides a claim. `:core:sync:testAndroidHostTest` stays
 green, which is the guard for that behaviour.
 
+### Second correction round (review of pull request #72)
+
+Every command of step 10 was run from the repository root, and each result below is the literal one.
+
+- `./gradlew :core:sync:testAndroidHostTest` — `BUILD SUCCESSFUL`, 101 tests, 0 failures.
+- `./gradlew :shared:testAndroidHostTest` — `BUILD SUCCESSFUL`, 191 tests, 0 failures.
+- `./gradlew :build-logic:convention:test` — `BUILD SUCCESSFUL`, 169 tests, 0 failures, with
+  `androidHostBindsThePersistentGraphToSharedStateHolders` passing.
+- `./gradlew :androidApp:testDebugUnitTest` — `BUILD SUCCESSFUL`.
+- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`;
+  **187 decisions and 187 ADRs**.
+- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks.
+  Its first run failed `:androidApp:ktlintMainSourceSetCheck` with
+  `AndroidForegroundDuration.kt:37:1: Needless blank line(s) (standard:no-consecutive-blank-lines)`,
+  which was a stray blank line from appending the process-scoped object; removing it made the command
+  pass and the fix was folded into the same commit.
+- `xcrun simctl shutdown all` then `xcrun simctl erase all`, then
+  `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` and the `diff -u` against
+  `shared/build/generated/objc-header/Shared.h.golden` — the diff produced no output, so the golden
+  header is byte-identical. No exported declaration moved in this round.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84` API 36
+  device — `BUILD SUCCESSFUL`, 17 tests, 0 failures.
+- **The new host assertion was proved to fire.** With line 88 of `AnonymousReminderCopy.kt` temporarily
+  restored to `val duration = AndroidForegroundDuration()` — that is, composition-scoped —
+  `./gradlew :build-logic:convention:test` reported `PlatformHostContractTest >
+  androidHostBindsThePersistentGraphToSharedStateHolders FAILED` with
+  `java.lang.AssertionError: Expected value to be true.` and `2 tests 1 failures`. After restoring
+  `AndroidForegroundTracking.duration` the same task reported `BUILD SUCCESSFUL` with `2 tests 0
+  failures`.
+
 ## Contract Impact
 
+- Added one sentence to `docs/CONTRACTS.md §20.10`: the host's background measurement MUST outlive the UI that reports it, because recreating a view, a scene or an Activity is not a cold start, so a measurement discarded with that UI would report `null` and request a cycle `§9.8` does not permit. It states the existing `§9.8` rule at the host boundary and introduces no option.
 - Updated `docs/CONTRACTS.md §9.1`, which now names `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, <periodic request>)` for the `Periodic` cadence and keeps `enqueueUniqueWork(SYNC_WORK, KEEP)` for a one-shot platform trigger; the previous text named the one-shot API for the periodic cadence, which cannot express a 6 h cadence because `enqueueUniqueWork` accepts only a `OneTimeWorkRequest`.
 - Updated `docs/CONTRACTS.md §20.10`: `SyncStateHolder.onForegroundReturn(backgroundMillis: Long?)` is declared as the `§9.8` foreground entry point, and the trigger-ban obligation now requires an executable check over both iOS platform file kinds instead of a Konsist fixture scoped to `iosMain`.
 

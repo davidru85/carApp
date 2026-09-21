@@ -32,10 +32,12 @@ is permitted, so the check must distinguish a `SyncStateHolder` call site (banne
 The selected option is: **Option A**.
 
 `SwiftTriggerSurfaceRule` is a pure function over a `Map<path, source>` returning one violation per
-offending call site. `SwiftTriggerSurfaceContractTest` proves it in five directions: the real
+offending call site. `SwiftTriggerSurfaceContractTest` proves it in seven directions: the real
 repository passes, each of the three platform-owned triggers is rejected when requested from a
-`SyncStateHolder` call site, and `AppForeground` is accepted, so the rule cannot silently become
-broader than the contract it implements.
+`SyncStateHolder` call site, `AppForeground` is accepted, a fully commented-out call site inside a
+nested block comment is not a violation, and a real call site on a line that also holds a `//` inside
+a string literal is still found. The last two pin the masker, which is `KotlinSourceText.code`, so the
+rule cannot silently become broader or narrower than the contract it implements.
 
 `docs/CONTRACTS.md §20.10` is corrected in the same change: it now requires an executable check that
 covers both iOS platform file kinds, accepts `AppForeground` and `PullToRefresh`, and states that it is
@@ -78,7 +80,7 @@ implementation — the iOS `BGTaskScheduler` handler requests `SyncTrigger.Perio
 
 ## Verification
 
-`SwiftTriggerSurfaceContractTest` holds the five fixtures and runs on `:build-logic:convention:test`,
+`SwiftTriggerSurfaceContractTest` holds the seven fixtures and runs on `:build-logic:convention:test`,
 which is one of the required CI checks. The repository-wide direction is asserted against the real
 `composition/ios/src/iosMain` and `iosApp` trees, so a real violation fails the build rather than
 being caught in review. Evidence is in `docs/handoff-E3-04.md`.
