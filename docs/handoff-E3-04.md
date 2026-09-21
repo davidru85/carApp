@@ -199,6 +199,26 @@ Every command of step 10 was run from the repository root, and each result below
   `AndroidForegroundTracking.duration` the same task reported `BUILD SUCCESSFUL` with `2 tests 0
   failures`.
 
+### Third correction round (review of pull request #72)
+
+Every command of step 8 was run from the repository root; each result below is the literal one.
+
+- `./gradlew :core:sync:testAndroidHostTest :shared:testAndroidHostTest :build-logic:convention:test :androidApp:testDebugUnitTest --rerun-tasks` — `BUILD SUCCESSFUL`.
+- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`, **188 decisions and 188 ADRs**.
+- `./gradlew ktlintCheck detekt architectureCheck koverVerify` — `BUILD SUCCESSFUL`.
+- `./gradlew :androidApp:assembleDebug` — `BUILD SUCCESSFUL`.
+- `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`.
+- `./iosApp/generate-project.sh` — the only uncommitted delta is the deterministic addition of `iosApp/Tests/SceneBackgroundTrackingTests.swift` to the unit-test target: four added lines, all naming that file.
+- `git diff --check` — silent. `git status --short` — no `PR72_CORRECTIVE_ACTION_PROMPT.md` entry, because the note was never written to the worktree.
+- The iOS test action recorded in this handoff, after `xcrun simctl shutdown all` and `erase all` — `** TEST SUCCEEDED **`, 45 unit tests and 27 UI tests, 1 skipped, 0 failures.
+- `xcodebuild … -only-testing:carAppTests/SceneBackgroundTrackingTests test` — `** TEST SUCCEEDED **`; the three cases are listed as executed, so they run rather than merely compile: `testColdStartIsConsumedExactlyOnce`, `testACompletedDepartureIsConsumedExactlyOnce` and `testRepeatedDepartureKeepsTheEarliestInstant`.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84` API 36 device — `BUILD SUCCESSFUL`, 17 tests, 0 failures. This is the run that exercises the changed `resetForTests` lifecycle path.
+
+**Observations against the pre-correction code, all deliberate.** The three admission and shutdown tests were observed failing before `750d1c0`, each on its own defect rather than on a timeout:
+`pullToRefreshDoesNotServeAnAutomaticTriggerBeforeItsWindowBoundary` with `manual refresh MUST leave the automatic request parked`; `shutdownBetweenClaimPublicationAndAdmissionReturnCompletesTheAwaiter` and `shutdownDuringFollowUpPromotionCompletesThePromotedAwaiter` each with `expected:<Err(error=DatabaseUnavailable)> but was:<Ok(value=kotlin.Unit)>`. The Android fixture failed with `Expected value to be true.` when `doWork()` was temporarily reverted to call `runPeriodicSync()` directly, and the iOS fixture failed with `the expiration handler MUST be installed before the cycle is started` when `expirationHandler` was temporarily moved after `syncJob.start()`.
+
+**Repository checks on the required-reason API.** `rg -n 'systemUptime|mach_absolute_time' iosApp composition/ios` matches only build artifacts under `composition/ios/build/...`; no project-owned source calls either. No `PrivacyInfo.xcprivacy` is therefore required, and none was added.
+
 ## Contract Impact
 
 - `docs/CONTRACTS.md §9.1`, `§9.8` and `§20.10` now say that every trigger enters the one controller through `requestSync(reason)` or `sync(reason)`, and name `sync(Periodic)` as the path a platform execution lease awaits (`D-187`).
