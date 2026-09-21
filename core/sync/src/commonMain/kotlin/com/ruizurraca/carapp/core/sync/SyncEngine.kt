@@ -227,7 +227,15 @@ private data class Admission(
  */
 private class PendingFollowUp {
     val reasons = mutableSetOf<SyncTrigger>()
-    val requests = mutableListOf<SyncRequest>()
+
+    // Copy-on-write, exactly like `parkedRequests`. `admit` mutates this list under `cycleMutex`
+    // while `shutdown()` reads it holding no lock - that race is the documented `D-172` protocol,
+    // not an accident - so a shared `MutableList` would let `shutdown()` iterate a list that is
+    // being added to, which is a `ConcurrentModificationException` on the JVM and an unsynchronised
+    // read on Kotlin/Native. Reassigning a `@Volatile` immutable list gives every reader a stable
+    // snapshot without a second lock.
+    @Volatile
+    var requests: List<SyncRequest> = emptyList()
 }
 
 /**
@@ -522,12 +530,22 @@ internal class DefaultSyncController(
             // Capture the generation under the same lock that clears the active-cycle reservation.
             // The terminal publish then skips if a newer cycle started in the window between releasing
             // the lock and publishing, so it cannot overwrite that cycle's `Syncing` (`§9.9`).
-            val (nextFollowUp, finishingGeneration) =
+            val (nextRun, finishingGeneration) =
                 cycleMutex.withLock {
                     val pending = pendingFollowUp
                     if (pending != null) {
+                        // Publish the next cycle's awaiters BEFORE the follow-up stops being
+                        // reachable, and do both inside this critical section. `shutdown()` reads
+                        // `pendingFollowUp` and `activeCycleRequests` without the mutex, so with this
+                        // order it observes the follow-up, the new active cycle, or both - never
+                        // neither. Building the run after the lock was released, with
+                        // `pendingFollowUp` already cleared, left exactly that gap: a `shutdown()`
+                        // landing in it completed nothing for the follow-up's triggers and the
+                        // `graphScope.cancel()` that follows stopped `drainCycles` before it could,
+                        // leaving a `sync()` caller suspended forever (`D-172`).
+                        val next = pending.toCycleRun()
                         pendingFollowUp = null
-                        pending to null
+                        next to null
                     } else {
                         cycleRunning = false
                         // The active cycle is no longer running, so its completion must not be held as
@@ -537,11 +555,11 @@ internal class DefaultSyncController(
                         null to cycleGeneration
                     }
                 }
-            if (nextFollowUp == null) {
+            if (nextRun == null) {
                 refreshStatus(expectedGeneration = finishingGeneration)
                 return
             }
-            run = nextFollowUp.toCycleRun()
+            run = nextRun
         }
     }
 
@@ -549,6 +567,10 @@ internal class DefaultSyncController(
      * Turns the pending follow-up into the next cycle. Its own completion is a fresh deferred: it is
      * the handle `shutdown()` completes for the active cycle of that follow-up (`D-172`), separate
      * from the per-trigger completions the cycle's outcome already answers.
+     *
+     * Called under `cycleMutex`, and before `pendingFollowUp` is cleared. Both are preconditions, not
+     * preferences: the active-cycle awaiters MUST be published while the follow-up is still
+     * reachable, so a concurrent `shutdown()` can never miss both handles at once.
      */
     private fun PendingFollowUp.toCycleRun(): CycleRun {
         val completion = CompletableDeferred<Outcome<Unit, AppError>>()
