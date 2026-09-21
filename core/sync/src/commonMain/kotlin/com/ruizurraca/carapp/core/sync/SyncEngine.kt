@@ -269,18 +269,21 @@ internal class DefaultSyncController(
     // value, so the pending flag and its handle cannot be observed separately: there is no
     // inconsistent state in which a follow-up is flagged but no handle exists to complete, which
     // would wedge `drainCycles` and suspend every later `sync()` forever (`§9.1`).
+    @Volatile
     private var pendingFollowUp: PendingFollowUp? = null
 
     // The `§9.8` admission windows. `debounceWindow` defers an automatic cycle until 2 s after the
     // last post-write trigger; `floorWindow` defers it until 30 s after the previous cycle started.
     // Both are `delay`-driven, so they measure the same way under a test scheduler and on a device,
-    // and both are claimed under `cycleMutex` so a window cannot be observed open by two claimants.
+    // and both are armed and read under `cycleMutex` so a window cannot be observed open by two
+    // claimants and a superseded timer cannot reopen a window a newer arming already holds.
     private val debounceWindow = AdmissionWindow()
     private val floorWindow = AdmissionWindow()
 
     // Automatic triggers that arrived inside a window and are waiting for it to open. Parked, never
     // refused: whichever claim finds the windows open takes the whole batch, so a burst becomes one
     // cycle and no trigger is lost.
+    @Volatile
     private var parkedRequests = emptyList<SyncRequest>()
 
     // The completion of the currently active cycle, held so `shutdown()` can complete it directly.
@@ -346,6 +349,15 @@ internal class DefaultSyncController(
                     val followUp = pendingFollowUp ?: PendingFollowUp().also { pendingFollowUp = it }
                     followUp.reasons += reason
                     followUp.requests += request
+                    // Publish the awaiter, then re-check. `shutdown()` sets `shuttingDown` before it
+                    // reads the awaiters, so with this order one of the two sides always observes the
+                    // other: a caller of `sync()` is either completed there or refused here, and is
+                    // never left suspended on a deferred nothing completes (`D-172`). Checking the
+                    // flag only on entry reopens exactly that gap.
+                    if (shuttingDown) {
+                        followUp.requests -= request
+                        request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+                    }
                     return Admission(request, cycle = null)
                 }
                 // The request joins the parked batch before any window is read, so every admission
@@ -353,6 +365,14 @@ internal class DefaultSyncController(
                 // opens the window it waits on. Parking unconditionally is also what makes coalescing
                 // exact - `claim()` answers every parked trigger, never only the last arrival.
                 parkedRequests += request
+                // The same publish-then-re-check as the follow-up branch above: the parked request is
+                // visible to `shutdown()` before the flag is read a second time, so a shutdown that
+                // raced this admission cannot leave it unanswered (`D-172`).
+                if (shuttingDown) {
+                    parkedRequests -= request
+                    request.completion.complete(Outcome.Err(PersistenceError.DatabaseUnavailable))
+                    return Admission(request, cycle = null)
+                }
                 if (reason != SyncTrigger.PullToRefresh) {
                     // A post-write trigger is what opens the debounce window, armed before the window
                     // is read so the delay is measured from the mutation that caused the trigger.
@@ -389,9 +409,24 @@ internal class DefaultSyncController(
         armWindow(debounceWindow, SYNC_POST_WRITE_DEBOUNCE_MS)
     }
 
-    /** Arms the minimum interval between automatic cycles, anchored to a cycle start. */
-    private fun armFloorWindow() {
-        armWindow(floorWindow, SYNC_MIN_AUTOMATIC_INTERVAL_MS)
+    /**
+     * Arms the minimum interval between automatic cycles, anchored to a cycle start, taking
+     * `cycleMutex` first.
+     *
+     * The lock is REQUIRED here and is not decoration. Every other reader and writer of an
+     * [AdmissionWindow] - `admit`, `windowsOpen`, `canClaimForParkedRequests` and the timer body in
+     * [armWindow] - runs under `cycleMutex`, while this function's only caller, `executeCycle`, runs
+     * on the graph scope's multi-threaded dispatcher holding no lock. An unguarded write here can
+     * interleave with the previous timer's critical section: that timer reads the generation, this
+     * function then sets `pending = true` and bumps the generation, and the timer finishes by writing
+     * `pending = false`, which reopens the 30 s floor that was just armed and admits an automatic
+     * cycle inside the `§9.8` minimum interval.
+     *
+     * `executeCycle` holds no lock when it calls this, so taking a non-reentrant `Mutex` here cannot
+     * deadlock.
+     */
+    private suspend fun armFloorWindowLocked() {
+        cycleMutex.withLock { armWindow(floorWindow, SYNC_MIN_AUTOMATIC_INTERVAL_MS) }
     }
 
     /**
@@ -577,7 +612,7 @@ internal class DefaultSyncController(
         // no work to space out, and spacing it out would only delay the retry that follows a failure
         // which is not about the network. `§9.8` measures the interval between automatic cycles that
         // ran, so it is anchored to the moment this one reached the remote steps.
-        armFloorWindow()
+        armFloorWindowLocked()
         val pullFirst = persistence.isOwnerDatabaseEmpty(ownerId)
         if (pullFirst) {
             pull(ownerId, cycleId)
