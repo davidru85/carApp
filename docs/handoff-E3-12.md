@@ -40,24 +40,35 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-22 (implementation complete, verification in flight)
+- Date: 2026-09-22 (pull request open, awaiting the owner's gated review)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
-- Current phase and latest commit: REFACTOR complete at `7dd5bd8`. The cycle beneath it is RED
-  `3d406ae`, GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the list gate) and REFACTOR `7dd5bd8`
-  (decision records, mirrors, golden header).
-- Push and pull-request status: branch is local only. Nothing pushed; no pull request yet.
+- Current phase and latest commit: complete at `3302e04`. The cycle beneath it is RED `3d406ae`,
+  GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the list gate), REFACTOR `7dd5bd8` (decision
+  records, mirrors, golden header), `368af27` (story records) and `3302e04` (the non-vacuity
+  correction to the anonymous-identity assertion).
+- Push and pull-request status: pushed. Pull request #73 is open against `main`; the owner's gated
+  review is the merge gate, and the agent does not merge it.
 - Completed since the previous checkpoint: both defects identified at intake are fixed, the six
-  cross-device assertions pass, `D-188` and ADR-0189 are registered with the four mirroring rows,
-  `§9.8` and `§20.10` carry the new rules, the golden Objective-C header is regenerated, and the
-  complete `AGENTS.md` command is green.
-- Verification evidence and known failures: the complete non-instrumented command passes
-  (`BUILD SUCCESSFUL in 33s`, 31 or more contract assertions with none `PENDING`); the API 36
-  instrumented suite passes 17 tests with 0 failures; the iOS simulator action is recorded under
-  Verification Run. No known failure is outstanding.
+  cross-device assertions pass, two mutation probes prove the suite is bound to the production code,
+  `D-188` and ADR-0189 are registered with the four mirroring rows, `§9.8` and `§20.10` carry the new
+  rules, the golden Objective-C header is regenerated, and the story records are written.
+- Verification evidence and known failures: the complete non-instrumented command passes; the API 36
+  instrumented suite passes 17 tests with 0 failures; the iOS simulator action reports
+  `** TEST SUCCEEDED **` with 45 unit and 27 UI tests. On CI, eight of the ten required checks pass
+  (`architecture-check`, `detekt`, `ktlint`, `contract-check`, `android-assemble`,
+  `android-instrumented-tests`, `objc-header-golden-check`, `ios-simulator-build`).
+  `shared-tests` and `provider-decoupling` fail, both by **step timeout** in their Android-host step
+  and both with the stall signature already recorded for this repository: the log shows hundreds of
+  `STARTED` lines, **zero** `PASSED` and **zero** `FAILED`, and the step is killed at its limit. The
+  same two steps pass locally and repeatedly — the exact `provider-decoupling` Android-host command
+  ran three times in 15-19 s, and `LocalOwnerAdoptionTriggerTest`, the class where the CI log stops,
+  finished in 7 s. The defect is pre-existing and not attributable to this story: `main` at `65e7056`
+  fails the identical step, `Run provider-free Android host tests`, with the identical 8-minute
+  timeout (run `35718785707`, job `106716495077`). The jobs were re-requested on the pushed head.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
-- Exact next step: finish the iOS simulator run, then push the branch and open the pull request for
+- Exact next step: confirm the ten required checks on the pushed head, then hand pull request #73 to
   the owner's gated review.
 
 ## Reconnaissance Findings
