@@ -989,7 +989,15 @@ Human review required.
 
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
+Status: implemented on `story/E3-12-cross-device-recovery-proof`, awaiting the owner's gated review.
+Evidence is in `docs/handoff-E3-12.md`. It introduced `D-188`.
+
 Prove recovery at the first point where permanent authentication and complete sync coexist.
+
+Two defects found during this story are fixed here, because criterion 1 is unreachable while either
+stands: nothing in the closed `SyncTrigger` inventory named a newly resolved owner as a cause, and an
+empty list whose owner's recovery was still outstanding was published as a confirmed empty list,
+which F-1 answers with non-dismissible first-run creation.
 
 Acceptance criteria:
 
@@ -1919,7 +1927,7 @@ proof after E3-04.
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring (implemented, PR pending) | 3 | M | Yes |
 | E3-04 Repository sync wiring (implemented, PR pending) | 3 | M | Yes |
-| E3-12 Permanent-account cross-device recovery proof | 3 | S | Yes |
+| E3-12 Permanent-account cross-device recovery proof (implemented, PR pending) | 3 | S | Yes |
 | E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |

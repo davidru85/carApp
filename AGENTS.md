@@ -143,9 +143,10 @@ review.
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-12`,
-  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`, `E3-20` and
-  `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
+- **Remaining Phase 3:** `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
+  `E3-20` and `E3-21`. `E3-12`, the permanent-account cross-device recovery proof, is implemented on
+  `story/E3-12-cross-device-recovery-proof` (pull request pending), awaiting the owner's gated review;
+  it introduced `D-188` and its evidence is in `docs/handoff-E3-12.md`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
   #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
   through pull request #70 with `D-172` accepted as option D, `E3-03`, the `:core:sync` engine,
   merged on 2026-09-17 through pull request #69, and `E3-08`, the app graph and Firebase wiring,
