@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-22 — `E3-04` correction: the parked batch a spent window left behind
+
+- **Type:** correction
+- **Story / Decision:** `E3-04` / `D-186`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
+- **What changed:** `drainCycles` now claims the parked `§9.8` batch when a cycle ends, using the same `canClaimForParkedRequests()` predicate the window timer uses, and performs the publish-then-re-read shutdown handshake around the claim. `AndroidAppGraph.syncController()` and its now-unused `SyncController` import were removed. Three statements in `docs/handoff-E3-04.md` were corrected: the Android worker both requested the cycle and named `androidAppGraph.requestPeriodicSync()`, so it did not describe the `D-187` await; the iOS clock was described as `ProcessInfo.systemUptime`; and the acceptance criterion quoted the superseded fire-and-forget wording.
+- **Why:** `serveParkedWhenWindowsOpen()` is reached only from a window timer, and its predicate requires `!cycleRunning`. A window that opened while a `PullToRefresh` cycle was running therefore served nothing and spent itself; if that cycle then returned before `armFloorWindowLocked()` - the connectivity gate, the `LOCAL_OWNER` gate, or a throwing `adoption()` that schedules no retry - no timer remained and the batch waited for an unrelated later trigger, which may be the six-hour `Periodic` cadence. That is precisely the dropped trigger ADR-0187 forbids, and the rejected Option B behaviour of the same ADR. Evidence that names functions the branch does not contain is not acceptance evidence, which `AGENTS.md` requires.
+- **Documents touched:** `docs/handoff-E3-04.md`, `docs/PROJECT_LOG.md`.
+- **Verification:** the regression is `SyncAdmissionPolicyTest.aWindowThatOpensDuringAManualCycleStillServesItsParkedTrigger`, observed failing with `a parked trigger MUST be served once its window is open and no cycle is running` against the pre-correction controller and passing after it. `:core:sync:testAndroidHostTest` reports 105 tests and 0 failures; the complete `AGENTS.md` command is green with every `contractCheck` assertion `PASS` and none `PENDING`; the Objective-C golden header is byte-identical; `AndroidAppGraph.syncController` has no reference left in `androidApp/`.
+- **Follow-ups / risks:** the `shared-tests` stall recorded in earlier entries still needs an owner, since `E1-14` and `E1-17` are merged. Claiming the parked batch at the end of a cycle runs one more cycle than before in that specific interleaving, which is the intended `D-186` behaviour rather than a new cost: the batch was always owed a cycle, and the alternative was dropping it.
+
+
 ### 2026-09-21 — `E3-04` correction: platform lease completion, shutdown snapshot and iOS clock
 
 - **Type:** correction
