@@ -445,11 +445,13 @@ class CrossDeviceRecoveryTest {
             condition: suspend () -> Boolean,
         ) {
             awaitCondition(expectation) {
-                // A full graph span, because a cycle has to cross the `§9.8` post-write debounce and
-                // the 30 s automatic floor before it reaches its remote steps. `runCurrent` then
-                // drains what the advance released, and the `condition` call itself suspends on real
-                // SQLite work, which is the only clock the bundled driver obeys.
-                testScope.advanceGraphWork()
+                // One post-write debounce plus a margin per poll: enough for a parked trigger to be
+                // released, and deliberately not a full graph span, because repeatedly crossing the
+                // 30 s automatic floor would re-arm it and keep a cycle chain alive in virtual time
+                // instead of letting the awaited work finish. The `condition` call itself suspends on
+                // real SQLite work, which is the only clock the bundled driver obeys.
+                testScope.advanceTimeBy(RECOVERY_POLL_SPAN)
+                testScope.runCurrent()
                 condition()
             }
         }
@@ -540,11 +542,8 @@ class CrossDeviceRecoveryTest {
         const val PRICE_PER_LITER_SCALED = 1_650L
         const val NOW_MILLIS = 1_767_225_600_000L
 
-        /**
-         * One `§9.8` post-write debounce plus a margin, so a poll releases the parked trigger without
-         * also crossing the 30 s floor that would defer the next automatic cycle.
-         */
-        val POST_WRITE_DEBOUNCE_ALLOWANCE = 3.seconds
+        /** One `§9.8` post-write debounce plus a margin, per poll. */
+        val RECOVERY_POLL_SPAN = 3.seconds
     }
 }
 

@@ -275,6 +275,12 @@ Exact commands, and their result.
   exactly `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding` with
   `a known empty list is the state F-1 mandatory first-run creation reads`, which is the second
   defect observed against the unfixed code. The mutation was reverted.
+- **Poll-span reduction.** `settle()` now advances one post-write debounce plus a margin per poll
+  instead of a full 60 s graph span. Repeatedly crossing the 30 s automatic floor would re-arm it in
+  virtual time and keep a cycle chain alive instead of letting the awaited work finish, so the smaller
+  span is both cheaper and closer to what the test means. All six assertions still pass, mutation
+  probe 1 still fails all six, and `:shared:testAndroidHostTest --rerun-tasks` passed 8 consecutive
+  times after the change.
 - **Non-vacuity correction.** The anonymous-identity test originally let its second device start
   already signed in, so no owner transition occurred and "it recovered nothing" was trivially true.
   The device now starts signed out and the test waits for its recovery cycle to run, so the assertion
