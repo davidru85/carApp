@@ -62,10 +62,18 @@ Update this section at every material state change and before yielding unfinishe
   and both with the stall signature already recorded for this repository: the log shows hundreds of
   `STARTED` lines, **zero** `PASSED` and **zero** `FAILED`, and the step is killed at its limit. The
   same two steps pass locally and repeatedly — the exact `provider-decoupling` Android-host command
-  ran three times in 15-19 s, and `LocalOwnerAdoptionTriggerTest`, the class where the CI log stops,
-  finished in 7 s. The defect is pre-existing and not attributable to this story: `main` at `65e7056`
-  fails the identical step, `Run provider-free Android host tests`, with the identical 8-minute
-  timeout (run `35718785707`, job `106716495077`). The jobs were re-requested on the pushed head.
+  ran 6 consecutive times in 15-19 s, and the shared suite passed 8 consecutive runs. The defect is pre-existing and not attributable to this story, and three
+  independent facts establish that the head does not cause it. `main` at `65e7056` fails the identical
+  step, `Run provider-free Android host tests`, with the identical 8-minute timeout and the identical
+  signature (run `35718785707`, job `106716495077`: 68 `STARTED`, 0 `PASSED`). The stall point is not
+  stable — in `main` it is inside `FuelEntryStateHolderTest` and on this branch inside
+  `AppGraphTriggerWiringTest`, which is what an environment stall looks like rather than a defective
+  test. And the steps still fit their ceilings comfortably on a healthy runner: in that same `main`
+  run, `Run Android application and KMP host tests` completed in **211 s** against its 600 s limit, so
+  the timeout is not a budget this story's work consumes. On this branch the exact
+  `provider-decoupling` Android-host command passed **6 consecutive times** under
+  `-Pcarapp.excludeFirebaseProviders=true`, and the whole shared suite passed 8 consecutive times.
+  The jobs were re-requested on the pushed head.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Exact next step: confirm the ten required checks on the pushed head, then hand pull request #73 to
