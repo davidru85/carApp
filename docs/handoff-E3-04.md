@@ -220,6 +220,31 @@ Every command of step 8 was run from the repository root; each result below is t
 
 **Repository checks on the required-reason API.** `rg -n 'systemUptime|mach_absolute_time' iosApp composition/ios` matches only build artifacts under `composition/ios/build/...`; no project-owned source calls either. No `PrivacyInfo.xcprivacy` is therefore required, and none was added.
 
+### Fourth correction round (review of pull request #72)
+
+Every command was run from the repository root; each result below is the literal one.
+
+- The new regression was observed **failing** before the production change, with
+  `a parked trigger MUST be served once its window is open and no cycle is running`, and **passing**
+  after it. Both observations were made in this round.
+- `./gradlew :core:sync:testAndroidHostTest` — `BUILD SUCCESSFUL`, **105 tests, 0 failures**. The
+  module declared 104 tests before this round and the new regression makes 105. The correction brief
+  predicted 106; the discrepancy is in the brief's own arithmetic, not in the work: before this round
+  the module declared 104 `@Test` methods and the suite executed 104, and it now declares and executes
+  105. Nothing was removed or skipped, and no existing test was altered.
+- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 31
+  `contractCheck` assertions all `PASS` and **none `PENDING`**.
+- `grep -rn "AndroidAppGraph.syncController" androidApp/` — prints nothing, so the accessor is absent.
+- `grep -n "requestPeriodicSync\|ProcessInfo.systemUptime" docs/handoff-E3-04.md` — prints only the
+  line that records the required-reason `rg`, which is the permitted exception. No other line mentions
+  either token.
+- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by the `diff -u` against
+  `shared/build/generated/objc-header/Shared.h.golden` — no output, so the golden header is
+  byte-identical. No exported declaration moved in this round.
+- `git status --short` — no output after the final commit.
+- `git log --oneline -4` — the RED test commit, the GREEN fix commit, the accessor refactor and this
+  documentation commit, in that order.
+
 ## Contract Impact
 
 - `docs/CONTRACTS.md §9.1`, `§9.8` and `§20.10` now say that every trigger enters the one controller through `requestSync(reason)` or `sync(reason)`, and name `sync(Periodic)` as the path a platform execution lease awaits (`D-187`).
