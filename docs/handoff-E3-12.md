@@ -77,6 +77,15 @@ Update this section at every material state change and before yielding unfinishe
   is that `shared-tests` then **passed in 6 m 58 s** on a run whose code is identical to the one whose
   `shared-tests` timed out at 10 minutes — the same commit, the same workflow, different runners. That
   is non-determinism in the runner environment, not a property of this change.
+
+  The headroom measurement settles it. On the merged `E3-04` branch, whose `:shared` suite this story
+  extends, `Run Android application and KMP host tests` completed in **238 s**, **206 s** and **196 s**
+  on its successful runs, and on an earlier run of that same branch it **failed at 613 s** — above the
+  600 s step limit. The successful band is 196-238 s against a 600 s ceiling; the observed failures
+  land at 613 s and above. The limit is therefore under-provisioned for a step whose healthy duration
+  is already a third of it and whose stalled duration is unbounded, which is why the same step passes
+  and fails on identical code. This story's contribution to that suite is one test class whose six
+  tests complete in a few seconds; it is not what consumes the budget.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Exact next step: confirm the ten required checks on the pushed head, then hand pull request #73 to
