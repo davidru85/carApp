@@ -87,6 +87,43 @@ class SwiftTriggerSurfaceContractTest {
         )
     }
 
+    @Test
+    fun aPlatformOwnedTriggerBehindAnAliasedReceiverIsRejected() {
+        // A one-line alias is all it takes to hide the receiver name from the call site. The ban is
+        // about the trigger and the route, so the receiver test is an allowlist rather than a search
+        // for the word `StateHolder`.
+        // The alias is separated from the call by more than the receiver window, which is what makes
+        // this fixture reproduce the defect: a denylist that searches backwards for `StateHolder`
+        // stops seeing the name at all, while the call is still on a holder.
+        val source =
+            """
+            let holder = model.syncStateHolder
+            let unrelatedValue = someObject.somePropertyNameThatTakesUpSpaceInTheWindow
+            let anotherValue = someObject.anotherPropertyNameThatAlsoTakesUpSpaceHere
+            holder.requestSync(reason: .periodic)
+            """.trimIndent()
+
+        assertEquals(
+            listOf("$FIXTURE_PATH:4 requests Periodic"),
+            SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
+            "§20.10 bans Periodic however the holder is named at the call site",
+        )
+    }
+
+    @Test
+    fun thePlatformControllerRouteIsAccepted() {
+        // `§9.1` makes `AppGraph.syncController()` the single in-process controller, so platform
+        // wiring requesting a cycle there is obeying the invariant. Rejecting it would reject the
+        // correct implementation.
+        val source = "graph.syncController().requestSync(SyncTrigger.Periodic)"
+
+        assertEquals(
+            emptyList(),
+            SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
+            "§9.1 requires the platform route through the single SyncController",
+        )
+    }
+
     private fun assertRejected(trigger: String) {
         val violations =
             SwiftTriggerSurfaceRule.violations(
