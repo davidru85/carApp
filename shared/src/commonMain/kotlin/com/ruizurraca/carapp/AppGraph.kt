@@ -144,6 +144,11 @@ internal class DefaultAppGraph(
             },
             isDebugBuild = dependencies.isDebugBuild,
         )
+
+    // Declared after the controller it reports to. The gate is the one sync caller that awaits its
+    // cycle, because it exists to describe an interval.
+    private val ownerRecoveryGate = OwnerRecoveryGate(syncController)
+
     private val vehicleRuntime =
         VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption, syncController)
     private val fuelRepository: FuelEntryRepository =
@@ -194,28 +199,29 @@ internal class DefaultAppGraph(
 
     /**
      * Fires the `§9.8` `OwnerChanged` trigger when the owner this device acts for resolves to a
-     * different identity.
+     * different identity, and holds an empty list unresolved until that cycle completes.
      *
      * This is the trigger a clean device depends on. A first launch, a completed permanent sign-in
      * and an account conversion all move the owner to a UID the local database has never held, so
      * every other trigger describes a cause that has not happened: there is nothing to write, the
      * network never changed, the app may already be in the foreground, and the periodic cadence is
-     * six hours away. Without this, a restored device presents an empty list — which is the state
-     * `SPECIFICATION.md` F-1 first-run creation acts on — while its data sits in Firestore.
+     * six hours away. Without this, a restored device presents an empty list - which is the state
+     * `SPECIFICATION.md` F-1 first-action creation acts on - while its data sits in Firestore.
      *
      * The `LOCAL_OWNER` sentinel is deliberately not a cause. A device that has never authenticated
-     * has nothing remote to fetch, and `§9.2` refuses a cycle under the sentinel anyway, so firing
-     * here would be a request that can only end in a no-op.
+     * has nothing remote to fetch, `§9.2` refuses a cycle under the sentinel anyway, and `§11.2`
+     * requires first launch to reach first-vehicle creation while offline. Skipping it here is what
+     * keeps the gate from holding an offline first run unresolved.
      *
      * Observed with `drop(1)` so the owner already resolved at construction is a baseline rather than
      * a transition: `AuthOwnerContext` publishes its current value on subscription, and treating that
-     * as a change would fire a cycle for every graph the process builds. Collection starts
-     * undispatched so the baseline is read synchronously inside construction; a plain `launch` could
-     * subscribe after the transition it was meant to observe, and the trigger would be lost.
+     * as a change would fire a cycle and raise the gate for every graph the process builds.
+     * Collection starts undispatched so the baseline is read synchronously inside construction; a
+     * plain `launch` could subscribe after the transition it was meant to observe, and the trigger
+     * would be lost.
      *
-     * The cycle is requested, never awaited, so this collector keeps observing and a slow cycle cannot
-     * block a later owner transition. `requestSync` still funnels through the single controller and
-     * the `§9.8` admission windows (`§9.1`).
+     * The cycle runs on its own coroutine so this collector keeps observing: a slow cycle must not
+     * block a later owner transition, and the gate is lowered by the same coroutine that raised it.
      */
     private fun observeOwnerChanges() {
         graphScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -223,7 +229,8 @@ internal class DefaultAppGraph(
                 .observe()
                 .drop(1)
                 .collect { owner ->
-                    if (owner != LOCAL_OWNER) syncController.requestSync(SyncTrigger.OwnerChanged)
+                    if (owner == LOCAL_OWNER) return@collect
+                    graphScope.launch { ownerRecoveryGate.awaitRecovery() }
                 }
         }
     }
@@ -284,6 +291,7 @@ internal class DefaultAppGraph(
             refreshVehicles = vehicleRuntime::refresh,
             ownerContext = dependencies.ownerContext,
             syncStatus = syncController.status,
+            recoveryPending = ownerRecoveryGate.pending,
         )
     }
 

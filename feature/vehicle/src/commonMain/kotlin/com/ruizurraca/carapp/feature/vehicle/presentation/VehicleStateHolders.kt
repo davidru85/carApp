@@ -53,6 +53,7 @@ class VehicleListStateHolder internal constructor(
     private val refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
     syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
+    private val recoveryPending: StateFlow<Boolean> = MutableStateFlow(false),
 ) {
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
@@ -65,6 +66,7 @@ class VehicleListStateHolder internal constructor(
     private var selection: String? = null
     private var message: UiMessage? = null
     private var currentSyncStatus = syncStatus.value
+    private var recoveryPendingNow = recoveryPending.value
 
     // `isLoading` means the vehicle list of the currently resolved owner is not known yet. It stays
     // true until that owner publishes a successful result, an owner transition reopens it, and an
@@ -88,6 +90,18 @@ class VehicleListStateHolder internal constructor(
         holderScope.launch(dispatchers.main) {
             syncStatus.collect { value ->
                 currentSyncStatus = value
+                publishCurrent()
+            }
+        }
+
+    // `E3-12`: an empty list that is empty only because the owner's first recovery cycle has not
+    // finished yet is not a confirmed empty list, and `SPECIFICATION.md` F-1 must not read it as one.
+    // The transition raises this flag before the local observation can publish its zero rows, so the
+    // list stays unknown across the whole recovery window and resolves with the recovered data.
+    private val recoveryJob =
+        holderScope.launch(dispatchers.main) {
+            recoveryPending.collect { pending ->
+                recoveryPendingNow = pending
                 publishCurrent()
             }
         }
@@ -146,6 +160,7 @@ class VehicleListStateHolder internal constructor(
         observationJob = null
         ownerJob.cancel()
         syncStatusJob.cancel()
+        recoveryJob.cancel()
         holderScope.cancel()
     }
 
@@ -187,11 +202,16 @@ class VehicleListStateHolder internal constructor(
     private fun publishCurrent() {
         val result = listing
         val readError = (result as? Outcome.Err)?.error
+        val knownCount = (result as? Outcome.Ok)?.value?.count { vehicle -> vehicle.deletedAt == null } ?: 0
         mutableState.value =
             VehicleListUiState(
-                // An unresolved owner and an unreadable list are both "not known", and neither is a
-                // confirmed empty list that may open first-vehicle creation.
-                isLoading = result == null || readError != null,
+                // An unresolved owner, an unreadable list, and an empty list whose owner's recovery is
+                // still outstanding are all "not known", and none is a confirmed empty list that may
+                // open first-vehicle creation (`D-116`, `D-120`, `E3-12`).
+                isLoading =
+                    result == null ||
+                        readError != null ||
+                        (recoveryPendingNow && knownCount == 0),
                 vehicles =
                     (result as? Outcome.Ok)
                         ?.value
@@ -409,8 +429,17 @@ fun createVehicleListStateHolder(
     refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
     syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
+    recoveryPending: StateFlow<Boolean> = MutableStateFlow(false),
 ): VehicleListStateHolder =
-    VehicleListStateHolder(scope, repository, dispatchers, refreshVehicles, ownerContext, syncStatus)
+    VehicleListStateHolder(
+        scope,
+        repository,
+        dispatchers,
+        refreshVehicles,
+        ownerContext,
+        syncStatus,
+        recoveryPending,
+    )
 
 @HiddenFromObjC
 fun createVehicleFormStateHolder(
