@@ -16,6 +16,7 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.DispatcherProvider
+import com.ruizurraca.carapp.core.common.FOREGROUND_RESUME_THRESHOLD_MS
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
@@ -695,6 +696,24 @@ class SyncStateHolder internal constructor(
 
     fun requestSync(reason: SyncTrigger) {
         if (!closed) controller.requestSync(reason)
+    }
+
+    /**
+     * Reports entering the foreground and applies the `§9.8` foreground rule.
+     *
+     * [backgroundMillis] is how long the app spent in the background, or `null` for a cold start,
+     * which has no measurable background duration and is always a trigger (`§9.8` names both cases).
+     * The host observes the platform lifecycle and supplies that fact; the rule is applied here so
+     * both hosts report the same primitive and neither repeats the comparison, which also keeps the
+     * behaviour under one shared test instead of two platform-specific ones. A return of exactly the
+     * threshold is not a trigger, because `§9.8` requires **more than**
+     * `FOREGROUND_RESUME_THRESHOLD_MS` in the background.
+     */
+    fun onForegroundReturn(backgroundMillis: Long?) {
+        if (closed) return
+        if (backgroundMillis == null || backgroundMillis > FOREGROUND_RESUME_THRESHOLD_MS) {
+            controller.requestSync(SyncTrigger.AppForeground)
+        }
     }
 
     fun retryFailed() {

@@ -76,7 +76,6 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListUiState
-import com.ruizurraca.carapp.wiring.firebase.firebaseAppProviders
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -105,14 +104,11 @@ class MainActivity : ComponentActivity() {
 internal class VehicleAppViewModel(
     application: Application,
 ) : ViewModel() {
-    private val providers =
-        firebaseAppProviders(
-            databaseFilePath = application.getDatabasePath(DATABASE_FILE_NAME).absolutePath,
-            localeProvider = AndroidLocaleProvider(),
-            connectivityObserver = AndroidConnectivityObserver.fromSystemService(application),
-        )
+    // The graph is process-scoped (§9.1): a WorkManager worker must reach the same SyncController,
+    // and this ViewModel only consumes it. `onCleared` therefore releases this Activity's own holders
+    // and deliberately does not close the graph, which outlives every Activity of the process.
+    private val graph = AndroidAppGraph.require()
     val isDebugBuild = application.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
-    private val graph = buildAppGraph(isDebugBuild = isDebugBuild, providers = providers)
     val sessionStateHolder: SessionStateHolder = graph.sessionStateHolder(scope = viewModelScope)
     val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
     val syncStateHolder: SyncStateHolder = graph.syncStateHolder(scope = viewModelScope)
@@ -163,7 +159,6 @@ internal class VehicleAppViewModel(
         sessionStateHolder.close()
         vehicleListStateHolder.close()
         syncStateHolder.close()
-        graph.close()
     }
 
     companion object {
@@ -185,7 +180,12 @@ private fun VehicleApp(
     val onGoogle = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
 
     // Launch and foreground return are the only evaluation moments of the D-62 schedule (§11.3).
-    OnForegroundReturn(viewModel.sessionStateHolder::evaluateAnonymousReminder)
+    // The same edge is the §9.8 AppForeground trigger: the holder applies the background-duration
+    // threshold, so the host only reports the fact it observed.
+    OnForegroundReturn { backgroundMillis ->
+        viewModel.sessionStateHolder.evaluateAnonymousReminder()
+        viewModel.syncStateHolder.onForegroundReturn(backgroundMillis)
+    }
 
     when (resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)) {
         OnboardingDestination.WAITING -> {

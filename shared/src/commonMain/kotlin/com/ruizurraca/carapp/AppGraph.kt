@@ -7,6 +7,7 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
 import com.ruizurraca.carapp.core.database.AccountDepartureDatabaseAccess
@@ -34,11 +35,14 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleFormStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.createVehicleListStateHolder
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.transform
@@ -74,6 +78,16 @@ interface AppGraph {
     fun syncController(): SyncController
 
     fun close()
+
+    /**
+     * Releases the graph, then suspends until the `DatabaseHandle` has actually been closed.
+     *
+     * `close()` returns as soon as the scope is cancelled: the handle is released by a bounded waiter
+     * on another coroutine, because releasing it before graph-owned work has drained is the `D-172`
+     * hazard. A caller that needs the file to be genuinely free - deleting it, for instance - MUST
+     * await this instead of assuming `close()` finished the release.
+     */
+    suspend fun awaitClosed()
 }
 
 internal class DefaultAppGraph(
@@ -81,6 +95,10 @@ internal class DefaultAppGraph(
 ) : AppGraph {
     @Volatile
     private var closed = false
+
+    // Completed by whichever path releases the handle, so `awaitClosed()` can observe the release
+    // rather than assume it.
+    private val closeCompletion = CompletableDeferred<Unit>()
     private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
     private val accountConversion =
@@ -128,15 +146,19 @@ internal class DefaultAppGraph(
     private val vehicleRuntime =
         VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption, syncController)
     private val fuelRepository: FuelEntryRepository =
-        AdoptionNotifyingFuelEntryRepository(
+        SyncRequestingFuelEntryRepository(
             delegate =
-                SqlDelightFuelEntryRepository(
-                    databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-                    ownerContext = dependencies.ownerContext,
-                    clock = dependencies.clock,
-                    uuidGenerator = dependencies.uuidGenerator,
+                AdoptionNotifyingFuelEntryRepository(
+                    delegate =
+                        SqlDelightFuelEntryRepository(
+                            databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
+                            ownerContext = dependencies.ownerContext,
+                            clock = dependencies.clock,
+                            uuidGenerator = dependencies.uuidGenerator,
+                        ),
+                    adoption = localOwnerAdoption,
                 ),
-            adoption = localOwnerAdoption,
+            syncController = syncController,
         )
     private val anonymousReminders =
         SqlDelightAnonymousReminderRepository(
@@ -164,6 +186,55 @@ internal class DefaultAppGraph(
                 }
         }
         localOwnerAdoption.launchIn(graphScope)
+        observeConnectivityRecovery()
+        arrangePeriodicScheduling()
+    }
+
+    /**
+     * Hands the `§9.8` `Periodic` trigger to the platform scheduler through the injected
+     * `SyncTriggerAdapter` (`§20.10`).
+     *
+     * This is the one trigger that genuinely needs a platform scheduler: a 6-hour cadence survives
+     * process death only as `WorkManager` unique periodic work or a `BGAppRefreshTask`, and neither is
+     * reachable from shared code. `PostWriteDebounce` and `ConnectivityRecovered` are deliberately
+     * *not* routed here: both are in-process events the graph already observes directly (a commit and
+     * a connectivity edge), so sending them to a platform scheduler would add latency and duplicate a
+     * trigger that is already exact.
+     *
+     * Arranged once per graph. The scheduler is asked to *hold* the cadence, not to fire a cycle now;
+     * when the platform fires, its worker calls `requestSync(Periodic)` on this same controller, which
+     * is what keeps `§9.1`'s single in-process controller authoritative.
+     */
+    private fun arrangePeriodicScheduling() {
+        dependencies.syncTriggerAdapter.schedule(SyncTrigger.Periodic)
+    }
+
+    /**
+     * Fires the `§9.8` `ConnectivityRecovered` trigger on the offline-to-online edge.
+     *
+     * The trigger is the *transition*, not the value: a device that is already online produces no
+     * recovery, so the observer's current value is the baseline and only a later change can trigger.
+     * That is also why the trigger is derived here rather than in the controller: only the graph owns
+     * the observer, and the engine must not depend on a platform signal to decide its own admission
+     * (`§9.1`).
+     *
+     * Collection starts undispatched so the baseline is read synchronously inside construction. With a
+     * plain `launch` the collector could subscribe after the device had already recovered, `drop(1)`
+     * would discard that recovery as if it were the baseline, and the trigger would be lost until the
+     * next connectivity change - which for a device that stays online is never.
+     *
+     * The cycle is requested, never awaited, so the collector keeps observing.
+     * `ConnectivityRecovered` is also the reason-dependent step that makes connectivity-only failures
+     * due again (`§9.7`).
+     */
+    private fun observeConnectivityRecovery() {
+        graphScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            dependencies.connectivityObserver.isOnline
+                .drop(1)
+                .collect { online ->
+                    if (online) syncController.requestSync(SyncTrigger.ConnectivityRecovered)
+                }
+        }
     }
 
     override fun vehicleListStateHolder(scope: CoroutineScope): VehicleListStateHolder {
@@ -271,7 +342,7 @@ internal class DefaultAppGraph(
         val job = graphScope.coroutineContext[Job]
         graphScope.cancel()
         if (job == null) {
-            databaseHandle.close()
+            releaseDatabase()
             return
         }
         // The handle must not be released while graph-owned work is still running, and `cancel()` does
@@ -282,8 +353,24 @@ internal class DefaultAppGraph(
         // lock, which common code has no synchronous form of.
         CoroutineScope(SupervisorJob() + dependencies.dispatchers.io).launch {
             withTimeoutOrNull(RELEASE_BACKSTOP_MILLIS) { job.join() }
-            databaseHandle.close()
+            releaseDatabase()
         }
+    }
+
+    /**
+     * The single release path, so the handle is closed once and `awaitClosed()` observes it.
+     *
+     * `close()` is idempotent, so the backstop and the join can both reach the waiter; only the first
+     * one closes and completes, which keeps the `D-89` "at most once" rule.
+     */
+    private fun releaseDatabase() {
+        databaseHandle.close()
+        closeCompletion.complete(Unit)
+    }
+
+    override suspend fun awaitClosed() {
+        close()
+        closeCompletion.await()
     }
 
     private fun checkOpen() {

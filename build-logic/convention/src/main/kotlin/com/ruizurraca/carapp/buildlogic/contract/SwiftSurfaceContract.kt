@@ -586,7 +586,12 @@ internal class SwiftSurfaceContract(
             "the Kotlin-facing AppGraph of §20.10 declares exactly the members of the real interface"
         const val ASSERTION_35 =
             "the Swift-facing SwiftAppGraph of §20.10 declares exactly the exported members of the real class"
-        val NON_HOLDER_MEMBERS = setOf("close", "syncController")
+        /**
+         * The `AppGraph` members that are deliberately neither a state-holder factory nor a scope
+         * owner. `awaitClosed` joins them because the hidden Kotlin-facing interface declares it and
+         * `§20.10` documents it; every other member is still rejected when it is neither.
+         */
+        val NON_HOLDER_MEMBERS = setOf("close", "syncController", "awaitClosed")
         val HOLDER_SOURCES = listOf(
             "shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt",
             "feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt",

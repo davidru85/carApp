@@ -966,11 +966,17 @@ Human review required.
 
 Replace no-op remote sources with real sync wiring and platform triggers.
 
+Status: implemented on `story/E3-04-repository-sync-wiring`, awaiting the owner's gated review.
+Evidence is in `docs/handoff-E3-04.md`.
+
 Acceptance criteria:
 
 - The UI still observes only local database flows.
 - The five triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
-- Platform workers only call `SyncController.requestSync(reason)`.
+- Platform workers and handlers enter only the process graph's `SyncController`: foreground and
+  in-process triggers use `requestSync(reason)`, while a platform-owned periodic execution lease
+  awaits `sync(Periodic)` before reporting completion. They hold no repository, database handle or
+  second graph (`D-187`).
 - No state holder change is required for sync correctness.
 - **`E3-03` wired the post-write `requestSync(PostWriteDebounce)` call sites in
   `VehicleSliceRuntime`, so enforcement is what remains here.** `SYNC_POST_WRITE_DEBOUNCE_MS` (2 s)
@@ -978,6 +984,8 @@ Acceptance criteria:
   and `DefaultSyncController.requestSync` starts a cycle immediately with no coalescing window and no
   floor between automatic cycles. `E3-04` MUST enforce both constants, or record explicitly why one is
   not enforced.
+
+Human review required.
 
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
@@ -1910,7 +1918,7 @@ proof after E3-04.
 | E3-02 Firestore RemoteSyncSource (completed, PR #68) | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring (implemented, PR pending) | 3 | M | Yes |
-| E3-04 Repository sync wiring | 3 | M | — |
+| E3-04 Repository sync wiring (implemented, PR pending) | 3 | M | Yes |
 | E3-12 Permanent-account cross-device recovery proof | 3 | S | Yes |
 | E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |

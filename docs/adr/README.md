@@ -187,5 +187,12 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-178 | [ADR-0179](0179-define-wiring-product-logic-as-a-declaration-shape.md) | Define `:wiring:firebase` product logic as a declaration shape. | Accepted |
 | D-179 | [ADR-0180](0180-name-integration-implementations-in-wiring-only.md) | Name `:integration:*` implementations in `:wiring:firebase` only. | Accepted |
 | D-180 | [ADR-0181](0181-guard-both-app-graph-surfaces.md) | Guard both `AppGraph` surfaces by parsing the contract. | Accepted |
+| D-181 | [ADR-0182](0182-make-the-sync-trigger-adapter-the-scheduling-port.md) | Make the `SyncTriggerAdapter` the real platform scheduling port. | Accepted |
+| D-182 | [ADR-0183](0183-make-the-app-graph-process-scoped.md) | Make the app graph process-scoped. | Accepted |
+| D-183 | [ADR-0184](0184-apply-the-foreground-threshold-in-shared-code.md) | Apply the foreground resume threshold in shared code. | Accepted |
+| D-184 | [ADR-0185](0185-pin-workmanager-for-the-android-background-cadence.md) | Pin WorkManager for the Android background cadence. | Accepted |
+| D-185 | [ADR-0186](0186-enforce-the-ios-trigger-ban-as-a-source-rule.md) | Enforce the iOS trigger ban as a source rule, not a Konsist fixture. | Accepted |
+| D-186 | [ADR-0187](0187-enforce-the-sync-admission-windows-by-parking.md) | Enforce the `§9.8` admission windows by parking, not refusing. | Accepted |
+| D-187 | [ADR-0188](0188-await-platform-periodic-sync-before-completing-background-work.md) | Await the periodic sync before completing platform background work. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

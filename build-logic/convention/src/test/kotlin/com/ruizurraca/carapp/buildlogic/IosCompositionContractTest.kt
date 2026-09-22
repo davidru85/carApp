@@ -157,9 +157,97 @@ class IosCompositionContractTest {
     }
 
     @Test
+    fun theSingleBackgroundTaskIdentifierIsDeclaredInBothPlacesThatMustAgree() {
+        val scheduling = repositoryRoot.resolve(IOS_SCHEDULING_PATH).readText()
+        val infoPlist = repositoryRoot.resolve(IOS_INFO_PLIST_PATH).readText()
+
+        // `§9.1` permits exactly one `BGTaskScheduler` identifier. It is written twice - once in the
+        // Kotlin registration and once in the Info.plist allowlist the platform reads - and the two
+        // are not connected by the compiler. A divergence fails only at runtime, with an NSLog line
+        // and a silently dead six-hour cadence, so the agreement is asserted here instead.
+        val declared =
+            Regex("""const val SYNC_TASK_IDENTIFIER = "([^"]+)"""")
+                .find(scheduling)
+                ?.groupValues
+                ?.get(1)
+        assertTrue(declared != null, "IosSyncScheduling MUST declare SYNC_TASK_IDENTIFIER as a string constant")
+        assertTrue(
+            infoPlist.contains("<key>BGTaskSchedulerPermittedIdentifiers</key>"),
+            "Info.plist MUST permit the background task identifier, or registration is refused",
+        )
+        assertTrue(
+            infoPlist.contains("<string>$declared</string>"),
+            "Info.plist MUST permit exactly the identifier the Kotlin registration uses; declared=$declared",
+        )
+        assertTrue(
+            infoPlist.contains("<key>UIBackgroundModes</key>"),
+            "a BGAppRefreshTask requires the fetch background mode",
+        )
+        // One identifier, not two (`§9.1`).
+        assertEquals(
+            1,
+            Regex("""const val SYNC_TASK_IDENTIFIER""").findAll(scheduling).count(),
+            "§9.1 permits a single BGTaskScheduler identifier",
+        )
+    }
+
+    @Test
+    fun theSingleBackgroundTaskIdentifierIsRegisteredInTheIdentifierRegistry() {
+        val identifiers = repositoryRoot.resolve(IOS_IDENTIFIERS_PATH).readText()
+
+        // `docs/identifiers.md` is the canonical registry `AGENTS.md` forbids agents to bypass, and it
+        // did not mention the scheduler identifier at all. It is not a bundle identifier, so the
+        // registry row is the only place it is recorded as shared by Debug and Release.
+        assertTrue(
+            identifiers.contains("com.ruizurraca.carapp.sync"),
+            "docs/identifiers.md MUST register the single BGTaskScheduler identifier",
+        )
+    }
+
+    @Test
+    fun bothPlatformLeasesAwaitThePeriodicCycleBeforeReportingCompletion() {
+        val ios = repositoryRoot.resolve(IOS_SCHEDULING_PATH).readText()
+
+        // `D-187`: `setTaskCompletedWithSuccess` tells iOS the task has ended, so completing before
+        // the cycle finished would let the system suspend the process mid-cycle.
+        assertTrue(
+            ios.contains("sync(SyncTrigger.Periodic)"),
+            "the iOS handler MUST await the periodic cycle on the process graph",
+        )
+        assertTrue(
+            ios.contains("expirationHandler"),
+            "the iOS handler MUST install an expiration handler for an overrunning cycle",
+        )
+        // The handler is installed before the job starts, so an expiry arriving immediately cannot
+        // leave the task with nothing to complete it.
+        assertTrue(
+            ios.indexOf("expirationHandler") < ios.indexOf("syncJob.start()"),
+            "the expiration handler MUST be installed before the cycle is started",
+        )
+        // Exactly one completion call site, guarded so the expiry and the cycle cannot both complete
+        // it. The receiver is part of the pattern so a mention inside a comment is not counted.
+        val completions = Regex("\\.setTaskCompletedWithSuccess\\(").findAll(ios).count()
+        assertTrue(
+            completions == 1,
+            "iOS MUST call setTaskCompletedWithSuccess exactly once, from the idempotent gate; found $completions",
+        )
+        assertTrue(
+            ios.contains("class BackgroundTaskCompletion"),
+            "the single completion MUST be guarded by the idempotent gate",
+        )
+        // The fire-and-forget periodic request is gone from the platform path.
+        assertFalse(
+            ios.contains("requestSync(SyncTrigger.Periodic)"),
+            "the iOS platform lease MUST NOT fire and forget the periodic cycle",
+        )
+    }
+
+    @Test
     fun bothHostsInjectRealPlatformConnectivityIntoTheProviderGraph() {
         val swiftFactory = repositoryRoot.resolve(CREATE_SWIFT_APP_GRAPH_PATH).readText()
-        val androidHost = repositoryRoot.resolve(ANDROID_MAIN_ACTIVITY_PATH).readText()
+        // The Android graph is process-scoped (`§9.1`), so the real connectivity observer is
+        // constructed by the file that builds the graph rather than by the Activity.
+        val androidHost = repositoryRoot.resolve(ANDROID_APP_GRAPH_PATH).readText()
         val androidManifest = repositoryRoot.resolve(ANDROID_MANIFEST_PATH).readText()
         val firebaseProviders = repositoryRoot.resolve(FIREBASE_PROVIDERS_PATH).readText()
         val iosObserverDirectory = repositoryRoot.resolve(IOS_CONNECTIVITY_SOURCE_DIRECTORY)
@@ -230,9 +318,13 @@ class IosCompositionContractTest {
     private companion object {
         const val CREATE_SWIFT_APP_GRAPH_PATH =
             "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/CreateSwiftAppGraph.kt"
-        const val ANDROID_MAIN_ACTIVITY_PATH =
-            "androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt"
+        const val ANDROID_APP_GRAPH_PATH =
+            "androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt"
         const val ANDROID_MANIFEST_PATH = "androidApp/src/main/AndroidManifest.xml"
+        const val IOS_SCHEDULING_PATH =
+            "composition/ios/src/iosMain/kotlin/com/ruizurraca/carapp/scheduling/IosSyncScheduling.kt"
+        const val IOS_INFO_PLIST_PATH = "iosApp/Info.plist"
+        const val IOS_IDENTIFIERS_PATH = "docs/identifiers.md"
         const val FIREBASE_PROVIDERS_PATH =
             "wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt"
         const val IOS_CONNECTIVITY_SOURCE_DIRECTORY =

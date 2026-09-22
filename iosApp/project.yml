@@ -29,6 +29,7 @@ targets:
       - path: AppCheckProviderFactory.swift
       - path: carAppApp.swift
       - path: ScaledFormatting.swift
+      - path: SceneBackgroundTracking.swift
       - path: FuelEntryCalendarDay.swift
       - path: UiMessageMapping.swift
       - path: ViewModels.swift

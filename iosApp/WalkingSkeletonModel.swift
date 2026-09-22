@@ -76,10 +76,19 @@ final class WalkingSkeletonModel: ObservableObject {
         sessionStateHolder.startAnonymousSignIn()
     }
 
-    /// Launch and foreground return are the only evaluation moments of the `D-62` schedule
-    /// (`docs/CONTRACTS.md §11.3`). No scheduler, alarm or user notification is involved.
-    func evaluateAnonymousReminder() {
+    /// The two things a foreground entry does: the `D-146` reminder evaluation of
+    /// `docs/CONTRACTS.md §11.3` and the `§9.8` `AppForeground` trigger.
+    ///
+    /// `backgroundMillis` is how long the scene spent out of `.active`, or `nil` for a cold start,
+    /// which has no measurable background stay and is a trigger in its own right. The threshold is
+    /// applied inside `SyncStateHolder` (`D-183`), so this host reports only the fact it observed.
+    /// No scheduler, alarm or user notification is involved in either call.
+    ///
+    /// Both calls belong to one entry point because `§9.8` and `§11.3` name the same moment, and
+    /// splitting them would let one of the two be forgotten at one of the call sites.
+    func onSceneActivated(backgroundMillis: Int64?) {
         sessionStateHolder.evaluateAnonymousReminder()
+        syncStateHolder.onForegroundReturn(backgroundMillis: backgroundMillis.map { KotlinLong(value: $0) })
     }
 
     func dismissAnonymousReminder() {

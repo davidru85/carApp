@@ -10,16 +10,40 @@ class PlatformHostContractTest {
 
     @Test
     fun androidHostBindsThePersistentGraphToSharedStateHolders() {
+        // The graph is process-scoped (`§9.1`): a WorkManager worker has no Activity to borrow one
+        // from, so construction, the real platform adapters and the release path are asserted against
+        // the files that now own them instead of against the Activity alone.
         val host =
             repositoryRoot
                 .resolve("androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt")
                 .readText()
+        val graphOwner =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidAppGraph.kt")
+                .readText()
+        val application =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/CarAppApplication.kt")
+                .readText()
+        val scheduling =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidSyncScheduling.kt")
+                .readText()
+        val foregroundReturn =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AnonymousReminderCopy.kt")
+                .readText()
+        val foregroundDuration =
+            repositoryRoot
+                .resolve("androidApp/src/main/java/com/ruizurraca/carapp/AndroidForegroundDuration.kt")
+                .readText()
         val english = repositoryRoot.resolve("androidApp/src/main/res/values/strings.xml").readText()
         val spanish = repositoryRoot.resolve("androidApp/src/main/res/values-es/strings.xml").readText()
 
-        assertTrue(host.contains("firebaseAppProviders("))
-        assertTrue(host.contains("getDatabasePath(DATABASE_FILE_NAME).absolutePath"))
-        assertTrue(host.contains("buildAppGraph("))
+        assertTrue(graphOwner.contains("firebaseAppProviders("))
+        assertTrue(graphOwner.contains("getDatabasePath(DATABASE_FILE_NAME).absolutePath"))
+        assertTrue(graphOwner.contains("buildAppGraph("))
+        assertTrue(application.contains("AndroidAppGraph.install(this)"))
         assertTrue(host.contains("graph.vehicleListStateHolder(scope = viewModelScope)"))
         assertTrue(host.contains("graph.vehicleFormStateHolder(scope = viewModelScope, vehicleId = vehicleId)"))
         assertTrue(host.contains("NavHost("))
@@ -30,7 +54,27 @@ class PlatformHostContractTest {
         assertTrue(host.contains("setName"))
         assertTrue(host.contains("stateHolder::save"))
         assertTrue(host.contains("stateHolder::refresh"))
-        assertTrue(host.contains("graph.close()"))
+        // The graph outlives the Activity, so the Activity MUST NOT close it: releasing it on
+        // `onCleared` would leave the process-scoped graph holding a released driver.
+        assertFalse(host.contains("graph.close()"))
+        // `D-187`: the execution lease must outlive the cycle it triggered. WorkManager releases the
+        // process when `doWork()` returns, so the worker awaits the controller through the pure
+        // `runPeriodicWork` helper instead of firing and forgetting.
+        assertTrue(scheduling.contains("internal suspend fun runPeriodicWork"))
+        assertTrue(scheduling.contains("runPeriodicWork(AndroidAppGraph::runPeriodicSync)"))
+        assertTrue(graphOwner.contains("suspend fun runPeriodicSync()"))
+        assertTrue(graphOwner.contains("syncController().sync(SyncTrigger.Periodic)"))
+        // The fire-and-forget periodic entry point is gone: production code must not report the
+        // platform task complete before the cycle it triggered has finished.
+        assertFalse(scheduling.contains("requestPeriodicSync"))
+        assertFalse(graphOwner.contains("requestPeriodicSync"))
+        // `§9.8` fires the foreground trigger on a cold start or after more than
+        // `FOREGROUND_RESUME_THRESHOLD_MS`, never on an Activity recreation. The measurement is
+        // therefore process-scoped; holding it in the composition made a recreation report `null`,
+        // which the shared holder reads as a cold start.
+        assertTrue(foregroundDuration.contains("internal object AndroidForegroundTracking"))
+        assertTrue(foregroundReturn.contains("AndroidForegroundTracking.duration"))
+        assertFalse(foregroundReturn.contains("remember { AndroidForegroundDuration() }"))
         assertFalse(host.contains("setFuelType"))
         assertFalse(host.contains("Greeting"))
         assertTrue(english.contains("name=\"vehicle_list_title\""))

@@ -10,7 +10,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,7 +23,11 @@ class FirstVehicleOnboardingTest {
     @Test
     fun firstVehicleCreationOffersNoBackAffordanceAndRoutesToTheCreatedVehicleDetail() {
         val vehicleName = "First run vehicle ${System.currentTimeMillis()}"
-        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(DATABASE_FILE_NAME)
+        // The graph is process-scoped (§9.1), so CarAppApplication.onCreate has already built it
+        // against the shared database file. The reset closes that graph and only then removes the
+        // file: deleting it under an open handle is the D-172 hazard. Closing the shared graph
+        // directly would leave every later test in this process without one.
+        runBlocking { AndroidAppGraph.resetForTests() }
 
         ActivityScenario.launch(MainActivity::class.java).use {
             composeRule.waitUntil(timeoutMillis = 30_000) {
@@ -53,7 +57,7 @@ class FirstVehicleOnboardingTest {
 
     @Test
     fun theSystemBackActionDoesNotLeaveFirstVehicleCreation() {
-        InstrumentationRegistry.getInstrumentation().targetContext.deleteDatabase(DATABASE_FILE_NAME)
+        runBlocking { AndroidAppGraph.resetForTests() }
 
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             composeRule.waitUntil(timeoutMillis = 30_000) {
