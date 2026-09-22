@@ -23,6 +23,7 @@
 | Android namespace | `com.ruizurraca.carapp` | Kotlin/Java package root for `:androidApp`. |
 | iOS bundle identifier | `com.ruizurraca.carapp` | Immutable once published to the App Store. |
 | iOS UI-test bundle identifier | `com.ruizurraca.carapp.uitests` | D-74 test-only XCUITest runner; never embedded, archived or distributed. |
+| iOS background sync task identifier | `com.ruizurraca.carapp.sync` | `D-181`/`D-187` single `BGTaskScheduler` identifier of `docs/CONTRACTS.md §9.1`. Declared once as `SYNC_TASK_IDENTIFIER` in `composition/ios/src/iosMain/.../scheduling/IosSyncScheduling.kt` and once in `iosApp/Info.plist` under `BGTaskSchedulerPermittedIdentifiers`; `IosCompositionContractTest` asserts the two agree. It is a scheduler identifier, not a bundle identifier, so it is shared by the Debug and Release bundle identifiers. |
 | Shared module package root | `com.ruizurraca.carapp` | Sub-packages follow the module path, e.g. `com.ruizurraca.carapp.core.model`. |
 | Android build namespace, per module | Derived — see "Module Android namespaces" below | AGP 9 requires every module with an Android target to declare a unique namespace. The value is derived from the module path, so it is never invented. |
 | iOS framework name | `Shared` | Produced by `:composition:ios`, exporting `:shared`, and consumed as `import Shared`; this is the canonical module name. |
