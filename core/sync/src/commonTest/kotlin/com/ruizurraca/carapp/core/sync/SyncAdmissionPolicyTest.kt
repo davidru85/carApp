@@ -356,9 +356,51 @@ class SyncAdmissionPolicyTest {
             assertEquals(Outcome.Err(PersistenceError.DatabaseUnavailable), followUp.await())
         }
 
+    @Test
+    fun aWindowThatOpensDuringAManualCycleStillServesItsParkedTrigger() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val fixture =
+                fixture(
+                    adoption = {
+                        gate.await()
+                        error("adoption failed before the cycle reached its remote steps")
+                    },
+                )
+
+            // The post-write trigger parks and arms the 2 s debounce window.
+            val parked = async { fixture.controller.sync(SyncTrigger.PostWriteDebounce) }
+            runCurrent()
+
+            // A manual refresh claims a cycle that stays inside `adoption()`, so the parked batch is
+            // still waiting while a cycle is running. `PullToRefresh` never drains it (`D-186`).
+            val manual = async { fixture.controller.sync(SyncTrigger.PullToRefresh) }
+            runCurrent()
+
+            // The debounce window opens while that cycle is running, so its timer finds
+            // `cycleRunning` true and serves nothing. The window is spent from here on.
+            advanceTimeBy(SYNC_POST_WRITE_DEBOUNCE_MS)
+            runCurrent()
+
+            // The manual cycle fails before the remote steps, so it arms no floor and schedules no
+            // adoption retry: no timer is left that could ever reach the parked batch.
+            gate.complete(Unit)
+            runCurrent()
+            manual.await()
+
+            advanceTimeBy(SYNC_MIN_AUTOMATIC_INTERVAL_MS * 4)
+            advanceUntilIdle()
+
+            assertTrue(
+                parked.isCompleted,
+                "a parked trigger MUST be served once its window is open and no cycle is running",
+            )
+        }
+
     private fun TestScope.fixture(
         pullDelayMillis: Long = 0,
         hooks: SyncConcurrencyHooks = SyncConcurrencyHooks(),
+        adoption: suspend () -> Outcome<Unit, AppError> = { Outcome.Ok(Unit) },
     ): AdmissionFixture {
         val clock = AdmissionClock(Instant.fromEpochMilliseconds(0))
         val connectivity = AdmissionConnectivity(true)
@@ -374,6 +416,7 @@ class SyncAdmissionPolicyTest {
                 clock = clock,
                 uuidGenerator = AdmissionUuidGenerator(),
                 jitter = JitterSource { _, _ -> 200 },
+                adoption = adoption,
                 concurrencyHooks = hooks,
             )
         return AdmissionFixture(controller, persistence, remote, connectivity, clock)
