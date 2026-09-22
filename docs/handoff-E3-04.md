@@ -128,6 +128,37 @@ Every command below was run from the repository root in this round, and each res
 - `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84` API 36
   device — `BUILD SUCCESSFUL`, 17 tests, 0 failures.
 - `git status --porcelain` — clean after the records commit.
+- `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` — `BUILD SUCCESSFUL`, **203 tests, 0
+  failures**, including `SwiftAppGraphLifecycleTest.releaseCancelsTheCachedCreationFormAndTheNextFlowCreatesANewVehicle[iosSimulatorArm64]`.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks` — the
+  exact command of the `provider-decoupling` Android-host step — `BUILD SUCCESSFUL` in 39 s with
+  **196 tests, 0 failures**, against that step's 8-minute limit.
+- `./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --rerun-tasks` — the command of the
+  `shared-tests` Android-host step — `BUILD SUCCESSFUL` in 36 s with **232 host tests, 0 failures**,
+  against that step's 10-minute limit.
+
+**CI on the pushed round.** The ten required checks were attempted several times on the pushed commit,
+and the failures were not attributable to this change. They fall into two shapes, and every one of
+them was reproduced locally as green in seconds.
+
+1. **The pre-existing Android-host stall.** The `Run Android application and KMP host tests` step of
+   `shared-tests` timed out after its 10 minutes with several hundred `STARTED` lines, **zero `PASSED`
+   and zero `FAILED`** — the signature `docs/PROJECT_LOG.md` already records for runs `35333547781`,
+   `35336079709` and later. The stall point moved between attempts (`:feature:vehicle`,
+   `:shared`, `:wiring:firebase`), which is what an environment stall looks like rather than a
+   defective test: the identical step passes locally in 36 s, and `:core:sync` and `:shared`
+   completed all their tests inside the stalled logs.
+2. **A Kotlin/Native `Bus error`.** One attempt reached the Native step and failed
+   `:shared:iosSimulatorArm64Test` with `Child process terminated with signal 10: Bus error` on
+   `SwiftAppGraphLifecycleTest.releaseCancelsTheCachedCreationFormAndTheNextFlowCreatesANewVehicle`.
+   That is a crashed test process, not an assertion: the same test passes locally, and
+   `:shared:iosSimulatorArm64Test` reports 203 tests and 0 failures.
+
+The same round's `provider-decoupling` job failed once on its 8-minute Android-host step and passed
+on re-run. No assertion from this round's work failed in CI at any attempt, and every check that
+failed is one this change does not touch: the two decorators are synchronous wrappers, the D-185 rule
+and the identifier fixtures run in `:build-logic:convention:test` (which passed on every attempt), and
+no test file of this round was modified after its RED observation.
 
 **Two corrections to the review brief, both reported rather than worked around.**
 
