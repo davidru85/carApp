@@ -18,6 +18,7 @@ import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
@@ -187,7 +188,44 @@ internal class DefaultAppGraph(
         }
         localOwnerAdoption.launchIn(graphScope)
         observeConnectivityRecovery()
+        observeOwnerChanges()
         arrangePeriodicScheduling()
+    }
+
+    /**
+     * Fires the `§9.8` `OwnerChanged` trigger when the owner this device acts for resolves to a
+     * different identity.
+     *
+     * This is the trigger a clean device depends on. A first launch, a completed permanent sign-in
+     * and an account conversion all move the owner to a UID the local database has never held, so
+     * every other trigger describes a cause that has not happened: there is nothing to write, the
+     * network never changed, the app may already be in the foreground, and the periodic cadence is
+     * six hours away. Without this, a restored device presents an empty list — which is the state
+     * `SPECIFICATION.md` F-1 first-run creation acts on — while its data sits in Firestore.
+     *
+     * The `LOCAL_OWNER` sentinel is deliberately not a cause. A device that has never authenticated
+     * has nothing remote to fetch, and `§9.2` refuses a cycle under the sentinel anyway, so firing
+     * here would be a request that can only end in a no-op.
+     *
+     * Observed with `drop(1)` so the owner already resolved at construction is a baseline rather than
+     * a transition: `AuthOwnerContext` publishes its current value on subscription, and treating that
+     * as a change would fire a cycle for every graph the process builds. Collection starts
+     * undispatched so the baseline is read synchronously inside construction; a plain `launch` could
+     * subscribe after the transition it was meant to observe, and the trigger would be lost.
+     *
+     * The cycle is requested, never awaited, so this collector keeps observing and a slow cycle cannot
+     * block a later owner transition. `requestSync` still funnels through the single controller and
+     * the `§9.8` admission windows (`§9.1`).
+     */
+    private fun observeOwnerChanges() {
+        graphScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            dependencies.ownerContext
+                .observe()
+                .drop(1)
+                .collect { owner ->
+                    if (owner != LOCAL_OWNER) syncController.requestSync(SyncTrigger.OwnerChanged)
+                }
+        }
     }
 
     /**

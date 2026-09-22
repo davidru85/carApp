@@ -2,6 +2,7 @@ package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import com.ruizurraca.carapp.core.auth.AuthClient
+import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
@@ -30,10 +31,13 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 /**
@@ -62,11 +66,13 @@ class CrossDeviceRecoveryTest {
             val replica = replica()
             withTwoDevices(replica, this) { writer, reader ->
                 writer.createVehicle()
+                val writtenVehicleId = requireNotNull(writer.createdVehicleId)
 
                 reader.signInPermanently()
-                reader.awaitSyncedVehicle()
+                val restoredVehicleId = reader.awaitSyncedVehicle()
 
-                val restored = reader.database.vehicleRow(VEHICLE_ID)
+                assertEquals(writtenVehicleId, restoredVehicleId, "the identity recovered its own backup")
+                val restored = reader.database.vehicleRow(restoredVehicleId)
                 assertEquals(VEHICLE_NAME, restored.name, "the restored name is the one the writer wrote")
                 assertEquals(PERMANENT_UID, restored.ownerId, "the row belongs to the permanent identity")
                 reader.awaitListedVehicle()
@@ -87,14 +93,19 @@ class CrossDeviceRecoveryTest {
                 writer.createVehicle()
                 writer.createFuelEntry()
 
-                reader.signInPermanently()
-                reader.awaitSyncedVehicle()
-                reader.awaitSyncedFuelEntry()
+                val writtenVehicleId = requireNotNull(writer.createdVehicleId)
+                val writtenEntryId = requireNotNull(writer.fuelEntryId)
 
-                val restored = reader.database.fuelEntryRow(FUEL_ENTRY_ID)
+                reader.signInPermanently()
+                val restoredVehicleId = reader.awaitSyncedVehicle()
+                val restoredEntryId = reader.awaitSyncedFuelEntry()
+
+                assertEquals(writtenVehicleId, restoredVehicleId, "the same vehicle crossed over")
+                assertEquals(writtenEntryId, restoredEntryId, "the same fuel entry crossed over")
+                val restored = reader.database.fuelEntryRow(restoredEntryId)
                 assertEquals(ODOMETER_KM, restored.odometerKm, "the restored entry keeps its odometer")
                 assertEquals(LITERS_SCALED, restored.litersScaled, "the restored entry keeps its volume")
-                assertEquals(VEHICLE_ID, restored.vehicleId, "the entry is attached to the restored vehicle")
+                assertEquals(writtenVehicleId, restored.vehicleId, "the entry is attached to the restored vehicle")
             }
         }
 
@@ -111,8 +122,9 @@ class CrossDeviceRecoveryTest {
 
             try {
                 first.createVehicle()
+                val backedUpId = requireNotNull(first.createdVehicleId)
                 assertTrue(
-                    replica.storedIds(OwnerId(ANONYMOUS_UID), EntityType.VEHICLE).contains(VEHICLE_ID),
+                    replica.storedIds(OwnerId(ANONYMOUS_UID), EntityType.VEHICLE).contains(backedUpId),
                     "the anonymous device does back up its own row under its own UID",
                 )
             } finally {
@@ -148,7 +160,7 @@ class CrossDeviceRecoveryTest {
     fun recoveryReadsBoundedPagesAndNeverOpensAListener() =
         runTest {
             val replica = replica()
-            val device = Device(replica, this, uid = PERMANENT_UID)
+            val device = Device(replica, this, uid = PERMANENT_UID, signedInAtStart = false)
 
             try {
                 replica.seed(
@@ -185,7 +197,7 @@ class CrossDeviceRecoveryTest {
     fun aPermanentSignInRequestsExactlyOneOwnerChangeCycle() =
         runTest {
             val replica = replica()
-            val device = Device(replica, this, uid = PERMANENT_UID)
+            val device = Device(replica, this, uid = PERMANENT_UID, signedInAtStart = false)
 
             try {
                 replica.seed(
@@ -200,14 +212,14 @@ class CrossDeviceRecoveryTest {
                 device.awaitSyncedVehicle()
 
                 assertEquals(
-                    1,
-                    device.ownerChangeRequests(),
-                    "the owner transition requests exactly one OwnerChanged cycle",
+                    expected = 1,
+                    actual = device.recoveryCycleCount(),
+                    message = "the owner transition admits exactly one recovery cycle",
                 )
                 assertEquals(
-                    emptyList(),
-                    device.scheduledTriggers.filter { it == SyncTrigger.AppForeground },
-                    "no lifecycle trigger is borrowed for an owner transition",
+                    expected = emptyList<SyncTrigger>(),
+                    actual = device.nonOwnerTriggersFired(),
+                    message = "no write, lifecycle, connectivity or adapter trigger was needed for recovery",
                 )
             } finally {
                 device.close()
@@ -222,7 +234,7 @@ class CrossDeviceRecoveryTest {
     fun aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding() =
         runTest {
             val replica = replica()
-            val device = Device(replica, this, uid = PERMANENT_UID)
+            val device = Device(replica, this, uid = PERMANENT_UID, signedInAtStart = false)
 
             try {
                 replica.seed(
@@ -255,7 +267,7 @@ class CrossDeviceRecoveryTest {
         body: suspend (writer: Device, reader: Device) -> Unit,
     ) {
         val writer = Device(replica, scope, uid = PERMANENT_UID)
-        val reader = Device(replica, scope, uid = PERMANENT_UID)
+        val reader = Device(replica, scope, uid = PERMANENT_UID, signedInAtStart = false)
         try {
             body(writer, reader)
         } finally {
@@ -274,12 +286,29 @@ class CrossDeviceRecoveryTest {
         private val testScope: TestScope,
         private val uid: String,
         private val isAnonymous: Boolean = false,
+        // A writer is signed in from the start; a reader starts signed out so that signing in is the
+        // owner transition under test.
+        signedInAtStart: Boolean = true,
     ) {
         private val factory = InMemoryDatabaseFactory()
+        // The graph must read the handle this device asserts on. `InMemoryDatabaseFactory.create()`
+        // returns a brand-new isolated database on every call, so handing the factory to the graph
+        // would give it a second, empty database and every assertion here would read the wrong one.
+        // `SingleHandleDatabaseFactory` is the idiom the repository already uses for exactly this
+        // reason.
         private val handle: DatabaseHandle = factory.create()
-        private val authClient = SessionAuthClient(uid = uid, isAnonymous = isAnonymous)
+        private val graphFactory: DatabaseFactory = SingleHandleDatabaseFactory(handle)
+        private val authClient =
+            SessionAuthClient(uid = uid, isAnonymous = isAnonymous).apply {
+                // The session must exist before the graph subscribes, so a device that is already
+                // signed in produces no owner transition at all.
+                if (signedInAtStart) setAuthState(signedInState())
+            }
         private val triggers = RecordingSyncTriggerAdapter()
-        private val holderScope = CoroutineScope(SupervisorJob() + testScope.coroutineContext)
+        // Under `backgroundScope`, so `runTest` cancels every holder coroutine when the body returns.
+        // A scope built from the test body's own context instead makes those coroutines children of
+        // the test job, which `runTest` then reports as an uncompleted child.
+        private val holderScope = CoroutineScope(SupervisorJob() + testScope.backgroundScope.coroutineContext)
 
         val database: AppDatabase = handle.database
         val scheduledTriggers: List<SyncTrigger> get() = triggers.scheduled
@@ -291,9 +320,11 @@ class CrossDeviceRecoveryTest {
                     testAppProviders(
                         testScope.confinedGraphDependencies(
                             testAppGraphDependencies(
-                                databaseFactory = factory,
+                                databaseFactory = graphFactory,
                                 authClient = authClient,
-                                ownerContext = FakeOwnerContext(OwnerId(uid)),
+                                // The production owner context, so the owner transition under test is
+                                // the one a real sign-in produces rather than a test-set value.
+                                ownerContext = AuthOwnerContext(authClient.authState),
                                 remoteSyncSource = replica,
                                 clock = FakeAppClock(Instant.fromEpochMilliseconds(NOW_MILLIS)),
                                 connectivityObserver = FakeConnectivityObserver(),
@@ -306,52 +337,75 @@ class CrossDeviceRecoveryTest {
         val list: com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder =
             graphInstance.vehicleListStateHolder(holderScope)
 
+        /** The vehicle the writer actually created, discovered rather than assumed. */
+        var createdVehicleId: String? = null
+            private set
+
         var observedKnownEmptyList: Boolean = false
             private set
 
+        /**
+         * One admitted cycle reads each entity type once, so the number of `VEHICLE` pull rounds is
+         * the number of cycles that reached the remote steps. `OwnerChanged` enters the controller
+         * through `requestSync`, which the platform adapter does not observe, so this - not
+         * `triggers` - is the honest observable of a recovery cycle.
+         */
+        fun recoveryCycleCount(): Int = replica.pullCalls.count { it.entityType == EntityType.VEHICLE }
+
+        /** Triggers a platform adapter or a host would have to fire for this recovery to happen. */
+        fun nonOwnerTriggersFired(): List<SyncTrigger> =
+            triggers.scheduled.filterNot { it == SyncTrigger.Periodic }
+
         fun signInPermanently() {
-            authClient.setAuthState(
-                AuthState.SignedIn(
-                    AuthSession(
-                        uid = uid,
-                        isAnonymous = isAnonymous,
-                        providers = if (isAnonymous) setOf(AuthProvider.ANONYMOUS) else setOf(AuthProvider.GOOGLE),
-                    ),
+            authClient.setAuthState(signedInState())
+        }
+
+        private fun signedInState() =
+            AuthState.SignedIn(
+                AuthSession(
+                    uid = uid,
+                    isAnonymous = isAnonymous,
+                    providers = if (isAnonymous) setOf(AuthProvider.ANONYMOUS) else setOf(AuthProvider.GOOGLE),
                 ),
             )
-        }
 
         /** Writes a contract-valid Vehicle through the production form, which also backs it up. */
         suspend fun createVehicle() {
-            graphInstance.vehicleFormStateHolder(holderScope, vehicleId = null).apply {
-                setName(VEHICLE_NAME)
-                save()
-            }
-            settle("vehicle backed up under $uid") {
-                replica.storedIds(OwnerId(uid), EntityType.VEHICLE).contains(VEHICLE_ID)
-            }
-            settle("vehicle synced locally") { database.hasSyncedVehicle(VEHICLE_ID) }
+            val form = graphInstance.vehicleFormStateHolder(holderScope, vehicleId = null)
+            form.setName(VEHICLE_NAME)
+            form.save()
+            settle("vehicle committed under $uid") { database.vehicleIds().isNotEmpty() }
+            createdVehicleId = database.vehicleIds().single()
+            settle("vehicle synced locally under $uid") { database.hasSyncedVehicle(createdVehicleId!!) }
         }
 
         /** Writes a Fuel Entry through the production form, which also backs it up. */
         suspend fun createFuelEntry() {
-            graphInstance.fuelEntryFormStateHolder(holderScope, vehicleId = VEHICLE_ID, entryId = null).apply {
-                setOdometerKm(ODOMETER_KM)
-                setLitersScaled(LITERS_SCALED)
-                setPricePerLiterScaled(PRICE_PER_LITER_SCALED)
-                save()
-            }
-            settle("fuel entry backed up to the replica") {
-                replica.storedIds(OwnerId(uid), EntityType.FUEL_ENTRY).contains(FUEL_ENTRY_ID)
-            }
-            settle("fuel entry synced locally") { database.hasSyncedFuelEntry(FUEL_ENTRY_ID) }
+            val vehicleId = requireNotNull(createdVehicleId) { "create the vehicle first" }
+            val form = graphInstance.fuelEntryFormStateHolder(holderScope, vehicleId = vehicleId, entryId = null)
+            form.setOdometerKm(ODOMETER_KM)
+            form.setLitersScaled(LITERS_SCALED)
+            form.setPricePerLiterScaled(PRICE_PER_LITER_SCALED)
+            form.save()
+            settle("fuel entry committed under $uid") { database.fuelEntryIds(uid).isNotEmpty() }
+            fuelEntryId = database.fuelEntryIds(uid).single()
+            settle("fuel entry synced locally under $uid") { database.hasSyncedFuelEntry(fuelEntryId!!) }
         }
 
-        suspend fun awaitSyncedVehicle() =
-            settle("vehicle restored on $uid") { database.hasSyncedVehicle(VEHICLE_ID) }
+        var fuelEntryId: String? = null
+            private set
 
-        suspend fun awaitSyncedFuelEntry() =
-            settle("fuel entry restored on $uid") { database.hasSyncedFuelEntry(FUEL_ENTRY_ID) }
+        suspend fun awaitSyncedVehicle(): String {
+            settle("vehicle restored on $uid") { database.vehicleIds().isNotEmpty() && database.hasSyncedVehicle(database.vehicleIds().first()) }
+            return database.vehicleIds().first()
+        }
+
+        suspend fun awaitSyncedFuelEntry(): String {
+            settle("fuel entry restored on $uid") {
+                database.fuelEntryIds(uid).isNotEmpty() && database.hasSyncedFuelEntry(database.fuelEntryIds(uid).first())
+            }
+            return database.fuelEntryIds(uid).first()
+        }
 
         suspend fun awaitListedVehicle() =
             list.state.awaitState("vehicle listed on $uid") { state -> state.vehicles.isNotEmpty() }
@@ -367,25 +421,46 @@ class CrossDeviceRecoveryTest {
             }
         }
 
-        fun ownerChangeRequests(): Int = triggers.scheduled.count { it == SyncTrigger.OwnerChanged }
-
-        /** Waits for [condition], advancing graph time so scheduled work actually runs. */
+        /**
+         * Waits for [condition], giving both the graph's scheduler and the asynchronous SQLite work
+         * the time they actually need.
+         *
+         * Three clocks are involved and only one is virtual. The `§9.8` post-write debounce is a
+         * virtual delay, so a small advance is what releases the parked trigger; the graph's own
+         * coroutines are queued on the test scheduler, so `runCurrent()` drains them; and the bundled
+         * SQLite driver performs its work on a real executor, so the poll must also yield in real time
+         * - which is what [awaitCondition]'s deadline and `yield` do. Advancing a large span instead
+         * would only burn the 30 s automatic floor without ever waiting for the driver.
+         */
         suspend fun settle(
             expectation: String,
             condition: suspend () -> Boolean,
         ) {
             awaitCondition(expectation) {
-                // Advancing is what lets the graph-owned cycle run under the confined dispatcher;
-                // the test scheduler never advances on its own while the caller polls.
+                // A full graph span, because a cycle has to cross the `§9.8` post-write debounce and
+                // the 30 s automatic floor before it reaches its remote steps. `runCurrent` then
+                // drains what the advance released, and the `condition` call itself suspends on real
+                // SQLite work, which is the only clock the bundled driver obeys.
                 testScope.advanceGraphWork()
                 condition()
             }
         }
 
-        fun close() {
+        /** Releases the device and waits for the graph to hand the database back. */
+        suspend fun close() {
             holderScope.cancel()
-            graphInstance.close()
+            graphInstance.awaitClosed()
             factory.close()
+        }
+
+        /**
+         * Hands the graph the one handle this device owns, and releases it on
+         * [com.ruizurraca.carapp.core.database.DatabaseHandle.close] only when the graph does.
+         */
+        private class SingleHandleDatabaseFactory(
+            private val handle: DatabaseHandle,
+        ) : DatabaseFactory {
+            override fun create(): DatabaseHandle = handle
         }
     }
 
@@ -437,10 +512,29 @@ class CrossDeviceRecoveryTest {
         const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
         const val FUEL_ENTRY_ID = "00000000-0000-4000-8000-000000000002"
         const val VEHICLE_NAME = "Recovered Roadster"
+        /**
+         * Above the vehicle's `initialOdometerKm` of 0, so the write satisfies `SPECIFICATION.md` R-1
+         * on its first attempt. An odometer below `initialOdometerKm` is a deliberate two-step
+         * warning protocol (`§5`): the first save mutates nothing and asks for confirmation, which is
+         * not what this proof is testing.
+         */
         const val ODOMETER_KM = 12_000L
+        /** 42.5 L, above the 1-litre floor and below the 500-litre ceiling. */
         const val LITERS_SCALED = 42_500L
-        const val PRICE_PER_LITER_SCALED = 1_650_000L
+
+        /**
+         * 16.50 EUR/L in the canonical scale of `docs/CONTRACTS.md §2`, below the 999_999 ceiling
+         * that `FuelEntryValidation` enforces. A value above it is rejected as
+         * `VALIDATION.OUT_OF_RANGE` before the entry is ever persisted.
+         */
+        const val PRICE_PER_LITER_SCALED = 1_650L
         const val NOW_MILLIS = 1_767_225_600_000L
+
+        /**
+         * One `§9.8` post-write debounce plus a margin, so a poll releases the parked trigger without
+         * also crossing the 30 s floor that would defer the next automatic cycle.
+         */
+        val POST_WRITE_DEBOUNCE_ALLOWANCE = 3.seconds
     }
 }
 
@@ -458,6 +552,9 @@ private suspend fun AppDatabase.fuelEntryRow(id: String) =
 
 private suspend fun AppDatabase.vehicleIds(): List<String> =
     databaseQueries.selectAllVehicles().awaitAsList().map { it.id }
+
+private suspend fun AppDatabase.fuelEntryIds(ownerId: String): List<String> =
+    databaseQueries.selectFuelEntriesForAdoption(ownerId).awaitAsList().map { it.id }
 
 private fun vehicleJson(
     id: String,
