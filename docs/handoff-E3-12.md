@@ -336,6 +336,16 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
 ## Risks or Follow-ups
 
+- **The two red required checks are a pre-existing CI defect, and their owner is not this story.**
+  `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free Android host
+  tests` (`provider-decoupling`) are killed at 600 s and 480 s respectively on this branch, and both
+  fail on `main` at `65e7056` the same way. The successful band for the first step on the merged
+  `E3-04` branch is 196-238 s, and that same branch already failed it at 613 s, so the limit is
+  under-provisioned relative to an unbounded stall rather than exceeded by this change. `D-176` raised
+  every *job* ceiling to 40 minutes but deliberately kept these two *step* limits stricter, which is
+  where the mismatch lives. Widening them is a CI-topology change outside this story's scope and it
+  touches the ceilings `contractCheck` assertion 28 pins, so it needs its own decision; the
+  measurement above is what that decision should start from.
 - The permanent-provider acceptance is not automatable in this repository, and the precedent story
   that owns it (`E2-03`) has no completion record. The real two-host proof therefore needs owner-run
   interactive sign-ins; the deterministic test is what protects the behaviour from regression.
