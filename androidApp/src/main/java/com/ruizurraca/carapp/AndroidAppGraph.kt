@@ -3,7 +3,6 @@ package com.ruizurraca.carapp
 import android.app.Application
 import android.content.pm.ApplicationInfo
 import com.ruizurraca.carapp.core.common.SyncTrigger
-import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.wiring.firebase.firebaseAppProviders
 import kotlin.concurrent.Volatile
 
@@ -52,9 +51,6 @@ internal object AndroidAppGraph {
     suspend fun runPeriodicSync() {
         require().syncController().sync(SyncTrigger.Periodic)
     }
-
-    /** The single controller of this process, for a trigger that needs to reason about the cycle. */
-    fun syncController(): SyncController = require().syncController()
 
     /**
      * Discards this process's graph and its database, so the next [require] builds a clean one.
