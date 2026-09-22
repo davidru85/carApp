@@ -430,30 +430,26 @@ class CrossDeviceRecoveryTest {
         }
 
         /**
-         * Waits for [condition], giving both the graph's scheduler and the asynchronous SQLite work
-         * the time they actually need.
+         * Releases any parked `§9.8` trigger once, then waits in real time for [condition].
          *
-         * Three clocks are involved and only one is virtual. The `§9.8` post-write debounce is a
-         * virtual delay, so a small advance is what releases the parked trigger; the graph's own
-         * coroutines are queued on the test scheduler, so `runCurrent()` drains them; and the bundled
-         * SQLite driver performs its work on a real executor, so the poll must also yield in real time
-         * - which is what [awaitCondition]'s deadline and `yield` do. Advancing a large span instead
-         * would only burn the 30 s automatic floor without ever waiting for the driver.
+         * Three clocks are involved and only one is virtual, so they are advanced separately and
+         * exactly once each. The post-write debounce is a virtual delay, so one bounded advance
+         * releases the trigger a write parked; `runCurrent()` then drains the graph's coroutines from
+         * the test scheduler; and the bundled SQLite driver does its work on a real executor, so the
+         * wait itself must yield in real time, which is what [awaitCondition] does.
+         *
+         * The advance is deliberately **outside** the poll loop. Advancing on every attempt compounds:
+         * each round would cross the 30 s automatic floor again, re-arm it, and release another
+         * window, so a few hundred virtual seconds and a storm of graph cycles would pile up while the
+         * test was merely waiting for one write to commit.
          */
         suspend fun settle(
             expectation: String,
             condition: suspend () -> Boolean,
         ) {
-            awaitCondition(expectation) {
-                // One post-write debounce plus a margin per poll: enough for a parked trigger to be
-                // released, and deliberately not a full graph span, because repeatedly crossing the
-                // 30 s automatic floor would re-arm it and keep a cycle chain alive in virtual time
-                // instead of letting the awaited work finish. The `condition` call itself suspends on
-                // real SQLite work, which is the only clock the bundled driver obeys.
-                testScope.advanceTimeBy(RECOVERY_POLL_SPAN)
-                testScope.runCurrent()
-                condition()
-            }
+            testScope.advanceTimeBy(RECOVERY_POLL_SPAN)
+            testScope.runCurrent()
+            awaitCondition(expectation) { condition() }
         }
 
         /** Releases the device and waits for the graph to hand the database back. */

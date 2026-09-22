@@ -295,6 +295,12 @@ Exact commands, and their result.
   exactly `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding` with
   `a known empty list is the state F-1 mandatory first-run creation reads`, which is the second
   defect observed against the unfixed code. The mutation was reverted.
+- **`settle()` advances once per wait, not once per poll.** The first version advanced a bounded span
+  on every attempt, and the attempts repeat until a real-time deadline, so each round re-crossed the
+  30 s automatic floor, re-armed it and released another window: hundreds of virtual seconds and a
+  storm of graph cycles accumulated while the test was merely waiting for one write to commit. The
+  advance and `runCurrent()` now happen once, before the real-time wait. All six assertions still
+  pass and the trigger mutation still fails all six.
 - **Poll-span reduction.** `settle()` now advances one post-write debounce plus a margin per poll
   instead of a full 60 s graph span. Repeatedly crossing the 30 s automatic floor would re-arm it in
   virtual time and keep a cycle chain alive instead of letting the awaited work finish, so the smaller
