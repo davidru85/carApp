@@ -23,28 +23,28 @@ internal class VehicleSliceRuntime(
     private val syncController: SyncController,
 ) {
     val repository: VehicleRepository =
-        AdoptionGatedVehicleRepository(
+        SyncRequestingVehicleRepository(
             delegate =
-                SqlDelightVehicleRepository(
-                    databaseAccess = VehicleDatabaseAccess(database),
-                    ownerContext = dependencies.ownerContext,
-                    clock = dependencies.clock,
-                    uuidGenerator = dependencies.uuidGenerator,
+                AdoptionGatedVehicleRepository(
+                    delegate =
+                        SqlDelightVehicleRepository(
+                            databaseAccess = VehicleDatabaseAccess(database),
+                            ownerContext = dependencies.ownerContext,
+                            clock = dependencies.clock,
+                            uuidGenerator = dependencies.uuidGenerator,
+                        ),
+                    adoption = adoption,
                 ),
-            adoption = adoption,
+            syncController = syncController,
         )
 
-    suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> {
-        val result = repository.createVehicle(command)
-        if (result is Outcome.Ok) syncController.requestSync(SyncTrigger.PostWriteDebounce)
-        return result
-    }
+    // The `§9.8` post-write trigger now lives in the decorator, so it covers the delete path the
+    // list holder reaches directly as well. Requesting it here too would fire twice per write.
+    suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =
+        repository.createVehicle(command)
 
-    suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> {
-        val result = repository.updateVehicle(command)
-        if (result is Outcome.Ok) syncController.requestSync(SyncTrigger.PostWriteDebounce)
-        return result
-    }
+    suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> =
+        repository.updateVehicle(command)
 
     suspend fun refresh(): Outcome<Unit, AppError> =
         // A user-initiated refresh awaits the cycle that serves it, so the pull-to-refresh

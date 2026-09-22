@@ -146,15 +146,19 @@ internal class DefaultAppGraph(
     private val vehicleRuntime =
         VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption, syncController)
     private val fuelRepository: FuelEntryRepository =
-        AdoptionNotifyingFuelEntryRepository(
+        SyncRequestingFuelEntryRepository(
             delegate =
-                SqlDelightFuelEntryRepository(
-                    databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-                    ownerContext = dependencies.ownerContext,
-                    clock = dependencies.clock,
-                    uuidGenerator = dependencies.uuidGenerator,
+                AdoptionNotifyingFuelEntryRepository(
+                    delegate =
+                        SqlDelightFuelEntryRepository(
+                            databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
+                            ownerContext = dependencies.ownerContext,
+                            clock = dependencies.clock,
+                            uuidGenerator = dependencies.uuidGenerator,
+                        ),
+                    adoption = localOwnerAdoption,
                 ),
-            adoption = localOwnerAdoption,
+            syncController = syncController,
         )
     private val anonymousReminders =
         SqlDelightAnonymousReminderRepository(
