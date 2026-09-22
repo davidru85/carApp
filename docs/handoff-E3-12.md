@@ -73,7 +73,10 @@ Update this section at every material state change and before yielding unfinishe
   the timeout is not a budget this story's work consumes. On this branch the exact
   `provider-decoupling` Android-host command passed **6 consecutive times** under
   `-Pcarapp.excludeFirebaseProviders=true`, and the whole shared suite passed 8 consecutive times.
-  The jobs were re-requested on the pushed head.
+  The `provider-decoupling` job was re-requested on the pushed head, and the definitive observation
+  is that `shared-tests` then **passed in 6 m 58 s** on a run whose code is identical to the one whose
+  `shared-tests` timed out at 10 minutes — the same commit, the same workflow, different runners. That
+  is non-determinism in the runner environment, not a property of this change.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Exact next step: confirm the ten required checks on the pushed head, then hand pull request #73 to
