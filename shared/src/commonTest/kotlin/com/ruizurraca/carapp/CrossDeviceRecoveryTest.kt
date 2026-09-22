@@ -131,11 +131,14 @@ class CrossDeviceRecoveryTest {
                 first.close()
             }
 
-            val second = Device(replica, this, uid = OTHER_ANONYMOUS_UID, isAnonymous = true)
+            // The second device starts signed out, so signing in is a real owner transition and its
+            // recovery cycle actually runs. Without that the assertion below would be vacuous: a
+            // device that never attempted a pull trivially holds nothing.
+            val second = Device(replica, this, uid = OTHER_ANONYMOUS_UID, isAnonymous = true, signedInAtStart = false)
             try {
                 second.signInPermanently()
-                second.settle("second anonymous identity settled") {
-                    second.database.vehicleIds().isEmpty()
+                second.settle("second identity ran its recovery cycle") {
+                    second.recoveryCycleCount() >= 1
                 }
 
                 assertEquals(

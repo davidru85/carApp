@@ -250,6 +250,24 @@ Exact commands, and their result.
 - `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks` on the
   `D-84` API 36 `E1_07_API_36` emulator (a Play-services image) — `BUILD SUCCESSFUL`, 17 tests, 0
   failures.
+- `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator
+  -destination 'platform=iOS Simulator,id=56F1AD0C-42E0-499C-9469-DC91CDD8AD21' -derivedDataPath /tmp/carapp-e312-dd
+  ARCHS=arm64 test` from `iosApp/` — `** TEST SUCCEEDED **`, 45 unit tests and 27 UI tests with 1
+  skipped and 0 failures.
+- `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks` — the
+  exact command of the `provider-decoupling` Android-host step — `BUILD SUCCESSFUL in 23s`.
+- **Mutation probe 1 (the trigger).** Removing the `ownerRecoveryGate.awaitRecovery()` call from
+  `observeOwnerChanges()` fails **all six** tests of `CrossDeviceRecoveryTest`, which proves the suite
+  is bound to the trigger rather than to a fixture that happens to seed data. The mutation was
+  reverted.
+- **Mutation probe 2 (the list gate).** Reverting the `isLoading` rule to its pre-story form fails
+  exactly `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding` with
+  `a known empty list is the state F-1 mandatory first-run creation reads`, which is the second
+  defect observed against the unfixed code. The mutation was reverted.
+- **Non-vacuity correction.** The anonymous-identity test originally let its second device start
+  already signed in, so no owner transition occurred and "it recovered nothing" was trivially true.
+  The device now starts signed out and the test waits for its recovery cycle to run, so the assertion
+  is about a device that really pulled.
 
 ## Contract Impact
 
