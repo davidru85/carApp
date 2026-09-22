@@ -90,16 +90,17 @@ class InMemoryRemoteSyncSource(
         store(
             ownerId = ownerId,
             entityType = entityType,
-            document = StoredDocument(
-                document =
-                    RemoteDocument(
-                        entityType = entityType,
-                        documentId = entityId,
-                        serverUpdatedAt = serverUpdatedAt,
-                        rawJson = rawJson,
-                    ),
-                storedUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
-            ),
+            document =
+                StoredDocument(
+                    document =
+                        RemoteDocument(
+                            entityType = entityType,
+                            documentId = entityId,
+                            serverUpdatedAt = serverUpdatedAt,
+                            rawJson = rawJson,
+                        ),
+                    storedUpdatedAtMicros = serverUpdatedAt.toEpochMicroseconds(),
+                ),
         )
     }
 
@@ -107,8 +108,7 @@ class InMemoryRemoteSyncSource(
     fun storedIds(
         ownerId: OwnerId,
         entityType: EntityType,
-    ): List<String> =
-        documentsFor(ownerId, entityType).sortedWith(STORED_ORDER).map { it.document.documentId.value }
+    ): List<String> = documentsFor(ownerId, entityType).sortedWith(STORED_ORDER).map { it.document.documentId.value }
 
     /**
      * The stored document for one entity, delivered as the provider would deliver it. Its
@@ -142,16 +142,17 @@ class InMemoryRemoteSyncSource(
         store(
             ownerId = ownerId,
             entityType = snapshot.entityType,
-            document = StoredDocument(
-                document =
-                    RemoteDocument(
-                        entityType = snapshot.entityType,
-                        documentId = snapshot.entityId,
-                        serverUpdatedAt = committedAt,
-                        rawJson = storedJson,
-                    ),
-                storedUpdatedAtMicros = serverUpdatedAt,
-            ),
+            document =
+                StoredDocument(
+                    document =
+                        RemoteDocument(
+                            entityType = snapshot.entityType,
+                            documentId = snapshot.entityId,
+                            serverUpdatedAt = committedAt,
+                            rawJson = storedJson,
+                        ),
+                    storedUpdatedAtMicros = serverUpdatedAt,
+                ),
         )
         return Outcome.Ok(RemoteAck(snapshot.entityType, snapshot.entityId, committedAt))
     }

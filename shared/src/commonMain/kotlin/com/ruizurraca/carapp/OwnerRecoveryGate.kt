@@ -28,8 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - any owner whose local data is non-empty, because a non-empty list is known regardless of
  *   whether a recovery is pending.
  */
-/** Owned by `:shared`; the vehicle feature reads only its [pending] flow, which keeps the feature
- * package free of any `:shared` edge (`docs/TECHNICAL_PLAN.md §4`). */
+
 internal class OwnerRecoveryGate(
     private val syncController: SyncController,
 ) {

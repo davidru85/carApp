@@ -1379,6 +1379,7 @@ __attribute__((swift_name("SyncSyncStatus.Syncing")))
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("SyncTrigger")))
 @interface SharedSyncTrigger : SharedKotlinEnum<SharedSyncTrigger *>
+@property (class, readonly) SharedSyncTrigger *ownerchanged __attribute__((swift_name("ownerchanged")));
 @property (class, readonly) SharedSyncTrigger *appforeground __attribute__((swift_name("appforeground")));
 @property (class, readonly) SharedSyncTrigger *connectivityrecovered __attribute__((swift_name("connectivityrecovered")));
 @property (class, readonly) SharedSyncTrigger *postwritedebounce __attribute__((swift_name("postwritedebounce")));

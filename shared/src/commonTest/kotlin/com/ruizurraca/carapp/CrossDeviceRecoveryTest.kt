@@ -291,6 +291,7 @@ class CrossDeviceRecoveryTest {
         signedInAtStart: Boolean = true,
     ) {
         private val factory = InMemoryDatabaseFactory()
+
         // The graph must read the handle this device asserts on. `InMemoryDatabaseFactory.create()`
         // returns a brand-new isolated database on every call, so handing the factory to the graph
         // would give it a second, empty database and every assertion here would read the wrong one.
@@ -305,6 +306,7 @@ class CrossDeviceRecoveryTest {
                 if (signedInAtStart) setAuthState(signedInState())
             }
         private val triggers = RecordingSyncTriggerAdapter()
+
         // Under `backgroundScope`, so `runTest` cancels every holder coroutine when the body returns.
         // A scope built from the test body's own context instead makes those coroutines children of
         // the test job, which `runTest` then reports as an uncompleted child.
@@ -353,8 +355,7 @@ class CrossDeviceRecoveryTest {
         fun recoveryCycleCount(): Int = replica.pullCalls.count { it.entityType == EntityType.VEHICLE }
 
         /** Triggers a platform adapter or a host would have to fire for this recovery to happen. */
-        fun nonOwnerTriggersFired(): List<SyncTrigger> =
-            triggers.scheduled.filterNot { it == SyncTrigger.Periodic }
+        fun nonOwnerTriggersFired(): List<SyncTrigger> = triggers.scheduled.filterNot { it == SyncTrigger.Periodic }
 
         fun signInPermanently() {
             authClient.setAuthState(signedInState())
@@ -396,13 +397,17 @@ class CrossDeviceRecoveryTest {
             private set
 
         suspend fun awaitSyncedVehicle(): String {
-            settle("vehicle restored on $uid") { database.vehicleIds().isNotEmpty() && database.hasSyncedVehicle(database.vehicleIds().first()) }
+            settle("vehicle restored on $uid") {
+                database.vehicleIds().isNotEmpty() &&
+                    database.hasSyncedVehicle(database.vehicleIds().first())
+            }
             return database.vehicleIds().first()
         }
 
         suspend fun awaitSyncedFuelEntry(): String {
             settle("fuel entry restored on $uid") {
-                database.fuelEntryIds(uid).isNotEmpty() && database.hasSyncedFuelEntry(database.fuelEntryIds(uid).first())
+                database.fuelEntryIds(uid).isNotEmpty() &&
+                    database.hasSyncedFuelEntry(database.fuelEntryIds(uid).first())
             }
             return database.fuelEntryIds(uid).first()
         }
@@ -512,6 +517,7 @@ class CrossDeviceRecoveryTest {
         const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
         const val FUEL_ENTRY_ID = "00000000-0000-4000-8000-000000000002"
         const val VEHICLE_NAME = "Recovered Roadster"
+
         /**
          * Above the vehicle's `initialOdometerKm` of 0, so the write satisfies `SPECIFICATION.md` R-1
          * on its first attempt. An odometer below `initialOdometerKm` is a deliberate two-step
@@ -519,6 +525,7 @@ class CrossDeviceRecoveryTest {
          * not what this proof is testing.
          */
         const val ODOMETER_KM = 12_000L
+
         /** 42.5 L, above the 1-litre floor and below the 500-litre ceiling. */
         const val LITERS_SCALED = 42_500L
 

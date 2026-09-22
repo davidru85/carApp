@@ -680,6 +680,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-185 | iOS trigger-ban enforcement mechanism | The platform-owned triggers are banned from every `requestSync` call site on the whole iOS platform boundary, Kotlin and Swift, except the `syncController()` route of `§9.1`, by an executable source rule with failing fixtures. | Accepted |
 | D-186 | `§9.8` admission policy | A trigger inside an open window is parked and served at the boundary; the minimum interval is anchored to the moment a cycle reaches its remote steps; the single pending follow-up is exempt from both windows; and a pull-to-refresh cycle still re-arms the floor. | Accepted |
 | D-187 | Platform lease completion | A platform-owned periodic execution lease awaits `SyncController.sync(SyncTrigger.Periodic)` on the process graph before reporting completion, and iOS installs an expiration handler; the lease has no repository, database handle or second graph. | Accepted |
+| D-188 | Owner-change recovery trigger | `SyncTrigger.OwnerChanged` is the sixth closed trigger, requested by `DefaultAppGraph` when the resolved owner becomes a non-sentinel identity; an empty list stays unresolved until that cycle completes. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

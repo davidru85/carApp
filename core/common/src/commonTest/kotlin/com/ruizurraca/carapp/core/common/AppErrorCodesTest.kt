@@ -150,9 +150,12 @@ class AppErrorCodesTest {
     }
 
     @Test
-    fun syncTriggerCoversTheFiveDocumentedReasons() {
+    fun syncTriggerCoversTheSixDocumentedReasons() {
         assertEquals(
             listOf(
+                // `D-188`: a non-sentinel owner transition is its own cause. Without it a clean device
+                // has no trigger that names why its newly signed-in owner needs a pull.
+                SyncTrigger.OwnerChanged,
                 SyncTrigger.AppForeground,
                 SyncTrigger.ConnectivityRecovered,
                 SyncTrigger.PostWriteDebounce,
@@ -160,6 +163,7 @@ class AppErrorCodesTest {
                 SyncTrigger.Periodic,
             ),
             SyncTrigger.entries.toList(),
+            "docs/CONTRACTS.md §9.8: every trigger names exactly one cause and the inventory is closed",
         )
     }
 }
