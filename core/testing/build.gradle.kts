@@ -12,6 +12,9 @@ dependencies {
     "commonMainImplementation"(libs.sqldelight.runtime)
     "commonMainImplementation"(libs.sqldelight.androidx.driver)
     "commonMainImplementation"(libs.androidx.sqlite.bundled)
+    // `InMemoryRemoteSyncSource` rewrites the server-owned `updatedAt` field the way the provider
+    // does, which requires reading the pushed payload as JSON.
+    "commonMainImplementation"(libs.kotlinx.serialization.json)
     "commonTestImplementation"(libs.kotlinx.coroutines.test)
 }
 
