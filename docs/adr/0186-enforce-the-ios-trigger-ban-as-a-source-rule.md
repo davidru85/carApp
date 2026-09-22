@@ -43,9 +43,12 @@ rule cannot silently become broader or narrower than the contract it implements.
 covers both iOS platform file kinds, accepts `AppForeground` and `PullToRefresh`, and states that it is
 not a Konsist fixture, with the reason (Konsist parses Kotlin only and this surface contains Swift).
 
-The rule is deliberately scoped to a `SyncStateHolder` receiver. A `syncController()` call site from
-platform composition is the route `§9.1` requires, so banning it would reject the correct
-implementation — the iOS `BGTaskScheduler` handler requests `SyncTrigger.Periodic` exactly that way.
+The receiver test is an allowlist. A `syncController()` call site from platform composition is the
+route `§9.1` requires — the iOS `BGTaskScheduler` handler requests `SyncTrigger.Periodic` exactly
+that way — so it is the one receiver the rule accepts, and every other receiver carrying a
+platform-owned trigger is a violation. A denylist of receiver names was rejected: a one-line alias
+such as `let holder = model.syncStateHolder` hides the holder's name from the call site, so the
+ban could be evaded by renaming a local.
 
 ## Consequences
 
@@ -53,8 +56,9 @@ implementation — the iOS `BGTaskScheduler` handler requests `SyncTrigger.Perio
 
 - The ban covers the surface `§20.10` names, Swift included, and it is proved to fire, so the
   requirement is enforced rather than declared.
-- The `StateHolder`-receiver scoping makes the rule express the actual distinction: a UI-layer
-  request on the holder is banned, a platform-wiring request on the controller is required.
+- The receiver allowlist makes the rule express the actual distinction: a request on anything that
+  is not the single in-process controller is banned, and the platform-wiring request on that
+  controller is required.
 - The contract text now says what is executable, so the next agent is not sent to build a mechanism
   that cannot cover the surface.
 
