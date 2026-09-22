@@ -985,6 +985,8 @@ Acceptance criteria:
   floor between automatic cycles. `E3-04` MUST enforce both constants, or record explicitly why one is
   not enforced.
 
+Human review required.
+
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
 Prove recovery at the first point where permanent authentication and complete sync coexist.
