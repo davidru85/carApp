@@ -648,7 +648,22 @@ internal class DefaultSyncController(
                         activeCycleCompletion = null
                         activeCycleRequests = emptyList()
                         publishShutdownSnapshot()
-                        null to cycleGeneration
+                        // A window that opened while this cycle was running found `cycleRunning` true,
+                        // served nothing and spent itself, so its timer will never come back. The end
+                        // of a cycle is the only other moment the boundary is reachable, so the parked
+                        // batch is claimed here or it waits for an unrelated later trigger, which is
+                        // the dropped trigger `D-186` forbids. The same boundary predicate the timer
+                        // uses decides it, so nothing starts a cycle a window still holds back.
+                        val parkedCycle =
+                            if (canClaimForParkedRequests()) {
+                                val claimed = claimParked()
+                                publishShutdownSnapshot()
+                                concurrencyHooks.afterClaimPublished()
+                                refuseIfShuttingDown(claimed)
+                            } else {
+                                null
+                            }
+                        parkedCycle to if (parkedCycle == null) cycleGeneration else null
                     }
                 }
             if (nextRun == null) {
