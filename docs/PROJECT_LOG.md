@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-22 — `E3-04` correction: the post-write trigger, the D-185 allowlist and the iOS task identifier
+
+- **Type:** correction
+- **Story / Decision:** `E3-04` / `D-185`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
+- **What changed:** the `§9.8` post-write trigger now fires for every synchronized write. Two `internal` decorators, `SyncRequestingVehicleRepository` and `SyncRequestingFuelEntryRepository`, request `SyncTrigger.PostWriteDebounce` when a write commits, and `VehicleSliceRuntime` no longer requests it itself, so the delete path its list holder reaches directly is covered and no write fires the trigger twice. The `D-185` trigger ban became a receiver allowlist instead of a `StateHolder` denylist, with the four mirroring documents and ADR-0186 corrected in the same change. The single `BGTaskScheduler` identifier is now bound to a contract fixture that compares the Kotlin constant with `iosApp/Info.plist` and to a row in `docs/identifiers.md`. `AGENTS.md` records `E3-08` as merged and `E3-04` as implemented on this branch with pull request #72 open, `docs/BACKLOG.md` marks the story's review gate, and `PlatformHostContractTest` reads the graph file into one variable.
+- **Why:** a Vehicle delete and all three Fuel Entry writes committed an outbox row with no trigger behind it, so the row waited for a foreground return past `FOREGROUND_RESUME_THRESHOLD_MS`, a connectivity recovery, a pull-to-refresh, or the six-hour `Periodic` cadence - the worst case being six hours before the data was backed up. The trigger belongs with the outbox row, and wrapping the whole repository is what makes the rule exhaustive. A one-line alias (`let holder = model.syncStateHolder`) evaded the D-185 denylist, and the `BGTaskScheduler` identifier was written twice with the compiler connecting neither copy, so a divergence would have failed only at runtime with an `NSLog` line and a silently dead cadence.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0186`, `docs/handoff-E3-04.md`.
+- **Verification:** the post-write regression is `PostWriteSyncTriggerTest` (4 tests) and `:shared:testAndroidHostTest` reports 196 tests and 0 failures. The D-185 fixtures report 9 tests and 0 failures, with the aliased-receiver fixture observed failing against the denylist. The identifier fixture was observed failing with the `Info.plist` literal changed and passing after the restore. The complete `AGENTS.md` command is green with 31 `contractCheck` assertions all `PASS` and none `PENDING`, the Objective-C golden header is byte-identical, and the iOS simulator action and the API 36 instrumented suite both pass.
+- **Follow-ups / risks:** the `shared-tests` stall recorded in earlier entries still needs an owner, since `E1-14` and `E1-17` are merged. Two corrections to the review brief are recorded in the handoff: `VehicleSliceRuntime.refresh()` still needs `SyncTrigger.PullToRefresh`, so the brief's instruction to delete that import was wrong, and the brief's own alias fixture did not reproduce the denylist defect.
+
+
 ### 2026-09-22 — `E3-04` correction: the parked batch a spent window left behind
 
 - **Type:** correction

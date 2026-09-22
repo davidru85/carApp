@@ -21,14 +21,14 @@ Fill in every section. This template is the canonical field list; `AGENTS.md` li
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-22 (fourth correction round, review of pull request #72)
+- Date: 2026-09-22 (fifth correction round, review of pull request #72)
 - Branch and base: `story/E3-04-repository-sync-wiring`, based on `main` at `c38d1fc`; not rebased, not force-pushed, not merged.
-- Current phase and latest commit: the fourth correction round, complete and verified. The round is `fff9ff0` (the three RED tests and the `SyncConcurrencyHooks` seam), `750d1c0` (the immutable `ShutdownSnapshot` and the isolated manual claim), `9549263` (the platform leases and `D-187`) and the commits that follow for the iOS clock, the awaitable graph close and these records.
-- Push and pull-request status: pull request #72 open and not merged; the owner's gated review is the merge gate. The owner confirmed `D-187` and granted the retrospective commit-order exception, and authorised the three unlisted edits (extending the checker's non-holder member set, the test seam in `:core:sync`, and a temporarily red CI between the RED and the production commit).
-- Completed since the previous checkpoint: this round closed the `D-186` parking hole, removed the unreferenced Android controller accessor, and corrected three stale handoff statements. `drainCycles` now claims the parked `§9.8` batch when a cycle ends, using the same `canClaimForParkedRequests()` predicate the window timer uses, so a window that opened during a running cycle can no longer strand its triggers until an unrelated later one arrives. `AndroidAppGraph.syncController()` and its import are gone. The handoff no longer says the Android worker requests the cycle, no longer names `ProcessInfo.systemUptime`, and no longer quotes the superseded `requestPeriodicSync` criterion. Earlier in the story: `shutdown()` no longer reads four independently volatile fields; one immutable `ShutdownSnapshot` is published under `cycleMutex` after every complete state transition and re-read against `shuttingDown`, so an admitted request is either completed by a snapshot that already contained it or refused by the re-read that followed its own publication. `PullToRefresh` reserves its cycle through `claimImmediate` and no longer drains `parkedRequests`, so automatic requests keep waiting for their `D-186` boundary. Both platform leases now await `sync(SyncTrigger.Periodic)` before reporting completion, with an iOS expiration handler and an idempotent completion gate. `SceneBackgroundDuration` measures with `ContinuousClock`, which continues across device sleep, and the cold start is consumed exactly once. `AppGraph.awaitClosed()` makes the database release awaitable, and the instrumented reset waits for it before deleting the file.
-- Verification evidence and known failures: no known failures. Every command of step 8 was run and each result is recorded in the Verification Run section.
-- Open decisions or blockers: none. `D-187` is `Accepted`; the owner confirmed it before any production change.
-- Exact next step: the owner's gated review of pull request #72. This round closed the `D-186` parking hole and the three stale handoff statements; nothing is outstanding on the branch.
+- Current phase and latest commit: the fifth correction round, complete and verified. The round is the RED and GREEN commits for the post-write trigger, the D-185 allowlist, the `BGTaskScheduler` identifier fixtures, the `AGENTS.md` state refresh, the backlog gate and the single-read refactor, followed by the records commit.
+- Push and pull-request status: pull request #72 open and not merged; the owner's gated review is the merge gate.
+- Completed since the previous checkpoint: six findings from the review of pull request #72 are closed. The `§9.8` post-write trigger now fires for all six synchronized write paths through `SyncRequestingVehicleRepository` and `SyncRequestingFuelEntryRepository`, so a Vehicle delete and all three Fuel Entry writes no longer leave an outbox row waiting for an unrelated later trigger. The `D-185` trigger ban is a receiver allowlist rather than a `StateHolder` denylist, so a one-line alias can no longer evade it, and the four documents that describe `D-185` were corrected with it. The single `BGTaskScheduler` identifier is bound to a contract fixture that compares the Kotlin constant with `iosApp/Info.plist`, and it is registered in `docs/identifiers.md`. `AGENTS.md` now records `E3-08` as merged and `E3-04` as implemented on this branch with pull request #72 open, `docs/BACKLOG.md` marks the story's review gate, and `PlatformHostContractTest` reads the graph file once.
+- Verification evidence and known failures: no known failures. Every command of Step 8 was run and each result is recorded in the Verification Run section.
+- Open decisions or blockers: none. No decision ID was minted in this round; findings 1 and 6 are defect fixes against existing rules, finding 2 corrects how `D-185` is described, and finding 3 registers an identifier `D-181`/`D-187` already introduced.
+- Exact next step: the owner's gated review of pull request #72.
 
 ## Scope Completed
 
@@ -40,10 +40,12 @@ Update this section at every material state change and before yielding unfinishe
 - The iOS platform path: `BGTaskScheduler` registration and the first submission folded into `createSwiftAppGraph` (so no new exported symbol and the golden header is untouched), the handler resubmitting from inside itself before requesting the cycle on the process graph's `SyncController`, the two `Info.plist` keys, and the scene-phase foreground duration measured with `ContinuousClock`, which keeps counting across device sleep and is not a required-reason API.
 - `WalkingSkeletonModel.evaluateAnonymousReminder()` was replaced by `onSceneActivated(backgroundMillis:)`, which performs the reminder evaluation and the `§9.8` foreground trigger for one foreground entry. The old wrapper had no remaining caller, and leaving it would have been a second entry point that silently skips the sync trigger.
 
+- Every synchronized write requests the `§9.8` post-write trigger: the two repository decorators cover Vehicle create, update and delete and Fuel Entry create, update and delete, so an outbox row is never left waiting for an unrelated later trigger.
+
 ## Acceptance Evidence
 
 - **The UI still observes only local database flows.** The Activity and the Swift model observe the state holders, which read the local database; no UI layer gained a remote read. `PlatformHostContractTest` asserts the host-to-state-holder bindings, and no view observes `RemoteSyncSource`.
-- **The five `§9.8` triggers exist with the stated constants.** `AppGraphTriggerWiringTest` and `SyncStateHolderForegroundTest` pin `ConnectivityRecovered`, `AppForeground`, the post-write path and the periodic arrangement; `SyncAdmissionPolicyTest` pins the 2 s debounce and the 30 s floor against the declared constants. A single grep proves no consumer of the two constants existed before this story.
+- **The five `§9.8` triggers exist with the stated constants.** `AppGraphTriggerWiringTest` and `SyncStateHolderForegroundTest` pin `ConnectivityRecovered`, `AppForeground`, the post-write path and the periodic arrangement; `SyncAdmissionPolicyTest` pins the 2 s debounce and the 30 s floor against the declared constants. A single grep proves no consumer of the two constants existed before this story. The post-write trigger is covered for every synchronized write by `PostWriteSyncTriggerTest`, which asserts the six write paths and that a read and a rejected write request nothing.
 - **Platform workers and handlers enter only the process graph's `SyncController`.** `PeriodicSyncWorker.doWork()` delegates to `runPeriodicWork(AndroidAppGraph::runPeriodicSync)`, and `AndroidAppGraph.runPeriodicSync()` is `require().syncController().sync(SyncTrigger.Periodic)`, so the WorkManager execution lease is held until the cycle finishes; the iOS `BGTask` handler awaits the same `sync(SyncTrigger.Periodic)` on the process graph behind an idempotent completion gate (`D-187`). Neither holds a repository, a database handle or a second graph. `PlatformHostContractTest` and `IosCompositionContractTest` assert both lease orderings and assert that the fire-and-forget entry points are absent, and `SwiftTriggerSurfaceContractTest` is the executable ban that keeps a UI-layer `SyncStateHolder.requestSync` call site from reappearing.
 - **No state holder change is required for sync correctness.** No state-holder change was made for that purpose; the only holder change is the new foreground entry point, which is the `§9.8` trigger itself rather than a correctness dependency.
 - **Both constants are enforced (criterion 5).** Enforcement is in the controller's admission path, tested by `SyncAdmissionPolicyTest`; neither is recorded as unenforced.
@@ -88,162 +90,59 @@ Include any `SHOULD` you deviated from, and why.
 - `PostWriteDebounce` and `ConnectivityRecovered` are deliberately **not** routed through the platform adapter, although `§20.10` groups the three together. Both are in-process events the graph already observes exactly, and a platform scheduler would add latency to a trigger whose cause is already known. The grouping in `§20.10` is about which layer may fire them (never Swift UI), which this story preserves.
 
 - **A spent window no longer strands its parked batch.** `serveParkedWhenWindowsOpen()` is reached only from a window timer, so a window that opened while a `PullToRefresh` cycle was running served nothing and spent itself. When that cycle then returned before `armFloorWindowLocked()` - the connectivity gate, the `LOCAL_OWNER` gate, or an `adoption()` that throws and therefore schedules no retry - no timer remained and the parked batch waited for an unrelated later trigger. That is the dropped trigger `D-186` forbids, so `drainCycles` now applies the same `canClaimForParkedRequests()` boundary predicate when a cycle ends. This is a defect fix against an existing decision and mints no new ID. The regression is `SyncAdmissionPolicyTest.aWindowThatOpensDuringAManualCycleStillServesItsParkedTrigger`, observed failing against the pre-correction controller and passing now.
+- **The post-write trigger covers every synchronized write.** Before this round only `VehicleSliceRuntime.createVehicle` and `updateVehicle` requested `SyncTrigger.PostWriteDebounce`. A Vehicle delete and all three Fuel Entry writes produced an outbox row with no trigger behind it, so the row waited for a foreground return past `FOREGROUND_RESUME_THRESHOLD_MS`, a connectivity recovery, a pull-to-refresh, or the six-hour `Periodic` cadence. `§9.8` already determines that a post-write is a trigger, so this is a defect fix against an existing rule and mints no new decision ID, exactly as the process-scoped Android foreground measurement above. The trigger moved into `SyncRequestingVehicleRepository` and `SyncRequestingFuelEntryRepository` because a delete reaches the repository directly from its list holder and never passes through a runtime wrapper. The regression is `PostWriteSyncTriggerTest`, observed failing before the decorators existed.
+- **`D-185` is scoped by a receiver allowlist.** The first shape of the rule required the literal text `StateHolder` near the call site, which a one-line alias evaded. The rule now accepts only the `syncController()` route of `§9.1` and rejects every other receiver carrying a platform-owned trigger. The four mirroring documents and ADR-0186 were corrected in the same change, and the two fixtures `aPlatformOwnedTriggerBehindAnAliasedReceiverIsRejected` and `thePlatformControllerRouteIsAccepted` prove both directions.
+
 ## Verification Run
 
-Exact commands, and their result.
+Every command below was run from the repository root in this round, and each result is the literal one.
 
-- `./gradlew :build-logic:convention:test` — `BUILD SUCCESSFUL`, 162 tests plus the five new `SwiftTriggerSurfaceContractTest` fixtures.
-- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`; 186 decisions and 186 ADRs.
-- `./gradlew :shared:testAndroidHostTest` — `BUILD SUCCESSFUL`, 191 tests, 0 failures.
-- `./gradlew :androidApp:testDebugUnitTest :androidApp:compileDebugAndroidTestKotlin` — `BUILD SUCCESSFUL`.
-- `./gradlew :wiring:firebase:compileAndroidHostTest :wiring:firebase:compileKotlinIosSimulatorArm64` — `BUILD SUCCESSFUL`.
-- `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test` with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks.
-- The `objc-header-golden-check` step locally: `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64`, then `diff -u shared/build/generated/objc-header/Shared.h.golden composition/ios/build/bin/iosSimulatorArm64/debugFramework/Shared.framework/Headers/Shared.h` — byte-identical, 1766 lines.
-- `:androidApp:connectedDebugAndroidTest` on the `E1_07_API_36` emulator — `BUILD SUCCESSFUL`, 17 tests, 0 failures, including both `FirstVehicleOnboardingTest` cases that now reset through the graph.
-- The `ios-simulator-build` step locally: `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator -destination "id=$DEVICE_ID" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build` — `** BUILD SUCCEEDED **`, and the built bundle's `Info.plist` carries both keys.
-- The `ios-simulator-build` test action locally: `xcodebuild … test` — `** TEST SUCCEEDED **`, 27 tests with 1 skipped and 0 failures, including `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` (41.7 s) which drives the real app against the real graph.
-- `./iosApp/generate-project.sh` reproduces the committed `project.pbxproj` byte for byte, so the four-line delta is the deterministic output of the repo's own generator.
-- Pull request #72, run `35577147782`, first attempt: `ktlint`, `detekt`, `architecture-check`, `contract-check`, `android-assemble`, `android-instrumented-tests`, `ios-simulator-build`, `objc-header-golden-check` and `provider-decoupling` were green. `shared-tests` is covered by the paragraph that follows: it was green only on re-run, after the pre-existing stall.
-- **`shared-tests` failed by the pre-existing ten-minute host-step stall, and the evidence below shows it is not caused by this change.** **What failed.** `The action 'Run Android application and KMP host tests' has timed out after 10 minutes`. It failed on three of four attempts (two distinct commits, and one commit that changed nothing but Markdown). Every one of those logs has several hundred `STARTED` lines, **zero** `PASSED`, **zero** `FAILED`, and no test result: the step never reported a single test outcome, so no assertion ever ran to completion and no test of this story failed. It passed on re-run twice. The stall is always in the same place — after `> Task :feature:vehicle:testAndroidHostTest`, on `VehicleStateHoldersTest` — and it is intermittent: the set of test names in a failed log is a strict subset of the set in a passing one, so no test is uniquely red.
+### Fifth correction round (review of pull request #72)
 
-**Why it is not this change.**
-
-- `:feature:vehicle` imports no symbol this story touched. It declares a Gradle dependency on `:core:sync` but imports nothing from it (`grep` for `core.sync`/`SyncController` under its sources returns only the build-file line), and `VehicleListStateHolder` takes no `SyncController` and requests no sync. The stalled test class exercises holders that never reach the controller whose admission path this story changed.
-- The change is additive and confined to `:core:sync`, `:shared`, `:wiring:firebase`, `androidApp` and `build-logic`. Nothing in it is on the code path the stalled test executes.
-- The third failure was on commit `46784ff`, whose only changes are two Markdown files and **zero** Kotlin files. A documentation-only commit cannot introduce a Kotlin hang, and the same step failed on it.
-- Locally the identical step passes in 40 s with `--rerun-tasks --no-build-cache`, and the complete required command passes in 31 s. The failure therefore depends on the CI environment, not on the sources.
-- The base commit of this branch (`c38d1fc`, the merge of PR #71) also failed its own `shared-tests`. It is a repository condition, not one introduced here.
-- The mechanism is the one `docs/PROJECT_LOG.md` already records, for runs `35333547781` and `35336079709`, and assigns to the test-infrastructure stories `E1-14`/`E1-17`. The same stall reached `provider-decoupling` on that round, so it is not specific to any one job.
-
-**Measured headroom, which is what settles the attribution.** The stalled step is bimodal, not gradually slow:
-
-| Run | Android-host step | Kotlin/Native step |
-|---|---|---|
-| `main` at `c38d1fc` (this branch's base) | 230 s, success | 613 s, **failed** its 600 s limit |
-| This branch on a green attempt | 246 s, success | 266 s, success |
-| Limit | 600 s | 600 s |
-
-The healthy time is 246 s — **41 % of the limit**, so this change leaves 59 % headroom and does not sit near any ceiling. The change adds about 16 s to a step that took 230 s on the base, which cannot convert 354 s of headroom into a hang that produces no test result at all. The failure is qualitatively different from a slow step, and the base commit had its own `shared-tests` failure on a *different* step (Native, 613 s against the same 600 s limit), while this branch runs that same Native step in 266 s.
-
-**It outlives its owning stories.** `docs/PROJECT_LOG.md` assigns the stall to `E1-14` and `E1-17`, and both have merged (PR #66 and PR #67). The mechanism therefore still reproduces after its owners closed, which means it now needs a new owner rather than another citation of the old one. That reassignment is an owner decision, so it is reported here and not minted as a new backlog ID.
-
-**What was done about it.** Nothing in this story's sources, deliberately. The failure reports no test result and no assertion, so there is nothing to fix in a passing test and re-pinning one would be inventing a cause. It is recorded here and in `docs/PROJECT_LOG.md` as the pre-existing stall, which keeps it owned by `E1-14`/`E1-17` instead of quietly transferring ownership to `E3-04`. `D-175` and `D-177` already fixed the two mechanisms that were found inside `E3-03` itself; what remains is the environment-level stall those decisions left open.
-
-### Correction round (review of pull request #72)
-
-Every command of the review's step 11 was run from the repository root, and each result is the
-observed one.
-
-- `./gradlew :core:sync:testAndroidHostTest` — `BUILD SUCCESSFUL`, 101 tests, 0 failures. This is the
-  regression guard for the two concurrency fixes.
-- `./gradlew :build-logic:convention:test` — `BUILD SUCCESSFUL`; `SwiftTriggerSurfaceContractTest`
-  reports **7** tests, the five original fixtures plus the two added for the masker defects.
-  Both new fixtures were observed **failing** against the old local `stripComments` before the fix
-  commit, and passing after the rule reused `KotlinSourceText.code`. The observed failures were
-  `aNestedBlockCommentDoesNotMakeCommentedTextLookLikeACallSite` expecting `[]` and receiving
-  `[iosApp/Fixture.swift:2 requests Periodic]` — a commented-out call site read as code — and
-  `aSlashSlashInsideAStringLiteralDoesNotHideARealCallSite` expecting
-  `[iosApp/Fixture.swift:1 requests Periodic]` and receiving `[]` — a real call site hidden by a `//`
-  inside a URL string. The test commit `cbb2818` precedes the fix commit `7d6d063`.
-- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`,
-  and the decision registry reports **187 decisions and 187 ADRs**, one more than the 186 recorded
-  before, so `D-186` is complete.
-- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks.
-- `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by `diff -u` against
-  `shared/build/generated/objc-header/Shared.h.golden` — no output, so the golden header is
-  byte-identical. The correction round does not appear in `git diff c791122..HEAD` for that file, so
-  no exported declaration moved in it.
-- The iOS simulator was erased first, then built and tested with the `docs/handoff-E0-06.md`
-  invocation including `ARCHS=arm64`: `** BUILD SUCCEEDED **` and `** TEST SUCCEEDED **`, 27 tests
-  with 1 skipped and 0 failures. No re-run was needed, so the `E1-15` flake did not fire.
-- `./gradlew :androidApp:connectedDebugAndroidTest` with `ANDROID_SERIAL=emulator-5554` on the `D-84`
-  API 36 device — `BUILD SUCCESSFUL`, 17 tests, 0 failures.
-
-**One deviation inside the correction round, recorded because it changes a line the review specified.**
-`admit` was restructured from the specified sequence of guard statements into a single
-`if / else if / else` expression. The specified form adds a third `return` to the function and
-`:core:sync:detekt` fails it with `Function admit has 5 return statements which exceeds the limit of 4
-[ReturnCount]`. A baseline or suppression file is forbidden, so the function was rewritten to have two
-exits while keeping the specified semantics exactly: the parker is still removed from
-`parkedRequests` and completed with `PersistenceError.DatabaseUnavailable` on the re-check, the
-debounce window is still armed before it is read, `PullToRefresh` still bypasses the window check, and
-`windowsOpen()` is still the condition that decides a claim. `:core:sync:testAndroidHostTest` stays
-green, which is the guard for that behaviour.
-
-### Second correction round (review of pull request #72)
-
-Every command of step 10 was run from the repository root, and each result below is the literal one.
-
-- `./gradlew :core:sync:testAndroidHostTest` — `BUILD SUCCESSFUL`, 101 tests, 0 failures.
-- `./gradlew :shared:testAndroidHostTest` — `BUILD SUCCESSFUL`, 191 tests, 0 failures.
-- `./gradlew :build-logic:convention:test` — `BUILD SUCCESSFUL`, 169 tests, 0 failures, with
-  `androidHostBindsThePersistentGraphToSharedStateHolders` passing.
-- `./gradlew :androidApp:testDebugUnitTest` — `BUILD SUCCESSFUL`.
-- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`;
-  **187 decisions and 187 ADRs**.
-- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks.
-  Its first run failed `:androidApp:ktlintMainSourceSetCheck` with
-  `AndroidForegroundDuration.kt:37:1: Needless blank line(s) (standard:no-consecutive-blank-lines)`,
-  which was a stray blank line from appending the process-scoped object; removing it made the command
-  pass and the fix was folded into the same commit.
-- `xcrun simctl shutdown all` then `xcrun simctl erase all`, then
-  `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` and the `diff -u` against
-  `shared/build/generated/objc-header/Shared.h.golden` — the diff produced no output, so the golden
-  header is byte-identical. No exported declaration moved in this round.
-- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84` API 36
-  device — `BUILD SUCCESSFUL`, 17 tests, 0 failures.
-- **The new host assertion was proved to fire.** With line 88 of `AnonymousReminderCopy.kt` temporarily
-  restored to `val duration = AndroidForegroundDuration()` — that is, composition-scoped —
-  `./gradlew :build-logic:convention:test` reported `PlatformHostContractTest >
-  androidHostBindsThePersistentGraphToSharedStateHolders FAILED` with
-  `java.lang.AssertionError: Expected value to be true.` and `2 tests 1 failures`. After restoring
-  `AndroidForegroundTracking.duration` the same task reported `BUILD SUCCESSFUL` with `2 tests 0
-  failures`.
-
-### Third correction round (review of pull request #72)
-
-Every command of step 8 was run from the repository root; each result below is the literal one.
-
-- `./gradlew :core:sync:testAndroidHostTest :shared:testAndroidHostTest :build-logic:convention:test :androidApp:testDebugUnitTest --rerun-tasks` — `BUILD SUCCESSFUL`.
-- `./gradlew contractCheck --rerun-tasks` — `BUILD SUCCESSFUL`; every assertion `PASS`, no `PENDING`, **188 decisions and 188 ADRs**.
-- `./gradlew ktlintCheck detekt architectureCheck koverVerify` — `BUILD SUCCESSFUL`.
-- `./gradlew :androidApp:assembleDebug` — `BUILD SUCCESSFUL`.
-- `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`.
-- `./iosApp/generate-project.sh` — the only uncommitted delta is the deterministic addition of `iosApp/Tests/SceneBackgroundTrackingTests.swift` to the unit-test target: four added lines, all naming that file.
-- `git diff --check` — silent. `git status --short` — no `PR72_CORRECTIVE_ACTION_PROMPT.md` entry, because the note was never written to the worktree.
-- The iOS test action recorded in this handoff, after `xcrun simctl shutdown all` and `erase all` — `** TEST SUCCEEDED **`, 45 unit tests and 27 UI tests, 1 skipped, 0 failures.
-- `xcodebuild … -only-testing:carAppTests/SceneBackgroundTrackingTests test` — `** TEST SUCCEEDED **`; the three cases are listed as executed, so they run rather than merely compile: `testColdStartIsConsumedExactlyOnce`, `testACompletedDepartureIsConsumedExactlyOnce` and `testRepeatedDepartureKeepsTheEarliestInstant`.
-- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84` API 36 device — `BUILD SUCCESSFUL`, 17 tests, 0 failures. This is the run that exercises the changed `resetForTests` lifecycle path.
-
-**Observations against the pre-correction code, all deliberate.** The three admission and shutdown tests were observed failing before `750d1c0`, each on its own defect rather than on a timeout:
-`pullToRefreshDoesNotServeAnAutomaticTriggerBeforeItsWindowBoundary` with `manual refresh MUST leave the automatic request parked`; `shutdownBetweenClaimPublicationAndAdmissionReturnCompletesTheAwaiter` and `shutdownDuringFollowUpPromotionCompletesThePromotedAwaiter` each with `expected:<Err(error=DatabaseUnavailable)> but was:<Ok(value=kotlin.Unit)>`. The Android fixture failed with `Expected value to be true.` when `doWork()` was temporarily reverted to call `runPeriodicSync()` directly, and the iOS fixture failed with `the expiration handler MUST be installed before the cycle is started` when `expirationHandler` was temporarily moved after `syncJob.start()`.
-
-**Repository checks on the required-reason API.** `rg -n 'systemUptime|mach_absolute_time' iosApp composition/ios` matches only build artifacts under `composition/ios/build/...`; no project-owned source calls either. No `PrivacyInfo.xcprivacy` is therefore required, and none was added.
-
-### Fourth correction round (review of pull request #72)
-
-Every command was run from the repository root; each result below is the literal one.
-
-- The new regression was observed **failing** before the production change, with
-  `a parked trigger MUST be served once its window is open and no cycle is running`, and **passing**
-  after it. Both observations were made in this round.
-- `./gradlew :core:sync:testAndroidHostTest` — `BUILD SUCCESSFUL`, **105 tests, 0 failures**. The
-  module declared 104 tests before this round and the new regression makes 105. The correction brief
-  predicted 106; the discrepancy is in the brief's own arithmetic, not in the work: before this round
-  the module declared 104 `@Test` methods and the suite executed 104, and it now declares and executes
-  105. Nothing was removed or skipped, and no existing test was altered.
-- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 31
-  `contractCheck` assertions all `PASS` and **none `PENDING`**.
-- `grep -rn "AndroidAppGraph.syncController" androidApp/` — prints nothing, so the accessor is absent.
-- `grep -n "requestPeriodicSync\|ProcessInfo.systemUptime" docs/handoff-E3-04.md` — prints only the
-  line that records the required-reason `rg`, which is the permitted exception. No other line mentions
-  either token.
+- `./gradlew :shared:compileAndroidHostTest` before the decorators existed — `BUILD FAILED` with
+  `Unresolved reference 'SyncRequestingVehicleRepository'` at six call sites and
+  `Unresolved reference 'SyncRequestingFuelEntryRepository'` at three, which is the RED evidence for
+  the post-write trigger.
+- `./gradlew :shared:testAndroidHostTest --tests "com.ruizurraca.carapp.PostWriteSyncTriggerTest"` —
+  `BUILD SUCCESSFUL`, **4 tests, 0 failures**.
+- `./gradlew :shared:testAndroidHostTest` — `BUILD SUCCESSFUL`, **196 tests, 0 failures**.
+- `./gradlew :build-logic:convention:test --tests "*SwiftTriggerSurfaceContractTest*"` — before the
+  allowlist, `aPlatformOwnedTriggerBehindAnAliasedReceiverIsRejected` failed with
+  `expected:<[iosApp/Fixture.swift:4 requests Periodic]> but was:<[]>`; after it,
+  **9 tests, 0 failures**, including `theRepositoryDoesNotFirePlatformOwnedTriggersFromTheIosUiSurface`
+  and `thePlatformControllerRouteIsAccepted`.
+- The `BGTaskScheduler` identifier fixtures: with `iosApp/Info.plist` temporarily changed to
+  `com.ruizurraca.carapp.sync.broken`,
+  `theSingleBackgroundTaskIdentifierIsDeclaredInBothPlacesThatMustAgree` failed with
+  `Info.plist MUST permit exactly the identifier the Kotlin registration uses; declared=com.ruizurraca.carapp.sync`.
+  `iosApp/Info.plist` was restored with `git checkout --`, and `git diff -- iosApp/Info.plist` is now
+  empty. `theSingleBackgroundTaskIdentifierIsRegisteredInTheIdentifierRegistry` failed before the
+  `docs/identifiers.md` row and passes after it.
+- The complete `AGENTS.md` command with the four `D-75` `-x` paths — `BUILD SUCCESSFUL`, 642 tasks,
+  31 `contractCheck` assertions all `PASS` and **none `PENDING`**.
 - `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` followed by the `diff -u` against
   `shared/build/generated/objc-header/Shared.h.golden` — no output, so the golden header is
-  byte-identical. No exported declaration moved in this round.
-- `git status --short` — no output after the final commit.
-- `git log --oneline -4` — the RED test commit, the GREEN fix commit, the accessor refactor and this
-  documentation commit, in that order.
+  byte-identical. Both new classes are `internal`, so nothing reached the exported surface.
+- The iOS simulator, erased first: `xcodebuild … test` — `** TEST SUCCEEDED **`, 45 unit tests and
+  27 UI tests with 1 skipped and 0 failures.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest` on the `D-84` API 36
+  device — `BUILD SUCCESSFUL`, 17 tests, 0 failures.
+- `git status --porcelain` — clean after the records commit.
+
+**Two corrections to the review brief, both reported rather than worked around.**
+
+1. The brief's step 1.6 removes `import com.ruizurraca.carapp.core.common.SyncTrigger` from
+   `VehicleSliceRuntime.kt` and its criterion 3 asserts the file then contains no `SyncTrigger` at all.
+   That is wrong: `refresh()` calls `syncController.sync(SyncTrigger.PullToRefresh)`, which is the
+   pull-to-refresh bypass of `§9.8` that `D-186` fixes, so the import is still required and removing it
+   fails compilation. The import was kept and criterion 3 does not hold; the two remaining occurrences
+   are that one call and its import.
+2. The brief's fixture for the receiver alias in step 2.1 does not reproduce the defect it describes.
+   In its two-line form the alias sits 42 characters before `requestSync`, inside the 120-character
+   receiver window, so the old denylist still sees the literal `StateHolder` and the fixture passes
+   before the fix. The committed fixture separates the alias from the call by more than the window
+   (169 characters), which is what makes it fail against the denylist with
+   `expected:<[iosApp/Fixture.swift:4 requests Periodic]> but was:<[]>` and pass against the allowlist.
 
 ## Contract Impact
 
