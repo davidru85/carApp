@@ -143,18 +143,20 @@ review.
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-04`, `E3-12`,
+- **Remaining Phase 3:** `E3-12`,
   `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`, `E3-20` and
   `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
   #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
-  through pull request #70 with `D-172` accepted as option D, and `E3-03`, the `:core:sync` engine,
-  merged on 2026-09-17 through pull request #69, so none of them is outstanding. `E3-08`, the app
-  graph and Firebase wiring, is implemented on `story/E3-08-app-graph-and-firebase-wiring` (pull
-  request #71), awaiting the owner's gated review; it introduced `D-178` through `D-180` and its evidence is in
-  `docs/handoff-E3-08.md`. `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
-- **Three decisions remain open, and none of them blocks `E3-08`:** the tables below are the
+  through pull request #70 with `D-172` accepted as option D, `E3-03`, the `:core:sync` engine,
+  merged on 2026-09-17 through pull request #69, and `E3-08`, the app graph and Firebase wiring,
+  merged through pull request #71; `E3-08` introduced `D-178` through `D-180` and its evidence is in
+  `docs/handoff-E3-08.md`. `E3-04`, the repository sync wiring, is implemented on
+  `story/E3-04-repository-sync-wiring` (pull request #72), awaiting the owner's gated review; it
+  introduced `D-181` through `D-187` and its evidence is in `docs/handoff-E3-04.md`. `E3-01`,
+  `E3-06`, `E3-10` and `E3-11` are already complete.
+- **Three decisions remain open, and none of them blocks `E3-04`:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03` and `E3-17` already merged and `E3-08` introduced no open decision, so
+  three documents. `E3-03`, `E3-08` and `E3-17` already merged and `E3-04` introduced no open decision, so
   no open decision gates merged or in-flight work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
@@ -196,6 +198,8 @@ build-logic/       convention plugins, an included build
 ```
 
 `:integration:firebase-analytics` and `:integration:firebase-crashlytics` do **not** exist yet.
+`:androidApp` additionally depends on `androidx.work:work-runtime` (`D-184`), which reaches neither
+the shared graph nor the iOS composition.
 D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
 complete the remaining integration behavior in place.
 
@@ -268,7 +272,10 @@ E0-07 made the Objective-C golden-header job executable on macOS and made
 of `docs/TECHNICAL_PLAN.md §4` executable (`D-178`), added the source rule that keeps
 `:integration:*` types inside `:wiring:firebase` and `:integration:*` (`D-179`), and implemented
 `docs/CONTRACTS.md §18` assertion 14 while adding assertions 34 and 35 for the two `AppGraph` surfaces
-(`D-180`). `contractCheck` currently reports no `PENDING` assertions.
+(`D-180`), made the `§20.10` iOS trigger ban executable as a source rule over both iOS platform file
+kinds, Kotlin `iosMain` and Swift `iosApp` (`D-185`), and bound the single `BGTaskScheduler`
+identifier of `§9.1` to a contract fixture that compares the Kotlin constant with
+`iosApp/Info.plist`. `contractCheck` currently reports no `PENDING` assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
 provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).
