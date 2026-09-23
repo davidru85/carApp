@@ -3,8 +3,9 @@ package com.ruizurraca.carapp.buildlogic.contract
 import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 
 /**
- * `docs/CONTRACTS.md §20.10`: `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` are fired
- * exclusively by platform wiring and MUST NOT be requested from Swift UI code.
+ * `docs/CONTRACTS.md §20.10`: `OwnerChanged`, `PostWriteDebounce`, `ConnectivityRecovered` and
+ * `Periodic` are fired exclusively by the app graph or by platform wiring and MUST NOT be requested
+ * from Swift UI code.
  *
  * The prohibition exists for two concrete reasons, not for tidiness. Firing `Periodic` from the UI
  * would duplicate the `WorkManager` / `BGTaskScheduler` arrangement each host already performs, so the
@@ -23,11 +24,15 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
  *
  * `AppForeground` and `PullToRefresh` are deliberately absent from the banned set. Both are
  * user-initiated or lifecycle-driven and `§20.10` explicitly permits them from the Swift surface.
+ *
+ * `OwnerChanged` is owned by `DefaultAppGraph`, which is the only place that observes `OwnerContext`
+ * (`D-188`). A Swift call site requesting it would run a recovery cycle the graph never asked for and
+ * would bypass the gate that keeps an unrecovered empty list unresolved.
  */
 internal object SwiftTriggerSurfaceRule {
-    /** Trigger names that only platform wiring may request. */
+    /** Trigger names that only the app graph or platform wiring may request. */
     private val PLATFORM_OWNED_TRIGGERS =
-        listOf("PostWriteDebounce", "ConnectivityRecovered", "Periodic")
+        listOf("OwnerChanged", "PostWriteDebounce", "ConnectivityRecovered", "Periodic")
 
     /** How far past `requestSync` a trigger name may appear and still belong to that call. */
     private const val CALL_WINDOW = 200

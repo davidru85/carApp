@@ -2,11 +2,15 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.sync.SyncController
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
- * Tracks whether the current owner's recovery cycle is still outstanding.
+ * Tracks whether an owner's recovery cycle is still outstanding.
  *
  * An owner transition is not the same event as a known-empty list. When the owner resolves to an
  * identity the local database has never held, the local read succeeds with zero rows and
@@ -19,6 +23,13 @@ import kotlinx.coroutines.flow.StateFlow
  * publishing `isLoading`, so an empty list that is empty *because nothing has been fetched yet* is
  * never presented as a list known to be empty.
  *
+ * Recoveries are counted rather than flagged. `DefaultAppGraph` launches one `awaitRecovery` per
+ * transition on `dispatchers.io`, so a transition that arrives while an earlier cycle is still
+ * running leaves two in flight; a single boolean would let the earlier cycle's completion resolve
+ * the newest owner's list, which is the defect this gate exists to prevent. Only the last recovery
+ * to complete lowers the gate, and the counter and the value derived from it are written under one
+ * lock so no thread can publish a state the counter contradicts.
+ *
  * Three cases deliberately keep the previous behaviour:
  *
  * - the `LOCAL_OWNER` sentinel, which has nothing remote to fetch and which `§11.2` requires to work
@@ -28,13 +39,17 @@ import kotlinx.coroutines.flow.StateFlow
  * - any owner whose local data is non-empty, because a non-empty list is known regardless of
  *   whether a recovery is pending.
  */
-
 internal class OwnerRecoveryGate(
     private val syncController: SyncController,
 ) {
     private val mutablePending = MutableStateFlow(false)
 
-    /** True while the current owner's recovery cycle has not completed. */
+    // Guards the counter and the published value together, because both are written from graph
+    // coroutines that run on a multi-threaded dispatcher.
+    private val stateLock = Mutex()
+    private var outstanding = 0
+
+    /** True while at least one owner's recovery cycle has not completed. */
     val pending: StateFlow<Boolean> = mutablePending
 
     /**
@@ -47,20 +62,22 @@ internal class OwnerRecoveryGate(
      * what keeps a refused cycle from stranding an offline device behind the gate.
      */
     suspend fun awaitRecovery() {
-        mutablePending.value = true
+        stateLock.withLock {
+            outstanding += 1
+            mutablePending.value = true
+        }
         try {
             syncController.sync(SyncTrigger.OwnerChanged)
         } finally {
-            // Also on failure and on cancellation. A failed recovery is a condition the owner can see
-            // and retry through the existing unreadable-list path, and a graph being closed must not
-            // leave a half-raised window behind it.
-            mutablePending.value = false
+            // Also on failure and on cancellation, and under `NonCancellable` so a graph closed
+            // mid-recovery still lowers what it raised. A failed recovery is a condition the owner
+            // can see and retry through the existing unreadable-list path.
+            withContext(NonCancellable) {
+                stateLock.withLock {
+                    outstanding -= 1
+                    if (outstanding == 0) mutablePending.value = false
+                }
+            }
         }
     }
-
-    /**
-     * Whether an empty list must stay unresolved because the owner's recovery is outstanding.
-     * A non-empty list is known regardless, so it is never held back.
-     */
-    fun holdsEmptyListUnresolved(vehicleCount: Int): Boolean = mutablePending.value && vehicleCount == 0
 }
