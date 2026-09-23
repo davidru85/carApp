@@ -147,6 +147,8 @@ Update this section at every material state change and before yielding unfinishe
   `signIn` because the anonymous-identity test calls it on an anonymous device; `§20.3` now requires
   `OwnerContext.observe()` to emit the current owner on subscription, which is what `D-188`'s
   `drop(1)` baseline depends on; and `E1-18` keeps only the criteria it can verify.
+- Language correction: one chat reply of this round was emitted in Chinese instead of Spanish; the
+  correction is stated once and recorded under Decisions Made. No artifact was affected.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Completed since the previous checkpoint (CI-stall diagnosis round): the intermittent failure of
@@ -331,6 +333,10 @@ Include any `SHOULD` you deviated from, and why.
 - The proof is the deterministic two-device test, chosen by the owner over a manual-only acceptance
   and over doing both. The real provider leg stays owner-run regardless, so the automatic test is the
   only form of this evidence that can regress.
+- **Rule 0 violation, self-corrected.** One chat reply of the second review round was emitted in
+  Chinese (zh) instead of Spanish (es-ES). The owner flagged it; the next reply switched back to
+  Spanish immediately, without re-sending the translated text. No repository artifact was affected:
+  every file written in this story is in technical English. Recorded here as `AGENTS.md` requires.
 - Deviation: none. No `SHOULD` was deviated from.
 
 ## Verification Run
