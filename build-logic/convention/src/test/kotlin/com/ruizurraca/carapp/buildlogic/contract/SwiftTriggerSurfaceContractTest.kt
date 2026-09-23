@@ -28,6 +28,14 @@ class SwiftTriggerSurfaceContractTest {
     }
 
     @Test
+    fun anOwnerChangedRequestFromSwiftIsRejected() {
+        // `D-188`: the graph is the only caller. A Swift call site would run a recovery cycle the
+        // graph never asked for and would bypass the gate that keeps an unrecovered empty list
+        // unresolved, which is the exact state `SPECIFICATION.md` F-1 acts on.
+        assertRejected("OwnerChanged")
+    }
+
+    @Test
     fun aPostWriteDebounceRequestFromSwiftIsRejected() {
         assertRejected("PostWriteDebounce")
     }
