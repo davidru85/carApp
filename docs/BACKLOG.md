@@ -1640,11 +1640,14 @@ process while the step was stalled):
    explicit decision; it is not silently weakened.
 4. The ten required check names and the `contractCheck` assertion that pins the step ceilings are
    unchanged, or the change to them carries its own decision.
-5. Until this story lands, a red `shared-tests` or `provider-decoupling` is documented as not being
-   evidence of a regression, so a real regression is never waved through as "the usual flake".
 
 **Depends on:** none. **Blocks:** any story that relies on a red `shared-tests` meaning a real
 regression; it SHOULD precede such a story.
+
+The documentation that a red `shared-tests` or `provider-decoupling` is not by itself evidence of a
+regression is already in place from `E3-12`; this story removes the condition that made it necessary,
+so closing it MUST also remove that caveat from `AGENTS.md` and from this section's sequencing
+paragraph.
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 
