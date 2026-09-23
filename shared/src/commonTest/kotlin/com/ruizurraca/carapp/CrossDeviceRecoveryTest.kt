@@ -220,9 +220,9 @@ class CrossDeviceRecoveryTest {
                     message = "the owner transition admits exactly one recovery cycle",
                 )
                 assertEquals(
-                    expected = emptyList<SyncTrigger>(),
-                    actual = device.nonOwnerTriggersFired(),
-                    message = "no write, lifecycle, connectivity or adapter trigger was needed for recovery",
+                    expected = listOf(SyncTrigger.Periodic),
+                    actual = device.scheduledTriggers,
+                    message = "the graph hands the platform scheduler the periodic cadence and nothing else",
                 )
             } finally {
                 device.close()
@@ -356,9 +356,6 @@ class CrossDeviceRecoveryTest {
          * `triggers` - is the honest observable of a recovery cycle.
          */
         fun recoveryCycleCount(): Int = replica.pullCalls.count { it.entityType == EntityType.VEHICLE }
-
-        /** Triggers a platform adapter or a host would have to fire for this recovery to happen. */
-        fun nonOwnerTriggersFired(): List<SyncTrigger> = triggers.scheduled.filterNot { it == SyncTrigger.Periodic }
 
         fun signInPermanently() {
             authClient.setAuthState(signedInState())
@@ -516,7 +513,6 @@ class CrossDeviceRecoveryTest {
         const val ANONYMOUS_UID = "anonymous-uid"
         const val OTHER_ANONYMOUS_UID = "other-anonymous-uid"
         const val VEHICLE_ID = "00000000-0000-4000-8000-000000000001"
-        const val FUEL_ENTRY_ID = "00000000-0000-4000-8000-000000000002"
         const val VEHICLE_NAME = "Recovered Roadster"
 
         /**

@@ -278,6 +278,54 @@ class VehicleStateHoldersTest {
         }
 
     @Test
+    fun anEmptyListStaysUnknownWhileRecoveryIsOutstandingAndANonEmptyListNeverIs() =
+        runTest {
+            val repository = FakeVehicleRepository()
+            val recoveryPending = MutableStateFlow(true)
+            val holder =
+                VehicleListStateHolder(
+                    scope = backgroundScope,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
+                    recoveryPending = recoveryPending,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+
+            assertTrue(
+                holder.state.value.isLoading,
+                "An empty list whose owner's recovery is outstanding is not a confirmed empty list.",
+            )
+
+            repository.vehicles.value = Outcome.Ok(listOf(vehicle()))
+            advanceUntilIdle()
+
+            assertFalse(
+                holder.state.value.isLoading,
+                "A non-empty list is known regardless of the recovery window.",
+            )
+
+            repository.vehicles.value = Outcome.Ok(listOf(vehicle(deleted = true)))
+            advanceUntilIdle()
+
+            assertTrue(
+                holder.state.value.isLoading,
+                "A list holding only tombstones is empty, so the recovery window still holds it.",
+            )
+
+            recoveryPending.value = false
+            advanceUntilIdle()
+
+            assertFalse(
+                holder.state.value.isLoading,
+                "The window closes when the cycle completes, so first-run creation is reachable.",
+            )
+            holder.close()
+        }
+
+    @Test
     fun anEmptyResultForOneOwnerDoesNotResolveTheNextOwnersList() =
         runTest {
             val ownerContext = FakeOwnerContext(LOCAL_OWNER)

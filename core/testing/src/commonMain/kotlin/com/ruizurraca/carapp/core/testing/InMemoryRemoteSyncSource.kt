@@ -21,6 +21,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlin.native.HiddenFromObjC
 import kotlin.time.Instant
@@ -34,6 +35,9 @@ import kotlin.time.Instant
  * gap. `pushSnapshot` stores the pushed document under the owner path
  * `users/{ownerId}/{collection}/{entityId}`, assigning the server-owned `updatedAt` the way the
  * provider does; `pullChanges` then serves those stored documents back in the provider's order.
+ *
+ * A push whose payload disagrees with its snapshot is rejected as `RemoteError.InvalidArgument`, the
+ * way `toFirestoreWrite` rejects it before writing anything.
  *
  * Three behaviours are modelled because the engine and `docs/CONTRACTS.md §9.4` depend on all three:
  *
@@ -130,13 +134,20 @@ class InMemoryRemoteSyncSource(
     ): Outcome<RemoteAck, RemoteError> {
         pushCalls += snapshot
         pushResults.removeFirstOrNull()?.let { return it }
+        val parsed = Json.parseToJsonElement(snapshot.json).jsonObject
+        // `toFirestoreWrite` rejects a payload whose identity fields disagree with the snapshot
+        // before anything is written, so a replica that accepted one would hide exactly the class of
+        // defect `E1-11` was: a payload the production path cannot push.
+        if (!matchesProviderPreconditions(ownerId, snapshot, parsed)) {
+            return Outcome.Err(RemoteError.InvalidArgument)
+        }
         val committedAt = clock()
         val serverUpdatedAt = committedAt.toEpochMicroseconds()
         // The provider's server timestamp replaces the payload's own `updatedAt`; every other field
         // is carried verbatim, exactly as `toFirestoreWrite` does on the real path.
         val storedJson =
             rewriteUpdatedAt(
-                rawJson = payloadWithoutEntityType(snapshot.json),
+                rawJson = payloadWithoutEntityType(parsed),
                 updatedAtMillis = committedAt.toEpochMilliseconds(),
             )
         store(
@@ -225,15 +236,31 @@ class InMemoryRemoteSyncSource(
         }
 
     /**
+     * The preconditions `toFirestoreWrite` enforces before it writes anything: the payload's own
+     * identity fields must agree with the snapshot that carries it.
+     */
+    private fun matchesProviderPreconditions(
+        ownerId: OwnerId,
+        snapshot: EntitySnapshot,
+        parsed: JsonObject,
+    ): Boolean {
+        val id = parsed[ID_FIELD]?.jsonPrimitive?.contentOrNull
+        val owner = parsed[OWNER_ID_FIELD]?.jsonPrimitive?.contentOrNull
+        val schemaVersion = parsed[SCHEMA_VERSION_FIELD]?.jsonPrimitive?.longOrNull
+        val payloadEntityType = parsed[ENTITY_TYPE_FIELD]?.jsonPrimitive?.contentOrNull
+        if (id != snapshot.entityId.value || owner != ownerId.value) return false
+        if (schemaVersion != snapshot.schemaVersion.toLong()) return false
+        return payloadEntityType == snapshot.entityType.name
+    }
+
+    /**
      * Drops the transport-only `entityType` key, which never lands in the stored document, and
      * replaces `updatedAt` with the server's committed value.
      */
-    private fun payloadWithoutEntityType(json: String): JsonObject =
-        Json.parseToJsonElement(json).jsonObject.let { parsed ->
-            buildJsonObject {
-                parsed.forEach { (field, value) ->
-                    if (field != ENTITY_TYPE_FIELD) put(field, value)
-                }
+    private fun payloadWithoutEntityType(parsed: JsonObject): JsonObject =
+        buildJsonObject {
+            parsed.forEach { (field, value) ->
+                if (field != ENTITY_TYPE_FIELD) put(field, value)
             }
         }
 
@@ -254,6 +281,9 @@ class InMemoryRemoteSyncSource(
     internal companion object {
         const val ENTITY_TYPE_FIELD = "entityType"
         const val UPDATED_AT_FIELD = "updatedAt"
+        const val ID_FIELD = "id"
+        const val OWNER_ID_FIELD = "ownerId"
+        const val SCHEMA_VERSION_FIELD = "schemaVersion"
 
         val STORED_ORDER: Comparator<StoredDocument> =
             compareBy({ it.storedUpdatedAtMicros }, { it.document.documentId.value })
