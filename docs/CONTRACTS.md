@@ -2294,6 +2294,13 @@ interface OwnerContext {
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
 ```
 
+`OwnerContext.observe()` MUST emit the current owner on subscription and every change after it, so a
+subscriber can treat the first emission as a baseline and every later one as a transition. `D-188`
+depends on it: the app graph drops that baseline to tell an owner change from the owner it was built
+with, so an implementation that emitted only later changes would have its first transition discarded
+and would never fetch a newly signed-in owner's data. `AuthOwnerContext` satisfies this by mapping
+the authentication `StateFlow`, and `§9.8`'s `OwnerChanged` trigger is what the guarantee serves.
+
 ### 20.3.1 Crash reporting types — `:core:crash`
 
 ```kotlin

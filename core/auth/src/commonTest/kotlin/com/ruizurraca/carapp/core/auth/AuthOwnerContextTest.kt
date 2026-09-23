@@ -60,7 +60,11 @@ class AuthOwnerContextTest {
 
             authState.value = signedIn("owner-1")
 
-            assertEquals(listOf(LOCAL_OWNER, OwnerId("owner-1")), observed.await())
+            assertEquals(
+                listOf(LOCAL_OWNER, OwnerId("owner-1")),
+                observed.await(),
+                "§20.3: the current owner is emitted on subscription as the baseline, then every change",
+            )
         }
 
     @Test
