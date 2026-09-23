@@ -40,7 +40,7 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-23 (CI-stall diagnosis round; pull request #73 still open and unmerged)
+- Date: 2026-09-23 (second review round applied; pull request #73 still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
 - Current phase and latest commit: complete, plus a review correction round and a CI-stall diagnosis
@@ -141,6 +141,12 @@ Update this section at every material state change and before yielding unfinishe
   cure is the deadlock, not a larger timeout or a retry, because the hang never self-heals. This is
   recorded as a follow-up story with the evidence above so the owner can size it; it SHOULD precede
   any story that relies on a red `shared-tests` meaning a real regression.
+- Completed in the second review round: the checkpoint states one commit list and one diagnosis
+  instead of appended, contradictory ones; this story's log entry names `E1-18` as the stall's owner;
+  `InMemoryRemoteSyncSource` drops the three members no test consumed; the device helper is named
+  `signIn` because the anonymous-identity test calls it on an anonymous device; `§20.3` now requires
+  `OwnerContext.observe()` to emit the current owner on subscription, which is what `D-188`'s
+  `drop(1)` baseline depends on; and `E1-18` keeps only the criteria it can verify.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Completed since the previous checkpoint (CI-stall diagnosis round): the intermittent failure of
@@ -305,6 +311,9 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 - `docs/CONTRACTS.md` (§9.8, §20.3, §20.10), `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/adr/0189-recover-a-newly-resolved-owner-through-a-dedicated-trigger.md`
   (new), `shared/build/generated/objc-header/Shared.h.golden`.
+- `docs/CONTRACTS.md §20.3` — the `OwnerContext.observe()` replay requirement `D-188` depends on.
+- `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContextTest.kt` — the
+  assertion message that names that requirement.
 
 ## Decisions Made
 
