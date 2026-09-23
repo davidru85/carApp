@@ -51,37 +51,18 @@ import kotlin.time.Instant
  * - **Owners are isolated by path.** A pull under one owner never sees another owner's documents,
  *   which is what makes "the same permanent identity recovers its own backup" a meaningful
  *   assertion rather than a coincidence of a shared list.
- *
- * Delivery truncation is modelled by [deliverUpdatedAtTruncatedToMillis], mirroring the seam
- * `:core:sync`'s own fake exposes: the stored ordering key keeps full microsecond precision, and only
- * what is *delivered* into [RemoteDocument] is reduced. The two are deliberately separate, because a
- * truncated delivery boundary is the shape that re-delivers a document; keeping the stored key intact
- * is what lets a test observe that.
- *
- * Push results can be scripted through [nextPushResult] to exercise the retry and failure paths.
  */
 @HiddenFromObjC
 class InMemoryRemoteSyncSource(
     private val clock: () -> Instant = { FakeAppClock.DEFAULT_NOW },
 ) : RemoteSyncSource {
     private val documents = mutableMapOf<String, MutableList<StoredDocument>>()
-    private val pushResults = ArrayDeque<Outcome<RemoteAck, RemoteError>>()
 
     /** Every push this replica received, in order, for assertions about what was backed up. */
     val pushCalls = mutableListOf<EntitySnapshot>()
 
     /** Every pull page request this replica received, in order. */
     val pullCalls = mutableListOf<PullCall>()
-
-    /**
-     * The result the next `pushSnapshot` returns instead of a successful acknowledgement. Consumed
-     * once, so a test can script a failure followed by the real behaviour.
-     */
-    fun nextPushResult(result: Outcome<RemoteAck, RemoteError>) {
-        pushResults += result
-    }
-
-    var deliverUpdatedAtTruncatedToMillis = false
 
     /** Seeds a document directly, for tests that start from an already-backed-up account. */
     fun seed(
@@ -114,26 +95,11 @@ class InMemoryRemoteSyncSource(
         entityType: EntityType,
     ): List<String> = documentsFor(ownerId, entityType).sortedWith(STORED_ORDER).map { it.document.documentId.value }
 
-    /**
-     * The stored document for one entity, delivered as the provider would deliver it. Its
-     * `serverUpdatedAt` is the server-assigned value, not the one the pushing device's payload
-     * carried, and its `rawJson` has the same field replaced.
-     */
-    fun stored(
-        ownerId: OwnerId,
-        entityType: EntityType,
-        entityId: EntityId,
-    ): RemoteDocument? =
-        documentsFor(ownerId, entityType)
-            .firstOrNull { it.document.documentId == entityId }
-            ?.let(::deliver)
-
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
     ): Outcome<RemoteAck, RemoteError> {
         pushCalls += snapshot
-        pushResults.removeFirstOrNull()?.let { return it }
         val parsed = Json.parseToJsonElement(snapshot.json).jsonObject
         // `toFirestoreWrite` rejects a payload whose identity fields disagree with the snapshot
         // before anything is written, so a replica that accepted one would hide exactly the class of
@@ -226,14 +192,7 @@ class InMemoryRemoteSyncSource(
     ): String = "${ownerId.value}/${entityType.collection}"
 
     /** The integration boundary: the value delivered into `RemoteDocument.serverUpdatedAt`. */
-    private fun deliver(stored: StoredDocument): RemoteDocument =
-        if (deliverUpdatedAtTruncatedToMillis) {
-            stored.document.copy(
-                serverUpdatedAt = Instant.fromEpochMilliseconds(stored.document.serverUpdatedAt.toEpochMilliseconds()),
-            )
-        } else {
-            stored.document
-        }
+    private fun deliver(stored: StoredDocument): RemoteDocument = stored.document
 
     /**
      * The preconditions `toFirestoreWrite` enforces before it writes anything: the payload's own

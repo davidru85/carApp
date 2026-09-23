@@ -68,7 +68,7 @@ class CrossDeviceRecoveryTest {
                 writer.createVehicle()
                 val writtenVehicleId = requireNotNull(writer.createdVehicleId)
 
-                reader.signInPermanently()
+                reader.signIn()
                 val restoredVehicleId = reader.awaitSyncedVehicle()
 
                 assertEquals(writtenVehicleId, restoredVehicleId, "the identity recovered its own backup")
@@ -96,7 +96,7 @@ class CrossDeviceRecoveryTest {
                 val writtenVehicleId = requireNotNull(writer.createdVehicleId)
                 val writtenEntryId = requireNotNull(writer.fuelEntryId)
 
-                reader.signInPermanently()
+                reader.signIn()
                 val restoredVehicleId = reader.awaitSyncedVehicle()
                 val restoredEntryId = reader.awaitSyncedFuelEntry()
 
@@ -136,7 +136,7 @@ class CrossDeviceRecoveryTest {
             // device that never attempted a pull trivially holds nothing.
             val second = Device(replica, this, uid = OTHER_ANONYMOUS_UID, isAnonymous = true, signedInAtStart = false)
             try {
-                second.signInPermanently()
+                second.signIn()
                 second.settle("second identity ran its recovery cycle") {
                     second.recoveryCycleCount() >= 1
                 }
@@ -174,7 +174,7 @@ class CrossDeviceRecoveryTest {
                     serverUpdatedAt = Instant.fromEpochMilliseconds(NOW_MILLIS),
                 )
 
-                device.signInPermanently()
+                device.signIn()
                 device.awaitSyncedVehicle()
 
                 assertTrue(replica.pullCalls.isNotEmpty(), "recovery read pages from the replica")
@@ -211,7 +211,7 @@ class CrossDeviceRecoveryTest {
                     serverUpdatedAt = Instant.fromEpochMilliseconds(NOW_MILLIS),
                 )
 
-                device.signInPermanently()
+                device.signIn()
                 device.awaitSyncedVehicle()
 
                 assertEquals(
@@ -248,7 +248,7 @@ class CrossDeviceRecoveryTest {
                     serverUpdatedAt = Instant.fromEpochMilliseconds(NOW_MILLIS),
                 )
 
-                device.signInPermanently()
+                device.signIn()
                 device.observeListUntilFirstKnownState()
                 device.awaitSyncedVehicle()
 
@@ -282,7 +282,7 @@ class CrossDeviceRecoveryTest {
     /**
      * One device: its own in-memory database, its own graph, its own auth session, and the shared
      * replica. The device is built holding a signed-out session and signs in through
-     * [signInPermanently], so the owner transition under test is the one a real sign-in produces.
+     * [signIn], so the owner transition under test is the one a real sign-in produces.
      */
     private class Device(
         private val replica: InMemoryRemoteSyncSource,
@@ -357,7 +357,13 @@ class CrossDeviceRecoveryTest {
          */
         fun recoveryCycleCount(): Int = replica.pullCalls.count { it.entityType == EntityType.VEHICLE }
 
-        fun signInPermanently() {
+        /**
+         * Signs this device in with the identity it was built for: permanent for a device whose
+         * `isAnonymous` is false, anonymous otherwise. Criterion 3 of this story is precisely that no
+         * path describes an anonymous identity as a permanent or cross-device-recoverable one, so the
+         * helper is named for the act of signing in, never for the permanence of the identity.
+         */
+        fun signIn() {
             authClient.setAuthState(signedInState())
         }
 
