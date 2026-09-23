@@ -40,7 +40,7 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-23 (review correction round applied; pull request #73 still open and unmerged)
+- Date: 2026-09-23 (CI-stall diagnosis round; pull request #73 still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
 - Current phase and latest commit: complete, plus one review correction round. The cycle beneath it
@@ -91,18 +91,74 @@ Update this section at every material state change and before yielding unfinishe
   `shared-tests` timed out at 10 minutes — the same commit, the same workflow, different runners. That
   is non-determinism in the runner environment, not a property of this change.
 
-  The headroom measurement settles it. On the merged `E3-04` branch, whose `:shared` suite this story
-  extends, `Run Android application and KMP host tests` completed in **238 s**, **206 s** and **196 s**
-  on its successful runs, and on an earlier run of that same branch it **failed at 613 s** — above the
-  600 s step limit. The successful band is 196-238 s against a 600 s ceiling; the observed failures
-  land at 613 s and above. The limit is therefore under-provisioned for a step whose healthy duration
-  is already a third of it and whose stalled duration is unbounded, which is why the same step passes
-  and fails on identical code. This story's contribution to that suite is one test class whose six
-  tests complete in a few seconds; it is not what consumes the budget.
+  **Root cause, reproduced and proved.** The stall is not an environment mystery and not a budget
+  problem. It is a deterministic deadlock in the repository's own test seam, reproduced four times
+  with a live thread dump of the Gradle test worker (JDK 21 `jstack` against the `GradleWorkerMain`
+  process while the step was stalled):
+
+  - `Test worker` is parked in
+    `SqlDriverDatabaseHandle.close()` -> `AndroidxSqliteDriver.close` ->
+    `AndroidxDriverConnectionPool.close(ConnectionPool.kt:262)` -> `runBlocking`.
+  - The blocked `runBlocking` is waiting on `writerMutex.withLock` inside the connection pool. That
+    mutex is held by graph-owned work that is suspended on the *test* `TestCoroutineScheduler` and
+    can therefore never be resumed: the injected `DispatcherProvider` maps `main`, `default` and `io`
+    to one `Dispatchers.Unconfined` / `StandardTestDispatcher(testScheduler)`, and the pool's
+    `runBlocking` seizes that scheduler's own thread. Scheduler thread blocked by `runBlocking`, and
+    the coroutine it waits for needs that same thread - a self-deadlock with no timeout inside it.
+  - Two stack traces pin both sides of it. `LocalOwnerAdoptionTest.tearDown:40` closes the handle
+    from the test thread; `DefaultAppGraph.releaseDatabase` (`AppGraph.kt:413`) closes it from the
+    deferred release waiter that `close()` starts on `dependencies.dispatchers.io`
+    (`AppGraph.kt:400`) - i.e. on the same seized scheduler thread.
+
+  This also explains why the stall follows the `SqlDriverDatabaseHandle.close` seam whenever a
+  graph-owned coroutine is still in flight: `LocalOwnerAdoptionTest`,
+  `VehicleListStateHolderTest`, `FuelEntryStateHolderTest` and `AppGraphTriggerWiringTest` all
+  closed the driver while scheduler-bound work could still be running. The defect is
+  **pre-existing and independent of this story**: `main` at `65e7056` hangs at the identical seam,
+  and `D-172` (merged `E3-17`) introduced the deferred `releaseDatabase` that makes the second form
+  reachable. Measured hang rate at the story HEAD, `:shared:testAndroidHostTest
+  -Pcarapp.excludeFirebaseProviders=true --rerun-tasks`: **1 in 10**. Measured rate on `main`:
+  ~**1 in 12**. The head does not change the rate.
+
+  Two candidate fixes were implemented and measured against that rate, and **neither is this
+  story's to ship**: they are test-infrastructure changes to shared fixtures, they would land
+  unreviewed inside a gated story's diff, and the correct owner is a dedicated defect story.
+
+  1. Making `AppGraphTestHarness.close()` await `graph.awaitClosed()` (the `E1-12` boundary) does
+     not remove the deadlock. It converts the `tearDown` form into the `releaseDatabase` form,
+     which was then captured in the worker dump: still `runBlocking` on the seized scheduler thread.
+     Measured: still ~**1 in 6** hangs.
+  2. Splitting `io` away from the scheduler (so the driver's blocking `close()` runs on a free
+     thread) is the shape that removes the deadlock, but `TestDispatcherProvider` deliberately maps
+     all three dispatchers to one, and `GraphTestDependenciesTest` pins that behaviour as a
+     contract. Changing it supersedes `E1-14`'s confinement decision, so it cannot be done
+     unilaterally here.
+
+  The honest consequence for this story: the CI failure is a real, now-diagnosed infrastructure
+  defect that this branch neither introduces nor can fix within its scope. The step's 10-minute
+  limit is under-provisioned only in the sense that it turns an unbounded hang into a red step; the
+  cure is the deadlock, not a larger timeout or a retry, because the hang never self-heals. This is
+  recorded as a follow-up story with the evidence above so the owner can size it; it SHOULD precede
+  any story that relies on a red `shared-tests` meaning a real regression.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
-- Exact next step: confirm the ten required checks on the pushed head, then hand pull request #73 to
-  the owner's gated review.
+- Completed since the previous checkpoint (CI-stall diagnosis round): the intermittent failure of
+  the two macOS required steps was diagnosed to its root cause under a live thread dump instead of
+  attributed to the environment; two candidate fixes were implemented and measured, and both were
+  reverted because the deadlock is pre-existing and its owner is a separate story; the diagnosis was
+  recorded here with the two captured stacks and the measured rates; `E1-18` was registered in
+  `docs/BACKLOG.md` with acceptance criteria, and `AGENTS.md` and the backlog's follow-up sequencing
+  paragraph now state that a red `shared-tests` or `provider-decoupling` is not by itself evidence of
+  a regression until `E1-18` lands. The working tree carries no code change from this round.
+- Verification evidence for this round: `:shared:testAndroidHostTest --tests
+  com.ruizurraca.carapp.CrossDeviceRecoveryTest --tests com.ruizurraca.carapp.OwnerRecoveryGateTest
+  --rerun-tasks` - `BUILD SUCCESSFUL`, `CrossDeviceRecoveryTest` 6 tests / 0 failures; the
+  `provider-decoupling` Android-host command - `BUILD SUCCESSFUL`; `contractCheck architectureCheck
+  :build-logic:convention:test ktlintCheck detekt --rerun-tasks` - `BUILD SUCCESSFUL`, no `PENDING`
+  assertion, 189 decisions and 3 unresolved decisions unchanged.
+- Exact next step: hand pull request #73 to the owner's gated review. The two macOS required steps
+  may still time out on the `E1-18` deadlock; their failure signature is now identified, is
+  independent of this story, and is documented above.
 
 ## Reconnaissance Findings
 
@@ -374,16 +430,12 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   first cycle fails online still reaches first-vehicle creation over data that is still in Firestore.
   The alternative - holding the list unresolved - strands the owner behind an indicator with no exit,
   and `§20.10` records the chosen behaviour normatively.
-- **The two red required checks are a pre-existing CI defect, and their owner is not this story.**
-  `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free Android host
-  tests` (`provider-decoupling`) are killed at 600 s and 480 s respectively on this branch, and both
-  fail on `main` at `65e7056` the same way. The successful band for the first step on the merged
-  `E3-04` branch is 196-238 s, and that same branch already failed it at 613 s, so the limit is
-  under-provisioned relative to an unbounded stall rather than exceeded by this change. `D-176` raised
-  every *job* ceiling to 40 minutes but deliberately kept these two *step* limits stricter, which is
-  where the mismatch lives. Widening them is a CI-topology change outside this story's scope and it
-  touches the ceilings `contractCheck` assertion 28 pins, so it needs its own decision; the
-  measurement above is what that decision should start from.
+- **The two red required checks are a pre-existing test-harness deadlock, now diagnosed and
+  reproduced, and their owner is a new defect story, not this one.** The deadlock, the two captured
+  thread stacks and the measured 1-in-10 / 1-in-12 rates are in the In-Progress Checkpoint above.
+  It is pre-existing (`main` at `65e7056` hangs at the same seam), it is unbounded, and no timeout or
+  retry can clear it. It is registered as a Phase 1 test-infrastructure follow-up with that evidence.
+  `D-176`'s job ceilings are unrelated; the fix is the deadlock, not a larger step limit.
 - The permanent-provider acceptance is not automatable in this repository, and the precedent story
   that owns it (`E2-03`) has no completion record. The real two-host proof therefore needs owner-run
   interactive sign-ins; the deterministic test is what protects the behaviour from regression.
@@ -393,8 +445,11 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 - `OwnerRecoveryGate.awaitRecovery()` holds the gate on a graph-scope coroutine that awaits a cycle.
   A graph closed mid-recovery cancels it, and the `finally` lowers the gate; `sync` completes refused
   callers on shutdown (`D-172`), so no caller is stranded.
-- `E3-04`'s handoff records a pre-existing `shared-tests` CI stall whose owner is still unassigned. A
-  red `shared-tests` on this story may therefore be unrelated to it.
+- `E3-04`'s handoff recorded the same pre-existing `shared-tests` stall as unowned. This story
+  diagnoses it (see the In-Progress Checkpoint), registers the follow-up story, and states the
+  consequence the earlier record could not: until that story lands, a red `shared-tests` or
+  `provider-decoupling` is **not** evidence of a regression, and the correct response is to inspect
+  the step for the `SqlDriverDatabaseHandle.close` seam rather than to re-run it.
 
 ## Human Review Gate
 

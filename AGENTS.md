@@ -133,15 +133,22 @@ review.
   `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16` and `E1-17`.
+- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16`, `E1-17` and `E1-18`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16` is Ready only
   because `D-127` superseded the `D-4` clause that kept the fuel type selector out of the MVP UI.
   `E1-14` is complete after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
   through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
-  `docs/handoff-E1-17.md`. `E1-15` remains open. The flake is the one still-observed failure: it hit
+  `docs/handoff-E1-17.md`. `E1-15` remains open. The flake hit
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
+  `E1-18`, created on 2026-09-23, is the other half of that problem: the JVM test deadlock in
+  `DatabaseHandle.close()` on the test-scheduler thread, diagnosed with a reproduced thread dump and
+  a measured 1-in-10 recurrence at the `E3-12` head and roughly 1-in-12 on `main`, is what makes
+  `shared-tests` and `provider-decoupling` fail at their step timeouts with zero assertion failures.
+  Until `E1-18` lands, a red `shared-tests` or `provider-decoupling` is likewise not by itself
+  evidence of a regression; the diagnosis and the two captured stacks are in
+  `docs/handoff-E3-12.md` and the story entry is in `docs/BACKLOG.md`.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
   `E3-20` and `E3-21`. `E3-12`, the permanent-account cross-device recovery proof, is implemented on

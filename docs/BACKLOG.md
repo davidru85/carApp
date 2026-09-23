@@ -1435,10 +1435,12 @@ the product; this section records when it is scheduled.
 
 Nothing here blocks Phase 2. Order within the section is the order below.
 
-`E1-14` and `E1-17` SHOULD run before the next story that relies on a red required job meaning a
-real regression. Until both are fixed, `shared-tests` and `ios-simulator-build` can go red without a
-regression, which makes the reflex "re-run it" rather than "investigate it" - and that is how a real
-regression gets waved through.
+`E1-14` and `E1-17` are both merged and SHOULD have run before the next story that relies on a red
+required job meaning a real regression. `E1-18` is that story's remaining half: it is the diagnosed
+JVM test deadlock behind the `shared-tests` and `provider-decoupling` step timeouts, so until it
+lands those two checks can still go red without a regression. The reflex that creates - "re-run it"
+rather than "investigate it" - is how a real regression gets waved through, so `E1-18` SHOULD
+precede any story that depends on that signal.
 
 `E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. They SHOULD
 run adjacently, in that order, so those two screens are opened once rather than twice.
@@ -1580,6 +1582,69 @@ Acceptance criteria:
   escalates instead of taking it.
 - Evidence of stability: the affected test is run repeatedly on CI and the handoff records the
   number of consecutive passes observed, so "fixed" rests on a count and not on one green run.
+
+### E1-18 - JVM Test Deadlock in `DatabaseHandle.close()` on the Test Scheduler Thread - S
+
+Tracked as a defect diagnosed on 2026-09-23 while delivering `E3-12`. It is a test-infrastructure
+defect in the shared test seam, not a product defect. Its owner is this story because it is not
+`E3-12`'s to ship: the fix changes shared fixtures and a pinned scheduling contract, and it would
+otherwise land unreviewed inside a gated story's diff.
+
+**Symptom.** `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free
+Android host tests` (`provider-decoupling`) are occasionally killed at their step timeout with
+hundreds of `STARTED` lines and zero `PASSED` and zero `FAILED`. Measured at the `E3-12` head,
+`:shared:testAndroidHostTest -Pcarapp.excludeFirebaseProviders=true --rerun-tasks`, the stall
+recurred **1 time in 10**; on `main` at `65e7056` it recurred roughly **1 time in 12**, so it is
+pre-existing and not a property of the story that observed it.
+
+**Root cause, reproduced with a live thread dump** (JDK 21 `jstack` against the `GradleWorkerMain`
+process while the step was stalled):
+
+- The test worker's `Test worker` thread is parked in
+  `SqlDriverDatabaseHandle.close()` -> `AndroidxSqliteDriver.close` ->
+  `AndroidxDriverConnectionPool.close` (`ConnectionPool.kt:262`) -> `runBlocking`.
+- That `runBlocking` is waiting on `writerMutex.withLock` inside the connection pool. The mutex is
+  held by graph-owned work suspended on the *test* `TestCoroutineScheduler`, which can never be
+  resumed because the pool's `runBlocking` has seized the scheduler's own thread.
+- Both sides are pinned: `LocalOwnerAdoptionTest.tearDown:40` closes the handle from the test
+  thread, and `DefaultAppGraph.releaseDatabase` (`AppGraph.kt:413`) closes it from the deferred
+  release waiter that `close()` starts on `dependencies.dispatchers.io` (`AppGraph.kt:400`). The
+  injected `DispatcherProvider` maps `main`, `default` and `io` to one
+  `Dispatchers.Unconfined` / `StandardTestDispatcher(testScheduler)`, so both paths run on the seized
+  thread.
+- The stall follows the `SqlDriverDatabaseHandle.close` seam: `LocalOwnerAdoptionTest`,
+  `VehicleListStateHolderTest`, `FuelEntryStateHolderTest` and `AppGraphTriggerWiringTest` all closed
+  the driver while scheduler-bound work could still be running. It is unbounded, so no step timeout
+  or retry can clear it.
+
+**Candidate fixes measured, and why neither is trivial.**
+
+- Making `AppGraphTestHarness.close()` await `graph.awaitClosed()` (the `E1-12` boundary) does **not**
+  remove the deadlock. It converts the `tearDown` form into the `releaseDatabase` form, which was
+  captured in the worker dump: still `runBlocking` on the seized scheduler thread. Measured: still
+  about **1 in 6** hangs.
+- Splitting `io` away from the scheduler so the driver's blocking `close()` runs on a free thread is
+  the shape that removes the deadlock, but `TestDispatcherProvider` deliberately maps all three
+  dispatchers to one and `GraphTestDependenciesTest` pins that as a scheduling contract. Changing it
+  supersedes `E1-14`'s confinement decision and needs its own decision and ADR.
+
+**Acceptance criteria.**
+
+1. The `SqlDriverDatabaseHandle.close` deadlock is removed, not merely made rarer: a graph-backed
+   test can close the driver while graph-owned work is in flight without the JVM test ever hanging.
+2. The fix is proved by repetition: the exact `provider-decoupling` Android-host command
+   (`./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks`)
+   and `:shared:testAndroidHostTest` complete many consecutive runs with no stall, at a rate that
+   makes the pre-fix 1-in-10 recurrence a failing observation.
+3. `GraphTestDependenciesTest`'s scheduling contract is either preserved or superseded by an
+   explicit decision; it is not silently weakened.
+4. The ten required check names and the `contractCheck` assertion that pins the step ceilings are
+   unchanged, or the change to them carries its own decision.
+5. Until this story lands, a red `shared-tests` or `provider-decoupling` is documented as not being
+   evidence of a regression, so a real regression is never waved through as "the usual flake".
+
+**Depends on:** none. **Blocks:** any story that relies on a red `shared-tests` meaning a real
+regression; it SHOULD precede such a story.
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 
@@ -1912,6 +1977,7 @@ proof after E3-04.
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
 | E1-16 Vehicle UI fuel type selector | follow-up | S | — |
 | E1-17 iOS onboarding UI test flake | follow-up | S | — |
+| E1-18 JVM test deadlock in `DatabaseHandle.close()` | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 (completed) | 2 | M | — |
