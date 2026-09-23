@@ -96,8 +96,10 @@ class VehicleListStateHolder internal constructor(
 
     // `E3-12`: an empty list that is empty only because the owner's first recovery cycle has not
     // finished yet is not a confirmed empty list, and `SPECIFICATION.md` F-1 must not read it as one.
-    // The transition raises this flag before the local observation can publish its zero rows, so the
-    // list stays unknown across the whole recovery window and resolves with the recovered data.
+    // The graph raises this flag on the owner transition and lowers it when the cycle settles. The
+    // raise and the local observation run on different dispatchers, so this holder republishes on
+    // every change of the flag: a list that resolved empty before the raise arrived is reopened by
+    // it and resolves again with the recovered data.
     private val recoveryJob =
         holderScope.launch(dispatchers.main) {
             recoveryPending.collect { pending ->

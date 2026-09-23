@@ -96,7 +96,7 @@ offline device settles its refused cycle at once, so `SPECIFICATION.md` P2 is un
   anonymous identity's backup path is unreachable from another identity, that recovery reads only
   bounded pages, that a sign-in admits exactly one recovery cycle with no other trigger fired, and
   that a clean device never publishes a known empty list while recovery is outstanding.
-- `inMemoryRemoteSyncSource` was added to `:core:testing` because Kotlin Multiplatform cannot consume
+- `InMemoryRemoteSyncSource` was added to `:core:testing` because Kotlin Multiplatform cannot consume
   another module's `commonTest` (`D-56`); the previous Firestore-faithful fake was `private` to
   `:core:sync`'s own test source.
 - The full non-instrumented command of `AGENTS.md`, `contractCheck`, the architecture checks and the

@@ -40,16 +40,29 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-22 (pull request open, awaiting the owner's gated review)
+- Date: 2026-09-23 (review correction round applied; pull request #73 still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
-- Current phase and latest commit: complete at `3302e04`. The cycle beneath it is RED `3d406ae`,
+- Current phase and latest commit: complete, plus one review correction round. The cycle beneath it
+  is RED `3d406ae`, GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the list gate), REFACTOR `7dd5bd8`
+  (decision records, mirrors, golden header), `368af27` (story records), `3302e04` (the non-vacuity
+  correction) and `fedccb1` (the per-wait clock advance). The correction round adds a RED, a GREEN
+  and two follow-up commits: the counted recovery window, the executable `OwnerChanged` ban, the
+  trigger assertion that can fail, the list-gate unit coverage and the document repairs.
   GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the list gate), REFACTOR `7dd5bd8` (decision
   records, mirrors, golden header), `368af27` (story records) and `3302e04` (the non-vacuity
   correction to the anonymous-identity assertion).
 - Push and pull-request status: pushed. Pull request #73 is open against `main`; the owner's gated
   review is the merge gate, and the agent does not merge it.
 - Completed since the previous checkpoint: both defects identified at intake are fixed, the six
+- Review correction round: `OwnerRecoveryGate` counts outstanding recoveries under one lock, so a
+  cycle that completes while a later owner transition is still recovering can no longer resolve that
+  owner's empty list; `SwiftTriggerSurfaceRule` bans `OwnerChanged`, which makes ADR-0189's
+  enforcement claim true and `§20.10`'s new ban executable; `CrossDeviceRecoveryTest` asserts the
+  whole trigger recording instead of a filtered list that could not fail; `VehicleStateHoldersTest`
+  covers both branches of the new `isLoading` rule; `InMemoryRemoteSyncSource` applies the provider's
+  push preconditions; and the `D-188` registry row, the `§9.8` routing sentence and the `§20.10`
+  check specification are repaired.
   cross-device assertions pass, two mutation probes prove the suite is bound to the production code,
   `D-188` and ADR-0189 are registered with the four mirroring rows, `§9.8` and `§20.10` carry the new
   rules, the golden Objective-C header is regenerated, and the story records are written.
@@ -213,6 +226,12 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 
 ## Files Changed
 
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/OwnerRecoveryGateTest.kt` (new) — the counted
+  recovery window.
+- `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/contract/SwiftTriggerSurfaceRule.kt`
+  and its contract test — the executable `OwnerChanged` ban.
+- `feature/vehicle/src/commonTest/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHoldersTest.kt`
+  — both branches of the recovery-window `isLoading` rule.
 - `core/common/src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt` —
   `SyncTrigger.OwnerChanged`.
 - `core/common/src/commonTest/kotlin/com/ruizurraca/carapp/core/common/AppErrorCodesTest.kt` — the
@@ -252,6 +271,10 @@ Include any `SHOULD` you deviated from, and why.
 
 Exact commands, and their result.
 
+- **Review correction round.** `OwnerRecoveryGateTest.theGateStaysRaisedWhileALaterRecoveryIsStillRunning`
+  was observed failing against the single-boolean gate on the assertion that an earlier cycle must
+  not resolve the newest owner's list, and passing after the counter. `anOwnerChangedRequestFromSwiftIsRejected`
+  was observed failing against the three-trigger banned set and passing after the fourth was added.
 - `./gradlew :shared:compileAndroidHostTest` before `OwnerChanged` existed — RED, with
   `Unresolved reference 'OwnerChanged'` at `CrossDeviceRecoveryTest.kt:370`, which is the intended
   failing state for a missing trigger.
@@ -342,6 +365,15 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
 ## Risks or Follow-ups
 
+- **The recovery window has no upper bound.** While the gate is raised, an empty list is `isLoading`
+  with no message, which `§20.10` tells hosts to answer with a covering indicator rather than an
+  error and a retry. A cycle that is slow rather than refused therefore holds a clean device's first
+  run behind an indicator for as long as the provider takes to fail. Offline is unaffected: `§9.2`
+  refuses the cycle immediately and the gate lowers at once.
+- **A failed recovery resolves the list.** The gate lowers on failure by design, so an owner whose
+  first cycle fails online still reaches first-vehicle creation over data that is still in Firestore.
+  The alternative - holding the list unresolved - strands the owner behind an indicator with no exit,
+  and `§20.10` records the chosen behaviour normatively.
 - **The two red required checks are a pre-existing CI defect, and their owner is not this story.**
   `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free Android host
   tests` (`provider-decoupling`) are killed at 600 s and 480 s respectively on this branch, and both
