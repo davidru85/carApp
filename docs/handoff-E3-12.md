@@ -43,29 +43,27 @@ Update this section at every material state change and before yielding unfinishe
 - Date: 2026-09-23 (CI-stall diagnosis round; pull request #73 still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
-- Current phase and latest commit: complete, plus one review correction round. The cycle beneath it
-  is RED `3d406ae`, GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the list gate), REFACTOR `7dd5bd8`
-  (decision records, mirrors, golden header), `368af27` (story records), `3302e04` (the non-vacuity
-  correction) and `fedccb1` (the per-wait clock advance). The correction round adds a RED, a GREEN
-  and two follow-up commits: the counted recovery window, the executable `OwnerChanged` ban, the
-  trigger assertion that can fail, the list-gate unit coverage and the document repairs.
-  GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the list gate), REFACTOR `7dd5bd8` (decision
-  records, mirrors, golden header), `368af27` (story records) and `3302e04` (the non-vacuity
-  correction to the anonymous-identity assertion).
+- Current phase and latest commit: complete, plus a review correction round and a CI-stall diagnosis
+  round. The delivery cycle is RED `3d406ae`, GREEN `6e9f08f` (the trigger), GREEN `56d0f86` (the
+  list gate), REFACTOR `7dd5bd8` (decision records, mirrors, golden header), `368af27` (story
+  records), `3302e04` (the non-vacuity correction to the anonymous-identity assertion) and `fedccb1`
+  (the per-wait clock advance). The review correction round is RED `0e7ae07`, GREEN `cf09d0c`,
+  `b77b2ae` (test corrections and coverage) and `30670e5` (document repairs). The CI-stall diagnosis
+  round is `d7aa56c`, which carries no code change.
 - Push and pull-request status: pushed. Pull request #73 is open against `main`; the owner's gated
   review is the merge gate, and the agent does not merge it.
-- Completed since the previous checkpoint: both defects identified at intake are fixed, the six
-- Review correction round: `OwnerRecoveryGate` counts outstanding recoveries under one lock, so a
-  cycle that completes while a later owner transition is still recovering can no longer resolve that
-  owner's empty list; `SwiftTriggerSurfaceRule` bans `OwnerChanged`, which makes ADR-0189's
-  enforcement claim true and `§20.10`'s new ban executable; `CrossDeviceRecoveryTest` asserts the
-  whole trigger recording instead of a filtered list that could not fail; `VehicleStateHoldersTest`
-  covers both branches of the new `isLoading` rule; `InMemoryRemoteSyncSource` applies the provider's
-  push preconditions; and the `D-188` registry row, the `§9.8` routing sentence and the `§20.10`
-  check specification are repaired.
+- Completed in the delivery rounds: both defects identified at intake are fixed, the six
   cross-device assertions pass, two mutation probes prove the suite is bound to the production code,
   `D-188` and ADR-0189 are registered with the four mirroring rows, `§9.8` and `§20.10` carry the new
   rules, the golden Objective-C header is regenerated, and the story records are written.
+- Completed in the review correction round: `OwnerRecoveryGate` counts outstanding recoveries under
+  one lock, so a cycle that completes while a later owner transition is still recovering can no
+  longer resolve that owner's empty list; `SwiftTriggerSurfaceRule` bans `OwnerChanged`, which makes
+  ADR-0189's enforcement claim true and `§20.10`'s new ban executable; `CrossDeviceRecoveryTest`
+  asserts the whole trigger recording instead of a filtered list that could not fail;
+  `VehicleStateHoldersTest` covers both branches of the new `isLoading` rule;
+  `InMemoryRemoteSyncSource` applies the provider's push preconditions; and the `D-188` registry row,
+  the `§9.8` routing sentence and the `§20.10` check specification are repaired.
 - Verification evidence and known failures: the complete non-instrumented command passes; the API 36
   instrumented suite passes 17 tests with 0 failures; the iOS simulator action reports
   `** TEST SUCCEEDED **` with 45 unit and 27 UI tests. On CI, eight of the ten required checks pass
@@ -80,16 +78,19 @@ Update this section at every material state change and before yielding unfinishe
   step, `Run provider-free Android host tests`, with the identical 8-minute timeout and the identical
   signature (run `35718785707`, job `106716495077`: 68 `STARTED`, 0 `PASSED`). The stall point is not
   stable — in `main` it is inside `FuelEntryStateHolderTest` and on this branch inside
-  `AppGraphTriggerWiringTest`, which is what an environment stall looks like rather than a defective
-  test. And the steps still fit their ceilings comfortably on a healthy runner: in that same `main`
+  `AppGraphTriggerWiringTest`, which is what an intermittent deadlock at a shared seam looks like
+  rather than a defective test; the root-cause paragraph below names that seam. And the steps still
+  fit their ceilings comfortably on a healthy runner: in that same `main`
   run, `Run Android application and KMP host tests` completed in **211 s** against its 600 s limit, so
   the timeout is not a budget this story's work consumes. On this branch the exact
   `provider-decoupling` Android-host command passed **6 consecutive times** under
   `-Pcarapp.excludeFirebaseProviders=true`, and the whole shared suite passed 8 consecutive times.
-  The `provider-decoupling` job was re-requested on the pushed head, and the definitive observation
-  is that `shared-tests` then **passed in 6 m 58 s** on a run whose code is identical to the one whose
-  `shared-tests` timed out at 10 minutes — the same commit, the same workflow, different runners. That
-  is non-determinism in the runner environment, not a property of this change.
+  The `provider-decoupling` job was re-requested on the pushed head, and `shared-tests` then
+  **passed in 6 m 58 s** on a run whose code is identical to the one whose `shared-tests` timed out
+  at 10 minutes — the same commit, the same workflow, different runners. Identical code that both
+  passes and hangs is the 1-in-10 recurrence the root-cause paragraph below measures; it is not a
+  property of this change. The runner-environment reading of that observation was this round's
+  working hypothesis and is superseded by that paragraph, which is the diagnosis of record.
 
   **Root cause, reproduced and proved.** The stall is not an environment mystery and not a budget
   problem. It is a deterministic deadlock in the repository's own test seam, reproduced four times
@@ -434,7 +435,8 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   reproduced, and their owner is a new defect story, not this one.** The deadlock, the two captured
   thread stacks and the measured 1-in-10 / 1-in-12 rates are in the In-Progress Checkpoint above.
   It is pre-existing (`main` at `65e7056` hangs at the same seam), it is unbounded, and no timeout or
-  retry can clear it. It is registered as a Phase 1 test-infrastructure follow-up with that evidence.
+  retry can clear it. It is registered as `E1-18` in `docs/BACKLOG.md`, a Phase 1
+  test-infrastructure follow-up carrying that evidence.
   `D-176`'s job ceilings are unrelated; the fix is the deadlock, not a larger step limit.
 - The permanent-provider acceptance is not automatable in this repository, and the precedent story
   that owns it (`E2-03`) has no completion record. The real two-host proof therefore needs owner-run
