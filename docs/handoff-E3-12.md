@@ -421,6 +421,11 @@ Exact commands, and their result.
 - `:build-logic:convention:test` — `SwiftTriggerSurfaceContractTest` 12 tests / 0 failures;
   `:feature:vehicle:testAndroidHostTest` — `VehicleStateHoldersTest` 16 tests / 0 failures.
 - `git diff --check` — no whitespace errors.
+- **CI on `9d3ad28`.** **All ten required checks are green** on this head. `shared-tests` failed once
+  by step timeout **at the raised 15-minute limit**, which is exactly what `D-189` predicted, and
+  passed on the re-run; `provider-decoupling` passed first time. The temporary measure therefore
+  behaves as recorded: it buys attempts rather than fixing anything, and the hung step's silence shows
+  no limit converts it into a pass. `E1-18` still owes Option B.
 
 - **Review correction round.** `OwnerRecoveryGateTest.theGateStaysRaisedWhileALaterRecoveryIsStillRunning`
   was observed failing against the single-boolean gate on the assertion that an earlier cycle must
