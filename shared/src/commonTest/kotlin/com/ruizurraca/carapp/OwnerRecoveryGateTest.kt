@@ -2,6 +2,7 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
+import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -9,11 +10,16 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -34,6 +40,7 @@ import kotlin.test.assertEquals
  * still running is exactly what a permanent sign-in after an anonymous session produces. The count is
  * the single atomic value; a separate boolean could contradict it under concurrent completion.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class OwnerRecoveryGateTest {
     @Test
     fun theCountStaysAboveZeroWhileALaterRecoveryIsStillRunning() =
@@ -87,6 +94,53 @@ class OwnerRecoveryGateTest {
                 listOf(SyncTrigger.OwnerChanged),
                 controller.requestedReasons,
                 "the coordinator awaits the §9.8 owner-change trigger and nothing else",
+            )
+        }
+
+    @Test
+    fun theCountLowersWhenItsRecoveryCycleFails() =
+        runTest {
+            val owners = FakeOwnerContext()
+            val controller = SuspendingSyncController()
+            val gate = OwnerRecoveryGate(owners)
+
+            gate.launchIn(backgroundScope, controller)
+            owners.set(OwnerId("owner-1"))
+            runCurrent()
+
+            assertEquals(1, gate.outstanding.value, "the transition raises the count")
+
+            controller.completeOldestCycle(Outcome.Err(RemoteError.Unavailable))
+            runCurrent()
+
+            assertEquals(
+                0,
+                gate.outstanding.value,
+                "ADR-0189: a failed recovery lowers the count, so the owner is never stranded behind it",
+            )
+        }
+
+    @Test
+    fun theCountLowersWhenTheGraphIsClosedMidRecovery() =
+        runTest {
+            val owners = FakeOwnerContext()
+            val controller = SuspendingSyncController()
+            val gate = OwnerRecoveryGate(owners)
+            val graphScope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+
+            gate.launchIn(graphScope, controller)
+            owners.set(OwnerId("owner-1"))
+            runCurrent()
+
+            assertEquals(1, gate.outstanding.value, "the transition raises the count")
+
+            graphScope.cancel()
+            runCurrent()
+
+            assertEquals(
+                0,
+                gate.outstanding.value,
+                "ADR-0189: a graph closed mid-recovery still lowers what it raised",
             )
         }
 
@@ -185,7 +239,7 @@ class OwnerRecoveryGateTest {
 
 /** A controller whose cycle completes only when the test says so, one deferred per `sync` call. */
 private class SuspendingSyncController : SyncController {
-    private val cycles = ArrayDeque<CompletableDeferred<Unit>>()
+    private val cycles = ArrayDeque<CompletableDeferred<Outcome<Unit, AppError>>>()
 
     val requestedReasons = mutableListOf<SyncTrigger>()
 
@@ -195,17 +249,16 @@ private class SuspendingSyncController : SyncController {
 
     override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> {
         requestedReasons += reason
-        val cycle = CompletableDeferred<Unit>()
+        val cycle = CompletableDeferred<Outcome<Unit, AppError>>()
         cycles += cycle
-        cycle.await()
-        return Outcome.Ok(Unit)
+        return cycle.await()
     }
 
     override suspend fun retryFailed(): Outcome<Unit, AppError> = Outcome.Ok(Unit)
 
     override fun shutdown() = Unit
 
-    fun completeOldestCycle() {
-        cycles.removeFirst().complete(Unit)
+    fun completeOldestCycle(outcome: Outcome<Unit, AppError> = Outcome.Ok(Unit)) {
+        cycles.removeFirst().complete(outcome)
     }
 }
