@@ -53,7 +53,7 @@ class VehicleListStateHolder internal constructor(
     private val refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
     syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
-    private val recoveryPending: StateFlow<Boolean> = MutableStateFlow(false),
+    private val recoveryOutstanding: StateFlow<Int> = MutableStateFlow(0),
 ) {
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
@@ -66,7 +66,6 @@ class VehicleListStateHolder internal constructor(
     private var selection: String? = null
     private var message: UiMessage? = null
     private var currentSyncStatus = syncStatus.value
-    private var recoveryPendingNow = recoveryPending.value
 
     // `isLoading` means the vehicle list of the currently resolved owner is not known yet. It stays
     // true until that owner publishes a successful result, an owner transition reopens it, and an
@@ -96,16 +95,14 @@ class VehicleListStateHolder internal constructor(
 
     // `E3-12`: an empty list that is empty only because the owner's first recovery cycle has not
     // finished yet is not a confirmed empty list, and `SPECIFICATION.md` F-1 must not read it as one.
-    // The graph raises this flag on the owner transition and lowers it when the cycle settles. The
-    // raise and the local observation run on different dispatchers, so this holder republishes on
-    // every change of the flag: a list that resolved empty before the raise arrived is reopened by
-    // it and resolves again with the recovered data.
+    // The count is the coordinator's single atomic value, and the coordinator increments it *before*
+    // it publishes the owner this holder observes, so a republish here can only ever confirm a state
+    // the count already agreed with. The collector exists to republish when the count itself changes:
+    // a recovery that settles after the local read resolved empty reopens the list until the
+    // recovered data arrives.
     private val recoveryJob =
         holderScope.launch(dispatchers.main) {
-            recoveryPending.collect { pending ->
-                recoveryPendingNow = pending
-                publishCurrent()
-            }
+            recoveryOutstanding.collect { publishCurrent() }
         }
 
     fun refresh() {
@@ -213,7 +210,7 @@ class VehicleListStateHolder internal constructor(
                 isLoading =
                     result == null ||
                         readError != null ||
-                        (recoveryPendingNow && knownCount == 0),
+                        (recoveryOutstanding.value > 0 && knownCount == 0),
                 vehicles =
                     (result as? Outcome.Ok)
                         ?.value
@@ -431,7 +428,7 @@ fun createVehicleListStateHolder(
     refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
     syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
-    recoveryPending: StateFlow<Boolean> = MutableStateFlow(false),
+    recoveryOutstanding: StateFlow<Int> = MutableStateFlow(0),
 ): VehicleListStateHolder =
     VehicleListStateHolder(
         scope,
@@ -440,7 +437,7 @@ fun createVehicleListStateHolder(
         refreshVehicles,
         ownerContext,
         syncStatus,
-        recoveryPending,
+        recoveryOutstanding,
     )
 
 @HiddenFromObjC

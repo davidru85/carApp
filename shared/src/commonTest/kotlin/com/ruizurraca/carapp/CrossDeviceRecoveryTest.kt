@@ -25,11 +25,16 @@ import com.ruizurraca.carapp.core.testing.RecordingSyncTriggerAdapter
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import com.ruizurraca.carapp.shared.testing.testAppProviders
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -248,8 +253,7 @@ class CrossDeviceRecoveryTest {
                     serverUpdatedAt = Instant.fromEpochMilliseconds(NOW_MILLIS),
                 )
 
-                device.signIn()
-                device.observeListUntilFirstKnownState()
+                device.observeListAcrossSignInUntilFirstKnownState()
                 device.awaitSyncedVehicle()
 
                 assertTrue(
@@ -424,11 +428,32 @@ class CrossDeviceRecoveryTest {
         /**
          * Observes the list across the owner transition and records whether it ever published a
          * *resolved* empty list, which is the exact state `shouldPresentFirstVehicleCreation` acts on.
+         *
+         * The collector MUST be active before `signIn()`: a `StateFlow` does not replay intermediate
+         * states, so a collector installed after the transition cannot see a resolved empty
+         * publication that happened during it. Resolving the signed-out baseline first, then
+         * subscribing undispatched, then signing in is what makes the assertion cover the window the
+         * `D-188` ordering exists to protect.
          */
-        suspend fun observeListUntilFirstKnownState() {
-            list.state.awaitState("list published its first known state on $uid") { state ->
-                if (!state.isLoading && state.vehicles.isEmpty()) observedKnownEmptyList = true
-                !state.isLoading
+        suspend fun observeListAcrossSignInUntilFirstKnownState() {
+            list.state.awaitState("signed-out list baseline on $uid") { state -> !state.isLoading }
+            observedKnownEmptyList = false
+
+            coroutineScope {
+                val firstKnownAfterTransition =
+                    async(start = CoroutineStart.UNDISPATCHED) {
+                        list.state
+                            .drop(1)
+                            .first { state ->
+                                if (!state.isLoading && state.vehicles.isEmpty()) {
+                                    observedKnownEmptyList = true
+                                }
+                                !state.isLoading
+                            }
+                    }
+
+                signIn()
+                firstKnownAfterTransition.await()
             }
         }
 

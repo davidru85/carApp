@@ -62,7 +62,7 @@ internal object SwiftTriggerSurfaceRule {
             // is a violation.
             val receiver = code.substring(maxOf(0, index - RECEIVER_WINDOW), index)
             val arguments = code.substring(index, minOf(index + CALL_WINDOW, code.length))
-            if (!receiver.contains(PERMITTED_RECEIVER, ignoreCase = true)) {
+            if (!PERMITTED_RECEIVER.containsMatchIn(receiver)) {
                 PLATFORM_OWNED_TRIGGERS
                     .firstOrNull { arguments.contains(it, ignoreCase = true) }
                     ?.let { found += "$path:${lineOf(code, index)} requests $it" }
@@ -76,6 +76,14 @@ internal object SwiftTriggerSurfaceRule {
 
     private const val REQUEST_SYNC = "requestSync"
 
-    /** The one receiver `§9.1` permits for a platform-owned trigger: the single in-process controller. */
-    private const val PERMITTED_RECEIVER = "syncController"
+    /**
+     * The only permitted call shape ends in the `syncController()` accessor and its member dot.
+     *
+     * A substring test was the first shape of this allowlist and an identifier that merely *contains*
+     * `syncController` - `syncControllerAlias`, or any unrelated local - passed it while calling a
+     * `SyncStateHolder`, which is exactly the `§20.10` violation the rule exists to catch. Matching
+     * the member-access shape is what makes the allowlist mean the one route `§9.1` permits.
+     */
+    private val PERMITTED_RECEIVER =
+        Regex("""\bsyncController\s*\(\s*\)\s*\.\s*$""", RegexOption.IGNORE_CASE)
 }

@@ -972,7 +972,7 @@ Evidence is in `docs/handoff-E3-04.md`.
 Acceptance criteria:
 
 - The UI still observes only local database flows.
-- The five triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
+- The six triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
 - Platform workers and handlers enter only the process graph's `SyncController`: foreground and
   in-process triggers use `requestSync(reason)`, while a platform-owned periodic execution lease
   awaits `sync(Periodic)` before reporting completion. They hold no repository, database handle or
@@ -1648,6 +1648,19 @@ The documentation that a red `shared-tests` or `provider-decoupling` is not by i
 regression is already in place from `E3-12`; this story removes the condition that made it necessary,
 so closing it MUST also remove that caveat from `AGENTS.md` and from this section's sequencing
 paragraph.
+
+**The fix this story MUST implement (`D-189`).** Split `io` away from the test scheduler so the
+driver's blocking `close()` runs on a thread the scheduler does not need. `TestDispatcherProvider`
+currently maps `main`, `default` and `io` to one dispatcher, which is what makes
+`AndroidxDriverConnectionPool.close()`'s `runBlocking` seize the thread whose resume the writer lock's
+owner needs. Giving `io` a real dispatcher removes the deadlock at its cause; it supersedes `E1-14`'s
+confinement decision, so it needs its own decision and ADR, and `GraphTestDependenciesTest`'s
+scheduling contract MUST be rewritten to pin the new intent rather than deleted or weakened.
+
+`D-189` raised the two stalling step timeouts to 15 minutes as an explicit stopgap so `E3-12` could
+progress. That measure MUST be removed when this story lands: it delays a red check rather than
+converting it to green, because the hang produces no output at all after the deadlock and never
+self-heals — the measured hung run was silent for 7 m 10 s before its kill.
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 

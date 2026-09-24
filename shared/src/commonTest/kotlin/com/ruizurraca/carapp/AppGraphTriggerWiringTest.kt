@@ -25,9 +25,10 @@ import kotlin.test.assertTrue
 /**
  * The graph-level trigger wiring of `E3-04`.
  *
- * `docs/CONTRACTS.md §9.8` names five triggers. Three are fired elsewhere - `PostWriteDebounce` by the
+ * `docs/CONTRACTS.md §9.8` names six triggers. Four are fired elsewhere - `PostWriteDebounce` by the
  * commit paths, `PullToRefresh` by a user intent, `Periodic` by the platform scheduler through
- * `SyncTriggerAdapter`. The remaining two depend on the graph because it owns their source:
+ * `SyncTriggerAdapter`, and `OwnerChanged` by the owner-recovery coordinator when a non-sentinel
+ * owner transition resolves. The remaining two depend on the graph because it owns their source:
  * `ConnectivityRecovered`, derived from the `ConnectivityObserver` edge, and `AppForeground` through
  * the holder's threshold, which the host feeds with its measured background time.
  */

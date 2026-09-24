@@ -281,7 +281,7 @@ class VehicleStateHoldersTest {
     fun anEmptyListStaysUnknownWhileRecoveryIsOutstandingAndANonEmptyListNeverIs() =
         runTest {
             val repository = FakeVehicleRepository()
-            val recoveryPending = MutableStateFlow(true)
+            val recoveryOutstanding = MutableStateFlow(1)
             val holder =
                 VehicleListStateHolder(
                     scope = backgroundScope,
@@ -289,7 +289,7 @@ class VehicleStateHoldersTest {
                     dispatchers = TestDispatcherProvider(),
                     refreshVehicles = { Outcome.Ok(Unit) },
                     ownerContext = FakeOwnerContext(LOCAL_OWNER),
-                    recoveryPending = recoveryPending,
+                    recoveryOutstanding = recoveryOutstanding,
                 )
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
             advanceUntilIdle()
@@ -315,12 +315,50 @@ class VehicleStateHoldersTest {
                 "A list holding only tombstones is empty, so the recovery window still holds it.",
             )
 
-            recoveryPending.value = false
+            recoveryOutstanding.value = 0
             advanceUntilIdle()
 
             assertFalse(
                 holder.state.value.isLoading,
                 "The window closes when the cycle completes, so first-run creation is reachable.",
+            )
+            holder.close()
+        }
+
+    @Test
+    fun aCountRaisedAfterTheLocalReadStillHoldsAnEmptyListUnresolved() =
+        runTest {
+            // The ordering guarantee covers publication, but a recovery can also become outstanding
+            // after the local read already resolved empty - a slow commit, or an overlapping
+            // transition. The holder MUST notice the count change and reopen the list, because F-1
+            // acts on the resolved-empty state.
+            val repository = FakeVehicleRepository()
+            val recoveryOutstanding = MutableStateFlow(0)
+            val holder =
+                VehicleListStateHolder(
+                    scope = backgroundScope,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
+                    recoveryOutstanding = recoveryOutstanding,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+
+            repository.vehicles.value = Outcome.Ok(emptyList())
+            advanceUntilIdle()
+            assertFalse(
+                holder.state.value.isLoading,
+                "with no recovery outstanding an empty list is a confirmed empty list",
+            )
+
+            recoveryOutstanding.value = 1
+            advanceUntilIdle()
+
+            assertTrue(
+                holder.state.value.isLoading,
+                "a count raised afterwards MUST reopen the list rather than leave it confirmed empty",
             )
             holder.close()
         }

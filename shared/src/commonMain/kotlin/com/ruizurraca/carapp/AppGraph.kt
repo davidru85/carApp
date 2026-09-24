@@ -102,6 +102,14 @@ internal class DefaultAppGraph(
     private val closeCompletion = CompletableDeferred<Unit>()
     private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
     private val databaseHandle = dependencies.databaseFactory.create()
+
+    // `D-188`: every owner-scoped component must observe the coordinated owner, not the raw delegate.
+    // The coordinator publishes an owner only after counting the recovery it causes, which is what
+    // closes the interval in which a resolved empty list could otherwise escape. It reports cycles to
+    // the controller in `init`, once that controller exists.
+    private val ownerRecoveryGate = OwnerRecoveryGate(dependencies.ownerContext)
+    private val ownerAwareDependencies = dependencies.copy(ownerContext = ownerRecoveryGate)
+
     private val accountConversion =
         AccountConversionCoordinator(
             authClient = dependencies.authClient,
@@ -116,12 +124,12 @@ internal class DefaultAppGraph(
             departureAccess = AccountDepartureDatabaseAccess(databaseHandle.database),
             authClient = dependencies.authClient,
         )
-    private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
+    private val localOwnerAdoption = LocalOwnerAdoption(ownerAwareDependencies, databaseHandle.database)
     private val syncController =
         createSyncController(
             scope = graphScope,
             databaseAccess = SyncDatabaseAccess(databaseHandle.database),
-            ownerContext = dependencies.ownerContext,
+            ownerContext = ownerAwareDependencies.ownerContext,
             connectivity = dependencies.connectivityObserver,
             remote = dependencies.remoteSyncSource,
             clock = dependencies.clock,
@@ -145,12 +153,8 @@ internal class DefaultAppGraph(
             isDebugBuild = dependencies.isDebugBuild,
         )
 
-    // Declared after the controller it reports to. The gate is the one sync caller that awaits its
-    // cycle, because it exists to describe an interval.
-    private val ownerRecoveryGate = OwnerRecoveryGate(syncController)
-
     private val vehicleRuntime =
-        VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption, syncController)
+        VehicleSliceRuntime(ownerAwareDependencies, databaseHandle.database, localOwnerAdoption, syncController)
     private val fuelRepository: FuelEntryRepository =
         SyncRequestingFuelEntryRepository(
             delegate =
@@ -158,7 +162,7 @@ internal class DefaultAppGraph(
                     delegate =
                         SqlDelightFuelEntryRepository(
                             databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-                            ownerContext = dependencies.ownerContext,
+                            ownerContext = ownerAwareDependencies.ownerContext,
                             clock = dependencies.clock,
                             uuidGenerator = dependencies.uuidGenerator,
                         ),
@@ -193,46 +197,8 @@ internal class DefaultAppGraph(
         }
         localOwnerAdoption.launchIn(graphScope)
         observeConnectivityRecovery()
-        observeOwnerChanges()
+        ownerRecoveryGate.launchIn(graphScope, syncController)
         arrangePeriodicScheduling()
-    }
-
-    /**
-     * Fires the `§9.8` `OwnerChanged` trigger when the owner this device acts for resolves to a
-     * different identity, and holds an empty list unresolved until that cycle completes.
-     *
-     * This is the trigger a clean device depends on. A first launch, a completed permanent sign-in
-     * and an account conversion all move the owner to a UID the local database has never held, so
-     * every other trigger describes a cause that has not happened: there is nothing to write, the
-     * network never changed, the app may already be in the foreground, and the periodic cadence is
-     * six hours away. Without this, a restored device presents an empty list - which is the state
-     * `SPECIFICATION.md` F-1 first-action creation acts on - while its data sits in Firestore.
-     *
-     * The `LOCAL_OWNER` sentinel is deliberately not a cause. A device that has never authenticated
-     * has nothing remote to fetch, `§9.2` refuses a cycle under the sentinel anyway, and `§11.2`
-     * requires first launch to reach first-vehicle creation while offline. Skipping it here is what
-     * keeps the gate from holding an offline first run unresolved.
-     *
-     * Observed with `drop(1)` so the owner already resolved at construction is a baseline rather than
-     * a transition: `AuthOwnerContext` publishes its current value on subscription, and treating that
-     * as a change would fire a cycle and raise the gate for every graph the process builds.
-     * Collection starts undispatched so the baseline is read synchronously inside construction; a
-     * plain `launch` could subscribe after the transition it was meant to observe, and the trigger
-     * would be lost.
-     *
-     * The cycle runs on its own coroutine so this collector keeps observing: a slow cycle must not
-     * block a later owner transition, and the gate is lowered by the same coroutine that raised it.
-     */
-    private fun observeOwnerChanges() {
-        graphScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            dependencies.ownerContext
-                .observe()
-                .drop(1)
-                .collect { owner ->
-                    if (owner == LOCAL_OWNER) return@collect
-                    graphScope.launch { ownerRecoveryGate.awaitRecovery() }
-                }
-        }
     }
 
     /**
@@ -289,9 +255,9 @@ internal class DefaultAppGraph(
             repository = vehicleRuntime.repository,
             dispatchers = dependencies.dispatchers,
             refreshVehicles = vehicleRuntime::refresh,
-            ownerContext = dependencies.ownerContext,
+            ownerContext = ownerAwareDependencies.ownerContext,
             syncStatus = syncController.status,
-            recoveryPending = ownerRecoveryGate.pending,
+            recoveryOutstanding = ownerRecoveryGate.outstanding,
         )
     }
 

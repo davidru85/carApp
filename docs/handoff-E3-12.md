@@ -40,7 +40,7 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-23 (second review round applied; pull request #73 still open and unmerged)
+- Date: 2026-09-24 (third correction round applied; pull request #73 still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
 - Current phase and latest commit: complete, plus a review correction round and a CI-stall diagnosis
@@ -167,6 +167,15 @@ Update this section at every material state change and before yielding unfinishe
   than on this workstation. The `STARTED` count is the only valid progress metric: a hung job stops
   at 77 of the 204 the same command starts locally, while `PASSED` and `FAILED` are zero in a green
   job too.
+- Completed in the third correction round: `OwnerRecoveryGate` became the `OwnerContext` every
+  owner-scoped component observes and now counts a recovery **before** publishing the owner that
+  causes it, so the ordering is one relation rather than two independent collectors;
+  `observeOwnerChanges()` and its `drop(1)` baseline are deleted, and a transition landing between
+  construction and subscription is now detected by value comparison; `VehicleListStateHolder` reads
+  the atomic count directly; the `syncController()` receiver allowlist matches the member-access shape
+  so an identifier merely containing `syncController` is rejected; the clean-device assertion installs
+  its observer before the transition; and `D-189` records the temporary timeout raise with Option B
+  registered in `E1-18` as the real fix. Evidence for each is in the Verification Run section.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Completed since the previous checkpoint (CI-stall diagnosis round): the intermittent failure of
@@ -294,6 +303,10 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
   recovery cycle is admitted and that no write, lifecycle, connectivity or adapter trigger fired.
 - **Defect 2 regression.** `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding`
   observes the list across the owner transition and fails if it ever publishes a resolved empty list.
+  The observer is installed **before** `signIn()` — it resolves the signed-out baseline, subscribes
+  undispatched, then signs in — because a `StateFlow` does not replay intermediate states and a
+  collector started after the transition could not have seen a publication that happened during it.
+  The second review round corrected the ordering of this helper for exactly that reason.
 - **Objective-C golden header.** Regenerated from `:composition:ios` and byte-identical after the
   update. The only change is one additive member,
   `SharedSyncTrigger *ownerchanged`, which is the exported ABI change `D-188` records.
@@ -360,6 +373,54 @@ Include any `SHOULD` you deviated from, and why.
 ## Verification Run
 
 Exact commands, and their result.
+
+### Third correction round (`D-188` ordering, receiver shape, `D-189` stopgap)
+
+- `:build-logic:convention:test --tests '…SwiftTriggerSurfaceContractTest' --rerun-tasks` — 12 tests,
+  0 failures, including the two new fixtures.
+- **Non-vacuity of the receiver fixtures.** With the allowlist temporarily reverted to the old
+  substring test (`receiver.contains("syncController", ignoreCase = true)`), exactly and only
+  `anAliasWhoseNameContainsSyncControllerIsRejected` and
+  `anUnrelatedSyncControllerTokenDoesNotPermitAHolderCall` failed; the ten pre-existing fixtures still
+  passed. The allowlist was restored and all 12 pass. Those two fixtures therefore fire against the
+  defect and assert nothing else.
+- `:shared:testAndroidHostTest --tests CrossDeviceRecoveryTest --tests OwnerRecoveryGateTest
+  --rerun-tasks` — `BUILD SUCCESSFUL`; `CrossDeviceRecoveryTest` 6 tests / 0 failures,
+  `OwnerRecoveryGateTest` 6 tests / 0 failures.
+- `:feature:vehicle:testAndroidHostTest --tests VehicleStateHoldersTest --rerun-tasks` —
+  `BUILD SUCCESSFUL`, 16 tests / 0 failures.
+- **Non-vacuity of the count.** Removing `mutableOutstanding.update { count -> count + 1 }` from
+  `OwnerRecoveryGate.launchIn` failed four gate tests —
+  `aNonSentinelTransitionCountsItsRecoveryBeforeAnythingCanObserveTheNewOwner`,
+  `aTransitionBetweenConstructionAndSubscriptionIsStillDetected`,
+  `theCountStaysAboveZeroWhileALaterRecoveryIsStillRunning` and
+  `theCountLowersWhenItsOnlyRecoveryCompletes` — and left the baseline and sentinel tests passing,
+  which is the correct discrimination. The increment was restored.
+- **Ordering non-falsifiability, stated rather than implied.** Moving the increment to *after* the
+  owner assignment was measured: the instrumentation showed the observer reading `outstanding=1` in
+  both orders, because `MutableStateFlow` conflates and a `StateFlow` observer is not resumed inline
+  from the assignment. The instruction order is therefore guaranteed by construction in `launchIn`
+  and documented there, and no test in this repository can falsify it. The assertion kept in
+  `OwnerRecoveryGateTest` pins the observable consequence (a non-sentinel transition leaves one
+  recovery counted and its cycle requested) instead of claiming to pin instruction order; the test
+  says so in its own comment.
+- **The clean-device regression was not RED under the new helper.** With the observer installed before
+  `signIn()`, the instrumented state sequence was
+  `isLoading=true vehicles=0` → `isLoading=true vehicles=0` → `isLoading=false vehicles=1`: no resolved
+  empty state is published, before or after the coordinator change. The helper improvement
+  (subscribe before the transition) closes the observation gap the review identified; the production
+  guarantee it protects is the ordering, whose absence is not reproducible on this host at this rate.
+- `contractCheck --rerun-tasks` — `[PASS] 2 … 190 decisions`, `[PASS] 3 … 190 ADRs`, `[PASS] 4 … 3
+  listed`, `[PASS] 27 every protected CI job declares a timeout`, `[PASS] 28 CI jobs do not exceed the
+  40-minute safety limit`, `[PASS] 29 shared-tests has stricter platform-specific step limits`,
+  `[PASS] 30 all protected CI check names remain present`; no `PENDING` assertion, with the `D-189`
+  15-minute step limits in place.
+- Complete non-instrumented command of `AGENTS.md` — `BUILD SUCCESSFUL in 41s`, 642 tasks.
+- `-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks` —
+  `BUILD SUCCESSFUL in 22s`.
+- `:build-logic:convention:test` — `SwiftTriggerSurfaceContractTest` 12 tests / 0 failures;
+  `:feature:vehicle:testAndroidHostTest` — `VehicleStateHoldersTest` 16 tests / 0 failures.
+- `git diff --check` — no whitespace errors.
 
 - **Review correction round.** `OwnerRecoveryGateTest.theGateStaysRaisedWhileALaterRecoveryIsStillRunning`
   was observed failing against the single-boolean gate on the assertion that an earlier cycle must

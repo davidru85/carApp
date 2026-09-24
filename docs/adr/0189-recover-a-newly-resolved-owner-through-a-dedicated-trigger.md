@@ -96,6 +96,18 @@ offline device settles its refused cycle at once, so `SPECIFICATION.md` P2 is un
   anonymous identity's backup path is unreachable from another identity, that recovery reads only
   bounded pages, that a sign-in admits exactly one recovery cycle with no other trigger fired, and
   that a clean device never publishes a known empty list while recovery is outstanding.
+- The clean-device assertion installs its list observer **before** the owner transition: the helper
+  resolves the signed-out baseline, subscribes undispatched, then signs in. A `StateFlow` does not
+  replay intermediate states, so a collector installed after the transition could not have seen a
+  resolved empty publication that occurred during it.
+- `OwnerRecoveryGate` is the `OwnerContext` every owner-scoped component observes, and it counts a
+  recovery before publishing the owner that causes it, so no downstream reader can see a new owner
+  whose recovery is not yet outstanding. `OwnerRecoveryGateTest` covers the baseline, the
+  construction-to-subscription window, the sentinel, overlapping recoveries and the count reaching
+  zero.
+- The `syncController()` receiver allowlist of ADR-0186 matches the member-access shape, so an
+  identifier that merely *contains* `syncController` - `syncControllerAlias`, or any unrelated local -
+  is rejected rather than accepted; two fixtures prove both bypasses fire.
 - `InMemoryRemoteSyncSource` was added to `:core:testing` because Kotlin Multiplatform cannot consume
   another module's `commonTest` (`D-56`); the previous Firestore-faithful fake was `private` to
   `:core:sync`'s own test source.
