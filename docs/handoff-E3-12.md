@@ -521,7 +521,24 @@ Exact commands, and their result.
   must not count as the second identity's recovery expected:<0> but was:<1>`.
 - GREEN of the count: the owner-scoped `recoveryCycleCount()` — `CrossDeviceRecoveryTest` 6 tests,
   0 failures.
-- The commands and results of Phase `Verification` below.
+- Phase `Verification`:
+  - `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test
+    koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest
+    iosSimulatorArm64Test` with the four `D-75` `-x` exclusions — `BUILD SUCCESSFUL in 36s`, 642 tasks.
+  - `./gradlew ktlintCheck detekt contractCheck architectureCheck :build-logic:convention:test` —
+    `[PASS] 2 … 191 decisions`, `[PASS] 4 … 3 listed`, `[PASS] 30 all protected CI check names remain
+    present`, no `PENDING` assertion.
+  - `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks` — the
+    exact `provider-decoupling` Android-host command, `BUILD SUCCESSFUL in 18s`.
+  - `./gradlew :composition:ios:linkDebugFrameworkIosSimulatorArm64` then `diff -u` against
+    `shared/build/generated/objc-header/Shared.h.golden` — byte-identical, so the Swift-facing API is
+    unchanged by this round.
+  - `git diff --check` — no whitespace errors. `detekt` rejected the first revision of the new test
+    (`LongMethod`, 62 > 60); the marker seeding moved into a helper and all suites pass.
+  - Two platform gates were **not** run in this round: the API 36 instrumented suite and the iOS
+    simulator action. Both were run in the fourth correction round on a head whose only later code
+    change is this round's graph preflight and two test files; this round's evidence for them is CI.
+    The owner-run two-host provider acceptance remains outstanding and is **not** claimed here.
 
 ### Fourth correction round (closing window, gate failure paths, `io` guard, records)
 
