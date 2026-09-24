@@ -134,6 +134,17 @@ class CrossDeviceRecoveryTest {
                     replica.storedIds(OwnerId(ANONYMOUS_UID), EntityType.VEHICLE).contains(backedUpId),
                     "the anonymous device does back up its own row under its own UID",
                 )
+                // The first identity's own cycle must genuinely reach the remote before the second
+                // device is built. Its push alone does not prove that: `hasSyncedVehicle` becomes true
+                // the moment the ack lands, while the pull of the same cycle may still be in flight.
+                // Waiting here is what makes the isolation assertion below non-vacuous - a global
+                // counter that never saw the first identity's pull could not confuse it with the
+                // second's.
+                first.settle("the first identity's own cycle to reach the remote") {
+                    replica.pullCalls.any {
+                        it.ownerId == OwnerId(ANONYMOUS_UID) && it.entityType == EntityType.VEHICLE
+                    }
+                }
             } finally {
                 first.close()
             }
@@ -143,6 +154,11 @@ class CrossDeviceRecoveryTest {
             // device that never attempted a pull trivially holds nothing.
             val second = Device(replica, this, uid = OTHER_ANONYMOUS_UID, isAnonymous = true, signedInAtStart = false)
             try {
+                assertEquals(
+                    0,
+                    second.recoveryCycleCount(),
+                    "the first identity's pulls must not count as the second identity's recovery",
+                )
                 second.signIn()
                 second.settle("second identity ran its recovery cycle") {
                     second.recoveryCycleCount() >= 1
