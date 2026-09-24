@@ -67,6 +67,14 @@ class VehicleListStateHolder internal constructor(
     private var message: UiMessage? = null
     private var currentSyncStatus = syncStatus.value
 
+    // The last outstanding-recovery count the recovery collector below has handled. The window stays
+    // open for this holder while either this value or the live count is above zero: the live count
+    // opens it before the coordinator publishes the owner (`D-188`), and this value keeps it open until
+    // the collector has decided whether the listing it holds predates the recovery. Every other
+    // publisher - the owner, the sync status, the observation, a user action - therefore sees an open
+    // window in the interval between the count reaching zero and that decision.
+    private var handledRecoveryOutstanding = recoveryOutstanding.value
+
     // `isLoading` means the vehicle list of the currently resolved owner is not known yet. It stays
     // true until that owner publishes a successful result, an owner transition reopens it, and an
     // unreadable list keeps it open while publishing the error (D-116, D-120, CONTRACTS.md 20.10).
@@ -102,10 +110,9 @@ class VehicleListStateHolder internal constructor(
     // recovered data arrives.
     private val recoveryJob =
         holderScope.launch(dispatchers.main) {
-            var previousOutstanding = recoveryOutstanding.value
             recoveryOutstanding.collect { outstanding ->
-                val windowClosed = previousOutstanding > 0 && outstanding == 0
-                previousOutstanding = outstanding
+                val windowClosed = handledRecoveryOutstanding > 0 && outstanding == 0
+                handledRecoveryOutstanding = outstanding
 
                 // The count is the coordinator's single atomic value, and the coordinator increments
                 // it *before* it publishes the owner this holder observes, so a publish here can only
@@ -119,6 +126,9 @@ class VehicleListStateHolder internal constructor(
                 // was already zero is not a closing window - it is the ordinary settled case, where an
                 // empty list is genuinely confirmed and MUST publish without a second read.
                 if (windowClosed && listing.isEmptyResolved()) {
+                    // Forget the stale listing before the re-read starts, so no publisher can present it
+                    // as a confirmed empty list while the fresh read is still arriving.
+                    listing = null
                     startObservation()
                 } else {
                     publishCurrent()
@@ -207,6 +217,8 @@ class VehicleListStateHolder internal constructor(
     private fun Outcome<List<Vehicle>, AppError>?.isEmptyResolved(): Boolean =
         (this as? Outcome.Ok)?.value?.count { vehicle -> vehicle.deletedAt == null } == 0
 
+    private fun isRecoveryWindowOpen(): Boolean = recoveryOutstanding.value > 0 || handledRecoveryOutstanding > 0
+
     private fun startObservation() {
         observationJob?.cancel()
         observationJob =
@@ -246,7 +258,7 @@ class VehicleListStateHolder internal constructor(
                 isLoading =
                     result == null ||
                         readError != null ||
-                        (recoveryOutstanding.value > 0 && knownCount == 0),
+                        (isRecoveryWindowOpen() && knownCount == 0),
                 vehicles =
                     (result as? Outcome.Ok)
                         ?.value
