@@ -177,7 +177,15 @@ Update this section at every material state change and before yielding unfinishe
   so an identifier merely containing `syncController` is rejected; the clean-device assertion installs
   its observer before the transition. `D-189` recorded a temporary timeout raise, and `D-190`
   supersedes it with the real fix. Evidence for each is in the Verification Run section.
-- **`E1-18` fixed in this round (`D-190` / ADR-0191).** The owner chose Option B over the `D-189`
+- **`E1-18` had two independent forms, and both are fixed (`D-190` / ADR-0191).** The first is
+  `AppGraph.close()`, which the dispatcher split removes. The second was pinned by a live `jstack`
+  capture while the suite still stalled: `LocalOwnerAdoptionTest.tearDown` ->
+  `SqlDriverDatabaseHandle.close` -> `AndroidxDriverConnectionPool.close` -> `runBlocking`, parked on
+  the test-scheduler thread. Tests that close the handle **directly** bypass the graph entirely, so
+  the split cannot reach them; `TrackedDatabaseHandles.close()` now queues the release on a worker
+  scope and does not await it. Measured after both fixes: **16 consecutive runs** of the exact
+  `shared-tests` command with **zero hangs**.
+- **`E1-18` fix, first form (`D-190` / ADR-0191).** The owner chose Option B over the `D-189`
   stopgap, and the stopgap is withdrawn: the two stalling step limits are back at 10 and 8 minutes.
   `io` is now a real dispatcher in graph fixtures, `graphScope` and the vehicle list's local
   observation run on the scheduler-confined `default`, and the recovery window's closing republish
@@ -459,6 +467,9 @@ Exact commands, and their result.
   going to deliver this owner's rows. A count that was already zero is not a closing window and still
   publishes directly, which is what keeps an ordinary confirmed-empty list resolving without a second
   read (`VehicleStateHoldersTest` covers both).
+- **CI on `4d37935`: all ten required checks green on attempt 1, with no re-run.** That is the
+  decisive evidence for `E1-18`: every earlier head on this branch needed repeated re-runs to reach
+  ten green, and the run counter here is `1`. The deadlock no longer reproduces in CI.
 - **CI standing of the corrections.** `9d3ad28` — the commit carrying every code change of this round
   — reached a **fully green run**, all ten required checks passing after re-runs. The raised limit
   behaves exactly as `D-189` wrote it: `shared-tests` still stalls and is still killed, now at 15

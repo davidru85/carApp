@@ -38,6 +38,16 @@
 
 ## Entries
 
+### 2026-09-24 — `E1-18` second form: test database handles are released without blocking the caller
+
+- **Type:** defect fix
+- **Story / Decision:** `E1-18` / `D-190`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
+- **What changed:** `TrackedDatabaseHandles.close()` queues each handle release on a worker scope and does not await it, and the three local-owner-adoption `tearDown`s stop closing the handle directly because the factory already owns it.
+- **Why:** the dispatcher split removed the `AppGraph.close()` form but not the direct-handle form. A live `jstack` capture pinned the remaining one: `LocalOwnerAdoptionTest.tearDown` -> `SqlDriverDatabaseHandle.close` -> `AndroidxDriverConnectionPool.close` -> `runBlocking`, parked on the test-scheduler thread. Tests that close the handle directly never pass through the graph, so the split cannot reach them, and the driver's `runBlocking` waits for a writer lock its holder can only release by resuming on that same blocked thread.
+- **Verification:** 16 consecutive runs of the exact `shared-tests` step command (`:androidApp:testDebugUnitTest testAndroidHostTest --rerun-tasks`) completed with zero hangs, against 1 hang in 10 before. CI run `36032908302` on `4d37935` reports **all ten required checks green on attempt 1 with no re-run**, which no earlier head on this branch achieved. The complete `AGENTS.md` non-instrumented command passes, as does the provider-free route; `contractCheck` reports no `PENDING` assertion.
+- **Follow-ups / risks:** a close that is *awaited* from the scheduler thread would restore the deadlock, so the offload must stay non-blocking; the KDoc states that constraint at the call site.
+
 ### 2026-09-24 — `E1-18` fix: the `DatabaseHandle.close()` deadlock is removed, and `D-189` is superseded
 
 - **Type:** defect fix

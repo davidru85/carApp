@@ -52,7 +52,17 @@ chosen up front; each was reached by testing a variant and observing what it bro
    the deadlock it replaced. `default` stays scheduler-confined, so virtual time is preserved, while
    `io` remains the one blocking-capable dispatcher. In production both are `Dispatchers.Default`, so
    this split is invisible outside tests.
-3. **The vehicle list's local observation moves to `default`.** With `io` real, its
+3. **A second, independent form of the same deadlock was fixed too.** Taking `io` off the scheduler
+   removed the `AppGraph.close()` form, but a live `jstack` capture showed the suite still stalled at
+   a different site: `LocalOwnerAdoptionTest.tearDown` -> `SqlDriverDatabaseHandle.close` ->
+   `AndroidxDriverConnectionPool.close` -> `runBlocking`, parked on the test-scheduler thread. Tests
+   that close the handle **directly** never went through the graph at all, so the dispatcher split
+   could not reach them. `TrackedDatabaseHandles.close()` now queues the release on a worker scope and
+   **does not await it**: the caller returns to its scheduler, the suspended transaction drains and
+   releases the writer, and the close completes on the worker. Awaiting it, even from a worker, would
+   re-block the caller and restore the deadlock. The three adoption `tearDown`s stop closing the
+   handle themselves, because the factory already owns it.
+4. **The vehicle list's local observation moves to `default`.** With `io` real, its
    `flowOn(dispatchers.io)` took the arrival of restored rows off the confined scheduler and made the
    recovery window a real-time race. Production cannot observe the difference; the test suite stops
    racing.
@@ -99,6 +109,10 @@ and still publishes directly.
   dispatcher, and `GraphTestDependenciesTest` exercises it on both the default and customized paths.
 - 10 consecutive runs of `-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest
   --rerun-tasks`: 0 hangs.
+- 16 consecutive runs of the exact `shared-tests` step command
+  (`:androidApp:testDebugUnitTest testAndroidHostTest --rerun-tasks`): 0 hangs. The second figure is
+  the one that matters for CI, because that step runs a wider task set than the
+  `provider-decoupling` route the first measurement covers.
 - `:shared:testAndroidHostTest`, `:feature:vehicle:testAndroidHostTest`, `:core:sync`,
   `:core:auth`, `:feature:fuel` and the complete non-instrumented `AGENTS.md` command pass.
 - `contractCheck` reports no `PENDING` assertion with the step limits restored.
