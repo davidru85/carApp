@@ -12,6 +12,7 @@ import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
 import com.ruizurraca.carapp.core.database.AccountConversionPhase
 import com.ruizurraca.carapp.core.database.AccountConversionStore
+import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
@@ -96,17 +97,7 @@ class AccountConversionAppGraphTest {
         runTest(timeout = 10.seconds) {
             val owningFactory = InMemoryDatabaseFactory()
             val handle = owningFactory.create()
-            val store = AccountConversionDatabaseAccess(handle.database)
-            store.captureIfAbsent(ANONYMOUS_UID, { "" }, { "" })
-            store.saveCleanupTicket(RAW_TICKET)
-            store.savePermanentUid(PERMANENT_UID)
-            store.markRemoteReplaced()
-            store.replaceLocalSnapshot(
-                permanentUid = PERMANENT_UID,
-                vehicles = emptyList(),
-                fuelEntries = emptyList(),
-            )
-            assertEquals(AccountConversionPhase.LOCAL_REPLACED, store.load()?.phase)
+            val store = handle.database.awaitLocalReplacedMarker()
 
             val authClient = FakeAuthClient(initialState = AuthState.SignedOut)
             val cleanupClient = BlockingOrphanCleanupClient()
@@ -159,6 +150,26 @@ class AccountConversionAppGraphTest {
                 owningFactory.close()
             }
         }
+}
+
+/**
+ * Writes the durable replacement marker this test holds across the orphan cleanup, and returns its
+ * store. Seeded directly rather than through the coordinator so the marker is already `LOCAL_REPLACED`
+ * when the graph starts, which is the state the conversion preflight must settle before any pull.
+ */
+private suspend fun AppDatabase.awaitLocalReplacedMarker(): AccountConversionDatabaseAccess {
+    val store = AccountConversionDatabaseAccess(this)
+    store.captureIfAbsent(ANONYMOUS_UID, { "" }, { "" })
+    store.saveCleanupTicket(RAW_TICKET)
+    store.savePermanentUid(PERMANENT_UID)
+    store.markRemoteReplaced()
+    store.replaceLocalSnapshot(
+        permanentUid = PERMANENT_UID,
+        vehicles = emptyList(),
+        fuelEntries = emptyList(),
+    )
+    assertEquals(AccountConversionPhase.LOCAL_REPLACED, store.load()?.phase)
+    return store
 }
 
 private class BlockingOrphanCleanupClient : OrphanCleanupClient {
