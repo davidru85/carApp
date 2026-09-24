@@ -66,20 +66,30 @@ Update this section at every material state change and before yielding unfinishe
   the `§9.8` routing sentence and the `§20.10` check specification are repaired.
 - Verification evidence and known failures: the complete non-instrumented command passes; the API 36
   instrumented suite passes 17 tests with 0 failures; the iOS simulator action reports
-  `** TEST SUCCEEDED **` with 45 unit and 27 UI tests. On CI, eight of the ten required checks pass
-  (`architecture-check`, `detekt`, `ktlint`, `contract-check`, `android-assemble`,
-  `android-instrumented-tests`, `objc-header-golden-check`, `ios-simulator-build`).
-  `shared-tests` and `provider-decoupling` fail, both by **step timeout** in their Android-host step
-  and both with the stall signature already recorded for this repository: the log shows hundreds of
-  `STARTED` lines, **zero** `PASSED` and **zero** `FAILED`, and the step is killed at its limit. The
-  same two steps pass locally and repeatedly — the exact `provider-decoupling` Android-host command
-  ran 6 consecutive times in 15-19 s, and the shared suite passed 8 consecutive runs. The defect is pre-existing and not attributable to this story, and three
+  `** TEST SUCCEEDED **` with 45 unit and 27 UI tests. On CI, **all ten required checks pass** on the
+  second-review head: `architecture-check`, `detekt`, `ktlint`, `contract-check`, `android-assemble`,
+  `android-instrumented-tests`, `objc-header-golden-check`, `ios-simulator-build`, `shared-tests` and
+  `provider-decoupling`. Both macOS steps needed re-runs to get there, and that is the `E1-18` deadlock
+  rather than this change: the re-runs are the remedy `D-175` set as precedent, and no assertion has
+  ever failed on this branch. The steps pass locally and repeatedly — the exact
+  `provider-decoupling` Android-host command ran 6 consecutive times in 15-19 s in the delivery round
+  and **10 consecutive times** in the second review round, and the whole shared suite passed 8
+  consecutive runs. The failure signature is a step timeout with truncated progress, not a failed
+  assertion: the `STARTED` count reaches only 77 of the 204 the same command starts locally, and a
+  green CI job of the same suite shows 759. `PASSED` and `FAILED` are both zero in a hung job **and**
+  in a green one, because `--console=plain` does not print per-test result lines, so neither is
+  evidence on its own.
+  The defect is pre-existing and not attributable to this story, and three
   independent facts establish that the head does not cause it. `main` at `65e7056` fails the identical
   step, `Run provider-free Android host tests`, with the identical 8-minute timeout and the identical
-  signature (run `35718785707`, job `106716495077`: 68 `STARTED`, 0 `PASSED`). The stall point is not
-  stable — in `main` it is inside `FuelEntryStateHolderTest` and on this branch inside
-  `AppGraphTriggerWiringTest`, which is what an intermittent deadlock at a shared seam looks like
-  rather than a defective test; the root-cause paragraph below names that seam. And the steps still
+  signature (run `35718785707`, job `106716495077`: 68 `STARTED`, versus 77 on this branch, and 0
+  `PASSED` in both). The stall point moves between environments: `main` dies inside
+  `FuelEntryStateHolderTest`, while on this branch the three consecutive `provider-decoupling` stalls
+  of the second review round all died in the same place, at
+  `FuelEntryStateHolderTest > deleteRequiresConfirmationAndRemovesTheEntryFromTheReactiveList`, the
+  test whose `finally` closes the harness over a live graph. A point that is stable inside one branch
+  but differs across branches is what an intermittent deadlock at a shared seam looks like rather
+  than a defective test; the root-cause paragraph below names that seam. And the steps still
   fit their ceilings comfortably on a healthy runner: in that same `main`
   run, `Run Android application and KMP host tests` completed in **211 s** against its 600 s limit, so
   the timeout is not a budget this story's work consumes. On this branch the exact
@@ -149,6 +159,14 @@ Update this section at every material state change and before yielding unfinishe
   `drop(1)` baseline depends on; and `E1-18` keeps only the criteria it can verify.
 - Language correction: one chat reply of this round was emitted in Chinese instead of Spanish; the
   correction is stated once and recorded under Decisions Made. No artifact was affected.
+- CI outcome for this round: **all ten required checks green** on `138a5d5`. Both macOS steps needed
+  re-runs, which is the `E1-18` deadlock and the remedy `D-175` set as precedent; no assertion failed
+  at any point. This round also re-measured the recurrence on the local exact
+  `provider-decoupling` command: **10 of 10 runs passed**, 15-34 s each, so the hazard is
+  latency-dependent rather than fixed-rate, and it is far more likely to be observed on a CI runner
+  than on this workstation. The `STARTED` count is the only valid progress metric: a hung job stops
+  at 77 of the 204 the same command starts locally, while `PASSED` and `FAILED` are zero in a green
+  job too.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Completed since the previous checkpoint (CI-stall diagnosis round): the intermittent failure of
@@ -446,12 +464,14 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   first cycle fails online still reaches first-vehicle creation over data that is still in Firestore.
   The alternative - holding the list unresolved - strands the owner behind an indicator with no exit,
   and `§20.10` records the chosen behaviour normatively.
-- **The two red required checks are a pre-existing test-harness deadlock, now diagnosed and
-  reproduced, and their owner is a new defect story, not this one.** The deadlock, the two captured
-  thread stacks and the measured 1-in-10 / 1-in-12 rates are in the In-Progress Checkpoint above.
-  It is pre-existing (`main` at `65e7056` hangs at the same seam), it is unbounded, and no timeout or
-  retry can clear it. It is registered as `E1-18` in `docs/BACKLOG.md`, a Phase 1
-  test-infrastructure follow-up carrying that evidence.
+- **The two macOS required checks can fail by step timeout on a pre-existing test-harness deadlock,
+  now diagnosed and reproduced, whose owner is a separate defect story, not this one.** The deadlock,
+  the two captured thread stacks and the measured rates are in the In-Progress Checkpoint above. It
+  is pre-existing (`main` at `65e7056` hangs at the same seam), it is latency-dependent rather than
+  fixed-rate - this round measured **10 of 10** local runs of the exact command passing - and it is
+  registered as `E1-18` in `docs/BACKLOG.md`, a Phase 1 test-infrastructure follow-up carrying that
+  evidence. A re-run does clear it and that is what took this round to ten green checks; what no
+  timeout or retry can do is make it *impossible*, because the hang never self-heals once it starts.
   `D-176`'s job ceilings are unrelated; the fix is the deadlock, not a larger step limit.
 - The permanent-provider acceptance is not automatable in this repository, and the precedent story
   that owns it (`E2-03`) has no completion record. The real two-host proof therefore needs owner-run
@@ -464,9 +484,12 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   callers on shutdown (`D-172`), so no caller is stranded.
 - `E3-04`'s handoff recorded the same pre-existing `shared-tests` stall as unowned. This story
   diagnoses it (see the In-Progress Checkpoint), registers the follow-up story, and states the
-  consequence the earlier record could not: until that story lands, a red `shared-tests` or
-  `provider-decoupling` is **not** evidence of a regression, and the correct response is to inspect
-  the step for the `SqlDriverDatabaseHandle.close` seam rather than to re-run it.
+  consequence the earlier record could not: a red `shared-tests` or `provider-decoupling` is **not**
+  evidence of a regression while `E1-18` is open, and the correct response starts by inspecting the
+  step for the `SqlDriverDatabaseHandle.close` seam. This round corrected the second half of that
+  guidance: inspecting is how the reader identifies the seam, and a re-run is then what actually
+  clears it - which is why `AGENTS.md`'s warning about the "re-run it" reflex is about re-running
+  *instead of* investigating, not about re-running at all.
 
 ## Human Review Gate
 
