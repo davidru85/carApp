@@ -69,9 +69,12 @@ chosen up front; each was reached by testing a variant and observing what it bro
 
 The window-closing republish is also hardened: when an outstanding-recovery window closes over a
 *resolved-empty* listing, that listing is stale by construction — the window described the recovery
-that was going to deliver this owner's rows — so the holder re-reads instead of publishing a
-confirmed empty list to `SPECIFICATION.md` F-1. A count that was already zero is not a closing window
-and still publishes directly.
+that was going to deliver this owner's rows — so the holder discards it and re-reads instead of
+publishing a confirmed empty list to `SPECIFICATION.md` F-1. Until the holder's own recovery collector
+has handled the closing count, every publication — the sync-status collector's included — treats the
+window as still open, so the stale listing cannot escape through another publisher in the interval
+before the re-read arrives. A count that was already zero is not a closing window and still
+publishes directly.
 
 `D-189`'s timeout raise is **reverted**: the two stalling steps return to their original 10- and
 8-minute limits.
@@ -85,8 +88,8 @@ and still publishes directly.
 - The two checks report a real result again, so a red `shared-tests` means what it says.
 - The temporary measure is withdrawn, so no caveat about a meaningless red check remains.
 - The scheduling contract is now executable in the direction that matters:
-  `assertQueuedGraphWork` asserts that `io` is **not** the scheduler, so a future edit that re-confines
-  it fails by name.
+  `assertQueuedGraphWork` fails by name when `io` is a `TestDispatcher` bound to the test scheduler,
+  under any instance, or `Dispatchers.Unconfined`, so a future edit that re-confines it fails.
 
 ### Negative
 
@@ -94,6 +97,11 @@ and still publishes directly.
   `main` and `default`, and `io` is deliberately outside it.
 - The graph now uses two dispatchers where it used one, which is one more thing to reason about in
   graph tests.
+- `TrackedDatabaseHandles.close()` does not await the release it queues. A release whose writer-lock
+  holder is never resumed would park one `Dispatchers.Default` worker for the rest of the test JVM
+  instead of hanging the test thread. No such park has been observed; if `shared-tests` or
+  `provider-decoupling` stalls again, the first thing to inspect is a `DefaultDispatcher-worker`
+  thread parked in `AndroidxDriverConnectionPool.close`.
 
 ### Constraints Introduced
 
@@ -105,8 +113,10 @@ and still publishes directly.
 
 ## Verification
 
-- `assertQueuedGraphWork` asserts `main`/`default` wait for `runCurrent()` while `io` is a different
-  dispatcher, and `GraphTestDependenciesTest` exercises it on both the default and customized paths.
+- `assertQueuedGraphWork` asserts `main`/`default` wait for `runCurrent()` and that `io` is neither a
+  `TestDispatcher` bound to the test scheduler nor `Dispatchers.Unconfined`; `GraphTestDependenciesTest`
+  exercises it on both the default and customized paths. Re-confining `io` with a second
+  `StandardTestDispatcher(testScheduler)` fails both paths by name.
 - 10 consecutive runs of `-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest
   --rerun-tasks`: 0 hangs.
 - 16 consecutive runs of the exact `shared-tests` step command

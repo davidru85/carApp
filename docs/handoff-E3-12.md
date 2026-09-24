@@ -40,6 +40,34 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
+### Current checkpoint
+
+- Date: 2026-09-24 (fourth correction round applied).
+- Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
+  `65e7056`; not rebased, not force-pushed, not merged.
+- Current phase and latest commit: fourth correction round complete. RED
+  `test(E3-12): express that a closing recovery window never publishes a stale empty listing`, GREEN
+  `fix(E3-12): keep the recovery window open until the holder re-reads a stale empty listing`, then
+  test-only coverage, one REFACTOR commit and this documentation commit. The exact hashes are listed
+  by `git log --oneline origin/main..HEAD`.
+- Push and pull-request status: every commit of the round is pushed; pull request #73 is open against
+  `main`; the owner's gated review is the merge gate, and the agent does not merge it.
+- Completed since the previous checkpoint: the closing recovery window no longer lets the sync-status
+  collector, or any other publisher, present the pre-recovery empty listing as a known empty list;
+  `OwnerRecoveryGateTest` covers the count lowering on a failed cycle and on a graph closed
+  mid-recovery; `assertQueuedGraphWork` rejects an `io` bound to the test scheduler under any
+  instance or unconfined; the unused `LOCAL_OWNER` import is removed from `AppGraph.kt`; the
+  cross-device test that claimed to swap device roles is renamed and documented for what it proves;
+  stale statements in this handoff, `docs/CONTRACTS.md §20.3` and `§20.10`, ADR-0189, ADR-0191, the
+  `D-190` rows, `docs/BACKLOG.md` and `AGENTS.md` are corrected; `E1-18` has its own handoff.
+- Verification evidence and known failures: every command of the Verification Run subsection
+  "Fourth correction round" passed; no known failure.
+- Open decisions or blockers: the owner is asked to confirm or reject a retroactive exemption for the
+  two combined-phase commits recorded under Decisions Made. No other blocker.
+- Exact next step: hand pull request #73 back to the owner's gated review.
+
+### Earlier checkpoint entries (historical; superseded by the current checkpoint above)
+
 - Date: 2026-09-24 (third correction round applied; `E1-18` fixed in the same round; pull request #73
   still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
@@ -283,8 +311,10 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 ## Scope Completed
 
 - `SyncTrigger.OwnerChanged` is the sixth value of the closed inventory, and `DefaultAppGraph`
-  requests one cycle whenever the resolved owner becomes a non-sentinel identity, observed with
-  `drop(1)` so the owner already resolved at construction is a baseline rather than a transition.
+  requests one cycle whenever the resolved owner becomes a non-sentinel identity. `OwnerRecoveryGate`
+  compares each emission with the owner it last published, so the owner already resolved at
+  construction is a baseline rather than a transition, and a transition that lands between
+  construction and subscription is still detected.
 - `OwnerRecoveryGate` (`shared/.../OwnerRecoveryGate.kt`) raises when the owner changes and lowers
   when the cycle it requested completes, including on failure and on cancellation. The vehicle list
   consults it before publishing `isLoading`, so an empty list whose owner's recovery is outstanding
@@ -296,6 +326,11 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 - `CrossDeviceRecoveryTest` (`shared/src/commonTest/...`) builds two `AppGraph`s over two
   independent in-memory databases sharing one replica, and asserts the four acceptance criteria plus
   the two defect regressions.
+- A vehicle-list recovery window that closes over an empty listing read before the recovery discards
+  that listing and keeps the list unknown until a fresh local read resolves it, whichever of the
+  holder's collectors publishes first.
+- `E1-18`, the JVM test deadlock, is delivered in this pull request by owner decision (`D-190`); its
+  record is `docs/handoff-E1-18.md`.
 
 ## Acceptance Evidence
 
@@ -304,10 +339,20 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
   device B in with a permanent Google session for the same UID. The restored row carries the name
   device A wrote and the permanent `ownerId`, and the list publishes it. Device B starts from clean
   local product data: its database is fresh, its outbox empty and its cursor unset.
-- **Criterion 2 — the reverse direction.** `theReverseDirectionRestoresAFuelEntryWrittenByTheOtherDevice`
-  covers it rather than arguing it away. The roles are swapped, so the reader is the other graph, and
-  it asserts the same vehicle id, the same fuel-entry id, the odometer, the volume and the vehicle
-  attachment survive the crossing.
+- **Criterion 2 — the reverse direction, recorded under the "same shared path" clause.** Both graphs
+  in `CrossDeviceRecoveryTest` run the same `commonMain` code on the same host, so the deterministic
+  proof has no platform direction to reverse. An earlier revision of this record stated that the
+  second test swapped the device roles; it does not, and it is now named
+  `aFuelEntryAndItsVehicleAreRestoredTogetherOnACleanDevice` for what it proves: the same vehicle id,
+  the same fuel-entry id, the odometer, the volume and the vehicle attachment survive the recovery.
+  The iOS-to-Android direction is redundant at the shared layer because the push, the pull and the
+  local apply are the same `commonMain` code on both hosts, and so is the provider adapter
+  `FirebaseRemoteSyncSource` in `:integration:firebase-firestore`, apart from its `UntypedFields`
+  platform actuals. The equivalent provider-boundary evidence is `E3-02`'s
+  `FirebaseRemoteSyncSourceTest` (Android host; the module's iOS test run is excluded by `D-75`) and
+  the Firestore emulator suite, both recorded in `docs/handoff-E3-02.md`. The only evidence that
+  crosses the Android and iOS hosts is the owner-run two-host acceptance, which remains open (see
+  Out of Scope / Not Done).
 - **Criterion 3 — no anonymous cross-device promise.** `anAnonymousIdentityBackupIsNeverRecoverableFromAnotherIdentity`
   proves the anonymous device does back up under its own UID, and that a *different* identity
   recovers nothing: its own backup path is empty and its database stays empty. The proof shares a
@@ -353,11 +398,13 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 - `core/testing/src/commonMain/kotlin/com/ruizurraca/carapp/core/testing/InMemoryRemoteSyncSource.kt`
   (new) — the Firestore-faithful replica.
 - `core/testing/build.gradle.kts` — the serialization dependency the replica needs.
-- `shared/src/commonMain/kotlin/com/ruizurraca/carapp/AppGraph.kt` — `observeOwnerChanges()` and the
-  gate's wiring into the vehicle list holder.
+- `shared/src/commonMain/kotlin/com/ruizurraca/carapp/AppGraph.kt` — the gate's wiring: every
+  owner-scoped component observes `OwnerRecoveryGate`, which is launched in `init` and handed to the
+  vehicle list holder; `graphScope` runs on `default` (`D-190`).
 - `shared/src/commonMain/kotlin/com/ruizurraca/carapp/OwnerRecoveryGate.kt` (new).
 - `feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt`
-  — the `recoveryPending` input, its observer and the `isLoading` rule.
+  — the `recoveryOutstanding` input, its collector, the handled-count window and the `isLoading`
+  rule.
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/CrossDeviceRecoveryTest.kt` (new) — the proof.
 - `docs/CONTRACTS.md` (§9.8, §20.3, §20.10), `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/adr/0189-recover-a-newly-resolved-owner-through-a-dedicated-trigger.md`
@@ -365,6 +412,13 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 - `docs/CONTRACTS.md §20.3` — the `OwnerContext.observe()` replay requirement `D-188` depends on.
 - `core/auth/src/commonTest/kotlin/com/ruizurraca/carapp/core/auth/AuthOwnerContextTest.kt` — the
   assertion message that names that requirement.
+- `E1-18` files (`D-190`): `core/testing/.../Fakes.kt`, `core/testing/.../GraphDependencyFakes.kt`,
+  `shared/src/commonTest/.../GraphTestDependencies.kt` and the three `LocalOwnerAdoption*Test.kt`
+  `tearDown`s; listed in `docs/handoff-E1-18.md`.
+- `docs/adr/0190-raise-the-stalling-ci-step-timeouts-as-a-temporary-measure.md` (`D-189`,
+  superseded) and `docs/adr/0191-remove-the-e1-18-deadlock-by-taking-io-off-the-test-scheduler.md`
+  (`D-190`), with their mirroring rows.
+- `docs/handoff-E1-18.md` (new) and a dated supersession note at the top of `docs/handoff-E1-14.md`.
 
 ## Decisions Made
 
@@ -386,11 +440,52 @@ Include any `SHOULD` you deviated from, and why.
   Chinese (zh) instead of Spanish (es-ES). The owner flagged it; the next reply switched back to
   Spanish immediately, without re-sending the translated text. No repository artifact was affected:
   every file written in this story is in technical English. Recorded here as `AGENTS.md` requires.
-- Deviation: none. No `SHOULD` was deviated from.
+- `D-189` — a temporary raise of the two stalling macOS step limits, selected by the owner on
+  2026-09-24 and superseded the same day by `D-190`. See ADR-0190.
+- `D-190` — the `E1-18` deadlock fix, delivered in this pull request by owner decision rather than as
+  a separate pull request. See ADR-0191 and `docs/handoff-E1-18.md`.
+- **TDD commit-workflow breach, recorded for the owner.** `docs/SPECIFICATION.md §11` requires
+  separate RED, GREEN and REFACTOR commits and pushes for product code. Two commits of the third
+  correction round did not follow it: `9d3ad28` combined the `OwnerRecoveryGate` and
+  `VehicleListStateHolder` production changes with the tests that cover them, and `3940cbb` added the
+  window-closing re-read to `VehicleListStateHolder` with no test that failed without it. The history
+  is not rewritten, because the branch is under review and force pushes are avoided. The re-read now
+  has its own RED tests from the fourth correction round,
+  `aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheCountSettlesFirst` and
+  `aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheStatusSettlesFirst`. The owner is
+  asked to confirm or reject a retroactive exemption for the two commits during the gated review.
+- Deviation: none beyond the breach above. No `SHOULD` was deviated from.
 
 ## Verification Run
 
 Exact commands, and their result.
+
+### Fourth correction round (closing window, gate failure paths, `io` guard, records)
+
+- RED: `./gradlew :feature:vehicle:testAndroidHostTest --tests '*VehicleStateHoldersTest*'` — 2 of 18
+  failed, `aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheCountSettlesFirst` and
+  `aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheStatusSettlesFirst`, both with
+  `a listing read before the recovery applied its rows MUST NOT reach F-1 as a known empty list`: the
+  sync-status collector published the pre-recovery empty listing as known after the count reached
+  zero.
+- GREEN: the same command — 18 tests, 0 failures; `:feature:vehicle:iosSimulatorArm64Test` passes.
+- Gate coverage: `./gradlew :shared:testAndroidHostTest --tests '*OwnerRecoveryGateTest*'` — 8 tests,
+  0 failures. With the decrement limited to a successful cycle, exactly
+  `theCountLowersWhenItsRecoveryCycleFails` and `theCountLowersWhenTheGraphIsClosedMidRecovery`
+  failed; the probe was reverted.
+- `io` guard: with `ioDispatcher = StandardTestDispatcher(testScheduler)` in
+  `confinedGraphDependencies`, the new guard fails both `GraphTestDependenciesTest` paths with
+  `io must stay off the test scheduler (E1-18)`; the old identity check passed the same edit. The
+  probe was reverted and the suite passes.
+- Complete non-instrumented command of `AGENTS.md` — `BUILD SUCCESSFUL`; `contractCheck` reports no
+  `PENDING` assertion.
+- `-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks` — `BUILD
+  SUCCESSFUL`.
+- `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks` on the
+  `D-84` API 36 `E1_07_API_36` emulator — `BUILD SUCCESSFUL`, 0 failures; the emulator was stopped
+  afterwards.
+- `xcodebuild … test` from `iosApp/` on the erased `iPhone 17` simulator — `** TEST SUCCEEDED **`; the
+  simulator was shut down afterwards.
 
 ### Third correction round (`D-188` ordering, receiver shape, `D-189` stopgap)
 
@@ -454,10 +549,12 @@ Exact commands, and their result.
   `delay()` calls on the graph scope, so on a real `io` the 2 s post-write debounce stopped being
   virtual and every test awaiting it became a wall-clock race. That measurement is why the fix moves
   `graphScope` to `default` instead. Recorded because it is the non-obvious half of the fix.
-- **Scheduling contract.** `assertQueuedGraphWork` now asserts `main` and `default` wait for
-  `runCurrent()` while `io` is a **different** dispatcher, and runs an `io` body to completion without
-  advancing virtual time. `GraphTestDependenciesTest` exercises it on both the default and the
-  customized dependency path.
+- **Scheduling contract.** `assertQueuedGraphWork` asserts `main` and `default` wait for
+  `runCurrent()`. In this round it only checked that `io` was a different object from `main`, which a
+  second `StandardTestDispatcher(testScheduler)` passes; an earlier revision of this bullet also
+  claimed it ran an `io` body to completion, which it never did. The fourth correction round replaced
+  the check (see that subsection). `GraphTestDependenciesTest` exercises it on both the default and
+  the customized dependency path.
 - **Suites.** `:shared:testAndroidHostTest`, `:feature:vehicle:testAndroidHostTest`,
   `:core:sync:testAndroidHostTest`, `:core:auth:testAndroidHostTest` and
   `:feature:fuel:testAndroidHostTest` all pass; the provider-free shared route passes;
@@ -466,7 +563,8 @@ Exact commands, and their result.
   re-reads instead of publishing that listing, because the window described the recovery that was
   going to deliver this owner's rows. A count that was already zero is not a closing window and still
   publishes directly, which is what keeps an ordinary confirmed-empty list resolving without a second
-  read (`VehicleStateHoldersTest` covers both).
+  read. `VehicleStateHoldersTest` covered only the second case in this round; the fourth correction
+  round adds the tests that fail without the re-read and without the handled-count window.
 - **CI on `4d37935`: all ten required checks green on attempt 1, with no re-run.** That is the
   decisive evidence for `E1-18`: every earlier head on this branch needed repeated re-runs to reach
   ten green, and the run counter here is `1`. The deadlock no longer reproduces in CI.
@@ -478,7 +576,7 @@ Exact commands, and their result.
   failed once and passed on re-run; `ios-simulator-build` failed in `Run iOS tests`, which is the
   pre-existing `E1-17` onboarding UI flake and not this change — the `E3-12` diff touches no file
   under `iosApp/` or `composition/ios`. The documentation-only commit `868b215` was re-run until all
-  ten were green again. `E1-18` still owes Option B.
+  ten were green again. `E1-18` still owed Option B at that point; `D-190` delivered it afterwards.
 
 - **Review correction round.** `OwnerRecoveryGateTest.theGateStaysRaisedWhileALaterRecoveryIsStillRunning`
   was observed failing against the single-boolean gate on the assertion that an earlier cycle must
@@ -554,11 +652,16 @@ Exact commands, and their result.
   owner's recovery is still outstanding.
 - `docs/CONTRACTS.md §20.7`'s `SyncController` surface is unchanged; the gate uses the existing
   `sync(reason)`.
+- `docs/CONTRACTS.md §20.3` requires `OwnerContext.observe()` to emit the current owner on
+  subscription; its rationale names the gate's value comparison, not the deleted `drop(1)` baseline.
+- `docs/CONTRACTS.md §20.10` states that a window closing over a pre-recovery empty listing discards
+  it and keeps the list unknown until a fresh local read resolves it.
 
 ## Decision Board Impact
 
-- Added `D-188` with ADR-0189 and matching rows in `docs/SPECIFICATION.md §12`,
-  `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`.
+- Added `D-188` with ADR-0189, `D-189` with ADR-0190 (status `Superseded`) and `D-190` with
+  ADR-0191, each with matching rows in `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and
+  `docs/adr/README.md`.
 
 ## Shared-Write Modules Touched
 
@@ -583,32 +686,27 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   first cycle fails online still reaches first-vehicle creation over data that is still in Firestore.
   The alternative - holding the list unresolved - strands the owner behind an indicator with no exit,
   and `§20.10` records the chosen behaviour normatively.
-- **The two macOS required checks can fail by step timeout on a pre-existing test-harness deadlock,
-  now diagnosed and reproduced, whose owner is a separate defect story, not this one.** The deadlock,
-  the two captured thread stacks and the measured rates are in the In-Progress Checkpoint above. It
-  is pre-existing (`main` at `65e7056` hangs at the same seam), it is latency-dependent rather than
-  fixed-rate - this round measured **10 of 10** local runs of the exact command passing - and it is
-  registered as `E1-18` in `docs/BACKLOG.md`, a Phase 1 test-infrastructure follow-up carrying that
-  evidence. A re-run does clear it and that is what took this round to ten green checks; what no
-  timeout or retry can do is make it *impossible*, because the hang never self-heals once it starts.
-  `D-176`'s job ceilings are unrelated; the fix is the deadlock, not a larger step limit.
+- **The `E1-18` deadlock is fixed in this pull request (`D-190`).** The two macOS required checks
+  failed by step timeout on a pre-existing test-harness deadlock; the diagnosis, the captured stacks
+  and the measured rates are in the historical checkpoint entries above and in
+  `docs/handoff-E1-18.md`. After `D-190`, CI on `4d37935` reported all ten required checks green on
+  attempt 1. The residual risk of the non-blocking handle release is recorded in
+  `docs/handoff-E1-18.md`.
 - The permanent-provider acceptance is not automatable in this repository, and the precedent story
   that owns it (`E2-03`) has no completion record. The real two-host proof therefore needs owner-run
   interactive sign-ins; the deterministic test is what protects the behaviour from regression.
 - The CI emulator cannot host the Android provider leg (`target: default`, no Play services). A
   CI-resident provider proof would need a different image and would touch the ten protected check
   names of `docs/CONTRACTS.md §18`.
-- `OwnerRecoveryGate.awaitRecovery()` holds the gate on a graph-scope coroutine that awaits a cycle.
-  A graph closed mid-recovery cancels it, and the `finally` lowers the gate; `sync` completes refused
-  callers on shutdown (`D-172`), so no caller is stranded.
+- `OwnerRecoveryGate.launchIn` holds the count on a graph-scope coroutine that awaits the cycle
+  through `sync(SyncTrigger.OwnerChanged)`. A graph closed mid-recovery cancels it, and the `finally`
+  lowers the count under `NonCancellable`; `OwnerRecoveryGateTest` proves both the failure and the
+  cancellation path, and `sync` completes refused callers on shutdown (`D-172`), so no caller is
+  stranded.
 - `E3-04`'s handoff recorded the same pre-existing `shared-tests` stall as unowned. This story
-  diagnoses it (see the In-Progress Checkpoint), registers the follow-up story, and states the
-  consequence the earlier record could not: a red `shared-tests` or `provider-decoupling` is **not**
-  evidence of a regression while `E1-18` is open, and the correct response starts by inspecting the
-  step for the `SqlDriverDatabaseHandle.close` seam. This round corrected the second half of that
-  guidance: inspecting is how the reader identifies the seam, and a re-run is then what actually
-  clears it - which is why `AGENTS.md`'s warning about the "re-run it" reflex is about re-running
-  *instead of* investigating, not about re-running at all.
+  diagnosed it, registered `E1-18`, and then delivered `E1-18` by owner decision (`D-190`). Once this
+  pull request merges, a red `shared-tests` or `provider-decoupling` is evidence to investigate, not a
+  reason to re-run.
 
 ## Human Review Gate
 

@@ -2294,12 +2294,13 @@ interface OwnerContext {
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
 ```
 
-`OwnerContext.observe()` MUST emit the current owner on subscription and every change after it, so a
-subscriber can treat the first emission as a baseline and every later one as a transition. `D-188`
-depends on it: the app graph drops that baseline to tell an owner change from the owner it was built
-with, so an implementation that emitted only later changes would have its first transition discarded
-and would never fetch a newly signed-in owner's data. `AuthOwnerContext` satisfies this by mapping
-the authentication `StateFlow`, and `§9.8`'s `OwnerChanged` trigger is what the guarantee serves.
+`OwnerContext.observe()` MUST emit the current owner on subscription and every change after it.
+`D-188` depends on it: the app graph's owner-recovery gate reads the owner once when it is built and
+compares every emission with the owner it last published, so a transition that lands between
+construction and subscription is detected only because the current owner is replayed on
+subscription. An implementation that emitted only later changes would miss that transition and would
+never fetch the newly signed-in owner's data. `AuthOwnerContext` satisfies this by mapping the
+authentication `StateFlow`, and `§9.8`'s `OwnerChanged` trigger is what the guarantee serves.
 
 ### 20.3.1 Crash reporting types — `:core:crash`
 
@@ -2956,7 +2957,10 @@ A third case is a list that is empty while its owner's recovery cycle is still o
 read succeeds with zero rows before the owner's backed-up data has been fetched. The window closes
 when the requested cycle completes, including on failure, so an offline first run still reaches
 first-vehicle creation (`SPECIFICATION.md` P2); a non-empty list is known regardless and is never
-held back.
+held back. An empty listing that was read before the window closed predates the recovery, so the
+holder discards it when the window closes and keeps `isLoading` `true` until a fresh local read
+resolves the list; until the holder has handled the closing count, every publication treats the
+window as still open (`D-188`, `D-190`).
 
 The unknown states are therefore distinguishable by `message`: `isLoading` with no message is a
 list that is still arriving or whose owner's recovery is still outstanding, and `isLoading` with a

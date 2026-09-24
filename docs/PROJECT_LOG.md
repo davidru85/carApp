@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-24 — `E3-12` fourth correction: the closing recovery window, the gate's failure paths, the `io` guard and the records
+
+- **Type:** correction
+- **Story / Decision:** `E3-12` / `D-188`; `E1-18` / `D-190`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
+- **What changed:** `VehicleListStateHolder` keeps the recovery window open for every publisher until its own recovery collector has handled the closing count, and discards an empty listing read before the recovery before re-reading it, so the sync-status collector can no longer publish that listing as a known empty list. `OwnerRecoveryGateTest` covers the count lowering on a failed cycle and on a graph closed mid-recovery. `assertQueuedGraphWork` rejects an `io` bound to the test scheduler under any instance or unconfined. The unused `LOCAL_OWNER` import leaves `AppGraph.kt`, and the cross-device test that claimed to swap device roles is renamed `aFuelEntryAndItsVehicleAreRestoredTogetherOnACleanDevice`. `docs/CONTRACTS.md §20.3` and `§20.10`, ADR-0189, ADR-0191, the `D-190` rows, `docs/BACKLOG.md`, `AGENTS.md` and `docs/handoff-E3-12.md` are corrected, `docs/handoff-E1-18.md` is created and `docs/handoff-E1-14.md` gains a dated supersession note.
+- **Why:** the window-closing re-read of `D-190` guarded only its own collector. When the count reached zero before the fresh read arrived, the sync-status collector republished the pre-recovery empty listing as known - in either order of the two signals - which is the state `SPECIFICATION.md` F-1 answers with non-dismissible first-vehicle creation; two new tests reproduced it before the fix. The previous `io` guard compared object identity with `main`, so a second `StandardTestDispatcher(testScheduler)` passed it, contradicting ADR-0191. Several records still described the deleted `drop(1)` baseline, claimed a role swap the test never performed, or kept the `E1-18` caveat that the fix removes.
+- **Documents touched:** `docs/CONTRACTS.md` §20.3, §20.10; `docs/adr/0189`; `docs/adr/0191`; `docs/DECISION_BOARD.md`; `docs/SPECIFICATION.md §12`; `docs/TECHNICAL_PLAN.md §2`; `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoff-E3-12.md`; `docs/handoff-E1-18.md` (new); `docs/handoff-E1-14.md`.
+- **Verification:** the two new `VehicleStateHoldersTest` cases failed before the fix with `a listing read before the recovery applied its rows MUST NOT reach F-1 as a known empty list` and pass after it; the two new gate tests fail when the decrement is limited to a successful cycle; re-confining `io` fails both `GraphTestDependenciesTest` paths by name; the complete non-instrumented `AGENTS.md` command passes and `contractCheck` reports no `PENDING` assertion.
+- **Follow-ups / risks:** two commits of the third correction round (`9d3ad28`, `3940cbb`) combined TDD phases; the breach is recorded in `docs/handoff-E3-12.md` for the owner's decision. `TrackedDatabaseHandles.close()` does not await its release, so a never-resumed writer would park a `Dispatchers.Default` worker; recorded in `docs/handoff-E1-18.md`.
+
 ### 2026-09-24 — `E1-18` second form: test database handles are released without blocking the caller
 
 - **Type:** defect fix

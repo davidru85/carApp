@@ -76,7 +76,10 @@ offline device settles its refused cycle at once, so `SPECIFICATION.md` P2 is un
 ### Negative
 
 - The exported `SyncTrigger` enum widens, so the golden Objective-C header changes and the Swift
-  surface gains one case. The change is additive: no existing case is renamed or reordered.
+  surface gains one case. No existing case is renamed and the relative order of the existing cases
+  is unchanged, but `OwnerChanged` is declared first, so every existing case's `ordinal` rises by
+  one. No code in the repository persists, transmits or compares a `SyncTrigger` ordinal, so the
+  shift has no consumer today.
 - The gate introduces a second reason for `isLoading` to be `true`, so `§20.10`'s description of the
   two unknown states becomes three. The reason is stated normatively there.
 
@@ -103,8 +106,11 @@ offline device settles its refused cycle at once, so `SPECIFICATION.md` P2 is un
 - `OwnerRecoveryGate` is the `OwnerContext` every owner-scoped component observes, and it counts a
   recovery before publishing the owner that causes it, so no downstream reader can see a new owner
   whose recovery is not yet outstanding. `OwnerRecoveryGateTest` covers the baseline, the
-  construction-to-subscription window, the sentinel, overlapping recoveries and the count reaching
-  zero.
+  construction-to-subscription window, the sentinel, overlapping recoveries, the count reaching
+  zero, and the count lowering when the cycle fails and when the graph is closed mid-recovery.
+- `VehicleStateHoldersTest` proves that a window closing over an empty listing read before the
+  recovery never publishes that listing as a known empty list, in both orders in which the count and
+  the aggregate sync status can settle.
 - The `syncController()` receiver allowlist of ADR-0186 matches the member-access shape, so an
   identifier that merely *contains* `syncController` - `syncControllerAlias`, or any unrelated local -
   is rejected rather than accepted; two fixtures prove both bypasses fire.
