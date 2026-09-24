@@ -130,6 +130,27 @@ internal class DefaultAppGraph(
             authClient = dependencies.authClient,
         )
     private val localOwnerAdoption = LocalOwnerAdoption(ownerAwareDependencies, databaseHandle.database)
+
+    /**
+     * Settles destructive account conversion before any normal sync trigger reaches remote work.
+     *
+     * `docs/CONTRACTS.md §11.3` forbids normal recovery while the durable replacement marker exists:
+     * pulling at that point could reintroduce permanent-account rows the replacement is removing. This
+     * preflight is therefore shared by every trigger - lifecycle, connectivity, periodic,
+     * pull-to-refresh and `OwnerChanged` alike - and only then preserves the existing
+     * local-owner-adoption gate, which `§11.4` keeps ahead of remote work.
+     *
+     * The auth-state collector in `init` still resumes conversion on its own, because a conversion
+     * owed a resume must not depend on a cycle being admitted. `AccountConversionCoordinator`'s mutex
+     * serializes that collector against this preflight, so the second caller observes the first one's
+     * completed work rather than repeating it.
+     */
+    private suspend fun awaitSyncPreconditions(): Outcome<Unit, AppError> =
+        when (val conversion = accountConversion.awaitSettled()) {
+            is Outcome.Err -> Outcome.Err(conversion.error)
+            is Outcome.Ok -> localOwnerAdoption.awaitAdoption()
+        }
+
     private val syncController =
         createSyncController(
             scope = graphScope,
@@ -139,7 +160,7 @@ internal class DefaultAppGraph(
             remote = dependencies.remoteSyncSource,
             clock = dependencies.clock,
             uuidGenerator = dependencies.uuidGenerator,
-            adoption = localOwnerAdoption::awaitAdoption,
+            adoption = ::awaitSyncPreconditions,
             onPoisoned = dependencies.crashReporter::recordNonFatal,
             onQuarantined = { record ->
                 dependencies.logger.log(
