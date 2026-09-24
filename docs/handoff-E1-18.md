@@ -161,6 +161,14 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   parked in `AndroidxDriverConnectionPool.close` first.
 - A close that is awaited from the scheduler thread would restore the deadlock, so the release must
   stay non-blocking; the KDoc states that constraint at the call site.
+- Giving `io` a real dispatcher has a second, subtler cost: every graph path that offloads work to
+  it now takes wall-clock time, so a graph-backed wait that relies on virtual advancement can exceed
+  a tight real-time bound on a slow runner. CI surfaced exactly that -
+  `VehicleFormStateHolderTest.savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits` timed out
+  after 5 s waiting for the push cycle while the same test passed 10 of 10 locally. The shared
+  real-time expectation budget was widened to 30 s with that rationale recorded in
+  `FlowExpectation.kt`. Any future graph wait that measures a longer real-time window inherits the
+  same reasoning.
 
 ## Human Review Gate
 

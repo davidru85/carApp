@@ -462,6 +462,11 @@ Exact commands, and their result.
 
 ### Fourth correction round (closing window, gate failure paths, `io` guard, records)
 
+- Post-round CI follow-up: `shared-tests` failed on `ea6c984` with
+  `VehicleFormStateHolderTest.savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits` timing out
+  after 5 s on the push cycle - a real consequence of the real `io` dispatcher, not the deadlock. The
+  shared real-time expectation budget in `FlowExpectation.kt` was widened to 30 s (`b47464a`), with
+  the affected suite verified 10 of 10 in isolation and the exact CI command passing repeatedly.
 - RED: `./gradlew :feature:vehicle:testAndroidHostTest --tests '*VehicleStateHoldersTest*'` — 2 of 18
   failed, `aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheCountSettlesFirst` and
   `aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheStatusSettlesFirst`, both with

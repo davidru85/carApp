@@ -38,6 +38,16 @@
 
 ## Entries
 
+### 2026-09-24 — `E1-18` follow-up: the real-time expectation budget for the offloaded graph paths
+
+- **Type:** correction
+- **Story / Decision:** `E1-18` / `D-190`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
+- **What changed:** the shared real-time state-expectation budget in `FlowExpectation.kt` rises from 5 s to 30 s, with the reason recorded on the constant.
+- **Why:** giving `io` a real dispatcher means every graph path that offloads to it - a form save, a delete, a refresh - now takes wall-clock time. CI failed `VehicleFormStateHolderTest.savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits` with `Timed out after 5s waiting for vehicle push cycle settled. Last value: Idle` on the same head whose whole suite passed 10 of 10 locally and whose exact CI command passed 3 of 3. The bound stays a real-time deadline; 30 s gives a slow runner margin.
+- **Verification:** the exact CI command (`:androidApp:testDebugUnitTest testAndroidHostTest --rerun-tasks`) passes repeatedly at the raised budget, and the affected suite passes 10 of 10 in isolation. CI on the corrected head is the remaining evidence.
+- **Follow-ups / risks:** any future graph wait that measures a longer real-time window inherits this reasoning; `FlowExpectation.kt` states it at the constant.
+
 ### 2026-09-24 — `E3-12` fourth correction: the closing recovery window, the gate's failure paths, the `io` guard and the records
 
 - **Type:** correction
