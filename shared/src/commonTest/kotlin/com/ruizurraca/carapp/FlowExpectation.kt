@@ -20,7 +20,24 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private val GRAPH_STATE_EXPECTATION_TIMEOUT = 5.seconds
+/**
+ * Real-time budget for one state expectation.
+ *
+ * Raised from 5 s because of `D-190`. That decision deliberately gave the `io` dispatcher a real
+ * implementation so the driver's blocking close cannot seize the test-scheduler thread; the price is
+ * that every graph path which offloads work to `io` — a form save, a delete, a refresh — now takes
+ * wall-clock time. A graph-backed test that waits for the effect of such a path still relies on
+ * `runTest` advancing virtual time while the test coroutine is suspended, and on a slow runner the
+ * whole sequence can exceed five seconds: CI failed
+ * `VehicleFormStateHolderTest.savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits` with
+ * `Timed out after 5s waiting for vehicle push cycle settled. Last value: Idle`, while the same test
+ * passed 10 of 10 locally.
+ *
+ * The bound stays a real-time deadline for the reason documented on [awaitCondition]: the awaited
+ * work needs real CPU. 30 s covers a slower runner with a wide margin; a test that needs more is
+ * mis-scheduled rather than slow.
+ */
+private val GRAPH_STATE_EXPECTATION_TIMEOUT = 30.seconds
 
 /**
  * Polls [condition] until it holds, yielding between attempts, and fails the named expectation once
