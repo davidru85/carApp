@@ -76,11 +76,12 @@ class FakeUuidGenerator : UuidGenerator {
 /**
  * Maps `main` and `default` to [dispatcher] so fake-driven tests run under the caller's scheduler.
  *
- * `io` is deliberately separate. `E1-18`: the graph runs on `dispatchers.io`, and
- * `AndroidxDriverConnectionPool.close()` reaches its writer lock through a `runBlocking`. With one
- * dispatcher for all three, that blocking close seizes the very thread the test scheduler needs in
- * order to resume the transaction holding the lock, and the JVM test deadlocks with no timeout
- * inside it. A real `io` keeps the close off the scheduler thread.
+ * `io` is deliberately separate. `E1-18`: the graph releases its database handle on
+ * `dispatchers.io`, and `AndroidxDriverConnectionPool.close()` reaches its writer lock through a
+ * `runBlocking`. With one dispatcher for all three, that blocking close seizes the very thread the
+ * test scheduler needs in order to resume the transaction holding the lock, and the JVM test
+ * deadlocks with no timeout inside it. A real `io` keeps the close off the scheduler thread, while
+ * the graph's own work runs on `default` (`D-190`).
  *
  * [ioDispatcher] defaults to [dispatcher] so fake-driven call sites that do not mount a graph keep
  * their previous behaviour; the graph fixtures opt into a real `io`.
