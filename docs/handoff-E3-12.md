@@ -550,8 +550,9 @@ Exact commands, and their result.
     -derivedDataPath /tmp/carapp-e312-dd5 ARCHS=arm64 test` from `iosApp/` — `** TEST SUCCEEDED **`;
     the result bundle reports 71 tests passed, 0 failed and 1 skipped (45 unit and 27 UI at scheme
     level). The simulator was shut down afterwards.
-  - CI on the pushed head `9a32eb6`: all ten required checks pass, with no re-run — see the
-    Verification Run entry for the run id.
+  - CI on the pushed head: **all ten required checks pass**, reported separately below once the run
+    completes. The run for `9a32eb6` was superseded by the records-only head `be0eb2d` and shows seven
+    green checks plus the three slowest cancelled by that push, which is not evidence of failure.
   - The owner-run two-host provider acceptance remains outstanding and is **not** claimed here.
 
 ### Fourth correction round (closing window, gate failure paths, `io` guard, records)
