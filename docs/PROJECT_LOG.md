@@ -38,6 +38,17 @@
 
 ## Entries
 
+### 2026-09-25 — `E3-12` fifth correction: the conversion barrier, the owner-scoped recovery count and the record reconciliation
+
+- **Type:** correction
+- **Story / Decision:** `E3-12` / `D-188`; `D-153`; `E1-18` / `D-190`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
+- **What changed:** the shared sync preflight now sequences `accountConversion.awaitSettled()` before `localOwnerAdoption.awaitAdoption()`, so no normal recovery pull can occur while the durable replacement marker exists; `CrossDeviceRecoveryTest.recoveryCycleCount()` counts only the device's own UID and `EntityType.VEHICLE`; `docs/CONTRACTS.md §14` records `D-190`'s `dispatchers.default` exception for `VehicleListStateHolder`'s recovery-sensitive observation; ADR-0191 names `Dispatchers.Default`; ADR-0189 gains the conversion-barrier constraint and its verification bullet; the `E1-18` handoff records its contract change; and the `D-185` test KDoc calls the enforcement a source rule rather than a Konsist fixture.
+- **Why:** `CONTRACTS.md §11.3` forbids normal recovery while the replacement marker exists, because a pull there could reintroduce permanent-account rows the replacement is removing - and the graph admitted such a cycle. The anonymous-isolation evidence was also owner-agnostic: a global replica pull count could not distinguish the first identity's recovery from the second's, so criterion 3 was satisfied by whichever device happened to pull.
+- **Documents touched:** `docs/CONTRACTS.md` §14; `docs/adr/0189`; `docs/adr/0191`; `docs/handoff-E3-12.md`; `docs/handoff-E1-18.md`; `shared/.../AccountConversionAppGraphTest.kt`; `shared/.../CrossDeviceRecoveryTest.kt`; `shared/.../AppGraph.kt`; `build-logic/.../SwiftTriggerSurfaceContractTest.kt`.
+- **Verification:** the new `AccountConversionAppGraphTest.ownerChangedRecoveryNeverPullsWhileTheAccountConversionMarkerExists` failed with `forbids a normal recovery pull while the marker exists expected:<[]> but was:<[LOCAL_REPLACED]>` on three consecutive runs before the production change and passes after it; the anonymous-isolation test failed with `the first identity's pulls must not count as the second identity's recovery expected:<0> but was:<1>` against the global counter; the four directed suites pass 24 tests with 0 failures; the complete non-instrumented `AGENTS.md` command passes and `contractCheck` reports no `PENDING` assertion.
+- **Follow-ups / risks:** the owner-run two-host provider acceptance remains outstanding and is not claimed complete. The TDD-phase breaches already recorded in `docs/handoff-E3-12.md` (`9d3ad28`, `3940cbb`) still await the owner's decision on a retroactive exemption.
+
 ### 2026-09-24 — `E1-18` follow-up: the real-time expectation budget for the offloaded graph paths
 
 - **Type:** correction

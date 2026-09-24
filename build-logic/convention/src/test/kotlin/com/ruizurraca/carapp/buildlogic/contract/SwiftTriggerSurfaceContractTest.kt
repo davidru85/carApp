@@ -6,10 +6,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The Konsist fixture `docs/CONTRACTS.md §20.10` declares: `OwnerChanged`, `PostWriteDebounce`,
- * `ConnectivityRecovered` and `Periodic` MUST NOT be invoked from Swift UI code, because firing them
- * there would duplicate the `WorkManager` / `BGTaskScheduler` wiring and bypass the
- * single-`SyncController` invariant of `§9.1`.
+ * The source rule required by `docs/CONTRACTS.md §20.10` declares: `OwnerChanged`,
+ * `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` MUST NOT be invoked from Swift UI
+ * code, because firing them there would duplicate the `WorkManager` / `BGTaskScheduler` wiring and
+ * bypass the single-`SyncController` invariant of `§9.1`.
  *
  * The rule is a pure function over source text so it has a *failing* fixture, which is what
  * `AGENTS.md` requires of every architecture rule: a rule whose only exercise is the real repository

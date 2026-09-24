@@ -170,9 +170,7 @@ private class BlockingOrphanCleanupClient : OrphanCleanupClient {
     override suspend fun issueOrphanCleanupTicket(): Outcome<OrphanCleanupTicket, AuthError> =
         Outcome.Err(AuthError.ProviderUnavailable)
 
-    override suspend fun deleteOrphanedAnonymousAccount(
-        ticket: OrphanCleanupTicket,
-    ): Outcome<Unit, AuthError> {
+    override suspend fun deleteOrphanedAnonymousAccount(ticket: OrphanCleanupTicket): Outcome<Unit, AuthError> {
         deleteCalls += 1
         deletionAllowed.await()
         return Outcome.Ok(Unit)

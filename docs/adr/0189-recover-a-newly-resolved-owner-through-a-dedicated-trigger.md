@@ -91,6 +91,9 @@ offline device settles its refused cycle at once, so `SPECIFICATION.md` P2 is un
   gate with nothing left to lower it would strand an owner behind an unresolved list.
 - `SPECIFICATION.md` P2 holds: on a device whose cycle is refused for connectivity or `LOCAL_OWNER`,
   an empty list MUST still reach first-vehicle creation.
+- Before an `OwnerChanged` cycle reaches remote work, the graph MUST settle any durable account
+  conversion marker through the shared sync preflight; this is the `D-153` prohibition against
+  normal recovery re-entering destructive replacement, not an `OwnerChanged` exception.
 
 ## Verification
 
@@ -114,6 +117,11 @@ offline device settles its refused cycle at once, so `SPECIFICATION.md` P2 is un
 - The `syncController()` receiver allowlist of ADR-0186 matches the member-access shape, so an
   identifier that merely *contains* `syncController` - `syncControllerAlias`, or any unrelated local -
   is rejected rather than accepted; two fixtures prove both bypasses fire.
+- `AccountConversionAppGraphTest.ownerChangedRecoveryNeverPullsWhileTheAccountConversionMarkerExists`
+  holds a `LOCAL_REPLACED` conversion marker across orphan cleanup, observes zero normal pull calls
+  while that marker exists, then releases cleanup and observes recovery only after the marker is
+  cleared. The remote fake records the conversion phase seen at each pull, so the prohibition is
+  asserted about the pull itself rather than about a sampled instant.
 - `InMemoryRemoteSyncSource` was added to `:core:testing` because Kotlin Multiplatform cannot consume
   another module's `commonTest` (`D-56`); the previous Firestore-faithful fake was `private` to
   `:core:sync`'s own test source.

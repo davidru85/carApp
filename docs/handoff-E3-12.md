@@ -42,6 +42,35 @@ Update this section at every material state change and before yielding unfinishe
 
 ### Current checkpoint
 
+- Date: 2026-09-25 (fifth correction round applied).
+- Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
+  `65e7056`; not rebased, not force-pushed, not merged.
+- Current phase and latest commit: fifth correction round complete. RED
+  `test(E3-12): require the sync preflight to settle the conversion marker first`, GREEN
+  `fix(E3-12): settle account conversion before remote sync work`, RED
+  `test(E3-12): require the anonymous-isolation count to be owner-specific`, GREEN
+  `test(E3-12): scope the recovery count to the device uid`, then this records commit. The exact
+  hashes are listed by `git log --oneline origin/main..HEAD`.
+- Push and pull-request status: every commit of the round is pushed; pull request #73 is open against
+  `main`; the owner's gated review is the merge gate, and the agent does not merge it.
+- Completed since the previous checkpoint: the shared sync preflight now sequences
+  `accountConversion.awaitSettled()` before `localOwnerAdoption.awaitAdoption()` for every trigger, so
+  no normal recovery pull can occur while the durable replacement marker exists (`§11.3`);
+  `CrossDeviceRecoveryTest.recoveryCycleCount()` counts only `PullCall.ownerId == OwnerId(uid)` and
+  `EntityType.VEHICLE`, and the anonymous-isolation test requires zero cycles before the second
+  sign-in and exactly one after it; `docs/CONTRACTS.md §14` records `D-190`'s narrow `dispatchers.default`
+  exception, ADR-0191 names `Dispatchers.Default`, ADR-0189 carries the conversion-barrier constraint
+  and its new verification bullet, the `E1-18` handoff records the contract change, and the `D-185`
+  test KDoc calls the enforcement a source rule rather than a Konsist fixture.
+- Verification evidence and known failures: every command of the Verification Run subsection
+  "Fifth correction round" passed; no known failure.
+- Open decisions or blockers: the owner is asked to confirm or reject a retroactive exemption for the
+  two combined-phase commits recorded under Decisions Made. No other blocker. The owner-run two-host
+  provider acceptance remains outstanding and is not claimed here.
+- Exact next step: hand pull request #73 back to the owner's gated review.
+
+### Earlier checkpoint entries (historical; superseded by the current checkpoint above)
+
 - Date: 2026-09-24 (fourth correction round applied).
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
@@ -65,8 +94,6 @@ Update this section at every material state change and before yielding unfinishe
 - Open decisions or blockers: the owner is asked to confirm or reject a retroactive exemption for the
   two combined-phase commits recorded under Decisions Made. No other blocker.
 - Exact next step: hand pull request #73 back to the owner's gated review.
-
-### Earlier checkpoint entries (historical; superseded by the current checkpoint above)
 
 - Date: 2026-09-24 (third correction round applied; `E1-18` fixed in the same round; pull request #73
   still open and unmerged)
@@ -357,13 +384,26 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
   proves the anonymous device does back up under its own UID, and that a *different* identity
   recovers nothing: its own backup path is empty and its database stays empty. The proof shares a
   *permanent identity* between devices, never a credential, so no test and no path describes an
-  anonymous identity as recoverable elsewhere.
+  anonymous identity as recoverable elsewhere. The evidence is owner-specific: the test first waits
+  until the *first* identity's own cycle has reached the remote, then requires
+  `second.recoveryCycleCount() == 0` for the second UID before it signs in, and
+  `second.recoveryCycleCount() == 1` after. `recoveryCycleCount()` filters
+  `PullCall.ownerId == OwnerId(uid)` **and** `EntityType.VEHICLE`, so a pull by the first identity
+  cannot be counted as the second's cycle and vice versa.
 - **Criterion 4 — pull-based, no listener, one device.** `recoveryReadsBoundedPagesAndNeverOpensAListener`
   asserts the replica was reached only through bounded page requests. `InMemoryRemoteSyncSource`
   exposes no subscription at all, so there is no listener to open, and each device owns its own
   database and graph, so no simultaneous multi-device path is exercised.
 - **Defect 1 regression.** `aPermanentSignInRequestsExactlyOneOwnerChangeCycle` asserts exactly one
   recovery cycle is admitted and that no write, lifecycle, connectivity or adapter trigger fired.
+- **Conversion-barrier regression (`§11.3`, `D-153`).**
+  `AccountConversionAppGraphTest.ownerChangedRecoveryNeverPullsWhileTheAccountConversionMarkerExists`
+  holds a `LOCAL_REPLACED` marker across a blocked orphan cleanup, observes zero normal pull calls
+  while the marker exists, releases cleanup, and observes recovery only after the marker is cleared.
+  The remote fake records the conversion phase observed **at each pull**, so the prohibition is
+  asserted about the pull itself rather than about a sampled instant; against the pre-fix graph it
+  fails with `CONTRACTS.md 11.3 forbids a normal recovery pull while the marker exists
+  expected:<[]> but was:<[LOCAL_REPLACED]>`.
 - **Defect 2 regression.** `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding`
   observes the list across the owner transition and fails if it ever publishes a resolved empty list.
   The observer is installed **before** `signIn()` — it resolves the signed-out baseline, subscribes
@@ -405,7 +445,10 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
 - `feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt`
   — the `recoveryOutstanding` input, its collector, the handled-count window and the `isLoading`
   rule.
-- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/CrossDeviceRecoveryTest.kt` (new) — the proof.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/CrossDeviceRecoveryTest.kt` (new) — the proof;
+  `recoveryCycleCount()` is owner-scoped.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/AccountConversionAppGraphTest.kt` — the
+  conversion-barrier regression, its blocking `OrphanCleanupClient` and its marker-aware remote.
 - `docs/CONTRACTS.md` (§9.8, §20.3, §20.10), `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/adr/0189-recover-a-newly-resolved-owner-through-a-dedicated-trigger.md`
   (new), `shared/build/generated/objc-header/Shared.h.golden`.
@@ -459,6 +502,26 @@ Include any `SHOULD` you deviated from, and why.
 ## Verification Run
 
 Exact commands, and their result.
+
+### Fifth correction round (conversion barrier, owner-scoped count, records)
+
+- RED: `./gradlew :shared:testAndroidHostTest --tests
+  com.ruizurraca.carapp.AccountConversionAppGraphTest.ownerChangedRecoveryNeverPullsWhileTheAccountConversionMarkerExists`
+  — failed with `CONTRACTS.md 11.3 forbids a normal recovery pull while the marker exists
+  expected:<[]> but was:<[LOCAL_REPLACED]>`, reproduced on three consecutive `--rerun-tasks` runs.
+- GREEN: the same command after `createSyncController` received `::awaitSyncPreconditions` — passes.
+- Directed regressions: `./gradlew :shared:testAndroidHostTest --tests
+  com.ruizurraca.carapp.AccountConversionAppGraphTest --tests
+  com.ruizurraca.carapp.AccountConversionCoordinatorTest --tests
+  com.ruizurraca.carapp.CrossDeviceRecoveryTest --tests com.ruizurraca.carapp.OwnerRecoveryGateTest`
+  — `BUILD SUCCESSFUL`, 24 tests, 0 failures (`AccountConversionAppGraphTest` 2,
+  `AccountConversionCoordinatorTest` 8, `CrossDeviceRecoveryTest` 6, `OwnerRecoveryGateTest` 8).
+- RED of the count: the same `CrossDeviceRecoveryTest` class with the pre-change global counter failed
+  `anAnonymousIdentityBackupIsNeverRecoverableFromAnotherIdentity` with `the first identity's pulls
+  must not count as the second identity's recovery expected:<0> but was:<1>`.
+- GREEN of the count: the owner-scoped `recoveryCycleCount()` — `CrossDeviceRecoveryTest` 6 tests,
+  0 failures.
+- The commands and results of Phase `Verification` below.
 
 ### Fourth correction round (closing window, gate failure paths, `io` guard, records)
 
@@ -661,6 +724,14 @@ Exact commands, and their result.
   subscription; its rationale names the gate's value comparison, not the deleted `drop(1)` baseline.
 - `docs/CONTRACTS.md §20.10` states that a window closing over a pre-recovery empty listing discards
   it and keeps the list unknown until a fresh local read resolves it.
+- `docs/CONTRACTS.md §14` now records `D-190`'s narrow exception to the `dispatchers.io` database-flow
+  rule: `VehicleListStateHolder`'s recovery-sensitive local observation runs on `dispatchers.default`,
+  so the recovery window stays scheduler-confined instead of becoming a wall-clock race. Every other
+  database flow keeps the `dispatchers.io` rule.
+- `docs/CONTRACTS.md §11.3`'s existing prohibition on re-entering normal recovery while the
+  replacement marker exists is now enforced in production code, not only documented: the shared sync
+  preflight settles conversion before any trigger reaches remote work. No new rule was added; an
+  existing one became executable.
 
 ## Decision Board Impact
 

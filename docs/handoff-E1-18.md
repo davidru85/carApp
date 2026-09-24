@@ -133,7 +133,9 @@ Exact commands, and their result.
 
 ## Contract Impact
 
-- No contract changes.
+- `docs/CONTRACTS.md §14` now states D-190's narrow exception: the recovery-sensitive
+`VehicleListStateHolder` database observation runs on `dispatchers.default`; other database
+flows retain the `dispatchers.io` rule.
 
 ## Decision Board Impact
 

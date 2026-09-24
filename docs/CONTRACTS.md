@@ -1497,7 +1497,11 @@ Shared state holders:
 - Kotlin-facing factories take a `scope: CoroutineScope` parameter and the caller owns that scope. Android passes `viewModelScope`.
 - Swift-facing factories take no scope parameter. `SwiftAppGraph` creates and owns one child scope per state holder.
 - Each pattern exposes `close()`, which cancels work owned by that state holder. Swift graph `close()` cancels every cached state holder it created.
-- Emit every `UiState` on `dispatchers.main`; database flows are collected on `dispatchers.io`, computation work uses `dispatchers.default`, and mapping from `Outcome<...>` to `UiState` happens on `dispatchers.main`.
+- Emit every `UiState` on `dispatchers.main`; database flows are collected on `dispatchers.io`
+  except for `VehicleListStateHolder`'s recovery-sensitive local observation, which runs on
+  `dispatchers.default` so D-190 keeps the recovery window scheduler-confined instead of turning
+  it into a wall-clock race. Computation work uses `dispatchers.default`, and mapping from
+  `Outcome<...>` to `UiState` happens on `dispatchers.main`.
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 

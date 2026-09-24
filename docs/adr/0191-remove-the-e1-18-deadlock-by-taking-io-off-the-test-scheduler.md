@@ -43,7 +43,7 @@ chosen up front; each was reached by testing a variant and observing what it bro
 
 1. **`io` becomes a real dispatcher in graph fixtures.** `TestDispatcherProvider` gains a second
    constructor parameter, defaulting to the confined dispatcher so non-graph call sites are
-   unchanged; `confinedGraphDependencies` passes `Dispatchers.IO`. The driver's blocking close now
+   unchanged; `confinedGraphDependencies` passes `Dispatchers.Default` as the real, non-test `io` dispatcher. The driver's blocking close now
    runs on a thread the scheduler does not need.
 2. **`graphScope` moves from `io` to `default`.** This is the step that makes the fix work rather than
    merely relocate the problem. The sync engine schedules its `delay()` calls on the graph scope, so
