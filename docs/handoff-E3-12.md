@@ -421,11 +421,14 @@ Exact commands, and their result.
 - `:build-logic:convention:test` — `SwiftTriggerSurfaceContractTest` 12 tests / 0 failures;
   `:feature:vehicle:testAndroidHostTest` — `VehicleStateHoldersTest` 16 tests / 0 failures.
 - `git diff --check` — no whitespace errors.
-- **CI on `9d3ad28`.** **All ten required checks are green** on this head. `shared-tests` failed once
-  by step timeout **at the raised 15-minute limit**, which is exactly what `D-189` predicted, and
-  passed on the re-run; `provider-decoupling` passed first time. The temporary measure therefore
-  behaves as recorded: it buys attempts rather than fixing anything, and the hung step's silence shows
-  no limit converts it into a pass. `E1-18` still owes Option B.
+- **CI on `8fe0185` (and the same on `9d3ad28`).** The raised limit behaves exactly as `D-189` wrote
+  it: `shared-tests` still stalls and is still killed, now at 15 minutes instead of 10
+  (measured: `12:16:36 → 12:31:48`), so the temporary measure buys attempts rather than a pass.
+  `provider-decoupling` and `ios-simulator-build` each failed once and passed on re-run;
+  `ios-simulator-build` failed in `Run iOS tests`, which is the pre-existing `E1-17` onboarding UI
+  flake and not this change — the `E3-12` diff touches no file under `iosApp/` or `composition/ios`.
+  Repeated re-runs were needed to reach ten green, which is the cost `D-189` records. The standing
+  requirement that all ten be green is met by re-running, and `E1-18` still owes Option B.
 
 - **Review correction round.** `OwnerRecoveryGateTest.theGateStaysRaisedWhileALaterRecoveryIsStillRunning`
   was observed failing against the single-boolean gate on the assertion that an earlier cycle must
