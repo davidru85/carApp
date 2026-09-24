@@ -73,14 +73,26 @@ class FakeUuidGenerator : UuidGenerator {
     }
 }
 
-/** Every dispatcher is [Dispatchers.Unconfined], so fake-driven tests run without a scheduler. */
+/**
+ * Maps `main` and `default` to [dispatcher] so fake-driven tests run under the caller's scheduler.
+ *
+ * `io` is deliberately separate. `E1-18`: the graph runs on `dispatchers.io`, and
+ * `AndroidxDriverConnectionPool.close()` reaches its writer lock through a `runBlocking`. With one
+ * dispatcher for all three, that blocking close seizes the very thread the test scheduler needs in
+ * order to resume the transaction holding the lock, and the JVM test deadlocks with no timeout
+ * inside it. A real `io` keeps the close off the scheduler thread.
+ *
+ * [ioDispatcher] defaults to [dispatcher] so fake-driven call sites that do not mount a graph keep
+ * their previous behaviour; the graph fixtures opt into a real `io`.
+ */
 @HiddenFromObjC
 class TestDispatcherProvider(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Unconfined,
+    private val ioDispatcher: CoroutineDispatcher = dispatcher,
 ) : DispatcherProvider {
     override val main: CoroutineDispatcher get() = dispatcher
     override val default: CoroutineDispatcher get() = dispatcher
-    override val io: CoroutineDispatcher get() = dispatcher
+    override val io: CoroutineDispatcher get() = ioDispatcher
 }
 
 /** Captures log lines so a test can assert on levels, codes and fields without a sink. */

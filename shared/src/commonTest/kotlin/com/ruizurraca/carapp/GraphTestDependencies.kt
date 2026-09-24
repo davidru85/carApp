@@ -2,6 +2,7 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -9,6 +10,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlin.test.assertEquals
+import kotlin.test.assertNotSame
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -19,7 +21,18 @@ import kotlin.time.Duration.Companion.seconds
  */
 internal fun TestScope.confinedGraphDependencies(
     dependencies: AppGraphDependencies = testAppGraphDependencies(),
-): AppGraphDependencies = dependencies.copy(dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)))
+): AppGraphDependencies =
+    dependencies.copy(
+        dispatchers =
+            TestDispatcherProvider(
+                dispatcher = StandardTestDispatcher(testScheduler),
+                // A real `io` keeps the driver's blocking close off the scheduler thread.
+                // `Dispatchers.Default` rather than `Dispatchers.IO`: the latter is JVM-only and this
+                // fixture also compiles for Kotlin/Native. Production wires `io` to
+                // `Dispatchers.Default` as well, so the fixture matches the real composition.
+                ioDispatcher = Dispatchers.Default,
+            ),
+    )
 
 /**
  * Asserts that every dispatcher in [dependencies] queues its work until the caller advances the
@@ -30,14 +43,15 @@ internal fun TestScope.confinedGraphDependencies(
 internal fun TestScope.assertQueuedGraphWork(dependencies: AppGraphDependencies) {
     val completed = mutableListOf<String>()
     val dispatchers = dependencies.dispatchers
-    listOf("main" to dispatchers.main, "io" to dispatchers.io, "default" to dispatchers.default)
+    listOf("main" to dispatchers.main, "default" to dispatchers.default)
         .forEach { (name, dispatcher) ->
             backgroundScope.launch(dispatcher) { completed += name }
         }
 
-    assertEquals(emptyList(), completed, "graph work must wait for the caller scheduler")
+    assertEquals(emptyList(), completed, "confined graph work must wait for the caller scheduler")
     runCurrent()
-    assertEquals(setOf("main", "io", "default"), completed.toSet())
+    assertEquals(setOf("main", "default"), completed.toSet())
+    assertNotSame(dispatchers.main, dispatchers.io, "io must stay off the scheduler (E1-18)")
 }
 
 /**

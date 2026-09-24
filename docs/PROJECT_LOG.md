@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-24 — `E1-18` fix: the `DatabaseHandle.close()` deadlock is removed, and `D-189` is superseded
+
+- **Type:** defect fix
+- **Story / Decision:** `E1-18` / `D-190` (supersedes `D-189`)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
+- **What changed:** `io` is a real dispatcher in graph fixtures, `graphScope` and the vehicle list's local observation run on the scheduler-confined `default`, the recovery window's closing republish re-reads over a stale resolved-empty listing, and `assertQueuedGraphWork` now asserts that `io` is not the test scheduler. The `D-189` step-timeout raise is reverted: the two stalling steps are back at 10 and 8 minutes.
+- **Why:** `AndroidxDriverConnectionPool.close()` reaches its writer lock through a `runBlocking`, and with `main`, `default` and `io` all mapped to one `StandardTestDispatcher` that blocking close seized the only thread that could resume the transaction holding the lock - an unbounded self-deadlock with no test result, measured at 1 hang in 10 at this head and the cause of the `shared-tests` and `provider-decoupling` step timeouts. `D-189` had raised the limits as a stopgap and the owner then chose the real fix over continuing to re-run.
+- **The non-obvious half:** moving the sync controller's scope onto the real `io` dispatcher - rather than moving `graphScope` to `default` - measured 8 assertion failures in 10 runs, because the engine schedules its `delay()` calls on the graph scope, so the 2 s post-write debounce stopped being virtual and every test awaiting it became a wall-clock race. That measurement is why the scope moved to `default`; production wires `io` and `default` to `Dispatchers.Default`, so the split is invisible outside tests.
+- **Documents touched:** `docs/adr/0191`, `docs/adr/0190`, `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/handoff-E3-12.md`, `.github/workflows/ci.yml`.
+- **Verification:** 12 consecutive runs of the exact `provider-decoupling` Android-host command with `--rerun-tasks` - **12 passes, 0 hangs, 0 assertion failures**, each in 15 s, against 1 hang in 10 and 59-89 s before. `:shared`, `:feature:vehicle`, `:core:sync`, `:core:auth` and `:feature:fuel` host suites pass, as do the provider-free route and the complete non-instrumented `AGENTS.md` command; `contractCheck` reports 191 mirrored decisions and no `PENDING` assertion with the step limits restored.
+- **Follow-ups / risks:** this supersedes `E1-14`'s confinement decision - confinement is now scoped to `main` and `default`, and `io` is deliberately outside it. `assertQueuedGraphWork` fails by name if a future edit re-confines `io`, which is what keeps the deadlock from returning unnoticed.
+
 ### 2026-09-24 — `E3-12` correction: the owner-recovery ordering, the receiver bypass, and the `D-189` stopgap
 
 - **Type:** correction

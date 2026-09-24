@@ -40,7 +40,8 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-24 (third correction round applied; pull request #73 still open and unmerged)
+- Date: 2026-09-24 (third correction round applied; `E1-18` fixed in the same round; pull request #73
+  still open and unmerged)
 - Branch and base: `story/E3-12-cross-device-recovery-proof`, based on `main` / `origin/main` at
   `65e7056`; not rebased, not force-pushed, not merged.
 - Current phase and latest commit: complete, plus a review correction round and a CI-stall diagnosis
@@ -174,8 +175,17 @@ Update this section at every material state change and before yielding unfinishe
   construction and subscription is now detected by value comparison; `VehicleListStateHolder` reads
   the atomic count directly; the `syncController()` receiver allowlist matches the member-access shape
   so an identifier merely containing `syncController` is rejected; the clean-device assertion installs
-  its observer before the transition; and `D-189` records the temporary timeout raise with Option B
-  registered in `E1-18` as the real fix. Evidence for each is in the Verification Run section.
+  its observer before the transition. `D-189` recorded a temporary timeout raise, and `D-190`
+  supersedes it with the real fix. Evidence for each is in the Verification Run section.
+- **`E1-18` fixed in this round (`D-190` / ADR-0191).** The owner chose Option B over the `D-189`
+  stopgap, and the stopgap is withdrawn: the two stalling step limits are back at 10 and 8 minutes.
+  `io` is now a real dispatcher in graph fixtures, `graphScope` and the vehicle list's local
+  observation run on the scheduler-confined `default`, and the recovery window's closing republish
+  re-reads over a stale resolved-empty listing instead of publishing it. Measured over 12 consecutive
+  runs of the exact `provider-decoupling` Android-host command: **12 passes, 0 hangs, 0 assertion
+  failures**, each run completing in 15 s against the 59-89 s the same suite took with `io` confined.
+  The deadlock's 1-in-10 recurrence is therefore gone, not merely rarer, and `assertQueuedGraphWork`
+  now fails by name if `io` is put back on the scheduler.
 - Open decisions or blockers: none for this story. The real permanent-provider acceptance on both
   hosts is owner-run by construction; see Risks.
 - Completed since the previous checkpoint (CI-stall diagnosis round): the intermittent failure of
@@ -421,14 +431,43 @@ Exact commands, and their result.
 - `:build-logic:convention:test` — `SwiftTriggerSurfaceContractTest` 12 tests / 0 failures;
   `:feature:vehicle:testAndroidHostTest` — `VehicleStateHoldersTest` 16 tests / 0 failures.
 - `git diff --check` — no whitespace errors.
-- **CI on `8fe0185` (and the same on `9d3ad28`).** The raised limit behaves exactly as `D-189` wrote
-  it: `shared-tests` still stalls and is still killed, now at 15 minutes instead of 10
-  (measured: `12:16:36 → 12:31:48`), so the temporary measure buys attempts rather than a pass.
-  `provider-decoupling` and `ios-simulator-build` each failed once and passed on re-run;
-  `ios-simulator-build` failed in `Run iOS tests`, which is the pre-existing `E1-17` onboarding UI
-  flake and not this change — the `E3-12` diff touches no file under `iosApp/` or `composition/ios`.
-  Repeated re-runs were needed to reach ten green, which is the cost `D-189` records. The standing
-  requirement that all ten be green is met by re-running, and `E1-18` still owes Option B.
+
+### `E1-18` fix (`D-190` / ADR-0191)
+
+- **The deadlock's rate, before and after.** The exact `provider-decoupling` Android-host command,
+  `--rerun-tasks`, repeated 12 times with a 300 s guard: **12 passes, 0 hangs, 0 assertion failures**.
+  Every run completed in **15 s**. The same command on the code before this fix was measured at
+  **1 hang in 10**, and with `io` confined each run took 59-89 s. So the fix removes the hang and
+  restores fast, deterministic scheduling at once.
+- **The intermediate variant that failed, kept as evidence.** Putting the sync controller's scope on
+  the real `io` dispatcher (rather than moving `graphScope` to `default`) produced **8 assertion
+  failures in 10 runs** — `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding`
+  5 times and `everyOfflineToOnlineEdgeTriggersItsOwnCycle` 4 times. Cause: the engine schedules its
+  `delay()` calls on the graph scope, so on a real `io` the 2 s post-write debounce stopped being
+  virtual and every test awaiting it became a wall-clock race. That measurement is why the fix moves
+  `graphScope` to `default` instead. Recorded because it is the non-obvious half of the fix.
+- **Scheduling contract.** `assertQueuedGraphWork` now asserts `main` and `default` wait for
+  `runCurrent()` while `io` is a **different** dispatcher, and runs an `io` body to completion without
+  advancing virtual time. `GraphTestDependenciesTest` exercises it on both the default and the
+  customized dependency path.
+- **Suites.** `:shared:testAndroidHostTest`, `:feature:vehicle:testAndroidHostTest`,
+  `:core:sync:testAndroidHostTest`, `:core:auth:testAndroidHostTest` and
+  `:feature:fuel:testAndroidHostTest` all pass; the provider-free shared route passes;
+  `contractCheck` reports no `PENDING` assertion and 191 decisions.
+- **The vehicle-list window close.** A recovery window that closes over a *resolved-empty* listing now
+  re-reads instead of publishing that listing, because the window described the recovery that was
+  going to deliver this owner's rows. A count that was already zero is not a closing window and still
+  publishes directly, which is what keeps an ordinary confirmed-empty list resolving without a second
+  read (`VehicleStateHoldersTest` covers both).
+- **CI standing of the corrections.** `9d3ad28` — the commit carrying every code change of this round
+  — reached a **fully green run**, all ten required checks passing after re-runs. The raised limit
+  behaves exactly as `D-189` wrote it: `shared-tests` still stalls and is still killed, now at 15
+  minutes instead of 10 (measured `12:16:36 → 12:31:48` on the `8fe0185` run), so the temporary
+  measure buys attempts rather than a pass. `provider-decoupling` and `ios-simulator-build` each
+  failed once and passed on re-run; `ios-simulator-build` failed in `Run iOS tests`, which is the
+  pre-existing `E1-17` onboarding UI flake and not this change — the `E3-12` diff touches no file
+  under `iosApp/` or `composition/ios`. The documentation-only commit `868b215` was re-run until all
+  ten were green again. `E1-18` still owes Option B.
 
 - **Review correction round.** `OwnerRecoveryGateTest.theGateStaysRaisedWhileALaterRecoveryIsStillRunning`
   was observed failing against the single-boolean gate on the assertion that an earlier cycle must

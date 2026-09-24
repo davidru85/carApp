@@ -2,9 +2,11 @@
 
 ## Status
 
-Accepted
+Superseded by `D-190` / ADR-0191 on 2026-09-24.
 
-Owner decision taken on 2026-09-24 during the `E3-12` review, to unblock pull request #73.
+Accepted on 2026-09-24 during the `E3-12` review, to unblock pull request #73. The owner then took
+Option B, which removes the deadlock at its cause, so this temporary measure is withdrawn: the two
+stalling step limits are back at 10 and 8 minutes. The body below records the decision as taken.
 
 ## Context
 

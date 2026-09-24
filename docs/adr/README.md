@@ -195,6 +195,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-186 | [ADR-0187](0187-enforce-the-sync-admission-windows-by-parking.md) | Enforce the `§9.8` admission windows by parking, not refusing. | Accepted |
 | D-187 | [ADR-0188](0188-await-platform-periodic-sync-before-completing-background-work.md) | Await the periodic sync before completing platform background work. | Accepted |
 | D-188 | [ADR-0189](0189-recover-a-newly-resolved-owner-through-a-dedicated-trigger.md) | Recover a newly resolved owner through a dedicated trigger. | Accepted |
-| D-189 | [ADR-0190](0190-raise-the-stalling-ci-step-timeouts-as-a-temporary-measure.md) | Raise the stalling CI step timeouts as a temporary measure. | Accepted |
+| D-189 | [ADR-0190](0190-raise-the-stalling-ci-step-timeouts-as-a-temporary-measure.md) | Raise the stalling CI step timeouts as a temporary measure. | Superseded |
+| D-190 | [ADR-0191](0191-remove-the-e1-18-deadlock-by-taking-io-off-the-test-scheduler.md) | Remove the `E1-18` deadlock by taking `io` off the test scheduler. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

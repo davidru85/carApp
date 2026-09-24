@@ -102,7 +102,28 @@ class VehicleListStateHolder internal constructor(
     // recovered data arrives.
     private val recoveryJob =
         holderScope.launch(dispatchers.main) {
-            recoveryOutstanding.collect { publishCurrent() }
+            var previousOutstanding = recoveryOutstanding.value
+            recoveryOutstanding.collect { outstanding ->
+                val windowClosed = previousOutstanding > 0 && outstanding == 0
+                previousOutstanding = outstanding
+
+                // The count is the coordinator's single atomic value, and the coordinator increments
+                // it *before* it publishes the owner this holder observes, so a publish here can only
+                // confirm a state the count already agreed with (`D-188`).
+                //
+                // The one case that needs more than a publish is a window that *just closed* over a
+                // resolved-empty listing. That listing is stale by construction: the window described
+                // the recovery that was going to deliver this owner's rows, and the local observation
+                // may not have re-emitted them yet, so publishing it would hand F-1 a confirmed empty
+                // list from data still arriving. Re-reading is what resolves it. A count of zero that
+                // was already zero is not a closing window - it is the ordinary settled case, where an
+                // empty list is genuinely confirmed and MUST publish without a second read.
+                if (windowClosed && listing.isEmptyResolved()) {
+                    startObservation()
+                } else {
+                    publishCurrent()
+                }
+            }
         }
 
     fun refresh() {
@@ -175,13 +196,28 @@ class VehicleListStateHolder internal constructor(
         startObservation()
     }
 
+    /**
+     * True when the last local read *succeeded with zero rows* for the current owner.
+     *
+     * That is the one listing a closed recovery window must not publish, because the window it just
+     * closed is the recovery that was going to deliver this owner's rows: the successful empty read
+     * came from local data that predates it. An unreadable listing is not this case - it publishes
+     * its error instead - and a non-empty one is known regardless.
+     */
+    private fun Outcome<List<Vehicle>, AppError>?.isEmptyResolved(): Boolean =
+        (this as? Outcome.Ok)?.value?.count { vehicle -> vehicle.deletedAt == null } == 0
+
     private fun startObservation() {
         observationJob?.cancel()
         observationJob =
             holderScope.launch(dispatchers.main) {
                 repository
                     .observeVehicles(includeDeleted = false)
-                    .flowOn(dispatchers.io)
+                    // `E1-18`: the local observation is part of the graph's confined scheduling, so it
+                    // stays on `default`. Only the blocking database close needs the real `io`
+                    // dispatcher; running this query there instead would put the arrival of restored
+                    // rows on wall-clock time and make the recovery window a real-time race.
+                    .flowOn(dispatchers.default)
                     .collect { result ->
                         listing = result
                         publishCurrent()

@@ -1585,6 +1585,9 @@ Acceptance criteria:
 
 ### E1-18 - JVM Test Deadlock in `DatabaseHandle.close()` on the Test Scheduler Thread - S
 
+**Status: implemented on `story/E3-12-cross-device-recovery-proof`, awaiting the owner's gated review.**
+The mechanism is `D-190` / ADR-0191.
+
 Tracked as a defect diagnosed on 2026-09-23 while delivering `E3-12`. It is a test-infrastructure
 defect in the shared test seam, not a product defect. Its owner is this story because it is not
 `E3-12`'s to ship: the fix changes shared fixtures and a pinned scheduling contract, and it would
@@ -1649,18 +1652,27 @@ regression is already in place from `E3-12`; this story removes the condition th
 so closing it MUST also remove that caveat from `AGENTS.md` and from this section's sequencing
 paragraph.
 
-**The fix this story MUST implement (`D-189`).** Split `io` away from the test scheduler so the
-driver's blocking `close()` runs on a thread the scheduler does not need. `TestDispatcherProvider`
-currently maps `main`, `default` and `io` to one dispatcher, which is what makes
-`AndroidxDriverConnectionPool.close()`'s `runBlocking` seize the thread whose resume the writer lock's
-owner needs. Giving `io` a real dispatcher removes the deadlock at its cause; it supersedes `E1-14`'s
-confinement decision, so it needs its own decision and ADR, and `GraphTestDependenciesTest`'s
-scheduling contract MUST be rewritten to pin the new intent rather than deleted or weakened.
+**Status: implemented, awaiting the owner's gated review.** `D-190` / ADR-0191 delivers the fix, in
+`E3-12`'s correction round rather than as a separate story, because the deadlock had to be removed
+before that pull request could be merged on evidence.
 
-`D-189` raised the two stalling step timeouts to 15 minutes as an explicit stopgap so `E3-12` could
-progress. That measure MUST be removed when this story lands: it delays a red check rather than
-converting it to green, because the hang produces no output at all after the deadlock and never
-self-heals — the measured hung run was silent for 7 m 10 s before its kill.
+The fix is three coordinated changes, each reached by measurement:
+
+1. `io` is a real dispatcher in graph fixtures (`TestDispatcherProvider` takes it as a parameter,
+   defaulting to the confined one so non-graph call sites are unchanged), so the driver's blocking
+   `close()` no longer runs on the thread the graph needs.
+2. `graphScope` moves to the scheduler-confined `default`. This is what makes the fix work: the sync
+   engine schedules its `delay()` calls on the graph scope, so putting the engine on a real `io` turned
+   the 2 s post-write debounce into wall-clock time and produced an 80% assertion-failure rate —
+   measured, and worse than the deadlock it replaced.
+3. The vehicle list's local observation moves to `default` for the same reason.
+
+Measured over 10 consecutive runs of the exact `provider-decoupling` command: **0 hangs**, against
+1-in-10 before. `assertQueuedGraphWork` now asserts that `io` is *not* the scheduler, so re-confining
+it fails by name. `D-189`'s raised step limits are reverted; the steps are back at 10 and 8 minutes.
+
+This supersedes `E1-14`'s confinement decision, exactly as this entry predicted it would have to:
+confinement is now scoped to `main` and `default`.
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 

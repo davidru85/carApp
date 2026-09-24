@@ -100,7 +100,13 @@ internal class DefaultAppGraph(
     // Completed by whichever path releases the handle, so `awaitClosed()` can observe the release
     // rather than assume it.
     private val closeCompletion = CompletableDeferred<Unit>()
-    private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
+
+    // `E1-18`: graph work runs on `default`, not on `io`. `io` is the dispatcher that can block - the
+    // driver's `close()` reaches its writer lock through a `runBlocking` - so keeping the graph's own
+    // coroutines and the sync engine's `delay()` timers on `default` preserves virtual-time scheduling
+    // in tests while the one blocking call gets a real thread. With both on `io`, either the close
+    // deadlocks against the test scheduler or the engine's timers become wall-clock races.
+    private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.default)
     private val databaseHandle = dependencies.databaseFactory.create()
 
     // `D-188`: every owner-scoped component must observe the coordinated owner, not the raw delegate.
