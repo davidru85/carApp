@@ -163,6 +163,11 @@ class CrossDeviceRecoveryTest {
                 second.settle("second identity ran its recovery cycle") {
                     second.recoveryCycleCount() >= 1
                 }
+                assertEquals(
+                    1,
+                    second.recoveryCycleCount(),
+                    "the second identity must complete exactly one owner-change recovery cycle",
+                )
 
                 assertEquals(
                     emptyList(),
@@ -372,12 +377,21 @@ class CrossDeviceRecoveryTest {
             private set
 
         /**
-         * One admitted cycle reads each entity type once, so the number of `VEHICLE` pull rounds is
-         * the number of cycles that reached the remote steps. `OwnerChanged` enters the controller
-         * through `sync`, in process, which the platform adapter does not observe, so this - not
-         * `triggers` - is the honest observable of a recovery cycle.
+         * The number of `VEHICLE` pull rounds **this device's own UID** performed, which is one per
+         * admitted cycle that reached the remote steps. `OwnerChanged` enters the controller through
+         * `sync`, in process, which the platform adapter does not observe, so this - not `triggers` -
+         * is the honest observable of a recovery cycle.
+         *
+         * The count is restricted to `OwnerId(uid)` and `EntityType.VEHICLE` on purpose. Two devices
+         * share one replica in this proof, so a global pull count would attribute the other device's
+         * recovery to this one and could not substantiate a device-specific cycle: the isolation
+         * assertion of criterion 3 would hold only while the other device happened to have pulled
+         * nothing yet.
          */
-        fun recoveryCycleCount(): Int = replica.pullCalls.count { it.entityType == EntityType.VEHICLE }
+        fun recoveryCycleCount(): Int =
+            replica.pullCalls.count { call ->
+                call.ownerId == OwnerId(uid) && call.entityType == EntityType.VEHICLE
+            }
 
         /**
          * Signs this device in with the identity it was built for: permanent for a device whose
