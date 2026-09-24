@@ -85,13 +85,15 @@ class CrossDeviceRecoveryTest {
         }
 
     /**
-     * The reverse direction. It is covered rather than argued away, because "the same shared path
-     * makes it redundant" is exactly the kind of claim that hides a direction-specific assumption.
-     * The roles of the two devices are swapped relative to the first test, so each direction is
-     * exercised by the graph that is the reader.
+     * Criterion 2, extended to the second synchronized entity. Both devices run the same shared graph
+     * on the same host, so a "direction" in this proof is only which graph writes and which recovers;
+     * the platform-specific halves of the path - the native sign-in and the GitLive bindings on each
+     * host - are outside a `commonTest`. A Fuel Entry and its Vehicle written by one graph are both
+     * restored, still attached to each other, by a clean graph signing into the same permanent
+     * identity. `docs/handoff-E3-12.md` records criterion 2 under its "same shared path" clause.
      */
     @Test
-    fun theReverseDirectionRestoresAFuelEntryWrittenByTheOtherDevice() =
+    fun aFuelEntryAndItsVehicleAreRestoredTogetherOnACleanDevice() =
         runTest {
             val replica = replica()
             withTwoDevices(replica, this) { writer, reader ->
@@ -153,7 +155,7 @@ class CrossDeviceRecoveryTest {
                 )
                 assertTrue(
                     replica.storedIds(OwnerId(OTHER_ANONYMOUS_UID), EntityType.VEHICLE).isEmpty(),
-                    "a different identity has no documents on the first identity's backup path",
+                    "the second identity's own backup path holds no documents either",
                 )
             } finally {
                 second.close()
@@ -356,7 +358,7 @@ class CrossDeviceRecoveryTest {
         /**
          * One admitted cycle reads each entity type once, so the number of `VEHICLE` pull rounds is
          * the number of cycles that reached the remote steps. `OwnerChanged` enters the controller
-         * through `requestSync`, which the platform adapter does not observe, so this - not
+         * through `sync`, in process, which the platform adapter does not observe, so this - not
          * `triggers` - is the honest observable of a recovery cycle.
          */
         fun recoveryCycleCount(): Int = replica.pullCalls.count { it.entityType == EntityType.VEHICLE }
