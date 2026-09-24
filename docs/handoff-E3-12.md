@@ -403,7 +403,14 @@ criterion — recovery *after signing in on a clean device* — is unreachable w
   The remote fake records the conversion phase observed **at each pull**, so the prohibition is
   asserted about the pull itself rather than about a sampled instant; against the pre-fix graph it
   fails with `CONTRACTS.md 11.3 forbids a normal recovery pull while the marker exists
-  expected:<[]> but was:<[LOCAL_REPLACED]>`.
+  expected:<[]> but was:<[LOCAL_REPLACED]>`. Two deliberate substitutions are recorded rather than
+  claimed: the instantaneous `remote.pullCalls == 0` reading is racy, because the cycle resumes from
+  real SQLite work and a sample can catch it mid-flight, so the test asserts the strictly stronger
+  marker-attributed record instead; and the `Outcome.Err` propagation of a failed precondition is not
+  re-tested here, because the preflight is handed to the engine as its existing `adoption` step, whose
+  error path (`return adoptionResult` before any remote call) is already covered by
+  `DefaultSyncControllerTest`. Local-owner adoption still runs after conversion settlement and before
+  remote work, which the preflight's sequencing expresses and `LocalOwnerAdoption*Test` covers.
 - **Defect 2 regression.** `aCleanDeviceNeverPublishesAKnownEmptyListForAnOwnerWhoseRecoveryIsOutstanding`
   observes the list across the owner transition and fails if it ever publishes a resolved empty list.
   The observer is installed **before** `signIn()` — it resolves the signed-out baseline, subscribes
@@ -535,10 +542,17 @@ Exact commands, and their result.
     unchanged by this round.
   - `git diff --check` — no whitespace errors. `detekt` rejected the first revision of the new test
     (`LongMethod`, 62 > 60); the marker seeding moved into a helper and all suites pass.
-  - Two platform gates were **not** run in this round: the API 36 instrumented suite and the iOS
-    simulator action. Both were run in the fourth correction round on a head whose only later code
-    change is this round's graph preflight and two test files; this round's evidence for them is CI.
-    The owner-run two-host provider acceptance remains outstanding and is **not** claimed here.
+  - `ANDROID_SERIAL=emulator-5554 ./gradlew :androidApp:connectedDebugAndroidTest --rerun-tasks` on
+    the `D-84` API 36 `E1_07_API_36` emulator — `BUILD SUCCESSFUL`, 17 tests, 0 failures; the emulator
+    was stopped afterwards and `adb devices` reports no attached device.
+  - `xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator
+    -destination 'platform=iOS Simulator,id=56F1AD0C-42E0-499C-9469-DC91CDD8AD21'
+    -derivedDataPath /tmp/carapp-e312-dd5 ARCHS=arm64 test` from `iosApp/` — `** TEST SUCCEEDED **`;
+    the result bundle reports 71 tests passed, 0 failed and 1 skipped (45 unit and 27 UI at scheme
+    level). The simulator was shut down afterwards.
+  - CI on the pushed head `9a32eb6`: all ten required checks pass, with no re-run — see the
+    Verification Run entry for the run id.
+  - The owner-run two-host provider acceptance remains outstanding and is **not** claimed here.
 
 ### Fourth correction round (closing window, gate failure paths, `io` guard, records)
 
