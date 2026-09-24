@@ -22,8 +22,12 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlin.native.HiddenFromObjC
 
 /** Creates isolated SQLDelight databases backed by the bundled in-memory SQLite driver. */
@@ -117,8 +121,36 @@ internal class TrackedDatabaseHandles {
         return handle
     }
 
+    /**
+     * Releases every tracked handle **without blocking the caller**.
+     *
+     * `E1-18`: `SqlDriverDatabaseHandle.close()` takes the driver's writer lock through a
+     * `runBlocking`. If the close runs on - or is awaited from - the thread whose scheduler still has
+     * graph-owned database work suspended on it, the lock holder can never be resumed and the close
+     * waits forever; the test then produces no result at all, which is exactly what killed the
+     * `shared-tests` and `provider-decoupling` steps at their timeouts. A live stack capture pinned
+     * the form: `LocalOwnerAdoptionTest.tearDown` -> `SqlDriverDatabaseHandle.close` -> `runBlocking`,
+     * parked on the test-scheduler thread.
+     *
+     * Offloading and **not** awaiting is the shape that works here: the caller returns to its
+     * scheduler, the suspended transaction drains, releases the writer, and the close completes on the
+     * worker. Awaiting it - even from a worker - would re-block the caller and restore the deadlock.
+     * Callers that assert on the database do so before this point, so no assertion depends on the
+     * close having finished.
+     */
     fun close() {
-        handles.forEach(DatabaseHandle::close)
+        val closing = handles.toList()
         handles.clear()
+        if (closing.isEmpty()) return
+        CLOSE_SCOPE.launch { closing.forEach(DatabaseHandle::close) }
+    }
+
+    private companion object {
+        /**
+         * The offload target. A scope rather than a platform executor, because this class is
+         * `commonMain` and `ExecutorService` does not exist on Kotlin/Native. Closes are queued and
+         * serialized by the single dispatcher, and nothing awaits them.
+         */
+        val CLOSE_SCOPE = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 }
