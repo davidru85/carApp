@@ -38,7 +38,28 @@
 
 ## Entries
 
-### 2026-09-25 — `E3-12` fifth correction: the conversion barrier, the owner-scoped recovery count and the record reconciliation
+### 2026-09-25 — `E1-18` record closure: the merged status and the removed caveat
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E1-18` / `D-190`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E1-18-record-closure`)
+- **What changed:** every sentence that still described `E3-08`, `E3-04`, `E3-12`, `E3-17` or `E1-18`
+  as "implemented ... awaiting the owner's gated review" now states the merge and its pull request.
+  The two sentences that told the next agent a red `shared-tests` or `provider-decoupling` might be a
+  pre-existing flake rather than a regression are removed from `AGENTS.md` and from the
+  `docs/BACKLOG.md` sequencing paragraph, and the backlog index rows carry the completed pull request.
+- **Why:** `E1-18`'s own acceptance criteria make this part of its closure. Leaving the caveat in place
+  after `D-190` removed the deadlock is actively harmful: the reflex it licenses is how a real
+  regression gets waved through. Corrects no earlier entry; the `E3-12` entries are accurate as
+  written and this one only removes the in-flight tense that followed from them.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-18.md`.
+- **Verification:** documentation only, so no test or build result depends on it; the three documents
+  were re-read after the edit and carry no remaining in-flight status for a merged story.
+- **Follow-ups / risks:** none. `E3-05` has its own branch and pull request, so no status here depends
+  on it; if `E3-05` merges first, the two edits touch adjacent lines of `AGENTS.md` and a rebase is
+  expected and ordinary.
+
+### 2026-09-25 — `E3-12` fifth correction:: the conversion barrier, the owner-scoped recovery count and the record reconciliation
 
 - **Type:** correction
 - **Story / Decision:** `E3-12` / `D-188`; `D-153`; `E1-18` / `D-190`

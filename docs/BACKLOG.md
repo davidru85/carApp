@@ -912,8 +912,8 @@ Human review required.
 
 ### E3-08 - App Graph and Firebase Wiring - M
 
-Status: implemented on `story/E3-08-app-graph-and-firebase-wiring` (pull request #71), awaiting the
-owner's gated review. It introduced `D-178` through `D-180` and `docs/handoff-E3-08.md` holds its evidence.
+Status: merged through pull request #71 after the owner's gated review. It introduced `D-178`
+through `D-180` and `docs/handoff-E3-08.md` holds its evidence.
 
 Complete the Kotlin-facing `AppGraph`, the Swift-facing `SwiftAppGraph` and
 `:wiring:firebase` in place. E0-07 already owns the provider-free `buildAppGraph`, the sole
@@ -966,8 +966,8 @@ Human review required.
 
 Replace no-op remote sources with real sync wiring and platform triggers.
 
-Status: implemented on `story/E3-04-repository-sync-wiring`, awaiting the owner's gated review.
-Evidence is in `docs/handoff-E3-04.md`.
+Status: merged on 2026-09-22 through pull request #72 after the owner's gated review. It
+introduced `D-181` through `D-187`; evidence is in `docs/handoff-E3-04.md`.
 
 Acceptance criteria:
 
@@ -989,9 +989,9 @@ Human review required.
 
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
-Status: implemented on `story/E3-12-cross-device-recovery-proof`, awaiting the owner's gated review.
-Evidence is in `docs/handoff-E3-12.md`. It introduced `D-188`; its correction rounds introduced
-`D-189` (superseded) and `D-190`, which delivers `E1-18` inside the same pull request, #73.
+Status: merged on 2026-09-25 through pull request #73 after the owner's gated review. Evidence is
+in `docs/handoff-E3-12.md`. It introduced `D-188`; its correction rounds introduced `D-189`
+(superseded) and `D-190`, which delivered `E1-18` inside the same pull request, #73.
 
 Prove recovery at the first point where permanent authentication and complete sync coexist.
 
@@ -1436,11 +1436,11 @@ the product; this section records when it is scheduled.
 
 Nothing here blocks Phase 2. Order within the section is the order below.
 
-`E1-14` and `E1-17` are both merged and SHOULD have run before the next story that relies on a red
-required job meaning a real regression. `E1-18` is that story's remaining half, and it is delivered
-inside `E3-12`'s pull request #73 (`D-190`): once that pull request merges, a red `shared-tests` or
-`provider-decoupling` is again evidence to investigate, never a reason to re-run. The reflex "re-run
-it" rather than "investigate it" is how a real regression gets waved through.
+`E1-14`, `E1-17` and `E1-18` are all merged. `E1-18` was the remaining half of the same problem and
+landed inside `E3-12`'s pull request #73 (`D-190`). A red `shared-tests` or `provider-decoupling` is
+again evidence to investigate, never a reason to re-run: the deadlock that made that signal ambiguous
+is fixed, so the reflex "re-run it" rather than "investigate it" is now exactly how a real regression
+gets waved through.
 
 `E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. They SHOULD
 run adjacently, in that order, so those two screens are opened once rather than twice.
@@ -1585,13 +1585,13 @@ Acceptance criteria:
 
 ### E1-18 - JVM Test Deadlock in `DatabaseHandle.close()` on the Test Scheduler Thread - S
 
-**Status: implemented on `story/E3-12-cross-device-recovery-proof`, awaiting the owner's gated review.**
+**Status: merged on 2026-09-25 through `E3-12`'s pull request #73, after the owner's gated review.**
 The mechanism is `D-190` / ADR-0191.
 
 Tracked as a defect diagnosed on 2026-09-23 while delivering `E3-12`. It is a test-infrastructure
 defect in the shared test seam, not a product defect. It was registered as its own story because the
 fix changes shared fixtures and a pinned scheduling contract. On 2026-09-24 the owner chose to
-deliver it inside `E3-12`'s pull request #73 (`D-190`), so the fix is reviewed under that pull
+deliver it inside `E3-12`'s pull request #73 (`D-190`), so the fix was reviewed under that pull
 request's gated review rather than landing unreviewed; its own record is `docs/handoff-E1-18.md`.
 
 **Symptom.** `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free
@@ -1683,8 +1683,8 @@ confinement is now scoped to `main` and `default`.
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 
-Status: implemented on `story/E3-17-appgraph-close-safety`, awaiting the owner's gated review. The
-mechanism is the owner's accepted option D (`D-172`), with the grace fixed at 5 seconds.
+Status: merged on 2026-09-17 through pull request #70 after the owner's gated review. The mechanism
+is the owner's accepted option D (`D-172`), with the grace fixed at 5 seconds.
 
 Tracked as the `E3-03` owner-review finding on [pull request
 #69](https://github.com/davidru85/carApp/pull/69). It is a **production** defect, unlike the
@@ -1862,9 +1862,9 @@ Acceptance criteria:
 
 ## Outstanding Owner Decisions
 
-Three decisions are open. **None of them blocks pull request #70, and it MUST NOT be held for
-them.** `E3-03` already merged through pull request #69, so its own work is no longer gated by
-anything here. Each decision blocks only the single story named in its `Needed by` column. `D-172` is
+Three decisions are open. **None of them blocks a merged story, and no pull request MUST be held
+for them.** `E3-03`, `E3-04`, `E3-08`, `E3-12` and `E3-17` have all merged, `E1-18` landed with
+`E3-12`, so this table gates only the unstarted stories named in its `Needed by` column. `D-172` is
 not among them: the owner accepted option D with a 5-second grace on 2026-09-17, and that acceptance
 merged with `E3-17`.
 
@@ -2008,11 +2008,11 @@ proof after E3-04.
 | E1-11 `:feature:vehicle` outbox payload entityType fix (completed) | 1 | S | — |
 | E1-12 `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on graph close (completed; issue #42) | 1 | S | Yes |
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
-| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake (completed) | follow-up | S | — |
+| E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake (completed, PR #66) | follow-up | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
 | E1-16 Vehicle UI fuel type selector | follow-up | S | — |
-| E1-17 iOS onboarding UI test flake | follow-up | S | — |
-| E1-18 JVM test deadlock in `DatabaseHandle.close()` (implemented in PR #73) | follow-up | S | — |
+| E1-17 iOS onboarding UI test flake (completed, PR #67) | follow-up | S | — |
+| E1-18 JVM test deadlock in `DatabaseHandle.close()` (completed, PR #73) | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 (completed) | 2 | M | — |
@@ -2026,9 +2026,9 @@ proof after E3-04.
 | E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
 | E3-02 Firestore RemoteSyncSource (completed, PR #68) | 3 | M | — |
 | E3-03 `:core:sync` engine | 3 | L | Yes |
-| E3-08 App graph and wiring (implemented, PR pending) | 3 | M | Yes |
-| E3-04 Repository sync wiring (implemented, PR pending) | 3 | M | Yes |
-| E3-12 Permanent-account cross-device recovery proof (implemented, PR #73) | 3 | S | Yes |
+| E3-08 App graph and wiring (completed, PR #71) | 3 | M | Yes |
+| E3-04 Repository sync wiring (completed, PR #72) | 3 | M | Yes |
+| E3-12 Permanent-account cross-device recovery proof (completed, PR #73) | 3 | S | Yes |
 | E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |
@@ -2037,7 +2037,7 @@ proof after E3-04.
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
 | E3-15 Close the ticket issuance and account deletion interleaving (blocked on `D-149`) | 3 | M | Yes |
 | E3-16 Close the issuance lookup-to-write window (blocked on `D-150`) | 3 | M | Yes |
-| E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle | 3 | M | Yes |
+| E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle (completed, PR #70) | 3 | M | Yes |
 | E3-18 Manual retry coverage for parked connectivity rows (blocked on `D-173`) | 3 | S | Yes |
 | E3-19 Push-boundary payload totality | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values | 3 | S | Yes |
