@@ -690,13 +690,14 @@ backoff, which is bounded by `MAX_BACKOFF_MS`.
 
 | Trigger | Value |
 |---------|-------|
+| Owner change | a non-sentinel owner transition observed by the app graph (`D-188`) |
 | Post-write debounce | 2 s |
 | Minimum interval between automatic cycles | 30 s |
 | Periodic background interval | 6 h (Android `WorkManager` periodic; iOS `BGAppRefresh`, best effort) |
 | Foreground | on cold start, and on resume after more than `FOREGROUND_RESUME_THRESHOLD_MS` in background |
 | Pull-to-refresh | bypasses the minimum interval, never the mutex |
 
-All five are `SyncTrigger` values passed to the same `SyncController` - through `requestSync(reason)` for a foreground or in-process trigger, or through `sync(reason)` when a platform execution lease must await the cycle before completing - and are logged with the cycle id.
+All six are `SyncTrigger` values passed to the same `SyncController` - through `requestSync(reason)` for a foreground or in-process trigger, or through `sync(reason)` when the caller must await the cycle before completing, which is a platform execution lease (`D-187`) or the owner-change recovery window the gate keeps raised until that cycle settles (`D-188`) - and are logged with the cycle id.
 
 ### 9.9 Aggregate status
 
@@ -1496,7 +1497,11 @@ Shared state holders:
 - Kotlin-facing factories take a `scope: CoroutineScope` parameter and the caller owns that scope. Android passes `viewModelScope`.
 - Swift-facing factories take no scope parameter. `SwiftAppGraph` creates and owns one child scope per state holder.
 - Each pattern exposes `close()`, which cancels work owned by that state holder. Swift graph `close()` cancels every cached state holder it created.
-- Emit every `UiState` on `dispatchers.main`; database flows are collected on `dispatchers.io`, computation work uses `dispatchers.default`, and mapping from `Outcome<...>` to `UiState` happens on `dispatchers.main`.
+- Emit every `UiState` on `dispatchers.main`; database flows are collected on `dispatchers.io`
+  except for `VehicleListStateHolder`'s recovery-sensitive local observation, which runs on
+  `dispatchers.default` so D-190 keeps the recovery window scheduler-confined instead of turning
+  it into a wall-clock race. Computation work uses `dispatchers.default`, and mapping from
+  `Outcome<...>` to `UiState` happens on `dispatchers.main`.
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
@@ -2260,7 +2265,7 @@ fun interface LocaleProvider { fun current(): LocaleInfo }
 interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 
 @ObjCName(name = "SharedSyncTrigger", swiftName = "SyncTrigger", exact = true)
-enum class SyncTrigger { AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
+enum class SyncTrigger { OwnerChanged, AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
 @ObjCName(name = "SharedSyncSyncStatus", swiftName = "SyncSyncStatus", exact = true)
@@ -2292,6 +2297,14 @@ interface OwnerContext {
 
 object MinorUnits { fun factorFor(currency: CurrencyCode): Int? }   // supported -> 100, unsupported -> null
 ```
+
+`OwnerContext.observe()` MUST emit the current owner on subscription and every change after it.
+`D-188` depends on it: the app graph's owner-recovery gate reads the owner once when it is built and
+compares every emission with the owner it last published, so a transition that lands between
+construction and subscription is detected only because the current owner is replayed on
+subscription. An implementation that emitted only later changes would miss that transition and would
+never fetch the newly signed-in owner's data. `AuthOwnerContext` satisfies this by mapping the
+authentication `StateFlow`, and `§9.8`'s `OwnerChanged` trigger is what the guarantee serves.
 
 ### 20.3.1 Crash reporting types — `:core:crash`
 
@@ -2942,8 +2955,20 @@ owner's `selectedVehicleId` and `message`, so nothing owner-scoped crosses a ses
 repository read failure keeps it `true` while publishing its error code, so an unreadable list is
 never presented as a confirmed empty list (`D-120`).
 
-The two unknown states are therefore distinguishable by `message`: `isLoading` with no message is a
-list that is still arriving, and `isLoading` with a message is a list that could not be read. Hosts
+A third case is a list that is empty while its owner's recovery cycle is still outstanding
+(`D-188`). `isLoading` MUST stay `true` across that window, because a resolved empty list is what
+`SPECIFICATION.md` F-1 answers with mandatory first-vehicle creation, and on a clean device the local
+read succeeds with zero rows before the owner's backed-up data has been fetched. The window closes
+when the requested cycle completes, including on failure, so an offline first run still reaches
+first-vehicle creation (`SPECIFICATION.md` P2); a non-empty list is known regardless and is never
+held back. An empty listing that was read before the window closed predates the recovery, so the
+holder discards it when the window closes and keeps `isLoading` `true` until a fresh local read
+resolves the list; until the holder has handled the closing count, every publication treats the
+window as still open (`D-188`, `D-190`).
+
+The unknown states are therefore distinguishable by `message`: `isLoading` with no message is a
+list that is still arriving or whose owner's recovery is still outstanding, and `isLoading` with a
+message is a list that could not be read. Hosts
 gate `SPECIFICATION.md` F-1 first-run routing on a resolved list only. While a list is still
 arriving they MUST cover the mounted UI instead of replacing it, so navigation state is never
 destroyed by a refresh. While a list is unreadable they MUST report the localized error and offer a
@@ -2951,7 +2976,7 @@ retry instead of an indefinite indicator; `refresh()` over an unreadable list cr
 observation. Owner-scoped navigation MUST be reset only when a known list becomes unknown without a
 message, which is the owner transition.
 
-`SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. From platform wiring those triggers enter the controller through `requestSync(reason)` or, when the platform holds an execution lease for the work, through `sync(Periodic)`, which the lease awaits before reporting completion (`D-187`). An executable check MUST ban `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any call site of `SyncStateHolder.requestSync` on the iOS platform boundary (`composition/ios/src/iosMain` and `iosApp`), and MUST accept `AppForeground` and `PullToRefresh` there. The check is not a Konsist fixture: Konsist parses Kotlin only, and this surface contains Swift, so the ban covers both file kinds and is implemented as a source rule with a failing fixture (`D-185`).
+`SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.OwnerChanged`, `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by the app graph or by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. From platform wiring those triggers enter the controller through `requestSync(reason)` or, when the platform holds an execution lease for the work, through `sync(Periodic)`, which the lease awaits before reporting completion (`D-187`). An executable check MUST ban `OwnerChanged`, `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any call site of `SyncStateHolder.requestSync` on the iOS platform boundary (`composition/ios/src/iosMain` and `iosApp`), and MUST accept `AppForeground` and `PullToRefresh` there. The check is not a Konsist fixture: Konsist parses Kotlin only, and this surface contains Swift, so the ban covers both file kinds and is implemented as a source rule with a failing fixture (`D-185`).
 
 `SyncStateHolder.onForegroundReturn(backgroundMillis)` is the `§9.8` foreground entry point, and `backgroundMillis` is nullable on purpose. Each host observes its own lifecycle and calls this member with how long the app spent in the background, or with `null` on a cold start: a cold start has no measurable background duration and `§9.8` names it as a trigger in its own right, so it MUST NOT be encoded as a duration. The `FOREGROUND_RESUME_THRESHOLD_MS` comparison is applied here, so both hosts share one rule and one test instead of repeating the comparison, and a return of exactly the threshold is not a trigger because `§9.8` requires **more than** the threshold in the background. The member fires `SyncTrigger.AppForeground`, never `Periodic` or `ConnectivityRecovered`, and it is a no-op after `close()`. `SyncTrigger.ConnectivityRecovered` remains platform-owned and is derived by the graph from the `ConnectivityObserver` offline-to-online edge, never invoked from Swift UI code. The host's background measurement MUST outlive the UI that reports it: recreating a view, a scene or an Activity is not a cold start, so a measurement discarded with that UI would report `null` and request a cycle `§9.8` does not permit. Each host therefore holds it for the process.
 

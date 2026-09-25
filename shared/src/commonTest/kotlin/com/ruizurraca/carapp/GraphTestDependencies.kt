@@ -2,42 +2,74 @@ package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Shared fixture for graph-backed editor tests. All injected work uses the caller's scheduler;
- * customized database, owner and provider doubles are preserved. Default and customized calls
- * share the scheduling regressions in GraphTestDependenciesTest.
+ * Shared fixture for graph-backed editor tests. `main` and `default` run on the caller's scheduler,
+ * and `io` is a real dispatcher so the driver's blocking close never runs on the scheduler thread
+ * (`E1-18`, `D-190`); customized database, owner and provider doubles are preserved. Default and
+ * customized calls share the scheduling regressions in GraphTestDependenciesTest.
  */
 internal fun TestScope.confinedGraphDependencies(
     dependencies: AppGraphDependencies = testAppGraphDependencies(),
-): AppGraphDependencies = dependencies.copy(dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)))
+): AppGraphDependencies =
+    dependencies.copy(
+        dispatchers =
+            TestDispatcherProvider(
+                dispatcher = StandardTestDispatcher(testScheduler),
+                // A real `io` keeps the driver's blocking close off the scheduler thread.
+                // `Dispatchers.Default` rather than `Dispatchers.IO`: the latter is JVM-only and this
+                // fixture also compiles for Kotlin/Native. Production wires `io` to
+                // `Dispatchers.Default` as well, so the fixture matches the real composition.
+                ioDispatcher = Dispatchers.Default,
+            ),
+    )
 
 /**
- * Asserts that every dispatcher in [dependencies] queues its work until the caller advances the
- * test scheduler, then runs all of it. Shared by the direct fixture guards and the fuel wrapper
- * regression so both exercise the same scheduling contract.
+ * Asserts that `main` and `default` in [dependencies] queue their work until the caller advances the
+ * test scheduler, then run all of it, and that `io` is neither bound to that scheduler nor unconfined
+ * (`E1-18`, `D-190`). Shared by the direct fixture guards and the fuel wrapper regression so both
+ * exercise the same scheduling contract.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun TestScope.assertQueuedGraphWork(dependencies: AppGraphDependencies) {
     val completed = mutableListOf<String>()
     val dispatchers = dependencies.dispatchers
-    listOf("main" to dispatchers.main, "io" to dispatchers.io, "default" to dispatchers.default)
+    listOf("main" to dispatchers.main, "default" to dispatchers.default)
         .forEach { (name, dispatcher) ->
             backgroundScope.launch(dispatcher) { completed += name }
         }
 
-    assertEquals(emptyList(), completed, "graph work must wait for the caller scheduler")
+    assertEquals(emptyList(), completed, "confined graph work must wait for the caller scheduler")
     runCurrent()
-    assertEquals(setOf("main", "io", "default"), completed.toSet())
+    assertEquals(setOf("main", "default"), completed.toSet())
+    // `E1-18` / `D-190`: `io` runs the driver's blocking close, so it MUST NOT be bound to this
+    // scheduler under any instance, and MUST NOT be unconfined, which would run the close inline on
+    // the caller's thread. An identity check against `main` alone accepts a second
+    // `StandardTestDispatcher(testScheduler)`, which restores the deadlock.
+    val io = dispatchers.io
+    assertFalse(
+        io is TestDispatcher && io.scheduler === testScheduler,
+        "io must stay off the test scheduler (E1-18)",
+    )
+    assertNotSame<CoroutineDispatcher>(
+        Dispatchers.Unconfined,
+        io,
+        "io must not run the blocking close inline on the caller's thread (E1-18)",
+    )
 }
 
 /**

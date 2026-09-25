@@ -21,6 +21,7 @@ import com.ruizurraca.carapp.feature.vehicle.domain.VehicleRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -275,6 +277,118 @@ class VehicleStateHoldersTest {
 
             assertFalse(holder.state.value.isLoading)
             holder.close()
+        }
+
+    @Test
+    fun anEmptyListStaysUnknownWhileRecoveryIsOutstandingAndANonEmptyListNeverIs() =
+        runTest {
+            val repository = FakeVehicleRepository()
+            val recoveryOutstanding = MutableStateFlow(1)
+            val holder =
+                VehicleListStateHolder(
+                    scope = backgroundScope,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
+                    recoveryOutstanding = recoveryOutstanding,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+
+            assertTrue(
+                holder.state.value.isLoading,
+                "An empty list whose owner's recovery is outstanding is not a confirmed empty list.",
+            )
+
+            repository.vehicles.value = Outcome.Ok(listOf(vehicle()))
+            advanceUntilIdle()
+
+            assertFalse(
+                holder.state.value.isLoading,
+                "A non-empty list is known regardless of the recovery window.",
+            )
+
+            repository.vehicles.value = Outcome.Ok(listOf(vehicle(deleted = true)))
+            advanceUntilIdle()
+
+            assertTrue(
+                holder.state.value.isLoading,
+                "A list holding only tombstones is empty, so the recovery window still holds it.",
+            )
+
+            recoveryOutstanding.value = 0
+            advanceUntilIdle()
+
+            assertFalse(
+                holder.state.value.isLoading,
+                "The window closes when the cycle completes, so first-run creation is reachable.",
+            )
+            holder.close()
+        }
+
+    @Test
+    fun aCountRaisedAfterTheLocalReadStillHoldsAnEmptyListUnresolved() =
+        runTest {
+            // The ordering guarantee covers publication, but a recovery can also become outstanding
+            // after the local read already resolved empty - a slow commit, or an overlapping
+            // transition. The holder MUST notice the count change and reopen the list, because F-1
+            // acts on the resolved-empty state.
+            val repository = FakeVehicleRepository()
+            val recoveryOutstanding = MutableStateFlow(0)
+            val holder =
+                VehicleListStateHolder(
+                    scope = backgroundScope,
+                    repository = repository,
+                    dispatchers = TestDispatcherProvider(),
+                    refreshVehicles = { Outcome.Ok(Unit) },
+                    ownerContext = FakeOwnerContext(LOCAL_OWNER),
+                    recoveryOutstanding = recoveryOutstanding,
+                )
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect() }
+            advanceUntilIdle()
+
+            repository.vehicles.value = Outcome.Ok(emptyList())
+            advanceUntilIdle()
+            assertFalse(
+                holder.state.value.isLoading,
+                "with no recovery outstanding an empty list is a confirmed empty list",
+            )
+
+            recoveryOutstanding.value = 1
+            advanceUntilIdle()
+
+            assertTrue(
+                holder.state.value.isLoading,
+                "a count raised afterwards MUST reopen the list rather than leave it confirmed empty",
+            )
+            holder.close()
+        }
+
+    @Test
+    fun aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheCountSettlesFirst() =
+        runTest {
+            val published = observeRecoveryWindowClosing(countSettlesFirst = true)
+
+            assertTrue(
+                published.none { state -> !state.isLoading && state.vehicles.isEmpty() },
+                "a listing read before the recovery applied its rows MUST NOT reach F-1 as a known empty list",
+            )
+            assertEquals(listOf(VEHICLE_ID), published.last().vehicles.map { it.id })
+            assertFalse(published.last().isLoading, "the fresh read resolves the list with the restored row")
+        }
+
+    @Test
+    fun aClosingRecoveryWindowNeverPublishesTheStaleEmptyListingWhenTheStatusSettlesFirst() =
+        runTest {
+            val published = observeRecoveryWindowClosing(countSettlesFirst = false)
+
+            assertTrue(
+                published.none { state -> !state.isLoading && state.vehicles.isEmpty() },
+                "a listing read before the recovery applied its rows MUST NOT reach F-1 as a known empty list",
+            )
+            assertEquals(listOf(VEHICLE_ID), published.last().vehicles.map { it.id })
+            assertFalse(published.last().isLoading, "the fresh read resolves the list with the restored row")
         }
 
     @Test
@@ -550,6 +664,61 @@ private class FailingThenRecoveringVehicleRepository : VehicleRepository {
     override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> = Outcome.Ok(Unit)
 
     override suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError> = Outcome.Ok(Unit)
+}
+
+/**
+ * Drives the one interval the closing recovery window must cover: the owner's recovery cycle has
+ * completed, so the outstanding count returns to zero and the aggregate sync status settles, but the
+ * local observation opened before the cycle still holds the empty listing it read before the restored
+ * row was applied. The first observation emits that empty listing and then stays silent; every later
+ * observation reads the restored row. [countSettlesFirst] selects which of the two settling signals is
+ * dispatched first, because the holder receives them on independent collectors and production does
+ * not order them.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+private fun TestScope.observeRecoveryWindowClosing(countSettlesFirst: Boolean): List<VehicleListUiState> {
+    var observations = 0
+    val repository =
+        FakeVehicleRepository(
+            observedVehicles =
+                flow {
+                    observations += 1
+                    if (observations == 1) {
+                        emit(Outcome.Ok(emptyList()))
+                        awaitCancellation()
+                    } else {
+                        emit(Outcome.Ok(listOf(vehicle())))
+                    }
+                },
+        )
+    val recoveryOutstanding = MutableStateFlow(1)
+    val syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Syncing)
+    val holder =
+        VehicleListStateHolder(
+            scope = backgroundScope,
+            repository = repository,
+            dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
+            refreshVehicles = { Outcome.Ok(Unit) },
+            ownerContext = FakeOwnerContext(LOCAL_OWNER),
+            syncStatus = syncStatus,
+            recoveryOutstanding = recoveryOutstanding,
+        )
+    val published = mutableListOf<VehicleListUiState>()
+    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect { published += it } }
+    runCurrent()
+    assertTrue(holder.state.value.isLoading, "an empty listing is not known while its recovery is outstanding")
+
+    if (countSettlesFirst) {
+        recoveryOutstanding.value = 0
+        syncStatus.value = SyncStatus.Idle
+    } else {
+        syncStatus.value = SyncStatus.Idle
+        recoveryOutstanding.value = 0
+    }
+    runCurrent()
+
+    holder.close()
+    return published.toList()
 }
 
 private val SIGNED_IN_OWNER = OwnerId("signed-in-owner")

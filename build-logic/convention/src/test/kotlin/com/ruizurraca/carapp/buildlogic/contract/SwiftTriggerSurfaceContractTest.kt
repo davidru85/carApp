@@ -6,9 +6,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The Konsist fixture `docs/CONTRACTS.md §20.10` declares: `PostWriteDebounce`, `ConnectivityRecovered`
- * and `Periodic` MUST NOT be invoked from Swift UI code, because firing them there would duplicate the
- * `WorkManager` / `BGTaskScheduler` wiring and bypass the single-`SyncController` invariant of `§9.1`.
+ * The source rule required by `docs/CONTRACTS.md §20.10` declares: `OwnerChanged`,
+ * `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` MUST NOT be invoked from Swift UI
+ * code, because firing them there would duplicate the `WorkManager` / `BGTaskScheduler` wiring and
+ * bypass the single-`SyncController` invariant of `§9.1`.
  *
  * The rule is a pure function over source text so it has a *failing* fixture, which is what
  * `AGENTS.md` requires of every architecture rule: a rule whose only exercise is the real repository
@@ -16,8 +17,9 @@ import kotlin.test.assertTrue
  * violation, so the rule is proved to fire today and keeps firing when the real files change.
  *
  * The scanned surface is the whole iOS platform boundary — Kotlin `iosMain` and Swift `iosApp` — and
- * the banned set is the platform-owned trio. `AppForeground` and `PullToRefresh` are the two triggers
- * a UI layer *is* allowed to request, so banning them would reject the documented surface.
+ * the banned set is the platform-owned quartet, `OwnerChanged` included. `AppForeground` and
+ * `PullToRefresh` are the two triggers a UI layer *is* allowed to request, so banning them would
+ * reject the documented surface.
  */
 class SwiftTriggerSurfaceContractTest {
     private val repositoryRoot = File(checkNotNull(System.getProperty("carapp.repoRoot")))
@@ -25,6 +27,14 @@ class SwiftTriggerSurfaceContractTest {
     @Test
     fun theRepositoryDoesNotFirePlatformOwnedTriggersFromTheIosUiSurface() {
         assertEquals(emptyList(), SwiftTriggerSurfaceRule.violations(presentSources()))
+    }
+
+    @Test
+    fun anOwnerChangedRequestFromSwiftIsRejected() {
+        // `D-188`: the graph is the only caller. A Swift call site would run a recovery cycle the
+        // graph never asked for and would bypass the gate that keeps an unrecovered empty list
+        // unresolved, which is the exact state `SPECIFICATION.md` F-1 acts on.
+        assertRejected("OwnerChanged")
     }
 
     @Test
@@ -107,6 +117,38 @@ class SwiftTriggerSurfaceContractTest {
             listOf("$FIXTURE_PATH:4 requests Periodic"),
             SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
             "§20.10 bans Periodic however the holder is named at the call site",
+        )
+    }
+
+    @Test
+    fun anAliasWhoseNameContainsSyncControllerIsRejected() {
+        // The substring allowlist accepted this: the identifier `syncControllerAlias` contains
+        // `syncController`, so the receiver looked permitted while the call was on a holder. The
+        // allowlist MUST match the member-access shape, not a token inside a longer name.
+        val source =
+            """
+            let syncControllerAlias = model.syncStateHolder
+            syncControllerAlias.requestSync(reason: .ownerChanged)
+            """.trimIndent()
+
+        assertEquals(
+            listOf("$FIXTURE_PATH:2 requests OwnerChanged"),
+            SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
+        )
+    }
+
+    @Test
+    fun anUnrelatedSyncControllerTokenDoesNotPermitAHolderCall() {
+        // The real route earlier in the window must not license a later call on a different receiver.
+        val source =
+            """
+            let controller = graph.syncController()
+            holder.requestSync(reason: .periodic)
+            """.trimIndent()
+
+        assertEquals(
+            listOf("$FIXTURE_PATH:2 requests Periodic"),
+            SwiftTriggerSurfaceRule.violations(mapOf(FIXTURE_PATH to source)),
         )
     }
 

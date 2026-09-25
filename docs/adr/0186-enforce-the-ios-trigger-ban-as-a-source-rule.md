@@ -4,6 +4,13 @@
 
 Accepted
 
+> **Note (2026-09-24, `D-188` / ADR-0189).** The denied set this decision establishes originally
+> carried three triggers. `E3-12` extends it with `OwnerChanged`, which the owner-recovery coordinator
+> fires and which Swift UI code must never request, and it retains the exact `syncController()`
+> receiver allowlist. The allowlist was first implemented as a substring test and was itself evaded by
+> an identifier that merely contains `syncController`; the `E3-12` correction matched the member-access
+> shape instead. Everything below is the original decision history and is unchanged.
+
 ## Context
 
 `docs/CONTRACTS.md §20.10` states that `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` are

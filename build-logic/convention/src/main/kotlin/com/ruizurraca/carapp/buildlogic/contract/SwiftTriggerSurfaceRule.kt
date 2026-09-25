@@ -3,8 +3,9 @@ package com.ruizurraca.carapp.buildlogic.contract
 import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 
 /**
- * `docs/CONTRACTS.md §20.10`: `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` are fired
- * exclusively by platform wiring and MUST NOT be requested from Swift UI code.
+ * `docs/CONTRACTS.md §20.10`: `OwnerChanged`, `PostWriteDebounce`, `ConnectivityRecovered` and
+ * `Periodic` are fired exclusively by the app graph or by platform wiring and MUST NOT be requested
+ * from Swift UI code.
  *
  * The prohibition exists for two concrete reasons, not for tidiness. Firing `Periodic` from the UI
  * would duplicate the `WorkManager` / `BGTaskScheduler` arrangement each host already performs, so the
@@ -23,11 +24,15 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
  *
  * `AppForeground` and `PullToRefresh` are deliberately absent from the banned set. Both are
  * user-initiated or lifecycle-driven and `§20.10` explicitly permits them from the Swift surface.
+ *
+ * `OwnerChanged` is owned by `DefaultAppGraph`, which is the only place that observes `OwnerContext`
+ * (`D-188`). A Swift call site requesting it would run a recovery cycle the graph never asked for and
+ * would bypass the gate that keeps an unrecovered empty list unresolved.
  */
 internal object SwiftTriggerSurfaceRule {
-    /** Trigger names that only platform wiring may request. */
+    /** Trigger names that only the app graph or platform wiring may request. */
     private val PLATFORM_OWNED_TRIGGERS =
-        listOf("PostWriteDebounce", "ConnectivityRecovered", "Periodic")
+        listOf("OwnerChanged", "PostWriteDebounce", "ConnectivityRecovered", "Periodic")
 
     /** How far past `requestSync` a trigger name may appear and still belong to that call. */
     private const val CALL_WINDOW = 200
@@ -57,7 +62,7 @@ internal object SwiftTriggerSurfaceRule {
             // is a violation.
             val receiver = code.substring(maxOf(0, index - RECEIVER_WINDOW), index)
             val arguments = code.substring(index, minOf(index + CALL_WINDOW, code.length))
-            if (!receiver.contains(PERMITTED_RECEIVER, ignoreCase = true)) {
+            if (!PERMITTED_RECEIVER.containsMatchIn(receiver)) {
                 PLATFORM_OWNED_TRIGGERS
                     .firstOrNull { arguments.contains(it, ignoreCase = true) }
                     ?.let { found += "$path:${lineOf(code, index)} requests $it" }
@@ -71,6 +76,14 @@ internal object SwiftTriggerSurfaceRule {
 
     private const val REQUEST_SYNC = "requestSync"
 
-    /** The one receiver `§9.1` permits for a platform-owned trigger: the single in-process controller. */
-    private const val PERMITTED_RECEIVER = "syncController"
+    /**
+     * The only permitted call shape ends in the `syncController()` accessor and its member dot.
+     *
+     * A substring test was the first shape of this allowlist and an identifier that merely *contains*
+     * `syncController` - `syncControllerAlias`, or any unrelated local - passed it while calling a
+     * `SyncStateHolder`, which is exactly the `§20.10` violation the rule exists to catch. Matching
+     * the member-access shape is what makes the allowlist mean the one route `§9.1` permits.
+     */
+    private val PERMITTED_RECEIVER =
+        Regex("""\bsyncController\s*\(\s*\)\s*\.\s*$""", RegexOption.IGNORE_CASE)
 }

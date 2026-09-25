@@ -972,7 +972,7 @@ Evidence is in `docs/handoff-E3-04.md`.
 Acceptance criteria:
 
 - The UI still observes only local database flows.
-- The five triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
+- The six triggers of `docs/CONTRACTS.md §9.8` exist with the stated constants.
 - Platform workers and handlers enter only the process graph's `SyncController`: foreground and
   in-process triggers use `requestSync(reason)`, while a platform-owned periodic execution lease
   awaits `sync(Periodic)` before reporting completion. They hold no repository, database handle or
@@ -989,7 +989,16 @@ Human review required.
 
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
+Status: implemented on `story/E3-12-cross-device-recovery-proof`, awaiting the owner's gated review.
+Evidence is in `docs/handoff-E3-12.md`. It introduced `D-188`; its correction rounds introduced
+`D-189` (superseded) and `D-190`, which delivers `E1-18` inside the same pull request, #73.
+
 Prove recovery at the first point where permanent authentication and complete sync coexist.
+
+Two defects found during this story are fixed here, because criterion 1 is unreachable while either
+stands: nothing in the closed `SyncTrigger` inventory named a newly resolved owner as a cause, and an
+empty list whose owner's recovery was still outstanding was published as a confirmed empty list,
+which F-1 answers with non-dismissible first-run creation.
 
 Acceptance criteria:
 
@@ -1427,10 +1436,11 @@ the product; this section records when it is scheduled.
 
 Nothing here blocks Phase 2. Order within the section is the order below.
 
-`E1-14` and `E1-17` SHOULD run before the next story that relies on a red required job meaning a
-real regression. Until both are fixed, `shared-tests` and `ios-simulator-build` can go red without a
-regression, which makes the reflex "re-run it" rather than "investigate it" - and that is how a real
-regression gets waved through.
+`E1-14` and `E1-17` are both merged and SHOULD have run before the next story that relies on a red
+required job meaning a real regression. `E1-18` is that story's remaining half, and it is delivered
+inside `E3-12`'s pull request #73 (`D-190`): once that pull request merges, a red `shared-tests` or
+`provider-decoupling` is again evidence to investigate, never a reason to re-run. The reflex "re-run
+it" rather than "investigate it" is how a real regression gets waved through.
 
 `E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. They SHOULD
 run adjacently, in that order, so those two screens are opened once rather than twice.
@@ -1572,6 +1582,104 @@ Acceptance criteria:
   escalates instead of taking it.
 - Evidence of stability: the affected test is run repeatedly on CI and the handoff records the
   number of consecutive passes observed, so "fixed" rests on a count and not on one green run.
+
+### E1-18 - JVM Test Deadlock in `DatabaseHandle.close()` on the Test Scheduler Thread - S
+
+**Status: implemented on `story/E3-12-cross-device-recovery-proof`, awaiting the owner's gated review.**
+The mechanism is `D-190` / ADR-0191.
+
+Tracked as a defect diagnosed on 2026-09-23 while delivering `E3-12`. It is a test-infrastructure
+defect in the shared test seam, not a product defect. It was registered as its own story because the
+fix changes shared fixtures and a pinned scheduling contract. On 2026-09-24 the owner chose to
+deliver it inside `E3-12`'s pull request #73 (`D-190`), so the fix is reviewed under that pull
+request's gated review rather than landing unreviewed; its own record is `docs/handoff-E1-18.md`.
+
+**Symptom.** `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free
+Android host tests` (`provider-decoupling`) are occasionally killed at their step timeout with
+hundreds of `STARTED` lines and zero `PASSED` and zero `FAILED`. Measured at the `E3-12` head,
+`:shared:testAndroidHostTest -Pcarapp.excludeFirebaseProviders=true --rerun-tasks`, the stall
+recurred **1 time in 10**; on `main` at `65e7056` it recurred roughly **1 time in 12**, so it is
+pre-existing and not a property of the story that observed it.
+
+**Root cause, reproduced with a live thread dump** (JDK 21 `jstack` against the `GradleWorkerMain`
+process while the step was stalled):
+
+- The test worker's `Test worker` thread is parked in
+  `SqlDriverDatabaseHandle.close()` -> `AndroidxSqliteDriver.close` ->
+  `AndroidxDriverConnectionPool.close` (`ConnectionPool.kt:262`) -> `runBlocking`.
+- That `runBlocking` is waiting on `writerMutex.withLock` inside the connection pool. The mutex is
+  held by graph-owned work suspended on the *test* `TestCoroutineScheduler`, which can never be
+  resumed because the pool's `runBlocking` has seized the scheduler's own thread.
+- Both sides are pinned: `LocalOwnerAdoptionTest.tearDown:40` closes the handle from the test
+  thread, and `DefaultAppGraph.releaseDatabase` (`AppGraph.kt:413`) closes it from the deferred
+  release waiter that `close()` starts on `dependencies.dispatchers.io` (`AppGraph.kt:400`). The
+  injected `DispatcherProvider` maps `main`, `default` and `io` to one
+  `Dispatchers.Unconfined` / `StandardTestDispatcher(testScheduler)`, so both paths run on the seized
+  thread.
+- The stall follows the `SqlDriverDatabaseHandle.close` seam: `LocalOwnerAdoptionTest`,
+  `VehicleListStateHolderTest`, `FuelEntryStateHolderTest` and `AppGraphTriggerWiringTest` all closed
+  the driver while scheduler-bound work could still be running. It is unbounded, so no step timeout
+  or retry can clear it.
+
+**Candidate fixes measured, and why neither is trivial.**
+
+- Making `AppGraphTestHarness.close()` await `graph.awaitClosed()` (the `E1-12` boundary) does **not**
+  remove the deadlock. It converts the `tearDown` form into the `releaseDatabase` form, which was
+  captured in the worker dump: still `runBlocking` on the seized scheduler thread. Measured: still
+  about **1 in 6** hangs.
+- Splitting `io` away from the scheduler so the driver's blocking `close()` runs on a free thread is
+  the shape that removes the deadlock, but `TestDispatcherProvider` deliberately maps all three
+  dispatchers to one and `GraphTestDependenciesTest` pins that as a scheduling contract. Changing it
+  supersedes `E1-14`'s confinement decision and needs its own decision and ADR.
+
+**Acceptance criteria.**
+
+1. The `SqlDriverDatabaseHandle.close` deadlock is removed, not merely made rarer: a graph-backed
+   test can close the driver while graph-owned work is in flight without the JVM test ever hanging.
+2. The fix is proved by repetition: the exact `provider-decoupling` Android-host command
+   (`./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --rerun-tasks`)
+   and `:shared:testAndroidHostTest` complete many consecutive runs with no stall, at a rate that
+   makes the pre-fix 1-in-10 recurrence a failing observation.
+3. `GraphTestDependenciesTest`'s scheduling contract is either preserved or superseded by an
+   explicit decision; it is not silently weakened.
+4. The ten required check names and the `contractCheck` assertion that pins the step ceilings are
+   unchanged, or the change to them carries its own decision.
+
+**Depends on:** none. **Blocks:** any story that relies on a red `shared-tests` meaning a real
+regression; it SHOULD precede such a story.
+
+The documentation that a red `shared-tests` or `provider-decoupling` is not by itself evidence of a
+regression is already in place from `E3-12`; this story removes the condition that made it necessary,
+so closing it MUST also remove that caveat from `AGENTS.md` and from this section's sequencing
+paragraph.
+
+**Delivery.** `D-190` / ADR-0191 delivers the fix, in `E3-12`'s correction round rather than as a
+separate pull request, because the deadlock had to be removed before that pull request could be
+merged on evidence. The evidence is in `docs/handoff-E1-18.md`.
+
+The fix is four coordinated changes, each reached by measurement:
+
+1. `io` is a real dispatcher in graph fixtures (`TestDispatcherProvider` takes it as a parameter,
+   defaulting to the confined one so non-graph call sites are unchanged), so the driver's blocking
+   `close()` no longer runs on the thread the graph needs.
+2. `graphScope` moves to the scheduler-confined `default`. This is what makes the fix work: the sync
+   engine schedules its `delay()` calls on the graph scope, so putting the engine on a real `io` turned
+   the 2 s post-write debounce into wall-clock time and produced an 80% assertion-failure rate —
+   measured, and worse than the deadlock it replaced.
+3. The vehicle list's local observation moves to `default` for the same reason.
+4. `TrackedDatabaseHandles.close()` queues each release on a worker scope and does not await it, and
+   the three local-owner-adoption `tearDown`s stop closing the handle directly. This removes the
+   second form of the deadlock, which never passes through the graph: a test thread closing the
+   handle itself.
+
+Measured over 10 consecutive runs of the exact `provider-decoupling` command: **0 hangs**, against
+1-in-10 before, and over 16 consecutive runs of the exact `shared-tests` step command: **0 hangs**.
+`assertQueuedGraphWork` fails by name when `io` is bound to the test scheduler under any instance or
+is `Dispatchers.Unconfined`, so re-confining it cannot pass silently. `D-189`'s raised step limits are
+reverted; the steps are back at 10 and 8 minutes.
+
+This supersedes `E1-14`'s confinement decision, exactly as this entry predicted it would have to:
+confinement is now scoped to `main` and `default`.
 
 ### E3-17 - Make `AppGraph.close()` Safe Against an In-Flight Sync Cycle - M
 
@@ -1904,6 +2012,7 @@ proof after E3-04.
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
 | E1-16 Vehicle UI fuel type selector | follow-up | S | — |
 | E1-17 iOS onboarding UI test flake | follow-up | S | — |
+| E1-18 JVM test deadlock in `DatabaseHandle.close()` (implemented in PR #73) | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |
 | E2-02 Firebase Auth integration | 2 | L | Yes |
 | E2-03 Onboarding F-1 (completed) | 2 | M | — |
@@ -1919,7 +2028,7 @@ proof after E3-04.
 | E3-03 `:core:sync` engine | 3 | L | Yes |
 | E3-08 App graph and wiring (implemented, PR pending) | 3 | M | Yes |
 | E3-04 Repository sync wiring (implemented, PR pending) | 3 | M | Yes |
-| E3-12 Permanent-account cross-device recovery proof | 3 | S | Yes |
+| E3-12 Permanent-account cross-device recovery proof (implemented, PR #73) | 3 | S | Yes |
 | E3-05 Backup status UI | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |

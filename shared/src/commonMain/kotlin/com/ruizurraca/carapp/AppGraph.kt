@@ -99,8 +99,22 @@ internal class DefaultAppGraph(
     // Completed by whichever path releases the handle, so `awaitClosed()` can observe the release
     // rather than assume it.
     private val closeCompletion = CompletableDeferred<Unit>()
-    private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.io)
+
+    // `E1-18`: graph work runs on `default`, not on `io`. `io` is the dispatcher that can block - the
+    // driver's `close()` reaches its writer lock through a `runBlocking` - so keeping the graph's own
+    // coroutines and the sync engine's `delay()` timers on `default` preserves virtual-time scheduling
+    // in tests while the one blocking call gets a real thread. With both on `io`, either the close
+    // deadlocks against the test scheduler or the engine's timers become wall-clock races.
+    private val graphScope = CoroutineScope(SupervisorJob() + dependencies.dispatchers.default)
     private val databaseHandle = dependencies.databaseFactory.create()
+
+    // `D-188`: every owner-scoped component must observe the coordinated owner, not the raw delegate.
+    // The coordinator publishes an owner only after counting the recovery it causes, which is what
+    // closes the interval in which a resolved empty list could otherwise escape. It reports cycles to
+    // the controller in `init`, once that controller exists.
+    private val ownerRecoveryGate = OwnerRecoveryGate(dependencies.ownerContext)
+    private val ownerAwareDependencies = dependencies.copy(ownerContext = ownerRecoveryGate)
+
     private val accountConversion =
         AccountConversionCoordinator(
             authClient = dependencies.authClient,
@@ -115,17 +129,38 @@ internal class DefaultAppGraph(
             departureAccess = AccountDepartureDatabaseAccess(databaseHandle.database),
             authClient = dependencies.authClient,
         )
-    private val localOwnerAdoption = LocalOwnerAdoption(dependencies, databaseHandle.database)
+    private val localOwnerAdoption = LocalOwnerAdoption(ownerAwareDependencies, databaseHandle.database)
+
+    /**
+     * Settles destructive account conversion before any normal sync trigger reaches remote work.
+     *
+     * `docs/CONTRACTS.md §11.3` forbids normal recovery while the durable replacement marker exists:
+     * pulling at that point could reintroduce permanent-account rows the replacement is removing. This
+     * preflight is therefore shared by every trigger - lifecycle, connectivity, periodic,
+     * pull-to-refresh and `OwnerChanged` alike - and only then preserves the existing
+     * local-owner-adoption gate, which `§11.4` keeps ahead of remote work.
+     *
+     * The auth-state collector in `init` still resumes conversion on its own, because a conversion
+     * owed a resume must not depend on a cycle being admitted. `AccountConversionCoordinator`'s mutex
+     * serializes that collector against this preflight, so the second caller observes the first one's
+     * completed work rather than repeating it.
+     */
+    private suspend fun awaitSyncPreconditions(): Outcome<Unit, AppError> =
+        when (val conversion = accountConversion.awaitSettled()) {
+            is Outcome.Err -> Outcome.Err(conversion.error)
+            is Outcome.Ok -> localOwnerAdoption.awaitAdoption()
+        }
+
     private val syncController =
         createSyncController(
             scope = graphScope,
             databaseAccess = SyncDatabaseAccess(databaseHandle.database),
-            ownerContext = dependencies.ownerContext,
+            ownerContext = ownerAwareDependencies.ownerContext,
             connectivity = dependencies.connectivityObserver,
             remote = dependencies.remoteSyncSource,
             clock = dependencies.clock,
             uuidGenerator = dependencies.uuidGenerator,
-            adoption = localOwnerAdoption::awaitAdoption,
+            adoption = ::awaitSyncPreconditions,
             onPoisoned = dependencies.crashReporter::recordNonFatal,
             onQuarantined = { record ->
                 dependencies.logger.log(
@@ -143,8 +178,9 @@ internal class DefaultAppGraph(
             },
             isDebugBuild = dependencies.isDebugBuild,
         )
+
     private val vehicleRuntime =
-        VehicleSliceRuntime(dependencies, databaseHandle.database, localOwnerAdoption, syncController)
+        VehicleSliceRuntime(ownerAwareDependencies, databaseHandle.database, localOwnerAdoption, syncController)
     private val fuelRepository: FuelEntryRepository =
         SyncRequestingFuelEntryRepository(
             delegate =
@@ -152,7 +188,7 @@ internal class DefaultAppGraph(
                     delegate =
                         SqlDelightFuelEntryRepository(
                             databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-                            ownerContext = dependencies.ownerContext,
+                            ownerContext = ownerAwareDependencies.ownerContext,
                             clock = dependencies.clock,
                             uuidGenerator = dependencies.uuidGenerator,
                         ),
@@ -187,6 +223,7 @@ internal class DefaultAppGraph(
         }
         localOwnerAdoption.launchIn(graphScope)
         observeConnectivityRecovery()
+        ownerRecoveryGate.launchIn(graphScope, syncController)
         arrangePeriodicScheduling()
     }
 
@@ -244,8 +281,9 @@ internal class DefaultAppGraph(
             repository = vehicleRuntime.repository,
             dispatchers = dependencies.dispatchers,
             refreshVehicles = vehicleRuntime::refresh,
-            ownerContext = dependencies.ownerContext,
+            ownerContext = ownerAwareDependencies.ownerContext,
             syncStatus = syncController.status,
+            recoveryOutstanding = ownerRecoveryGate.outstanding,
         )
     }
 

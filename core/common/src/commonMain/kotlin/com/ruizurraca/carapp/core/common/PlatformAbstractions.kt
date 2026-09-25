@@ -80,6 +80,17 @@ interface ConnectivityObserver {
 
 @ObjCName(name = "SharedSyncTrigger", swiftName = "SyncTrigger", exact = true)
 enum class SyncTrigger {
+    /**
+     * The owner this device acts for resolved to a different identity, so the new owner's data has to
+     * be fetched. A clean device depends on it: the local database holds nothing for an owner who has
+     * just signed in, and every other trigger on this inventory describes a cause that has not
+     * happened (a write, a connectivity edge, a lifecycle return, the periodic cadence).
+     *
+     * Fired by the app graph, which is the only place that observes `OwnerContext`. It is never a
+     * platform-scheduling trigger, so it never reaches `SyncTriggerAdapter`, and it is never fired
+     * from the Swift surface.
+     */
+    OwnerChanged,
     AppForeground,
     ConnectivityRecovered,
     PostWriteDebounce,

@@ -37,7 +37,11 @@ class LocalOwnerAdoptionTest {
 
     @AfterTest
     fun tearDown() {
-        handle?.close()
+        // Only the factory closes the handle. Closing it here as well would call
+        // `SqlDriverDatabaseHandle.close()` directly on this thread, which is the blocking form
+        // `E1-18` pins: the driver's `runBlocking` then waits for a writer lock its holder can only
+        // release by resuming on this very thread. `factory.close()` releases the same handle without
+        // blocking the caller.
         factory.close()
     }
 

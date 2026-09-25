@@ -53,6 +53,7 @@ class VehicleListStateHolder internal constructor(
     private val refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
     syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
+    private val recoveryOutstanding: StateFlow<Int> = MutableStateFlow(0),
 ) {
     private val holderJob = SupervisorJob(scope.coroutineContext[Job])
     private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
@@ -65,6 +66,14 @@ class VehicleListStateHolder internal constructor(
     private var selection: String? = null
     private var message: UiMessage? = null
     private var currentSyncStatus = syncStatus.value
+
+    // The last outstanding-recovery count the recovery collector below has handled. The window stays
+    // open for this holder while either this value or the live count is above zero: the live count
+    // opens it before the coordinator publishes the owner (`D-188`), and this value keeps it open until
+    // the collector has decided whether the listing it holds predates the recovery. Every other
+    // publisher - the owner, the sync status, the observation, a user action - therefore sees an open
+    // window in the interval between the count reaching zero and that decision.
+    private var handledRecoveryOutstanding = recoveryOutstanding.value
 
     // `isLoading` means the vehicle list of the currently resolved owner is not known yet. It stays
     // true until that owner publishes a successful result, an owner transition reopens it, and an
@@ -89,6 +98,41 @@ class VehicleListStateHolder internal constructor(
             syncStatus.collect { value ->
                 currentSyncStatus = value
                 publishCurrent()
+            }
+        }
+
+    // `E3-12`: an empty list that is empty only because the owner's first recovery cycle has not
+    // finished yet is not a confirmed empty list, and `SPECIFICATION.md` F-1 must not read it as one.
+    // The count is the coordinator's single atomic value, and the coordinator increments it *before*
+    // it publishes the owner this holder observes, so a republish here can only ever confirm a state
+    // the count already agreed with. The collector exists to republish when the count itself changes:
+    // a recovery that settles after the local read resolved empty reopens the list until the
+    // recovered data arrives.
+    private val recoveryJob =
+        holderScope.launch(dispatchers.main) {
+            recoveryOutstanding.collect { outstanding ->
+                val windowClosed = handledRecoveryOutstanding > 0 && outstanding == 0
+                handledRecoveryOutstanding = outstanding
+
+                // The count is the coordinator's single atomic value, and the coordinator increments
+                // it *before* it publishes the owner this holder observes, so a publish here can only
+                // confirm a state the count already agreed with (`D-188`).
+                //
+                // The one case that needs more than a publish is a window that *just closed* over a
+                // resolved-empty listing. That listing is stale by construction: the window described
+                // the recovery that was going to deliver this owner's rows, and the local observation
+                // may not have re-emitted them yet, so publishing it would hand F-1 a confirmed empty
+                // list from data still arriving. Re-reading is what resolves it. A count of zero that
+                // was already zero is not a closing window - it is the ordinary settled case, where an
+                // empty list is genuinely confirmed and MUST publish without a second read.
+                if (windowClosed && listing.isEmptyResolved()) {
+                    // Forget the stale listing before the re-read starts, so no publisher can present it
+                    // as a confirmed empty list while the fresh read is still arriving.
+                    listing = null
+                    startObservation()
+                } else {
+                    publishCurrent()
+                }
             }
         }
 
@@ -146,6 +190,7 @@ class VehicleListStateHolder internal constructor(
         observationJob = null
         ownerJob.cancel()
         syncStatusJob.cancel()
+        recoveryJob.cancel()
         holderScope.cancel()
     }
 
@@ -161,13 +206,30 @@ class VehicleListStateHolder internal constructor(
         startObservation()
     }
 
+    /**
+     * True when the last local read *succeeded with zero rows* for the current owner.
+     *
+     * That is the one listing a closed recovery window must not publish, because the window it just
+     * closed is the recovery that was going to deliver this owner's rows: the successful empty read
+     * came from local data that predates it. An unreadable listing is not this case - it publishes
+     * its error instead - and a non-empty one is known regardless.
+     */
+    private fun Outcome<List<Vehicle>, AppError>?.isEmptyResolved(): Boolean =
+        (this as? Outcome.Ok)?.value?.count { vehicle -> vehicle.deletedAt == null } == 0
+
+    private fun isRecoveryWindowOpen(): Boolean = recoveryOutstanding.value > 0 || handledRecoveryOutstanding > 0
+
     private fun startObservation() {
         observationJob?.cancel()
         observationJob =
             holderScope.launch(dispatchers.main) {
                 repository
                     .observeVehicles(includeDeleted = false)
-                    .flowOn(dispatchers.io)
+                    // `E1-18`: the local observation is part of the graph's confined scheduling, so it
+                    // stays on `default`. Only the blocking database close needs the real `io`
+                    // dispatcher; running this query there instead would put the arrival of restored
+                    // rows on wall-clock time and make the recovery window a real-time race.
+                    .flowOn(dispatchers.default)
                     .collect { result ->
                         listing = result
                         publishCurrent()
@@ -187,11 +249,16 @@ class VehicleListStateHolder internal constructor(
     private fun publishCurrent() {
         val result = listing
         val readError = (result as? Outcome.Err)?.error
+        val knownCount = (result as? Outcome.Ok)?.value?.count { vehicle -> vehicle.deletedAt == null } ?: 0
         mutableState.value =
             VehicleListUiState(
-                // An unresolved owner and an unreadable list are both "not known", and neither is a
-                // confirmed empty list that may open first-vehicle creation.
-                isLoading = result == null || readError != null,
+                // An unresolved owner, an unreadable list, and an empty list whose owner's recovery is
+                // still outstanding are all "not known", and none is a confirmed empty list that may
+                // open first-vehicle creation (`D-116`, `D-120`, `E3-12`).
+                isLoading =
+                    result == null ||
+                        readError != null ||
+                        (isRecoveryWindowOpen() && knownCount == 0),
                 vehicles =
                     (result as? Outcome.Ok)
                         ?.value
@@ -409,8 +476,17 @@ fun createVehicleListStateHolder(
     refreshVehicles: suspend () -> Outcome<Unit, AppError>,
     ownerContext: OwnerContext,
     syncStatus: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle),
+    recoveryOutstanding: StateFlow<Int> = MutableStateFlow(0),
 ): VehicleListStateHolder =
-    VehicleListStateHolder(scope, repository, dispatchers, refreshVehicles, ownerContext, syncStatus)
+    VehicleListStateHolder(
+        scope,
+        repository,
+        dispatchers,
+        refreshVehicles,
+        ownerContext,
+        syncStatus,
+        recoveryOutstanding,
+    )
 
 @HiddenFromObjC
 fun createVehicleFormStateHolder(

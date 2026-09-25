@@ -1,5 +1,10 @@
 # Agent Handoff — E1-14
 
+> **Closure update (2026-09-24):** `E1-18` / `D-190` superseded this story's dispatcher confinement for
+> `io`. Graph fixtures now confine `main` and `default` to the caller's test scheduler and give `io`
+> a real dispatcher, because the driver's blocking close deadlocked on a confined `io`. The evidence
+> below is unchanged and describes the state when this story merged.
+
 ## Story
 
 `E1-14 - FuelEntryStateHolderTest Kotlin/Native Timeout Flake`

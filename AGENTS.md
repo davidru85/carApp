@@ -133,31 +133,38 @@ review.
   `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16` and `E1-17`.
+- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16`, `E1-17` and `E1-18`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16` is Ready only
   because `D-127` superseded the `D-4` clause that kept the fuel type selector out of the MVP UI.
   `E1-14` is complete after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
   through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
-  `docs/handoff-E1-17.md`. `E1-15` remains open. The flake is the one still-observed failure: it hit
+  `docs/handoff-E1-17.md`. `E1-15` remains open. The flake hit
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
+  `E1-18`, created on 2026-09-23, is the other half of that problem: the JVM test deadlock in
+  `DatabaseHandle.close()` on the test-scheduler thread that made `shared-tests` and
+  `provider-decoupling` fail at their step timeouts with zero assertion failures. It is implemented
+  inside `E3-12`'s pull request #73 (`D-190`), awaiting the owner's gated review, and its record is
+  `docs/handoff-E1-18.md`. Once that pull request merges, a red `shared-tests` or
+  `provider-decoupling` is evidence to investigate, not a reason to re-run.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-12`,
-  `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`, `E3-20` and
-  `E3-21`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
+- **Remaining Phase 3:** `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
+  `E3-20` and `E3-21`. `E3-12`, the permanent-account cross-device recovery proof, is implemented on
+  `story/E3-12-cross-device-recovery-proof` (pull request #73), awaiting the owner's gated review;
+  it introduced `D-188`, its correction rounds introduced `D-189` (superseded) and `D-190`, and its
+  evidence is in `docs/handoff-E3-12.md`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
   #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
   through pull request #70 with `D-172` accepted as option D, `E3-03`, the `:core:sync` engine,
   merged on 2026-09-17 through pull request #69, and `E3-08`, the app graph and Firebase wiring,
   merged through pull request #71; `E3-08` introduced `D-178` through `D-180` and its evidence is in
-  `docs/handoff-E3-08.md`. `E3-04`, the repository sync wiring, is implemented on
-  `story/E3-04-repository-sync-wiring` (pull request #72), awaiting the owner's gated review; it
-  introduced `D-181` through `D-187` and its evidence is in `docs/handoff-E3-04.md`. `E3-01`,
-  `E3-06`, `E3-10` and `E3-11` are already complete.
-- **Three decisions remain open, and none of them blocks `E3-04`:** the tables below are the
-  authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03`, `E3-08` and `E3-17` already merged and `E3-04` introduced no open decision, so
-  no open decision gates merged or in-flight work.
+  `docs/handoff-E3-08.md`. `E3-04`, the repository sync wiring, merged on 2026-09-22 through pull
+  request #72; it introduced `D-181` through `D-187` and its evidence is in `docs/handoff-E3-04.md`.
+  `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
+- **Three decisions remain open, and none of them blocks `E3-12` or `E1-18`:** the tables below are
+  the authoritative rows; this paragraph exists so the outstanding owner work is visible without
+  reading three documents. `E3-03`, `E3-04`, `E3-08` and `E3-17` already merged, and `E3-12` and
+  `E1-18` introduced no open decision, so no open decision gates merged or in-flight work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
     start until the owner decides.
