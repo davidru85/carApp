@@ -44,7 +44,8 @@ class SyncStateHolderRetryTest {
             assertEquals(1, controller.retryCalls)
             assertEquals(
                 PersistenceError.TransactionFailed.code,
-                holder.state.value.message?.code,
+                holder.state.value.message
+                    ?.code,
             )
             holder.close()
         }
