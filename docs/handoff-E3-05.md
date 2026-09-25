@@ -292,6 +292,9 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 - **The host classification is duplicated per platform**, as `D-183` already accepted for the
   foreground threshold. Only the rule is shared; each host has its own four-way mapping and its own
   copy, each covered by its own test. Four lines per side.
+- **The error-code-to-copy mapping is not duplicated**: both hosts reuse the one they already had
+  (`ErrorText` on Android, `UiMessage.localizedText` on iOS), so a new error code needs no change in
+  either indicator. `E4-02` still owns the full accessibility audit.
 - **The `Idle` label is deliberately not exact about the remote copy** (`D-193`). An owner reading only
   the chip cannot tell whether a backup exists; a fuller statement needs a decision of its own, and the
   settings row where it would belong is `E4-01`'s.
