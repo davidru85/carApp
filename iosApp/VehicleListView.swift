@@ -77,6 +77,16 @@ struct VehicleListView: View {
     private var content: some View {
         NavigationStack(path: $path) {
             List {
+                // The indicator renders the holder's published aggregate, which `§14` relays from the
+                // one `SyncController.status`; the view never computes a second status.
+                SyncStatusIndicatorView(
+                    status: skeletonModel.syncState.status,
+                    onRetry: skeletonModel.retryBackup
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
                 if viewModel.state.vehicles.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "car.2.fill")

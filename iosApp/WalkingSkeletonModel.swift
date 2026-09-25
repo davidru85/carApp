@@ -6,6 +6,7 @@ final class WalkingSkeletonModel: ObservableObject {
     @Published private(set) var sessionState: SessionUiState
     @Published private(set) var vehicleFormState: VehicleFormUiState
     @Published private(set) var vehicleListState: VehicleListUiState
+    @Published private(set) var syncState: SyncUiState
     @Published private(set) var syncDebugLines: [String]
     let signInCoordinator: NativeSignInCoordinator
 
@@ -25,6 +26,7 @@ final class WalkingSkeletonModel: ObservableObject {
         sessionState = sessionStateHolder.state.value
         vehicleFormState = vehicleFormStateHolder.state.value
         vehicleListState = vehicleListStateHolder.state.value
+        syncState = syncStateHolder.state.value
         syncDebugLines = syncStateHolder.debugLines.value
 
         observationTasks = [
@@ -41,6 +43,14 @@ final class WalkingSkeletonModel: ObservableObject {
             Task { [weak self, vehicleListStateHolder] in
                 for await state in vehicleListStateHolder.state {
                     self?.vehicleListState = state
+                }
+            },
+            // The indicator renders this value and nothing else. `docs/CONTRACTS.md §14` requires the
+            // holder to relay the single `SyncController.status`, and the host MUST NOT compute a
+            // second status, so this observation is the whole of the iOS-side sync policy.
+            Task { [weak self, syncStateHolder] in
+                for await state in syncStateHolder.state {
+                    self?.syncState = state
                 }
             },
             Task { [weak self, syncStateHolder] in
@@ -109,6 +119,13 @@ final class WalkingSkeletonModel: ObservableObject {
 
     func refreshSyncDiagnostics() {
         syncStateHolder.refreshDebug()
+    }
+
+    /// The manual backup retry `docs/SPECIFICATION.md §3.1` requires, forwarded to the shared holder so
+    /// the host owns no retry policy of its own. A failure surfaces through `syncState.message`, whose
+    /// `code` the host maps like any other `UiMessage`.
+    func retryBackup() {
+        syncStateHolder.retryFailed()
     }
 
     deinit {

@@ -355,6 +355,7 @@ private fun NavGraphBuilder.vehicleRoutes(
     composable(VehicleRoutes.LIST) {
         VehicleListScreen(
             stateHolder = viewModel.vehicleListStateHolder,
+            syncStateHolder = viewModel.syncStateHolder,
             onCreate = { navController.navigate(VehicleRoutes.CREATE) },
             onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
             showDiagnostics = viewModel.isDebugBuild,
@@ -548,12 +549,14 @@ private fun releaseVehicleFormAfterDisposal(
 @Composable
 private fun VehicleListScreen(
     stateHolder: VehicleListStateHolder,
+    syncStateHolder: SyncStateHolder,
     onCreate: () -> Unit,
     onOpen: (String) -> Unit,
     showDiagnostics: Boolean,
     onDiagnostics: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
+    val syncState by syncStateHolder.state.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -582,11 +585,19 @@ private fun VehicleListScreen(
             }
         },
     ) { padding ->
-        VehicleListContent(
-            state = state,
-            onOpen = onOpen,
-            modifier = Modifier.padding(padding),
-        )
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            // The indicator renders the holder's published aggregate, which `§14` relays from the one
+            // `SyncController.status`; the screen never computes a second `SyncStatus`.
+            SyncStatusIndicator(
+                status = syncState.status,
+                onRetry = syncStateHolder::retryFailed,
+            )
+            VehicleListContent(
+                state = state,
+                onOpen = onOpen,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 

@@ -46,8 +46,8 @@ class SwiftHiddenMemberContractTest {
         assertFails(
             "$FUEL_HOLDERS: class FuelEntryFormStateHolder.cached is @HiddenFromObjC but absent from §20.10",
             results(
-                holders = withHiddenMember(
-                    "val cached: StateFlow<Boolean> = MutableStateFlow(false)",
+                holders = withExtraMembers(
+                    "@HiddenFromObjC val cached: StateFlow<Boolean> = MutableStateFlow(false)",
                 ),
             ),
         )
@@ -59,7 +59,7 @@ class SwiftHiddenMemberContractTest {
             "$FUEL_HOLDERS: class FuelEntryFormStateHolder.observeRetries(): Flow<Unit> is " +
                 "@HiddenFromObjC but absent from §20.10",
             results(
-                holders = withHiddenMember("fun observeRetries(): Flow<Unit> = emptyFlow()"),
+                holders = withExtraMembers("@HiddenFromObjC fun observeRetries(): Flow<Unit> = emptyFlow()"),
             ),
         )
     }
@@ -71,7 +71,7 @@ class SwiftHiddenMemberContractTest {
             "$FUEL_HOLDERS: class FuelEntryFormStateHolder.cached is @HiddenFromObjC but absent from §20.10",
             results(
                 holders =
-                    withHiddenMember(
+                    withExtraMembers(
                         "public @HiddenFromObjC val cached: StateFlow<Boolean> = MutableStateFlow(false)",
                     ),
             ),
@@ -88,8 +88,8 @@ class SwiftHiddenMemberContractTest {
     @Test
     fun aContractMemberMissingTheAnnotationIsRejected() {
         assertFails(
-            "class FuelEntryFormStateHolder.isLoading is declared in §20.10 with @HiddenFromObjC " +
-                "but is not such a member of the class",
+            "$FUEL_HOLDERS: class FuelEntryFormStateHolder.isLoading is @HiddenFromObjC but " +
+                "§20.10 declares it without the annotation",
             results(
                 contract =
                     real.contract.replace(
@@ -168,13 +168,13 @@ class SwiftHiddenMemberContractTest {
     /** An `internal` helper never reaches Swift, so hiding it changes nothing the contract describes. */
     @Test
     fun anInternalHiddenMemberIsOutsideTheRule() {
-        assertPasses(results(holders = withHiddenMember("internal fun observeInternal(): Flow<Unit> = emptyFlow()")))
+        assertPasses(results(holders = withExtraMembers("@HiddenFromObjC internal fun observeInternal(): Flow<Unit> = emptyFlow()")))
     }
 
     /** A `private` helper is not part of the surface either, annotated or not. */
     @Test
     fun aPrivateHiddenMemberIsOutsideTheRule() {
-        assertPasses(results(holders = withHiddenMember("private fun observePrivate(): Flow<Unit> = emptyFlow()")))
+        assertPasses(results(holders = withExtraMembers("@HiddenFromObjC private fun observePrivate(): Flow<Unit> = emptyFlow()")))
     }
 
     /** Comments and string literals naming the annotation must not be read as declarations. */
@@ -183,7 +183,7 @@ class SwiftHiddenMemberContractTest {
         assertPasses(
             results(
                 holders =
-                    withHiddenMember(
+                    withExtraMembers(
                         "// @HiddenFromObjC val ghost: StateFlow<Boolean> = MutableStateFlow(false)",
                         "val description: String = \"@HiddenFromObjC fun ghost(): Flow<Unit>\"",
                     ),
@@ -249,8 +249,8 @@ class SwiftHiddenMemberContractTest {
             ),
         ).validate()
 
-    /** The real fuel holder source with one more hidden member added to the first holder class. */
-    private fun withHiddenMember(vararg declarations: String): Map<String, String> {
+    /** The real fuel holder source with one more verbatim declaration added to its form holder. */
+    private fun withExtraMembers(vararg declarations: String): Map<String, String> {
         val source = real.sources.getValue(FUEL_HOLDERS)
         val anchor = "    @HiddenFromObjC\n    fun observeSaveCompletions(): Flow<Unit> = saveCompletions.receiveAsFlow()"
         assertTrue(source.contains(anchor), "the fixture anchor left $FUEL_FORM_HOLDER")

@@ -51,6 +51,7 @@
 		EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 90CED6835AA58C9424996B48 /* en.lproj */; };
 		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
 		F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */; };
+		FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +85,7 @@
 		33485CD8468B0FE42AC9A0DE /* Onboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding.swift; sourceTree = "<group>"; };
 		33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMapping.swift; sourceTree = "<group>"; };
 		386580F3F32E7C04067DEE4E /* NativeSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignIn.swift; sourceTree = "<group>"; };
+		3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusIndicatorView.swift; sourceTree = "<group>"; };
 		3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelLifecycleTests.swift; sourceTree = "<group>"; };
 		48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMappingTests.swift; sourceTree = "<group>"; };
 		4B75BD49AED901E7C93582F7 /* carAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -212,6 +214,7 @@
 				33485CD8468B0FE42AC9A0DE /* Onboarding.swift */,
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
 				FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */,
+				3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */,
 				95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */,
 				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
 				031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */,
@@ -407,6 +410,7 @@
 				0114D2546E157F273C216787 /* Onboarding.swift in Sources */,
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
 				BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */,
+				FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */,
 				920755EF8BDC39E70A00581B /* SyncStatusVisual.swift in Sources */,
 				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,
 				EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */,

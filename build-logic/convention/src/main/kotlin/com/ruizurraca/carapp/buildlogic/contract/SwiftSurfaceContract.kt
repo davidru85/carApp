@@ -30,7 +30,113 @@ internal class SwiftSurfaceContract(
     )
 
     fun validate(): List<AssertionResult> =
-        listOf(exportedFactoriesAreScopeFree(), appGraphMembersMatch(), swiftAppGraphMembersMatch())
+        listOf(
+            exportedFactoriesAreScopeFree(),
+            appGraphMembersMatch(),
+            swiftAppGraphMembersMatch(),
+            hiddenHolderMembersAreDeclared(),
+        )
+
+    /**
+     * `§18` assertion 36, the `§11.6` rule: a public member of an exported state-holder class that is
+     * `@HiddenFromObjC` is still declared in `§20.10`, carrying that annotation.
+     *
+     * The generated Objective-C header cannot see a hidden member at all, and assertions 34 and 35
+     * compare only the two `AppGraph` blocks, so no other assertion can observe this drift. `D-191`
+     * places the check here because this is the only site that already reads both the `§20.10` blocks
+     * and the Kotlin holder sources.
+     *
+     * Both directions are compared, plus the two fail-open shapes: a holder that declares hidden
+     * members with no block to declare them in, and a contract with no holder block at all, which the
+     * comparison could not run on. A code-side defect names its file; a contract-side one does not,
+     * because the file is not what is wrong.
+     */
+    private fun hiddenHolderMembersAreDeclared(): AssertionResult {
+        val contractBlocks =
+            HOLDER_SOURCES.flatMap { path ->
+                stateHolderClasses(inputs.sources[path].orEmpty()).mapNotNull { declaration ->
+                    contractHolderBlock(declaration)?.let { declaration to it }
+                }
+            }
+        if (contractBlocks.isEmpty()) {
+            return result(
+                ASSERTION_HIDDEN_HOLDER_MEMBERS,
+                ASSERTION_36,
+                listOf("§20.10 declares no state-holder class block, so §11.6 cannot be checked"),
+            )
+        }
+        val blocks = contractBlocks.toMap()
+
+        val problems = mutableListOf<String>()
+        HOLDER_SOURCES.forEach { path ->
+            val source = inputs.sources[path].orEmpty()
+            stateHolderClasses(source).forEach { declaration ->
+                // `stateHolderClasses` returns `class Name`; the problem text names the class once.
+                val name = declaration.removePrefix("class ")
+                val hidden = hiddenMembers(source, declaration)
+                val block = blocks[declaration]
+                if (block == null) {
+                    // Reported rather than skipped: a holder whose hidden members cannot be declared
+                    // anywhere is exactly the divergence the rule exists to catch.
+                    if (hidden.isNotEmpty()) {
+                        problems +=
+                            "§20.10 declares no $declaration block, so its @HiddenFromObjC members " +
+                            "cannot be declared"
+                    }
+                    return@forEach
+                }
+                val contractHidden = hiddenMembers(block, declaration)
+                val contractAll = members(block, declaration).map { it.signature }.toSet()
+
+                hidden.forEach { member ->
+                    if (contractHidden.none { it.signature == member.signature }) {
+                        problems +=
+                            if (member.signature in contractAll) {
+                                "$path: class $name.${member.hiddenLabel} is @HiddenFromObjC but " +
+                                    "§20.10 declares it without the annotation"
+                            } else {
+                                "$path: class $name.${member.hiddenLabel} is @HiddenFromObjC but " +
+                                    "absent from §20.10"
+                            }
+                    }
+                }
+                contractHidden.forEach { member ->
+                    if (hidden.none { it.signature == member.signature }) {
+                        problems +=
+                            "class $name.${member.hiddenLabel} is declared in §20.10 with " +
+                            "@HiddenFromObjC but is not such a member of the class"
+                    }
+                }
+            }
+        }
+
+        return result(ASSERTION_HIDDEN_HOLDER_MEMBERS, ASSERTION_36, problems)
+    }
+
+    /** The `class <Name>StateHolder { … }` block of `docs/CONTRACTS.md §20.10`, or `null`. */
+    private fun contractHolderBlock(declaration: String): String? =
+        if (declarationIndex(inputs.contract, declaration) < 0) null else contractBlock(declaration)
+
+    /**
+     * The public `@HiddenFromObjC` members of one declaration, in declaration order.
+     *
+     * The annotation sits in the gap between the previous member and this one, so it is read from
+     * there rather than from the declaration text: `members` sees an annotation-masked view, which is
+     * what lets a comment or a string literal naming the annotation be ignored. The gap is cut at its
+     * last brace or semicolon so the previous member's body cannot carry this member's annotation.
+     * `internal` and `private` members are excluded: they never reach Swift, so hiding them changes
+     * nothing the contract describes.
+     */
+    private fun hiddenMembers(source: String, declaration: String): List<Member> {
+        val body = bodyOf(source, declaration)
+        val all = members(source, declaration)
+        return all.mapIndexedNotNull { index, member ->
+            val from = (all.getOrNull(index - 1)?.sourceOffset ?: 0).coerceIn(0, member.sourceOffset)
+            val gap = body.substring(from, member.sourceOffset.coerceAtMost(body.length))
+            val header = gap.substring(gap.lastIndexOfAny(charArrayOf('{', '}', ';')) + 1)
+            member.takeIf { member.isExported && HIDDEN_FROM_OBJC.containsMatchIn(KotlinSourceText.code(header)) }
+        }
+    }
 
     /**
      * `§18` assertion 14: Kotlin-facing `AppGraph` factories take `scope: CoroutineScope`,
@@ -529,6 +635,13 @@ internal class SwiftSurfaceContract(
         /** `§11.6` constrains the declared type, not the parameter name. */
         val scopeParameter: String? get() = parameters.firstOrNull { it.isCoroutineScope }?.shape
 
+        /**
+         * How a problem names this member. The full [signature] is used when it reads unambiguously,
+         * and a property is named by its bare name because `§20.10` writes only the name in the
+         * problem text a reader has to act on.
+         */
+        val hiddenLabel: String get() = if (kind == MemberKind.PROPERTY) name else signature
+
         /** `defaults b: B? = default`, or `null` when no parameter carries one. */
         fun defaultsProblem(): String? =
             parameters.filter { it.hasDefault }
@@ -579,6 +692,7 @@ internal class SwiftSurfaceContract(
         const val ASSERTION_KOTLIN_FACTORIES_TAKE_SCOPE = 14
         const val ASSERTION_APP_GRAPH_MEMBERS = 34
         const val ASSERTION_SWIFT_APP_GRAPH_MEMBERS = 35
+        const val ASSERTION_HIDDEN_HOLDER_MEMBERS = 36
         const val ASSERTION_14 =
             "Kotlin-facing factories take a scope, Swift-facing ones do not, and no exported " +
                 "state-holder function has a Kotlin default argument"
@@ -586,6 +700,9 @@ internal class SwiftSurfaceContract(
             "the Kotlin-facing AppGraph of §20.10 declares exactly the members of the real interface"
         const val ASSERTION_35 =
             "the Swift-facing SwiftAppGraph of §20.10 declares exactly the exported members of the real class"
+        const val ASSERTION_36 =
+            "every public @HiddenFromObjC member of an exported state-holder class is declared in §20.10 " +
+                "carrying the annotation"
         /**
          * The `AppGraph` members that are deliberately neither a state-holder factory nor a scope
          * owner. `awaitClosed` joins them because the hidden Kotlin-facing interface declares it and
@@ -620,6 +737,12 @@ internal class SwiftSurfaceContract(
         val PROPERTY = Regex("""^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|private|protected|override|open|final|abstract|lateinit|const|expect|actual|external|inline)\s+)*(val|var)\s+(`[^`\r\n]+`|\w+)\s*:\s*([^=]+)""")
         val WHITESPACE = Regex("""\s+""")
         val SYNC_CONTROLLER = Regex("""\bSyncController\b""")
+
+        /**
+         * The hiding annotation `§11.6` names. It is matched on the annotation-masked code view, so
+         * a comment or a string literal spelling it is not read as a declaration.
+         */
+        val HIDDEN_FROM_OBJC = Regex("""\bHiddenFromObjC\b""")
 
         /**
          * A `class <Name>StateHolder` declaration anywhere in the lexically masked source. The

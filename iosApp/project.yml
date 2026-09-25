@@ -40,6 +40,7 @@ targets:
       - path: DiagnosticsView.swift
       - path: AnonymousReminderView.swift
       - path: SyncStatusVisual.swift
+      - path: SyncStatusIndicatorView.swift
       - path: en.lproj
         buildPhase: resources
       - path: es.lproj

@@ -19,7 +19,10 @@ class SyncStatusVisualTest {
         assertEquals(SyncStatusVisual.IDLE, syncStatusVisual(SyncStatus.Idle))
         assertEquals(SyncStatusVisual.SYNCING, syncStatusVisual(SyncStatus.Syncing))
         assertEquals(SyncStatusVisual.PENDING, syncStatusVisual(SyncStatus.Pending(count = 3)))
-        assertEquals(SyncStatusVisual.FAILED, syncStatusVisual(SyncStatus.Failed(retryableCount = 1, poisonedCount = 2)))
+        assertEquals(
+            SyncStatusVisual.FAILED,
+            syncStatusVisual(SyncStatus.Failed(retryableCount = 1, poisonedCount = 2)),
+        )
     }
 
     /**

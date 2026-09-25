@@ -16,21 +16,35 @@ enum SyncStatusVisual {
     case failed
 }
 
+/// The visual of one published status. The counts inside a status are deliberately ignored: `§9.9`
+/// already placed those rows in their bucket, so a host that read the counts would be re-deriving a
+/// decision it does not own.
 func syncStatusVisual(_ status: SyncSyncStatus) -> SyncStatusVisual {
-    // RED: declared without behaviour so the classification test compiles and executes.
+    if status is SyncSyncStatus.Idle { return .idle }
+    if status is SyncSyncStatus.Syncing { return .syncing }
+    if status is SyncSyncStatus.Pending { return .pending }
+    if status is SyncSyncStatus.Failed { return .failed }
     return .idle
 }
 
-/// Whether this visual is an error. `§9.9` makes `Failed` the only error condition, so the indicator
-/// uses this to decide the error styling and whether it offers the manual retry.
+/// Whether this visual is an error. `§9.9` makes `Failed` the only error condition, so this decides
+/// the error styling and whether the indicator offers its manual retry.
 func syncStatusIsError(_ visual: SyncStatusVisual) -> Bool {
-    // RED: declared without behaviour so the classification test compiles and executes.
-    return false
+    visual == .failed
 }
 
-/// The label of one visual, resolved from the application catalogues. `UiState` carries no
-/// user-facing text, so the host owns the mapping from visual to copy.
+/// The label of one visual. `Idle` states that nothing is outstanding rather than that the remote
+/// copy is current, because `§9.9` defines `Idle` as an empty outbox and `§9.1` enqueues nothing at
+/// all while the owner is `LOCAL_OWNER` (`D-193`).
 func syncStatusLabelKey(_ visual: SyncStatusVisual) -> String {
-    // RED: declared without behaviour so the copy test compiles and executes.
-    return "error_unexpected"
+    switch visual {
+    case .idle:
+        return "backup_status_idle"
+    case .syncing:
+        return "backup_status_syncing"
+    case .pending:
+        return "backup_status_pending"
+    case .failed:
+        return "backup_status_failed"
+    }
 }
