@@ -38,6 +38,33 @@
 
 ## Entries
 
+### 2026-09-25 — `E3-05` backup status UI, and the `§11.6` check it inherited
+
+- **Type:** story
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`, `D-193`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** both hosts render the resolved `SyncStatus` the shared layer publishes as a discreet
+  status chip on the vehicle list screen, classify it into four visuals without recomputing the `§9.9`
+  precedence, and offer the manual retry through the existing `SyncStateHolder.retryFailed()`. The
+  inherited `§11.6` rule is now executable as `docs/CONTRACTS.md §18` assertion 36 inside
+  `SwiftSurfaceContract`, with a failing fixture per problem branch.
+- **Why:** `E3-05` is the story that first renders a state-holder-backed sync surface, which `E3-08`
+  named as the place a hidden member is plausibly added — the rule had stayed prose since `E3-03`
+  shipped a divergence on the Kotlin-facing `AppGraph`. The host classification takes no connectivity
+  fact at all, so "offline means error" is unrepresentable in a host rather than merely untested, and
+  the `Idle` label states that nothing is outstanding rather than claiming a remote copy that `§9.1`
+  refuses to create while the owner is `LOCAL_OWNER`.
+- **Documents touched:** `docs/CONTRACTS.md` `§11.6`, `§14`, `§18`; `docs/DECISION_BOARD.md`;
+  `docs/SPECIFICATION.md §12`; `docs/TECHNICAL_PLAN.md §2`; `docs/adr/0192`–`0194`; `docs/adr/README.md`;
+  `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoff-E3-05.md`.
+- **Verification:** the three RED units failed 5 of 5 (Android) and 4 of 5 (iOS) on their own behaviour
+  before the implementation; the whole `SwiftHiddenMemberContractTest` class failed 13 of 13 before
+  assertion 36 existed; the complete non-instrumented `AGENTS.md` command, the build-logic suite (190
+  tests) and `contractCheck` all pass with no `PENDING` assertion.
+- **Follow-ups / risks:** the settings row of `docs/SPECIFICATION.md §3.1` stays with `E4-01`, and the
+  iOS indicator has no automated UI assertion — its classification and copy are covered by the iOS unit
+  target and the view by the build. Both are recorded in `docs/handoff-E3-05.md`.
+
 ### 2026-09-25 — `E3-12` fifth correction: the conversion barrier, the owner-scoped recovery count and the record reconciliation
 
 - **Type:** correction
