@@ -550,7 +550,12 @@ Exact commands, and their result.
     -derivedDataPath /tmp/carapp-e312-dd5 ARCHS=arm64 test` from `iosApp/` — `** TEST SUCCEEDED **`;
     the result bundle reports 71 tests passed, 0 failed and 1 skipped (45 unit and 27 UI at scheme
     level). The simulator was shut down afterwards.
-  - CI on `93852a5`, run `36074868968`: **all ten required checks green on attempt 1, with no re-run.**
+  - CI on `37fcad3`, run `36076173278`: **all ten required checks green.** Nine passed on attempt 1;
+    `provider-decoupling` failed its Kotlin/Native simulator step once with a `signal 11` segfault at
+    `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`
+    — not an assertion — and passed on re-run, which is the `D-175` remedy and the risk recorded under
+    Risks or Follow-ups. The run for the code-bearing head `93852a5`, `36074868968`, reports **all ten
+    green on attempt 1 with no re-run**; every commit after it changes documentation only.
     `architecture-check`, `detekt`, `ktlint`, `contract-check`, `android-assemble`,
     `android-instrumented-tests`, `objc-header-golden-check`, `ios-simulator-build`, `shared-tests`
     (7 m 23 s) and `provider-decoupling` all succeeded. The two runs before it were cancelled by later
