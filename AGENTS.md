@@ -268,6 +268,40 @@ Individually:
 The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
 invocation, including the `ARCHS=arm64` argument the project currently needs.
 
+#### Emulators and simulators
+
+Two of the commands above are backed by a real device image: `:androidApp:connectedDebugAndroidTest`
+needs the `D-84` API 36 Android emulator, and the `xcodebuild … test` invocation on the iOS app needs
+a booted iPhone simulator. **Launching either one is permitted without asking the owner.** Closing it
+is not optional.
+
+**An emulator or simulator you started MUST NOT outlive the work that needed it.** Both are long-lived
+heavyweight processes: each holds CPU, several gigabytes of RAM and its own virtual device, so a
+forgotten one silently degrades every later build and test on the machine — including an unrelated
+agent's. The obligation is not "close it before yielding"; it is that no device you started is still
+running once you are done with it, and that you confirm this instead of assuming it:
+
+```bash
+adb devices                    # MUST show no `emulator-<port>` line
+xcrun simctl list devices booted   # MUST be empty
+```
+
+Stop them with:
+
+```bash
+adb emu kill                        # the only attached emulator
+adb -s emulator-5554 emu kill       # a named one, when several are attached
+xcrun simctl shutdown all           # every booted simulator
+xcrun simctl shutdown <device>      # a single one
+```
+
+`adb kill-server` is not a substitute: it detaches the client and leaves the emulator running.
+`xcrun simctl shutdown` without an argument is not a substitute either: it prints usage and shuts
+down nothing.
+
+The Gradle `iosSimulatorArm64Test` task is **not** a device and does not boot a simulator — it runs on
+the host. It is the one iOS-named command here that owes no cleanup.
+
 ### What is enforced, and what is not
 
 `main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
