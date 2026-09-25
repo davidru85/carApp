@@ -719,6 +719,10 @@ class SyncStateHolder internal constructor(
     fun retryFailed() {
         if (closed) return
         scope.launch(dispatchers.main) {
+            // The previous failure is cleared before the attempt, not after it: the host renders
+            // `message` as the retry outcome, so a stale error left in place would outlive the
+            // attempt that succeeded and stay on screen as a failure that no longer applies.
+            mutableState.value = mutableState.value.copy(message = null)
             val result = withContext(dispatchers.io) { controller.retryFailed() }
             if (result is Outcome.Err) {
                 mutableState.value =

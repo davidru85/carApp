@@ -71,7 +71,10 @@ Update this section at every material state change and before yielding unfinishe
 - The indicator itself on both hosts, on the vehicle list screen (`D-192`), drawn as the status chip
   the platform designs already place there.
 - The manual retry, wired to the existing `SyncStateHolder.retryFailed()`; its failure surfaces
-  through the holder's existing typed `UiMessage` and needs no new channel.
+  through the holder's existing typed `UiMessage` and needs no new channel. Both hosts render that
+  message through their existing mapping (`ErrorText` on Android, `UiMessage.localizedText` on iOS),
+  so a failed attempt is visible rather than an inert button, and the holder clears the previous
+  failure before each later attempt so a success cannot leave a stale error on screen.
 - `docs/CONTRACTS.md §18` assertion 36, making the `§11.6` hidden-member rule executable in both
   directions and for both fail-open shapes, with a failing fixture per problem branch (`D-191`).
 - The copy in both languages on both platforms, with the `Idle` label stating that nothing is
@@ -83,7 +86,7 @@ Update this section at every material state change and before yielding unfinishe
 |---|---|
 | 1. `SyncStatus` rendered with the `§9.9` precedence | The host renders the resolved value; `SyncStatusVisualTest.everyPublishedStatusMapsToItsOwnVisual` (Android) and `SyncStatusVisualTests.testEveryPublishedStatusMapsToItsOwnVisual` (iOS) pin the four-way classification. The precedence itself is `:core:sync`'s and stays pinned there by `DefaultSyncControllerTest`, which `E3-05` does not touch |
 | 2. Offline with pending rows, or connectivity-only retryable failures, renders as `Pending`, never an error | The classification takes no connectivity fact and its parameter is the already-resolved `SyncStatus`, so the host cannot re-derive the buckets: `syncStatusVisual` has no overload accepting an online flag. `DefaultSyncControllerTest.offlineWriteIsBackedUpAfterConnectivityReturns` and `connectivityFailureKeepsRowStateAndAggregateInAgreement` pin that the resolved value is `Pending` for both cases; `SyncStatusVisualTest.aPendingStatusIsNeverClassifiedAsFailed` and `SyncStatusIndicatorTest.everyNonFailedStatusRendersWithoutARetry` pin that the host does not present it as an error |
-| 3. The failed state offers manual retry through `SyncController.retryFailed()` | `SyncStatusIndicatorTest.aFailedStatusOffersTheManualRetry` clicks the rendered affordance and observes the callback; iOS forwards `WalkingSkeletonModel.retryBackup()` to `SyncStateHolder.retryFailed()`, the same member `§20.10` declares, whose own failure path is already covered by `SyncStateHolderForegroundTest`'s sibling suites and `DefaultSyncControllerTest.retryFailedPropagatesOnlyLocalTransactionFailure` |
+| 3. The failed state offers manual retry through `SyncController.retryFailed()` | `SyncStatusIndicatorTest.aFailedStatusOffersTheManualRetry` clicks the rendered affordance and observes the callback, and `SyncStatusIndicatorTest.retryFailureRendersMappedPersistenceMessage` renders the typed failure and keeps Retry separately actionable; iOS forwards `WalkingSkeletonModel.retryBackup()` to `SyncStateHolder.retryFailed()`, the same member `§20.10` declares. The holder's failure path is proved by `SyncStateHolderRetryTest.retryFailurePublishesTypedMessage` and `SyncStateHolderRetryTest.successfulRetryClearsPreviousFailureMessage`; the iOS rendering of that code is pinned by `UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage`, and `DefaultSyncControllerTest.retryFailedPropagatesOnlyLocalTransactionFailure` pins the controller's own failure classification |
 | 4. The `§11.6` rule is executable | `contractCheck` reports assertion 36 `PASS` on the real repository; `SwiftHiddenMemberContractTest` has thirteen fixtures, one per problem branch, each asserting the exact problem text, plus the first test that runs the real `contractCheck` so the fixtures cannot drift from the surface they guard |
 
 **Fixtures and their observed failure before the check existed.** The whole
@@ -183,6 +186,36 @@ under test, not a compile or setup error.
   and re-running the iOS target, because the first iOS run started before the new sources were
   registered in the Xcode project and therefore compiled only the pre-existing tests. The RED commit
   itself is `d453d65` and precedes every implementation commit.
+
+### Review correction (2026-09-25)
+
+A review of this pull request found three gaps between what the records claimed and what the code
+did. All three are corrected here; no decision changed and `D-191` to `D-193` stand as accepted.
+
+- **Android read the status from the wrong holder.** `VehicleListScreen` passed
+  `syncState.status` — `SyncStateHolder`'s own relay — while `docs/adr/0193` assigns Android status
+  rendering to `VehicleListUiState.syncStatus`. Two holders publish on different coroutine turns, so
+  the screen could briefly render a value that disagreed with the vehicle-list state it was drawing.
+  The call site now passes `state.syncStatus`, and the holder keeps only what `ADR-0193` gives it:
+  the retry message and the retry command.
+- **A failed retry was invisible on both hosts.** `SyncStateHolder.retryFailed()` publishes its
+  failure as a typed `UiMessage`, but neither indicator rendered `SyncUiState.message`, so the button
+  looked inert after a failure. Both hosts now render that message through the mapping they already
+  had (`ErrorText` on Android, `UiMessage.localizedText` on iOS), and the Retry control stays a
+  separate actionable element — combining it into one accessibility node would have made manual
+  recovery unreachable with a screen reader.
+- **The holder kept a stale failure.** `retryFailed()` published a failure but never cleared the
+  previous one, so an error outlived the attempt that succeeded. It now clears `message` before each
+  attempt, which is what `successfulRetryClearsPreviousFailureMessage` was written to prove.
+- **Android semantics ownership contradicted its own comment.** The coloured dot owned the status
+  `contentDescription` while the comment called it decorative, which could announce the status twice.
+  The visible label now owns the description and the dot carries none.
+- **TDD, this round.** `SyncStateHolderRetryTest` was written and pushed first. At that head
+  `retryFailurePublishesTypedMessage` passed and `successfulRetryClearsPreviousFailureMessage` failed
+  with the stale `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` still published
+  after a successful attempt — the third defect above, observed rather than described. The clear was
+  then added and both pass. No exemption was used, and the Swift and Compose rendering added here is
+  covered by the existing instrumented and iOS unit targets rather than by a new UI harness.
 
 ## Verification Run
 

@@ -3,20 +3,25 @@ package com.ruizurraca.carapp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.platform.app.InstrumentationRegistry
 import com.ruizurraca.carapp.core.common.SyncStatus
+import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.core.common.UiMessageKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * The rendered indicator: which of the four published statuses shows an error and what it offers.
+ * The rendered indicator: which of the four published statuses shows an error, what it offers, and
+ * what a typed retry failure looks like once the holder publishes one.
  *
  * Each test composes once and varies the published status through a mutable state, because a Compose
  * test rule accepts a single `setContent` per test.
@@ -31,6 +36,7 @@ class SyncStatusIndicatorTest {
         composeRule.setContent {
             SyncStatusIndicator(
                 status = SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
+                message = null,
                 onRetry = { retries += 1 },
             )
         }
@@ -49,7 +55,7 @@ class SyncStatusIndicatorTest {
     @Test
     fun everyNonFailedStatusRendersWithoutARetry() {
         var status: SyncStatus by mutableStateOf(SyncStatus.Idle)
-        composeRule.setContent { SyncStatusIndicator(status = status, onRetry = {}) }
+        composeRule.setContent { SyncStatusIndicator(status = status, message = null, onRetry = {}) }
 
         listOf(
             SyncStatus.Idle,
@@ -67,7 +73,7 @@ class SyncStatusIndicatorTest {
     @Test
     fun eachStatusUsesItsOwnLabel() {
         var status: SyncStatus by mutableStateOf(SyncStatus.Idle)
-        composeRule.setContent { SyncStatusIndicator(status = status, onRetry = {}) }
+        composeRule.setContent { SyncStatusIndicator(status = status, message = null, onRetry = {}) }
 
         listOf(
             SyncStatus.Idle to SyncStatusVisual.IDLE,
@@ -91,8 +97,43 @@ class SyncStatusIndicatorTest {
         val idle = label(SyncStatusVisual.IDLE)
 
         assertTrue("Idle hides its local scope: $idle", idle.contains("local", ignoreCase = true))
-        composeRule.setContent { SyncStatusIndicator(status = SyncStatus.Idle, onRetry = {}) }
+        composeRule.setContent { SyncStatusIndicator(status = SyncStatus.Idle, message = null, onRetry = {}) }
         composeRule.onNodeWithText(idle).assertIsDisplayed()
+    }
+
+    /**
+     * A failed manual retry reaches the host as a typed `UiMessage` whose `code` is the error code
+     * (`docs/adr/0193`). The host MUST render it through the one existing localized mapping rather
+     * than through a second table of its own, and the Retry action MUST stay separately actionable
+     * beside it rather than being merged into the status text.
+     */
+    @Test
+    fun retryFailureRendersMappedPersistenceMessage() {
+        val message =
+            UiMessage(
+                id = 7L,
+                kind = UiMessageKind.ERROR,
+                code = "PERSISTENCE.TRANSACTION_FAILED",
+                confirmation = null,
+            )
+        composeRule.setContent {
+            SyncStatusIndicator(
+                status = SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
+                message = message,
+                onRetry = {},
+            )
+        }
+
+        val expected =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+                .getString(R.string.error_persistence)
+        composeRule.onNodeWithText(expected).assertIsDisplayed()
+        composeRule
+            .onNodeWithTag(SyncStatusTestTags.RETRY)
+            .assertIsEnabled()
+            .assertHasClickAction()
     }
 
     private fun label(visual: SyncStatusVisual): String =

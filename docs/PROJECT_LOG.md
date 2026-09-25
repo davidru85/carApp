@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-25 — E3-05 review correction: status ownership and visible retry errors
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** Android renders the status from `VehicleListUiState.syncStatus` rather than from
+  `SyncStateHolder`'s relay, which is the source `ADR-0193` assigns it; both hosts now render
+  `SyncUiState.message` after a failed manual retry through their existing mapping (`ErrorText` on
+  Android, `UiMessage.localizedText` on iOS), and the iOS Retry button stays an independent
+  accessibility action; `SyncStateHolder.retryFailed()` clears the previous retry message before each
+  attempt; the Android status text owns the accessible description and the coloured dot carries none.
+  `SyncStateHolderRetryTest` proves failure publication and later-success clearing, the Android
+  instrumented suite proves the mapped error renders with Retry still actionable, and
+  `UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage` pins the iOS code mapping.
+- **Why:** `ADR-0193` assigns each host its status source and routes a retry failure through the
+  existing typed `UiMessage`; the code read a second holder for status, rendered no message, and left
+  a stale failure published after a successful attempt, so the Retry control looked inert after a
+  failure and could disagree with the vehicle-list state it was drawn beside.
+- **Documents touched:** `docs/handoff-E3-05.md`; this log.
+- **Verification:** `SyncStateHolderRetryTest` failed `successfulRetryClearsPreviousFailureMessage` at
+  the RED head with the stale `PERSISTENCE.TRANSACTION_FAILED` still published, then passed after the
+  clear; `:shared:testAndroidHostTest --tests SyncStateHolderRetryTest`, `:androidApp:testDebugUnitTest`,
+  `:androidApp:connectedDebugAndroidTest` on the `E1_07_API_36` emulator, the iOS `carAppTests` target
+  (53 tests, 0 failures, including the new mapping test) and the complete non-instrumented `AGENTS.md`
+  command all pass; `contractCheck` reports assertion 36 `PASS` with no `PENDING`. No dependency file
+  changed.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged. The two `VehicleAndFuelFlowUITests`
+  cases that fail on this host are pre-existing and reproduce unchanged on a clean `main`; they pass in
+  CI. The iOS simulator and the Android emulator launched for this correction were both closed.
+
 ### 2026-09-25 — `E3-05` backup status UI, and the `§11.6` check it inherited
 
 - **Type:** story

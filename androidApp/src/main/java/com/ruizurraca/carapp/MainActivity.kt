@@ -586,10 +586,11 @@ private fun VehicleListScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // The indicator renders the holder's published aggregate, which `§14` relays from the one
-            // `SyncController.status`; the screen never computes a second `SyncStatus`.
+            // ADR-0193: the vehicle-list state owns Android status rendering; SyncStateHolder owns
+            // retry messages and commands.
             SyncStatusIndicator(
-                status = syncState.status,
+                status = state.syncStatus,
+                message = syncState.message,
                 onRetry = syncStateHolder::retryFailed,
             )
             VehicleListContent(

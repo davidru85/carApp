@@ -121,9 +121,8 @@ final class WalkingSkeletonModel: ObservableObject {
         syncStateHolder.refreshDebug()
     }
 
-    /// The manual backup retry `docs/SPECIFICATION.md §3.1` requires, forwarded to the shared holder so
-    /// the host owns no retry policy of its own. A failure surfaces through `syncState.message`, whose
-    /// `code` the host maps like any other `UiMessage`.
+    /// Delegates manual recovery to the shared holder. The vehicle-list surface renders any typed
+    /// retry failure from `syncState.message` through the existing `UiMessage.localizedText` mapping.
     func retryBackup() {
         syncStateHolder.retryFailed()
     }

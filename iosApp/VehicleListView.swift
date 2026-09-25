@@ -81,6 +81,7 @@ struct VehicleListView: View {
                 // one `SyncController.status`; the view never computes a second status.
                 SyncStatusIndicatorView(
                     status: skeletonModel.syncState.status,
+                    message: skeletonModel.syncState.message,
                     onRetry: skeletonModel.retryBackup
                 )
                 .listRowInsets(EdgeInsets())
