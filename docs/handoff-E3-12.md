@@ -556,6 +556,8 @@ Exact commands, and their result.
     (7 m 23 s) and `provider-decoupling` all succeeded. The two runs before it were cancelled by later
     pushes — `36074029174` on `9a32eb6` shows seven green and the three slowest cancelled, and
     `36074515632` on `be0eb2d` was cancelled whole — so neither is evidence of failure.
+    `93852a5` is the last head carrying code; every commit after it changes documentation only, so the
+    run above is this round's code evidence and the later heads are not separate evidence.
   - The owner-run two-host provider acceptance remains outstanding and is **not** claimed here.
 
 ### Fourth correction round (closing window, gate failure paths, `io` guard, records)
