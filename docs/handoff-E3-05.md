@@ -45,12 +45,19 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-25
 - Branch and base: `story/E3-05-backup-status-ui`, based on `main` / `origin/main` at `5141e68`.
-- Current phase and latest commit: REFACTOR, complete. RED is `d453d65`; the green phase follows it.
-- Push and pull-request status: RED pushed; the green phase is pushed with the pull request.
+- Current phase and latest commit: complete at `f336b54`. RED is `d453d65`, the green phase and the
+  two fixes the instrumented suite forced are `ebfd8cf`, and the decisions and documents are
+  `f336b54`. A final commit carries this record's verification results and checkpoint.
+- Push and pull-request status: pushed; pull request #74 is open and awaiting the owner's gated
+  review.
 - Completed since the previous checkpoint: the RED phase (three failing units), the green
   implementation for both hosts, assertion 36 with thirteen fixtures, the three decisions with their
-  ADRs and the four mirroring rows each, and the normative updates.
-- Verification evidence and known failures: see Verification Run. No known failure.
+  ADRs and the four mirroring rows each, the normative updates, the instrumented Android suite and
+  the iOS `xcodebuild` test run.
+- Verification evidence and known failures: see Verification Run. No known failure. The instrumented
+  suite failed on its first two runs and both causes were mine: clearing the row's semantics hid the
+  label and the indicator's own test tag, and the suite called `setContent` once per status. Both are
+  fixed and recorded under Decisions Made.
 - Open decisions or blockers: none. `D-191`, `D-192` and `D-193` are `Accepted` by the owner's
   answers of 2026-09-25.
 - Exact next step: hand the pull request to the owner's gated review.
@@ -163,6 +170,15 @@ under test, not a compile or setup error.
   Compose host screens)"). The indicator composable and the SwiftUI view are verified by the
   instrumented Android suite rather than written test-first; their classification logic is not exempt
   and was written red-first.
+- **Running that instrumented suite found two defects of mine, and both were fixed.**
+  - The composable cleared the row's semantics to announce the status sentence as one node, which also
+    removed the label and the indicator's own test tag. The suite reported the indicator as "not
+    displayed" rather than as a missing description, so the defect was an unreachable node, not a
+    styling preference. The description is now set on the coloured dot, which is what a screen reader
+    had no other way to read; the row keeps its own semantics and its tag.
+  - The first version of the suite called `setContent` once per status inside a loop, which the Compose
+    test rule rejects. It now composes once and varies the published status through a mutable state,
+    which is also the closer model of a status that changes under a running UI.
 - **The RED phase's Swift evidence was captured after the fact**, by restoring the stub from `d453d65`
   and re-running the iOS target, because the first iOS run started before the new sources were
   registered in the Xcode project and therefore compiled only the pre-existing tests. The RED commit
@@ -198,7 +214,18 @@ BUILD SUCCESSFUL
 no [FAIL] and no [PENDING] assertion
 ```
 
-Android instrumented suite and the iOS `xcodebuild` run: see the pull request's verification comment.
+
+```text
+./gradlew :androidApp:connectedDebugAndroidTest        (E1_07_API_36 emulator)
+BUILD SUCCESSFUL — SyncStatusIndicatorTest 4 tests, 0 failures; the pre-existing
+Vehicle/Fuel Compose flows unchanged
+```
+
+```text
+xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator \
+           -destination "id=<iPhone 17 Pro>" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO test
+SyncStatusVisualTests  7 tests, 0 failures
+```
 
 ## Contract Impact
 
