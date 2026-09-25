@@ -260,6 +260,40 @@ xcodebuild -project carApp.xcodeproj -scheme carApp -sdk iphonesimulator \
 SyncStatusVisualTests  7 tests, 0 failures
 ```
 
+### Review correction (2026-09-25) — commands actually run
+
+```text
+./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.SyncStateHolderRetryTest'
+RED:   2 tests completed, 1 failed — successfulRetryClearsPreviousFailureMessage, the stale
+       UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED) still published
+GREEN: BUILD SUCCESSFUL
+./gradlew :androidApp:testDebugUnitTest                                   BUILD SUCCESSFUL
+./gradlew :androidApp:connectedDebugAndroidTest   (E1_07_API_36 emulator) BUILD SUCCESSFUL —
+       including retryFailureRendersMappedPersistenceMessage
+xcodebuild ... -only-testing:carAppTests test    53 tests, 0 failures, TEST SUCCEEDED —
+       including UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage
+./gradlew :shared:iosSimulatorArm64Test --rerun-tasks                     99 tests, BUILD SUCCESSFUL
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest \
+          testAndroidHostTest iosSimulatorArm64Test -x ...                 BUILD SUCCESSFUL
+./gradlew contractCheck --rerun-tasks   assertion 36 PASS, no PENDING
+git diff --check                        exits 0
+```
+
+Two failures observed while verifying, both investigated rather than re-run away:
+
+- **`ktlint` failed on the first pushed correction head.** `git add` listed `shared/src/commonMain`
+  and missed `shared/src/commonTest`, so the `?.code` wrapping `ktlintFormat` had applied to
+  `SyncStateHolderRetryTest` stayed in the working tree: the local command linted the working tree and
+  passed while CI linted the committed file and failed. Fixed by committing the formatting.
+- **`provider-decoupling` failed its Kotlin/Native step on the documentation-only head** with
+  `Child process terminated with signal 11: Segmentation fault` at
+  `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`
+  — a segfault, not an assertion. It is the intermittent residual risk `docs/handoff-E3-12.md` records
+  for the `D-190` non-blocking release path, whose two candidate mechanisms are both in that release
+  contract; the identical code had already passed the same job on `5e9150d`, and
+  `:shared:iosSimulatorArm64Test --rerun-tasks` passed 99 tests locally afterwards.
+
 ## Contract Impact
 
 - Updated `docs/CONTRACTS.md §11.6` (the rule now names assertion 36 as its executable check),
