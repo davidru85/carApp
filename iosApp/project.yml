@@ -39,6 +39,7 @@ targets:
       - path: FuelEntryFormView.swift
       - path: DiagnosticsView.swift
       - path: AnonymousReminderView.swift
+      - path: SyncStatusVisual.swift
       - path: en.lproj
         buildPhase: resources
       - path: es.lproj
