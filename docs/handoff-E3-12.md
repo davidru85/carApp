@@ -790,6 +790,21 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
 ## Risks or Follow-ups
 
+- **A Kotlin/Native `signal 11` on the `provider-decoupling` simulator step is the residual risk of the
+  non-blocking handle release.** Run `36076173278` on `37fcad3` failed that step only, at
+  `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`,
+  with `Child process terminated with signal 11: Segmentation fault` — not an assertion. The same
+  commit's `shared-tests` job ran the same `iosSimulatorArm64Test` task and passed, and the exact
+  step command passed **12 of 12** forced local runs, so it is intermittent rather than a plain
+  regression. It is the shape `E1-12` closed in 2026-09-02 ("Kotlin/Native could then abort with
+  signal 11 instead of reporting a test result"), and its two candidate mechanisms are both in the
+  `D-190` release path: `TrackedDatabaseHandles.close()` queues the release and does not await it, so
+  a native `close()` can overlap graph-owned database work still in flight, and two release routes
+  (the graph's bounded waiter and the factory's queue) can reach the same `SqlDriverDatabaseHandle`,
+  whose `closed` flag is a plain non-atomic `Boolean` and guards no lock. Neither mechanism is
+  reproduced locally. Fixing either would change the `E1-18` / `D-190` release contract — the whole
+  subject of ADR-0191 — so it is recorded here for the owner rather than changed inside this round.
+
 - **The recovery window has no upper bound.** While the gate is raised, an empty list is `isLoading`
   with no message, which `§20.10` tells hosts to answer with a covering indicator rather than an
   error and a retry. A cycle that is slow rather than refused therefore holds a clean device's first
