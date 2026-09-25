@@ -264,6 +264,15 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
   settings row where it would belong is `E4-01`'s.
 - **`§3.1`'s settings row for backup status is still undelivered** until `E4-01`, which now inherits
   the requirement rather than sharing it.
+- **A `provider-decoupling` run on this branch failed on `D-190`'s wall-clock cost, not on this
+  change.** `VehicleFormStateHolderTest.savePushesTheSnapshotOnlyAfterTheLocalTransactionCommits` timed
+  out after 30 s with `Last value: Idle` - the real-time deadline `D-190`'s real `io` dispatcher
+  introduced when it widened that budget from 5 s, explicitly *not* the deadlock `E1-18` removed, whose
+  signature is a stall with zero assertion failures rather than a timeout with a specific assertion.
+  The test passed 10 of 10 in isolation locally, the whole suite passed locally, and the other nine
+  required checks passed on the same head. Recorded rather than waved away: if this recurs it is
+  evidence that the 30 s budget is still too tight for a slow runner, and it is `E1-18`'s residual risk
+  that this branch merely met first.
 
 ## Human Review Gate
 
