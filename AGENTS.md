@@ -499,6 +499,9 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 
 ## Technical Rules
 
+- **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** An agent commits on the
+  owner's behalf and MUST NOT leave a placeholder identity in the history. The configuration, the root
+  cause this rule was written for and the recovery are in `docs/CONTRIBUTING.md` §Commit identity.
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only

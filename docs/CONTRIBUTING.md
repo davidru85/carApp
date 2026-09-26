@@ -56,6 +56,39 @@ git worktree add ../carApp-<slug> -b <type>/<slug> origin/main
 - Commits follow Conventional Commits with the story ID as scope: `feat(E1-04): derive price from liters and total`.
 - Commit messages, code comments, ADRs and all repository artifacts are written in technical English. Conversation with the project owner may happen in Spanish.
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.
+- **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** The owner is the only
+  author this history records; agents commit on their behalf and never under a placeholder identity.
+
+### Commit identity
+
+Set the author once per clone, and never leave a local override in place:
+
+```bash
+git config user.name "David Ruiz"
+git config user.email "davidru85@gmail.com"
+```
+
+Worktrees share the clone's `.git/config` unless `extensions.worktreeConfig` is enabled, so a
+`git config user.name …` run for a throwaway test — even in a temporary worktree you delete
+afterwards — silently becomes the author of every later commit in every worktree of that clone. Set
+the owner identity in each throwaway worktree as the first thing you do, or set the shared value back
+before you commit. `git config --list --show-origin | grep user.` shows which file is winning.
+
+If a commit was authored by a placeholder, correct it before it reaches `main`. `main` is protected by
+a pull request, so the fix is a normal history rewrite on the *branch* — never on `main` — which needs
+a force-push:
+
+```bash
+git commit --amend --no-edit --reset-author
+# the whole branch:
+git rebase --root --exec 'git commit --amend --no-edit --reset-author'
+git push --force-with-lease origin <your-branch>
+```
+
+`--reset-author` takes the identity from the configuration above, so fix the configuration first.
+`--force-with-lease` is required rather than `--force`, and the rewrite stays confined to your own
+story branch: `main` is protected, no force push reaches it, and a pull request already merged cannot
+be corrected this way.
 
 ## Before Opening a Pull Request
 
