@@ -45,21 +45,24 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-26
 - Branch and base: `story/E3-05-backup-status-ui`, based on `main` / `origin/main` at `5141e68`.
-- Current phase and latest commit: review correction 3 complete. Its RED commits are `8b91eaf`
-  (retry interleavings) and `f7e234f` (contract-only holder class), its GREEN commits are `af79fa4`
-  and `4b604d2`, and the documentation commit that carries this checkpoint sits on top of them.
-  Review correction 2 is `875c137` (RED) and `e69bc61` (GREEN); the first review correction is
-  `121a33e` (RED) and `32ea3fd` (GREEN); the original story phases are `d453d65` (RED), `ebfd8cf`
-  (GREEN) and `f336b54` (records).
+- Current phase and latest commit: review correction 4 complete. Its RED commits are `7d39394`
+  (untyped hidden properties) and `687bdc6` (backup-status error tag and iOS accessible description),
+  its GREEN commits are `6ab80f5` and `1315491`, its REFACTOR commit is `a0472e5` (exhaustive
+  iOS classification), and the documentation commit that carries this checkpoint sits on top of them.
+  Review correction 3 is `8b91eaf` and `f7e234f` (RED) and `af79fa4` and `4b604d2` (GREEN); review
+  correction 2 is `875c137` (RED) and `e69bc61` (GREEN); the first review correction is `121a33e`
+  (RED) and `32ea3fd` (GREEN); the original story phases are `d453d65` (RED), `ebfd8cf` (GREEN) and
+  `f336b54` (records).
 - Push and pull-request status: pushed; pull request #74 is open and awaiting the owner's gated
   review. Its description carries the review corrections.
-- Completed since the previous checkpoint: review correction 3 — only the newest retry generation may
-  publish an outcome, the retry result reads the canonical status after the suspended call, and
-  assertion 36 enumerates `§20.10` holder classes from the contract itself so a contract-only holder
-  class is rejected. See Decisions Made.
-- Verification evidence and known failures: see Verification Run, including the review correction 3
-  subsection. No known failure introduced by this story. This correction needs no device: no Android
-  emulator or iOS simulator was launched.
+- Completed since the previous checkpoint: review correction 4 — assertion 36 attributes each
+  `@HiddenFromObjC` annotation to the declaration that follows it and reports a public hidden property
+  that declares no explicit type; the Android retry error carries its own `backup_status_error` tag;
+  the iOS status text carries the accessible description Android already had; and the iOS
+  classification is an exhaustive switch over the sealed status. See Decisions Made.
+- Verification evidence and known failures: see Verification Run, including the review correction 4
+  subsection. No known failure introduced by this story. The Android emulator and the iOS simulators
+  launched for this correction were closed after each use.
 - Open decisions or blockers: none. `D-191`, `D-192` and `D-193` are unchanged and `Accepted`.
 - Exact next step: the owner's gated review of pull request #74.
 
@@ -91,7 +94,7 @@ Update this section at every material state change and before yielding unfinishe
 | 1. `SyncStatus` rendered with the `§9.9` precedence | The host renders the resolved value; `SyncStatusVisualTest.everyPublishedStatusMapsToItsOwnVisual` (Android) and `SyncStatusVisualTests.testEveryPublishedStatusMapsToItsOwnVisual` (iOS) pin the four-way classification. The precedence itself is `:core:sync`'s and stays pinned there by `DefaultSyncControllerTest`, which `E3-05` does not touch |
 | 2. Offline with pending rows, or connectivity-only retryable failures, renders as `Pending`, never an error | The classification takes no connectivity fact and its parameter is the already-resolved `SyncStatus`, so the host cannot re-derive the buckets: `syncStatusVisual` has no overload accepting an online flag. `DefaultSyncControllerTest.offlineWriteIsBackedUpAfterConnectivityReturns` and `connectivityFailureKeepsRowStateAndAggregateInAgreement` pin that the resolved value is `Pending` for both cases; `SyncStatusVisualTest.aPendingStatusIsNeverClassifiedAsFailed` and `SyncStatusIndicatorTest.everyNonFailedStatusRendersWithoutARetry` pin that the host does not present it as an error; `SyncStateHolderRetryTest.retryFailureIsWithdrawnWhenTheStatusLeavesFailed` pins that a retry failure is withdrawn once the status leaves `Failed`, and `SyncStatusIndicatorTest.aRetryFailureIsNotRenderedBesideANonFailedStatus` pins that the Android indicator never draws one beside `Idle`, `Syncing` or `Pending` |
 | 3. The failed state offers manual retry through `SyncController.retryFailed()` | `SyncStatusIndicatorTest.aFailedStatusOffersTheManualRetry` clicks the rendered affordance and observes the callback, and `SyncStatusIndicatorTest.retryFailureRendersMappedPersistenceMessage` renders the typed failure and keeps Retry separately actionable; iOS forwards `WalkingSkeletonModel.retryBackup()` to `SyncStateHolder.retryFailed()`, the same member `§20.10` declares. The holder's failure path is proved by `SyncStateHolderRetryTest.retryFailurePublishesTypedMessage` and `SyncStateHolderRetryTest.successfulRetryClearsPreviousFailureMessage`, and `SyncStateHolderRetryTest.retryFailureSurvivesAChangeBetweenFailedAggregates` keeps it while the status stays `Failed`; on iOS the indicator is drawn by `BackupStatusRow`, which observes `WalkingSkeletonModel` so a sync-only change redraws it; the iOS rendering of that code is pinned by `UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage`, and `DefaultSyncControllerTest.retryFailedPropagatesOnlyLocalTransactionFailure` pins the controller's own failure classification |
-| 4. The `§11.6` rule is executable | `contractCheck` reports assertion 36 `PASS` on the real repository; `SwiftHiddenMemberContractTest` has sixteen tests: eleven failing fixtures that cover the five problem branches and the masked header cut, each asserting the exact problem text; four passing fixtures for members outside the rule; and the first test, which runs the real `contractCheck` so the fixtures cannot drift from the surface they guard |
+| 4. The `§11.6` rule is executable | `contractCheck` reports assertion 36 `PASS` on the real repository; `SwiftHiddenMemberContractTest` has twenty-one tests: fifteen failing fixtures that cover the six problem branches, the masked header cut and the attribution of an annotation to its own declaration, each asserting the exact problem text; five passing fixtures for members outside the rule; and the first test, which runs the real `contractCheck` so the fixtures cannot drift from the surface they guard |
 
 **Fixtures and their observed failure before the check existed.** The whole
 `SwiftHiddenMemberContractTest` class failed 13 of 13 before assertion 36 was implemented, because
@@ -147,6 +150,12 @@ under test, not a compile or setup error.
 - `build-logic/convention/src/test/kotlin/.../contract/SwiftHiddenMemberContractTest.kt` — its fixtures.
 - `build-logic/convention/src/test/kotlin/.../contract/Pr71ReviewRegressionTest.kt` — the assertion-id
   list expectation, which grows by 36.
+- `shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt` — `SyncStateHolder`'s
+  retry-message lifetime and retry-generation ownership; private members only, no exported
+  declaration changed.
+- `shared/src/commonTest/kotlin/com/ruizurraca/carapp/SyncStateHolderRetryTest.kt` — the manual-retry
+  outcome tests.
+- `iosApp/Tests/UiMessageMappingTests.swift` — the persistence-code mapping a failed retry renders.
 - `docs/CONTRACTS.md` `§11.6`, `§14`, `§18`.
 - `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/README.md`, `docs/adr/0192-…`, `docs/adr/0193-…`, `docs/adr/0194-…`.
@@ -317,6 +326,50 @@ assertion 36. All are corrected here; no decision changed, no decision ID was ad
   exemption was used; the Compose and SwiftUI surfaces were not touched, so the native UI exemption
   does not apply this round.
 
+### Review correction 4 (2026-09-26)
+
+A fourth review found one fail-open shape in assertion 36, two host parity gaps, one non-exhaustive
+classification and two record inaccuracies. All are corrected here; no decision changed, no decision
+ID was added, and `D-191` to `D-193` stand as accepted.
+
+- **Assertion 36 passed an undeclared public hidden property with no explicit type, and blamed the
+  wrong member.** `hiddenMembers` attributed an annotation to the next parsed member through the text
+  between two parsed members. The member parser does not model a property with no explicit type
+  (`val x = …` or `val x by lazy { … }`), so its annotation was absorbed by a following member that was
+  hidden anyway, lost at a brace, or lost as the last member — and assertion 36 returned `PASS` — or
+  it was lent to the next parsed member, and the problem text named `clearMessage()`, which is not
+  hidden. Each annotation is now attributed to the declaration keyword that follows it, and a public
+  hidden property that declares no explicit type is reported under its own name, because `§20.10`
+  declares every property with its type. This makes assertion 36 execute the existing `§11.6` rule
+  without choosing a new option, which is why no decision ID was added. `ADR-0192`'s negative
+  consequence, which listed the untyped property as an accepted limit, is corrected.
+- **The Android retry error reused the vehicle list's test tag.** `ErrorText` hard-coded
+  `VehicleTestTags.ERROR`, so the retry failure and the vehicle list's own error were both
+  `vehicle_error` on one screen, while iOS already used `backup_status_error`. `ErrorText` now takes
+  the tag as a parameter whose default keeps every existing call site unchanged, and the indicator
+  passes `SyncStatusTestTags.ERROR`.
+- **The iOS status text had no accessible description.** Android announces the chip as
+  "Backup status: <label>" through `backup_status_description`; iOS announced the bare label. Both iOS
+  catalogues now carry `backup_status_description`, and the status text uses it as its accessibility
+  label.
+- **The iOS classification was not total.** `syncStatusVisual` fell through to `.idle` for a subtype
+  it did not recognise, so a future `SyncStatus` value would have been drawn as "Synced locally" — the
+  label `D-193` constrains — with nothing failing. It now switches over SKIE's `onEnum(of:)`, so a new
+  subtype is a compile error, as the Android `when` already is.
+- **Records corrected.** The criterion-4 evidence row still described sixteen tests after review
+  correction 3 had made them seventeen, and `Files Changed` omitted `StateHolders.kt`,
+  `SyncStateHolderRetryTest.kt` and `UiMessageMappingTests.swift`.
+- **TDD, this round.** The RED commit `7d39394` added `anUntypedHiddenPropertyIsRejected`,
+  `aDelegatedUntypedHiddenPropertyIsRejected` and
+  `anUntypedHiddenPropertyDoesNotLendItsAnnotationToTheNextMember`, which failed, and the guard
+  `aPrivateUntypedHiddenPropertyIsOutsideTheRule`, which passed; the GREEN commit `6ab80f5` made all
+  of them pass. The RED commit `687bdc6` added the `backup_status_error` assertions to
+  `SyncStatusIndicatorTest` and `testTheAccessibleDescriptionHasCopyInBothLanguages`, which failed on
+  the pinned `E1_07_API_36` emulator and on a freshly created simulator; the GREEN commit `1315491`
+  made them pass. The REFACTOR commit `a0472e5` replaced the iOS type checks with the exhaustive
+  switch and re-indented the list-row modifiers with every test green. No exemption was used: every
+  test was written and observed failing before its code.
+
 
 ## Verification Run
 
@@ -442,12 +495,43 @@ git diff --check                                                          exits 
 No Android emulator or iOS simulator was launched for this correction: every command above runs on
 the host.
 
+### Review correction 4 (2026-09-26) — commands actually run
+
+```text
+./gradlew :build-logic:convention:test --tests '...contract.SwiftHiddenMemberContractTest' --rerun-tasks
+RED:   21 tests completed, 3 failed — anUntypedHiddenPropertyIsRejected,
+       aDelegatedUntypedHiddenPropertyIsRejected and
+       anUntypedHiddenPropertyDoesNotLendItsAnnotationToTheNextMember
+GREEN: BUILD SUCCESSFUL, 21 tests, 0 failures
+./gradlew :build-logic:convention:test --rerun-tasks                      198 tests, 0 failures
+./gradlew contractCheck --rerun-tasks                                     assertion 36 PASS, no PENDING
+ANDROID_SERIAL=emulator-5580 ./gradlew :androidApp:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.ruizurraca.carapp.SyncStatusIndicatorTest
+RED:   6 tests, 1 failed — retryFailureRendersMappedPersistenceMessage
+xcodebuild ... -only-testing:carAppTests/SyncStatusVisualTests test      (fresh simulator)
+RED:   8 tests, 4 failed assertions inside the one expected failing test —
+       testTheAccessibleDescriptionHasCopyInBothLanguages (2 assertions x 2 languages)
+ANDROID_SERIAL=emulator-5580 ./gradlew :androidApp:connectedDebugAndroidTest
+GREEN: BUILD SUCCESSFUL, 23 tests, 0 failures
+xcodebuild ... -only-testing:carAppTests test                             (fresh simulator)
+GREEN: 54 tests, 0 failures, TEST SUCCEEDED
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest \
+          testAndroidHostTest iosSimulatorArm64Test -x ...                 BUILD SUCCESSFUL
+git diff --check                                                          exits 0
+```
+
+The `E1_07_API_36` emulator was booted twice, once for the RED check and once for the GREEN check,
+and killed after each; each iOS check ran on a simulator created for it and deleted after it.
+
 ## Contract Impact
 
 - Updated `docs/CONTRACTS.md §11.6` (the rule now names assertion 36 as its executable check),
   `§14` (a host MUST NOT compute `SyncStatus` either; the indicator's classification is a presentation
   mapping of the resolved value; review correction 2 adds that `SyncUiState.message` is withdrawn
   when the status leaves `Failed` and is drawn only beside it) and `§18` (new assertion 36).
+- Review correction 4 adds to `§11.6` and `§18` assertion 36 that a public hidden property which
+  declares no explicit type is reported rather than skipped.
 
 ## Decision Board Impact
 

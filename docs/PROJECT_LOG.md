@@ -38,6 +38,35 @@
 
 ## Entries
 
+### 2026-09-26 — E3-05 review correction 4: hidden-annotation attribution and host parity
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** assertion 36 attributes each `@HiddenFromObjC` annotation to the declaration
+  keyword that follows it and reports a public hidden property that declares no explicit type; the
+  Android retry error carries its own `backup_status_error` test tag through a defaulted `ErrorText`
+  parameter; the iOS status text carries the `backup_status_description` accessibility label in both
+  catalogues; and the iOS classification switches over SKIE's `onEnum(of:)` instead of falling
+  through to `.idle`. `docs/CONTRACTS.md §11.6` and `§18` assertion 36, `ADR-0192`, `ADR-0193` and
+  the handoff records are updated.
+- **Why:** assertion 36 returned `PASS` for an undeclared public hidden property written without an
+  explicit type, and lent its annotation to the next parsed member, naming `clearMessage()` as the
+  defect; the Android retry error and the vehicle list error shared `vehicle_error` on one screen;
+  iOS announced the bare status label while Android announced "Backup status: <label>"; and an
+  unrecognised iOS status would have been drawn as "Synced locally" with nothing failing.
+- **Documents touched:** `docs/CONTRACTS.md §11.6`, `§18`; `docs/adr/0192`, `docs/adr/0193`;
+  `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `7d39394` the contract suite reported 21 tests with 3 failures,
+  and at `687bdc6` `SyncStatusIndicatorTest` reported 6 tests with 1 failure on the pinned
+  `E1_07_API_36` emulator and `SyncStatusVisualTests` 8 tests with 4 failed assertions inside the one
+  expected failing test on a freshly created simulator; at the GREEN and REFACTOR heads every suite
+  passes, the complete non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL`,
+  `contractCheck` shows assertion 36 `PASS` with no `PENDING`, and `git diff --check` exits zero.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged and no decision ID was added. No
+  dependency, schema, exported declaration or `SyncStatus` value changed. The emulator and the
+  simulators launched for this correction were closed after each use.
+
 ### 2026-09-26 — E3-05 review correction 3: retry-result ownership and contract-side holder discovery
 
 - **Type:** correction

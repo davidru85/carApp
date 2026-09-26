@@ -65,9 +65,11 @@ assertion 36. For every state-holder class declared in the three holder sources:
 
 - `SwiftSurfaceContract` grows a fourth comparison and the accompanying fixtures. It is reported
   separately as assertion 36, so a failure names one rule rather than merging into 34 or 35.
-- The parser's coverage limits of ADR-0181 now apply to this comparison too. They are the same
-  limits: an untyped property is not compared, recognition is textual, and the holder source list is
-  the same three files assertion 14 uses.
+- The parser's coverage limits of ADR-0181 apply to this comparison too, with one exception:
+  recognition is textual and the holder source list is the same three files assertion 14 uses, but a
+  public hidden property that declares no explicit type is reported rather than skipped. Review
+  correction 4 of `E3-05` found that skipping it let an undeclared hidden member pass and lent its
+  annotation to the next parsed member.
 
 ### Constraints Introduced
 
@@ -92,7 +94,10 @@ annotation. A further fixture declares a holder class that exists only in the co
 contract-side class discovery does not depend on class names found in production sources: the
 assertion enumerates `§20.10` holder classes from the contract itself and resolves each through its
 braced block, which is why a contract-only class reaches the reverse-direction problem text instead
-of passing unexamined. Evidence is in `docs/handoff-E3-05.md`.
+of passing unexamined. Three further fixtures pin that a public hidden property with no explicit type,
+plain or delegated, is reported under its own name rather than skipped or attributed to the next
+parsed member, and a passing fixture keeps a `private` untyped hidden property outside the rule.
+Evidence is in `docs/handoff-E3-05.md`.
 
 ## References
 
