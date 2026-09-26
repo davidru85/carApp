@@ -50,7 +50,11 @@ Update this section at every material state change and before yielding unfinishe
   `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019` and
   `5fb27bab`, write-lock correction `716976f6`.
 - Push and pull-request status: the branch is pushed to `origin` and pull request #78 is open against
-  `main`, awaiting the ten required checks and the owner's gated review.
+  `main`. All ten required checks are green on `ec352f78` (`android-assemble`, `android-instrumented-tests`,
+  `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`, `ktlint`,
+  `objc-header-golden-check`, `provider-decoupling`, `shared-tests`), and the owner's gated review on
+  the `core/sync/**` and `core/database/**` paths is what remains. The pull request MUST NOT be merged
+  on agent judgement alone.
 - Completed since the previous checkpoint: the ready check; the RED tests for the four criteria; the
   GREEN implementation in `:core:database`, `:core:sync` and `AppGraph.init`; the bounded
   `docs/CONTRIBUTING.md` branch-rewrite instruction; the `docs/BACKLOG.md`, `AGENTS.md` and
