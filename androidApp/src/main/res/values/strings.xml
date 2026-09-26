@@ -43,6 +43,12 @@
     <string name="error_auth_no_account">There is no Google account on this device. Add one in Settings, or continue without an account.</string>
     <string name="vehicle_list_unreadable">The vehicle list could not be read.</string>
     <string name="retry">Retry</string>
+    <string name="backup_status_idle">Synced locally</string>
+    <string name="backup_status_syncing">Syncing</string>
+    <string name="backup_status_pending">Waiting to back up</string>
+    <string name="backup_status_failed">Backup failed</string>
+    <string name="backup_status_retry">Retry backup</string>
+    <string name="backup_status_description">Backup status: %1$s</string>
     <string name="error_auth_cancelled">Sign-in was cancelled. You can try again.</string>
     <string name="error_auth_network">Sign-in needs a network connection. Try again when you are online.</string>
     <string name="error_auth_provider">This sign-in provider is not configured yet.</string>

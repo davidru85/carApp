@@ -355,6 +355,7 @@ private fun NavGraphBuilder.vehicleRoutes(
     composable(VehicleRoutes.LIST) {
         VehicleListScreen(
             stateHolder = viewModel.vehicleListStateHolder,
+            syncStateHolder = viewModel.syncStateHolder,
             onCreate = { navController.navigate(VehicleRoutes.CREATE) },
             onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
             showDiagnostics = viewModel.isDebugBuild,
@@ -548,12 +549,14 @@ private fun releaseVehicleFormAfterDisposal(
 @Composable
 private fun VehicleListScreen(
     stateHolder: VehicleListStateHolder,
+    syncStateHolder: SyncStateHolder,
     onCreate: () -> Unit,
     onOpen: (String) -> Unit,
     showDiagnostics: Boolean,
     onDiagnostics: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
+    val syncState by syncStateHolder.state.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -582,11 +585,20 @@ private fun VehicleListScreen(
             }
         },
     ) { padding ->
-        VehicleListContent(
-            state = state,
-            onOpen = onOpen,
-            modifier = Modifier.padding(padding),
-        )
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            // ADR-0193: the vehicle-list state owns Android status rendering; SyncStateHolder owns
+            // retry messages and commands.
+            SyncStatusIndicator(
+                status = state.syncStatus,
+                message = syncState.message,
+                onRetry = syncStateHolder::retryFailed,
+            )
+            VehicleListContent(
+                state = state,
+                onOpen = onOpen,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 
@@ -987,12 +999,15 @@ private fun VehicleDetailContent(
 }
 
 @Composable
-internal fun ErrorText(message: UiMessage?) {
+internal fun ErrorText(
+    message: UiMessage?,
+    testTag: String = VehicleTestTags.ERROR,
+) {
     if (message == null) return
     Text(
         text = stringResource(message.stringResource()),
         color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.testTag(VehicleTestTags.ERROR),
+        modifier = Modifier.testTag(testTag),
     )
 }
 

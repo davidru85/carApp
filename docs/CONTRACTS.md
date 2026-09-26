@@ -1254,7 +1254,7 @@ Rules:
   or decorating it (`D-59`).
 - The Kotlin-facing `AppGraph` (§20.10) exposes state-holder factories, `SyncController` and `close()` — never repositories, use cases or DAOs. `contract-check` assertion 34 compares that code block with the real interface member by member, because both are hidden from the generated Objective-C header and no other check could see them drift.
 - The Swift-facing `SwiftAppGraph` (§20.10) exposes state-holder factories without `CoroutineScope`, a sync state holder instead of `SyncController`, and `close()`. `contract-check` assertion 35 compares that code block with the real class member by member, because the generated Objective-C header is regenerated with the change that alters the class and therefore cannot report a stale block.
-- A public member of an exported state-holder class that is `@HiddenFromObjC` is still declared in `§20.10`, carrying that annotation. The generated header cannot show it, so leaving it undeclared makes the contract and the code diverge with nothing able to see it — the `E3-03` divergence that `E3-08` closed on the Kotlin-facing `AppGraph`.
+- A public member of an exported state-holder class that is `@HiddenFromObjC` is still declared in `§20.10`, carrying that annotation. The generated header cannot show it, so leaving it undeclared makes the contract and the code diverge with nothing able to see it — the `E3-03` divergence that `E3-08` closed on the Kotlin-facing `AppGraph`. `contract-check` assertion 36 makes this rule executable in both directions and for its three fail-open shapes: a hidden member the contract omits or declares without the annotation, a contract member the class does not implement, a holder whose hidden members have no `§20.10` block, a contract that declares no holder block at all, and a public hidden property that declares no explicit type, which `§20.10` cannot declare and the member parser cannot compare. The check lives in `SwiftSurfaceContract` beside assertions 34 and 35, because that is the only site that reads both the `§20.10` blocks and the Kotlin holder sources (`D-191`).
 - Each `AppGraph` owns exactly one `DatabaseHandle` created by its `DatabaseFactory` and releases it
   idempotently from `close()`. `SwiftAppGraph.close()` closes its wrapped graph after its cached
   holders, so the same handle is released transitively (`D-89`).
@@ -1508,6 +1508,19 @@ Shared state holders:
 `UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code.
 
 Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status` from `SyncStateHolder`) observes the same `SyncController.status: StateFlow<SyncStatus>` flow. The values are eventually consistent and converge to the same `SyncStatus`. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
+
+A host MUST NOT compute `SyncStatus` either. The indicator of `E3-05` renders the value a holder
+publishes, and its own classification is a total mapping from that resolved value to a presentation
+state: the `§9.9` precedence and the connectivity rule stay in `:core:sync`, where the aggregate is
+derived once (`D-192`). A host that re-derived `Pending` from its own connectivity observation, or
+re-ordered the four buckets, would be a second implementation of the sync algorithm's aggregate
+(`D-193` governs what the `Idle` label may claim).
+
+`SyncUiState.message` carries only the typed failure of the latest manual retry.
+`SyncStateHolder.retryFailed()` clears it before each attempt, the holder withdraws it as soon as the
+relayed status is no longer `Failed`, and a host draws it only beside the `Failed` visual. A retry
+failure therefore never outlives the condition it reports, and no host draws an error beside
+`Pending`, `Syncing` or `Idle` (`E3-05`, `D-192`).
 
 D-88 records the one temporary exception: E1-07 retains D-55 direct Vehicle restoration and
 publishes constant `SyncStatus.Idle` without constructing a provisional `SyncController`. E3-03
@@ -2032,6 +2045,17 @@ Optional checks:
     exported members, in the same order, with the same parameter shapes. The generated
     Objective-C header is regenerated with the change that alters the class, so it cannot report
     that `§20.10` has gone stale; `private` members are excluded because they never reach Swift.
+36. Every public member of an exported state-holder class that carries `@HiddenFromObjC` is declared
+    in the class's `§20.10` block carrying that annotation, and every `§20.10` member that carries
+    the annotation is such a member of the class. A holder that declares hidden members with no
+    `§20.10` block is reported, and so is a contract that declares no state-holder block at all,
+    because the comparison could not run on it. A public hidden property that declares no explicit
+    type is reported for the same reason: `§20.10` declares every property with its type and the
+    member parser does not infer one. `internal` and `private` members are excluded: they
+    never reach Swift, so hiding them changes nothing the contract describes. The generated
+    Objective-C header cannot see a hidden member at all, and assertions 34 and 35 compare only the
+    two `AppGraph` blocks, so no other assertion can observe this drift; `E3-05` added this one after
+    `E3-08` declared the two members that exist by hand and recorded the gap as a deferral (`D-191`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

@@ -1018,6 +1018,10 @@ Human review required.
 
 ### E3-05 - Backup Status UI - S
 
+Status: implemented on `story/E3-05-backup-status-ui`, awaiting the owner's gated review. Evidence is
+in `docs/handoff-E3-05.md`. It introduced `D-191` to `D-193`, which place the `§11.6` check, choose the
+indicator surface and settle what the `Idle` label may claim.
+
 Add a non-intrusive backup status indicator.
 
 Acceptance criteria:
@@ -1028,7 +1032,17 @@ Acceptance criteria:
 - Inherited from `E3-08`: make the `docs/CONTRACTS.md §11.6` rule executable — a public
   `@HiddenFromObjC` member of an exported state-holder class is declared in `§20.10` carrying that
   annotation. Requires a new `D-` decision on where the check lives. If another story touches the
-  state-holder surface first, the follow-up transfers to it.
+  state-holder surface first, the follow-up transfers to it. **Delivered:** `D-191` places it in
+  `SwiftSurfaceContract` as `§18` assertion 36, with a failing fixture per problem branch.
+
+The indicator renders the resolved aggregate the shared layer publishes, on the vehicle list screen of
+both hosts (`D-192`). The host MUST NOT recompute the `§9.9` precedence or derive `Pending` from
+connectivity: it classifies the one relayed value and maps each visual to its own platform strings.
+The `Idle` label states that nothing is outstanding rather than that a remote copy exists (`D-193`),
+because `§9.1` enqueues nothing while the owner is `LOCAL_OWNER` and P2 requires that offline first run
+to work.
+
+The settings row that `docs/SPECIFICATION.md §3.1` also lists stays with its owner `E4-01`.
 
 ### E3-07 - Tombstone Purge - S
 
@@ -2029,7 +2043,7 @@ proof after E3-04.
 | E3-08 App graph and wiring (completed, PR #71) | 3 | M | Yes |
 | E3-04 Repository sync wiring (completed, PR #72) | 3 | M | Yes |
 | E3-12 Permanent-account cross-device recovery proof (completed, PR #73) | 3 | S | Yes |
-| E3-05 Backup status UI | 3 | S | — |
+| E3-05 Backup status UI (completed, PR #74) | 3 | S | — |
 | E3-07 Tombstone purge | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |

@@ -154,7 +154,9 @@ review.
   `E3-20` and `E3-21`. `E3-12`, the permanent-account cross-device recovery proof, merged on
   2026-09-25 through pull request #73 after the owner's gated review;
   it introduced `D-188`, its correction rounds introduced `D-189` (superseded) and `D-190`, and its
-  evidence is in `docs/handoff-E3-12.md`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
+  evidence is in `docs/handoff-E3-12.md`. `E3-05`, the backup status UI, merged through pull request
+  #74 after five review correction rounds; it introduced `D-191` through `D-193` and its evidence is
+  in `docs/handoff-E3-05.md`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
   #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
   through pull request #70 with `D-172` accepted as option D, `E3-03`, the `:core:sync` engine,
   merged on 2026-09-17 through pull request #69, and `E3-08`, the app graph and Firebase wiring,
@@ -164,8 +166,9 @@ review.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Three decisions remain open, and none of them blocks merged work:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03`, `E3-04`, `E3-08`, `E3-12` and `E3-17` already merged, and `E1-18` landed
-  with `E3-12`; none of them introduced an open decision, so no open decision gates merged work.
+  three documents. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-12` and `E3-17` already merged, and
+  `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open decision gates
+  merged work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
     start until the owner decides.

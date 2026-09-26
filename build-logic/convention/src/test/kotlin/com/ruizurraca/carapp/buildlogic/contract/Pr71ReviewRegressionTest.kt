@@ -82,14 +82,17 @@ class Pr71ReviewRegressionTest {
     @Test
     fun anUnbalancedKotlinContractBlockReturnsAResultInsteadOfThrowing() {
         val results = SwiftSurfaceContract(real.copy(contract = "interface AppGraph {\n    fun close()\n")).validate()
-        assertEquals(listOf(14, 34, 35), results.map { it.id })
+        // `E3-05` added assertion 36 to the same validation, so the id list carries it too; the point
+        // of this test is that the unbalanced block degrades to a result rather than throwing.
+        assertEquals(listOf(14, 34, 35, 36), results.map { it.id })
         assertResult(results, 34, AssertionResult.Status.FAIL, "Unbalanced braces in the interface AppGraph block of §20.10")
     }
 
     @Test
     fun anUnbalancedSwiftContractBlockReturnsAResultInsteadOfThrowing() {
         val results = SwiftSurfaceContract(real.copy(contract = "class SwiftAppGraph {\n    fun close()\n")).validate()
-        assertEquals(listOf(14, 34, 35), results.map { it.id })
+        // See the Kotlin-facing counterpart: `E3-05` added assertion 36 to the same validation.
+        assertEquals(listOf(14, 34, 35, 36), results.map { it.id })
         assertResult(results, 35, AssertionResult.Status.FAIL, "Unbalanced braces in the class SwiftAppGraph block of §20.10")
     }
 

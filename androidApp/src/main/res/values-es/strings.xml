@@ -43,6 +43,12 @@
     <string name="error_auth_no_account">No hay ninguna cuenta de Google en este dispositivo. Añádela desde los Ajustes o continúa sin cuenta.</string>
     <string name="vehicle_list_unreadable">No se ha podido leer la lista de vehículos.</string>
     <string name="retry">Reintentar</string>
+    <string name="backup_status_idle">Sincronizado localmente</string>
+    <string name="backup_status_syncing">Sincronizando</string>
+    <string name="backup_status_pending">Pendiente de copia</string>
+    <string name="backup_status_failed">Error de copia</string>
+    <string name="backup_status_retry">Reintentar copia</string>
+    <string name="backup_status_description">Estado de la copia: %1$s</string>
     <string name="error_auth_cancelled">Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo.</string>
     <string name="error_auth_network">Necesitas conexión para iniciar sesión. Inténtalo cuando vuelvas a tener red.</string>
     <string name="error_auth_provider">Este proveedor de inicio de sesión aún no está configurado.</string>

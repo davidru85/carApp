@@ -38,6 +38,181 @@
 
 ## Entries
 
+### 2026-09-26 — E3-05 review correction 5: cancel holder-owned retry work
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-192`, `D-193`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** `SyncStateHolder` owns a child `SupervisorJob` parented to the caller's job and a
+  child scope built from it; the status collector, the connectivity collector, `retryFailed()` and
+  `refreshDebug()` all launch in that child scope, and `close()` cancels it idempotently, so a manual
+  retry still suspended inside `SyncController.retryFailed()` is cancelled at its suspension point
+  instead of continuing after the holder closed. `ADR-0194` no longer describes a surviving outbox row
+  or a connectivity-code failure as `Idle`, because `§9.9` classifies both as outstanding work.
+- **Why:** `docs/CONTRACTS.md §14` and `§20.10` require `close()` to cancel the work the state holder
+  owns. `retryGeneration` prevented a late UI publication but did not cancel the controller call, so an
+  in-flight retry could still reset outbox rows and request synchronization after `close()`. The
+  decision's second `Idle` example contradicted `§9.9`.
+- **Documents touched:** `docs/adr/0194-do-not-let-the-idle-backup-label-claim-a-current-remote-copy.md`,
+  `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `05dbd16` `SyncStateHolderRetryTest` reported 7 tests with 1 failure
+  (`closeCancelsAnInFlightRetry`, `expected:<1> but was:<0>`) while the six pre-existing retry tests
+  passed; at the GREEN head `0120239` all seven tests pass on the JVM host and
+  `:shared:iosSimulatorArm64Test` passes; the complete non-instrumented `AGENTS.md` command ends in
+  `BUILD SUCCESSFUL`, `contractCheck` shows assertion 36 `PASS` with no `PENDING`, and `git diff --check`
+  exits zero.
+- **Follow-ups / risks:** `D-193` is unchanged and no decision ID was added. `retryGeneration` and the
+  newest-attempt ownership rule are untouched, and overlapping retries remain allowed. No dependency,
+  database schema, public API, `SyncStatus` or platform UI changed, and no emulator or simulator was
+  launched for this correction.
+
+### 2026-09-26 — E3-05 review correction 4: hidden-annotation attribution and host parity
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** assertion 36 attributes each `@HiddenFromObjC` annotation to the declaration
+  keyword that follows it and reports a public hidden property that declares no explicit type; the
+  Android retry error carries its own `backup_status_error` test tag through a defaulted `ErrorText`
+  parameter; the iOS status text carries the `backup_status_description` accessibility label in both
+  catalogues; and the iOS classification switches over SKIE's `onEnum(of:)` instead of falling
+  through to `.idle`. `docs/CONTRACTS.md §11.6` and `§18` assertion 36, `ADR-0192`, `ADR-0193` and
+  the handoff records are updated.
+- **Why:** assertion 36 returned `PASS` for an undeclared public hidden property written without an
+  explicit type, and lent its annotation to the next parsed member, naming `clearMessage()` as the
+  defect; the Android retry error and the vehicle list error shared `vehicle_error` on one screen;
+  iOS announced the bare status label while Android announced "Backup status: <label>"; and an
+  unrecognised iOS status would have been drawn as "Synced locally" with nothing failing.
+- **Documents touched:** `docs/CONTRACTS.md §11.6`, `§18`; `docs/adr/0192`, `docs/adr/0193`;
+  `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `7d39394` the contract suite reported 21 tests with 3 failures,
+  and at `687bdc6` `SyncStatusIndicatorTest` reported 6 tests with 1 failure on the pinned
+  `E1_07_API_36` emulator and `SyncStatusVisualTests` 8 tests with 4 failed assertions inside the one
+  expected failing test on a freshly created simulator; at the GREEN and REFACTOR heads every suite
+  passes, the complete non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL`,
+  `contractCheck` shows assertion 36 `PASS` with no `PENDING`, and `git diff --check` exits zero.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged and no decision ID was added. No
+  dependency, schema, exported declaration or `SyncStatus` value changed. The emulator and the
+  simulators launched for this correction were closed after each use.
+
+### 2026-09-26 — E3-05 review correction 3: retry-result ownership and contract-side holder discovery
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** `SyncStateHolder.retryFailed()` takes a generation from a holder counter, publishes
+  nothing unless it is still the newest, reads `controller.status.value` after the suspended retry
+  returns, and publishes a message only while that value is `SyncStatus.Failed`; `close()` increments
+  the counter so an in-flight attempt cannot publish after closure. Assertion 36 enumerates `§20.10`
+  holder classes from the contract itself and resolves each through its braced block, so a
+  contract-only holder class is rejected instead of passing unexamined; the enumeration reads the raw
+  contract because `KotlinSourceText` masks thousands of characters of Markdown prose from an
+  apostrophe to the next one. ADR-0192, ADR-0193 and the handoff records are updated.
+- **Why:** a retry suspended across a cycle that moved the aggregate to `Pending` republished the
+  persistence error beside it, which `docs/CONTRACTS.md §14` forbids; overlapping retries published by
+  completion order, so an older failure could overwrite a newer success; and assertion 36 iterated
+  only the class names found in production sources, so a `§20.10` block with no production class was
+  never inspected.
+- **Documents touched:** `docs/adr/0192`, `docs/adr/0193`, `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `8b91eaf` the retry suite reported 6 tests with 2 failures, both
+  leaving the stale `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` published, and
+  at `f7e234f` the contract suite reported 17 tests with 1 failure
+  (`expected:<FAIL> but was:<PASS>` for the contract-only holder class); at the GREEN heads `af79fa4`
+  and `4b604d2` both suites pass, `:shared:iosSimulatorArm64Test` passes, the complete
+  non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL`, `contractCheck` shows assertion 36
+  `PASS` with no `PENDING`, and `git diff --check` exits zero.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged and no decision ID was added. No
+  dependency, schema, public API, `SyncStatus` value or platform UI changed, and no emulator or
+  simulator was launched for this correction.
+
+### 2026-09-26 — E3-05 review correction 2: iOS observation, retry-message lifetime and the masked header cut
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** the iOS indicator is drawn by `BackupStatusRow`, which observes
+  `WalkingSkeletonModel`, because `VehicleListView` holds the model as a plain reference and SwiftUI
+  did not redraw it for a sync-only change; `SyncStateHolder` withdraws `SyncUiState.message` when the
+  relayed status leaves `Failed`, and both hosts draw that message only beside the `Failed` visual;
+  assertion 36 cuts and matches the member header on the offset-preserving code view, so a brace, a
+  semicolon or a string template inside the previous member's string literal can no longer hide the
+  annotation. `docs/CONTRACTS.md §14` states the message rule, and `ADR-0192`, `ADR-0193`, `ADR-0194`
+  and the handoff records are corrected.
+- **Why:** on iOS a failed retry, and any status change without a vehicle-list change, was never
+  drawn; a retry failure stayed drawn in red beside `Pending` or `Idle` after an automatic cycle,
+  which the second `E3-05` criterion forbids; and assertion 36 returned `PASS` for an undeclared
+  public hidden member behind a string literal containing `{`, `}` or `;`.
+- **Documents touched:** `docs/CONTRACTS.md §14`; `docs/adr/0192`, `0193`, `0194`;
+  `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `875c137` the holder suite reported 4 tests with 1 failure
+  (`retryFailureIsWithdrawnWhenTheStatusLeavesFailed`, the stale
+  `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` beside `Pending`) and the
+  contract suite reported 16 tests with 3 failures (the masked-cut fixtures, assertion 36 returning
+  `PASS`); at the GREEN head `e69bc61` both suites pass, the complete non-instrumented `AGENTS.md`
+  command ends in `BUILD SUCCESSFUL`, `contractCheck` shows assertion 36 `PASS` with no `PENDING`, the
+  instrumented suite on `E1_07_API_36` passes with `SyncStatusIndicatorTest` at 6 tests, and the iOS
+  `carAppTests` target reports 53 tests with 0 failures.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged and no decision ID was added. The
+  iOS indicator still has no automated UI assertion. The Android emulator and the iOS simulator
+  launched for this correction were both closed.
+
+### 2026-09-25 — E3-05 review correction: status ownership and visible retry errors
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** Android renders the status from `VehicleListUiState.syncStatus` rather than from
+  `SyncStateHolder`'s relay, which is the source `ADR-0193` assigns it; both hosts now render
+  `SyncUiState.message` after a failed manual retry through their existing mapping (`ErrorText` on
+  Android, `UiMessage.localizedText` on iOS), and the iOS Retry button stays an independent
+  accessibility action; `SyncStateHolder.retryFailed()` clears the previous retry message before each
+  attempt; the Android status text owns the accessible description and the coloured dot carries none.
+  `SyncStateHolderRetryTest` proves failure publication and later-success clearing, the Android
+  instrumented suite proves the mapped error renders with Retry still actionable, and
+  `UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage` pins the iOS code mapping.
+- **Why:** `ADR-0193` assigns each host its status source and routes a retry failure through the
+  existing typed `UiMessage`; the code read a second holder for status, rendered no message, and left
+  a stale failure published after a successful attempt, so the Retry control looked inert after a
+  failure and could disagree with the vehicle-list state it was drawn beside.
+- **Documents touched:** `docs/handoff-E3-05.md`; this log.
+- **Verification:** `SyncStateHolderRetryTest` failed `successfulRetryClearsPreviousFailureMessage` at
+  the RED head with the stale `PERSISTENCE.TRANSACTION_FAILED` still published, then passed after the
+  clear; `:shared:testAndroidHostTest --tests SyncStateHolderRetryTest`, `:androidApp:testDebugUnitTest`,
+  `:androidApp:connectedDebugAndroidTest` on the `E1_07_API_36` emulator, the iOS `carAppTests` target
+  (53 tests, 0 failures, including the new mapping test) and the complete non-instrumented `AGENTS.md`
+  command all pass; `contractCheck` reports assertion 36 `PASS` with no `PENDING`. No dependency file
+  changed.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged. The two `VehicleAndFuelFlowUITests`
+  cases that fail on this host are pre-existing and reproduce unchanged on a clean `main`; they pass in
+  CI. The iOS simulator and the Android emulator launched for this correction were both closed.
+
+### 2026-09-25 — `E3-05` backup status UI, and the `§11.6` check it inherited
+
+- **Type:** story
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`, `D-193`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** both hosts render the resolved `SyncStatus` the shared layer publishes as a discreet
+  status chip on the vehicle list screen, classify it into four visuals without recomputing the `§9.9`
+  precedence, and offer the manual retry through the existing `SyncStateHolder.retryFailed()`. The
+  inherited `§11.6` rule is now executable as `docs/CONTRACTS.md §18` assertion 36 inside
+  `SwiftSurfaceContract`, with a failing fixture per problem branch.
+- **Why:** `E3-05` is the story that first renders a state-holder-backed sync surface, which `E3-08`
+  named as the place a hidden member is plausibly added — the rule had stayed prose since `E3-03`
+  shipped a divergence on the Kotlin-facing `AppGraph`. The host classification takes no connectivity
+  fact at all, so "offline means error" is unrepresentable in a host rather than merely untested, and
+  the `Idle` label states that nothing is outstanding rather than claiming a remote copy that `§9.1`
+  refuses to create while the owner is `LOCAL_OWNER`.
+- **Documents touched:** `docs/CONTRACTS.md` `§11.6`, `§14`, `§18`; `docs/DECISION_BOARD.md`;
+  `docs/SPECIFICATION.md §12`; `docs/TECHNICAL_PLAN.md §2`; `docs/adr/0192`–`0194`; `docs/adr/README.md`;
+  `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoff-E3-05.md`.
+- **Verification:** the three RED units failed 5 of 5 (Android) and 4 of 5 (iOS) on their own behaviour
+  before the implementation; the whole `SwiftHiddenMemberContractTest` class failed 13 of 13 before
+  assertion 36 existed; the complete non-instrumented `AGENTS.md` command, the build-logic suite (190
+  tests) and `contractCheck` all pass with no `PENDING` assertion.
+- **Follow-ups / risks:** the settings row of `docs/SPECIFICATION.md §3.1` stays with `E4-01`, and the
+  iOS indicator has no automated UI assertion — its classification and copy are covered by the iOS unit
+  target and the view by the build. Both are recorded in `docs/handoff-E3-05.md`.
+
 ### 2026-09-25 — `E1-18` record closure: the merged status and the removed caveat
 
 - **Type:** correction (documentation only)
@@ -59,7 +234,7 @@
   on it; if `E3-05` merges first, the two edits touch adjacent lines of `AGENTS.md` and a rebase is
   expected and ordinary.
 
-### 2026-09-25 — `E3-12` fifth correction:: the conversion barrier, the owner-scoped recovery count and the record reconciliation
+### 2026-09-25 — `E3-12` fifth correction: the conversion barrier, the owner-scoped recovery count and the record reconciliation
 
 - **Type:** correction
 - **Story / Decision:** `E3-12` / `D-188`; `D-153`; `E1-18` / `D-190`
