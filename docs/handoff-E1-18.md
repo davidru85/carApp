@@ -1,3 +1,13 @@
+> **Closure update (2026-09-25):** `E3-12` and this story merged together through pull request #73
+> after the owner's gated review, so the caveat this story existed to remove is gone. The two
+> sentences that told the next agent a red `shared-tests` or `provider-decoupling` might be a
+> pre-existing flake rather than a regression are now removed from `AGENTS.md` and from the
+> `docs/BACKLOG.md` sequencing paragraph, which is the second half of this story's closure duty. Every
+> remaining "implemented ... awaiting the owner's gated review" status in `AGENTS.md` and
+> `docs/BACKLOG.md` now reads "merged ... through pull request #NN", including the `E3-08`, `E3-04`,
+> `E3-12` and `E3-17` rows this story's correction reached. The original evidence below is preserved
+> as observed.
+
 # Agent Handoff — E1-18 JVM Test Deadlock in `DatabaseHandle.close()` on the Test Scheduler Thread
 
 ## Story
