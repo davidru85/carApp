@@ -32,6 +32,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -675,6 +677,8 @@ class SyncStateHolder internal constructor(
     connectivity: ConnectivityObserver,
     private val dispatchers: DispatcherProvider,
 ) {
+    private val holderJob = SupervisorJob(scope.coroutineContext[Job])
+    private val holderScope = CoroutineScope(scope.coroutineContext + holderJob)
     private val mutableState =
         MutableStateFlow(SyncUiState(controller.status.value, connectivity.isOnline.value, null))
     val state: StateFlow<SyncUiState> = mutableState
@@ -682,8 +686,9 @@ class SyncStateHolder internal constructor(
     val debugLines: StateFlow<List<String>> = mutableDebugLines
     private var closed = false
     private var retryGeneration = 0L
-    private val statusJob =
-        scope.launch(dispatchers.main) {
+
+    init {
+        holderScope.launch(dispatchers.main) {
             controller.status.collect { status ->
                 // A retry failure reports failed rows that could not be reset. Once the aggregate
                 // leaves `Failed` those rows no longer exist, so the message is withdrawn with the
@@ -693,12 +698,11 @@ class SyncStateHolder internal constructor(
                 mutableState.value = mutableState.value.copy(status = status, message = message)
             }
         }
-    private val connectivityJob =
-        scope.launch(dispatchers.main) {
-            connectivity.isOnline.collect { online -> mutableState.value = mutableState.value.copy(isOnline = online) }
+        holderScope.launch(dispatchers.main) {
+            connectivity.isOnline.collect { online ->
+                mutableState.value = mutableState.value.copy(isOnline = online)
+            }
         }
-
-    init {
         refreshDebug()
     }
 
@@ -727,7 +731,7 @@ class SyncStateHolder internal constructor(
     fun retryFailed() {
         if (closed) return
         val generation = ++retryGeneration
-        scope.launch(dispatchers.main) {
+        holderScope.launch(dispatchers.main) {
             if (closed || generation != retryGeneration) return@launch
             // A new attempt owns the visible outcome immediately. An older attempt may still finish,
             // but its generation is no longer allowed to publish.
@@ -762,7 +766,7 @@ class SyncStateHolder internal constructor(
 
     fun refreshDebug() {
         if (closed) return
-        scope.launch(dispatchers.main) {
+        holderScope.launch(dispatchers.main) {
             mutableDebugLines.value = withContext(dispatchers.io) { controller.debugLines() }
         }
     }
@@ -771,8 +775,7 @@ class SyncStateHolder internal constructor(
         if (closed) return
         closed = true
         retryGeneration += 1
-        statusJob.cancel()
-        connectivityJob.cancel()
+        holderScope.cancel()
     }
 }
 
