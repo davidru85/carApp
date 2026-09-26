@@ -26,7 +26,8 @@ import com.ruizurraca.carapp.core.common.UiMessage
 /**
  * Renders the shared backup status without deriving synchronization state in the host.
  * The visible label owns the localized accessibility description, the colored dot is decorative,
- * Failed is the only state with Retry, and a typed retry error is rendered through [ErrorText].
+ * Failed is the only state with Retry, and a typed retry error is rendered through [ErrorText] only
+ * beside Failed, because `§9.9` reserves the error presentation for it.
  */
 @Composable
 internal fun SyncStatusIndicator(
@@ -81,7 +82,11 @@ internal fun SyncStatusIndicator(
                 }
             }
         }
-        ErrorText(message)
+        // The holder withdraws the message when the status leaves Failed (`§14`); this guard also
+        // covers the turn in which the vehicle-list relay has moved on and the sync holder has not.
+        if (isError) {
+            ErrorText(message)
+        }
     }
 }
 

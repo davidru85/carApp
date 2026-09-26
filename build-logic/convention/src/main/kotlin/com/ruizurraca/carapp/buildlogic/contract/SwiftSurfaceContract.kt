@@ -124,17 +124,20 @@ internal class SwiftSurfaceContract(
      * there rather than from the declaration text: `members` sees an annotation-masked view, which is
      * what lets a comment or a string literal naming the annotation be ignored. The gap is cut at its
      * last brace or semicolon so the previous member's body cannot carry this member's annotation.
-     * `internal` and `private` members are excluded: they never reach Swift, so hiding them changes
-     * nothing the contract describes.
+     * Both the cut and the match run on the offset-preserving code view of the whole body: cutting
+     * the raw text let a brace, a semicolon or a string template inside the previous member's string
+     * literal split that literal, and the fragment re-lexed as an unterminated string that masked the
+     * annotation. `internal` and `private` members are excluded: they never reach Swift, so hiding
+     * them changes nothing the contract describes.
      */
     private fun hiddenMembers(source: String, declaration: String): List<Member> {
-        val body = bodyOf(source, declaration)
+        val code = KotlinSourceText.code(bodyOf(source, declaration))
         val all = members(source, declaration)
         return all.mapIndexedNotNull { index, member ->
             val from = (all.getOrNull(index - 1)?.sourceOffset ?: 0).coerceIn(0, member.sourceOffset)
-            val gap = body.substring(from, member.sourceOffset.coerceAtMost(body.length))
+            val gap = code.substring(from, member.sourceOffset.coerceAtMost(code.length))
             val header = gap.substring(gap.lastIndexOfAny(charArrayOf('{', '}', ';')) + 1)
-            member.takeIf { member.isExported && HIDDEN_FROM_OBJC.containsMatchIn(KotlinSourceText.code(header)) }
+            member.takeIf { member.isExported && HIDDEN_FROM_OBJC.containsMatchIn(header) }
         }
     }
 

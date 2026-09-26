@@ -136,6 +136,39 @@ class SyncStatusIndicatorTest {
             .assertHasClickAction()
     }
 
+    /**
+     * `§9.9` reserves the error presentation for `Failed`. A retry failure still published while the
+     * status is already `Idle`, `Syncing` or `Pending` MUST NOT be drawn beside it.
+     */
+    @Test
+    fun aRetryFailureIsNotRenderedBesideANonFailedStatus() {
+        val message =
+            UiMessage(
+                id = 7L,
+                kind = UiMessageKind.ERROR,
+                code = "PERSISTENCE.TRANSACTION_FAILED",
+                confirmation = null,
+            )
+        var status: SyncStatus by mutableStateOf(SyncStatus.Idle)
+        composeRule.setContent { SyncStatusIndicator(status = status, message = message, onRetry = {}) }
+        val error =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+                .getString(R.string.error_persistence)
+
+        listOf(
+            SyncStatus.Idle,
+            SyncStatus.Syncing,
+            SyncStatus.Pending(count = 4),
+        ).forEach { published ->
+            status = published
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithText(error).assertDoesNotExist()
+        }
+    }
+
     private fun label(visual: SyncStatusVisual): String =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(syncStatusLabelResource(visual))
 }

@@ -78,12 +78,10 @@ struct VehicleListView: View {
         NavigationStack(path: $path) {
             List {
                 // The indicator renders the holder's published aggregate, which `§14` relays from the
-                // one `SyncController.status`; the view never computes a second status.
-                SyncStatusIndicatorView(
-                    status: skeletonModel.syncState.status,
-                    message: skeletonModel.syncState.message,
-                    onRetry: skeletonModel.retryBackup
-                )
+                // one `SyncController.status`; the view never computes a second status. The row
+                // observes the model itself, because this view holds it as a plain reference and
+                // SwiftUI would not redraw it for a sync-only change.
+                BackupStatusRow(model: skeletonModel)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)

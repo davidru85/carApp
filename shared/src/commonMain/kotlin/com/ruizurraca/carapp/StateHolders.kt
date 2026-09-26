@@ -683,7 +683,14 @@ class SyncStateHolder internal constructor(
     private var closed = false
     private val statusJob =
         scope.launch(dispatchers.main) {
-            controller.status.collect { status -> mutableState.value = mutableState.value.copy(status = status) }
+            controller.status.collect { status ->
+                // A retry failure reports failed rows that could not be reset. Once the aggregate
+                // leaves `Failed` those rows no longer exist, so the message is withdrawn with the
+                // condition it described; otherwise a `Pending` or `Idle` status would be drawn
+                // beside an error, which `§9.9` reserves for `Failed`.
+                val message = if (status is SyncStatus.Failed) mutableState.value.message else null
+                mutableState.value = mutableState.value.copy(status = status, message = message)
+            }
         }
     private val connectivityJob =
         scope.launch(dispatchers.main) {
