@@ -150,7 +150,7 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
+- **Remaining Phase 3:** `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
   `E3-20` and `E3-21`. `E3-12`, the permanent-account cross-device recovery proof, merged on
   2026-09-25 through pull request #73 after the owner's gated review;
   it introduced `D-188`, its correction rounds introduced `D-189` (superseded) and `D-190`, and its

@@ -1018,7 +1018,7 @@ Human review required.
 
 ### E3-05 - Backup Status UI - S
 
-Status: implemented on `story/E3-05-backup-status-ui`, awaiting the owner's gated review. Evidence is
+Status: merged on 2026-09-26 through pull request #74, after five review correction rounds. Evidence is
 in `docs/handoff-E3-05.md`. It introduced `D-191` to `D-193`, which place the `§11.6` check, choose the
 indicator surface and settle what the `Idle` label may claim.
 
