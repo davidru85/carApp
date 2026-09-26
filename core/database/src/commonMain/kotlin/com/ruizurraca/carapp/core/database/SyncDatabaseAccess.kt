@@ -230,11 +230,21 @@ class SyncDatabaseAccess(
     }
 
     /**
-     * RED stub for `E3-07`: the statement is not executed yet, so the purge tests fail behaviourally
-     * rather than at the compiler.
+     * Deletes every locally purgeable tombstone in one transaction (`docs/CONTRACTS.md §8`).
+     *
+     * A row is purgeable only when it is a tombstone (`deleted = 1`), its push was confirmed
+     * (`syncState = 'SYNCED'`), its remote timestamp is older than [cutoff], and it has no outbox row.
+     * The `SYNCED` guard is what makes criterion 3 hold: an unconfirmed tombstone is the only local
+     * copy of the deletion, so removing it would lose the deletion rather than reclaim space.
+     *
+     * The two statements share one transaction, so a failure in the second rolls the first back and
+     * the database is never observed with one table purged and the other not.
      */
     suspend fun purgeConfirmedTombstones(cutoff: Long) {
-        // GREEN replaces this with the single transaction over both entity tables.
+        database.transaction {
+            queries.purgeConfirmedVehicleTombstones(cutoff)
+            queries.purgeConfirmedFuelEntryTombstones(cutoff)
+        }
     }
 
     suspend fun counts(): SyncDatabaseCounts =
