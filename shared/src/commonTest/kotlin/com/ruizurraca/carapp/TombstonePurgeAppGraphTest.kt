@@ -169,5 +169,4 @@ private suspend fun AppDatabase.seedVehicleTombstone(
     )
 }
 
-private suspend fun AppDatabase.vehicleRow(id: String) =
-    databaseQueries.selectVehicleById(id).awaitAsOneOrNull()
+private suspend fun AppDatabase.vehicleRow(id: String) = databaseQueries.selectVehicleById(id).awaitAsOneOrNull()
