@@ -150,7 +150,7 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-05`, `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
+- **Remaining Phase 3:** `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
   `E3-20` and `E3-21`. `E3-12`, the permanent-account cross-device recovery proof, merged on
   2026-09-25 through pull request #73 after the owner's gated review;
   it introduced `D-188`, its correction rounds introduced `D-189` (superseded) and `D-190`, and its
@@ -499,6 +499,9 @@ All API, data, sync, error, logging and platform boundary contracts in `docs/CON
 
 ## Technical Rules
 
+- **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** An agent commits on the
+  owner's behalf and MUST NOT leave a placeholder identity in the history. The configuration, the root
+  cause this rule was written for and the recovery are in `docs/CONTRIBUTING.md` §Commit identity.
 - Test-driven development (TDD) is compulsory for product code: the failing test is written before the code that makes it pass, per behavior unit, with the anti-paraguas clause of `docs/SPECIFICATION.md §11`. Exemptions are limited to the list in that section and MUST be declared in the handoff. The TDD commit and push workflow (red, green, refactoring, PR) of `docs/SPECIFICATION.md §11` is a MUST unless the owner exempts a story explicitly.
 - Gradle scripts use Kotlin DSL only.
 - Gradle and Kotlin dependency versions live only in `gradle/libs.versions.toml`. Node-only
