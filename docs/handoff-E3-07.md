@@ -46,8 +46,9 @@ Update this section at every material state change and before yielding unfinishe
 - Date: 2026-09-26
 - Branch and base: `story/E3-07-tombstone-purge`, branched from `origin/main` at `ea48ecc5`
   ("Merge pull request #77"). Work happens in a `git worktree` (`../carApp-e3-07`).
-- Current phase and latest commit: complete and verified at `7fa3f019`. RED `07d6d1bc`, GREEN
-  `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019`.
+- Current phase and latest commit: complete and verified at `716976f6`. RED `07d6d1bc`, GREEN
+  `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019` and
+  `5fb27bab`, write-lock correction `716976f6`.
 - Push and pull-request status: the branch is pushed to `origin` and pull request #78 is open against
   `main`, awaiting the ten required checks and the owner's gated review.
 - Completed since the previous checkpoint: the ready check; the RED tests for the four criteria; the
@@ -56,7 +57,8 @@ Update this section at every material state change and before yielding unfinishe
   `docs/PROJECT_LOG.md` updates; the complete verification command, `contractCheck --rerun-tasks` and
   `git diff --check` all green.
 - Verification evidence and known failures: see "Verification Run". No known failure is outstanding.
-- Open decisions or blockers: none. No new `D-` id and no ADR were needed.
+- Open decisions or blockers: none. No new `D-` id and no ADR were needed. The `ios-simulator-build`
+  failure of the first pull-request run is diagnosed and fixed; see "Decisions Made".
 - Exact next step: await the ten required checks on pull request #78 and the owner's review on the
   `core/sync/**` and `core/database/**` gated paths. Do not merge.
 
@@ -117,6 +119,9 @@ the clause was restored and the suite is green again.
   transaction over both statements.
 - `core/database/src/commonTest/.../TombstonePurgeDatabaseAccessTest.kt` — criteria 1 and 2 at the
   statement layer.
+- `core/database/src/androidHostTest/.../AndroidTombstonePurgeWriteLockTest.kt` and
+  `core/database/src/iosTest/.../IosTombstonePurgeWriteLockTest.kt` — the write-lock regression, one per
+  host because the contention needs a real file and a real second connection.
 - `core/sync/src/commonMain/.../TombstonePurge.kt` — the cutoff from the injected `AppClock` and the
   once-per-app-start latch.
 - `core/sync/src/commonTest/.../TombstonePurgeTest.kt` — criterion 2 at the policy layer and criterion
@@ -155,6 +160,20 @@ the clause was restored and the suite is green again.
   awaiting the owner's gated review", matching the `E3-05` precedent while it was in flight.
 - **TDD order held with no exemption.** RED `07d6d1bc`, GREEN `21465a14`, separate commits and pushes;
   no refactoring phase was needed, so none was created.
+- **The purge reads its count before opening a transaction, and that is a correctness requirement, not
+  a micro-optimisation.** The first pull-request run failed `ios-simulator-build` on
+  `ViewModelLifecycleTests.testVehicleListConfirmDeleteAfterRequestDeletesVehicle`, and the cause was
+  this story. The driver opens every `database.transaction { }` with `BEGIN IMMEDIATE`
+  (`AndroidxSqliteExecutingDriver.Transaction.<init>`), which acquires the file's write lock the instant
+  the transaction starts, and the bundled SQLite stack sets no `busy_timeout`. An experiment on the
+  pinned SQLite shows the decisive fact: a `DELETE` matching **zero** rows takes that lock exactly like
+  one that deletes rows, and a concurrent writer then fails at once with `database is locked`. The
+  unconditional purge therefore began a writing transaction on every app start; `ViewModelLifecycleTests`
+  mounts two graphs over one persistent `carapp.db`, so the second graph's first save could find the lock
+  held and lose its write. The guard leaves the purge condition untouched and only decides whether to
+  take the writer at all. CI evidence: the test passes in 0.43 s in four earlier runs, including on
+  `main` at this story's own base `ea48ecc5`, and failed here by exhausting its 3 s wait for the save
+  callback.
 
 ## Verification Run
 
@@ -186,9 +205,28 @@ the clause was restored and the suite is green again.
   includes assertion 7 (`Swift allowlist complete; forbidden Kotlin construction types absent`) and
   assertion 36, both unchanged by this story.
 - **`git diff --check`**: exits 0.
+- **Write-lock regression, RED then GREEN.** `AndroidTombstonePurgeWriteLockTest` at the pre-guard head
+  failed exactly `anEmptyPurgeSucceedsWhileAnotherConnectionHoldsTheWriteLock` with
+  `android.database.SQLException` raised at `AndroidxSqliteExecutingDriver$Transaction.<init>:379` - the
+  `BEGIN IMMEDIATE` itself - while `aPurgeWithWorkToDoStillDeletesTheTombstone` and the age case passed.
+  `IosTombstonePurgeWriteLockTest` is decisive in the same way: with the guard removed locally, exactly
+  `anEmptyPurgeSucceedsWhileAnotherConnectionHoldsTheWriteLock[iosSimulatorArm64]` failed and the other
+  two passed; restored, all three pass. That is the lock property proven per platform rather than
+  asserted.
+- **Affected suites after the correction**, `--rerun-tasks`: `:core:database:testAndroidHostTest`,
+  `:core:database:iosSimulatorArm64Test`, `:core:sync:testAndroidHostTest`,
+  `:shared:testAndroidHostTest` → `BUILD SUCCESSFUL`; 841 tests, 0 failures, 0 errors.
+- **Complete non-instrumented command after the correction**, `--rerun-tasks`:
+  `BUILD SUCCESSFUL in 50s`, 642 actionable tasks, all 642 executed.
 - No emulator and no simulator was launched: the story is pure shared Kotlin, so
   `adb devices` and `xcrun simctl list devices booted` were not touched and there is nothing to clean
   up. The Gradle `iosSimulatorArm64Test` task is a host task and boots no device.
+- **Local iOS reproduction was attempted and is inconclusive on this machine**, and that is stated
+  rather than hidden: the local simulator runs iOS 27, the CI runner ran 26.4.1, and the local device
+  failed to launch the test runner (`SBMainWorkspace ... Busy`) on 5 of 6 attempts. The one run that
+  did launch passed 80 tests, and every local failure was a launch failure, never an assertion. The
+  causal evidence for this story is therefore the CI log comparison above and the SQLite experiment,
+  not a local reproduction.
 
 ## Contract Impact
 

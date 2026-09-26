@@ -64,8 +64,19 @@
   which is criterion 3's guard proven rather than asserted. `:core:database`, `:core:sync` and `:shared`
   host suites pass with 414 tests and 0 failures, and the complete non-instrumented `AGENTS.md` command
   ends in `BUILD SUCCESSFUL`.
+- **What changed (correction round):** `SyncDatabaseAccess.purgeConfirmedTombstones` now reads the
+  purgeable counts - `countPurgeableVehicleTombstones` / `countPurgeableFuelEntryTombstones` - and
+  returns before opening a transaction when there is nothing to delete. The first pull-request run
+  failed `ios-simulator-build` on `ViewModelLifecycleTests.testVehicleListConfirmDeleteAfterRequestDeletesVehicle`,
+  and the cause was this story: the driver opens every transaction with `BEGIN IMMEDIATE`, taking the
+  file's write lock immediately, and the bundled SQLite stack sets no `busy_timeout`, so a `DELETE`
+  matching zero rows blocked a concurrent writer just like one that deletes rows. `ViewModelLifecycleTests`
+  mounts two graphs over one persistent `carapp.db`, and the second graph's save lost the lock. The
+  regression is pinned per host by `AndroidTombstonePurgeWriteLockTest` and `IosTombstonePurgeWriteLockTest`;
+  removing the guard fails exactly the held-lock case on each.
 - **Follow-ups / risks:** no schema change, so no migration and no version bump. `:core:database` still
-  declares no dependency on `:core:sync`. `E3-07` stays in the `AGENTS.md` "Remaining Phase 3" list
+  declares no dependency on `:core:sync`. The purge still scans both entity tables without a dedicated
+  index, which is unchanged by this correction. `E3-07` stays in the `AGENTS.md` "Remaining Phase 3" list
   until its pull request merges, matching how `E3-05` was recorded. No emulator or simulator was launched.
 
 ### 2026-09-26 — E3-05 review correction 5: cancel holder-owned retry work
