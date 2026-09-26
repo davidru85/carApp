@@ -296,6 +296,65 @@ class SwiftHiddenMemberContractTest {
         )
     }
 
+    // --- A hidden property the member parser does not model ------------------------------------
+
+    /**
+     * `§20.10` declares a property with its type, and the member parser does not infer one, so a
+     * public hidden property with no explicit type can be neither declared nor compared. It MUST be
+     * reported rather than skipped: skipping it let an undeclared hidden member pass assertion 36.
+     */
+    @Test
+    fun anUntypedHiddenPropertyIsRejected() {
+        assertFails(
+            "$FUEL_HOLDERS: class FuelEntryFormStateHolder.cachedUntyped is @HiddenFromObjC but declares " +
+                "no explicit type, so §20.10 cannot declare it",
+            results(holders = withExtraMembers("@HiddenFromObjC val cachedUntyped = MutableStateFlow(false)")),
+        )
+    }
+
+    /** A delegated property with no explicit type is the same shape, and its lambda holds braces. */
+    @Test
+    fun aDelegatedUntypedHiddenPropertyIsRejected() {
+        assertFails(
+            "$FUEL_HOLDERS: class FuelEntryFormStateHolder.cachedLazy is @HiddenFromObjC but declares " +
+                "no explicit type, so §20.10 cannot declare it",
+            results(holders = withExtraMembers("@HiddenFromObjC val cachedLazy by lazy { MutableStateFlow(false) }")),
+        )
+    }
+
+    /**
+     * The annotation belongs to the declaration that follows it. Attributing it to the next parsed
+     * member instead reported `clearMessage()` — a member that is not hidden — as the defect.
+     */
+    @Test
+    fun anUntypedHiddenPropertyDoesNotLendItsAnnotationToTheNextMember() {
+        assertFails(
+            "$SHARED_HOLDERS: class SyncStateHolder.cachedUntyped is @HiddenFromObjC but declares no " +
+                "explicit type, so §20.10 cannot declare it",
+            results(
+                holders =
+                    mapOf(
+                        SHARED_HOLDERS to
+                            real.sources
+                                .getValue(SHARED_HOLDERS)
+                                .replace(
+                                    "    fun clearMessage() {\n        if (!closed) mutableState.value = " +
+                                        "mutableState.value.copy(message = null)",
+                                    "    @HiddenFromObjC val cachedUntyped = MutableStateFlow(false)\n\n" +
+                                        "    fun clearMessage() {\n        if (!closed) mutableState.value = " +
+                                        "mutableState.value.copy(message = null)",
+                                ),
+                    ),
+            ),
+        )
+    }
+
+    /** A `private` untyped hidden property never reaches Swift, so it stays outside the rule. */
+    @Test
+    fun aPrivateUntypedHiddenPropertyIsOutsideTheRule() {
+        assertPasses(results(holders = withExtraMembers("@HiddenFromObjC private val cachedPrivate = MutableStateFlow(false)")))
+    }
+
     private fun assertFails(expected: String, results: List<AssertionResult>) {
         val result =
             assertNotNull(
