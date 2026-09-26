@@ -9,15 +9,13 @@ Owner decision taken on 2026-09-25.
 ## Context
 
 `docs/CONTRACTS.md §9.9` gives the aggregate `SyncStatus.Idle` the meaning "the outbox is empty and no
-failure is outstanding". That is a statement about local outstanding work, not about the remote
-replica. Two ordinary situations make `Idle` true while the remote copy is absent or stale:
-
-- The owner is the `LOCAL_OWNER` sentinel. `docs/SPECIFICATION.md §9.1` and `§9.1` of the contract say
-  nothing is enqueued for remote backup while the owner is that sentinel, so a first offline run
-  publishes `Idle` with nothing backed up at all. P2 requires that first launch to work offline, so it
-  is the normal first-run state, not an error.
-- The local data was edited while the app was closed, or the last push failed for a connectivity code
-  and was later resolved locally without a successful push.
+failure is outstanding". That is a statement about local outstanding work, not proof that a remote
+replica exists or is current. The ordinary case that exposes the distinction is the `LOCAL_OWNER`
+sentinel: `docs/SPECIFICATION.md §9.1` and `§9.1` of the contract say nothing is enqueued for remote
+backup while the owner is that sentinel, so a first offline run publishes `Idle` with nothing backed
+up at all. P2 requires that first launch to work offline, so it is the normal first-run state, not an
+error. `SyncStatus` carries no last-success timestamp or persisted proof of a remote copy from which a
+host could make a stronger claim.
 
 The designs draw the chip as `Sincronizado localmente` ("synchronised locally"). The word *locally* is
 doing real work there: it asserts the local store is settled, not that the backup is current. A label

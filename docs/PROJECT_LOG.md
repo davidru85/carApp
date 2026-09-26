@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-26 — E3-05 review correction 5: cancel holder-owned retry work
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-192`, `D-193`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** `SyncStateHolder` owns a child `SupervisorJob` parented to the caller's job and a
+  child scope built from it; the status collector, the connectivity collector, `retryFailed()` and
+  `refreshDebug()` all launch in that child scope, and `close()` cancels it idempotently, so a manual
+  retry still suspended inside `SyncController.retryFailed()` is cancelled at its suspension point
+  instead of continuing after the holder closed. `ADR-0194` no longer describes a surviving outbox row
+  or a connectivity-code failure as `Idle`, because `§9.9` classifies both as outstanding work.
+- **Why:** `docs/CONTRACTS.md §14` and `§20.10` require `close()` to cancel the work the state holder
+  owns. `retryGeneration` prevented a late UI publication but did not cancel the controller call, so an
+  in-flight retry could still reset outbox rows and request synchronization after `close()`. The
+  decision's second `Idle` example contradicted `§9.9`.
+- **Documents touched:** `docs/adr/0194-do-not-let-the-idle-backup-label-claim-a-current-remote-copy.md`,
+  `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `05dbd16` `SyncStateHolderRetryTest` reported 7 tests with 1 failure
+  (`closeCancelsAnInFlightRetry`, `expected:<1> but was:<0>`) while the six pre-existing retry tests
+  passed; at the GREEN head `0120239` all seven tests pass on the JVM host and
+  `:shared:iosSimulatorArm64Test` passes; the complete non-instrumented `AGENTS.md` command ends in
+  `BUILD SUCCESSFUL`, `contractCheck` shows assertion 36 `PASS` with no `PENDING`, and `git diff --check`
+  exits zero.
+- **Follow-ups / risks:** `D-193` is unchanged and no decision ID was added. `retryGeneration` and the
+  newest-attempt ownership rule are untouched, and overlapping retries remain allowed. No dependency,
+  database schema, public API, `SyncStatus` or platform UI changed, and no emulator or simulator was
+  launched for this correction.
+
 ### 2026-09-26 — E3-05 review correction 4: hidden-annotation attribution and host parity
 
 - **Type:** correction

@@ -45,24 +45,23 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-26
 - Branch and base: `story/E3-05-backup-status-ui`, based on `main` / `origin/main` at `5141e68`.
-- Current phase and latest commit: review correction 4 complete. Its RED commits are `7d39394`
-  (untyped hidden properties) and `687bdc6` (backup-status error tag and iOS accessible description),
-  its GREEN commits are `6ab80f5` and `1315491`, its REFACTOR commit is `a0472e5` (exhaustive
-  iOS classification), and the documentation commit that carries this checkpoint sits on top of them.
-  Review correction 3 is `8b91eaf` and `f7e234f` (RED) and `af79fa4` and `4b604d2` (GREEN); review
-  correction 2 is `875c137` (RED) and `e69bc61` (GREEN); the first review correction is `121a33e`
-  (RED) and `32ea3fd` (GREEN); the original story phases are `d453d65` (RED), `ebfd8cf` (GREEN) and
-  `f336b54` (records).
+- Current phase and latest commit: review correction 5 complete. Its RED commit is `05dbd16` and its
+  GREEN commit is `0120239`; the documentation commit that carries this checkpoint sits on top of
+  them. Review correction 4 is `7d39394` and `687bdc6` (RED), `6ab80f5` and `1315491` (GREEN) and
+  `a0472e5` (REFACTOR); review correction 3 is `8b91eaf` and `f7e234f` (RED) and `af79fa4` and
+  `4b604d2` (GREEN); review correction 2 is `875c137` (RED) and `e69bc61` (GREEN); the first review
+  correction is `121a33e` (RED) and `32ea3fd` (GREEN); the original story phases are `d453d65` (RED),
+  `ebfd8cf` (GREEN) and `f336b54` (records).
 - Push and pull-request status: pushed; pull request #74 is open and awaiting the owner's gated
   review. Its description carries the review corrections.
-- Completed since the previous checkpoint: review correction 4 — assertion 36 attributes each
-  `@HiddenFromObjC` annotation to the declaration that follows it and reports a public hidden property
-  that declares no explicit type; the Android retry error carries its own `backup_status_error` tag;
-  the iOS status text carries the accessible description Android already had; and the iOS
-  classification is an exhaustive switch over the sealed status. See Decisions Made.
-- Verification evidence and known failures: see Verification Run, including the review correction 4
-  subsection. No known failure introduced by this story. The Android emulator and the iOS simulators
-  launched for this correction were closed after each use.
+- Completed since the previous checkpoint: review correction 5 — `SyncStateHolder` owns a child
+  `SupervisorJob` and a child scope, every collector, manual retry and debug refresh runs in it, and
+  `close()` cancels that scope, so an in-flight manual retry is cancelled rather than merely barred
+  from publishing; `ADR-0194` no longer describes a surviving outbox row or a connectivity failure as
+  `Idle`. See Decisions Made.
+- Verification evidence and known failures: see Verification Run, including the review correction 5
+  subsection. No known failure introduced by this story. This correction needs no device: no Android
+  emulator or iOS simulator was launched.
 - Open decisions or blockers: none. `D-191`, `D-192` and `D-193` are unchanged and `Accepted`.
 - Exact next step: the owner's gated review of pull request #74.
 
@@ -371,6 +370,40 @@ ID was added, and `D-191` to `D-193` stand as accepted.
   test was written and observed failing before its code.
 
 
+### Review correction 5 (2026-09-26)
+
+A fifth review found that `SyncStateHolder.close()` did not cancel every coroutine the holder owns,
+and that `ADR-0194` described two situations as `Idle` that `§9.9` classifies as `Pending`.
+
+- **A manual retry outlived the holder.** `retryFailed()` and `refreshDebug()` launched their work
+  directly in the caller-owned `scope`, which the holder does not own, while `close()` cancelled only
+  the two collector jobs. The `retryGeneration` counter added by review correction 3 stopped a late
+  retry from publishing a message, but it could not stop the suspended `controller.retryFailed()`
+  call: that call could still reset outbox rows and request synchronization after the holder was
+  closed, which `docs/CONTRACTS.md §14` and `§20.10` forbid because `close()` MUST cancel the work the
+  holder owns. `SyncStateHolder` now owns a child `SupervisorJob` parented to the caller's job and a
+  child scope built from it — the same shape the feature state holders already use — and every
+  collector, retry and debug refresh launches in that child scope. `close()` cancels the child scope
+  idempotently, so the suspended retry is cancelled at the point of suspension and a second `close()`
+  stays a no-op.
+- **`ADR-0194`'s second alleged `Idle` scenario was wrong.** The decision's Context claimed that a
+  local edit made while the app was closed, or a connectivity-code failure resolved locally without a
+  successful push, could publish `Idle`. `§9.9` says the opposite: a surviving outbox row is
+  outstanding work and publishes `Pending`, and a connectivity-code failure also stays in the pending
+  bucket, so neither is an `Idle` that hides a missing remote copy. The paragraph now carries the
+  `LOCAL_OWNER` example alone, which is sufficient and correct, and states that `SyncStatus` carries no
+  proof of a remote copy. `ADR-0194`'s status, selected option, accepted label, constraints and
+  decision ID are unchanged: this removes a contradiction from its rationale rather than reopening
+  `D-193`.
+- **No decision, public API, dependency, database schema, `SyncStatus`, platform UI or accepted label
+  changed.** `retryGeneration` and the newest-attempt ownership rule are untouched, and overlapping
+  retries are still allowed.
+- **TDD, this round.** The RED commit `05dbd16` added `closeCancelsAnInFlightRetry` and made the test
+  double count the cancellation it throws; it failed with `expected:<1> but was:<0>`, because the
+  holder cancelled nothing. The GREEN commit `0120239` moved every launch into the child scope and
+  cancelled it from `close()`, and all seven tests pass, on the JVM host and on Kotlin/Native. No
+  exemption was used: the test was written and observed failing before the code.
+
 ## Verification Run
 
 ```text
@@ -523,6 +556,23 @@ git diff --check                                                          exits 
 
 The `E1_07_API_36` emulator was booted twice, once for the RED check and once for the GREEN check,
 and killed after each; each iOS check ran on a simulator created for it and deleted after it.
+
+### Review correction 5 (2026-09-26) — commands actually run
+
+```text
+./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.SyncStateHolderRetryTest' --rerun-tasks
+RED:   7 tests completed, 1 failed — closeCancelsAnInFlightRetry, expected:<1> but was:<0>
+GREEN: BUILD SUCCESSFUL, 7 tests, 0 failures
+./gradlew :shared:iosSimulatorArm64Test --rerun-tasks                      BUILD SUCCESSFUL
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest \
+          testAndroidHostTest iosSimulatorArm64Test -x ...                 BUILD SUCCESSFUL
+./gradlew contractCheck --rerun-tasks                                     assertion 36 PASS, no PENDING
+git diff --check                                                          exits 0
+```
+
+No Android emulator and no iOS simulator was launched for this correction: every command above runs
+on the host.
 
 ## Contract Impact
 
