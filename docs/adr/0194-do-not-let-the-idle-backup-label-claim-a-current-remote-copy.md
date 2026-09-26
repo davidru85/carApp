@@ -36,8 +36,8 @@ offline install it would be false the moment the owner creates their first vehic
 
 The selected option is: **Option A**.
 
-The `Idle` visual is labelled as the designs already draw it — "synchronised locally" in English and
-"sinpendientes"/"sincronizado localmente" semantics in Spanish, as the platform catalogues word it —
+The `Idle` visual is labelled as the designs already draw it — "Synced locally" in English and
+"Sincronizado localmente" in Spanish, the exact wording of both platform catalogues —
 and neither label asserts that a remote copy exists or is current. The other three visuals state
 outstanding work (`Pending`), a running cycle (`Syncing`) and a failure (`Failed`), none of which
 claims anything about the remote either.

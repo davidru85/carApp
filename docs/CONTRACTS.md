@@ -1516,6 +1516,12 @@ derived once (`D-192`). A host that re-derived `Pending` from its own connectivi
 re-ordered the four buckets, would be a second implementation of the sync algorithm's aggregate
 (`D-193` governs what the `Idle` label may claim).
 
+`SyncUiState.message` carries only the typed failure of the latest manual retry.
+`SyncStateHolder.retryFailed()` clears it before each attempt, the holder withdraws it as soon as the
+relayed status is no longer `Failed`, and a host draws it only beside the `Failed` visual. A retry
+failure therefore never outlives the condition it reports, and no host draws an error beside
+`Pending`, `Syncing` or `Idle` (`E3-05`, `D-192`).
+
 D-88 records the one temporary exception: E1-07 retains D-55 direct Vehicle restoration and
 publishes constant `SyncStatus.Idle` without constructing a provisional `SyncController`. E3-03
 MUST remove that exception. D-95 records the parallel Fuel Entry list exception: E1-08 publishes

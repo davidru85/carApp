@@ -86,8 +86,10 @@ local owner. See `D-193`.
 `SyncStatusVisualTest` (`:androidApp:testDebugUnitTest`) and `SyncStatusVisualTests` (the iOS unit-test
 target) cover the four-way classification, the invariance of the counts inside a status, that a
 `Pending` is never classified as `Failed`, that `Syncing` and `Pending` stay distinct, and that every
-visual has its own label in both catalogues. The instrumented Android suite exercises the rendered
-chip and its retry affordance. Evidence is in `docs/handoff-E3-05.md`.
+visual has its own label; the iOS test also asserts that both catalogues carry copy for every visual.
+The instrumented Android suite exercises the rendered chip, its retry affordance, the mapped retry
+failure and the absence of that failure beside a non-`Failed` status. Evidence is in
+`docs/handoff-E3-05.md`.
 
 ## References
 

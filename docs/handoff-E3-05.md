@@ -43,24 +43,22 @@
 
 Update this section at every material state change and before yielding unfinished work (`D-105`).
 
-- Date: 2026-09-25
+- Date: 2026-09-26
 - Branch and base: `story/E3-05-backup-status-ui`, based on `main` / `origin/main` at `5141e68`.
-- Current phase and latest commit: complete at `f336b54`. RED is `d453d65`, the green phase and the
-  two fixes the instrumented suite forced are `ebfd8cf`, and the decisions and documents are
-  `f336b54`. A final commit carries this record's verification results and checkpoint.
+- Current phase and latest commit: review correction 2 complete. Its RED commit is `875c137`, its
+  GREEN commit is `e69bc61`, and the documentation commit that carries this checkpoint sits on
+  top of them. The first review correction is `121a33e` (RED) and `32ea3fd` (GREEN); the original
+  story phases are `d453d65` (RED), `ebfd8cf` (GREEN) and `f336b54` (records).
 - Push and pull-request status: pushed; pull request #74 is open and awaiting the owner's gated
-  review.
-- Completed since the previous checkpoint: the RED phase (three failing units), the green
-  implementation for both hosts, assertion 36 with thirteen fixtures, the three decisions with their
-  ADRs and the four mirroring rows each, the normative updates, the instrumented Android suite and
-  the iOS `xcodebuild` test run.
-- Verification evidence and known failures: see Verification Run. No known failure. The instrumented
-  suite failed on its first two runs and both causes were mine: clearing the row's semantics hid the
-  label and the indicator's own test tag, and the suite called `setContent` once per status. Both are
-  fixed and recorded under Decisions Made.
-- Open decisions or blockers: none. `D-191`, `D-192` and `D-193` are `Accepted` by the owner's
-  answers of 2026-09-25.
-- Exact next step: hand the pull request to the owner's gated review.
+  review. Its description carries both review corrections.
+- Completed since the previous checkpoint: the first review correction (Android status source,
+  visible retry errors, the pre-attempt clear) and review correction 2 (the iOS indicator observes
+  the model, the retry message is withdrawn when the status leaves `Failed` and drawn only beside it,
+  and assertion 36 cuts the member header on masked code). See Decisions Made.
+- Verification evidence and known failures: see Verification Run, including the review correction 2
+  subsection. No known failure introduced by this story.
+- Open decisions or blockers: none. `D-191`, `D-192` and `D-193` are unchanged and `Accepted`.
+- Exact next step: the owner's gated review of pull request #74.
 
 ## Scope Completed
 
@@ -74,7 +72,10 @@ Update this section at every material state change and before yielding unfinishe
   through the holder's existing typed `UiMessage` and needs no new channel. Both hosts render that
   message through their existing mapping (`ErrorText` on Android, `UiMessage.localizedText` on iOS),
   so a failed attempt is visible rather than an inert button, and the holder clears the previous
-  failure before each later attempt so a success cannot leave a stale error on screen.
+  failure before each later attempt and withdraws it when the status leaves `Failed`, so neither a
+  success nor a later automatic cycle can leave a stale error on screen. Each host draws that message
+  only beside the `Failed` visual, and on iOS the indicator row observes the model so a sync-only
+  change redraws it.
 - `docs/CONTRACTS.md §18` assertion 36, making the `§11.6` hidden-member rule executable in both
   directions and for both fail-open shapes, with a failing fixture per problem branch (`D-191`).
 - The copy in both languages on both platforms, with the `Idle` label stating that nothing is
@@ -85,9 +86,9 @@ Update this section at every material state change and before yielding unfinishe
 | Criterion | Evidence |
 |---|---|
 | 1. `SyncStatus` rendered with the `§9.9` precedence | The host renders the resolved value; `SyncStatusVisualTest.everyPublishedStatusMapsToItsOwnVisual` (Android) and `SyncStatusVisualTests.testEveryPublishedStatusMapsToItsOwnVisual` (iOS) pin the four-way classification. The precedence itself is `:core:sync`'s and stays pinned there by `DefaultSyncControllerTest`, which `E3-05` does not touch |
-| 2. Offline with pending rows, or connectivity-only retryable failures, renders as `Pending`, never an error | The classification takes no connectivity fact and its parameter is the already-resolved `SyncStatus`, so the host cannot re-derive the buckets: `syncStatusVisual` has no overload accepting an online flag. `DefaultSyncControllerTest.offlineWriteIsBackedUpAfterConnectivityReturns` and `connectivityFailureKeepsRowStateAndAggregateInAgreement` pin that the resolved value is `Pending` for both cases; `SyncStatusVisualTest.aPendingStatusIsNeverClassifiedAsFailed` and `SyncStatusIndicatorTest.everyNonFailedStatusRendersWithoutARetry` pin that the host does not present it as an error |
-| 3. The failed state offers manual retry through `SyncController.retryFailed()` | `SyncStatusIndicatorTest.aFailedStatusOffersTheManualRetry` clicks the rendered affordance and observes the callback, and `SyncStatusIndicatorTest.retryFailureRendersMappedPersistenceMessage` renders the typed failure and keeps Retry separately actionable; iOS forwards `WalkingSkeletonModel.retryBackup()` to `SyncStateHolder.retryFailed()`, the same member `§20.10` declares. The holder's failure path is proved by `SyncStateHolderRetryTest.retryFailurePublishesTypedMessage` and `SyncStateHolderRetryTest.successfulRetryClearsPreviousFailureMessage`; the iOS rendering of that code is pinned by `UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage`, and `DefaultSyncControllerTest.retryFailedPropagatesOnlyLocalTransactionFailure` pins the controller's own failure classification |
-| 4. The `§11.6` rule is executable | `contractCheck` reports assertion 36 `PASS` on the real repository; `SwiftHiddenMemberContractTest` has thirteen fixtures, one per problem branch, each asserting the exact problem text, plus the first test that runs the real `contractCheck` so the fixtures cannot drift from the surface they guard |
+| 2. Offline with pending rows, or connectivity-only retryable failures, renders as `Pending`, never an error | The classification takes no connectivity fact and its parameter is the already-resolved `SyncStatus`, so the host cannot re-derive the buckets: `syncStatusVisual` has no overload accepting an online flag. `DefaultSyncControllerTest.offlineWriteIsBackedUpAfterConnectivityReturns` and `connectivityFailureKeepsRowStateAndAggregateInAgreement` pin that the resolved value is `Pending` for both cases; `SyncStatusVisualTest.aPendingStatusIsNeverClassifiedAsFailed` and `SyncStatusIndicatorTest.everyNonFailedStatusRendersWithoutARetry` pin that the host does not present it as an error; `SyncStateHolderRetryTest.retryFailureIsWithdrawnWhenTheStatusLeavesFailed` pins that a retry failure is withdrawn once the status leaves `Failed`, and `SyncStatusIndicatorTest.aRetryFailureIsNotRenderedBesideANonFailedStatus` pins that the Android indicator never draws one beside `Idle`, `Syncing` or `Pending` |
+| 3. The failed state offers manual retry through `SyncController.retryFailed()` | `SyncStatusIndicatorTest.aFailedStatusOffersTheManualRetry` clicks the rendered affordance and observes the callback, and `SyncStatusIndicatorTest.retryFailureRendersMappedPersistenceMessage` renders the typed failure and keeps Retry separately actionable; iOS forwards `WalkingSkeletonModel.retryBackup()` to `SyncStateHolder.retryFailed()`, the same member `§20.10` declares. The holder's failure path is proved by `SyncStateHolderRetryTest.retryFailurePublishesTypedMessage` and `SyncStateHolderRetryTest.successfulRetryClearsPreviousFailureMessage`, and `SyncStateHolderRetryTest.retryFailureSurvivesAChangeBetweenFailedAggregates` keeps it while the status stays `Failed`; on iOS the indicator is drawn by `BackupStatusRow`, which observes `WalkingSkeletonModel` so a sync-only change redraws it; the iOS rendering of that code is pinned by `UiMessageMappingTests.testTransactionFailureUsesPersistenceMessage`, and `DefaultSyncControllerTest.retryFailedPropagatesOnlyLocalTransactionFailure` pins the controller's own failure classification |
+| 4. The `§11.6` rule is executable | `contractCheck` reports assertion 36 `PASS` on the real repository; `SwiftHiddenMemberContractTest` has sixteen tests: eleven failing fixtures that cover the five problem branches and the masked header cut, each asserting the exact problem text; four passing fixtures for members outside the rule; and the first test, which runs the real `contractCheck` so the fixtures cannot drift from the surface they guard |
 
 **Fixtures and their observed failure before the check existed.** The whole
 `SwiftHiddenMemberContractTest` class failed 13 of 13 before assertion 36 was implemented, because
@@ -178,7 +179,8 @@ under test, not a compile or setup error.
     removed the label and the indicator's own test tag. The suite reported the indicator as "not
     displayed" rather than as a missing description, so the defect was an unreachable node, not a
     styling preference. The description is now set on the coloured dot, which is what a screen reader
-    had no other way to read; the row keeps its own semantics and its tag.
+    had no other way to read; the row keeps its own semantics and its tag. The first review
+    correction below superseded this: the visible label owns the description and the dot carries none.
   - The first version of the suite called `setContent` once per status inside a loop, which the Compose
     test rule rejects. It now composes once and varies the published status through a mutable state,
     which is also the closer model of a status that changes under a running UI.
@@ -216,6 +218,57 @@ did. All three are corrected here; no decision changed and `D-191` to `D-193` st
   after a successful attempt — the third defect above, observed rather than described. The clear was
   then added and both pass. No exemption was used, and the Swift and Compose rendering added here is
   covered by the existing instrumented and iOS unit targets rather than by a new UI harness.
+
+### Review correction 2 (2026-09-26)
+
+A second review of this pull request found three defects and several record inaccuracies. All are
+corrected here; no decision changed, no decision ID was added, and `D-191` to `D-193` stand as
+accepted. The two behavioural corrections apply the second acceptance criterion and the `ADR-0193`
+constraint that a retry failure surfaces through the existing typed `UiMessage`; they choose no new
+option.
+
+- **The iOS indicator did not observe the model.** `VehicleListView` holds `WalkingSkeletonModel` as
+  a plain `let`. `ContentView` observes the model and re-evaluates its own body on every publication,
+  but SwiftUI does not re-evaluate a child whose stored references are unchanged, so a status change
+  or a retry failure that arrived without a vehicle-list change was never drawn. A retry failure
+  never changes the vehicle-list state, so the first correction's visible retry failure held on
+  Android only, and the claim above that the Swift rendering is covered by the iOS unit target was
+  wrong: that target does not render views. A standalone SwiftUI probe reproduced the mechanism: with
+  the model held as `let`, the parent body ran three times and the child body once, frozen on the
+  first value; with an `@ObservedObject` row the child followed every change. The indicator is now
+  drawn by `BackupStatusRow`, which observes the model, so only that row redraws on a sync-only
+  change. The iOS status source is unchanged: `SyncStateHolder.state`, as `ADR-0193` assigns.
+- **A retry failure outlived the `Failed` status.** `SyncStateHolder` cleared `message` only at the
+  start of the next manual retry, and both hosts drew it regardless of the status. After a failed
+  retry, an automatic cycle that moved the aggregate to `Pending` or `Idle` left the persistence error
+  drawn in red beside "Waiting to back up" or "Synced locally", which is the error presentation the
+  second criterion forbids for `Pending`. The holder now withdraws the message as soon as the relayed
+  status is not `Failed`, and both hosts draw it only beside the `Failed` visual, which also covers
+  the turn in which Android's two relays have not converged. `docs/CONTRACTS.md §14` states the rule.
+- **Assertion 36 could pass an undeclared hidden member.** `hiddenMembers` cut the text between two
+  members at its last `{`, `}` or `;` on the raw source and only then masked the fragment. A brace, a
+  semicolon or a string template inside the previous member's string literal split that literal, the
+  fragment re-lexed as an unterminated string, and the annotation was masked away: assertion 36
+  returned `PASS` for a public `@HiddenFromObjC` member absent from `§20.10` behind
+  `val label: String = "{}"`, `val separator: String = ";"` and `val summary: String get() = "${1}"`.
+  The cut and the match now both run on the offset-preserving code view of the body, and three new
+  fixtures pin the three shapes.
+- **Records corrected.** `ADR-0194` quoted labels that no catalogue contains; it now quotes the
+  catalogue wording. `ADR-0193`'s Verification claimed both unit tests check both catalogues; only the
+  iOS test does. `ADR-0192`'s Verification lists the new fixtures. This handoff's checkpoint named
+  `f336b54` as the latest commit after five later commits, its fixture count described thirteen tests
+  as thirteen problem-branch fixtures, and its iOS risk claimed the build would catch a wiring
+  regression. All are corrected in this revision.
+- **TDD, this round.** The RED commit `875c137` added
+  `retryFailureIsWithdrawnWhenTheStatusLeavesFailed`, which failed with the stale
+  `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` still published beside
+  `Pending`; the guard `retryFailureSurvivesAChangeBetweenFailedAggregates`, which passed at RED and
+  pins that the withdrawal is tied to leaving `Failed`; and the three masked-cut fixtures, which
+  failed because assertion 36 returned `PASS`. The GREEN commit `e69bc61` made all of them pass.
+  The Compose and SwiftUI changes use the native UI exemption of `docs/SPECIFICATION.md §11`: the
+  Android guard is covered by the new instrumented test
+  `aRetryFailureIsNotRenderedBesideANonFailedStatus`, and the iOS row has no automated UI assertion,
+  which stays recorded under Risks.
 
 ## Verification Run
 
@@ -294,11 +347,36 @@ Two failures observed while verifying, both investigated rather than re-run away
   contract; the identical code had already passed the same job on `5e9150d`, and
   `:shared:iosSimulatorArm64Test --rerun-tasks` passed 99 tests locally afterwards.
 
+### Review correction 2 (2026-09-26) — commands actually run
+
+```text
+./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.SyncStateHolderRetryTest'
+RED:   4 tests completed, 1 failed — retryFailureIsWithdrawnWhenTheStatusLeavesFailed, the stale
+       UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED) published beside Pending
+GREEN: BUILD SUCCESSFUL, 4 tests, 0 failures
+./gradlew :build-logic:convention:test --tests '...contract.SwiftHiddenMemberContractTest'
+RED:   16 tests completed, 3 failed — the three masked-cut fixtures, assertion 36 returned PASS
+GREEN: BUILD SUCCESSFUL, 16 tests, 0 failures
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest \
+          testAndroidHostTest iosSimulatorArm64Test -x ...                 BUILD SUCCESSFUL
+./gradlew :build-logic:convention:test                                    193 tests, 0 failures
+./gradlew contractCheck --rerun-tasks                                     assertion 36 PASS, no PENDING
+./gradlew :androidApp:connectedDebugAndroidTest  (E1_07_API_36 emulator)  BUILD SUCCESSFUL —
+       SyncStatusIndicatorTest 6 tests, 0 failures
+xcodebuild ... -only-testing:carAppTests test                             53 tests, 0 failures,
+       TEST SUCCEEDED
+git diff --check                                                          exits 0
+```
+
+The Android emulator and the iOS simulator launched for this correction were both closed after use.
+
 ## Contract Impact
 
 - Updated `docs/CONTRACTS.md §11.6` (the rule now names assertion 36 as its executable check),
   `§14` (a host MUST NOT compute `SyncStatus` either; the indicator's classification is a presentation
-  mapping of the resolved value) and `§18` (new assertion 36).
+  mapping of the resolved value; review correction 2 adds that `SyncUiState.message` is withdrawn
+  when the status leaves `Failed` and is drawn only beside it) and `§18` (new assertion 36).
 
 ## Decision Board Impact
 
@@ -320,9 +398,10 @@ Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
 - **The iOS indicator has no automated UI assertion.** Its classification and copy are covered by the
   iOS unit-test target, and the view compiles and runs under `xcodebuild test`, but no iOS UI test
-  drives the rendered chip. A regression in the SwiftUI wiring alone would be caught by the build, not
-  by an assertion. Recorded here rather than silently accepted; a later story that adds an iOS
-  sync-status scenario should assert it.
+  drives the rendered chip. A regression in the SwiftUI wiring alone is caught by neither the build
+  nor an assertion: review correction 2 found one, the indicator not observing the model, that
+  compiled and passed every existing test. Recorded here rather than silently accepted; a later story
+  that adds an iOS sync-status scenario should assert it.
 - **The host classification is duplicated per platform**, as `D-183` already accepted for the
   foreground threshold. Only the rule is shared; each host has its own four-way mapping and its own
   copy, each covered by its own test. Four lines per side.

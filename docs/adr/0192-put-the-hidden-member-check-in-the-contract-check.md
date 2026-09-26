@@ -86,8 +86,9 @@ problem branch by mutating the real `§20.10` text or the real holder sources: a
 hidden function absent from the contract, a hidden member carrying another modifier, a contract member
 missing the annotation, a contract member the class does not implement, a holder whose block is
 missing, a contract with no holder block, an `internal` and a `private` hidden member, that annotation
-inside a comment and a string literal, and a hidden member in a second holder source. Evidence is in
-`docs/handoff-E3-05.md`.
+inside a comment and a string literal, a hidden member in a second holder source, and a brace, a
+semicolon or a string template inside the previous member's string literal, which must not hide the
+annotation. Evidence is in `docs/handoff-E3-05.md`.
 
 ## References
 

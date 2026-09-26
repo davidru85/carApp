@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-09-26 — E3-05 review correction 2: iOS observation, retry-message lifetime and the masked header cut
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** the iOS indicator is drawn by `BackupStatusRow`, which observes
+  `WalkingSkeletonModel`, because `VehicleListView` holds the model as a plain reference and SwiftUI
+  did not redraw it for a sync-only change; `SyncStateHolder` withdraws `SyncUiState.message` when the
+  relayed status leaves `Failed`, and both hosts draw that message only beside the `Failed` visual;
+  assertion 36 cuts and matches the member header on the offset-preserving code view, so a brace, a
+  semicolon or a string template inside the previous member's string literal can no longer hide the
+  annotation. `docs/CONTRACTS.md §14` states the message rule, and `ADR-0192`, `ADR-0193`, `ADR-0194`
+  and the handoff records are corrected.
+- **Why:** on iOS a failed retry, and any status change without a vehicle-list change, was never
+  drawn; a retry failure stayed drawn in red beside `Pending` or `Idle` after an automatic cycle,
+  which the second `E3-05` criterion forbids; and assertion 36 returned `PASS` for an undeclared
+  public hidden member behind a string literal containing `{`, `}` or `;`.
+- **Documents touched:** `docs/CONTRACTS.md §14`; `docs/adr/0192`, `0193`, `0194`;
+  `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `875c137` the holder suite reported 4 tests with 1 failure
+  (`retryFailureIsWithdrawnWhenTheStatusLeavesFailed`, the stale
+  `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` beside `Pending`) and the
+  contract suite reported 16 tests with 3 failures (the masked-cut fixtures, assertion 36 returning
+  `PASS`); at the GREEN head `e69bc61` both suites pass, the complete non-instrumented `AGENTS.md`
+  command ends in `BUILD SUCCESSFUL`, `contractCheck` shows assertion 36 `PASS` with no `PENDING`, the
+  instrumented suite on `E1_07_API_36` passes with `SyncStatusIndicatorTest` at 6 tests, and the iOS
+  `carAppTests` target reports 53 tests with 0 failures.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged and no decision ID was added. The
+  iOS indicator still has no automated UI assertion. The Android emulator and the iOS simulator
+  launched for this correction were both closed.
+
 ### 2026-09-25 — E3-05 review correction: status ownership and visible retry errors
 
 - **Type:** correction
