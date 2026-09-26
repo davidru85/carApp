@@ -91,6 +91,16 @@ final class UiMessageMappingTests: XCTestCase {
         return ""
     }
 
+    /// A failed manual backup retry reaches this host as `PERSISTENCE.TRANSACTION_FAILED`
+    /// (`docs/adr/0193`). The vehicle-list indicator renders it through this mapping, so the code
+    /// MUST keep resolving to the existing persistence copy rather than to the generic fallback.
+    func testTransactionFailureUsesPersistenceMessage() {
+        XCTAssertEqual(
+            localizedUiMessage(for: "PERSISTENCE.TRANSACTION_FAILED"),
+            String(localized: "error_persistence")
+        )
+    }
+
     func testConsumptionInvalidReasonExplanation() {
         let reasons: [ConsumptionInvalidReason?] = [
             .noPreviousFullTank,
