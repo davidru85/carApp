@@ -8,6 +8,7 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -186,6 +187,25 @@ class SyncStateHolderRetryTest {
             holder.close()
         }
 
+    /** `close()` owns and cancels a retry that is still suspended in the controller (§14, §20.10). */
+    @Test
+    fun closeCancelsAnInFlightRetry() =
+        runTest {
+            val controller = SequencedRetrySyncController()
+            val retry = controller.enqueueRetry()
+            val holder = holder(controller)
+            advanceUntilIdle()
+
+            holder.retryFailed()
+            runCurrent()
+            holder.close()
+            runCurrent()
+            retry.complete(Outcome.Ok(Unit))
+            advanceUntilIdle()
+
+            assertEquals(1, controller.retryCancellations)
+        }
+
     private fun TestScope.holder(controller: SyncController): SyncStateHolder =
         SyncStateHolder(
             scope = this,
@@ -230,6 +250,8 @@ private class SequencedRetrySyncController : SyncController {
     private val retries = mutableListOf<CompletableDeferred<Outcome<Unit, AppError>>>()
     var retryCalls = 0
         private set
+    var retryCancellations = 0
+        private set
 
     override val status: StateFlow<SyncStatus> = mutableStatus
 
@@ -240,7 +262,15 @@ private class SequencedRetrySyncController : SyncController {
 
     override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> = Outcome.Ok(Unit)
 
-    override suspend fun retryFailed(): Outcome<Unit, AppError> = retries[retryCalls++].await()
+    override suspend fun retryFailed(): Outcome<Unit, AppError> {
+        val retry = retries[retryCalls++]
+        return try {
+            retry.await()
+        } catch (cancellation: CancellationException) {
+            retryCancellations += 1
+            throw cancellation
+        }
+    }
 
     override fun shutdown() = Unit
 }
