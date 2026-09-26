@@ -681,6 +681,7 @@ class SyncStateHolder internal constructor(
     private val mutableDebugLines = MutableStateFlow<List<String>>(emptyList())
     val debugLines: StateFlow<List<String>> = mutableDebugLines
     private var closed = false
+    private var retryGeneration = 0L
     private val statusJob =
         scope.launch(dispatchers.main) {
             controller.status.collect { status ->
@@ -725,24 +726,33 @@ class SyncStateHolder internal constructor(
 
     fun retryFailed() {
         if (closed) return
+        val generation = ++retryGeneration
         scope.launch(dispatchers.main) {
-            // The previous failure is cleared before the attempt, not after it: the host renders
-            // `message` as the retry outcome, so a stale error left in place would outlive the
-            // attempt that succeeded and stay on screen as a failure that no longer applies.
+            if (closed || generation != retryGeneration) return@launch
+            // A new attempt owns the visible outcome immediately. An older attempt may still finish,
+            // but its generation is no longer allowed to publish.
             mutableState.value = mutableState.value.copy(message = null)
             val result = withContext(dispatchers.io) { controller.retryFailed() }
-            if (result is Outcome.Err) {
-                mutableState.value =
-                    mutableState.value.copy(
-                        message =
+            if (closed || generation != retryGeneration) return@launch
+
+            // Read the canonical source after the suspended retry. Publishing the pre-suspension
+            // holder snapshot would resurrect an error after the aggregate had left Failed.
+            val status = controller.status.value
+            mutableState.value =
+                mutableState.value.copy(
+                    status = status,
+                    message =
+                        if (result is Outcome.Err && status is SyncStatus.Failed) {
                             UiMessage(
                                 id = SYNC_ERROR_MESSAGE_ID,
                                 kind = UiMessageKind.ERROR,
                                 code = result.error.code,
                                 confirmation = null,
-                            ),
-                    )
-            }
+                            )
+                        } else {
+                            null
+                        },
+                )
         }
     }
 
@@ -760,6 +770,7 @@ class SyncStateHolder internal constructor(
     fun close() {
         if (closed) return
         closed = true
+        retryGeneration += 1
         statusJob.cancel()
         connectivityJob.cancel()
     }

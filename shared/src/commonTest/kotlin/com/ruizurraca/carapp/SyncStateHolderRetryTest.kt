@@ -37,6 +37,7 @@ class SyncStateHolderRetryTest {
             val controller =
                 RetryResultSyncController(
                     retryResult = Outcome.Err(PersistenceError.TransactionFailed),
+                    initialStatus = SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
                 )
             val holder = holder(controller)
 
@@ -58,6 +59,7 @@ class SyncStateHolderRetryTest {
             val controller =
                 RetryResultSyncController(
                     retryResult = Outcome.Err(PersistenceError.TransactionFailed),
+                    initialStatus = SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
                 )
             val holder = holder(controller)
 
