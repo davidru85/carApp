@@ -88,6 +88,20 @@ final class SyncStatusVisualTests: XCTestCase {
         }
     }
 
+    /// The status text is announced as "Backup status: <label>", the same accessible description the
+    /// Android indicator carries, so a screen reader names what the chip reports. Both catalogues MUST
+    /// carry the format and it MUST keep exactly one `%@` placeholder for the label.
+    func testTheAccessibleDescriptionHasCopyInBothLanguages() throws {
+        for language in ["en", "es"] {
+            let catalogue = try localization(language)
+            let key = "backup_status_description"
+            let copy = catalogue.localizedString(forKey: key, value: nil, table: nil)
+
+            XCTAssertNotEqual(copy, key, "\(language) is missing \(key).")
+            XCTAssertEqual(copy.components(separatedBy: "%@").count - 1, 1, "\(language) \(key) needs one %@.")
+        }
+    }
+
     /// The catalogues live in the application bundle, not in the test bundle, so the lookup is
     /// anchored to a class the application target owns.
     private func localization(_ language: String) throws -> Bundle {

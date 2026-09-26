@@ -130,6 +130,8 @@ class SyncStatusIndicatorTest {
                 .targetContext
                 .getString(R.string.error_persistence)
         composeRule.onNodeWithText(expected).assertIsDisplayed()
+        composeRule.onNodeWithTag(SyncStatusTestTags.ERROR).assertIsDisplayed()
+        composeRule.onNodeWithTag(VehicleTestTags.ERROR).assertDoesNotExist()
         composeRule
             .onNodeWithTag(SyncStatusTestTags.RETRY)
             .assertIsEnabled()
@@ -166,6 +168,7 @@ class SyncStatusIndicatorTest {
             composeRule.waitForIdle()
 
             composeRule.onNodeWithText(error).assertDoesNotExist()
+            composeRule.onNodeWithTag(SyncStatusTestTags.ERROR).assertDoesNotExist()
         }
     }
 

@@ -93,4 +93,5 @@ internal fun SyncStatusIndicator(
 object SyncStatusTestTags {
     const val INDICATOR = "backup_status_indicator"
     const val RETRY = "backup_status_retry"
+    const val ERROR = "backup_status_error"
 }
