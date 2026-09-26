@@ -44,6 +44,7 @@
 "backup_status_pending" = "Waiting to back up";
 "backup_status_failed" = "Backup failed";
 "backup_status_retry" = "Retry backup";
+"backup_status_description" = "Backup status: %@";
 
 "error_required_field" = "Complete the required field.";
 "error_invalid_length" = "Check the field length.";

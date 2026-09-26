@@ -39,6 +39,7 @@ struct SyncStatusIndicatorView: View {
                 Text(label)
                     .font(.footnote)
                     .foregroundColor(isError ? .red : .secondary)
+                    .accessibilityLabel(Text(String(format: String(localized: "backup_status_description"), label)))
                     .accessibilityIdentifier("backup_status_indicator")
                 Spacer()
                 if isError {

@@ -999,12 +999,15 @@ private fun VehicleDetailContent(
 }
 
 @Composable
-internal fun ErrorText(message: UiMessage?) {
+internal fun ErrorText(
+    message: UiMessage?,
+    testTag: String = VehicleTestTags.ERROR,
+) {
     if (message == null) return
     Text(
         text = stringResource(message.stringResource()),
         color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.testTag(VehicleTestTags.ERROR),
+        modifier = Modifier.testTag(testTag),
     )
 }
 

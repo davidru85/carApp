@@ -85,7 +85,7 @@ internal fun SyncStatusIndicator(
         // The holder withdraws the message when the status leaves Failed (`§14`); this guard also
         // covers the turn in which the vehicle-list relay has moved on and the sync holder has not.
         if (isError) {
-            ErrorText(message)
+            ErrorText(message, testTag = SyncStatusTestTags.ERROR)
         }
     }
 }
