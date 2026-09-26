@@ -488,6 +488,28 @@ resetFailedFuelEntries:
 UPDATE fuel_entry SET syncState = 'PENDING'
 WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 
+countPurgeableVehicleTombstones:
+SELECT COUNT(*) FROM vehicle
+WHERE deleted = 1
+  AND syncState = 'SYNCED'
+  AND serverUpdatedAt IS NOT NULL
+  AND serverUpdatedAt < :cutoff
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox
+    WHERE outbox.entityType = 'VEHICLE' AND outbox.entityId = vehicle.id
+  );
+
+countPurgeableFuelEntryTombstones:
+SELECT COUNT(*) FROM fuel_entry
+WHERE deleted = 1
+  AND syncState = 'SYNCED'
+  AND serverUpdatedAt IS NOT NULL
+  AND serverUpdatedAt < :cutoff
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox
+    WHERE outbox.entityType = 'FUEL_ENTRY' AND outbox.entityId = fuel_entry.id
+  );
+
 purgeConfirmedVehicleTombstones:
 DELETE FROM vehicle
 WHERE deleted = 1

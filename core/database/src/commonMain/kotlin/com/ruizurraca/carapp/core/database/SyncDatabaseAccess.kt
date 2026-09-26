@@ -237,15 +237,28 @@ class SyncDatabaseAccess(
      * The `SYNCED` guard is what makes criterion 3 hold: an unconfirmed tombstone is the only local
      * copy of the deletion, so removing it would lose the deletion rather than reclaim space.
      *
-     * The two statements share one transaction, so a failure in the second rolls the first back and
-     * the database is never observed with one table purged and the other not.
+     * The counts are read **before** the transaction is opened, and that ordering is the whole point.
+     * The driver begins every transaction with `BEGIN IMMEDIATE`, which takes the file's write lock the
+     * instant the body starts, and this stack sets no `busy_timeout`. A `DELETE` matching zero rows
+     * takes that lock exactly like one that deletes rows, so an unconditional purge turned every app
+     * start into a writing transaction that a concurrent writer could not wait out - which was a real
+     * `SQLITE_BUSY` failure on the persistent iOS database. With nothing to purge the purge is therefore
+     * a pure read, and only a purge that has work to do takes the writer.
+     *
+     * The two `DELETE`s share one transaction, so a failure in the second rolls the first back and the
+     * database is never observed with one table purged and the other not.
      */
     suspend fun purgeConfirmedTombstones(cutoff: Long) {
+        if (countPurgeableTombstones(cutoff) == 0L) return
         database.transaction {
             queries.purgeConfirmedVehicleTombstones(cutoff)
             queries.purgeConfirmedFuelEntryTombstones(cutoff)
         }
     }
+
+    private suspend fun countPurgeableTombstones(cutoff: Long): Long =
+        queries.countPurgeableVehicleTombstones(cutoff).awaitAsOne() +
+            queries.countPurgeableFuelEntryTombstones(cutoff).awaitAsOne()
 
     suspend fun counts(): SyncDatabaseCounts =
         database.transactionWithResult {
