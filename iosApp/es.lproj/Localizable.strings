@@ -39,6 +39,13 @@
 "cancel" = "Cancelar";
 "vehicle_not_found" = "Este vehículo ya no está disponible.";
 
+"backup_status_idle" = "Sincronizado localmente";
+"backup_status_syncing" = "Sincronizando";
+"backup_status_pending" = "Pendiente de copia";
+"backup_status_failed" = "Error de copia";
+"backup_status_retry" = "Reintentar copia";
+"backup_status_description" = "Estado de la copia: %@";
+
 "error_required_field" = "Completa el campo obligatorio.";
 "error_invalid_length" = "Comprueba la longitud del campo.";
 "error_out_of_range" = "Introduce un valor dentro del intervalo permitido.";

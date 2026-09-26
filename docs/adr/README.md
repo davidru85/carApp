@@ -197,5 +197,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-188 | [ADR-0189](0189-recover-a-newly-resolved-owner-through-a-dedicated-trigger.md) | Recover a newly resolved owner through a dedicated trigger. | Accepted |
 | D-189 | [ADR-0190](0190-raise-the-stalling-ci-step-timeouts-as-a-temporary-measure.md) | Raise the stalling CI step timeouts as a temporary measure. | Superseded |
 | D-190 | [ADR-0191](0191-remove-the-e1-18-deadlock-by-taking-io-off-the-test-scheduler.md) | Remove the `E1-18` deadlock by taking `io` off the test scheduler. | Accepted |
+| D-191 | [ADR-0192](0192-put-the-hidden-member-check-in-the-contract-check.md) | Put the `§11.6` hidden-member check in the contract check. | Accepted |
+| D-192 | [ADR-0193](0193-render-the-backup-status-indicator-on-the-vehicle-list.md) | Render the backup status indicator on the vehicle list surface. | Accepted |
+| D-193 | [ADR-0194](0194-do-not-let-the-idle-backup-label-claim-a-current-remote-copy.md) | Do not let the `Idle` backup label claim a current remote copy. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
