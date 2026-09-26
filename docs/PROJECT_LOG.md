@@ -186,6 +186,30 @@
   cases that fail on this host are pre-existing and reproduce unchanged on a clean `main`; they pass in
   CI. The iOS simulator and the Android emulator launched for this correction were both closed.
 
+### 2026-09-25 — Device lifecycle rule: an agent may launch emulators and simulators, and MUST close them
+
+- **Type:** decision
+- **Story / Decision:** — (an operating rule of `AGENTS.md`, not a story)
+- **Author:** agent, on behalf of David Ruiz (branch `chore/emulator-simulator-cleanup`)
+- **What changed:** `AGENTS.md` gains a `#### Emulators and simulators` subsection under `Build and
+  verify`: launching the `D-84` API 36 Android emulator or an iOS simulator needs no owner permission,
+  and neither may outlive the work that needed it. It names the confirming listings (`adb devices`,
+  `xcrun simctl list devices booted`) and the stopping commands, and records that `adb kill-server`
+  and a bare `xcrun simctl shutdown` are not substitutes.
+- **Why:** both devices are heavyweight long-lived processes, so a forgotten one degrades an unrelated
+  agent's later build on a shared machine. `E3-12` and `E2-03` already wrote the confirmation into
+  their handoffs, but only as evidence of what those stories happened to do; the obligation had no
+  normative home, so it depended on each agent's memory.
+- **Documents touched:** `AGENTS.md`; this log.
+- **Verification:** the two stopping commands were exercised on this clone — `adb emu kill` on
+  `emulator-5554` and the subsequent `adb devices` shows no attached device; the booted-simulator
+  listing is empty. `./gradlew contractCheck` passes with no `PENDING` assertion.
+- **Follow-ups / risks:** the rule states an obligation and is not machine-enforced, so it binds only
+  the agent that reads `AGENTS.md` — the same limit `§Normative Keywords` records for Rule 0. No
+  `D-n` row is created: like `core.hooksPath` and the `pre-push` hook, this is a local environment
+  policy rather than a technical option, and it changes no library, service, module boundary or
+  behaviour. See the `2026-09-07` incident entry in this log for the `pre-push` precedent.
+
 ### 2026-09-25 — `E3-05` backup status UI, and the `§11.6` check it inherited
 
 - **Type:** story
