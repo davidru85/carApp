@@ -88,8 +88,10 @@ target) cover the four-way classification, the invariance of the counts inside a
 `Pending` is never classified as `Failed`, that `Syncing` and `Pending` stay distinct, and that every
 visual has its own label; the iOS test also asserts that both catalogues carry copy for every visual.
 The instrumented Android suite exercises the rendered chip, its retry affordance, the mapped retry
-failure and the absence of that failure beside a non-`Failed` status. Evidence is in
-`docs/handoff-E3-05.md`.
+failure and the absence of that failure beside a non-`Failed` status. `SyncStateHolderRetryTest`
+covers the manual-retry outcome in both interleavings the aggregate allows: a retry that resolves
+after the status has left `Failed` publishes no message, and an older retry that fails after a newer
+one succeeded does not overwrite it. Evidence is in `docs/handoff-E3-05.md`.
 
 ## References
 

@@ -45,18 +45,21 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-26
 - Branch and base: `story/E3-05-backup-status-ui`, based on `main` / `origin/main` at `5141e68`.
-- Current phase and latest commit: review correction 2 complete. Its RED commit is `875c137`, its
-  GREEN commit is `e69bc61`, and the documentation commit that carries this checkpoint sits on
-  top of them. The first review correction is `121a33e` (RED) and `32ea3fd` (GREEN); the original
-  story phases are `d453d65` (RED), `ebfd8cf` (GREEN) and `f336b54` (records).
+- Current phase and latest commit: review correction 3 complete. Its RED commits are `8b91eaf`
+  (retry interleavings) and `f7e234f` (contract-only holder class), its GREEN commits are `af79fa4`
+  and `4b604d2`, and the documentation commit that carries this checkpoint sits on top of them.
+  Review correction 2 is `875c137` (RED) and `e69bc61` (GREEN); the first review correction is
+  `121a33e` (RED) and `32ea3fd` (GREEN); the original story phases are `d453d65` (RED), `ebfd8cf`
+  (GREEN) and `f336b54` (records).
 - Push and pull-request status: pushed; pull request #74 is open and awaiting the owner's gated
-  review. Its description carries both review corrections.
-- Completed since the previous checkpoint: the first review correction (Android status source,
-  visible retry errors, the pre-attempt clear) and review correction 2 (the iOS indicator observes
-  the model, the retry message is withdrawn when the status leaves `Failed` and drawn only beside it,
-  and assertion 36 cuts the member header on masked code). See Decisions Made.
-- Verification evidence and known failures: see Verification Run, including the review correction 2
-  subsection. No known failure introduced by this story.
+  review. Its description carries the review corrections.
+- Completed since the previous checkpoint: review correction 3 — only the newest retry generation may
+  publish an outcome, the retry result reads the canonical status after the suspended call, and
+  assertion 36 enumerates `§20.10` holder classes from the contract itself so a contract-only holder
+  class is rejected. See Decisions Made.
+- Verification evidence and known failures: see Verification Run, including the review correction 3
+  subsection. No known failure introduced by this story. This correction needs no device: no Android
+  emulator or iOS simulator was launched.
 - Open decisions or blockers: none. `D-191`, `D-192` and `D-193` are unchanged and `Accepted`.
 - Exact next step: the owner's gated review of pull request #74.
 
@@ -270,6 +273,51 @@ option.
   `aRetryFailureIsNotRenderedBesideANonFailedStatus`, and the iOS row has no automated UI assertion,
   which stays recorded under Risks.
 
+### Review correction 3 (2026-09-26)
+
+A third review found two behavioural defects in the manual retry and one fail-open shape in
+assertion 36. All are corrected here; no decision changed, no decision ID was added, and `D-191` to
+`D-193` stand as accepted.
+
+- **A retry that resolved after the status had left `Failed` republished an error.**
+  `retryFailed()` published the failure whenever the controller returned `Err`, using the holder
+  snapshot it had read before suspending. A cycle that moved the aggregate to `Pending` while the
+  retry was still suspended therefore ended with the persistence error drawn beside `Pending`, which
+  `docs/CONTRACTS.md §14` forbids. The function now reads `controller.status.value` **after** the
+  suspended retry returns and publishes a message only while that value is still `SyncStatus.Failed`.
+- **Overlapping retries published by completion order.** Two manual retries could be in flight, and
+  an older one that failed after a newer one had succeeded became the final `message`, contradicting
+  `§14`'s statement that the field carries the latest manual-retry outcome. Each call now takes a
+  generation from a holder counter, and only the newest generation may publish; a superseded call
+  clears nothing and publishes nothing. `close()` increments the counter too, so an attempt already
+  suspended on `dispatchers.io` cannot publish after closure.
+- **Assertion 36 could pass a contract-only holder class.** The assertion enumerated contract blocks
+  by iterating the class names it found in production sources, so a `§20.10` block whose class exists
+  nowhere in production was never inspected and its hidden members passed silently. The contract side
+  is now enumerated independently — from `§20.10` itself — and every block is traversed, so a
+  contract-only holder class reaches the existing reverse-direction problem text. The enumeration
+  cannot use the Kotlin lexer on the contract: `docs/CONTRACTS.md` is Markdown, and an apostrophe in
+  its prose opens a character literal for `KotlinSourceText`, which then masks thousands of
+  characters up to the next apostrophe and swallows every `§20.10` holder declaration. Names are read
+  from the raw contract and resolved through the braced-block lookup, which discards a prose mention
+  that has no block.
+- **A fixture's premise was false.** `aContractWithNoHolderBlocksAtAllIsReported` called
+  `class NothingStateHolder {}` a contract with no holder block. It passed only because contract-side
+  classes were not discovered; once they are, that name is a holder declaration. The fixture now uses
+  `class Nothing`, so it asserts what it claims.
+- **TDD, this round.** The RED commit `8b91eaf` added
+  `retryFailureThatCompletesAfterStatusLeavesFailedIsNotPublished` and
+  `anOlderFailureCannotOverwriteANewerSuccessfulRetry`; both failed at that head with the stale
+  `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` still published. The RED commit
+  `f7e234f` added `aContractHiddenMemberInAContractOnlyHolderClassIsRejected`, which failed with
+  `expected:<FAIL> but was:<PASS>`, and corrected the false-premise fixture. The GREEN commits
+  `af79fa4` and `4b604d2` made all of them pass. Two existing retry fixtures moved from the implicit
+  `Idle` default to an explicit `Failed` status: under the new rule a failure is publishable only
+  while the aggregate is `Failed`, so their old premise asserted a state the contract forbids. No
+  exemption was used; the Compose and SwiftUI surfaces were not touched, so the native UI exemption
+  does not apply this round.
+
+
 ## Verification Run
 
 ```text
@@ -370,6 +418,29 @@ git diff --check                                                          exits 
 ```
 
 The Android emulator and the iOS simulator launched for this correction were both closed after use.
+
+### Review correction 3 (2026-09-26) — commands actually run
+
+```text
+./gradlew :shared:testAndroidHostTest --tests 'com.ruizurraca.carapp.SyncStateHolderRetryTest' --rerun-tasks
+RED:   6 tests completed, 2 failed — retryFailureThatCompletesAfterStatusLeavesFailedIsNotPublished
+       and anOlderFailureCannotOverwriteANewerSuccessfulRetry, both leaving the stale
+       UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED) published
+GREEN: BUILD SUCCESSFUL, 6 tests, 0 failures
+./gradlew :shared:iosSimulatorArm64Test --rerun-tasks                       BUILD SUCCESSFUL
+./gradlew :build-logic:convention:test --tests '...SwiftHiddenMemberContractTest' --rerun-tasks
+RED:   17 tests completed, 1 failed — aContractHiddenMemberInAContractOnlyHolderClassIsRejected,
+       expected:<FAIL> but was:<PASS>
+GREEN: BUILD SUCCESSFUL, 17 tests, 0 failures
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test \
+          koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest \
+          testAndroidHostTest iosSimulatorArm64Test -x ...                 BUILD SUCCESSFUL
+./gradlew contractCheck --rerun-tasks                                     assertion 36 PASS, no PENDING
+git diff --check                                                          exits 0
+```
+
+No Android emulator or iOS simulator was launched for this correction: every command above runs on
+the host.
 
 ## Contract Impact
 

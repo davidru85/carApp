@@ -88,7 +88,11 @@ missing the annotation, a contract member the class does not implement, a holder
 missing, a contract with no holder block, an `internal` and a `private` hidden member, that annotation
 inside a comment and a string literal, a hidden member in a second holder source, and a brace, a
 semicolon or a string template inside the previous member's string literal, which must not hide the
-annotation. Evidence is in `docs/handoff-E3-05.md`.
+annotation. A further fixture declares a holder class that exists only in the contract, pinning that
+contract-side class discovery does not depend on class names found in production sources: the
+assertion enumerates `§20.10` holder classes from the contract itself and resolves each through its
+braced block, which is why a contract-only class reaches the reverse-direction problem text instead
+of passing unexamined. Evidence is in `docs/handoff-E3-05.md`.
 
 ## References
 

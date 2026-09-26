@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-26 — E3-05 review correction 3: retry-result ownership and contract-side holder discovery
+
+- **Type:** correction
+- **Story / Decision:** `E3-05` / `D-191`, `D-192`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-05-backup-status-ui`)
+- **What changed:** `SyncStateHolder.retryFailed()` takes a generation from a holder counter, publishes
+  nothing unless it is still the newest, reads `controller.status.value` after the suspended retry
+  returns, and publishes a message only while that value is `SyncStatus.Failed`; `close()` increments
+  the counter so an in-flight attempt cannot publish after closure. Assertion 36 enumerates `§20.10`
+  holder classes from the contract itself and resolves each through its braced block, so a
+  contract-only holder class is rejected instead of passing unexamined; the enumeration reads the raw
+  contract because `KotlinSourceText` masks thousands of characters of Markdown prose from an
+  apostrophe to the next one. ADR-0192, ADR-0193 and the handoff records are updated.
+- **Why:** a retry suspended across a cycle that moved the aggregate to `Pending` republished the
+  persistence error beside it, which `docs/CONTRACTS.md §14` forbids; overlapping retries published by
+  completion order, so an older failure could overwrite a newer success; and assertion 36 iterated
+  only the class names found in production sources, so a `§20.10` block with no production class was
+  never inspected.
+- **Documents touched:** `docs/adr/0192`, `docs/adr/0193`, `docs/handoff-E3-05.md`; this log.
+- **Verification:** at the RED head `8b91eaf` the retry suite reported 6 tests with 2 failures, both
+  leaving the stale `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` published, and
+  at `f7e234f` the contract suite reported 17 tests with 1 failure
+  (`expected:<FAIL> but was:<PASS>` for the contract-only holder class); at the GREEN heads `af79fa4`
+  and `4b604d2` both suites pass, `:shared:iosSimulatorArm64Test` passes, the complete
+  non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL`, `contractCheck` shows assertion 36
+  `PASS` with no `PENDING`, and `git diff --check` exits zero.
+- **Follow-ups / risks:** `D-191`, `D-192` and `D-193` are unchanged and no decision ID was added. No
+  dependency, schema, public API, `SyncStatus` value or platform UI changed, and no emulator or
+  simulator was launched for this correction.
+
 ### 2026-09-26 — E3-05 review correction 2: iOS observation, retry-message lifetime and the masked header cut
 
 - **Type:** correction
