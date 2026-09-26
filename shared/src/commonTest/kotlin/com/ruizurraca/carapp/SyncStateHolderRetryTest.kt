@@ -8,12 +8,14 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.core.testing.TestDispatcherProvider
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -130,6 +132,58 @@ class SyncStateHolderRetryTest {
             holder.close()
         }
 
+    /**
+     * A retry can be suspended on the controller for longer than the cycle that clears the failure.
+     * Publishing the pre-suspension snapshot would resurrect the error beside a status that has
+     * already moved on, which `docs/CONTRACTS.md §14` forbids.
+     */
+    @Test
+    fun retryFailureThatCompletesAfterStatusLeavesFailedIsNotPublished() =
+        runTest {
+            val controller = SequencedRetrySyncController()
+            val retry = controller.enqueueRetry()
+            val holder = holder(controller)
+            advanceUntilIdle()
+
+            holder.retryFailed()
+            runCurrent()
+            controller.mutableStatus.value = SyncStatus.Pending(count = 1)
+            runCurrent()
+            retry.complete(Outcome.Err(PersistenceError.TransactionFailed))
+            advanceUntilIdle()
+
+            assertEquals(SyncStatus.Pending(count = 1), holder.state.value.status)
+            assertNull(holder.state.value.message)
+            holder.close()
+        }
+
+    /**
+     * The field carries the latest manual-retry outcome, so an older attempt that finishes later
+     * MUST NOT overwrite the outcome the newest attempt published.
+     */
+    @Test
+    fun anOlderFailureCannotOverwriteANewerSuccessfulRetry() =
+        runTest {
+            val controller = SequencedRetrySyncController()
+            val olderRetry = controller.enqueueRetry()
+            val newerRetry = controller.enqueueRetry()
+            val holder = holder(controller)
+            advanceUntilIdle()
+
+            holder.retryFailed()
+            runCurrent()
+            holder.retryFailed()
+            runCurrent()
+            newerRetry.complete(Outcome.Ok(Unit))
+            runCurrent()
+            olderRetry.complete(Outcome.Err(PersistenceError.TransactionFailed))
+            advanceUntilIdle()
+
+            assertEquals(2, controller.retryCalls)
+            assertNull(holder.state.value.message)
+            holder.close()
+        }
+
     private fun TestScope.holder(controller: SyncController): SyncStateHolder =
         SyncStateHolder(
             scope = this,
@@ -158,6 +212,33 @@ private class RetryResultSyncController(
         retryCalls += 1
         return retryResult
     }
+
+    override fun shutdown() = Unit
+}
+
+/**
+ * A controller whose retries resolve only when the test completes them, so a retry can be held
+ * suspended across an aggregate change or across a newer attempt.
+ */
+private class SequencedRetrySyncController : SyncController {
+    val mutableStatus =
+        MutableStateFlow<SyncStatus>(
+            SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
+        )
+    private val retries = mutableListOf<CompletableDeferred<Outcome<Unit, AppError>>>()
+    var retryCalls = 0
+        private set
+
+    override val status: StateFlow<SyncStatus> = mutableStatus
+
+    fun enqueueRetry(): CompletableDeferred<Outcome<Unit, AppError>> =
+        CompletableDeferred<Outcome<Unit, AppError>>().also(retries::add)
+
+    override fun requestSync(reason: SyncTrigger) = Unit
+
+    override suspend fun sync(reason: SyncTrigger): Outcome<Unit, AppError> = Outcome.Ok(Unit)
+
+    override suspend fun retryFailed(): Outcome<Unit, AppError> = retries[retryCalls++].await()
 
     override fun shutdown() = Unit
 }
