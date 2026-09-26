@@ -229,6 +229,14 @@ class SyncDatabaseAccess(
         }
     }
 
+    /**
+     * RED stub for `E3-07`: the statement is not executed yet, so the purge tests fail behaviourally
+     * rather than at the compiler.
+     */
+    suspend fun purgeConfirmedTombstones(cutoff: Long) {
+        // GREEN replaces this with the single transaction over both entity tables.
+    }
+
     suspend fun counts(): SyncDatabaseCounts =
         database.transactionWithResult {
             SyncDatabaseCounts(
