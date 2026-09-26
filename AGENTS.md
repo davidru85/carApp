@@ -152,7 +152,7 @@ review.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
   `E3-20` and `E3-21`. `E3-07`, the local 90-day tombstone purge, is implemented on
-  `story/E3-07-tombstone-purge` with its pull request open, awaiting the owner's gated review on the
+  `story/E3-07-tombstone-purge` through pull request #78, awaiting the owner's gated review on the
   `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoff-E3-07.md`, and it
   introduced no `D-` decision because the purge condition of `docs/CONTRACTS.md §8` is already
   normative. `E3-12`, the permanent-account cross-device recovery proof, merged on

@@ -46,9 +46,10 @@ Update this section at every material state change and before yielding unfinishe
 - Date: 2026-09-26
 - Branch and base: `story/E3-07-tombstone-purge`, branched from `origin/main` at `ea48ecc5`
   ("Merge pull request #77"). Work happens in a `git worktree` (`../carApp-e3-07`).
-- Current phase and latest commit: GREEN is implemented, verified and pushed; the documentation
-  commits are in flight. RED `07d6d1bc`, GREEN `21465a14`, `CONTRIBUTING.md` `68fc7f4a`.
-- Push and pull-request status: the branch is pushed to `origin`. The pull request is not open yet.
+- Current phase and latest commit: complete and verified at `7fa3f019`. RED `07d6d1bc`, GREEN
+  `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019`.
+- Push and pull-request status: the branch is pushed to `origin` and pull request #78 is open against
+  `main`, awaiting the ten required checks and the owner's gated review.
 - Completed since the previous checkpoint: the ready check; the RED tests for the four criteria; the
   GREEN implementation in `:core:database`, `:core:sync` and `AppGraph.init`; the bounded
   `docs/CONTRIBUTING.md` branch-rewrite instruction; the `docs/BACKLOG.md`, `AGENTS.md` and
@@ -56,8 +57,8 @@ Update this section at every material state change and before yielding unfinishe
   `git diff --check` all green.
 - Verification evidence and known failures: see "Verification Run". No known failure is outstanding.
 - Open decisions or blockers: none. No new `D-` id and no ADR were needed.
-- Exact next step: commit the documentation, open the pull request against `main`, and wait for the
-  ten required checks.
+- Exact next step: await the ten required checks on pull request #78 and the owner's review on the
+  `core/sync/**` and `core/database/**` gated paths. Do not merge.
 
 ## Scope Completed
 
