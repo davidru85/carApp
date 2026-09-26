@@ -74,6 +74,11 @@ internal class SwiftSurfaceContract(
             val source = inputs.sources[path].orEmpty()
             stateHolderClasses(source).forEach { declaration ->
                 val name = declaration.removePrefix("class ")
+                untypedHiddenProperties(source, declaration).forEach { property ->
+                    problems +=
+                        "$path: class $name.$property is @HiddenFromObjC but declares no explicit type, " +
+                            "so §20.10 cannot declare it"
+                }
                 val hidden = hiddenMembers(source, declaration)
                 val block = blocks[declaration]
                 if (block == null) {
@@ -150,25 +155,71 @@ internal class SwiftSurfaceContract(
     /**
      * The public `@HiddenFromObjC` members of one declaration, in declaration order.
      *
-     * The annotation sits in the gap between the previous member and this one, so it is read from
-     * there rather than from the declaration text: `members` sees an annotation-masked view, which is
-     * what lets a comment or a string literal naming the annotation be ignored. The gap is cut at its
-     * last brace or semicolon so the previous member's body cannot carry this member's annotation.
-     * Both the cut and the match run on the offset-preserving code view of the whole body: cutting
-     * the raw text let a brace, a semicolon or a string template inside the previous member's string
-     * literal split that literal, and the fragment re-lexed as an unterminated string that masked the
-     * annotation. `internal` and `private` members are excluded: they never reach Swift, so hiding
-     * them changes nothing the contract describes.
+     * Each annotation is attributed to the declaration keyword that follows it, not to the text
+     * between two parsed members. The gap-based attribution read an annotation on a declaration the
+     * member parser does not model — a property with no explicit type — as the next parsed member's,
+     * so a problem named the wrong member, and when that member was hidden anyway the annotation was
+     * lost and the assertion passed. `internal` and `private` members are excluded: they never reach
+     * Swift, so hiding them changes nothing the contract describes.
      */
     private fun hiddenMembers(source: String, declaration: String): List<Member> {
-        val code = KotlinSourceText.code(bodyOf(source, declaration))
-        val all = members(source, declaration)
-        return all.mapIndexedNotNull { index, member ->
-            val from = (all.getOrNull(index - 1)?.sourceOffset ?: 0).coerceIn(0, member.sourceOffset)
-            val gap = code.substring(from, member.sourceOffset.coerceAtMost(code.length))
-            val header = gap.substring(gap.lastIndexOfAny(charArrayOf('{', '}', ';')) + 1)
-            member.takeIf { member.isExported && HIDDEN_FROM_OBJC.containsMatchIn(header) }
-        }
+        val byOffset = members(source, declaration).associateBy(Member::sourceOffset)
+        return hiddenDeclarations(source, declaration)
+            .mapNotNull { hidden -> byOffset[hidden.keyword.range.first] }
+            .filter { it.isExported }
+            .distinct()
+    }
+
+    /**
+     * The names of the public `@HiddenFromObjC` properties of one declaration that carry no explicit
+     * type. `§20.10` declares a property with its type and the member parser does not infer one, so
+     * such a property can be neither declared nor compared; it is reported instead of passing
+     * silently.
+     */
+    private fun untypedHiddenProperties(source: String, declaration: String): List<String> {
+        val parsedOffsets = members(source, declaration).map { it.sourceOffset }.toSet()
+        val lexical = KotlinSourceText.declarations(bodyOf(source, declaration))
+        return hiddenDeclarations(source, declaration)
+            .filter { hidden ->
+                hidden.keyword.groupValues[1] in PROPERTY_KEYWORDS &&
+                    hidden.keyword.range.first !in parsedOffsets
+            }
+            .filter { hidden ->
+                val lineStart = lexical.lastIndexOf('\n', hidden.annotationOffset) + 1
+                visibilityOf(lexical.substring(lineStart, hidden.keyword.range.first)) == MemberVisibility.PUBLIC
+            }
+            .map { hidden -> hidden.keyword.groupValues[2].removeSurrounding("`") }
+            .distinct()
+    }
+
+    /**
+     * Every `@HiddenFromObjC` annotation that sits directly in the body of one declaration, paired
+     * with the declaration keyword it annotates. The annotation is found on the code view, so a
+     * comment or a string literal spelling it is ignored; the keyword is found on the declaration
+     * view, where annotations and their arguments are masked, so `@OptIn(Foo::class)` is not read as
+     * a `class` declaration. An annotation nested in a member body or inside a parameter list
+     * annotates no member of this declaration and is skipped.
+     */
+    private fun hiddenDeclarations(source: String, declaration: String): List<HiddenDeclaration> {
+        val body = bodyOf(source, declaration)
+        val code = KotlinSourceText.code(body)
+        val lexical = KotlinSourceText.declarations(body)
+        val depths = KotlinSourceText.braceDepths(code)
+        return HIDDEN_FROM_OBJC.findAll(code)
+            .filter { annotation ->
+                depths[annotation.range.first] == 0 && parenthesisDepthAt(code, annotation.range.first) == 0
+            }
+            .mapNotNull { annotation ->
+                DECLARATION_KEYWORD.find(lexical, annotation.range.last + 1)?.let { keyword ->
+                    HiddenDeclaration(annotationOffset = annotation.range.first, keyword = keyword)
+                }
+            }.toList()
+    }
+
+    /** The parenthesis depth of [code] at [offset]; a member of a body sits at depth zero. */
+    private fun parenthesisDepthAt(code: String, offset: Int): Int {
+        val prefix = code.substring(0, offset)
+        return prefix.count { it == '(' } - prefix.count { it == ')' }
     }
 
     /**
@@ -602,6 +653,12 @@ internal class SwiftSurfaceContract(
         PRIVATE,
     }
 
+    /** One `@HiddenFromObjC` annotation of a body and the declaration keyword it annotates. */
+    private data class HiddenDeclaration(
+        val annotationOffset: Int,
+        val keyword: MatchResult,
+    )
+
     /** The parameter source text and the index of the `)` that closes it. */
     private data class ParsedParameters(
         val text: String,
@@ -776,6 +833,16 @@ internal class SwiftSurfaceContract(
          * a comment or a string literal spelling it is not read as a declaration.
          */
         val HIDDEN_FROM_OBJC = Regex("""\bHiddenFromObjC\b""")
+
+        /**
+         * The keyword that opens the declaration an annotation belongs to. Group 1 is the keyword and
+         * group 2 the name that follows it, which is the property name for `val` and `var`.
+         */
+        val DECLARATION_KEYWORD =
+            Regex("""\b(fun|val|var|class|object|interface|constructor|init)\b\s*(`[^`\r\n]+`|\w+)?""")
+
+        /** The keywords of a property declaration. */
+        val PROPERTY_KEYWORDS = setOf("val", "var")
 
         /**
          * A `class <Name>StateHolder` declaration anywhere in the lexically masked source. The
