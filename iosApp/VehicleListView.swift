@@ -82,9 +82,9 @@ struct VehicleListView: View {
                 // observes the model itself, because this view holds it as a plain reference and
                 // SwiftUI would not redraw it for a sync-only change.
                 BackupStatusRow(model: skeletonModel)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                 if viewModel.state.vehicles.isEmpty {
                     VStack(spacing: 12) {

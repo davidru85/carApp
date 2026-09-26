@@ -20,11 +20,16 @@ enum SyncStatusVisual {
 /// already placed those rows in their bucket, so a host that read the counts would be re-deriving a
 /// decision it does not own.
 func syncStatusVisual(_ status: SyncSyncStatus) -> SyncStatusVisual {
-    if status is SyncSyncStatus.Idle { return .idle }
-    if status is SyncSyncStatus.Syncing { return .syncing }
-    if status is SyncSyncStatus.Pending { return .pending }
-    if status is SyncSyncStatus.Failed { return .failed }
-    return .idle
+    switch onEnum(of: status) {
+    case .idle:
+        return .idle
+    case .syncing:
+        return .syncing
+    case .pending:
+        return .pending
+    case .failed:
+        return .failed
+    }
 }
 
 /// Whether this visual is an error. `§9.9` makes `Failed` the only error condition, so this decides
