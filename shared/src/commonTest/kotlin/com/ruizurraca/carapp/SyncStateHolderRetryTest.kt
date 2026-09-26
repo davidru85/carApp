@@ -70,6 +70,66 @@ class SyncStateHolderRetryTest {
             holder.close()
         }
 
+    /**
+     * A retry failure reports failed rows that could not be reset. When the aggregate leaves `Failed`
+     * those rows no longer exist, so the message MUST be withdrawn: a host that kept drawing it would
+     * show an error beside `Pending`, which `§9.9` and the second `E3-05` criterion forbid.
+     */
+    @Test
+    fun retryFailureIsWithdrawnWhenTheStatusLeavesFailed() =
+        runTest {
+            val controller =
+                RetryResultSyncController(
+                    retryResult = Outcome.Err(PersistenceError.TransactionFailed),
+                    initialStatus = SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
+                )
+            val holder = holder(controller)
+            advanceUntilIdle()
+
+            holder.retryFailed()
+            advanceUntilIdle()
+            assertEquals(
+                PersistenceError.TransactionFailed.code,
+                holder.state.value.message
+                    ?.code,
+            )
+
+            controller.mutableStatus.value = SyncStatus.Pending(count = 1)
+            advanceUntilIdle()
+
+            assertEquals(SyncStatus.Pending(count = 1), holder.state.value.status)
+            assertNull(holder.state.value.message)
+            holder.close()
+        }
+
+    /**
+     * The withdrawal is tied to leaving `Failed`, not to any status change: a `Failed` whose counts
+     * move is still the condition the message describes, so the message stays.
+     */
+    @Test
+    fun retryFailureSurvivesAChangeBetweenFailedAggregates() =
+        runTest {
+            val controller =
+                RetryResultSyncController(
+                    retryResult = Outcome.Err(PersistenceError.TransactionFailed),
+                    initialStatus = SyncStatus.Failed(retryableCount = 1, poisonedCount = 0),
+                )
+            val holder = holder(controller)
+            advanceUntilIdle()
+
+            holder.retryFailed()
+            advanceUntilIdle()
+            controller.mutableStatus.value = SyncStatus.Failed(retryableCount = 2, poisonedCount = 0)
+            advanceUntilIdle()
+
+            assertEquals(
+                PersistenceError.TransactionFailed.code,
+                holder.state.value.message
+                    ?.code,
+            )
+            holder.close()
+        }
+
     private fun TestScope.holder(controller: SyncController): SyncStateHolder =
         SyncStateHolder(
             scope = this,
@@ -81,10 +141,14 @@ class SyncStateHolderRetryTest {
 
 private class RetryResultSyncController(
     var retryResult: Outcome<Unit, AppError>,
+    initialStatus: SyncStatus = SyncStatus.Idle,
 ) : SyncController {
     var retryCalls = 0
 
-    override val status: StateFlow<SyncStatus> = MutableStateFlow(SyncStatus.Idle)
+    /** The published aggregate, writable so a test can move it the way a finished cycle would. */
+    val mutableStatus = MutableStateFlow(initialStatus)
+
+    override val status: StateFlow<SyncStatus> = mutableStatus
 
     override fun requestSync(reason: SyncTrigger) = Unit
 

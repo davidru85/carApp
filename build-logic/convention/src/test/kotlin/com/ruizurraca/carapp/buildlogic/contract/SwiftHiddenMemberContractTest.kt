@@ -215,6 +215,59 @@ class SwiftHiddenMemberContractTest {
         )
     }
 
+    // --- The header cut runs on masked code ------------------------------------------------------
+
+    /**
+     * The annotation is read from the text between the previous member and this one, cut at its last
+     * brace or semicolon. A `}` inside the previous member's string literal once cut that text
+     * mid-literal; the fragment then re-lexed as an unterminated string, masked the annotation, and
+     * an undeclared hidden member passed.
+     */
+    @Test
+    fun aBraceInsideThePreviousMembersStringDoesNotHideTheAnnotation() {
+        assertFails(
+            "$FUEL_HOLDERS: class FuelEntryFormStateHolder.cached is @HiddenFromObjC but absent from §20.10",
+            results(
+                holders =
+                    withExtraMembers(
+                        "val label: String = \"{}\"",
+                        "@HiddenFromObjC val cached: StateFlow<Boolean> = MutableStateFlow(false)",
+                    ),
+            ),
+        )
+    }
+
+    /** The same cut on a semicolon inside a string literal. */
+    @Test
+    fun aSemicolonInsideThePreviousMembersStringDoesNotHideTheAnnotation() {
+        assertFails(
+            "$FUEL_HOLDERS: class FuelEntryFormStateHolder.cached is @HiddenFromObjC but absent from §20.10",
+            results(
+                holders =
+                    withExtraMembers(
+                        "val separator: String = \";\"",
+                        "@HiddenFromObjC val cached: StateFlow<Boolean> = MutableStateFlow(false)",
+                    ),
+            ),
+        )
+    }
+
+    /** A string template closes with a brace too, and it is the likeliest of the three in a holder. */
+    @Test
+    fun aStringTemplateInThePreviousMemberDoesNotHideTheAnnotation() {
+        assertFails(
+            "$FUEL_HOLDERS: class FuelEntryFormStateHolder.observeRetries(): Flow<Unit> is " +
+                "@HiddenFromObjC but absent from §20.10",
+            results(
+                holders =
+                    withExtraMembers(
+                        "val summary: String get() = \"\${1}\"",
+                        "@HiddenFromObjC fun observeRetries(): Flow<Unit> = emptyFlow()",
+                    ),
+            ),
+        )
+    }
+
     private fun assertFails(expected: String, results: List<AssertionResult>) {
         val result =
             assertNotNull(
