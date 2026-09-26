@@ -122,6 +122,34 @@ class SwiftHiddenMemberContractTest {
         )
     }
 
+    /**
+     * A contract-only holder class: a block whose class exists nowhere in production. Its hidden
+     * members can never be a real hidden member of the class, so assertion 36 MUST reject them. The
+     * fixture also pins that contract-side class discovery does not depend on production class names.
+     */
+    @Test
+    fun aContractHiddenMemberInAContractOnlyHolderClassIsRejected() {
+        val contractOnlyHolder =
+            """
+            class GhostStateHolder {
+                @HiddenFromObjC fun observeGhost(): Flow<Unit>
+            }
+
+            """.trimIndent()
+
+        assertFails(
+            "class GhostStateHolder.observeGhost(): Flow<Unit> is declared in §20.10 " +
+                "with @HiddenFromObjC but is not such a member of the class",
+            results(
+                contract =
+                    real.contract.replace(
+                        "class SyncStateHolder {",
+                        contractOnlyHolder + "\n\nclass SyncStateHolder {",
+                    ),
+            ),
+        )
+    }
+
     // --- Fail-open guards -----------------------------------------------------------------------
 
     /**
@@ -149,7 +177,7 @@ class SwiftHiddenMemberContractTest {
     fun aContractWithNoHolderBlocksAtAllIsReported() {
         assertFails(
             "§20.10 declares no state-holder class block, so §11.6 cannot be checked",
-            results(contract = "class NothingStateHolder {\n}\n"),
+            results(contract = "class Nothing {\n}\n"),
         )
     }
 
