@@ -81,9 +81,12 @@ a force-push:
 ```bash
 git commit --amend --no-edit --reset-author
 # the whole branch:
-git rebase --root --exec 'git commit --amend --no-edit --reset-author'
+git rebase origin/main --exec 'git commit --amend --no-edit --reset-author'
 git push --force-with-lease origin <your-branch>
 ```
+
+The rewrite range is bounded to this branch's own commits on top of `origin/main`; `--root` MUST NOT
+be used, because it rewrites the whole repository history rather than the branch.
 
 `--reset-author` takes the identity from the configuration above, so fix the configuration first.
 `--force-with-lease` is required rather than `--force`, and the rewrite stays confined to your own

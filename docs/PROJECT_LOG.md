@@ -38,6 +38,47 @@
 
 ## Entries
 
+### 2026-09-26 — E3-07 local 90-day tombstone purge implemented
+
+- **Type:** story
+- **Story / Decision:** `E3-07` — no decision ID introduced
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** the local tombstone purge of `docs/CONTRACTS.md §8` is implemented. `:core:database`
+  gained `purgeConfirmedVehicleTombstones` / `purgeConfirmedFuelEntryTombstones`, a `DELETE` over each
+  entity table guarded by `deleted = 1`, `syncState = 'SYNCED'`, `serverUpdatedAt < :cutoff` and a
+  `NOT EXISTS` on the outbox, both behind one `purgeConfirmedTombstones(cutoff)` transaction on
+  `DatabaseMutations`' boundary. `:core:sync` gained `TombstonePurge`, which derives the cutoff from the
+  injected `AppClock` and latches the run per app start under a mutex, and `AppGraph.init` invokes it
+  once. `docs/CONTRIBUTING.md` commit-identity recovery no longer instructs a `--root` rebase, which
+  rewrote the whole repository history rather than the branch.
+- **Why:** the contract already made the purge policy normative, so the story needed no new decision and
+  no ADR. The `SYNCED` guard is the one that matters: an unconfirmed tombstone is the only local copy of
+  the deletion, so removing it would lose the deletion instead of reclaiming space. The latch lives in
+  `:core:sync` because "at most once per app start" is an invariant of the process, and a failed purge
+  deliberately does not set it, so the next start retries a purge that deleted nothing.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/CONTRIBUTING.md`, this log.
+- **Verification:** the RED commit `07d6d1bc` had 7 tests failing behaviourally (3 of 9 in
+  `TombstonePurgeDatabaseAccessTest`, 2 of 4 in `TombstonePurgeTest`, 2 of 2 in
+  `TombstonePurgeAppGraphTest`) and the GREEN commit `21465a14` passes them; removing the
+  `syncState = 'SYNCED'` guard locally failed only `aPendingTombstoneIsNeverPurged` and nothing else,
+  which is criterion 3's guard proven rather than asserted. `:core:database`, `:core:sync` and `:shared`
+  host suites pass with 414 tests and 0 failures, and the complete non-instrumented `AGENTS.md` command
+  ends in `BUILD SUCCESSFUL`.
+- **What changed (correction round):** `SyncDatabaseAccess.purgeConfirmedTombstones` now reads the
+  purgeable counts - `countPurgeableVehicleTombstones` / `countPurgeableFuelEntryTombstones` - and
+  returns before opening a transaction when there is nothing to delete. The first pull-request run
+  failed `ios-simulator-build` on `ViewModelLifecycleTests.testVehicleListConfirmDeleteAfterRequestDeletesVehicle`,
+  and the cause was this story: the driver opens every transaction with `BEGIN IMMEDIATE`, taking the
+  file's write lock immediately, and the bundled SQLite stack sets no `busy_timeout`, so a `DELETE`
+  matching zero rows blocked a concurrent writer just like one that deletes rows. `ViewModelLifecycleTests`
+  mounts two graphs over one persistent `carapp.db`, and the second graph's save lost the lock. The
+  regression is pinned per host by `AndroidTombstonePurgeWriteLockTest` and `IosTombstonePurgeWriteLockTest`;
+  removing the guard fails exactly the held-lock case on each.
+- **Follow-ups / risks:** no schema change, so no migration and no version bump. `:core:database` still
+  declares no dependency on `:core:sync`. The purge still scans both entity tables without a dedicated
+  index, which is unchanged by this correction. `E3-07` stays in the `AGENTS.md` "Remaining Phase 3" list
+  until its pull request merges, matching how `E3-05` was recorded. No emulator or simulator was launched.
+
 ### 2026-09-26 — E3-05 review correction 5: cancel holder-owned retry work
 
 - **Type:** correction

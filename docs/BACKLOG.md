@@ -1046,6 +1046,10 @@ The settings row that `docs/SPECIFICATION.md §3.1` also lists stays with its ow
 
 ### E3-07 - Tombstone Purge - S
 
+Status: implemented on `story/E3-07-tombstone-purge` through pull request #78, awaiting the owner's
+gated review. Evidence is in `docs/handoff-E3-07.md`. It introduced no `D-` decision: the purge
+condition of `docs/CONTRACTS.md §8` is already normative, so the story only had to implement it.
+
 Implement the local 90-day tombstone purge.
 
 Acceptance criteria:
@@ -2044,7 +2048,7 @@ proof after E3-04.
 | E3-04 Repository sync wiring (completed, PR #72) | 3 | M | Yes |
 | E3-12 Permanent-account cross-device recovery proof (completed, PR #73) | 3 | S | Yes |
 | E3-05 Backup status UI (completed, PR #74) | 3 | S | — |
-| E3-07 Tombstone purge | 3 | S | — |
+| E3-07 Tombstone purge (implemented, PR #78) | 3 | S | — |
 | E3-09 Firebase Analytics integration | 3 | S | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
