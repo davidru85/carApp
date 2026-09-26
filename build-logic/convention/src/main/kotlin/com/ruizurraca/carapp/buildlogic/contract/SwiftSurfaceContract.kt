@@ -52,36 +52,35 @@ internal class SwiftSurfaceContract(
      * because the file is not what is wrong.
      */
     private fun hiddenHolderMembersAreDeclared(): AssertionResult {
-        val contractBlocks =
-            HOLDER_SOURCES.flatMap { path ->
-                stateHolderClasses(inputs.sources[path].orEmpty()).mapNotNull { declaration ->
-                    contractHolderBlock(declaration)?.let { declaration to it }
-                }
-            }
-        if (contractBlocks.isEmpty()) {
+        val sourceDeclarations =
+            HOLDER_SOURCES
+                .flatMap { path -> stateHolderClasses(inputs.sources[path].orEmpty()) }
+                .distinct()
+        val contractDeclarations = contractStateHolderClasses()
+        if (contractDeclarations.isEmpty()) {
             return result(
                 ASSERTION_HIDDEN_HOLDER_MEMBERS,
                 ASSERTION_36,
                 listOf("§20.10 declares no state-holder class block, so §11.6 cannot be checked"),
             )
         }
-        val blocks = contractBlocks.toMap()
+        val blocks =
+            contractDeclarations.mapNotNull { declaration ->
+                contractHolderBlock(declaration)?.let { declaration to it }
+            }.toMap()
 
         val problems = mutableListOf<String>()
         HOLDER_SOURCES.forEach { path ->
             val source = inputs.sources[path].orEmpty()
             stateHolderClasses(source).forEach { declaration ->
-                // `stateHolderClasses` returns `class Name`; the problem text names the class once.
                 val name = declaration.removePrefix("class ")
                 val hidden = hiddenMembers(source, declaration)
                 val block = blocks[declaration]
                 if (block == null) {
-                    // Reported rather than skipped: a holder whose hidden members cannot be declared
-                    // anywhere is exactly the divergence the rule exists to catch.
                     if (hidden.isNotEmpty()) {
                         problems +=
                             "§20.10 declares no $declaration block, so its @HiddenFromObjC members " +
-                            "cannot be declared"
+                                "cannot be declared"
                     }
                     return@forEach
                 }
@@ -104,8 +103,21 @@ internal class SwiftSurfaceContract(
                     if (hidden.none { it.signature == member.signature }) {
                         problems +=
                             "class $name.${member.hiddenLabel} is declared in §20.10 with " +
-                            "@HiddenFromObjC but is not such a member of the class"
+                                "@HiddenFromObjC but is not such a member of the class"
                     }
+                }
+            }
+        }
+
+        val sourceDeclarationSet = sourceDeclarations.toSet()
+        contractDeclarations.filterNot(sourceDeclarationSet::contains).forEach { declaration ->
+            val block = blocks[declaration]
+            if (block != null) {
+                val name = declaration.removePrefix("class ")
+                hiddenMembers(block, declaration).forEach { member ->
+                    problems +=
+                        "class $name.${member.hiddenLabel} is declared in §20.10 with " +
+                            "@HiddenFromObjC but is not such a member of the class"
                 }
             }
         }
@@ -116,6 +128,24 @@ internal class SwiftSurfaceContract(
     /** The `class <Name>StateHolder { … }` block of `docs/CONTRACTS.md §20.10`, or `null`. */
     private fun contractHolderBlock(declaration: String): String? =
         if (declarationIndex(inputs.contract, declaration) < 0) null else contractBlock(declaration)
+
+    /**
+     * The `class <Name>StateHolder` declarations of the contract.
+     *
+     * Enumerated from the raw contract and then resolved through [contractHolderBlock], because the
+     * contract is Markdown rather than Kotlin: an apostrophe in its prose opens a character literal
+     * for [KotlinSourceText], which then masks everything up to the next apostrophe — thousands of
+     * characters, including every `§20.10` holder declaration. The Kotlin lexer therefore cannot be
+     * the source of these names. A prose mention that has no braced block is filtered out by the
+     * resolution step, and only names the contract actually declares survive.
+     */
+    private fun contractStateHolderClasses(): List<String> =
+        STATE_HOLDER
+            .findAll(inputs.contract)
+            .map { "class ${it.groupValues[1]}" }
+            .filter { contractHolderBlock(it) != null }
+            .distinct()
+            .toList()
 
     /**
      * The public `@HiddenFromObjC` members of one declaration, in declaration order.
