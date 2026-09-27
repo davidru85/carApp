@@ -38,6 +38,33 @@
 
 ## Entries
 
+### 2026-09-27 — E3-07 record closure: the merged status and the pull request #78 evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E3-07` / `D-194` (`Accepted`, ADR-0195)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E3-07-record-closeout`)
+- **What changed:** `E3-07` merged through pull request #78 as a true merge of
+  `story/E3-07-tombstone-purge` into `main` (merge commit `29a25647`, second parent the branch head
+  `e1dd295b`), after the owner's gated review and three review correction rounds on the
+  `core/sync/**` and `core/database/**` gated paths. The two places that still described the story as
+  in flight now state the merge and its pull request: the `E3-07` status block and its index row in
+  `docs/BACKLOG.md`, and the `Remaining Phase 3` list in `AGENTS.md`, from which `E3-07` is removed.
+  `docs/handoff-E3-07.md` gains a dated `Closure update` that records the merge, the three review
+  correction rounds, `D-194` and the CI result, and preserves its in-flight checkpoint as observed.
+- **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
+  planned, and it is updated by the story that changes it; leaving the in-flight tense in place after
+  the merge makes that state false.
+- **Corrections to the previous entry:** the review correction 3 entry left the CI failure of head
+  `91aeea6c` as an owner decision. The record-only head `e1dd295b`, an ancestor of `main`, is green on
+  all ten required checks on attempt `1` (run `36334618645`), and the first CI run of the merge commit
+  `29a25647` is a `push` event that does not gate `main`.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-07.md`, this log.
+- **Verification:** documentation only, so no test, build or coverage result depends on it; the
+  complete non-instrumented `AGENTS.md` command and `contractCheck` are run before the pull request to
+  confirm no check regresses.
+- **Follow-ups / risks:** none new. `D-194` and ADR-0195 are untouched. The `E3-07` code, its tests and
+  every acceptance criterion are unchanged by this correction.
+
 ### 2026-09-27 — E3-07 review correction 3: the graph test no longer closes the database on the test-scheduler thread
 
 - **Type:** correction

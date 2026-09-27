@@ -150,11 +150,11 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-07`, `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
-  `E3-20` and `E3-21`. `E3-07`, the local 90-day tombstone purge, is implemented on
-  `story/E3-07-tombstone-purge` through pull request #78, awaiting the owner's gated review on the
-  `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoff-E3-07.md`, and its
-  first review correction introduced `D-194`, the purge execution policy (ADR-0195). `E3-12`, the
+- **Remaining Phase 3:** `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
+  `E3-20` and `E3-21`. `E3-07`, the local 90-day tombstone purge, merged on 2026-09-27 through pull
+  request #78 after the owner's gated review, with three review correction rounds on the
+  `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoff-E3-07.md`, and it
+  introduced `D-194`, the purge execution policy (ADR-0195). `E3-12`, the
   permanent-account cross-device recovery proof, merged on
   2026-09-25 through pull request #73 after the owner's gated review;
   it introduced `D-188`, its correction rounds introduced `D-189` (superseded) and `D-190`, and its

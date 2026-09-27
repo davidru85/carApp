@@ -1,5 +1,21 @@
 # Agent Handoff
 
+> **Closure update (2026-09-27):** `E3-07` merged through pull request #78 after the owner's gated
+> review, as a true merge of `story/E3-07-tombstone-purge` into `main` (merge commit `29a25647`,
+> whose second parent is the branch head `e1dd295b`). It took three review correction rounds, all on
+> the `core/sync/**` and `core/database/**` gated paths, and it introduced `D-194` (ADR-0195). The
+> in-flight `In-Progress Checkpoint` below is superseded by this update and preserved as observed;
+> the `Remaining Phase 3` list in `AGENTS.md`, the `E3-07` status block and its index row in
+> `docs/BACKLOG.md` now state the merge and its pull request. On the final record-only head
+> `e1dd295b`, which is an ancestor of `main`, all ten required checks are green on attempt `1` (run
+> `36334618645`); on the earlier content head `91aeea6c` nine of the ten were green and
+> `provider-decoupling` failed by assertion, not by step timeout, on
+> `VehicleFormStateHolderTest.vehicleOutboxPayloadWithEntityTypeReachesRemoteSyncSourceAsAValidSnapshot`
+> (the 30 s `FlowExpectation.awaitState` slow-runner flake), and that job was deliberately not re-run.
+> The first CI run of the merge commit `29a25647` itself is a `push` event that does not gate `main`:
+> the ten required checks are the pull request's. The original evidence below is preserved as
+> observed.
+
 Fill in every section. This template is the canonical field list; `AGENTS.md` links here rather than restating it, and `.github/pull_request_template.md` is a superset of it.
 
 ## Story
