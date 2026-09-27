@@ -38,6 +38,36 @@
 
 ## Entries
 
+### 2026-09-27 — E3-07 review correction 3: the graph test no longer closes the database on the test-scheduler thread
+
+- **Type:** correction
+- **Story / Decision:** `E3-07` — no new decision; applies `D-190` (ADR-0191)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** `TombstonePurgeAppGraphTest` closed its `DatabaseHandle` directly from the
+  `runTest` body, right after a non-awaiting `AppGraph.close()`. `SqlDriverDatabaseHandle.close()`
+  reaches the driver's writer lock through a `runBlocking`, so on the test-scheduler thread it can block
+  the only thread able to resume a graph-owned transaction: the direct-handle form of the `E1-18`
+  deadlock that ADR-0191 decision 3 removed, which also raced the graph's own release waiter for the
+  same handle. Each test now owns an `InMemoryDatabaseFactory`, awaits `AppGraph.awaitClosed()` and
+  then calls `InMemoryDatabaseFactory.close()`, the idiom `CrossDeviceRecoveryTest` already uses. The
+  unused `kotlin.test.assertNull` import is removed. No production file changed.
+- **Why:** the first CI run on `4cc4858c` (run `36312203132`, attempt 1) killed `provider-decoupling`'s
+  provider-free Android host step at 8 minutes with
+  `TombstonePurgeAppGraphTest > aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce`
+  as the last test started, and killed `shared-tests`' Kotlin/Native step at 10 minutes inside
+  `:shared:iosSimulatorArm64Test`. That is the `E1-18` signature on both hosts.
+- **Corrections to the previous entry:** review correction 2 called the hang's owner unestablished,
+  described the new test as bounded by `awaitCondition` and `runTest`'s timeout, and re-ran the two
+  failed jobs. Neither bound covers a thread blocked inside `runBlocking`, and the owner was this
+  story's own test teardown.
+- **Documents touched:** `docs/handoff-E3-07.md`, this log.
+- **Verification:** the focused `TombstonePurgeAppGraphTest` command reports 3 tests and 0 failures on
+  Android host and Kotlin/Native; 15 consecutive provider-free Android host runs, 5 provider-free
+  Kotlin/Native runs and 3 `:shared:iosSimulatorArm64Test` runs all passed with no hang; the complete
+  non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL`; `contractCheck --rerun-tasks`
+  reports every assertion `PASS`, zero `PENDING`, 195 decisions and 195 ADRs.
+- **Follow-ups / risks:** none new. No emulator or simulator was launched.
+
 ### 2026-09-27 — E3-07 review correction 2: graph crash-reporting regression test and the owner's TDD exemption
 
 - **Type:** correction

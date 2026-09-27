@@ -51,33 +51,26 @@ Update this section at every material state change and before yielding unfinishe
   ("Merge pull request #77"). Work happens in the `git worktree` `../carApp-e3-07`. The exact head is
   not written here: it is the commit this file is part of, and it is stated in the pull-request
   description instead, so the record is never self-referential.
-- Current phase and commits: review correction 2 complete and verified. First round: RED `07d6d1bc`,
-  GREEN `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019` and
-  `5fb27bab`, write-lock correction `716976f6`, records `10df743f`, `ec352f78` and `e5e2aa83`.
-  Review correction 1: guard-coverage tests `da22bc69`, RED `ed3e261f`, GREEN `851ebb7f`, `D-194`
-  record `031be2d5`, `CONTRIBUTING.md` `3bd4f7c1`, and the record update `092415ac`. Review
-  correction 2: the graph crash-reporting regression test, and the records update that carries this
-  checkpoint.
+- Current phase and commits: review correction 3 complete and verified locally; the CI result on the
+  new head is reported in the pull-request description. First round: RED `07d6d1bc`, GREEN
+  `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019` and
+  `5fb27bab`, write-lock correction `716976f6`, records `10df743f`, `ec352f78` and `e5e2aa83`. Review
+  correction 1: guard-coverage tests `da22bc69`, RED `ed3e261f`, GREEN `851ebb7f`, `D-194` record
+  `031be2d5`, `CONTRIBUTING.md` `3bd4f7c1`, and the record updates `092415ac` and `1c927504`. Review
+  correction 2: the graph crash-reporting regression test `8eb45558` and the records `4cc4858c` and
+  `6e6cb8b0`. Review correction 3: the graph-test teardown correction `a92b9f1e`, and the records
+  update that carries this checkpoint.
 - Push and pull-request status: every commit above is pushed to `origin` and pull request #78 is open
-  against `main`. All ten required checks were green on the earlier head `092415ac`, including
-  `ios-simulator-build` (14m36s), and the same ten are green again on the final head named in the pull
-  request description. The pull request now waits for the owner's gated manual review on
-  `core/sync/**`, `core/database/**` and the gated documents, and MUST NOT be merged on agent
-  judgement alone.
-- Completed since the previous checkpoint: review correction 2. `TombstonePurgeAppGraphTest` gains
-  the graph-level crash-reporting regression test: it injects a throwing `AppClock` and a recording
-  `CrashReporter` through `testAppGraphDependencies` and asserts that a failed startup purge reaches
-  `CrashReporter.recordNonFatal` as exactly one `UnexpectedError(":core:sync", "IllegalStateException")`
-  with `mapOf("code" to "UNEXPECTED")`, and that the purge clock is read exactly once. Replacing the
-  production binding with a no-op failed the test on both hosts; the restored binding passed it, and
-  the mutation was never committed. The owner then resolved the standing process gate: on 2026-09-27
-  they explicitly exempted E3-07 from the separate RED/GREEN commit-and-push requirement for
-  `716976f6`.
-- Verification evidence and known failures: see "Verification Run". No known failure is
-  outstanding. One transient CI hang is recorded there: the first run on the final head failed
-  `shared-tests` and `provider-decoupling` by step timeout rather than an assertion, and a
-  re-run of those two jobs with no code change made all ten checks green. Its owner is
-  unestablished; the local reproduction and the evidence are in "Verification Run".
+  against `main`. The pull request waits for the owner's gated manual review on `core/sync/**`,
+  `core/database/**` and the gated documents, and MUST NOT be merged on agent judgement alone.
+- Completed since the previous checkpoint: review correction 3. `TombstonePurgeAppGraphTest` no longer
+  closes its `DatabaseHandle` directly from the `runTest` body. Each test owns an
+  `InMemoryDatabaseFactory`, awaits `AppGraph.awaitClosed()` and then calls
+  `InMemoryDatabaseFactory.close()`, the `E1-18` / `D-190` teardown idiom `CrossDeviceRecoveryTest`
+  already uses. The unused `kotlin.test.assertNull` import is removed. No production file changed.
+- Verification evidence and known failures: see "Verification Run". The CI hang recorded there for
+  head `4cc4858c` now has an established owner, this story's own `TombstonePurgeAppGraphTest`
+  teardown, which review correction 3 removes. No known failure is outstanding.
 - Open decisions or blockers: none. `D-194` is `Accepted`, and the `716976f6` process gate is closed
   by the owner's explicit exemption quoted under "Decisions Made".
 - Exact next step: none from the agent. Await the owner's gated manual review; do not merge on agent
@@ -237,6 +230,15 @@ again. The results are listed under "Verification Run".
   dispose of the non-compliance, the owner chose "Conceder la exención para 716976f6", the option whose
   text was: "El owner exime a E3-07 del requisito de commits RED/GREEN separados para ese commit". No
   branch-history rewrite and no force-push was performed; the pushed history is unchanged.
+- **Review correction 3 is a test-only change and introduces no decision.** It changes only
+  `shared/src/commonTest/kotlin/com/ruizurraca/carapp/TombstonePurgeAppGraphTest.kt`, applying the
+  existing `D-190` / ADR-0191 teardown idiom. The `docs/SPECIFICATION.md §11` RED/GREEN commit workflow
+  governs product code and no product code changed, so the correction is one `test(E3-07)` commit, as
+  review correction 2's `8eb45558` was.
+- **Correction of an earlier record.** Review correction 2 recorded the CI hang on `4cc4858c` with an
+  unestablished owner and re-ran the two failed jobs. `AGENTS.md` §Repository State treats a red
+  `shared-tests` or `provider-decoupling` as evidence to investigate, not a reason to re-run. The owner
+  was this story's own graph-test teardown; see "Verification Run".
 
 ## Verification Run
 
@@ -350,6 +352,38 @@ again. The results are listed under "Verification Run".
   failed jobs with no code change made all ten checks green on the same head (`shared-tests`
   289 s, `provider-decoupling` 262 s). The hang is not deterministic and is recorded rather than
   re-run out of sight (`AGENTS.md` §Repository State, `E1-18`).
+  Review correction 3, in the next item, supersedes this paragraph's conclusion.
+- **Review correction 3 - the hang's owner and the teardown correction.** The paragraph above left
+  the hang's owner unestablished and relied on `awaitCondition`'s 30 s bound and `runTest`'s timeout.
+  Neither bound covers a thread blocked inside `runBlocking`. The CI logs of run `36312203132`,
+  attempt 1, establish the owner. `provider-decoupling`'s provider-free Android host step printed
+  `TombstonePurgeAppGraphTest > aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce
+  STARTED` as its last test event, started no later test class, and was killed at 8 minutes.
+  `shared-tests`' Kotlin/Native step was killed at 10 minutes while `:shared:iosSimulatorArm64Test` was
+  still running. Every `TombstonePurgeAppGraphTest` case called the non-awaiting `AppGraph.close()` and
+  then `DatabaseHandle.close()` directly from the `runTest` body. `SqlDriverDatabaseHandle.close()`
+  reaches the driver's writer lock through a `runBlocking`, so on the test-scheduler thread it can block
+  the only thread able to resume a graph-owned transaction. That is the direct-handle form of `E1-18`
+  that ADR-0191 decision 3 removed from the adoption tests, and it also raced the graph's own release
+  waiter for the same handle. The correction applies the `D-190` idiom and introduces no decision.
+  Evidence after the correction:
+  - `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest --tests
+    '*TombstonePurgeAppGraphTest*' --rerun-tasks` and the same filter on `:shared:iosSimulatorArm64Test`:
+    `tests="3" skipped="0" failures="0" errors="0"` on both hosts.
+  - 15 consecutive runs of `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest
+    --rerun-tasks`: 15 passed, 0 hangs.
+  - 5 consecutive runs of `./gradlew -Pcarapp.excludeFirebaseProviders=true :shared:iosSimulatorArm64Test
+    --rerun-tasks --max-workers=2`: 5 passed, 0 hangs.
+  - 3 consecutive runs of `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks --max-workers=2`:
+    3 passed, 0 hangs.
+  - The complete non-instrumented `AGENTS.md` command with `--rerun-tasks`: `BUILD SUCCESSFUL`, every
+    task executed.
+  - `./gradlew contractCheck --rerun-tasks`: every assertion `PASS`, zero `PENDING`, 195 decisions and
+    195 ADRs.
+  - `git diff --check` exits 0.
+  - A deterministic local reproduction of the old hang was not attempted: it needs a graph-owned
+    transaction to be suspended at the instant of teardown, which no test controls. The owner is
+    established from the CI logs and the code.
 - No emulator and no simulator was launched: the story is pure shared Kotlin, and the Gradle
   `iosSimulatorArm64Test` task is a host task that boots no device. `adb devices` shows no
   `emulator-<port>` line and `xcrun simctl list devices booted` lists no device.
@@ -378,7 +412,7 @@ again. The results are listed under "Verification Run".
 
 Appending an entry to `docs/PROJECT_LOG.md` is part of the Definition of Done.
 
-- [x] Entry appended (story entry, plus the review correction 1 entry)
+- [x] Entry appended (story entry, plus the review correction 1, 2 and 3 entries)
 
 ## Risks or Follow-ups
 
