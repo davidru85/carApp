@@ -70,11 +70,48 @@ Update this section at every material state change and before yielding unfinishe
   already uses. The unused `kotlin.test.assertNull` import is removed. No production file changed.
 - Verification evidence and known failures: see "Verification Run". The CI hang recorded there for
   head `4cc4858c` now has an established owner, this story's own `TombstonePurgeAppGraphTest`
-  teardown, which review correction 3 removes. No known failure is outstanding.
+  teardown, which review correction 3 removes.
+
+  **CI failure on the review-correction-3 head.** The required check `provider-decoupling` FAILED on
+  run `36333881063`, attempt 1, head `91aeea6c`. It failed by **assertion**, not by step timeout: the
+  step `Run provider-free Android host tests` finished in 1m57s and reported `221 tests completed,
+  1 failed`. The failing test is NOT an E3-07 test:
+  `VehicleFormStateHolderTest.vehicleOutboxPayloadWithEntityTypeReachesRemoteSyncSourceAsAValidSnapshot`
+  failed at `VehicleFormStateHolderTest.kt:279` with
+  `java.lang.AssertionError: Timed out after 30s waiting for vehicle payload push cycle settled. Last
+  value: Idle`, raised from `FlowExpectationKt.awaitState` (FlowExpectation.kt:133). That is the
+  real-time `awaitState` expectation on `:shared:testAndroidHostTest` that `FlowExpectation.kt` already
+  records as a slow-runner flake. The other nine required checks passed on this head, including
+  `shared-tests` (5m51s) and `ios-simulator-build` (11m7s), and the same
+  `provider-decoupling` command passed 16 consecutive times locally before this run. Per the
+  correction-3 instruction the job was NOT re-run. Last 30 lines of the failing step:
+
+  ```text
+      at org.gradle.internal.execution.steps.HandleStaleOutputsStep.executeMutable(HandleStaleOutputsStep.java:43)
+      at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+      at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$executeMutable$0(AssignMutableWorkspaceStep.java:34)
+      at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:305)
+      at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:30)
+      at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.executeMutable(AssignMutableWorkspaceStep.java:21)
+      at org.gradle.internal.execution.steps.MutableStep.execute(MutableStep.java:26)
+      at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+      at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+      at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+      at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+      at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+      at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+      at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+      at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:56)
+      at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:38)
+      at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:68)
+      at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:132)
+      ... 30 more
+  BUILD FAILED in 1m 57s
+  ##[error]Process completed with exit code 1.
+  ```
 - Open decisions or blockers: none. `D-194` is `Accepted`, and the `716976f6` process gate is closed
   by the owner's explicit exemption quoted under "Decisions Made".
-- Exact next step: none from the agent. Await the owner's gated manual review; do not merge on agent
-  judgement.
+- Exact next step: owner decision on the failing check of the new head.
 
 ## Scope Completed
 
