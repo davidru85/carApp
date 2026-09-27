@@ -1,6 +1,11 @@
 package com.ruizurraca.carapp
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.UnexpectedError
+import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
@@ -13,6 +18,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.days
@@ -98,6 +104,45 @@ class TombstonePurgeAppGraphTest {
             }
         }
 
+    /** `D-194`: the product graph binds a failed startup purge to `CrashReporter.recordNonFatal`. */
+    @Test
+    fun aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce() =
+        runTest {
+            val handle = InMemoryDatabaseFactory().create()
+            val clock = ThrowingPurgeClock()
+            val crashReporter = RecordingPurgeCrashReporter()
+            try {
+                val graph = mountGraph(handle, clock, crashReporter)
+                try {
+                    awaitCondition("the startup purge failure to reach CrashReporter") {
+                        advanceStartupWork()
+                        crashReporter.failures.size == 1
+                    }
+                    advanceStartupWork()
+
+                    val expectedFailures: List<Pair<AppError, Map<String, String>>> =
+                        listOf(
+                            UnexpectedError(":core:sync", "IllegalStateException") to
+                                mapOf("code" to "UNEXPECTED"),
+                        )
+                    assertEquals(
+                        expectedFailures,
+                        crashReporter.failures,
+                        "the graph must route the purge failure to CrashReporter exactly once",
+                    )
+                    assertEquals(
+                        1,
+                        clock.reads,
+                        "the failed startup purge must not be attempted again in the same graph",
+                    )
+                } finally {
+                    graph.close()
+                }
+            } finally {
+                handle.close()
+            }
+        }
+
     /**
      * Releases the graph's queued startup work and lets the driver's real executor make progress.
      *
@@ -112,7 +157,8 @@ class TombstonePurgeAppGraphTest {
 
     private fun TestScope.mountGraph(
         handle: DatabaseHandle,
-        clock: FakeAppClock,
+        clock: AppClock,
+        crashReporter: CrashReporter = NoOpCrashReporter,
     ): AppGraph =
         buildAppGraph(
             isDebugBuild = true,
@@ -125,10 +171,34 @@ class TombstonePurgeAppGraphTest {
                             // the factory would give the graph a second, empty database.
                             databaseFactory = SingleHandleDatabaseFactory(handle),
                             clock = clock,
+                            crashReporter = crashReporter,
                         ),
                     ),
                 ),
         )
+
+    private class ThrowingPurgeClock : AppClock {
+        var reads = 0
+            private set
+
+        override fun now(): kotlin.time.Instant {
+            reads += 1
+            error("clock unavailable")
+        }
+    }
+
+    private class RecordingPurgeCrashReporter : CrashReporter {
+        val failures = mutableListOf<Pair<AppError, Map<String, String>>>()
+
+        override fun recordNonFatal(
+            error: AppError,
+            fields: Map<String, String>,
+        ) {
+            failures += error to fields
+        }
+
+        override fun setEnabled(enabled: Boolean) = Unit
+    }
 
     private class SingleHandleDatabaseFactory(
         private val handle: DatabaseHandle,
