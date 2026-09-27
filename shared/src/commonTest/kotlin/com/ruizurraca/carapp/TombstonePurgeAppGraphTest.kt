@@ -20,7 +20,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -34,15 +33,22 @@ import kotlin.time.Duration.Companion.days
  * The clock is the graph's injected `AppClock`, so the 90-day cutoff is measured against the instant
  * the graph sees and no wall clock is read. The driver does its work on a real executor, so the waits
  * yield in real time through [awaitCondition] after releasing the graph's queued work.
+ *
+ * Teardown follows the `E1-18` / `D-190` idiom: `AppGraph.awaitClosed()` releases the graph and
+ * suspends until the graph has released the handle, and only then does `InMemoryDatabaseFactory.close()`
+ * run. The handle is never closed directly from the test body, because
+ * `SqlDriverDatabaseHandle.close()` reaches the driver's writer lock through a `runBlocking`, and on the
+ * test-scheduler thread that blocks the only thread able to resume a graph-owned transaction.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TombstonePurgeAppGraphTest {
     @Test
     fun theGraphPurgesAConfirmedTombstoneAtStartup() =
         runTest {
-            val handle = InMemoryDatabaseFactory().create()
-            val clock = FakeAppClock()
+            val factory = InMemoryDatabaseFactory()
             try {
+                val handle = factory.create()
+                val clock = FakeAppClock()
                 handle.database.seedVehicleTombstone(
                     id = CONFIRMED_ID,
                     serverUpdatedAt = clock.now().toEpochMilliseconds() - NINETY_ONE_DAYS,
@@ -55,10 +61,10 @@ class TombstonePurgeAppGraphTest {
                         handle.database.vehicleRow(CONFIRMED_ID) == null
                     }
                 } finally {
-                    graph.close()
+                    graph.awaitClosed()
                 }
             } finally {
-                handle.close()
+                factory.close()
             }
         }
 
@@ -70,9 +76,10 @@ class TombstonePurgeAppGraphTest {
     @Test
     fun theGraphDoesNotPurgeATombstoneThatBecomesPurgableLaterInTheSameAppStart() =
         runTest {
-            val handle = InMemoryDatabaseFactory().create()
-            val clock = FakeAppClock()
+            val factory = InMemoryDatabaseFactory()
             try {
+                val handle = factory.create()
+                val clock = FakeAppClock()
                 handle.database.seedVehicleTombstone(
                     id = CONFIRMED_ID,
                     serverUpdatedAt = clock.now().toEpochMilliseconds() - NINETY_ONE_DAYS,
@@ -97,10 +104,10 @@ class TombstonePurgeAppGraphTest {
                         "the purge runs at most once per app start, so a later tombstone survives it",
                     )
                 } finally {
-                    graph.close()
+                    graph.awaitClosed()
                 }
             } finally {
-                handle.close()
+                factory.close()
             }
         }
 
@@ -108,10 +115,11 @@ class TombstonePurgeAppGraphTest {
     @Test
     fun aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce() =
         runTest {
-            val handle = InMemoryDatabaseFactory().create()
-            val clock = ThrowingPurgeClock()
-            val crashReporter = RecordingPurgeCrashReporter()
+            val factory = InMemoryDatabaseFactory()
             try {
+                val handle = factory.create()
+                val clock = ThrowingPurgeClock()
+                val crashReporter = RecordingPurgeCrashReporter()
                 val graph = mountGraph(handle, clock, crashReporter)
                 try {
                     awaitCondition("the startup purge failure to reach CrashReporter") {
@@ -136,10 +144,10 @@ class TombstonePurgeAppGraphTest {
                         "the failed startup purge must not be attempted again in the same graph",
                     )
                 } finally {
-                    graph.close()
+                    graph.awaitClosed()
                 }
             } finally {
-                handle.close()
+                factory.close()
             }
         }
 
