@@ -561,6 +561,8 @@ Vehicle deletion creates tombstones for the vehicle and all its non-deleted fuel
 
 Tombstone purge: a tombstone is purgeable locally only when `syncState == SYNCED` **and** `serverUpdatedAt` is older than 90 days **and** no outbox row exists for it. Purge runs at most once per app start, in one transaction, in `:core:sync`. Remote tombstones are never purged in the MVP.
 
+The age comparison is strict: a tombstone is purgeable only when `serverUpdatedAt < now - 90 days`, where `now` is read from the injected `AppClock`, and a tombstone whose `serverUpdatedAt` is `NULL` is never purgeable. "At most once per app start" counts attempts: the `:core:sync` latch is set before the attempt, and a failed attempt is reported through `CrashReporter.recordNonFatal` as `UnexpectedError` and retried only by the next app start. The purge reads a count with the same predicate before it opens its transaction, and opens it only when that count is non-zero, because the transaction takes the database write lock even when its `DELETE` matches no row (`D-194`).
+
 ## 9. Sync Cycle Contract
 
 ### 9.1 Concurrency

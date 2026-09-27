@@ -488,11 +488,12 @@ resetFailedFuelEntries:
 UPDATE fuel_entry SET syncState = 'PENDING'
 WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 
--- The two count queries below MUST stay predicate-identical to their DELETE counterparts: the purge
--- reads the count first and opens a transaction only when it is non-zero, so a drift would either
--- purge nothing while a writer is taken or skip rows that are genuinely purgeable. The coupling is
--- pinned by `TombstonePurgeWriteLockTest` on both hosts, which asserts the count and the deletion for
--- the same seeded rows, including the outbox case where the count is zero and the row must survive.
+-- The two count queries below MUST stay predicate-identical to their DELETE counterparts (`D-194`): the
+-- purge reads the count first and opens a transaction only when it is non-zero, so a drift would either
+-- take the writer for nothing or skip rows that are genuinely purgeable. `TombstonePurgeDatabaseAccessTest`
+-- pins the coupling on both tables: every unpurgeable shape is asserted to count zero on its own, then
+-- purged beside a purgeable anchor so that each DELETE predicate runs as well.
+-- `AndroidTombstonePurgeWriteLockTest` and `IosTombstonePurgeWriteLockTest` pin the write-lock property.
 countPurgeableVehicleTombstones:
 SELECT COUNT(*) FROM vehicle
 WHERE deleted = 1
