@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.core.sync
 
 import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,6 +26,8 @@ import kotlinx.coroutines.sync.withLock
 class TombstonePurge(
     private val databaseAccess: SyncDatabaseAccess,
     private val clock: AppClock,
+    @Suppress("UnusedPrivateProperty", "unused")
+    private val onFailure: (AppError, Map<String, String>) -> Unit,
 ) {
     private val oncePerAppStart = Mutex()
 

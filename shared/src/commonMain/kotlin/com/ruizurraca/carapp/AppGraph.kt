@@ -145,6 +145,7 @@ internal class DefaultAppGraph(
         TombstonePurge(
             databaseAccess = SyncDatabaseAccess(databaseHandle.database),
             clock = dependencies.clock,
+            onFailure = dependencies.crashReporter::recordNonFatal,
         )
 
     /**

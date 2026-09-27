@@ -3,11 +3,13 @@ package com.ruizurraca.carapp.core.sync
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncTrigger
+import com.ruizurraca.carapp.core.common.UnexpectedError
 import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseHandle
@@ -27,6 +29,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.fail
 import kotlin.time.Instant
 
 /**
@@ -91,6 +94,37 @@ class TombstonePurgeTest {
             )
         }
 
+    /**
+     * Criterion 2 on the failure path. "At most once per app start" counts attempts, not successes: a
+     * failed attempt is reported once through `onFailure` as `UnexpectedError`, is never thrown into the
+     * caller's scope, and is not repeated by a second call in the same app start.
+     */
+    @Test
+    fun aFailedPurgeIsReportedOnceAndIsNotRetriedInTheSameAppStart() =
+        runTest {
+            val database = openDatabase()
+            database.seedVehicleTombstone(VEHICLE_ID, serverUpdatedAt = NOW_MILLIS - NINETY_ONE_DAYS)
+            val clock = ThrowingClock()
+            val failures = mutableListOf<AppError>()
+            val purge =
+                TombstonePurge(
+                    databaseAccess = SyncDatabaseAccess(database),
+                    clock = clock,
+                    onFailure = { error, _ -> failures += error },
+                )
+
+            purge.purgeConfirmedTombstones()
+            purge.purgeConfirmedTombstones()
+
+            assertEquals(
+                listOf<AppError>(UnexpectedError(":core:sync", "IllegalStateException")),
+                failures,
+                "the failure is reported exactly once, as UnexpectedError, and is not thrown into the caller",
+            )
+            assertEquals(1, clock.reads, "the second call in the same app start does not attempt the purge again")
+            assertNotNull(database.vehicleRow(VEHICLE_ID), "a failed attempt deletes nothing")
+        }
+
     @Test
     fun aPulledTombstoneForAnUnknownVehicleBecomesALocalTombstone() =
         runTest {
@@ -134,6 +168,7 @@ class TombstonePurgeTest {
         TombstonePurge(
             databaseAccess = SyncDatabaseAccess(requireNotNull(handle).database),
             clock = PurgeClock(Instant.fromEpochMilliseconds(now)),
+            onFailure = { error, _ -> fail("the purge failed unexpectedly: ${error.code}") },
         )
 
     private fun TestScope.controller(remote: RemoteSyncSource): SyncController =
@@ -169,6 +204,17 @@ private class PurgeClock(
     private val value: Instant,
 ) : AppClock {
     override fun now(): Instant = value
+}
+
+/** A clock whose every read fails, which makes the purge fail before it touches the database. */
+private class ThrowingClock : AppClock {
+    var reads = 0
+        private set
+
+    override fun now(): Instant {
+        reads += 1
+        error("clock unavailable")
+    }
 }
 
 private class PurgeOwnerContext(
