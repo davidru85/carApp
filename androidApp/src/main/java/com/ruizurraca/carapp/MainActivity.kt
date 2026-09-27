@@ -1119,6 +1119,7 @@ object VehicleTestTags {
     const val FIRST_FUEL_INVITATION = "first_fuel_invitation"
     const val ERROR = "vehicle_error"
     const val FUEL_TYPE_INPUT = "fuel_type_input"
+    const val FUEL_TYPE_OPTION = "fuel_type_option"
 
     fun vehicleRow(vehicleId: String): String = "vehicle_row_$vehicleId"
 }

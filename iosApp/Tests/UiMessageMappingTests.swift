@@ -117,4 +117,18 @@ final class UiMessageMappingTests: XCTestCase {
             XCTAssertFalse(explanation.isEmpty, "Explanation for \(String(describing: reason)) should not be empty")
         }
     }
+
+    /// `D-127`: every one of the five MVP fuel types has an English and a Spanish display string. A
+    /// missing key would render the raw key at runtime, so both catalogues must resolve all five.
+    func testBothLanguagesNameEveryMvpFuelType() {
+        let keys = ["fuel_type_gasoline", "fuel_type_diesel", "fuel_type_lpg", "fuel_type_cng", "fuel_type_other"]
+
+        for language in ["en", "es"] {
+            for key in keys {
+                let value = localizedCopy(key, language: language)
+                XCTAssertFalse(value.isEmpty, "\(key) must exist in \(language)")
+                XCTAssertNotEqual(value, key, "\(key) must resolve to display copy in \(language)")
+            }
+        }
+    }
 }
