@@ -733,6 +733,7 @@ internal fun VehicleFormScreen(
             sharedValue = state.initialOdometerKm,
             publish = stateHolder::setInitialOdometerKm,
         )
+    val fuelType = rememberSaveableFuelType(stateHolder, state.fuelType, stateHolder::setFuelType)
     val titleResource = if (originalVehicleId == null) R.string.create_vehicle_title else R.string.edit_vehicle_title
     LaunchedEffect(state.savedVehicleId, state.isSaving) {
         val savedVehicleId = state.savedVehicleId
@@ -748,6 +749,7 @@ internal fun VehicleFormScreen(
                     name = name.value,
                     brand = brand.value.ifBlank { null },
                     model = model.value.ifBlank { null },
+                    fuelType = fuelType.value,
                 ),
             onNameChange = name.onValueChange,
             odometerText = odometer.text,
@@ -755,7 +757,7 @@ internal fun VehicleFormScreen(
             onOdometerChange = odometer.onValueChange,
             onBrandChange = { value -> brand.onValueChange(value.orEmpty()) },
             onModelChange = { value -> model.onValueChange(value.orEmpty()) },
-            onFuelTypeChange = stateHolder::setFuelType,
+            onFuelTypeChange = fuelType.onValueChange,
             onSave = stateHolder::save,
             modifier = Modifier.padding(padding),
         )
@@ -782,6 +784,36 @@ internal fun rememberSaveableFormText(
         if (edited && value != sharedValue) publish(value)
     }
     return SaveableFormText(value) { updatedValue ->
+        edited = true
+        value = updatedValue
+        publish(updatedValue)
+    }
+}
+
+private data class SaveableFuelType(
+    val value: FuelType,
+    val onValueChange: (FuelType) -> Unit,
+)
+
+/**
+ * The fuel type is part of the saveable draft exactly like the text fields: a selection survives
+ * saved-instance-state restoration and is republished into a fresh holder before save (`D-127`).
+ */
+@Composable
+private fun rememberSaveableFuelType(
+    key: Any,
+    sharedValue: FuelType,
+    publish: (FuelType) -> Unit,
+): SaveableFuelType {
+    var value by rememberSaveable(key) { mutableStateOf(sharedValue) }
+    var edited by rememberSaveable(key) { mutableStateOf(false) }
+    LaunchedEffect(sharedValue) {
+        if (!edited) value = sharedValue
+    }
+    LaunchedEffect(edited, value, sharedValue) {
+        if (edited && value != sharedValue) publish(value)
+    }
+    return SaveableFuelType(value) { updatedValue ->
         edited = true
         value = updatedValue
         publish(updatedValue)
