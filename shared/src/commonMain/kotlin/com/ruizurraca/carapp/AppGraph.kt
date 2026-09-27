@@ -21,6 +21,7 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.core.sync.SyncController
+import com.ruizurraca.carapp.core.sync.TombstonePurge
 import com.ruizurraca.carapp.core.sync.createSyncController
 import com.ruizurraca.carapp.feature.fuel.data.SqlDelightFuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
@@ -132,6 +133,21 @@ internal class DefaultAppGraph(
     private val localOwnerAdoption = LocalOwnerAdoption(ownerAwareDependencies, databaseHandle.database)
 
     /**
+     * The `E3-07` local tombstone purge, invoked once per app start from `init`.
+     *
+     * It is a separate object rather than a `SyncController` step because it is not part of a cycle:
+     * `docs/CONTRACTS.md §8` runs it once per app start, and it mutates only local rows whose remote
+     * deletion is already confirmed. Keeping it out of the controller leaves the `§9` state machine
+     * untouched.
+     */
+    private val tombstonePurge =
+        TombstonePurge(
+            databaseAccess = SyncDatabaseAccess(databaseHandle.database),
+            clock = dependencies.clock,
+            onFailure = dependencies.crashReporter::recordNonFatal,
+        )
+
+    /**
      * Settles destructive account conversion before any normal sync trigger reaches remote work.
      *
      * `docs/CONTRACTS.md §11.3` forbids normal recovery while the durable replacement marker exists:
@@ -222,6 +238,10 @@ internal class DefaultAppGraph(
                 }
         }
         localOwnerAdoption.launchIn(graphScope)
+        // `E3-07` / `docs/CONTRACTS.md §8`: the local 90-day tombstone purge, once per app start. It
+        // is launched after every property it touches and outside the `§9` cycle state machine, which
+        // is why it needs no trigger: it reclaims confirmed-deleted rows rather than doing remote work.
+        graphScope.launch { tombstonePurge.purgeConfirmedTombstones() }
         observeConnectivityRecovery()
         ownerRecoveryGate.launchIn(graphScope, syncController)
         arrangePeriodicScheduling()

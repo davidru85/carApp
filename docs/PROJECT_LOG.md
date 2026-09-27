@@ -38,6 +38,151 @@
 
 ## Entries
 
+### 2026-09-27 — E3-07 review correction 3: the graph test no longer closes the database on the test-scheduler thread
+
+- **Type:** correction
+- **Story / Decision:** `E3-07` — no new decision; applies `D-190` (ADR-0191)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** `TombstonePurgeAppGraphTest` closed its `DatabaseHandle` directly from the
+  `runTest` body, right after a non-awaiting `AppGraph.close()`. `SqlDriverDatabaseHandle.close()`
+  reaches the driver's writer lock through a `runBlocking`, so on the test-scheduler thread it can block
+  the only thread able to resume a graph-owned transaction: the direct-handle form of the `E1-18`
+  deadlock that ADR-0191 decision 3 removed, which also raced the graph's own release waiter for the
+  same handle. Each test now owns an `InMemoryDatabaseFactory`, awaits `AppGraph.awaitClosed()` and
+  then calls `InMemoryDatabaseFactory.close()`, the idiom `CrossDeviceRecoveryTest` already uses. The
+  unused `kotlin.test.assertNull` import is removed. No production file changed.
+- **Why:** the first CI run on `4cc4858c` (run `36312203132`, attempt 1) killed `provider-decoupling`'s
+  provider-free Android host step at 8 minutes with
+  `TombstonePurgeAppGraphTest > aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce`
+  as the last test started, and killed `shared-tests`' Kotlin/Native step at 10 minutes inside
+  `:shared:iosSimulatorArm64Test`. That is the `E1-18` signature on both hosts.
+- **Corrections to the previous entry:** review correction 2 called the hang's owner unestablished,
+  described the new test as bounded by `awaitCondition` and `runTest`'s timeout, and re-ran the two
+  failed jobs. Neither bound covers a thread blocked inside `runBlocking`, and the owner was this
+  story's own test teardown.
+- **Documents touched:** `docs/handoff-E3-07.md`, this log.
+- **Verification:** the focused `TombstonePurgeAppGraphTest` command reports 3 tests and 0 failures on
+  Android host and Kotlin/Native; 15 consecutive provider-free Android host runs, 5 provider-free
+  Kotlin/Native runs and 3 `:shared:iosSimulatorArm64Test` runs all passed with no hang; the complete
+  non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL`; `contractCheck --rerun-tasks`
+  reports every assertion `PASS`, zero `PENDING`, 195 decisions and 195 ADRs.
+- **Follow-ups / risks:** none new. No emulator or simulator was launched.
+
+### 2026-09-27 — E3-07 review correction 2: graph crash-reporting regression test and the owner's TDD exemption
+
+- **Type:** correction
+- **Story / Decision:** `E3-07` — no new decision; applies the existing `D-194`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** the owner's review of pull request #78 found that the `D-194` failure policy was
+  unproven at the product surface: `TombstonePurgeTest` showed only that `TombstonePurge` invokes an
+  injected callback, so replacing `onFailure = dependencies.crashReporter::recordNonFatal` in `AppGraph`
+  with a no-op left every E3-07 test green. `TombstonePurgeAppGraphTest` gains
+  `aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce`, which injects a throwing
+  `AppClock` and a recording `CrashReporter` through `testAppGraphDependencies` and asserts exactly one
+  `UnexpectedError(":core:sync", "IllegalStateException")` with `mapOf("code" to "UNEXPECTED")`, plus a
+  single clock read so the failed attempt is not repeated. The no-op mutation now fails that test on
+  Android host and Kotlin/Native, and the restored binding passes it.
+- **Why:** a green suite that survives the deletion of the production binding it names is not
+  regression protection; `D-194` states the failure must reach `CrashReporter.recordNonFatal`.
+- **Owner decision:** on 2026-09-27 the owner explicitly exempted E3-07 from the separate RED/GREEN
+  commit-and-push requirement of `docs/SPECIFICATION.md §11` for the write-lock commit `716976f6`. No
+  branch-history rewrite and no force-push was performed. Before this decision the process
+  non-compliance was a blocking, unresolved finding.
+- **Corrections to the previous entry:** the previous entry said the `716976f6` deviation was recorded
+  "for the owner's explicit exemption"; that exemption now exists and is quoted in `docs/handoff-E3-07.md`
+  under "Decisions Made".
+- **Documents touched:** `docs/handoff-E3-07.md`, this log.
+- **Verification:** the focused `:shared:testAndroidHostTest :shared:iosSimulatorArm64Test --tests
+  '*TombstonePurgeAppGraphTest*'` command reports 3 tests, 0 failures on both hosts; the no-op mutation
+  fails the new test on both hosts and the restored binding passes; the complete non-instrumented
+  `AGENTS.md` command ends in `BUILD SUCCESSFUL` with all 642 tasks executed; `contractCheck
+  --rerun-tasks` reports every assertion `PASS`, zero `PENDING`, 195 decisions and 195 ADRs.
+- **Follow-ups / risks:** unchanged from review correction 1. No emulator or simulator was launched.
+
+### 2026-09-27 — E3-07 review correction 1: prove every purge guard, attempt once, record D-194
+
+- **Type:** correction
+- **Story / Decision:** `E3-07` — introduces `D-194` (ADR-0195)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** the owner's review of pull request #78 found that, after the count-gate correction
+  `716976f6`, every "kept" test in `TombstonePurgeDatabaseAccessTest` seeded only unpurgeable rows, so
+  the count returned zero and neither `DELETE` statement ever ran under test. Removing
+  `AND syncState = 'SYNCED'` from both `DELETE` statements left all 417 tests of `:core:database`,
+  `:core:sync` and `:shared` green, and criterion 3 was exercised only through the count queries and
+  only on the vehicle table. Every unpurgeable shape is now seeded on both tables, asserted to count
+  zero on its own, and purged beside a purgeable anchor, so each `DELETE` predicate runs; ten single
+  mutations of the four statements each fail the suite. `TombstonePurge` now sets its latch before the
+  attempt, so "at most once per app start" also holds for a failed attempt, and converts a failure into
+  `UnexpectedError(":core:sync", <class name>)` handed to an injected `onFailure` that `AppGraph` binds
+  to `CrashReporter.recordNonFatal`. This replaces the untested `AppGraph` catch that reported every
+  failure as `PersistenceError.TransactionFailed`. `D-194` records the purge execution policy (the count
+  gate, the attempt latch, and the strict age boundary with the `NULL` rule), which the first round had
+  recorded only in the handoff, and `docs/CONTRACTS.md §8` now states it. The `docs/CONTRIBUTING.md`
+  identity rewrite now rebases onto the branch's merge base, so it no longer moves the branch onto a
+  newer `main` in the middle of an identity fix.
+- **Why:** a test that never reaches the statement it names proves nothing about that statement, and
+  `AGENTS.md` requires every decision taken during a story to carry a decision ID, an ADR and four
+  mirrored rows.
+- **Corrections to the previous entry:** the purge transaction is `SyncDatabaseAccess`'s own
+  `database.transaction { }`, not `DatabaseMutations`' boundary. The evidence "removing the guard
+  failed only `aPendingTombstoneIsNeverPurged`" was measured at `21465a14`, before `716976f6`, and
+  stopped holding after it. `716976f6` committed the write-lock tests and the count gate in one commit,
+  a deviation from the `docs/SPECIFICATION.md §11` commit workflow that `docs/handoff-E3-07.md` records
+  for the owner's explicit exemption.
+- **Documents touched:** `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`,
+  `docs/adr/0195-execute-the-tombstone-purge-as-one-count-gated-attempt-per-app-start.md`,
+  `docs/CONTRIBUTING.md`, `docs/BACKLOG.md`, `AGENTS.md`, `docs/handoff-E3-07.md`, this log.
+- **Verification:** the new RED test failed exactly on the escaping `IllegalStateException` and passes
+  at GREEN; the ten purge-guard mutations each fail `TombstonePurgeDatabaseAccessTest`; the complete
+  non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL` with every task executed;
+  `contractCheck --rerun-tasks` reports every assertion `PASS`, 195 decisions and 195 ADRs.
+- **Follow-ups / risks:** each purge predicate is still written twice, pinned by the test; a purge with
+  work to do still opens a `BEGIN IMMEDIATE` transaction; a tombstone confirmed through `NotFound` on
+  push keeps `serverUpdatedAt = NULL` and is never purged locally. All three are recorded in `D-194`.
+  No emulator or simulator was launched.
+
+### 2026-09-26 — E3-07 local 90-day tombstone purge implemented
+
+- **Type:** story
+- **Story / Decision:** `E3-07` — no decision ID introduced
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** the local tombstone purge of `docs/CONTRACTS.md §8` is implemented. `:core:database`
+  gained `purgeConfirmedVehicleTombstones` / `purgeConfirmedFuelEntryTombstones`, a `DELETE` over each
+  entity table guarded by `deleted = 1`, `syncState = 'SYNCED'`, `serverUpdatedAt < :cutoff` and a
+  `NOT EXISTS` on the outbox, both behind one `purgeConfirmedTombstones(cutoff)` transaction on
+  `DatabaseMutations`' boundary. `:core:sync` gained `TombstonePurge`, which derives the cutoff from the
+  injected `AppClock` and latches the run per app start under a mutex, and `AppGraph.init` invokes it
+  once. `docs/CONTRIBUTING.md` commit-identity recovery no longer instructs a `--root` rebase, which
+  rewrote the whole repository history rather than the branch.
+- **Why:** the contract already made the purge policy normative, so the story needed no new decision and
+  no ADR. The `SYNCED` guard is the one that matters: an unconfirmed tombstone is the only local copy of
+  the deletion, so removing it would lose the deletion instead of reclaiming space. The latch lives in
+  `:core:sync` because "at most once per app start" is an invariant of the process, and a failed purge
+  deliberately does not set it, so the next start retries a purge that deleted nothing.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/CONTRIBUTING.md`, this log.
+- **Verification:** the RED commit `07d6d1bc` had 7 tests failing behaviourally (3 of 9 in
+  `TombstonePurgeDatabaseAccessTest`, 2 of 4 in `TombstonePurgeTest`, 2 of 2 in
+  `TombstonePurgeAppGraphTest`) and the GREEN commit `21465a14` passes them; removing the
+  `syncState = 'SYNCED'` guard locally failed only `aPendingTombstoneIsNeverPurged` and nothing else,
+  which is criterion 3's guard proven rather than asserted. `:core:database`, `:core:sync` and `:shared`
+  host suites pass with 414 tests and 0 failures, and the complete non-instrumented `AGENTS.md` command
+  ends in `BUILD SUCCESSFUL`.
+- **What changed (correction round):** `SyncDatabaseAccess.purgeConfirmedTombstones` now reads the
+  purgeable counts - `countPurgeableVehicleTombstones` / `countPurgeableFuelEntryTombstones` - and
+  returns before opening a transaction when there is nothing to delete. The first pull-request run
+  failed `ios-simulator-build` on `ViewModelLifecycleTests.testVehicleListConfirmDeleteAfterRequestDeletesVehicle`,
+  and the cause was this story: the driver opens every transaction with `BEGIN IMMEDIATE`, taking the
+  file's write lock immediately, and the bundled SQLite stack sets no `busy_timeout`, so a `DELETE`
+  matching zero rows blocked a concurrent writer just like one that deletes rows. `ViewModelLifecycleTests`
+  mounts two graphs over one persistent `carapp.db`, and the second graph's save lost the lock. The
+  regression is pinned per host by `AndroidTombstonePurgeWriteLockTest` and `IosTombstonePurgeWriteLockTest`;
+  removing the guard fails exactly the held-lock case on each.
+- **Follow-ups / risks:** no schema change, so no migration and no version bump. `:core:database` still
+  declares no dependency on `:core:sync`. The purge still scans both entity tables without a dedicated
+  index, which is unchanged by this correction. `E3-07` stays in the `AGENTS.md` "Remaining Phase 3" list
+  until its pull request merges, matching how `E3-05` was recorded. No emulator or simulator was launched.
+
 ### 2026-09-26 — E3-05 review correction 5: cancel holder-owned retry work
 
 - **Type:** correction

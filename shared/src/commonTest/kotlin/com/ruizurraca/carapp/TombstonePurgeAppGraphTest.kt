@@ -1,0 +1,250 @@
+package com.ruizurraca.carapp
+
+import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.AppClock
+import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.UnexpectedError
+import com.ruizurraca.carapp.core.crash.CrashReporter
+import com.ruizurraca.carapp.core.crash.NoOpCrashReporter
+import com.ruizurraca.carapp.core.database.AppDatabase
+import com.ruizurraca.carapp.core.database.DatabaseFactory
+import com.ruizurraca.carapp.core.database.DatabaseHandle
+import com.ruizurraca.carapp.core.testing.FakeAppClock
+import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
+import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
+import com.ruizurraca.carapp.shared.testing.testAppProviders
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.time.Duration.Companion.days
+
+/**
+ * `E3-07` criterion 2 through the product surface: the graph is the app start.
+ *
+ * `docs/CONTRACTS.md §8` requires the purge to run at most once per app start, so these tests assert
+ * the graph's own startup work rather than a helper's idempotence. No sync trigger is fired: the graph
+ * mounts under the `LOCAL_OWNER` sentinel, so `§9.1` admits no cycle for it and the purge is the only
+ * local mutation that can remove a row.
+ *
+ * The clock is the graph's injected `AppClock`, so the 90-day cutoff is measured against the instant
+ * the graph sees and no wall clock is read. The driver does its work on a real executor, so the waits
+ * yield in real time through [awaitCondition] after releasing the graph's queued work.
+ *
+ * Teardown follows the `E1-18` / `D-190` idiom: `AppGraph.awaitClosed()` releases the graph and
+ * suspends until the graph has released the handle, and only then does `InMemoryDatabaseFactory.close()`
+ * run. The handle is never closed directly from the test body, because
+ * `SqlDriverDatabaseHandle.close()` reaches the driver's writer lock through a `runBlocking`, and on the
+ * test-scheduler thread that blocks the only thread able to resume a graph-owned transaction.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class TombstonePurgeAppGraphTest {
+    @Test
+    fun theGraphPurgesAConfirmedTombstoneAtStartup() =
+        runTest {
+            val factory = InMemoryDatabaseFactory()
+            try {
+                val handle = factory.create()
+                val clock = FakeAppClock()
+                handle.database.seedVehicleTombstone(
+                    id = CONFIRMED_ID,
+                    serverUpdatedAt = clock.now().toEpochMilliseconds() - NINETY_ONE_DAYS,
+                )
+
+                val graph = mountGraph(handle, clock)
+                try {
+                    awaitCondition("the graph's startup purge to delete the confirmed tombstone") {
+                        advanceStartupWork()
+                        handle.database.vehicleRow(CONFIRMED_ID) == null
+                    }
+                } finally {
+                    graph.awaitClosed()
+                }
+            } finally {
+                factory.close()
+            }
+        }
+
+    /**
+     * The other half of criterion 2, on the same graph: a tombstone that becomes purgable *after* the
+     * startup purge has run must survive until the next app start. The invariant is "once per app
+     * start", not "once per row".
+     */
+    @Test
+    fun theGraphDoesNotPurgeATombstoneThatBecomesPurgableLaterInTheSameAppStart() =
+        runTest {
+            val factory = InMemoryDatabaseFactory()
+            try {
+                val handle = factory.create()
+                val clock = FakeAppClock()
+                handle.database.seedVehicleTombstone(
+                    id = CONFIRMED_ID,
+                    serverUpdatedAt = clock.now().toEpochMilliseconds() - NINETY_ONE_DAYS,
+                )
+
+                val graph = mountGraph(handle, clock)
+                try {
+                    awaitCondition("the startup purge to delete the confirmed tombstone") {
+                        advanceStartupWork()
+                        handle.database.vehicleRow(CONFIRMED_ID) == null
+                    }
+
+                    // Equally purgable by state and age, but it appeared after this app start's purge.
+                    handle.database.seedVehicleTombstone(
+                        id = LATE_ID,
+                        serverUpdatedAt = clock.now().toEpochMilliseconds() - NINETY_ONE_DAYS,
+                    )
+                    advanceGraphWork()
+
+                    assertNotNull(
+                        handle.database.vehicleRow(LATE_ID),
+                        "the purge runs at most once per app start, so a later tombstone survives it",
+                    )
+                } finally {
+                    graph.awaitClosed()
+                }
+            } finally {
+                factory.close()
+            }
+        }
+
+    /** `D-194`: the product graph binds a failed startup purge to `CrashReporter.recordNonFatal`. */
+    @Test
+    fun aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce() =
+        runTest {
+            val factory = InMemoryDatabaseFactory()
+            try {
+                val handle = factory.create()
+                val clock = ThrowingPurgeClock()
+                val crashReporter = RecordingPurgeCrashReporter()
+                val graph = mountGraph(handle, clock, crashReporter)
+                try {
+                    awaitCondition("the startup purge failure to reach CrashReporter") {
+                        advanceStartupWork()
+                        crashReporter.failures.size == 1
+                    }
+                    advanceStartupWork()
+
+                    val expectedFailures: List<Pair<AppError, Map<String, String>>> =
+                        listOf(
+                            UnexpectedError(":core:sync", "IllegalStateException") to
+                                mapOf("code" to "UNEXPECTED"),
+                        )
+                    assertEquals(
+                        expectedFailures,
+                        crashReporter.failures,
+                        "the graph must route the purge failure to CrashReporter exactly once",
+                    )
+                    assertEquals(
+                        1,
+                        clock.reads,
+                        "the failed startup purge must not be attempted again in the same graph",
+                    )
+                } finally {
+                    graph.awaitClosed()
+                }
+            } finally {
+                factory.close()
+            }
+        }
+
+    /**
+     * Releases the graph's queued startup work and lets the driver's real executor make progress.
+     *
+     * The advance is a fresh bounded span on each round rather than one `advanceUntilIdle()`: the graph
+     * re-arms work in virtual time, so `advanceUntilIdle()` would never return and the test task would
+     * be killed with no result (`GraphTestDependencies`).
+     */
+    private fun TestScope.advanceStartupWork() {
+        advanceGraphWork()
+        runCurrent()
+    }
+
+    private fun TestScope.mountGraph(
+        handle: DatabaseHandle,
+        clock: AppClock,
+        crashReporter: CrashReporter = NoOpCrashReporter,
+    ): AppGraph =
+        buildAppGraph(
+            isDebugBuild = true,
+            providers =
+                testAppProviders(
+                    confinedGraphDependencies(
+                        testAppGraphDependencies(
+                            // The graph must read the handle this test seeds. `InMemoryDatabaseFactory`
+                            // returns a brand-new isolated database on every `create()`, so handing it
+                            // the factory would give the graph a second, empty database.
+                            databaseFactory = SingleHandleDatabaseFactory(handle),
+                            clock = clock,
+                            crashReporter = crashReporter,
+                        ),
+                    ),
+                ),
+        )
+
+    private class ThrowingPurgeClock : AppClock {
+        var reads = 0
+            private set
+
+        override fun now(): kotlin.time.Instant {
+            reads += 1
+            error("clock unavailable")
+        }
+    }
+
+    private class RecordingPurgeCrashReporter : CrashReporter {
+        val failures = mutableListOf<Pair<AppError, Map<String, String>>>()
+
+        override fun recordNonFatal(
+            error: AppError,
+            fields: Map<String, String>,
+        ) {
+            failures += error to fields
+        }
+
+        override fun setEnabled(enabled: Boolean) = Unit
+    }
+
+    private class SingleHandleDatabaseFactory(
+        private val handle: DatabaseHandle,
+    ) : DatabaseFactory {
+        override fun create(): DatabaseHandle = handle
+    }
+
+    private companion object {
+        const val CONFIRMED_ID = "vehicle-confirmed"
+        const val LATE_ID = "vehicle-late"
+        val NINETY_ONE_DAYS = 91.days.inWholeMilliseconds
+    }
+}
+
+private suspend fun AppDatabase.seedVehicleTombstone(
+    id: String,
+    serverUpdatedAt: Long,
+) {
+    databaseQueries.insertVehicleRow(
+        id = id,
+        ownerId = "owner-1",
+        name = "Roadster",
+        nameFold = "roadster",
+        initialOdometerKm = 0,
+        currentOdometerKm = 0,
+        brand = null,
+        model = null,
+        fuelType = "GASOLINE",
+        createdAt = 1,
+        updatedAt = 1,
+        serverUpdatedAt = serverUpdatedAt,
+        deleted = 1,
+        deletedAt = 1,
+        syncState = "SYNCED",
+        localRevision = 1,
+        localMutationSeq = 1,
+        schemaVersion = 1,
+    )
+}
+
+private suspend fun AppDatabase.vehicleRow(id: String) = databaseQueries.selectVehicleById(id).awaitAsOneOrNull()

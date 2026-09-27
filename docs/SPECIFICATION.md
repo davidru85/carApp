@@ -686,6 +686,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-191 | `§11.6` hidden-member check home | The executable check for the rule that a public `@HiddenFromObjC` member of an exported state-holder class is declared in `§20.10` lives in `SwiftSurfaceContract` and is reported as `§18` assertion 36. | Accepted |
 | D-192 | Backup status indicator surface | The indicator renders on the vehicle list screen of both hosts, beside the status chip the design already draws, and classifies the single relayed `SyncStatus` into four visuals without recomputing the `§9.9` precedence. | Accepted |
 | D-193 | `Idle` backup label | The `Idle` visual is labelled as the designs already word it and never asserts that a remote copy exists or is current; no `SyncStatus` value and no persisted backup flag is added. | Accepted |
+| D-194 | `E3-07` tombstone purge execution | The local purge is attempted once per app start and reads a count with the exact `§8` predicate before it opens its one transaction, so an app start with nothing to purge takes no write lock; "older than 90 days" is strict, a tombstone without `serverUpdatedAt` is never purged, and a failed attempt is reported and retried only by the next app start. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

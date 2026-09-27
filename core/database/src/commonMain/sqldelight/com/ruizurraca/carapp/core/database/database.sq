@@ -488,6 +488,56 @@ resetFailedFuelEntries:
 UPDATE fuel_entry SET syncState = 'PENDING'
 WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 
+-- The two count queries below MUST stay predicate-identical to their DELETE counterparts (`D-194`): the
+-- purge reads the count first and opens a transaction only when it is non-zero, so a drift would either
+-- take the writer for nothing or skip rows that are genuinely purgeable. `TombstonePurgeDatabaseAccessTest`
+-- pins the coupling on both tables: every unpurgeable shape is asserted to count zero on its own, then
+-- purged beside a purgeable anchor so that each DELETE predicate runs as well.
+-- `AndroidTombstonePurgeWriteLockTest` and `IosTombstonePurgeWriteLockTest` pin the write-lock property.
+countPurgeableVehicleTombstones:
+SELECT COUNT(*) FROM vehicle
+WHERE deleted = 1
+  AND syncState = 'SYNCED'
+  AND serverUpdatedAt IS NOT NULL
+  AND serverUpdatedAt < :cutoff
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox
+    WHERE outbox.entityType = 'VEHICLE' AND outbox.entityId = vehicle.id
+  );
+
+countPurgeableFuelEntryTombstones:
+SELECT COUNT(*) FROM fuel_entry
+WHERE deleted = 1
+  AND syncState = 'SYNCED'
+  AND serverUpdatedAt IS NOT NULL
+  AND serverUpdatedAt < :cutoff
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox
+    WHERE outbox.entityType = 'FUEL_ENTRY' AND outbox.entityId = fuel_entry.id
+  );
+
+purgeConfirmedVehicleTombstones:
+DELETE FROM vehicle
+WHERE deleted = 1
+  AND syncState = 'SYNCED'
+  AND serverUpdatedAt IS NOT NULL
+  AND serverUpdatedAt < :cutoff
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox
+    WHERE outbox.entityType = 'VEHICLE' AND outbox.entityId = vehicle.id
+  );
+
+purgeConfirmedFuelEntryTombstones:
+DELETE FROM fuel_entry
+WHERE deleted = 1
+  AND syncState = 'SYNCED'
+  AND serverUpdatedAt IS NOT NULL
+  AND serverUpdatedAt < :cutoff
+  AND NOT EXISTS (
+    SELECT 1 FROM outbox
+    WHERE outbox.entityType = 'FUEL_ENTRY' AND outbox.entityId = fuel_entry.id
+  );
+
 countPendingSyncRows:
 SELECT COUNT(*) FROM outbox
 WHERE NOT EXISTS (
