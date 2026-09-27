@@ -38,6 +38,32 @@
 
 ## Entries
 
+### 2026-09-28 — E1-16 review correction 1: the fuel type joins the saveable draft
+
+- **Type:** correction
+- **Story / Decision:** `E1-16` / `D-127` (unchanged)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E1-16-vehicle-fuel-type-selector`)
+- **What changed:** the Android fuel type selection is now part of the saveable Vehicle draft, so it
+  survives saved-instance-state restoration and is republished into a fresh holder before save,
+  exactly like the text fields; `VehicleFormStateRestorationTest` covers it. The selector anchors
+  with `ExposedDropdownMenuAnchorType` instead of the `MenuAnchorType` alias that Material 3 1.4.0
+  deprecates, maps labels through an exhaustive `when` instead of a map read with `getValue`, and no
+  longer repeats its visible text as `contentDescription`. The edit-persistence instrumented test
+  waits for the save to finish before leaving the form, the catalogue contract test covers the
+  `fuel_type` label key, and the iOS `fuelType` view-model property is `private(set)`.
+- **Why:** the review of pull request #80 found that the selection was the only draft value lost on
+  restoration, which contradicts the `E1-07` restored-draft behaviour and can silently save a fuel
+  type the owner did not choose; that the story introduced a new deprecation warning; that the label
+  map claimed an exhaustiveness the compiler did not enforce; and that `waitForIdle()` did not wait
+  for the off-main-thread save before the test left the form.
+- **Documents touched:** `docs/handoff-E1-16.md` and this log.
+- **Verification:** RED then GREEN on `VehicleFormStateRestorationTest`; the full instrumented suite
+  passes 25/25 on the `E1_07_API_36` emulator; the complete non-instrumented command ends
+  `BUILD SUCCESSFUL`; `contractCheck --rerun-tasks` reports no `FAIL` and no `PENDING`; the iOS app
+  builds and `carAppTests` plus `VehicleAndFuelFlowUITests` pass on a freshly erased simulator.
+- **Follow-ups / risks:** none new. Pull request #80 remains unmerged and requires the owner's gated
+  review.
+
 ### 2026-09-27 — E1-16 review correction: in-flight status, gated paths and CI evidence
 
 - **Type:** correction (documentation only)

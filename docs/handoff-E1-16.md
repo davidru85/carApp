@@ -58,25 +58,27 @@ pins; both are recorded under "Decisions Made".
 
 ## In-Progress Checkpoint
 
-- Date: 2026-09-27.
+- Date: 2026-09-28.
 - Branch and base: `story/E1-16-vehicle-fuel-type-selector`, based on `origin/main` at `72640ffd`
   ("Merge pull request #79").
-- Current phase and implementation commits: RED `0f1d4a84` and GREEN `2cdbdd70`, both pushed. No
-  REFACTOR phase was needed; the `LongMethod` extraction done during GREEN was a lint correction, not
-  a refactor. Later commits changed delivery documentation only; no Kotlin, Swift, SQL or workflow file
-  changed after GREEN.
+- Current phase and implementation commits: review correction 1 complete. Original cycle: RED
+  `0f1d4a84`, GREEN `2cdbdd70`. Review correction 1: RED `714690b3`, GREEN `3cccc11d`, REFACTOR
+  `a5dc843b`, test hardening `eb711547`, followed by the documentation commit that records
+  this checkpoint.
 - Push and pull-request status: all commits are pushed and pull request #80 is open against `main`.
-  Run `36346316418` on reviewed head `37fe0e64` passed all ten required checks. This is historical
-  evidence for that head; GitHub's live PR status is authoritative for any later correction head.
-  Not merged.
-- Completed since the previous checkpoint: the two selectors, the ten localized keys, the document
-  realignment, the full verification run and the delivery documentation.
-- Verification evidence and known failures: see "Verification Run" and "Re-run Investigation". No
-  failure attributable to the E1-16 product change is known.
-- Open decisions or blockers: none. Merge remains blocked on green checks for the final head and the
-  owner's gated review.
-- Exact next step: let GitHub's live pull-request status confirm that the final head has all ten green
-  required checks, then obtain the owner's gated review. Do not merge on agent judgement.
+  GitHub's live pull-request status is authoritative for the required checks on the final head. Not
+  merged.
+- Completed since the previous checkpoint: review correction 1. The Android fuel type selection is
+  part of the saveable Vehicle draft; the deprecated `MenuAnchorType` alias is replaced; the label
+  mapping is an exhaustive `when`; the redundant `contentDescription` semantics are removed; the edit
+  persistence test waits for the save to finish before leaving the form; the catalogue contract test
+  covers the `fuel_type` label key; and the iOS `fuelType` property is `private(set)`.
+- Verification evidence and known failures: see "Verification Run", subsection "Review correction
+  1". No failure attributable to the E1-16 change is known.
+- Open decisions or blockers: none. Merge remains blocked on green required checks for the final head
+  and the owner's gated review.
+- Exact next step: confirm in GitHub's live pull-request status that all ten required checks are
+  green on the final head, then obtain the owner's gated review. Do not merge on agent judgement.
 
 ## Re-run Investigation
 
@@ -135,6 +137,12 @@ status.
   `PlatformHostContractTest` (`bothLanguagesNameEveryMvpFuelType` and
   `iosVehicleFormWiresTheFuelTypePickerThroughTheViewModel`), an iOS unit test for the five
   localized keys and an iOS UI test for creation and edit persistence.
+- Review correction 1: `rememberSaveableFuelType` in `MainActivity.kt` keeps the selection in the
+  saveable draft and republishes it into a fresh holder; `FuelType.labelResource()` replaces
+  `fuelTypeLabels()`; `VehicleFormStateRestorationTest` covers the fuel type;
+  `VehicleCreationTest.selectedFuelTypePersistsOnCreationAndOnEdit` waits for the edit save to
+  finish; `PlatformHostContractTest.bothLanguagesNameEveryMvpFuelType` covers the `fuel_type` label
+  key; `VehicleFormViewModel.fuelType` is `private(set)`.
 
 ## Acceptance Evidence
 
@@ -181,6 +189,7 @@ status.
 - `androidApp/src/main/res/values/strings.xml`
 - `androidApp/src/main/res/values-es/strings.xml`
 - `androidApp/src/androidTest/java/com/ruizurraca/carapp/VehicleCreationTest.kt`
+- `androidApp/src/androidTest/java/com/ruizurraca/carapp/VehicleFormStateRestorationTest.kt`
 - `build-logic/convention/src/test/kotlin/com/ruizurraca/carapp/buildlogic/PlatformHostContractTest.kt`
 - `iosApp/VehicleFormView.swift`
 - `iosApp/ViewModels.swift`
@@ -205,6 +214,15 @@ status.
   implementation choice inside the acceptance criterion's "native `Picker`".
 - The Android selector uses `ExposedDropdownMenuBox` from the already-present Material 3 dependency;
   no dependency was added.
+- **Review correction 1.** No new decision, so no `D-` id and no ADR. The fuel type now follows the
+  existing `E1-07` saveable-draft behaviour that `VehicleFormStateRestorationTest` proves for the text
+  fields: a selection survives saved-instance-state restoration and is republished into a fresh
+  holder before save. The deprecated `MenuAnchorType` alias is replaced by
+  `ExposedDropdownMenuAnchorType`; the label map read with `getValue` is replaced by an exhaustive
+  `when`, so a `FuelType` addition fails compilation instead of throwing at runtime; the
+  `contentDescription` semantics that duplicated the visible text are removed; and the iOS
+  `fuelType` property becomes `private(set)`. The RED, GREEN and REFACTOR phases are separate
+  commits, and the two test-only hardening changes are a fourth commit.
 - No `SHOULD` was deviated from.
 
 ## Verification Run
@@ -232,6 +250,31 @@ All commands run in the worktree on 2026-09-27, in order.
   its detail, and reopening it in edit mode shows `Diesel`.
 - Device cleanup: `adb devices` shows no `emulator-<port>` line and `xcrun simctl list devices booted`
   lists no device. The helper log under `/tmp/` was deleted.
+
+### Review correction 1
+
+All commands run on 2026-09-28, in order, with `ANDROID_SERIAL=emulator-5554` pinning the `E1_07_API_36`
+emulator.
+
+- RED: `./gradlew :androidApp:connectedDebugAndroidTest
+  -Pandroid.testInstrumentationRunnerArguments.class=com.ruizurraca.carapp.VehicleFormStateRestorationTest`
+  on `714690b3` → 1 test, 1 failure: `Failed to assert the following: (Text + InputText +
+  EditableText contains 'Diesel' (ignoreCase: false))`.
+- GREEN: the same command on `3cccc11d` → 1 test, 0 failures.
+- `./gradlew :androidApp:compileDebugKotlin --rerun-tasks` on `a5dc843b` → `BUILD SUCCESSFUL`;
+  no `MenuAnchorType` deprecation warning; the only warning is the pre-existing `Expression is
+  unused.` outside this story.
+- `xcodebuild … build` on `a5dc843b` → `** BUILD SUCCEEDED **`.
+- `./gradlew :build-logic:convention:test --tests '*PlatformHostContractTest*'` → 4 tests, 0
+  failures.
+- `./gradlew :androidApp:connectedDebugAndroidTest` on `eb711547` → 25 tests, 0 failures.
+- The complete non-instrumented command of `AGENTS.md` §Build and verify → `BUILD SUCCESSFUL`.
+- `./gradlew contractCheck --rerun-tasks` → every assertion `PASS`; no `FAIL`, no `PENDING`.
+- `xcodebuild … -only-testing:carAppTests -only-testing:carAppUITests/VehicleAndFuelFlowUITests test`
+  on a freshly erased iPhone 17 Pro simulator → `** TEST SUCCEEDED **`, including
+  `testFuelTypeSelectionPersistsOnCreationAndEdit`.
+- Device cleanup: `adb devices` shows no `emulator-<port>` line and `xcrun simctl list devices
+  booted` lists no device.
 
 ## Contract Impact
 
