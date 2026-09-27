@@ -56,9 +56,11 @@ Update this section at every material state change and before yielding unfinishe
   `851ebb7f`, `D-194` record `031be2d5`, `CONTRIBUTING.md` `3bd4f7c1`, and the
   record update that carries this checkpoint.
 - Push and pull-request status: every commit above is pushed to `origin` and pull request #78 is open
-  against `main`. The ten required checks must be green on the latest head before the owner's gated
-  review on `core/sync/**`, `core/database/**` and the gated documents. The pull request MUST NOT be
-  merged on agent judgement alone.
+  against `main` at head `092415ac`. All ten required checks are green on that head
+  (`android-assemble`, `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`,
+  `ios-simulator-build` 14m36s, `ktlint`, `objc-header-golden-check`, `provider-decoupling`,
+  `shared-tests`). The pull request now waits for the owner's gated review on `core/sync/**`,
+  `core/database/**` and the gated documents, and MUST NOT be merged on agent judgement alone.
 - Completed since the previous checkpoint: review correction 1. Every purge guard is now exercised
   through both `DELETE` statements on both tables; `TombstonePurge` sets its latch before the attempt
   and reports a failure as `UnexpectedError` through `onFailure`; `D-194` / ADR-0195 record the purge
@@ -68,8 +70,9 @@ Update this section at every material state change and before yielding unfinishe
 - Verification evidence and known failures: see "Verification Run". No known failure is outstanding.
 - Open decisions or blockers: none. `D-194` is `Accepted`. The `716976f6` TDD commit-workflow
   deviation recorded under "Decisions Made" needs the owner's explicit exemption.
-- Exact next step: wait for the ten required checks on the latest head of pull request #78, record
-  them here, then await the owner's gated review. Do not merge.
+- Exact next step: none from the agent. All ten required checks are green on head `092415ac`; do not
+  merge before the owner's gated review and the owner's decision on the `716976f6` TDD
+  commit-workflow exemption.
 
 ## Scope Completed
 
