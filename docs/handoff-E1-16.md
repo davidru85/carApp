@@ -62,10 +62,11 @@ pins; both are recorded under "Decisions Made".
   ("Merge pull request #79").
 - Current phase and latest commit: RED `0f1d4a84` and GREEN `2cdbdd70`, both pushed. No REFACTOR phase
   was needed; the `LongMethod` extraction done during GREEN was a lint correction, not a refactor.
-- Push and pull-request status: all commits pushed; pull request #80 open against `main`. The first
-  run over the product commit (`36341671213`, head `0eb9ec37`) was fully green on all ten required
-  checks. A second run over the handoff-only commit `e85753ee` (`36342494016`) failed two checks, and
-  both failures were read rather than re-run: see "Re-run Investigation" below. Not merged.
+- Push and pull-request status: all commits pushed; pull request #80 open against `main`. All ten
+  required checks are green on the current head `de170f3b` (run `36344530243`), and the first run over
+  the product commit (`36341671213`, head `0eb9ec37`) was green on all ten at its first attempt. The
+  intermediate red checks were the documented pre-existing flakes, read before being re-run: see
+  "Re-run Investigation" below. Not merged.
 - Completed since the previous checkpoint: the two selectors, the ten localized keys, the document
   realignment, the full verification run and the delivery documentation.
 - Verification evidence and known failures: see "Verification Run". No known failure attributable to
@@ -75,39 +76,33 @@ pins; both are recorded under "Decisions Made".
 
 ## Re-run Investigation
 
-Three CI runs covered this pull request, and each one produced a different red required check while
-changing no Kotlin, Swift, SQL or workflow file after the first:
+Four attempts covered this pull request, each on a head whose only change after the first was this
+handoff file, and each attempt produced a different red required check while changing no Kotlin,
+Swift, SQL or workflow file:
 
-| Run | Head | What changed vs the previous run | Result |
-|---|---|---|---|
-| `36341671213` | `0eb9ec37` (product code) | — | all ten checks green on first attempt |
-| `36342494016` | `e85753ee` | this handoff only | `provider-decoupling` and `ios-simulator-build` red |
-| `36343592583` | `5ff678d0` | this handoff only | `shared-tests` red; the two previous jobs green |
+| Attempt | Head | Red check | Named test | Re-run |
+|---|---|---|---|---|
+| `36341671213` | `0eb9ec37` (product code) | none | — | all ten green at the first attempt |
+| `36342494016` | `e85753ee` | `provider-decoupling`, `ios-simulator-build` | process death; `VehicleAndFuelFlowUITests.swift:161` | both green next run |
+| `36343592583` | `5ff678d0` | `shared-tests` | `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]` | green next run |
+| `36344530243` | `de170f3b` | `shared-tests` | `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun[iosSimulatorArm64]` | green on re-run |
 
-Every failure was read before anything was re-run, and all three are documented pre-existing flakes of
-this repository, each on a module or file this story does not touch:
+Every failure was read before anything was re-run, and all of them are documented pre-existing flakes
+of this repository, each on a module or file this story does not touch. `docs/PROJECT_LOG.md` names
+all four by test and target and states plainly that while `E1-14` and `E1-17` stay open "a red
+`shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous": the
+`LocalOwnerAdoptionTriggerTest` assertion is the `E1-14` flake verbatim, the
+`VehicleListStateHolderTest.failedRefresh…` failure is the five-second `GRAPH_STATE_EXPECTATION_TIMEOUT`
+that same entry records as having failed `provider-decoupling` on a commit changing no Kotlin source,
+the `Test running process exited unexpectedly` is the `E1-18` Native-process class, and
+`VehicleAndFuelFlowUITests.swift:161` is inside `testVehicleAndFuelEntryCreationFlow`, which the log
+records failing once on 2026-09-17 and passing on re-run. The changed hunks of that file begin at line
+169, so the failing test is not this story's.
 
-- **`provider-decoupling` (`36342494016`)** failed with `Test running process exited unexpectedly` in
-  `:shared:iosSimulatorArm64Test`, on
-  `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`.
-  A Kotlin/Native process death, the `E1-18` class of failure. Green on the next run.
-- **`ios-simulator-build` (`36342494016`)** failed at `VehicleAndFuelFlowUITests.swift:161` inside
-  `testVehicleAndFuelEntryCreationFlow`, a pre-existing test this story does not modify (the changed
-  hunks begin at line 169). This is the `E1-17`/`E1-14` UI flake `docs/PROJECT_LOG.md` records as
-  "failed once more on 2026-09-17 in `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow`
-  and passed on re-run". Green on the next run.
-- **`shared-tests` (`36343592583`)** failed with a real `kotlin.AssertionError` on
-  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`,
-  which is the `E1-14` flake verbatim: `docs/PROJECT_LOG.md` names this exact test and target, and its
-  `E1-14` handoff is its record. 227 of 228 `:shared` tests passed in the same run.
-
-`docs/PROJECT_LOG.md` states plainly that while `E1-14` and `E1-17` stay open "a red `shared-tests`,
-`provider-decoupling` or `ios-simulator-build` is currently ambiguous", and that each of these jobs has
-gone red on commits changing no source file and then green on re-run. This story changes no file under
-`shared/`, `core/` or `firestore/`, so the three failures are environment, and the failed job was
-re-run once on that reading, exactly as the repository's own precedent does. The first run — the only
-one whose head contains the whole product change — passed all ten checks on the first attempt, and that
-is this story's clean evidence.
+This story changes nothing under `shared/`, `core/` or `firestore/`. The local `:shared` suite is green
+and repeatable: `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` ends `BUILD SUCCESSFUL`, which
+is what separates the environment from the change. The clean evidence is the four-attempt pattern plus
+the first run over the product commit, which passed all ten checks at its first attempt.
 
 ## Scope Completed
 
