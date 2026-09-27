@@ -26,12 +26,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -54,8 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -954,9 +952,7 @@ private fun FuelTypeSelector(
     selected: FuelType,
     onSelect: (FuelType) -> Unit,
 ) {
-    val labels = fuelTypeLabels()
     var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = labels.getValue(selected)
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -964,7 +960,7 @@ private fun FuelTypeSelector(
         modifier = Modifier.fillMaxWidth(),
     ) {
         OutlinedTextField(
-            value = selectedLabel,
+            value = stringResource(selected.labelResource()),
             onValueChange = {},
             readOnly = true,
             label = { Text(stringResource(R.string.fuel_type)) },
@@ -973,25 +969,20 @@ private fun FuelTypeSelector(
                 Modifier
                     .fillMaxWidth()
                     .testTag(VehicleTestTags.FUEL_TYPE_INPUT)
-                    .semantics { contentDescription = selectedLabel }
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
         )
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
             FuelType.entries.forEach { fuelType ->
-                val label = labels.getValue(fuelType)
                 DropdownMenuItem(
-                    text = { Text(label) },
+                    text = { Text(stringResource(fuelType.labelResource())) },
                     onClick = {
                         expanded = false
                         onSelect(fuelType)
                     },
-                    modifier =
-                        Modifier
-                            .testTag(VehicleTestTags.FUEL_TYPE_OPTION)
-                            .semantics { contentDescription = label },
+                    modifier = Modifier.testTag(VehicleTestTags.FUEL_TYPE_OPTION),
                 )
             }
         }
@@ -999,18 +990,18 @@ private fun FuelTypeSelector(
 }
 
 /**
- * The five MVP `FuelType` display labels (`D-127`). `ELECTRIC` and `HYBRID` are absent until the
- * `E5-01` energy model, so this is an exhaustive mapping of the current enum without a fallback.
+ * The display label of each of the five MVP `FuelType` values (`D-127`). The `when` is exhaustive
+ * over the enum, so a value added later (`ELECTRIC` and `HYBRID` belong to `E5-01`) fails
+ * compilation here instead of crashing the form at runtime.
  */
-@Composable
-private fun fuelTypeLabels(): Map<FuelType, String> =
-    mapOf(
-        FuelType.GASOLINE to stringResource(R.string.fuel_type_gasoline),
-        FuelType.DIESEL to stringResource(R.string.fuel_type_diesel),
-        FuelType.LPG to stringResource(R.string.fuel_type_lpg),
-        FuelType.CNG to stringResource(R.string.fuel_type_cng),
-        FuelType.OTHER to stringResource(R.string.fuel_type_other),
-    )
+private fun FuelType.labelResource(): Int =
+    when (this) {
+        FuelType.GASOLINE -> R.string.fuel_type_gasoline
+        FuelType.DIESEL -> R.string.fuel_type_diesel
+        FuelType.LPG -> R.string.fuel_type_lpg
+        FuelType.CNG -> R.string.fuel_type_cng
+        FuelType.OTHER -> R.string.fuel_type_other
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -63,9 +63,10 @@ final class VehicleFormViewModel: ObservableObject {
     @Published var odometerText: String = ""
     @Published var brand: String = ""
     @Published var model: String = ""
-    /// The selected fuel type, mirrored from the shared form state (`D-127`). Defaults to petrol and
-    /// is only ever changed through `setFuelType(_:)`, which forwards to the shared state holder.
-    @Published var fuelType: ModelFuelType = ModelFuelType.gasoline
+    /// The selected fuel type (`D-127`). Defaults to petrol. Only this view model writes it: the
+    /// shared form state mirrors into it until the owner chooses a value, and `setFuelType(_:)`
+    /// records a choice and forwards it to the shared state holder.
+    @Published private(set) var fuelType: ModelFuelType = ModelFuelType.gasoline
     @Published var hasOdometerError: Bool = false
     @Published var isSaveComplete: Bool = false
 
