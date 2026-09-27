@@ -7,7 +7,6 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.LogLevel
 import com.ruizurraca.carapp.core.common.MinorUnits
 import com.ruizurraca.carapp.core.common.Outcome
-import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.resolveLocaleCurrency
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
@@ -242,7 +241,7 @@ internal class DefaultAppGraph(
         // `E3-07` / `docs/CONTRACTS.md §8`: the local 90-day tombstone purge, once per app start. It
         // is launched after every property it touches and outside the `§9` cycle state machine, which
         // is why it needs no trigger: it reclaims confirmed-deleted rows rather than doing remote work.
-        graphScope.launch { purgeConfirmedTombstones() }
+        graphScope.launch { tombstonePurge.purgeConfirmedTombstones() }
         observeConnectivityRecovery()
         ownerRecoveryGate.launchIn(graphScope, syncController)
         arrangePeriodicScheduling()
@@ -443,27 +442,6 @@ internal class DefaultAppGraph(
             // This only re-checks the supported set; host adapters validate real runtime minor units.
             runtimeMinorUnitFactor = MinorUnits.factorFor(suggested),
         )
-    }
-
-    /**
-     * Runs the `E3-07` purge once, at start-up, on the graph's own scope.
-     *
-     * A failure is reported as a non-fatal crash rather than thrown into the scope: a purge that could
-     * not run reclaims nothing, and the next app start retries it (the latch is only set on success),
-     * so an unreadable database must not take the rest of start-up down with it. Cancellation is
-     * rethrown so closing the graph still behaves like cancellation.
-     */
-    private suspend fun purgeConfirmedTombstones() {
-        try {
-            tombstonePurge.purgeConfirmedTombstones()
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Throwable) {
-            dependencies.crashReporter.recordNonFatal(
-                PersistenceError.TransactionFailed,
-                mapOf("code" to PersistenceError.TransactionFailed.code),
-            )
-        }
     }
 
     private suspend fun bootstrapSettings() {
