@@ -38,6 +38,49 @@
 
 ## Entries
 
+### 2026-09-27 — E3-07 review correction 1: prove every purge guard, attempt once, record D-194
+
+- **Type:** correction
+- **Story / Decision:** `E3-07` — introduces `D-194` (ADR-0195)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** the owner's review of pull request #78 found that, after the count-gate correction
+  `716976f6`, every "kept" test in `TombstonePurgeDatabaseAccessTest` seeded only unpurgeable rows, so
+  the count returned zero and neither `DELETE` statement ever ran under test. Removing
+  `AND syncState = 'SYNCED'` from both `DELETE` statements left all 417 tests of `:core:database`,
+  `:core:sync` and `:shared` green, and criterion 3 was exercised only through the count queries and
+  only on the vehicle table. Every unpurgeable shape is now seeded on both tables, asserted to count
+  zero on its own, and purged beside a purgeable anchor, so each `DELETE` predicate runs; ten single
+  mutations of the four statements each fail the suite. `TombstonePurge` now sets its latch before the
+  attempt, so "at most once per app start" also holds for a failed attempt, and converts a failure into
+  `UnexpectedError(":core:sync", <class name>)` handed to an injected `onFailure` that `AppGraph` binds
+  to `CrashReporter.recordNonFatal`. This replaces the untested `AppGraph` catch that reported every
+  failure as `PersistenceError.TransactionFailed`. `D-194` records the purge execution policy (the count
+  gate, the attempt latch, and the strict age boundary with the `NULL` rule), which the first round had
+  recorded only in the handoff, and `docs/CONTRACTS.md §8` now states it. The `docs/CONTRIBUTING.md`
+  identity rewrite now rebases onto the branch's merge base, so it no longer moves the branch onto a
+  newer `main` in the middle of an identity fix.
+- **Why:** a test that never reaches the statement it names proves nothing about that statement, and
+  `AGENTS.md` requires every decision taken during a story to carry a decision ID, an ADR and four
+  mirrored rows.
+- **Corrections to the previous entry:** the purge transaction is `SyncDatabaseAccess`'s own
+  `database.transaction { }`, not `DatabaseMutations`' boundary. The evidence "removing the guard
+  failed only `aPendingTombstoneIsNeverPurged`" was measured at `21465a14`, before `716976f6`, and
+  stopped holding after it. `716976f6` committed the write-lock tests and the count gate in one commit,
+  a deviation from the `docs/SPECIFICATION.md §11` commit workflow that `docs/handoff-E3-07.md` records
+  for the owner's explicit exemption.
+- **Documents touched:** `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`,
+  `docs/adr/0195-execute-the-tombstone-purge-as-one-count-gated-attempt-per-app-start.md`,
+  `docs/CONTRIBUTING.md`, `docs/BACKLOG.md`, `AGENTS.md`, `docs/handoff-E3-07.md`, this log.
+- **Verification:** the new RED test failed exactly on the escaping `IllegalStateException` and passes
+  at GREEN; the ten purge-guard mutations each fail `TombstonePurgeDatabaseAccessTest`; the complete
+  non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL` with every task executed;
+  `contractCheck --rerun-tasks` reports every assertion `PASS`, 195 decisions and 195 ADRs.
+- **Follow-ups / risks:** each purge predicate is still written twice, pinned by the test; a purge with
+  work to do still opens a `BEGIN IMMEDIATE` transaction; a tombstone confirmed through `NotFound` on
+  push keeps `serverUpdatedAt = NULL` and is never purged locally. All three are recorded in `D-194`.
+  No emulator or simulator was launched.
+
 ### 2026-09-26 — E3-07 local 90-day tombstone purge implemented
 
 - **Type:** story

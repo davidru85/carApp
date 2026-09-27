@@ -1047,8 +1047,9 @@ The settings row that `docs/SPECIFICATION.md §3.1` also lists stays with its ow
 ### E3-07 - Tombstone Purge - S
 
 Status: implemented on `story/E3-07-tombstone-purge` through pull request #78, awaiting the owner's
-gated review. Evidence is in `docs/handoff-E3-07.md`. It introduced no `D-` decision: the purge
-condition of `docs/CONTRACTS.md §8` is already normative, so the story only had to implement it.
+gated review. Evidence is in `docs/handoff-E3-07.md`. Its first review correction introduced `D-194`
+(ADR-0195), which records how the `docs/CONTRACTS.md §8` purge executes: the count-gated transaction,
+the attempt latch and the strict age boundary.
 
 Implement the local 90-day tombstone purge.
 
