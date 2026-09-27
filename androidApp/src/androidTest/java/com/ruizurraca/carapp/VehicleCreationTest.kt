@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -116,7 +118,15 @@ class VehicleCreationTest {
             composeRule.onAllNodesWithTag(VehicleTestTags.FUEL_TYPE_OPTION).fetchSemanticsNodes().isEmpty()
         }
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
-        composeRule.waitForIdle()
+        // The save runs off the main thread, which `waitForIdle` does not track. Leaving the form
+        // before it completes would close the holder and cancel the write, so the test waits for the
+        // save button to be enabled again, which happens only once `isSaving` is false.
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule
+                .onAllNodes(hasTestTag(VehicleTestTags.SAVE) and isEnabled())
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        }
         composeRule.onNodeWithTag(VehicleTestTags.BACK).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()

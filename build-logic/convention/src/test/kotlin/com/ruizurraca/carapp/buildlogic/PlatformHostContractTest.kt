@@ -93,15 +93,23 @@ class PlatformHostContractTest {
         val iosEnglish = repositoryRoot.resolve("iosApp/en.lproj/Localizable.strings").readText()
         val iosSpanish = repositoryRoot.resolve("iosApp/es.lproj/Localizable.strings").readText()
 
-        // `D-127` exposes exactly the five MVP values. A missing key would render nothing or an
-        // unrelated string, so every catalogue MUST name all five in both languages.
+        // `D-127` exposes exactly the five MVP values under the `fuel_type` field label. A missing key
+        // would render nothing, the raw key or an unrelated string, so every catalogue MUST name the
+        // label and all five values in both languages.
+        val keys =
+            listOf(
+                "fuel_type",
+                "fuel_type_gasoline",
+                "fuel_type_diesel",
+                "fuel_type_lpg",
+                "fuel_type_cng",
+                "fuel_type_other",
+            )
         listOf(androidEnglish, androidSpanish).forEach { catalogue ->
-            listOf("fuel_type_gasoline", "fuel_type_diesel", "fuel_type_lpg", "fuel_type_cng", "fuel_type_other")
-                .forEach { key -> assertTrue(catalogue.contains("name=\"$key\""), "missing $key") }
+            keys.forEach { key -> assertTrue(catalogue.contains("name=\"$key\""), "missing $key") }
         }
         listOf(iosEnglish, iosSpanish).forEach { catalogue ->
-            listOf("fuel_type_gasoline", "fuel_type_diesel", "fuel_type_lpg", "fuel_type_cng", "fuel_type_other")
-                .forEach { key -> assertTrue(catalogue.contains("\"$key\""), "missing $key") }
+            keys.forEach { key -> assertTrue(catalogue.contains("\"$key\""), "missing $key") }
         }
     }
 
