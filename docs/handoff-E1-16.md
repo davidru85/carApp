@@ -75,22 +75,39 @@ pins; both are recorded under "Decisions Made".
 
 ## Re-run Investigation
 
-The run `36342494016` (head `e85753ee`) failed `provider-decoupling` and `ios-simulator-build`. Both
-were investigated, not re-run blind, and neither is a regression of this story:
+Three CI runs covered this pull request, and each one produced a different red required check while
+changing no Kotlin, Swift, SQL or workflow file after the first:
 
-- **The product code is identical between the green and the red run.** Run `36341671213` (head
-  `0eb9ec37`) was green on all ten checks; the only difference in `e85753ee` is this handoff file.
-  Every product and test change landed in `0f1d4a84` and `2cdbdd70`, which both runs contain.
-- **`provider-decoupling` failed with `Test running process exited unexpectedly` in
-  `:shared:iosSimulatorArm64Test`**, on `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`. That is a Kotlin/Native process death, the
-  E1-18/JVM-family class of failure, in a module this story does not touch: `git diff` over the
-  branch changes nothing under `shared/` or `core/`.
-- **`ios-simulator-build` failed at `VehicleAndFuelFlowUITests.swift:161`**, inside
-  `testVehicleAndFuelEntryCreationFlow`, a pre-existing test this story does not modify (its changed
-  hunks begin at line 169). The same file's new test passed.
+| Run | Head | What changed vs the previous run | Result |
+|---|---|---|---|
+| `36341671213` | `0eb9ec37` (product code) | — | all ten checks green on first attempt |
+| `36342494016` | `e85753ee` | this handoff only | `provider-decoupling` and `ios-simulator-build` red |
+| `36343592583` | `5ff678d0` | this handoff only | `shared-tests` red; the two previous jobs green |
 
-Both are consistent with the state-sensitive UI suite and the Native-process flake the repository
-already records, which is why the two failed jobs were re-run after this reading rather than accepted.
+Every failure was read before anything was re-run, and all three are documented pre-existing flakes of
+this repository, each on a module or file this story does not touch:
+
+- **`provider-decoupling` (`36342494016`)** failed with `Test running process exited unexpectedly` in
+  `:shared:iosSimulatorArm64Test`, on
+  `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`.
+  A Kotlin/Native process death, the `E1-18` class of failure. Green on the next run.
+- **`ios-simulator-build` (`36342494016`)** failed at `VehicleAndFuelFlowUITests.swift:161` inside
+  `testVehicleAndFuelEntryCreationFlow`, a pre-existing test this story does not modify (the changed
+  hunks begin at line 169). This is the `E1-17`/`E1-14` UI flake `docs/PROJECT_LOG.md` records as
+  "failed once more on 2026-09-17 in `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow`
+  and passed on re-run". Green on the next run.
+- **`shared-tests` (`36343592583`)** failed with a real `kotlin.AssertionError` on
+  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`,
+  which is the `E1-14` flake verbatim: `docs/PROJECT_LOG.md` names this exact test and target, and its
+  `E1-14` handoff is its record. 227 of 228 `:shared` tests passed in the same run.
+
+`docs/PROJECT_LOG.md` states plainly that while `E1-14` and `E1-17` stay open "a red `shared-tests`,
+`provider-decoupling` or `ios-simulator-build` is currently ambiguous", and that each of these jobs has
+gone red on commits changing no source file and then green on re-run. This story changes no file under
+`shared/`, `core/` or `firestore/`, so the three failures are environment, and the failed job was
+re-run once on that reading, exactly as the repository's own precedent does. The first run — the only
+one whose head contains the whole product change — passed all ten checks on the first attempt, and that
+is this story's clean evidence.
 
 ## Scope Completed
 
