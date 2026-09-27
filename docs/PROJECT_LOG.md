@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-09-27 — E1-16 review correction: in-flight status, gated paths and CI evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E1-16` / `D-127` (unchanged)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E1-16-vehicle-fuel-type-selector`)
+- **What changed:** E1-16 remains in the `AGENTS.md` follow-up inventory while pull request #80 is
+  unmerged; the backlog index now says implemented with owner review pending instead of completed;
+  the handoff classifies the changes to `AGENTS.md`, `docs/SPECIFICATION.md` and
+  `docs/CONTRACTS.md` as a gated-path change; and the CI section records the five observed runs as
+  historical evidence without calling an earlier SHA the current head.
+- **Why:** `AGENTS.md` §Repository State distinguishes implemented work from merged work, and
+  §Human Review Gates applies to any change under the three documentation paths above. The previous
+  handoff said the gate was not applicable and named `de170f3b` as the current all-green head even
+  though PR80 had advanced to `37fe0e64` and run `36346316418`.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-16.md`, this log.
+- **Verification:** `git diff --check`, `contractCheck --rerun-tasks` and the complete
+  non-instrumented command from `AGENTS.md` must pass. GitHub's live PR status must show all ten
+  required checks green on the final head before owner review.
+- **Follow-ups / risks:** PR80 remains unmerged and requires the owner's gated review. No product
+  source, test, schema, migration, sync rule, dependency or decision record changes in this
+  correction.
+
 ### 2026-09-27 — E1-16: the fuel type selector on both Vehicle forms, and the prose D-127 left behind
 
 - **Type:** story

@@ -2031,7 +2031,7 @@ proof after E3-04.
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
 | E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake (completed, PR #66) | follow-up | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
-| E1-16 Vehicle UI fuel type selector (completed, PR #80) | follow-up | S | — |
+| E1-16 Vehicle UI fuel type selector (implemented, PR #80; owner review pending) | follow-up | S | Yes |
 | E1-17 iOS onboarding UI test flake (completed, PR #67) | follow-up | S | — |
 | E1-18 JVM test deadlock in `DatabaseHandle.close()` (completed, PR #73) | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |

@@ -133,7 +133,7 @@ review.
   `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-15`, `E1-17` and `E1-18`.
+- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16`, `E1-17` and `E1-18`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16`, the Vehicle
   UI fuel type selector, is implemented on `story/E1-16-vehicle-fuel-type-selector` through pull

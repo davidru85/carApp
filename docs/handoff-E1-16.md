@@ -28,10 +28,11 @@ Milestones`).
   `./gradlew contractCheck --rerun-tasks`, the Android instrumented suite on the `D-84` API 36
   emulator (`./gradlew :androidApp:connectedDebugAndroidTest`) and the iOS app built with
   `xcodebuild` and exercised on a booted iPhone simulator.
-- Human review gates identified before work: the story is **not** a gated story. Its product surface
-  (`feature/vehicle/**` presentation, `androidApp/**`, `iosApp/**`, localization resources and tests)
-  touches **no gated path**. The blocker recorded below was escalated before any work started, and the
-  owner's decision is recorded under "Decisions Made".
+- Human review gate identified before work: **gated path**. The product implementation touches no
+  gated product path, but this pull request changes `AGENTS.md`, `docs/SPECIFICATION.md` and
+  `docs/CONTRACTS.md`, which are gated paths under `AGENTS.md` §Human Review Gates. The owner's intake
+  authorisation permits the documented realignment; it does not waive the required owner review before
+  merge. The pull request MUST NOT be merged on agent judgement alone.
 - Rule 0 acknowledged: chat replies for this story are in Spanish (es-ES) and every artifact it
   produces is in technical English.
 
@@ -60,49 +61,63 @@ pins; both are recorded under "Decisions Made".
 - Date: 2026-09-27.
 - Branch and base: `story/E1-16-vehicle-fuel-type-selector`, based on `origin/main` at `72640ffd`
   ("Merge pull request #79").
-- Current phase and latest commit: RED `0f1d4a84` and GREEN `2cdbdd70`, both pushed. No REFACTOR phase
-  was needed; the `LongMethod` extraction done during GREEN was a lint correction, not a refactor.
-- Push and pull-request status: all commits pushed; pull request #80 open against `main`. All ten
-  required checks are green on the current head `de170f3b` (run `36344530243`), and the first run over
-  the product commit (`36341671213`, head `0eb9ec37`) was green on all ten at its first attempt. The
-  intermediate red checks were the documented pre-existing flakes, read before being re-run: see
-  "Re-run Investigation" below. Not merged.
+- Current phase and implementation commits: RED `0f1d4a84` and GREEN `2cdbdd70`, both pushed. No
+  REFACTOR phase was needed; the `LongMethod` extraction done during GREEN was a lint correction, not
+  a refactor. Later commits changed delivery documentation only; no Kotlin, Swift, SQL or workflow file
+  changed after GREEN.
+- Push and pull-request status: all commits are pushed and pull request #80 is open against `main`.
+  Run `36346316418` on reviewed head `37fe0e64` passed all ten required checks. This is historical
+  evidence for that head; GitHub's live PR status is authoritative for any later correction head.
+  Not merged.
 - Completed since the previous checkpoint: the two selectors, the ten localized keys, the document
   realignment, the full verification run and the delivery documentation.
-- Verification evidence and known failures: see "Verification Run". No known failure attributable to
-  this story.
-- Open decisions or blockers: none.
-- Exact next step: wait for the ten required checks and the owner's gated review. Do not merge.
+- Verification evidence and known failures: see "Verification Run" and "Re-run Investigation". No
+  failure attributable to the E1-16 product change is known.
+- Open decisions or blockers: none. Merge remains blocked on green checks for the final head and the
+  owner's gated review.
+- Exact next step: let GitHub's live pull-request status confirm that the final head has all ten green
+  required checks, then obtain the owner's gated review. Do not merge on agent judgement.
 
 ## Re-run Investigation
 
-Four attempts covered this pull request, each on a head whose only change after the first was this
-handoff file, and each attempt produced a different red required check while changing no Kotlin,
-Swift, SQL or workflow file:
+Five CI runs covered this pull request before the owner's review, and no Kotlin, Swift, SQL or workflow
+file changed after the first run:
 
-| Attempt | Head | Red check | Named test | Re-run |
-|---|---|---|---|---|
-| `36341671213` | `0eb9ec37` (product code) | none | — | all ten green at the first attempt |
-| `36342494016` | `e85753ee` | `provider-decoupling`, `ios-simulator-build` | process death; `VehicleAndFuelFlowUITests.swift:161` | both green next run |
-| `36343592583` | `5ff678d0` | `shared-tests` | `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]` | green next run |
-| `36344530243` | `de170f3b` | `shared-tests` | `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun[iosSimulatorArm64]` | green on re-run |
+| Run | Head | Change after the product run | Observed result |
+|---|---|---|---|
+| `36341671213` | `0eb9ec37` | — | all ten checks green on the first attempt |
+| `36342494016` | `e85753ee` | handoff only | `provider-decoupling` and `ios-simulator-build` red; both green on the next run |
+| `36343592583` | `5ff678d0` | handoff only | `shared-tests` red; green on the next run |
+| `36344530243` | `de170f3b` | handoff only | `shared-tests` red on its first attempt; green on re-run |
+| `36346316418` | `37fe0e64` | handoff only | all ten checks green on the first attempt |
 
-Every failure was read before anything was re-run, and all of them are documented pre-existing flakes
-of this repository, each on a module or file this story does not touch. `docs/PROJECT_LOG.md` names
-all four by test and target and states plainly that while `E1-14` and `E1-17` stay open "a red
-`shared-tests`, `provider-decoupling` or `ios-simulator-build` is currently ambiguous": the
-`LocalOwnerAdoptionTriggerTest` assertion is the `E1-14` flake verbatim, the
-`VehicleListStateHolderTest.failedRefresh…` failure is the five-second `GRAPH_STATE_EXPECTATION_TIMEOUT`
-that same entry records as having failed `provider-decoupling` on a commit changing no Kotlin source,
-the `Test running process exited unexpectedly` is the `E1-18` Native-process class, and
-`VehicleAndFuelFlowUITests.swift:161` is inside `testVehicleAndFuelEntryCreationFlow`, which the log
-records failing once on 2026-09-17 and passing on re-run. The changed hunks of that file begin at line
-169, so the failing test is not this story's.
+Each red result was read before another run was accepted as evidence:
 
-This story changes nothing under `shared/`, `core/` or `firestore/`. The local `:shared` suite is green
-and repeatable: `./gradlew :shared:iosSimulatorArm64Test --rerun-tasks` ends `BUILD SUCCESSFUL`, which
-is what separates the environment from the change. The clean evidence is the four-attempt pattern plus
-the first run over the product commit, which passed all ten checks at its first attempt.
+- `provider-decoupling` in `36342494016` ended with `Test running process exited unexpectedly` in
+  `:shared:iosSimulatorArm64Test`, on
+  `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`.
+  PR80 changes no file under `shared/` or `core/`, and the provider-free suite passed locally and on
+  later CI heads.
+- `ios-simulator-build` in `36342494016` failed at
+  `VehicleAndFuelFlowUITests.swift:161` inside the pre-existing
+  `testVehicleAndFuelEntryCreationFlow`. PR80's changed hunk in that file starts after that test, and
+  the new E1-16 UI test passed in the same run.
+- `shared-tests` in `36343592583` named
+  `LocalOwnerAdoptionTriggerTest.aFuelEntryWriteTriggersAcquisitionAndAdoptionAfterAnEarlierAttemptFailed[iosSimulatorArm64]`.
+  `shared-tests` in `36344530243` named
+  `VehicleListStateHolderTest.failedRefreshPublishesTheErrorAndLetsTheNextRefreshRun[iosSimulatorArm64]`.
+  Earlier `docs/PROJECT_LOG.md` entries record prior occurrences of both tests, but those historical
+  entries described E1-14 and E1-17 before they merged. They are evidence of prior occurrence, not a
+  current rule that a red required check may be re-run without investigation.
+
+The current repository rule is the opposite: `AGENTS.md` and `docs/BACKLOG.md` state that a red
+`shared-tests` or `provider-decoupling` result is evidence to investigate, never a reason to re-run
+blindly. The investigation above, the absence of changes under `shared/`, `core/` and `firestore/`, the
+repeatable local `:shared:iosSimulatorArm64Test --rerun-tasks` result, the first-attempt green product
+run `36341671213`, and the first-attempt all-green reviewed-head run `36346316418` together separate
+the E1-16 change from the intermediate failures. GitHub's live status remains authoritative after any
+later correction commit; do not create another documentation-only commit solely to record that live
+status.
 
 ## Scope Completed
 
@@ -237,7 +252,8 @@ All commands run in the worktree on 2026-09-27, in order.
 
 - [x] Entry appended (`docs/PROJECT_LOG.md`, 2026-09-27, "E1-16: the fuel type selector on both
   Vehicle forms, and the prose D-127 left behind").
-- [x] All ten required checks on pull request #80 are green.
+- [x] Run `36346316418` passed all ten required checks on reviewed head `37fe0e64`; GitHub's live
+  status is authoritative for later correction heads.
 
 ## Risks or Follow-ups
 
@@ -253,7 +269,8 @@ All commands run in the worktree on 2026-09-27, in order.
 
 ## Human Review Gate
 
-Not applicable. The story is not a gated story and no gated product path is touched. The document
-realignment touches `docs/SPECIFICATION.md`, `docs/CONTRACTS.md` and `docs/BACKLOG.md` under the
-owner's explicit authorisation recorded above, which is also why the pull request goes through the
-owner's review as usual.
+**Gated path.** The story identifier is not in the gated-story list and no gated product path is
+touched, but PR80 changes `AGENTS.md`, `docs/SPECIFICATION.md` and `docs/CONTRACTS.md`. All three are
+gated paths under `AGENTS.md` §Human Review Gates. The owner's intake authorisation allowed the
+realignment to D-127; it did not waive the final gate. PR80 MUST NOT be merged on agent judgement and
+requires the owner's review after all ten required checks are green on the final head.
