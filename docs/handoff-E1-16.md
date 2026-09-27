@@ -62,16 +62,35 @@ pins; both are recorded under "Decisions Made".
   ("Merge pull request #79").
 - Current phase and latest commit: RED `0f1d4a84` and GREEN `2cdbdd70`, both pushed. No REFACTOR phase
   was needed; the `LongMethod` extraction done during GREEN was a lint correction, not a refactor.
-- Push and pull-request status: both commits pushed; pull request #80 open against `main`, and all
-  ten required checks green (`ktlint`, `detekt`, `architecture-check`, `contract-check`,
-  `android-assemble`, `android-instrumented-tests`, `shared-tests`, `ios-simulator-build`,
-  `objc-header-golden-check`, `provider-decoupling`). Not merged.
+- Push and pull-request status: all commits pushed; pull request #80 open against `main`. The first
+  run over the product commit (`36341671213`, head `0eb9ec37`) was fully green on all ten required
+  checks. A second run over the handoff-only commit `e85753ee` (`36342494016`) failed two checks, and
+  both failures were read rather than re-run: see "Re-run Investigation" below. Not merged.
 - Completed since the previous checkpoint: the two selectors, the ten localized keys, the document
   realignment, the full verification run and the delivery documentation.
 - Verification evidence and known failures: see "Verification Run". No known failure attributable to
   this story.
 - Open decisions or blockers: none.
 - Exact next step: wait for the ten required checks and the owner's gated review. Do not merge.
+
+## Re-run Investigation
+
+The run `36342494016` (head `e85753ee`) failed `provider-decoupling` and `ios-simulator-build`. Both
+were investigated, not re-run blind, and neither is a regression of this story:
+
+- **The product code is identical between the green and the red run.** Run `36341671213` (head
+  `0eb9ec37`) was green on all ten checks; the only difference in `e85753ee` is this handoff file.
+  Every product and test change landed in `0f1d4a84` and `2cdbdd70`, which both runs contain.
+- **`provider-decoupling` failed with `Test running process exited unexpectedly` in
+  `:shared:iosSimulatorArm64Test`**, on `LocalOwnerAdoptionTest.theFirstLocalOwnerWriteWhileOnlineTriggersAcquisitionAfterAMissedConnectivityEmission`. That is a Kotlin/Native process death, the
+  E1-18/JVM-family class of failure, in a module this story does not touch: `git diff` over the
+  branch changes nothing under `shared/` or `core/`.
+- **`ios-simulator-build` failed at `VehicleAndFuelFlowUITests.swift:161`**, inside
+  `testVehicleAndFuelEntryCreationFlow`, a pre-existing test this story does not modify (its changed
+  hunks begin at line 169). The same file's new test passed.
+
+Both are consistent with the state-sensitive UI suite and the Native-process flake the repository
+already records, which is why the two failed jobs were re-run after this reading rather than accepted.
 
 ## Scope Completed
 
