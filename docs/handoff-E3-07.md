@@ -48,31 +48,36 @@ Update this section at every material state change and before yielding unfinishe
 
 - Date: 2026-09-27
 - Branch and base: `story/E3-07-tombstone-purge`, branched from `origin/main` at `ea48ecc5`
-  ("Merge pull request #77"). Work happens in the `git worktree` `../carApp-e3-07`.
-- Current phase and latest commit: review correction 1 complete and verified. First round: RED
-  `07d6d1bc`, GREEN `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation
-  `7fa3f019` and `5fb27bab`, write-lock correction `716976f6`, records `10df743f`, `ec352f78` and
-  `e5e2aa83`. Review correction 1: guard-coverage tests `da22bc69`, RED `ed3e261f`, GREEN
-  `851ebb7f`, `D-194` record `031be2d5`, `CONTRIBUTING.md` `3bd4f7c1`, and the
-  record update that carries this checkpoint.
+  ("Merge pull request #77"). Work happens in the `git worktree` `../carApp-e3-07`. The exact head is
+  not written here: it is the commit this file is part of, and it is stated in the pull-request
+  description instead, so the record is never self-referential.
+- Current phase and commits: review correction 2 complete and verified. First round: RED `07d6d1bc`,
+  GREEN `21465a14`, `CONTRIBUTING.md` `68fc7f4a`, REFACTOR `e53ba49b`, documentation `7fa3f019` and
+  `5fb27bab`, write-lock correction `716976f6`, records `10df743f`, `ec352f78` and `e5e2aa83`.
+  Review correction 1: guard-coverage tests `da22bc69`, RED `ed3e261f`, GREEN `851ebb7f`, `D-194`
+  record `031be2d5`, `CONTRIBUTING.md` `3bd4f7c1`, and the record update `092415ac`. Review
+  correction 2: the graph crash-reporting regression test, and the records update that carries this
+  checkpoint.
 - Push and pull-request status: every commit above is pushed to `origin` and pull request #78 is open
-  against `main` at head `092415ac`. All ten required checks are green on that head
-  (`android-assemble`, `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`,
-  `ios-simulator-build` 14m36s, `ktlint`, `objc-header-golden-check`, `provider-decoupling`,
-  `shared-tests`). The pull request now waits for the owner's gated review on `core/sync/**`,
-  `core/database/**` and the gated documents, and MUST NOT be merged on agent judgement alone.
-- Completed since the previous checkpoint: review correction 1. Every purge guard is now exercised
-  through both `DELETE` statements on both tables; `TombstonePurge` sets its latch before the attempt
-  and reports a failure as `UnexpectedError` through `onFailure`; `D-194` / ADR-0195 record the purge
-  execution policy with its four mirrored rows and the `docs/CONTRACTS.md §8` clarification; the
-  `docs/CONTRIBUTING.md` identity rewrite is bounded to the branch's merge base; and this handoff,
-  `docs/PROJECT_LOG.md`, `docs/BACKLOG.md` and `AGENTS.md` are corrected.
+  against `main`. All ten required checks were green on the earlier head `092415ac`, including
+  `ios-simulator-build` (14m36s), and the same ten are green again on the final head named in the pull
+  request description. The pull request now waits for the owner's gated manual review on
+  `core/sync/**`, `core/database/**` and the gated documents, and MUST NOT be merged on agent
+  judgement alone.
+- Completed since the previous checkpoint: review correction 2. `TombstonePurgeAppGraphTest` gains
+  the graph-level crash-reporting regression test: it injects a throwing `AppClock` and a recording
+  `CrashReporter` through `testAppGraphDependencies` and asserts that a failed startup purge reaches
+  `CrashReporter.recordNonFatal` as exactly one `UnexpectedError(":core:sync", "IllegalStateException")`
+  with `mapOf("code" to "UNEXPECTED")`, and that the purge clock is read exactly once. Replacing the
+  production binding with a no-op failed the test on both hosts; the restored binding passed it, and
+  the mutation was never committed. The owner then resolved the standing process gate: on 2026-09-27
+  they explicitly exempted E3-07 from the separate RED/GREEN commit-and-push requirement for
+  `716976f6`.
 - Verification evidence and known failures: see "Verification Run". No known failure is outstanding.
-- Open decisions or blockers: none. `D-194` is `Accepted`. The `716976f6` TDD commit-workflow
-  deviation recorded under "Decisions Made" needs the owner's explicit exemption.
-- Exact next step: none from the agent. All ten required checks are green on head `092415ac`; do not
-  merge before the owner's gated review and the owner's decision on the `716976f6` TDD
-  commit-workflow exemption.
+- Open decisions or blockers: none. `D-194` is `Accepted`, and the `716976f6` process gate is closed
+  by the owner's explicit exemption quoted under "Decisions Made".
+- Exact next step: none from the agent. Await the owner's gated manual review; do not merge on agent
+  judgement.
 
 ## Scope Completed
 
@@ -106,6 +111,12 @@ Update this section at every material state change and before yielding unfinishe
    caller, and is not attempted again in the same app start). `TombstonePurgeAppGraphTest` proves the
    invariant through the product surface: `theGraphPurgesAConfirmedTombstoneAtStartup` and
    `theGraphDoesNotPurgeATombstoneThatBecomesPurgableLaterInTheSameAppStart`.
+   `TombstonePurgeAppGraphTest.aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce`
+   proves the `D-194` failure policy at the graph: the product binding
+   `onFailure = dependencies.crashReporter::recordNonFatal` in `AppGraph` is exercised with a throwing
+   `AppClock` and a recording `CrashReporter`, and exactly one
+   `UnexpectedError(":core:sync", "IllegalStateException")` with `mapOf("code" to "UNEXPECTED")`
+   reaches the reporter while the clock is read once.
    The transaction is `TombstonePurgeDatabaseAccessTest.aFailedPurgeRollsBackEveryDeletion`: a
    `BEFORE DELETE` trigger aborts the fuel-entry statement, and the vehicle deletion performed by the
    first statement is rolled back with it.
@@ -213,12 +224,15 @@ again. The results are listed under "Verification Run".
   `da22bc69` pass on arrival because the production predicates were already correct; they are
   coverage tests under `docs/SPECIFICATION.md §11`, not TDD tests, and each one is proven by the
   mutation checks under "Verification Run".
-- **TDD commit-workflow deviation, for the owner's decision.** The write-lock correction `716976f6`
-  committed `AndroidTombstonePurgeWriteLockTest`, `IosTombstonePurgeWriteLockTest` and the count gate in
-  one commit. `docs/SPECIFICATION.md §11` requires the RED and GREEN phases to be separate commits and
-  pushes unless the owner exempts the story explicitly. The RED run was performed locally (see
-  "Verification Run") but was not committed on its own. The pushed history is not rewritten; this
-  deviation requires the owner's explicit exemption.
+- **TDD commit-workflow deviation, resolved by the owner's exemption.** The write-lock correction
+  `716976f6` committed `AndroidTombstonePurgeWriteLockTest`, `IosTombstonePurgeWriteLockTest` and the
+  count gate in one commit. `docs/SPECIFICATION.md §11` requires the RED and GREEN phases to be
+  separate commits and pushes unless the owner exempts the story explicitly. The RED run was performed
+  locally (see "Verification Run") but was not committed on its own. On 2026-09-27 the owner explicitly
+  exempted E3-07 from the separate RED/GREEN commit-and-push requirement for `716976f6`; asked how to
+  dispose of the non-compliance, the owner chose "Conceder la exención para 716976f6", the option whose
+  text was: "El owner exime a E3-07 del requisito de commits RED/GREEN separados para ese commit". No
+  branch-history rewrite and no force-push was performed; the pushed history is unchanged.
 
 ## Verification Run
 
@@ -298,6 +312,23 @@ again. The results are listed under "Verification Run".
   actionable tasks, all executed.
 - **`contractCheck --rerun-tasks` after review correction 1**: every assertion `PASS`, no `FAIL`, no
   `PENDING`; assertion 2 reports 195 decisions and assertion 3 reports 195 ADRs.
+- **Review correction 2, focused command on both hosts.** With the real binding in place:
+  `./gradlew :shared:testAndroidHostTest :shared:iosSimulatorArm64Test --tests
+  '*TombstonePurgeAppGraphTest*' --rerun-tasks` → `BUILD SUCCESSFUL`; `tests="3" skipped="0"
+  failures="0" errors="0"` on Android host and on `iosSimulatorArm64`.
+- **Review correction 2, mutation proof of the graph binding.** Replacing
+  `onFailure = dependencies.crashReporter::recordNonFatal` at `AppGraph.kt:147` with the no-op
+  `onFailure = { _, _ -> }` failed exactly
+  `aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce` on both hosts — Android host
+  with `java.lang.AssertionError: Timed out after 30s waiting for the startup purge failure to reach
+  CrashReporter`, and `iosSimulatorArm64` as the only failing case of the three. Restoring the exact
+  line made both hosts green again, `git diff -- shared/src/commonMain/kotlin/com/ruizurraca/carapp/AppGraph.kt`
+  was empty, and the mutation was never committed.
+- **Complete non-instrumented command after review correction 2** (`AGENTS.md` §Build and verify, with
+  the four D-75 `-x` exclusions), `--rerun-tasks`: `BUILD SUCCESSFUL in 47s`; 642 actionable tasks, all
+  executed.
+- **`contractCheck --rerun-tasks` after review correction 2**: every assertion `PASS`; zero `PENDING`;
+  assertion 2 reports 195 decisions and assertion 3 reports 195 ADRs.
 - **`git diff --check`**: exits 0.
 - No emulator and no simulator was launched: the story is pure shared Kotlin, and the Gradle
   `iosSimulatorArm64Test` task is a host task that boots no device. `adb devices` shows no

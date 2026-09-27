@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-09-27 — E3-07 review correction 2: graph crash-reporting regression test and the owner's TDD exemption
+
+- **Type:** correction
+- **Story / Decision:** `E3-07` — no new decision; applies the existing `D-194`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-07-tombstone-purge`)
+- **What changed:** the owner's review of pull request #78 found that the `D-194` failure policy was
+  unproven at the product surface: `TombstonePurgeTest` showed only that `TombstonePurge` invokes an
+  injected callback, so replacing `onFailure = dependencies.crashReporter::recordNonFatal` in `AppGraph`
+  with a no-op left every E3-07 test green. `TombstonePurgeAppGraphTest` gains
+  `aStartupPurgeFailureIsReportedThroughTheGraphCrashReporterExactlyOnce`, which injects a throwing
+  `AppClock` and a recording `CrashReporter` through `testAppGraphDependencies` and asserts exactly one
+  `UnexpectedError(":core:sync", "IllegalStateException")` with `mapOf("code" to "UNEXPECTED")`, plus a
+  single clock read so the failed attempt is not repeated. The no-op mutation now fails that test on
+  Android host and Kotlin/Native, and the restored binding passes it.
+- **Why:** a green suite that survives the deletion of the production binding it names is not
+  regression protection; `D-194` states the failure must reach `CrashReporter.recordNonFatal`.
+- **Owner decision:** on 2026-09-27 the owner explicitly exempted E3-07 from the separate RED/GREEN
+  commit-and-push requirement of `docs/SPECIFICATION.md §11` for the write-lock commit `716976f6`. No
+  branch-history rewrite and no force-push was performed. Before this decision the process
+  non-compliance was a blocking, unresolved finding.
+- **Corrections to the previous entry:** the previous entry said the `716976f6` deviation was recorded
+  "for the owner's explicit exemption"; that exemption now exists and is quoted in `docs/handoff-E3-07.md`
+  under "Decisions Made".
+- **Documents touched:** `docs/handoff-E3-07.md`, this log.
+- **Verification:** the focused `:shared:testAndroidHostTest :shared:iosSimulatorArm64Test --tests
+  '*TombstonePurgeAppGraphTest*'` command reports 3 tests, 0 failures on both hosts; the no-op mutation
+  fails the new test on both hosts and the restored binding passes; the complete non-instrumented
+  `AGENTS.md` command ends in `BUILD SUCCESSFUL` with all 642 tasks executed; `contractCheck
+  --rerun-tasks` reports every assertion `PASS`, zero `PENDING`, 195 decisions and 195 ADRs.
+- **Follow-ups / risks:** unchanged from review correction 1. No emulator or simulator was launched.
+
 ### 2026-09-27 — E3-07 review correction 1: prove every purge guard, attempt once, record D-194
 
 - **Type:** correction
