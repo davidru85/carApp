@@ -58,16 +58,25 @@ executable pins; both are recorded under "Decisions Made".
 - Date: 2026-09-27.
 - Branch and base: `story/E1-16-vehicle-fuel-type-selector`, based on `origin/main` at `72640ffd`
   ("Merge pull request #79").
-- Current phase and latest commit: intake; no commit yet on this branch. `main` was verified at
-  `72640ffd` locally and on `origin/main` before branching.
-- Push and pull-request status: branch created locally by `git worktree`; not pushed; no pull request.
-- Completed since the previous checkpoint: worktree created; the seven acceptance-relevant files
-  read; the blocking finding confirmed and escalated; the owner authorised the realignment and the pin
-  inversion.
-- Verification evidence and known failures: none yet. The `E1_07_API_36` AVD exists locally and no
-  emulator or simulator was running at intake.
-- Open decisions or blockers: none. The intake blocker is resolved by the owner's authorisation.
-- Exact next step: write the RED tests and commit them as `test(E1-16): ...`.
+- Current phase and latest commit: GREEN about to be committed; RED landed as `0f1d4a84`
+  ("test(E1-16): specify the fuel type selector on both vehicle forms").
+- Push and pull-request status: RED is pushed; no pull request yet.
+- Completed since the previous checkpoint: the Compose `ExposedDropdownMenuBox` selector wired to
+  `stateHolder::setFuelType`; the SwiftUI `Picker` plus `VehicleFormViewModel.fuelType` and
+  `setFuelType(_:)`; the five keys `fuel_type_*` and `fuel_type` in the four catalogues; and the
+  document realignment of `docs/SPECIFICATION.md` §5.1 and §7 F-2, `docs/CONTRACTS.md` §20.10 and
+  the `E1-07` acceptance criterion in `docs/BACKLOG.md`.
+- Verification evidence and known failures: `:build-logic:convention:test` green;
+  `:androidApp:connectedDebugAndroidTest` **25/25 on the `E1_07_API_36` emulator**; the complete
+  non-instrumented command ends `BUILD SUCCESSFUL`; `contractCheck --rerun-tasks` reports every
+  assertion `PASS` with no `FAIL` and no `PENDING`; the iOS app builds and the full `xcodebuild test`
+  run is green on a freshly erased simulator. Two pre-existing UI tests
+  (`testVehicleAndFuelFlowUITests` line 84 and `testVehicleSwipeDeleteShowsConfirmationDialog` line
+  38) failed once on a simulator polluted by repeated diagnostic runs and passed on an erased
+  simulator; they are state-dependency flakes of the suite, not regressions of this story.
+- Open decisions or blockers: none.
+- Exact next step: run `git diff --check`, commit and push GREEN, then REFACTOR if needed, then the
+  delivery documentation.
 
 ## Scope Completed
 

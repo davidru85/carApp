@@ -3139,7 +3139,7 @@ re-derives the value that does not participate in the selected mode from the par
 through the D-93 resolver. A value previously derived MAY therefore become an input of the next
 derivation. If the participating pair is present, switching modes MUST NOT clear any money value.
 
-`VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`; `VehicleFormStateHolder.setFuelType` exists for testability and future use, but the MVP UI MUST NOT render a `fuelType` selector (`SPECIFICATION.md §7 F-2`, `§5.1`, decision `D-4`). An `E1-07` acceptance criterion MUST assert no `fuelType` control is rendered, while the field round-trips on save.
+`VehicleFormUiState.fuelType` is present for round-trip fidelity and defaults to `GASOLINE`, and `VehicleFormStateHolder.setFuelType` is the intent the UI selector dispatches (`SPECIFICATION.md §7 F-2`, `§5.1`). `D-127` supersedes the `D-4` clause that kept the selector out of the MVP UI, so both platforms render a selector over exactly the five MVP values, defaulting to `GASOLINE`; `ELECTRIC` and `HYBRID` remain owned by `E5-01` and MUST NOT be added to the enum. The field round-trips on save.
 
 `VehicleFormUiState.vehicleId` is the identity being edited and remains `null` for a creation
 holder. `savedVehicleId` is a completion signal: it is cleared when `save()` begins and contains

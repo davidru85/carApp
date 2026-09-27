@@ -24,10 +24,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -50,6 +54,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -67,6 +73,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryFormStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListStateHolder
 import com.ruizurraca.carapp.feature.fuel.presentation.FuelEntryListUiState
@@ -748,6 +755,7 @@ internal fun VehicleFormScreen(
             onOdometerChange = odometer.onValueChange,
             onBrandChange = { value -> brand.onValueChange(value.orEmpty()) },
             onModelChange = { value -> model.onValueChange(value.orEmpty()) },
+            onFuelTypeChange = stateHolder::setFuelType,
             onSave = stateHolder::save,
             modifier = Modifier.padding(padding),
         )
@@ -821,6 +829,7 @@ private fun VehicleForm(
     onOdometerChange: (String) -> Unit,
     onBrandChange: (String?) -> Unit,
     onModelChange: (String?) -> Unit,
+    onFuelTypeChange: (FuelType) -> Unit,
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -828,36 +837,18 @@ private fun VehicleForm(
         modifier = modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedTextField(
-            value = state.name,
-            onValueChange = onNameChange,
-            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.NAME),
-            label = { Text(stringResource(R.string.vehicle_name)) },
-            singleLine = true,
+        VehicleTextFields(
+            state = state,
+            odometerText = odometerText,
+            hasOdometerError = hasOdometerError,
+            onNameChange = onNameChange,
+            onOdometerChange = onOdometerChange,
+            onBrandChange = onBrandChange,
+            onModelChange = onModelChange,
         )
-        OutlinedTextField(
-            value = odometerText,
-            onValueChange = onOdometerChange,
-            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.ODOMETER),
-            enabled = state.canEditInitialOdometer,
-            isError = hasOdometerError,
-            label = { Text(stringResource(R.string.initial_odometer)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = state.brand.orEmpty(),
-            onValueChange = { value -> onBrandChange(value.ifBlank { null }) },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.vehicle_brand)) },
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = state.model.orEmpty(),
-            onValueChange = { value -> onModelChange(value.ifBlank { null }) },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.vehicle_model)) },
-            singleLine = true,
+        FuelTypeSelector(
+            selected = state.fuelType,
+            onSelect = onFuelTypeChange,
         )
         if (hasOdometerError) {
             Text(
@@ -881,6 +872,113 @@ private fun VehicleForm(
         }
     }
 }
+
+@Composable
+private fun VehicleTextFields(
+    state: VehicleFormUiState,
+    odometerText: String,
+    hasOdometerError: Boolean,
+    onNameChange: (String) -> Unit,
+    onOdometerChange: (String) -> Unit,
+    onBrandChange: (String?) -> Unit,
+    onModelChange: (String?) -> Unit,
+) {
+    OutlinedTextField(
+        value = state.name,
+        onValueChange = onNameChange,
+        modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.NAME),
+        label = { Text(stringResource(R.string.vehicle_name)) },
+        singleLine = true,
+    )
+    OutlinedTextField(
+        value = odometerText,
+        onValueChange = onOdometerChange,
+        modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.ODOMETER),
+        enabled = state.canEditInitialOdometer,
+        isError = hasOdometerError,
+        label = { Text(stringResource(R.string.initial_odometer)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+    )
+    OutlinedTextField(
+        value = state.brand.orEmpty(),
+        onValueChange = { value -> onBrandChange(value.ifBlank { null }) },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.vehicle_brand)) },
+        singleLine = true,
+    )
+    OutlinedTextField(
+        value = state.model.orEmpty(),
+        onValueChange = { value -> onModelChange(value.ifBlank { null }) },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.vehicle_model)) },
+        singleLine = true,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FuelTypeSelector(
+    selected: FuelType,
+    onSelect: (FuelType) -> Unit,
+) {
+    val labels = fuelTypeLabels()
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = labels.getValue(selected)
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.fuel_type)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(VehicleTestTags.FUEL_TYPE_INPUT)
+                    .semantics { contentDescription = selectedLabel }
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            FuelType.entries.forEach { fuelType ->
+                val label = labels.getValue(fuelType)
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        expanded = false
+                        onSelect(fuelType)
+                    },
+                    modifier =
+                        Modifier
+                            .testTag(VehicleTestTags.FUEL_TYPE_OPTION)
+                            .semantics { contentDescription = label },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The five MVP `FuelType` display labels (`D-127`). `ELECTRIC` and `HYBRID` are absent until the
+ * `E5-01` energy model, so this is an exhaustive mapping of the current enum without a fallback.
+ */
+@Composable
+private fun fuelTypeLabels(): Map<FuelType, String> =
+    mapOf(
+        FuelType.GASOLINE to stringResource(R.string.fuel_type_gasoline),
+        FuelType.DIESEL to stringResource(R.string.fuel_type_diesel),
+        FuelType.LPG to stringResource(R.string.fuel_type_lpg),
+        FuelType.CNG to stringResource(R.string.fuel_type_cng),
+        FuelType.OTHER to stringResource(R.string.fuel_type_other),
+    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

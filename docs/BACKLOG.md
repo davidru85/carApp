@@ -395,7 +395,7 @@ Acceptance criteria:
 - Vehicle creation UI test exists.
 - The Vehicle presentation types live in the `:feature:vehicle` `presentation` package; their
   existing Objective-C and Swift names remain byte-exact in the generated framework header.
-- The create/edit form never renders a `fuelType` selector, while the stored value round-trips.
+- The create/edit form round-trips the stored `fuelType`. At `E1-07` it rendered no selector; `E1-16` and `D-127` later added the selector, so the round-trip is now exercised through it.
 - The production list calls `observeVehicles(includeDeleted = false)` and never emits a deleted row.
 - Edit forms observe `VehicleEditFacts` reactively, and a stale editable UI flag cannot bypass the
   repository's authoritative initial-odometer write validation.

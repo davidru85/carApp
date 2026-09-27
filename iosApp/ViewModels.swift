@@ -63,6 +63,9 @@ final class VehicleFormViewModel: ObservableObject {
     @Published var odometerText: String = ""
     @Published var brand: String = ""
     @Published var model: String = ""
+    /// The selected fuel type, mirrored from the shared form state (`D-127`). Defaults to petrol and
+    /// is only ever changed through `setFuelType(_:)`, which forwards to the shared state holder.
+    @Published var fuelType: ModelFuelType = ModelFuelType.gasoline
     @Published var hasOdometerError: Bool = false
     @Published var isSaveComplete: Bool = false
 
@@ -75,6 +78,7 @@ final class VehicleFormViewModel: ObservableObject {
     private var hasEditedOdometer: Bool = false
     private var hasEditedBrand: Bool = false
     private var hasEditedModel: Bool = false
+    private var hasEditedFuelType: Bool = false
     private var onSaveCallback: ((VehicleSaveOutcome) -> Void)? = nil
 
     init(graph: SwiftAppGraph, vehicleId: String?) {
@@ -88,6 +92,7 @@ final class VehicleFormViewModel: ObservableObject {
         self.odometerText = initial.initialOdometerKm == 0 ? "" : String(initial.initialOdometerKm)
         self.brand = initial.brand ?? ""
         self.model = initial.model ?? ""
+        self.fuelType = initial.fuelType
 
         self.observationTask = Task { [weak self, holder] in
             for await s in holder.state {
@@ -108,6 +113,11 @@ final class VehicleFormViewModel: ObservableObject {
         }
         if !hasEditedModel {
             model = s.model ?? ""
+        }
+        // The selection round-trips through the shared holder, so a remote or edit-facts emission
+        // updates the picker only while the owner has not chosen a value in this session.
+        if !hasEditedFuelType {
+            fuelType = s.fuelType
         }
 
         // The incoming state is assigned before the completion runs, so a consumer that reads this
@@ -166,6 +176,12 @@ final class VehicleFormViewModel: ObservableObject {
         hasEditedModel = true
         model = val
         stateHolder.setModel(value: val.isEmpty ? nil : val)
+    }
+
+    func setFuelType(_ val: ModelFuelType) {
+        hasEditedFuelType = true
+        fuelType = val
+        stateHolder.setFuelType(value: val)
     }
 
     func save(onSuccess: ((VehicleSaveOutcome) -> Void)? = nil) {

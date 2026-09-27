@@ -19,8 +19,8 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.ruizurraca.carapp.feature.vehicle.domain.INITIAL_ODOMETER_RANGE_KM
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -107,10 +107,17 @@ class VehicleCreationTest {
             .onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT)
             .assertTextContains("Diesel")
 
-        // An updated selection is persisted by the next save.
+        // An updated selection is persisted by the next save. Saving an edit does not navigate
+        // away on Android (the form stays open), so the test returns with the back affordance and
+        // reopens the form to read the persisted value back.
         composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).performClick()
         composeRule.onNodeWithText("LPG").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(VehicleTestTags.FUEL_TYPE_OPTION).fetchSemanticsNodes().isEmpty()
+        }
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(VehicleTestTags.BACK).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()
         }

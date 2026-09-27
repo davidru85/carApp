@@ -127,7 +127,7 @@ Field names, types, scales and persistence formats are normative in `docs/CONTRA
 | `initialOdometerKm` | Yes | 0..2,000,000. Editable only while the vehicle has no non-deleted fuel entries. |
 | `currentOdometerKm` | Yes | Derived read model: the maximum of `initialOdometerKm` and the highest odometer among non-deleted fuel entries. Never accepted from user input, never used for remote conflict arbitration. |
 | `brand`, `model` | No | Null, or trimmed length 1..40. |
-| `fuelType` | Yes | Default `GASOLINE`. Stored in the MVP, not exposed as a selector. Metadata only: it does not alter validation, units or consumption. |
+| `fuelType` | Yes | Default `GASOLINE`. Stored in the MVP and exposed as a selector over the five MVP values in the Vehicle creation and edit forms (`D-127`). Metadata only: it does not alter validation, units or consumption. |
 | `createdAt`, `updatedAt` | Yes | UTC. |
 | `deletedAt` | No | Tombstone timestamp. |
 
@@ -236,7 +236,7 @@ excluded. The application data cleanup path is specified in `docs/CONTRACTS.md Â
 
 ### F-2 First Vehicle Creation
 
-The form requires `name` and `initialOdometerKm`. `brand`, `model` and `fuelType` are optional in the domain, and `fuelType` is not exposed in the MVP UI. After save, route to vehicle detail with an empty state inviting the first fuel entry.
+The form requires `name` and `initialOdometerKm`. `brand`, `model` and `fuelType` are optional in the domain. `fuelType` is exposed as a selector over the five MVP values and defaults to `GASOLINE` (`D-127`); `brand` and `model` remain free text. After save, route to vehicle detail with an empty state inviting the first fuel entry.
 
 ### F-3 Fuel Logging
 

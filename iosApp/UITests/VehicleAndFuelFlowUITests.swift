@@ -192,7 +192,10 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
 
         let fuelTypePicker = app.buttons["fuel_type_picker"]
         XCTAssertTrue(fuelTypePicker.waitForExistence(timeout: timeout), "The fuel type picker must be offered")
-        XCTAssertEqual(fuelTypePicker.value as? String, "Petrol", "A new vehicle must default to petrol")
+        XCTAssertTrue(
+            fuelTypePicker.label.hasSuffix("Petrol"),
+            "A new vehicle must default to petrol, saw \(fuelTypePicker.label)"
+        )
         fuelTypePicker.tap()
         app.buttons["Diesel"].firstMatch.tap()
 
@@ -208,14 +211,18 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         }
         XCTAssertTrue(vehicleRow.waitForExistence(timeout: timeout))
         vehicleRow.tap()
-
-        let editButton = app.buttons["edit_vehicle"]
-        XCTAssertTrue(editButton.waitForExistence(timeout: timeout))
-        editButton.tap()
+        XCTAssertTrue(
+            app.collectionViews["vehicle_detail_name"].waitForExistence(timeout: timeout),
+            "The detail screen must open"
+        )
+        openVehicleEditor(in: app)
 
         let editFuelTypePicker = app.buttons["fuel_type_picker"]
         XCTAssertTrue(editFuelTypePicker.waitForExistence(timeout: timeout))
-        XCTAssertEqual(editFuelTypePicker.value as? String, "Diesel", "Edit must load the persisted fuel type")
+        XCTAssertTrue(
+            editFuelTypePicker.label.hasSuffix("Diesel"),
+            "Edit must load the persisted fuel type, saw \(editFuelTypePicker.label)"
+        )
 
         // Update the selection and save; the next edit must show the updated value.
         editFuelTypePicker.tap()
@@ -227,10 +234,13 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
         let reopenedRow = app.staticTexts[vehicleName]
         XCTAssertTrue(reopenedRow.waitForExistence(timeout: timeout))
         reopenedRow.tap()
-        app.buttons["edit_vehicle"].tap()
+        openVehicleEditor(in: app)
         let reopenedPicker = app.buttons["fuel_type_picker"]
         XCTAssertTrue(reopenedPicker.waitForExistence(timeout: timeout))
-        XCTAssertEqual(reopenedPicker.value as? String, "LPG", "The updated fuel type must persist")
+        XCTAssertTrue(
+            reopenedPicker.label.hasSuffix("LPG"),
+            "The updated fuel type must persist, saw \(reopenedPicker.label)"
+        )
     }
 
     /// Only first-run creation is mandatory. Creating a later vehicle from the list stays
@@ -252,6 +262,18 @@ final class VehicleAndFuelFlowUITests: XCTestCase {
             vehicleNameField.waitForNonExistence(timeout: timeout),
             "A later creation sheet must still be dismissible with the interactive gesture"
         )
+    }
+
+    /// The detail screen keeps editing behind the navigation bar's overflow `Menu`, so the editor is
+    /// reached in two taps: open the menu, then its `edit_vehicle` item.
+    private func openVehicleEditor(in app: XCUIApplication) {
+        let moreButton = app.buttons["More"].firstMatch
+        XCTAssertTrue(moreButton.waitForExistence(timeout: timeout), "The overflow menu must be offered")
+        moreButton.tap()
+
+        let editButton = app.buttons["edit_vehicle"].firstMatch
+        XCTAssertTrue(editButton.waitForExistence(timeout: timeout), "The edit action must be in the overflow menu")
+        editButton.tap()
     }
 
     private func openVehicleCreation(in app: XCUIApplication) {

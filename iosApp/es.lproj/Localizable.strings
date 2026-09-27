@@ -29,6 +29,12 @@
 "initial_odometer" = "Kilometraje inicial (km)";
 "vehicle_brand" = "Marca (opcional)";
 "vehicle_model" = "Modelo (opcional)";
+"fuel_type" = "Tipo de combustible";
+"fuel_type_gasoline" = "Gasolina";
+"fuel_type_diesel" = "Diésel";
+"fuel_type_lpg" = "GLP";
+"fuel_type_cng" = "GNC";
+"fuel_type_other" = "Otro";
 "vehicle_odometer" = "%d km";
 "add_first_fuel_entry_invitation" = "Añade el primer repostaje para empezar a medir el consumo.";
 "edit_vehicle" = "Editar vehículo";
