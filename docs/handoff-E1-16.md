@@ -62,7 +62,10 @@ pins; both are recorded under "Decisions Made".
   ("Merge pull request #79").
 - Current phase and latest commit: RED `0f1d4a84` and GREEN `2cdbdd70`, both pushed. No REFACTOR phase
   was needed; the `LongMethod` extraction done during GREEN was a lint correction, not a refactor.
-- Push and pull-request status: both commits pushed; pull request #80 open against `main`.
+- Push and pull-request status: both commits pushed; pull request #80 open against `main`, and all
+  ten required checks green (`ktlint`, `detekt`, `architecture-check`, `contract-check`,
+  `android-assemble`, `android-instrumented-tests`, `shared-tests`, `ios-simulator-build`,
+  `objc-header-golden-check`, `provider-decoupling`). Not merged.
 - Completed since the previous checkpoint: the two selectors, the ten localized keys, the document
   realignment, the full verification run and the delivery documentation.
 - Verification evidence and known failures: see "Verification Run". No known failure attributable to
@@ -203,6 +206,7 @@ All commands run in the worktree on 2026-09-27, in order.
 
 - [x] Entry appended (`docs/PROJECT_LOG.md`, 2026-09-27, "E1-16: the fuel type selector on both
   Vehicle forms, and the prose D-127 left behind").
+- [x] All ten required checks on pull request #80 are green.
 
 ## Risks or Follow-ups
 
