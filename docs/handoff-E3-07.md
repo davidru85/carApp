@@ -73,7 +73,11 @@ Update this section at every material state change and before yielding unfinishe
   the mutation was never committed. The owner then resolved the standing process gate: on 2026-09-27
   they explicitly exempted E3-07 from the separate RED/GREEN commit-and-push requirement for
   `716976f6`.
-- Verification evidence and known failures: see "Verification Run". No known failure is outstanding.
+- Verification evidence and known failures: see "Verification Run". No known failure is
+  outstanding. One transient CI hang is recorded there: the first run on the final head failed
+  `shared-tests` and `provider-decoupling` by step timeout rather than an assertion, and a
+  re-run of those two jobs with no code change made all ten checks green. Its owner is
+  unestablished; the local reproduction and the evidence are in "Verification Run".
 - Open decisions or blockers: none. `D-194` is `Accepted`, and the `716976f6` process gate is closed
   by the owner's explicit exemption quoted under "Decisions Made".
 - Exact next step: none from the agent. Await the owner's gated manual review; do not merge on agent
@@ -330,6 +334,22 @@ again. The results are listed under "Verification Run".
 - **`contractCheck --rerun-tasks` after review correction 2**: every assertion `PASS`; zero `PENDING`;
   assertion 2 reports 195 decisions and assertion 3 reports 195 ADRs.
 - **`git diff --check`**: exits 0.
+- **Transient CI hang on the final head, then green on re-run.** The first CI run on head
+  `4cc4858c` failed `shared-tests` and `provider-decoupling` by **step timeout** (10 min and 8 min)
+  with no `FAILED` test and no assertion in either log; `provider-decoupling`'s log ends on
+  `TombstonePurgeAppGraphTest` tests still `STARTED`, but the convention plugin's test logging
+  emits only `started`, `failed` and `skipped` events, so the log cannot show which test was
+  still running when the step was killed. Evidence gathered before re-running: the
+  `-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest` command was green 15
+  consecutive times locally, 3 more under four busy-loop CPU hogs, and 3 more concurrently with
+  the native aggregate (~25 s each); `:shared:iosSimulatorArm64Test --tests
+  '*TombstonePurgeAppGraphTest*'` was green 6 consecutive times; the new test is bounded by
+  `awaitCondition`'s 30 s named failure and `runTest`'s timeout, so it cannot hold a worker for
+  8 minutes; and the immediately preceding run `36312120812` was cancelled while this one
+  started, leaving `java` orphans that the cancelled job then terminated. Re-running the two
+  failed jobs with no code change made all ten checks green on the same head (`shared-tests`
+  289 s, `provider-decoupling` 262 s). The hang is not deterministic and is recorded rather than
+  re-run out of sight (`AGENTS.md` §Repository State, `E1-18`).
 - No emulator and no simulator was launched: the story is pure shared Kotlin, and the Gradle
   `iosSimulatorArm64Test` task is a host task that boots no device. `adb devices` shows no
   `emulator-<port>` line and `xcrun simctl list devices booted` lists no device.
