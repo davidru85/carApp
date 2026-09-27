@@ -1863,6 +1863,8 @@ Human review required.
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
 
+Status: implemented on `story/E1-16-vehicle-fuel-type-selector` through pull request #80, awaiting the owner's gated review. See `docs/handoff-E1-16.md`.
+
 Add a fuel type selector to the Vehicle creation and editing forms on Android (Compose) and iOS (SwiftUI), allowing the user to select from the supported MVP `FuelType` values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`), with `GASOLINE` as the default.
 
 Context:
@@ -2029,7 +2031,7 @@ proof after E3-04.
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
 | E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake (completed, PR #66) | follow-up | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
-| E1-16 Vehicle UI fuel type selector | follow-up | S | — |
+| E1-16 Vehicle UI fuel type selector (completed, PR #80) | follow-up | S | — |
 | E1-17 iOS onboarding UI test flake (completed, PR #67) | follow-up | S | — |
 | E1-18 JVM test deadlock in `DatabaseHandle.close()` (completed, PR #73) | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |

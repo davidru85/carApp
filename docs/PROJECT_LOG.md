@@ -38,6 +38,46 @@
 
 ## Entries
 
+### 2026-09-27 — E1-16: the fuel type selector on both Vehicle forms, and the prose D-127 left behind
+
+- **Type:** story
+- **Story / Decision:** `E1-16` / `D-127` (authorising decision, already `Accepted` on 2026-09-06)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E1-16-vehicle-fuel-type-selector`)
+- **What changed:** the Vehicle creation and edit forms now expose a `FuelType` selector over the
+  five MVP values, defaulting to `GASOLINE`: an `ExposedDropdownMenuBox` on Android Compose and a
+  native SwiftUI `Picker` on iOS, both reading the shared form state and dispatching
+  `VehicleFormStateHolder.setFuelType(...)`. The five display strings and the field label exist in
+  English and Spanish on both platforms. The story also corrected the normative prose that still
+  forbade the control even though `D-127` had superseded the `D-4` clause: `docs/SPECIFICATION.md`
+  §5.1 and §7 F-2, `docs/CONTRACTS.md` §20.10 and the `E1-07` acceptance criterion in
+  `docs/BACKLOG.md`. The two executable pins of the old prohibition were inverted: the host contract
+  test now asserts the selector is wired, and the instrumented test asserts it persists instead of
+  asserting its absence.
+- **Why:** `D-127` is `Accepted` and authorises the selector, but when it was accepted the prose that
+  the superseded clause lived in was not updated, so `docs/SPECIFICATION.md` — the behavioural
+  authority — still said `fuelType` "is not exposed in the MVP UI" and `docs/CONTRACTS.md` still
+  carried a `MUST NOT render a fuelType selector`. `AGENTS.md` requires every document repeating a
+  rule to be corrected in the same change, and the story prompt required escalation before touching
+  those gated paths. The owner authorised the realignment and the pin inversion before any product
+  code was written. This is a realignment to an existing decision, not a new one, so it introduces no
+  `D-` id and no ADR.
+- **Documents touched:** `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/BACKLOG.md`, `AGENTS.md`,
+  `docs/handoff-E1-16.md` and this log.
+- **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck
+  :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest
+  testAndroidHostTest iosSimulatorArm64Test` with the four D-75 exclusions ends `BUILD SUCCESSFUL`;
+  `contractCheck --rerun-tasks` reports every assertion `PASS`, with no `FAIL` and no `PENDING`;
+  `:androidApp:connectedDebugAndroidTest` passes 25/25 on the `E1_07_API_36` emulator; the iOS app
+  builds with `xcodebuild` and its full test run is green on a freshly erased simulator. The selector
+  was also exercised by hand on the running Android app: the menu offers exactly `Petrol`, `Diesel`,
+  `LPG`, `CNG` and `Other`, and a vehicle saved as `Diesel` reopens in edit mode showing `Diesel`.
+- **Follow-ups / risks:** Android saving an edit does not navigate away, because `VehicleFormScreen`
+  calls `onSaved` only when `originalVehicleId` is `null`; this is pre-existing and untouched here,
+  and the instrumented test returns through the back affordance instead. The iOS UI suite is
+  sensitive to simulator state: two pre-existing tests failed once on a simulator polluted by
+  repeated runs and passed after `simctl erase`, so a red `ios-simulator-build` on that pair is worth
+  a clean simulator before it is read as a regression.
+
 ### 2026-09-27 — E3-07 record closure: the merged status and the pull request #78 evidence
 
 - **Type:** correction (documentation only)
