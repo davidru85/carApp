@@ -126,6 +126,32 @@ class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
         }
 
     @Test
+    fun aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp() =
+        runTest {
+            val gateway = RecordingFirestoreGateway()
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result =
+                source.pushSnapshot(
+                    ownerId = OwnerId(OWNER_ID),
+                    snapshot =
+                        EntitySnapshot(
+                            entityType = EntityType.VEHICLE,
+                            entityId = EntityId(VEHICLE_ID),
+                            schemaVersion = 1,
+                            json = payloadWith(overrides = mapOf("updatedAt" to "null")),
+                        ),
+                )
+
+            assertIs<Outcome.Ok<*>>(result)
+            assertEquals(
+                FirestoreServerTimestamp,
+                gateway.writes.single().fields.getValue("updatedAt"),
+                "the payload value of updatedAt MUST be ignored and replaced with the server timestamp",
+            )
+        }
+
+    @Test
     fun aWellFormedPayloadStillWritesTheDocument() =
         runTest {
             val gateway = RecordingFirestoreGateway()
