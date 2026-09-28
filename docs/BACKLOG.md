@@ -1461,8 +1461,8 @@ again evidence to investigate, never a reason to re-run: the deadlock that made 
 is fixed, so the reflex "re-run it" rather than "investigate it" is now exactly how a real regression
 gets waved through.
 
-`E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. They SHOULD
-run adjacently, in that order, so those two screens are opened once rather than twice.
+`E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. `E1-16`
+merged on 2026-09-28 through pull request #80; `E1-15` remains open.
 
 ### Defects found after Phase 1 closed
 
@@ -1863,7 +1863,7 @@ Human review required.
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
 
-Status: implemented on `story/E1-16-vehicle-fuel-type-selector` through pull request #80, awaiting the owner's gated review. See `docs/handoff-E1-16.md`.
+Status: merged on 2026-09-28 through pull request #80 as a true merge of `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit `78b08047`), after the owner's gated review. See `docs/handoff-E1-16.md`.
 
 Add a fuel type selector to the Vehicle creation and editing forms on Android (Compose) and iOS (SwiftUI), allowing the user to select from the supported MVP `FuelType` values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`), with `GASOLINE` as the default.
 
@@ -1990,9 +1990,9 @@ them blocks `E2-06`. `E1-14` removes a Kotlin/Native timeout flake in `FuelEntry
 same class `E1-12` already hardened for a different Native-specific reason. `E1-15` removes the
 pre-existing iOS divergence where creating a *later* vehicle stays on the list instead of opening its
 detail; it depends on the `E2-03` post-save routing delivered for first-run creation, which merged on
-2026-09-06, so it is unblocked. `E1-16` exposes the `FuelType` selector across Android and iOS and is
-Ready only because `D-127` superseded the `D-4` clause that forbade it. `E1-15` and `E1-16` SHOULD run
-adjacently, in that order, because both change the same two Vehicle screens. `E1-17` removes the
+2026-09-06, so it is unblocked. `E1-16` exposed the `FuelType` selector across Android and iOS,
+Ready only because `D-127` superseded the `D-4` clause that forbade it, and merged on 2026-09-28
+through pull request #80. `E1-15` and `E1-16` change the same two Vehicle screens. `E1-17` removes the
 onboarding-wait flake in the iOS UI suite; with `E1-14` it is one of two defects that make a red
 required job ambiguous, and both SHOULD precede any story that relies on that signal.
 
@@ -2031,7 +2031,7 @@ proof after E3-04.
 | E1-13 Executable iOS locale-provider behavior coverage (completed) | 1 | S | Yes |
 | E1-14 `FuelEntryStateHolderTest` Kotlin/Native timeout flake (completed, PR #66) | follow-up | S | — |
 | E1-15 iOS later-vehicle creation routes to the created vehicle | follow-up | S | — |
-| E1-16 Vehicle UI fuel type selector (implemented, PR #80; owner review pending) | follow-up | S | Yes |
+| E1-16 Vehicle UI fuel type selector (completed, PR #80) | follow-up | S | Yes |
 | E1-17 iOS onboarding UI test flake (completed, PR #67) | follow-up | S | — |
 | E1-18 JVM test deadlock in `DatabaseHandle.close()` (completed, PR #73) | follow-up | S | — |
 | E2-01 `:core:auth` (completed) | 2 | S | — |

@@ -1,5 +1,18 @@
 # Agent Handoff - E1-16
 
+> **Closure update (2026-09-28):** `E1-16` merged through pull request #80 after the owner's gated
+> review, as a true merge of `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit
+> `78b08047`, whose second parent is the branch head `ac9701e9`). The owner approved the pull request,
+> which carried one review correction round after the original cycle. That review correction changed
+> the Android fuel type selection from holder-only state into the saveable Vehicle draft, replaced the
+> deprecated `MenuAnchorType` alias, made the label mapping an exhaustive `when`, removed redundant
+> `contentDescription` semantics, hardened the edit-persistence test against an off-main-thread save,
+> extended the catalogue contract test to the `fuel_type` label key, and made the iOS `fuelType`
+> view-model property `private(set)`. The `E1-16` status block and its index row in `docs/BACKLOG.md`,
+> and the follow-up inventory in `AGENTS.md`, now state the merge and its pull request. The in-flight
+> `In-Progress Checkpoint` below is superseded by this update and preserved as observed; the original
+> acceptance evidence and verification results below are likewise preserved as observed.
+
 ## Story
 
 `E1-16 - Vehicle UI Fuel Type Selector - S` (`docs/BACKLOG.md`, `## Follow-Ups Outside the Phase
