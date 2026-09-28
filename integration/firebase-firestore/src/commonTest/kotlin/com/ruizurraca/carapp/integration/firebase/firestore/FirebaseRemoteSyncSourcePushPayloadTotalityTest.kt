@@ -48,6 +48,8 @@ class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
                     "root is an array" to "[1,2,3]",
                     "root is a scalar" to "\"vehicle\"",
                     "root is not JSON" to "{oops",
+                    "brand is an array" to payloadWith(mapOf("brand" to "[\"Acme\"]")),
+                    "initialOdometerKm is a fraction" to payloadWith(mapOf("initialOdometerKm" to "1.5")),
                 )
 
             cases.forEach { (description, payload) ->
@@ -76,6 +78,50 @@ class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
                     "$description must be rejected before anything is written, but ${gateway.writes.size} write(s) ran",
                 )
             }
+        }
+
+    /**
+     * `E3-19` review correction 1: a value whose JSON type is wrong MUST fail closed even when its
+     * content would coerce to the expected value. Before the correction, `"schemaVersion":"1"` passed
+     * the identity check and was written as a provider string, an unquoted `entityType` literal matched
+     * the entity type name, and a numeric string in `createdAt` or `deletedAt` was coerced into a
+     * provider timestamp. Every accepted shape is collected, so one run names all of them.
+     */
+    @Test
+    fun aCoercibleValueOfTheWrongJsonTypeFailsClosedWithoutWritingAnything() =
+        runTest {
+            val cases =
+                listOf(
+                    "schemaVersion is a numeric string" to payloadWith(mapOf("schemaVersion" to "\"1\"")),
+                    "entityType is an unquoted literal" to payloadWith(mapOf("entityType" to "VEHICLE")),
+                    "createdAt is a numeric string" to payloadWith(mapOf("createdAt" to "\"1700000000000\"")),
+                    "deletedAt is a numeric string" to payloadWith(mapOf("deletedAt" to "\"1700000000000\"")),
+                )
+
+            val accepted =
+                cases.mapNotNull { (description, payload) ->
+                    val gateway = RecordingFirestoreGateway()
+                    val result =
+                        FirebaseRemoteSyncSource(gateway).pushSnapshot(
+                            ownerId = OwnerId(OWNER_ID),
+                            snapshot =
+                                EntitySnapshot(
+                                    entityType = EntityType.VEHICLE,
+                                    entityId = EntityId(VEHICLE_ID),
+                                    schemaVersion = 1,
+                                    json = payload,
+                                ),
+                        )
+                    val failedClosed =
+                        result == Outcome.Err(RemoteError.InvalidArgument) && gateway.writes.isEmpty()
+                    description.takeUnless { failedClosed }
+                }
+
+            assertEquals(
+                emptyList<String>(),
+                accepted,
+                "every coercible value of the wrong JSON type MUST fail closed with zero writes",
+            )
         }
 
     @Test
