@@ -41,8 +41,9 @@
   1: RED `ddd8c3c`, GREEN `07f6e6f`, test KDoc correction `fddfaea`, and the record update that
   carries this checkpoint.
 - Push and pull-request status: pull request #82 is open against `main`. The first-round head
-  `142fcf8d` passed all ten required checks on run 36409500477. GitHub's live pull-request status is
-  authoritative for the review-correction head. The agent MUST NOT merge.
+  `142fcf8d` passed all ten required checks on run 36409500477, and the review-correction head passed
+  all ten on run 36414077708. GitHub's live pull-request status is authoritative for any later head. The
+  agent MUST NOT merge.
 - Completed since the previous checkpoint: review correction 1 — strict JSON typing for the identity
   and epoch-millisecond reads, the narrowed `docs/CONTRACTS.md` §10 norm, the corrected escape analysis
   and `D-38` attribution, and the `AGENTS.md`, `docs/BACKLOG.md` and handoff records.
