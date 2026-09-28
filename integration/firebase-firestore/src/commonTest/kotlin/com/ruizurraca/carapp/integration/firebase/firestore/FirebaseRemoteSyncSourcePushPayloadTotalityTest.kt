@@ -146,7 +146,10 @@ class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
             assertIs<Outcome.Ok<*>>(result)
             assertEquals(
                 FirestoreServerTimestamp,
-                gateway.writes.single().fields.getValue("updatedAt"),
+                gateway.writes
+                    .single()
+                    .fields
+                    .getValue("updatedAt"),
                 "the payload value of updatedAt MUST be ignored and replaced with the server timestamp",
             )
         }
