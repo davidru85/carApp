@@ -43,9 +43,10 @@
 - Push and pull-request status: pull request #82 is open against `main` and awaits the owner's gated
   review. `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` failed with
   `expected:<FirestoreServerTimestamp> but was:<FirestoreNull>` before the branch reorder and passed
-  after it. Runs 36409500477 (`142fcf8d`) and 36414077708 (`69043a05`) are the earlier green heads;
-  GitHub's live pull-request status is authoritative for the review-correction 2 head, which is
-  recorded in this section once its checks settle. The agent MUST NOT merge.
+  after it. Earlier green heads: 36409500477 (`142fcf8d`) and 36414077708 (`69043a05`). Run 36440303984
+  on `d3a13fc8` — the implementation/documentation head carrying the reorder, its regression test and
+  the records — passed all ten required checks. GitHub's live pull-request status is authoritative for
+  any later record-only commit. The agent MUST NOT merge.
 - Completed since the previous checkpoint: review correction 2 — the `UPDATED_AT_FIELD` branch moved
   before the `JsonNull` branch of `JsonElement.toFirestoreValue`, the regression test that proves a
   present `updatedAt: null` is still replaced with the server timestamp, and the continuity records.
@@ -233,8 +234,9 @@ Evidence:
   `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt`,
   `./gradlew contractCheck --rerun-tasks` (zero `PENDING` assertions), the complete non-instrumented
   repository command of `AGENTS.md` (642 actionable tasks) and `git diff --check origin/main...HEAD` —
-  all pass. The ten required checks of the review-correction 2 head are recorded in the In-Progress
-  Checkpoint once they settle.
+  all pass. The ten required checks of the review-correction 2 head passed on run
+  [36440303984](https://github.com/davidru85/carApp/actions/runs/36440303984) at `d3a13fc8`, the
+  implementation/documentation head; a later record-only commit is governed by GitHub's live status.
 
 ## Contract Impact
 
