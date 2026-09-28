@@ -497,12 +497,12 @@ private fun JsonObject.longOrNull(name: String): Long? =
  */
 private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
     when {
-        this === JsonNull -> {
-            FirestoreNull
-        }
-
         field == UPDATED_AT_FIELD -> {
             FirestoreServerTimestamp
+        }
+
+        this === JsonNull -> {
+            FirestoreNull
         }
 
         field in EPOCH_MILLISECOND_FIELDS -> {
