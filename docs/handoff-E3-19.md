@@ -40,8 +40,9 @@
   (`d5ecd400`, `e740288c`, `c049d478`, `b2889948`); implementation complete and pushed.
 - Push and pull-request status: pushed to
   `origin/story/E3-19-push-boundary-payload-totality`; [pull request
-  #82](https://github.com/davidru85/carApp/pull/82) is open and awaiting the owner's review. The ten
-  required checks are the live authority; the agent MUST NOT merge.
+  #82](https://github.com/davidru85/carApp/pull/82) is open and awaiting the owner's review. All ten
+  required checks are green on run
+  [36407639430](https://github.com/davidru85/carApp/actions/runs/36407639430). The agent MUST NOT merge.
 - Completed since the previous checkpoint: the ready check; both RED tests;
   `EntitySnapshot.toFirestoreWrite` made total; the detekt-driven refactor; the `docs/CONTRACTS.md`
   §10 push-boundary totality bullet; the handoff, backlog, AGENTS.md and project-log records; the
@@ -137,8 +138,12 @@
 - `./gradlew contractCheck` — BUILD SUCCESSFUL, 195 decisions, 195 ADRs, no unresolved decision and no
   `PENDING` assertion.
 - The mutation probe described under Acceptance Evidence.
-- The complete non-instrumented repository command of `AGENTS.md` and the live CI result are recorded in
-  the pull request; this section is updated with their outcome when the ten checks settle.
+- The complete non-instrumented repository command of `AGENTS.md` — BUILD SUCCESSFUL, 642 actionable
+  tasks (79 executed).
+- The ten required checks of pull request #82 — all green on run
+  [36407639430](https://github.com/davidru85/carApp/actions/runs/36407639430): `android-assemble`,
+  `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`,
+  `ktlint`, `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
 
 ## Contract Impact
 
