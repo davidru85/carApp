@@ -15,10 +15,12 @@
 - Dependencies checked: `E3-03` merged (the engine that consumes `pushSnapshot`). No `Proposed` or
   `Pending` decision gates this story; `D-149`, `D-150` and `D-173` gate `E3-15`, `E3-16` and `E3-18`
   only.
-- Decisions checked: no new decision is required. The story restores conformance to the already
-  `Accepted` `D-170` transport-totality principle and the `§6` `RemoteError` to `SyncError` mapping;
-  it introduces no option the owner must choose between. `contractCheck` reports 195 decisions, 195
-  ADRs and zero `PENDING` assertions.
+- Decisions checked: no new decision is required. `D-170` was reviewed only as the pull-side
+  contrast: it governs raw `pullChanges` transport and quarantine ownership, not push conversion.
+  This story closes the explicit `E3-19` acceptance gap by using the existing `§6` mapping and by
+  extending the E1-11 `RemoteError.InvalidArgument` push-boundary precedent from malformed
+  `entityType` to the other malformed identity shapes. It introduces no option the owner must choose
+  between. `contractCheck` reports 195 decisions, 195 ADRs and zero `PENDING` assertions.
 - Normative sections reviewed: `docs/CONTRACTS.md` §6 (Result and Error Taxonomy), §8 (Outbox
   Contract), §9.3 (Push), §9.5 (Quarantine and malformed remote payloads), §10 (`RemoteSyncSource`
   Contract); `docs/TECHNICAL_PLAN.md` §4 (dependency rules) and §9 (sync tests);
@@ -58,6 +60,21 @@
 - Open decisions or blockers: none.
 - Exact next step: owner review of pull request #82 on the review-correction 3 head and the merge
   decision. The agent MUST NOT merge.
+
+## Review Correction 4
+
+The fourth review found one architectural-record error: the Ready Check, Out of Scope section,
+project-log story entry and pull-request description said E3-19 implemented the accepted D-170
+totality principle on the push side. D-170 / ADR-0171 is narrower: it selects raw per-document
+transport for `pullChanges` and assigns pulled-document `MalformedPayload` classification to
+`:core:sync`. It does not govern conversion of a local outbox snapshot for `pushSnapshot`.
+
+The current records now attribute E3-19 to its explicit backlog acceptance gap, the `§6`
+`RemoteError.InvalidArgument` to `SyncError.ValidationRejected` mapping, the `§8` local outbox
+contract, the `§9.3` push behavior, the exact `§10` push-boundary rule and the E1-11 push-boundary
+precedent. The historical project-log entry remains unchanged under the append-only rule and a new
+entry corrects it. No production source, test, contract behavior, decision, ADR or acceptance
+criterion changes.
 
 ## Review Correction 3
 
@@ -217,8 +234,10 @@ Evidence:
 - `E3-20` (pull-boundary quarantine totality for an unsupported provider value) is untouched: it is the
   sibling pull-side gap and a separate story.
 - No Firestore rule, schema, migration or `:core:database` change.
-- No new decision ID, ADR or mirrored decision row: the change implements the `Accepted` `D-170`
-  totality principle on the push side and adds no owner-choosable option.
+- No new decision ID, ADR or mirrored decision row: the change closes the explicit `E3-19`
+  push-boundary gap using the existing `§6` mapping and the E1-11 push-boundary error precedent.
+  `D-170` remains limited to pull-side raw transport and quarantine ownership; this story neither
+  implements nor modifies it.
 
 ## Files Changed
 

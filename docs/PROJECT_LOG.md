@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-28 — E3-19 review correction 4: D-170 scope attribution
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** the E3-19 handoff and pull-request description no longer say that the push-boundary correction implements D-170. They now attribute E3-19 to its explicit backlog acceptance gap, the `§6` error mapping, the `§8` outbox contract, the `§9.3` push behavior, the exact `§10` push-boundary rule and the E1-11 push-boundary precedent.
+- **Why:** D-170 / ADR-0171 governs raw per-document transport from `pullChanges` and assigns pulled-document `MalformedPayload` classification to `:core:sync`; it does not govern conversion of local outbox payloads in `pushSnapshot`. Applying its identifier to the push path obscures the architectural boundary the ADR selected.
+- **Correction to the original E3-19 entry:** the statement that E3-19 implements the accepted D-170 totality principle on the push side is incorrect. D-170 remains pull-only and is neither implemented nor modified by E3-19.
+- **Documents touched:** `docs/handoff-E3-19.md`, this log and the pull request #82 description. No production source, test, normative contract, decision or ADR changed.
+- **Verification:** `contractCheck --rerun-tasks` and the complete non-instrumented command from `AGENTS.md` pass locally; `git diff --check origin/main...HEAD` is clean. GitHub's live pull-request status is authoritative for the correction head.
+- **Follow-ups / risks:** none new. E3-20 and E3-21 remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
+
 ### 2026-09-28 — E3-19 review correction 3: canonical JSON tokens and exact §10 coverage
 
 - **Type:** correction
