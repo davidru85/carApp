@@ -53,7 +53,6 @@ class FirebaseRemoteSyncSource internal constructor(
         gateway.configureMemoryOnlyCache()
     }
 
-    @Suppress("SwallowedException") // Provider failures are deliberately converted to the closed RemoteError API.
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
@@ -436,26 +435,34 @@ internal suspend fun <T> runProviderRefresh(operation: suspend () -> T): T =
  */
 private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): Outcome<FirestoreWrite, RemoteError> {
     val parsed = parsePayloadObject(json) ?: return Outcome.Err(RemoteError.InvalidArgument)
-    val payloadId = parsed.stringOrNull(ID_FIELD)
-    val payloadOwnerId = parsed.stringOrNull(OWNER_ID_FIELD)
-    val payloadSchemaVersion = parsed.longOrNull(SCHEMA_VERSION_FIELD)
-    val payloadEntityType = parsed.stringOrNull(ENTITY_TYPE_FIELD)
-    if (payloadId != entityId.value) return Outcome.Err(RemoteError.InvalidArgument)
-    if (payloadOwnerId != ownerId.value) return Outcome.Err(RemoteError.InvalidArgument)
-    if (payloadSchemaVersion != schemaVersion.toLong()) return Outcome.Err(RemoteError.InvalidArgument)
-    if (payloadEntityType != entityType.name) return Outcome.Err(RemoteError.InvalidArgument)
-    val fields = mutableMapOf<String, FirestoreValue>()
-    parsed.forEach { (field, value) ->
-        if (field == ENTITY_TYPE_FIELD) return@forEach
-        val converted = value.toFirestoreValue(field) ?: return Outcome.Err(RemoteError.InvalidArgument)
-        fields[field] = converted
-    }
+    val identityMatches =
+        parsed.stringOrNull(ID_FIELD) == entityId.value &&
+            parsed.stringOrNull(OWNER_ID_FIELD) == ownerId.value &&
+            parsed.longOrNull(SCHEMA_VERSION_FIELD) == schemaVersion.toLong() &&
+            parsed.stringOrNull(ENTITY_TYPE_FIELD) == entityType.name
+    if (!identityMatches) return Outcome.Err(RemoteError.InvalidArgument)
+    val fields = parsed.toFirestoreFields() ?: return Outcome.Err(RemoteError.InvalidArgument)
     return Outcome.Ok(
         FirestoreWrite(
             path = "users/${ownerId.value}/${entityType.collection}/${entityId.value}",
             fields = fields,
         ),
     )
+}
+
+/**
+ * Converts every payload field except the transport-only [ENTITY_TYPE_FIELD] to a provider value,
+ * or `null` as soon as one cannot be represented. Nothing here throws, so a wrong-typed field becomes
+ * a closed error at the call site instead of an exception escaping `pushSnapshot`.
+ */
+private fun JsonObject.toFirestoreFields(): Map<String, FirestoreValue>? {
+    val fields = mutableMapOf<String, FirestoreValue>()
+    forEach { (field, value) ->
+        if (field == ENTITY_TYPE_FIELD) return@forEach
+        val converted = value.toFirestoreValue(field) ?: return null
+        fields[field] = converted
+    }
+    return fields
 }
 
 /** Parses the payload into a JSON object, or `null` when it is malformed or is not an object. */

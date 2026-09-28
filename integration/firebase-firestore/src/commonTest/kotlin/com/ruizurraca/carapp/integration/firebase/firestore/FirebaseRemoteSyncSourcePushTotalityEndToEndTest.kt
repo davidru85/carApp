@@ -9,10 +9,12 @@ import com.ruizurraca.carapp.core.common.SyncError
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.common.UnexpectedError
 import com.ruizurraca.carapp.core.common.UuidGenerator
+import com.ruizurraca.carapp.core.database.AppDatabase
 import com.ruizurraca.carapp.core.database.DatabaseMutations
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.SyncController
 import com.ruizurraca.carapp.core.sync.createSyncController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -56,8 +58,8 @@ class FirebaseRemoteSyncSourcePushTotalityEndToEndTest {
 
     /**
      * Seeds one Vehicle whose outbox payload is [payload], runs exactly one production cycle, and
-     * asserts the three observable consequences the story names: the row leaves `SYNCING`, no
-     * `UnexpectedError` is reported, and the cycle returns a classified error.
+     * asserts the observable consequences the story names: the row leaves `SYNCING`, the retained
+     * outbox row carries the originating code, and no `UnexpectedError` is reported.
      *
      * `SyncDatabaseAccess.debugLines()` is the reader instead of a generated query: `:core:sync`
      * already exposes the row state and the outbox retry context there, and `:integration:*` MUST NOT
@@ -68,51 +70,13 @@ class FirebaseRemoteSyncSourcePushTotalityEndToEndTest {
         val handle = createStagedDatabaseFactory().create()
         try {
             val database = handle.database
-            DatabaseMutations(database).insertVehicle(
-                id = VEHICLE_ID,
-                ownerId = OWNER_ID,
-                name = "Roadster",
-                nameFold = "roadster",
-                initialOdometerKm = 0,
-                brand = null,
-                model = null,
-                fuelType = "GASOLINE",
-                createdAt = 0,
-                updatedAt = 0,
-                schemaVersion = 1,
-                outboxPayload = payload,
-            )
-            val controller =
-                createSyncController(
-                    scope = this,
-                    databaseAccess = SyncDatabaseAccess(database),
-                    ownerContext = StaticOwnerContext(OwnerId(OWNER_ID)),
-                    connectivity = StaticConnectivity,
-                    remote = FirebaseRemoteSyncSource(RecordingFirestoreGateway()),
-                    clock = StaticClock,
-                    uuidGenerator = StaticUuidGenerator,
-                    adoption = { Outcome.Ok(Unit) },
-                    onPoisoned = { error, _ -> reportedErrors += error },
-                    onQuarantined = {},
-                    isDebugBuild = false,
-                )
+            seedVehicleWithOutboxPayload(database, payload)
+            val controller = controllerFor(this, database, reportedErrors)
 
             val outcome = controller.sync(SyncTrigger.PullToRefresh)
             advanceUntilIdle()
 
-            val debugLines = SyncDatabaseAccess(database).debugLines()
-            assertTrue(
-                debugLines.any { it == "row type=VEHICLE id=$VEHICLE_ID state=FAILED_POISONED" },
-                "the row MUST leave SYNCING; a stranded SYNCING row is the E3-19 defect. Saw $debugLines",
-            )
-            assertTrue(
-                debugLines.any {
-                    it.startsWith("outbox ") &&
-                        it.contains("id=$VEHICLE_ID") &&
-                        it.contains("error=REMOTE.INVALID_ARGUMENT")
-                },
-                "the retained outbox row MUST carry the originating RemoteError code. Saw $debugLines",
-            )
+            assertPoisonedRowAndRetainedCode(SyncDatabaseAccess(database).debugLines())
             assertTrue(
                 reportedErrors.none { it is UnexpectedError },
                 "a malformed payload MUST NOT escape as UnexpectedError, but reported $reportedErrors",
@@ -133,6 +97,60 @@ class FirebaseRemoteSyncSourcePushTotalityEndToEndTest {
         } finally {
             handle.close()
         }
+    }
+
+    private suspend fun seedVehicleWithOutboxPayload(
+        database: AppDatabase,
+        payload: String,
+    ) {
+        DatabaseMutations(database).insertVehicle(
+            id = VEHICLE_ID,
+            ownerId = OWNER_ID,
+            name = "Roadster",
+            nameFold = "roadster",
+            initialOdometerKm = 0,
+            brand = null,
+            model = null,
+            fuelType = "GASOLINE",
+            createdAt = 0,
+            updatedAt = 0,
+            schemaVersion = 1,
+            outboxPayload = payload,
+        )
+    }
+
+    private fun controllerFor(
+        scope: TestScope,
+        database: AppDatabase,
+        reportedErrors: MutableList<AppError>,
+    ): SyncController =
+        createSyncController(
+            scope = scope,
+            databaseAccess = SyncDatabaseAccess(database),
+            ownerContext = StaticOwnerContext(OwnerId(OWNER_ID)),
+            connectivity = StaticConnectivity,
+            remote = FirebaseRemoteSyncSource(RecordingFirestoreGateway()),
+            clock = StaticClock,
+            uuidGenerator = StaticUuidGenerator,
+            adoption = { Outcome.Ok(Unit) },
+            onPoisoned = { error, _ -> reportedErrors += error },
+            onQuarantined = {},
+            isDebugBuild = false,
+        )
+
+    private fun assertPoisonedRowAndRetainedCode(debugLines: List<String>) {
+        assertTrue(
+            debugLines.any { it == "row type=VEHICLE id=$VEHICLE_ID state=FAILED_POISONED" },
+            "the row MUST leave SYNCING; a stranded SYNCING row is the E3-19 defect. Saw $debugLines",
+        )
+        assertTrue(
+            debugLines.any {
+                it.startsWith("outbox ") &&
+                    it.contains("id=$VEHICLE_ID") &&
+                    it.contains("error=REMOTE.INVALID_ARGUMENT")
+            },
+            "the retained outbox row MUST carry the originating RemoteError code. Saw $debugLines",
+        )
     }
 }
 
