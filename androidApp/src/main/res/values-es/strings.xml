@@ -15,6 +15,12 @@
     <string name="initial_odometer">Kilometraje inicial (km)</string>
     <string name="vehicle_brand">Marca (opcional)</string>
     <string name="vehicle_model">Modelo (opcional)</string>
+    <string name="fuel_type">Tipo de combustible</string>
+    <string name="fuel_type_gasoline">Gasolina</string>
+    <string name="fuel_type_diesel">Diésel</string>
+    <string name="fuel_type_lpg">GLP</string>
+    <string name="fuel_type_cng">GNC</string>
+    <string name="fuel_type_other">Otro</string>
     <string name="save_vehicle">Guardar vehículo</string>
     <string name="restore_backup">Recuperar copia</string>
     <string name="sync_diagnostics">Diagnóstico de sincronización</string>

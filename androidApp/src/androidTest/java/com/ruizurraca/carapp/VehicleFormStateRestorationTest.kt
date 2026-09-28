@@ -5,12 +5,14 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.DispatcherProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.EntityId
+import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.Vehicle
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
@@ -64,6 +66,8 @@ class VehicleFormStateRestorationTest {
         }
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextReplacement(DRAFT_NAME)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement(DRAFT_ODOMETER.toString())
+        composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).performClick()
+        composeRule.onNodeWithText(DRAFT_FUEL_TYPE_LABEL).performClick()
         composeRule.waitForIdle()
 
         holder.close()
@@ -73,11 +77,13 @@ class VehicleFormStateRestorationTest {
 
         composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(DRAFT_NAME)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).assertTextContains(DRAFT_ODOMETER.toString())
+        composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).assertTextContains(DRAFT_FUEL_TYPE_LABEL)
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { commands.isNotEmpty() }
 
         assertEquals(DRAFT_NAME, commands.single().name)
         assertEquals(DRAFT_ODOMETER, commands.single().initialOdometerKm)
+        assertEquals(FuelType.DIESEL, commands.single().fuelType)
         holder.close()
         scope.cancel()
     }
@@ -109,3 +115,4 @@ private class EmptyVehicleRepository : VehicleRepository {
 private const val VEHICLE_ID = "00000000-0000-4000-8000-000000000099"
 private const val DRAFT_NAME = "Restored draft"
 private const val DRAFT_ODOMETER = 321L
+private const val DRAFT_FUEL_TYPE_LABEL = "Diesel"

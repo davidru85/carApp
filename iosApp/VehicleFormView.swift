@@ -49,6 +49,25 @@ struct VehicleFormView: View {
                     .accessibilityIdentifier("vehicle_model")
                 }
 
+                // `D-127`: the five MVP fuel types, defaulting to petrol. The picker only reflects
+                // the shared state and forwards the selection to `VehicleFormStateHolder`.
+                Section {
+                    Picker(String(localized: "fuel_type"), selection: Binding(
+                        get: { viewModel.fuelType },
+                        set: { viewModel.setFuelType($0) }
+                    )) {
+                        Text(String(localized: "fuel_type_gasoline")).tag(ModelFuelType.gasoline)
+                        Text(String(localized: "fuel_type_diesel")).tag(ModelFuelType.diesel)
+                        Text(String(localized: "fuel_type_lpg")).tag(ModelFuelType.lpg)
+                        Text(String(localized: "fuel_type_cng")).tag(ModelFuelType.cng)
+                        Text(String(localized: "fuel_type_other")).tag(ModelFuelType.other)
+                    }
+                    // The inline menu style is the native compact list the acceptance criteria ask
+                    // for, and unlike `.segmented` it stays usable with long localized labels.
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("fuel_type_picker")
+                }
+
                 if let message = viewModel.state.message {
                     Section {
                         Text(message.localizedText)

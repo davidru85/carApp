@@ -15,6 +15,12 @@
     <string name="initial_odometer">Initial odometer (km)</string>
     <string name="vehicle_brand">Brand (optional)</string>
     <string name="vehicle_model">Model (optional)</string>
+    <string name="fuel_type">Fuel type</string>
+    <string name="fuel_type_gasoline">Petrol</string>
+    <string name="fuel_type_diesel">Diesel</string>
+    <string name="fuel_type_lpg">LPG</string>
+    <string name="fuel_type_cng">CNG</string>
+    <string name="fuel_type_other">Other</string>
     <string name="save_vehicle">Save vehicle</string>
     <string name="restore_backup">Restore backup</string>
     <string name="sync_diagnostics">Sync diagnostics</string>

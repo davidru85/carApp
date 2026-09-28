@@ -75,10 +75,42 @@ class PlatformHostContractTest {
         assertTrue(foregroundDuration.contains("internal object AndroidForegroundTracking"))
         assertTrue(foregroundReturn.contains("AndroidForegroundTracking.duration"))
         assertFalse(foregroundReturn.contains("remember { AndroidForegroundDuration() }"))
-        assertFalse(host.contains("setFuelType"))
+        // `D-127` exposes the fuel type selector on both Vehicle forms, so the host MUST wire the
+        // already-exported `VehicleFormStateHolder.setFuelType(...)` instead of deliberately
+        // omitting it. The previous `assertFalse(host.contains("setFuelType"))` pinned the
+        // superseded `D-4` clause and is inverted by `E1-16`.
+        assertTrue(host.contains("setFuelType"))
         assertFalse(host.contains("Greeting"))
         assertTrue(english.contains("name=\"vehicle_list_title\""))
         assertTrue(spanish.contains("name=\"vehicle_list_title\""))
+    }
+
+    @Test
+    fun bothLanguagesNameEveryMvpFuelType() {
+        val androidEnglish = repositoryRoot.resolve("androidApp/src/main/res/values/strings.xml").readText()
+        val androidSpanish =
+            repositoryRoot.resolve("androidApp/src/main/res/values-es/strings.xml").readText()
+        val iosEnglish = repositoryRoot.resolve("iosApp/en.lproj/Localizable.strings").readText()
+        val iosSpanish = repositoryRoot.resolve("iosApp/es.lproj/Localizable.strings").readText()
+
+        // `D-127` exposes exactly the five MVP values under the `fuel_type` field label. A missing key
+        // would render nothing, the raw key or an unrelated string, so every catalogue MUST name the
+        // label and all five values in both languages.
+        val keys =
+            listOf(
+                "fuel_type",
+                "fuel_type_gasoline",
+                "fuel_type_diesel",
+                "fuel_type_lpg",
+                "fuel_type_cng",
+                "fuel_type_other",
+            )
+        listOf(androidEnglish, androidSpanish).forEach { catalogue ->
+            keys.forEach { key -> assertTrue(catalogue.contains("name=\"$key\""), "missing $key") }
+        }
+        listOf(iosEnglish, iosSpanish).forEach { catalogue ->
+            keys.forEach { key -> assertTrue(catalogue.contains("\"$key\""), "missing $key") }
+        }
     }
 
     @Test
@@ -107,5 +139,19 @@ class PlatformHostContractTest {
         assertTrue(spanish.contains("\"walking_skeleton_title\""))
         assertTrue(xcodeProject.contains("en.lproj in Resources"))
         assertTrue(xcodeProject.contains("es.lproj in Resources"))
+    }
+
+    @Test
+    fun iosVehicleFormWiresTheFuelTypePickerThroughTheViewModel() {
+        val form = repositoryRoot.resolve("iosApp/VehicleFormView.swift").readText()
+        val viewModels = repositoryRoot.resolve("iosApp/ViewModels.swift").readText()
+
+        // `D-127` requires a native `Picker` on both the creation and the edit form, which is the
+        // same view. SwiftUI holds no business logic, so the picker only reflects the shared state
+        // and forwards the selection to `VehicleFormStateHolder.setFuelType(...)` through the view
+        // model, exactly as the other fields forward through `setName` and `setModel`.
+        assertTrue(form.contains("Picker("))
+        assertTrue(form.contains("setFuelType"))
+        assertTrue(viewModels.contains("func setFuelType("))
     }
 }

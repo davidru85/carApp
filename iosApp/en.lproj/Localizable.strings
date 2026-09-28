@@ -29,6 +29,12 @@
 "initial_odometer" = "Initial odometer (km)";
 "vehicle_brand" = "Brand (optional)";
 "vehicle_model" = "Model (optional)";
+"fuel_type" = "Fuel type";
+"fuel_type_gasoline" = "Petrol";
+"fuel_type_diesel" = "Diesel";
+"fuel_type_lpg" = "LPG";
+"fuel_type_cng" = "CNG";
+"fuel_type_other" = "Other";
 "vehicle_odometer" = "%d km";
 "add_first_fuel_entry_invitation" = "Add the first fuel entry to start tracking consumption.";
 "edit_vehicle" = "Edit vehicle";
