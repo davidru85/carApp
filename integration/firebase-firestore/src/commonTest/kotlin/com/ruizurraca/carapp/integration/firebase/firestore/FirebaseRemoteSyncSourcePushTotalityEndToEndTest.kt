@@ -14,6 +14,7 @@ import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.createSyncController
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +36,7 @@ import kotlin.time.Instant
  * cycle. After the fix the same payload is a closed `RemoteError.InvalidArgument`, which `§6` maps to
  * `SyncError.ValidationRejected` and poisons on the first attempt.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseRemoteSyncSourcePushTotalityEndToEndTest {
     @Test
     fun aPayloadMissingIdPoisonsTheRowInsteadOfStrandingIt() =
