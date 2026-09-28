@@ -38,27 +38,29 @@
 
 - Date: 2026-09-28
 - Branch and base: `story/E3-19-push-boundary-payload-totality` from `main` (`ba2c3c17`)
-- Current phase and latest commit: review correction 3 complete. First round: RED `d5ecd400`, GREEN
+- Current phase and latest commit: review correction 4 complete, correction commit `891167d`. First
+  round: RED `d5ecd400`, GREEN
   `e740288c`, REFACTOR `c049d478`, records `b2889948`, `ddd9f09f` and `142fcf8d`. Review correction
   1: RED `ddd8c3c`, GREEN `07f6e6f`, test KDoc correction `fddfaea`, records `69043a0` and `67519db`.
   Review correction 2: RED `db2a563`, GREEN `d03e60c`, style `1b1928a4`, records `d3a13fc8`,
-  `ba8b43fe` and `f9eb525e`. Review correction 3: RED `5e90630e`, GREEN `16800310`; the records
-  follow in the commits after them.
+  `ba8b43fe` and `f9eb525e`. Review correction 3: RED `5e90630e`, GREEN `16800310`, records `e33e84f6`
+  and `2c87f21b`. Review correction 4: `891167d`, and the record that carries this checkpoint.
 - Push and pull-request status: pull request #82 is open against `main` and awaits the owner's gated
-  review; its description was rewritten in review correction 3 to mirror this handoff. Earlier green
-  heads: 36409500477 (`142fcf8d`), 36414077708 (`69043a05`), 36440303984 (`d3a13fc8`) and
-  36442950495 (`ba8b43fe`).
-  Review-correction 3 checks: all ten passed on run 36447550134 at `e33e84f6`.
+  review; its description was rewritten in review correction 3 to mirror this handoff and its
+  attribution is corrected in review correction 4. Earlier green
+  heads: 36409500477 (`142fcf8d`), 36414077708 (`69043a05`), 36440303984 (`d3a13fc8`),
+  36442950495 (`ba8b43fe`), 36447550134 (`e33e84f6`) and 36449596374 (`2c87f21b`).
+  Review-correction 4 checks: all ten passed on run 36466988921 at `891167d`.
   GitHub's live pull-request status is authoritative for any later record-only commit. The agent MUST
   NOT merge.
-- Completed since the previous checkpoint: review correction 3 — canonical JSON boolean and integer
-  tokens on the push boundary, three regression guards for the `ownerId` and `schemaVersion` equality
-  clauses and the `date` rule of `§10`, the `§10` token definitions, the `runCycle` escape location in
-  `docs/BACKLOG.md`, and the rewritten pull-request description.
-- Verification evidence and known failures: see "Review Correction 3" and "Verification Run". No known
+- Completed since the previous checkpoint: review correction 4 — the `D-170` scope attribution in the
+  Ready Check, the Out of Scope section and the project log, so the story is attributed to its own
+  backlog acceptance gap, the `§6` mapping, the `§8` outbox contract, the `§9.3` push behavior, the
+  exact `§10` push-boundary rule and the E1-11 push-boundary precedent.
+- Verification evidence and known failures: see "Review Correction 4" and "Verification Run". No known
   failure.
 - Open decisions or blockers: none.
-- Exact next step: owner review of pull request #82 on the review-correction 3 head and the merge
+- Exact next step: owner review of pull request #82 on the review-correction 4 head and the merge
   decision. The agent MUST NOT merge.
 
 ## Review Correction 4
@@ -323,6 +325,11 @@ Evidence:
   repository command of `AGENTS.md` and `git diff --check origin/main...HEAD` — all pass.
   The ten required checks of the review-correction 3 head passed on run
   [36447550134](https://github.com/davidru85/carApp/actions/runs/36447550134) at `e33e84f6`.
+- Review correction 4: `./gradlew contractCheck --rerun-tasks` — BUILD SUCCESSFUL, 195 decisions, 195
+  ADRs, no failed assertion and zero `PENDING` assertions. The complete non-instrumented repository
+  command of `AGENTS.md` — BUILD SUCCESSFUL (642 actionable tasks). `git diff --check
+  origin/main...HEAD` — clean. The ten required checks of the review-correction 4 head passed on run
+  [36466988921](https://github.com/davidru85/carApp/actions/runs/36466988921) at `891167d`.
 
 ## Contract Impact
 
