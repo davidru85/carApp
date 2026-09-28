@@ -43,9 +43,14 @@ class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
                     "entityType is an object" to payloadWith(mapOf("entityType" to "{}")),
                     "mismatched id" to payloadWith(mapOf("id" to "\"$OTHER_VEHICLE_ID\"")),
                     "mismatched entityType" to payloadWith(mapOf("entityType" to "\"FUEL_ENTRY\"")),
+                    "mismatched ownerId" to payloadWith(mapOf("ownerId" to "\"$OTHER_OWNER_ID\"")),
+                    "mismatched schemaVersion" to payloadWith(mapOf("schemaVersion" to "2")),
                     "createdAt is an object" to payloadWith(mapOf("createdAt" to "{}")),
                     "createdAt is a string" to payloadWith(mapOf("createdAt" to "\"yesterday\"")),
                     "deletedAt is an object" to payloadWith(mapOf("deletedAt" to "{\"at\":1}")),
+                    // The conversion does not validate the per-entity schema, so the `date` rule of `§10`
+                    // applies to any payload that carries the key, including this Vehicle payload.
+                    "date is a numeric string" to payloadWith(mapOf("date" to "\"1700000000000\"")),
                     "root is an array" to "[1,2,3]",
                     "root is a scalar" to "\"vehicle\"",
                     "root is not JSON" to "{oops",
@@ -123,6 +128,94 @@ class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
                 accepted,
                 "every coercible value of the wrong JSON type MUST fail closed with zero writes",
             )
+        }
+
+    /**
+     * `E3-19` review correction 3: `Json.parseToJsonElement` accepts any unquoted token as a literal,
+     * kotlinx `booleanOrNull` ignores case and kotlinx `longOrNull` accepts leading zeros and exponents.
+     * Before the correction, each token below was written as a provider boolean, integer or timestamp,
+     * and `01` and `1e0` passed the `schemaVersion` identity check. RFC 8259 defines none of them as a
+     * boolean or an integer token, so each MUST fail closed with zero writes. Every accepted token is
+     * collected, so one run names all of them.
+     */
+    @Test
+    fun aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything() =
+        runTest {
+            val cases =
+                listOf(
+                    "deleted is an upper-case TRUE token" to payloadWith(mapOf("deleted" to "TRUE")),
+                    "deleted is a capitalized False token" to payloadWith(mapOf("deleted" to "False")),
+                    "initialOdometerKm has a leading zero" to payloadWith(mapOf("initialOdometerKm" to "007")),
+                    "initialOdometerKm has an exponent" to payloadWith(mapOf("initialOdometerKm" to "1e3")),
+                    "schemaVersion has a leading zero" to payloadWith(mapOf("schemaVersion" to "01")),
+                    "schemaVersion has an exponent" to payloadWith(mapOf("schemaVersion" to "1e0")),
+                    "createdAt has an exponent" to payloadWith(mapOf("createdAt" to "17E11")),
+                    "createdAt has a leading zero" to payloadWith(mapOf("createdAt" to "01700000000000")),
+                )
+
+            val accepted =
+                cases.mapNotNull { (description, payload) ->
+                    val gateway = RecordingFirestoreGateway()
+                    val result =
+                        FirebaseRemoteSyncSource(gateway).pushSnapshot(
+                            ownerId = OwnerId(OWNER_ID),
+                            snapshot =
+                                EntitySnapshot(
+                                    entityType = EntityType.VEHICLE,
+                                    entityId = EntityId(VEHICLE_ID),
+                                    schemaVersion = 1,
+                                    json = payload,
+                                ),
+                        )
+                    val failedClosed =
+                        result == Outcome.Err(RemoteError.InvalidArgument) && gateway.writes.isEmpty()
+                    description.takeUnless { failedClosed }
+                }
+
+            assertEquals(
+                emptyList<String>(),
+                accepted,
+                "every non-canonical JSON token MUST fail closed with zero writes",
+            )
+        }
+
+    /**
+     * `E3-19` review correction 3: the strict token readers still write every canonical token the `§8`
+     * producer emits — the lowercase `true`, a multi-digit integer and an epoch-millisecond integer on a
+     * tombstone — with the provider type `§10` expects.
+     */
+    @Test
+    fun aCanonicalTombstonePayloadStillWritesStrictlyTypedValues() =
+        runTest {
+            val gateway = RecordingFirestoreGateway()
+            val source = FirebaseRemoteSyncSource(gateway)
+
+            val result =
+                source.pushSnapshot(
+                    ownerId = OwnerId(OWNER_ID),
+                    snapshot =
+                        EntitySnapshot(
+                            entityType = EntityType.VEHICLE,
+                            entityId = EntityId(VEHICLE_ID),
+                            schemaVersion = 1,
+                            json =
+                                payloadWith(
+                                    overrides =
+                                        mapOf(
+                                            "initialOdometerKm" to "120000",
+                                            "deleted" to "true",
+                                            "deletedAt" to "1700000000001",
+                                        ),
+                                ),
+                        ),
+                )
+
+            assertIs<Outcome.Ok<*>>(result)
+            val fields = gateway.writes.single().fields
+            assertEquals(FirestoreLong(120_000), fields.getValue("initialOdometerKm"))
+            assertEquals(FirestoreBoolean(true), fields.getValue("deleted"))
+            assertEquals(FirestoreTimestamp(1_700_000_000_001), fields.getValue("deletedAt"))
+            assertEquals(FirestoreLong(1), fields.getValue("schemaVersion"))
         }
 
     @Test
@@ -214,3 +307,4 @@ private fun payloadWith(
 private const val VEHICLE_ID = "123e4567-e89b-42d3-a456-426614174000"
 private const val OTHER_VEHICLE_ID = "123e4567-e89b-42d3-a456-4266141740ff"
 private const val OWNER_ID = "anonymous-owner"
+private const val OTHER_OWNER_ID = "other-owner"
