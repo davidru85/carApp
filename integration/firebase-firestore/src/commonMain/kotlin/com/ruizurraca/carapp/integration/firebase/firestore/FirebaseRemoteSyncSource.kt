@@ -35,10 +35,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlin.time.Instant
 
@@ -484,16 +482,41 @@ private fun JsonObject.stringOrNull(name: String): String? =
 
 /**
  * The value of a JSON integer, or `null` when the key is absent, `JsonNull`, not a primitive, a JSON
- * string (even one whose content is numeric) or a number that is not an integer.
+ * string (even one whose content is numeric) or a token that is not a canonical JSON integer (see
+ * [jsonIntegerOrNull]).
  */
-private fun JsonObject.longOrNull(name: String): Long? =
-    (get(name) as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
+private fun JsonObject.longOrNull(name: String): Long? = (get(name) as? JsonPrimitive)?.jsonIntegerOrNull()
+
+/**
+ * The value of this primitive when it is a JSON integer token, or `null`. The token MUST match the
+ * RFC 8259 `[ minus ] int` production — no fraction, no exponent and no leading zero — and fit in a
+ * `Long`. `Json.parseToJsonElement` accepts any unquoted token as a literal, and kotlinx `longOrNull`
+ * also accepts leading zeros and exponents, so it is not used here: `007`, `1e3` and the JSON string
+ * `"1"` all return `null` instead of being coerced to an integer.
+ */
+private fun JsonPrimitive.jsonIntegerOrNull(): Long? =
+    content.takeIf { !isString && JSON_INTEGER_TOKEN.matches(it) }?.toLongOrNull()
+
+/**
+ * The value of this primitive when it is a JSON boolean token, or `null`. RFC 8259 literal names are
+ * lowercase and kotlinx `booleanOrNull` ignores case, so only the exact unquoted tokens `true` and
+ * `false` are accepted: `TRUE`, `False` and the JSON string `"true"` all return `null`.
+ */
+private fun JsonPrimitive.jsonBooleanOrNull(): Boolean? =
+    when {
+        isString -> null
+        content == "true" -> true
+        content == "false" -> false
+        else -> null
+    }
 
 /**
  * Converts one payload field to a provider value, or `null` when the value cannot be represented.
  * Nothing here throws or coerces: an epoch-millisecond field MUST be a JSON integer (a numeric JSON
- * string is rejected), so a wrong-typed field reaches [toFirestoreWrite] as a `null` it turns into a
- * closed error rather than as an escaping exception or a silently converted value.
+ * string is rejected), a boolean MUST be the exact token `true` or `false` and an integer MUST be the
+ * RFC 8259 `[ minus ] int` token ([jsonBooleanOrNull], [jsonIntegerOrNull]), so a wrong-typed or
+ * non-canonical field reaches [toFirestoreWrite] as a `null` it turns into a closed error rather than
+ * as an escaping exception or a silently converted value.
  */
 private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
     when {
@@ -506,7 +529,7 @@ private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
         }
 
         field in EPOCH_MILLISECOND_FIELDS -> {
-            (this as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull?.let { FirestoreTimestamp(it) }
+            (this as? JsonPrimitive)?.jsonIntegerOrNull()?.let { FirestoreTimestamp(it) }
         }
 
         this !is JsonPrimitive -> {
@@ -518,8 +541,8 @@ private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
         }
 
         else -> {
-            val boolean = booleanOrNull
-            val number = longOrNull
+            val boolean = jsonBooleanOrNull()
+            val number = jsonIntegerOrNull()
             when {
                 boolean != null -> FirestoreBoolean(boolean)
                 number != null -> FirestoreLong(number)
@@ -563,3 +586,6 @@ private const val UPDATED_AT_FIELD = "updatedAt"
 private const val MICROS_PER_SECOND = 1_000_000L
 private const val NANOS_PER_MICROSECOND = 1_000L
 private val EPOCH_MILLISECOND_FIELDS = setOf("createdAt", "date", "deletedAt")
+
+/** RFC 8259 `[ minus ] int`: an optional minus sign, then `0` or a non-zero digit followed by digits. */
+private val JSON_INTEGER_TOKEN = Regex("-?(0|[1-9][0-9]*)")
