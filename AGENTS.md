@@ -133,12 +133,13 @@ review.
   `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
   MVP completion.
 - **Remaining Phase 1:** none. The phase is closed.
-- **Follow-ups outside the phase milestones:** `E1-15`, `E1-16`, `E1-17` and `E1-18`.
+- **Follow-ups outside the phase milestones:** `E1-15`, `E1-17` and `E1-18`.
   They were created after Phase 1 closed and live in their own `docs/BACKLOG.md` section rather than
   inside a reached milestone. None of them blocked Phase 2, which is now closed. `E1-16`, the Vehicle
-  UI fuel type selector, is implemented on `story/E1-16-vehicle-fuel-type-selector` through pull
-  request #80, awaiting the owner's gated review; the owner authorised the realignment of the prose
-  that `D-127` had already superseded, and its evidence is in `docs/handoff-E1-16.md`. `E1-14` is
+  UI fuel type selector, merged on 2026-09-28 through pull request #80 as a true merge of
+  `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit `78b08047`), after the owner's
+  gated review; the owner had authorised the realignment of the prose that `D-127` already superseded,
+  and its evidence is in `docs/handoff-E1-16.md`. `E1-14` is
   complete after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
   through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
   `docs/handoff-E1-17.md`. `E1-15` remains open. The flake hit

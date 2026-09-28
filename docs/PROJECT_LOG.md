@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-09-28 — E1-16 record closure: the merged status and the pull request #80 evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E1-16` / `D-127` (unchanged)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E1-16-record-closeout`)
+- **What changed:** `E1-16` merged through pull request #80 as a true merge of
+  `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit `78b08047`, second parent the
+  branch head `ac9701e9`), after the owner's gated review and one review correction round. The places
+  that still described the story as in flight now state the merge and its pull request: the `E1-16`
+  status block and its index row in `docs/BACKLOG.md`, the follow-up inventory in `AGENTS.md`, from
+  which `E1-16` is removed, and the two planning sentences in `docs/BACKLOG.md` that still put it in
+  the future tense. `docs/handoff-E1-16.md` gains a dated `Closure update` that records the merge, the
+  review correction round and the review correction's content, and preserves its in-flight checkpoint
+  as observed.
+- **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
+  planned, and it is updated by the story that changes it. Leaving the in-flight tense in place after
+  the merge makes that state false, and the follow-up inventory must not list a merged story.
+- **Correction to the previous E1-16 entries:** the review correction 1 entry recorded the story as
+  still awaiting the owner's review; the owner approved and merged it afterwards, so the status is
+  merged rather than in review. The review correction 1 content itself is unchanged and accurate.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-16.md`, this log.
+- **Verification:** documentation only, so no test, build or coverage result depends on it; the
+  complete non-instrumented `AGENTS.md` command and `contractCheck --rerun-tasks` are run before the
+  pull request to confirm no check regresses.
+- **Follow-ups / risks:** none new. `D-127`, the selector implementation, its tests and every
+  acceptance criterion are unchanged by this correction. Pull request #80 is merged and requires no
+  further action.
+
 ### 2026-09-28 — E1-16 review correction 1: the fuel type joins the saveable draft
 
 - **Type:** correction
