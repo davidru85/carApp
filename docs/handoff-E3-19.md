@@ -36,20 +36,25 @@
 
 - Date: 2026-09-28
 - Branch and base: `story/E3-19-push-boundary-payload-totality` from `main` (`ba2c3c17`)
-- Current phase and latest commit: RED, GREEN and REFACTOR committed (`c049d478`); the `§10`
-  clarification and the handoff are the current documentation work. The pull request has not been
-  opened yet at the moment of this checkpoint.
-- Push and pull-request status: not pushed yet.
+- Current phase and latest commit: RED, GREEN, REFACTOR and documentation committed
+  (`d5ecd400`, `e740288c`, `c049d478`, `b2889948`); implementation complete and pushed.
+- Push and pull-request status: pushed to
+  `origin/story/E3-19-push-boundary-payload-totality`; [pull request
+  #82](https://github.com/davidru85/carApp/pull/82) is open and awaiting the owner's review. The ten
+  required checks are the live authority; the agent MUST NOT merge.
 - Completed since the previous checkpoint: the ready check; both RED tests;
   `EntitySnapshot.toFirestoreWrite` made total; the detekt-driven refactor; the `docs/CONTRACTS.md`
-  §10 push-boundary totality bullet.
-- Verification evidence and known failures: `:integration:firebase-firestore:testAndroidHostTest`
-  passes with the six `E3-19` cases; `ktlintCheck`, `detekt`, `contractCheck` and `architectureCheck`
-  pass on the touched modules. The mutation probe that restores the throwing `getValue` read for `id`
-  fails exactly `everyMalformedPayloadFieldFailsClosedWithoutWritingAnything` and
+  §10 push-boundary totality bullet; the handoff, backlog, AGENTS.md and project-log records; the
+  branch push and the pull request.
+- Verification evidence and known failures: the complete non-instrumented repository command of
+  `AGENTS.md` passed (642 actionable tasks, 79 executed); `:integration:firebase-firestore` passes
+  with the six `E3-19` cases; `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (195
+  decisions, zero `PENDING`) pass. The mutation probe that restores the throwing `getValue` read for
+  `id` fails exactly `everyMalformedPayloadFieldFailsClosedWithoutWritingAnything` and
   `aPayloadMissingIdPoisonsTheRowInsteadOfStrandingIt`. No known failure.
 - Open decisions or blockers: none.
-- Exact next step: push the branch, open the pull request, and drive the ten required checks green.
+- Exact next step: owner review of pull request #82 and the merge decision, after the ten required
+  checks settle green. The agent MUST NOT merge.
 
 ## Scope Completed
 
