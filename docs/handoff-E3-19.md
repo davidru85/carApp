@@ -36,25 +36,64 @@
 
 - Date: 2026-09-28
 - Branch and base: `story/E3-19-push-boundary-payload-totality` from `main` (`ba2c3c17`)
-- Current phase and latest commit: review correction 2 complete. First round: RED `d5ecd400`, GREEN
+- Current phase and latest commit: review correction 3 complete. First round: RED `d5ecd400`, GREEN
   `e740288c`, REFACTOR `c049d478`, records `b2889948`, `ddd9f09f` and `142fcf8d`. Review correction
   1: RED `ddd8c3c`, GREEN `07f6e6f`, test KDoc correction `fddfaea`, records `69043a0` and `67519db`.
-  Review correction 2: RED `db2a563`, GREEN `d03e60c`.
+  Review correction 2: RED `db2a563`, GREEN `d03e60c`, style `1b1928a4`, records `d3a13fc8`,
+  `ba8b43fe` and `f9eb525e`. Review correction 3: RED `5e90630e`, GREEN `16800310`; the records
+  follow in the commits after them.
 - Push and pull-request status: pull request #82 is open against `main` and awaits the owner's gated
-  review. `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` failed with
-  `expected:<FirestoreServerTimestamp> but was:<FirestoreNull>` before the branch reorder and passed
-  after it. Earlier green heads: 36409500477 (`142fcf8d`) and 36414077708 (`69043a05`). The
-  implementation/documentation head `d3a13fc8` passed all ten required checks on run 36440303984, and
-  the record-only commit `ba8b43fe` passed all ten on run 36442950495. GitHub's live pull-request status
-  is authoritative for any later record-only commit. The agent MUST NOT merge.
-- Completed since the previous checkpoint: review correction 2 — the `UPDATED_AT_FIELD` branch moved
-  before the `JsonNull` branch of `JsonElement.toFirestoreValue`, the regression test that proves a
-  present `updatedAt: null` is still replaced with the server timestamp, and the continuity records.
-- Verification evidence and known failures: see "Review Correction 2" and "Verification Run". No known
+  review; its description was rewritten in review correction 3 to mirror this handoff. Earlier green
+  heads: 36409500477 (`142fcf8d`), 36414077708 (`69043a05`), 36440303984 (`d3a13fc8`) and
+  36442950495 (`ba8b43fe`).
+  Review-correction 3 checks: pending.
+  GitHub's live pull-request status is authoritative for any later record-only commit. The agent MUST
+  NOT merge.
+- Completed since the previous checkpoint: review correction 3 — canonical JSON boolean and integer
+  tokens on the push boundary, three regression guards for the `ownerId` and `schemaVersion` equality
+  clauses and the `date` rule of `§10`, the `§10` token definitions, the `runCycle` escape location in
+  `docs/BACKLOG.md`, and the rewritten pull-request description.
+- Verification evidence and known failures: see "Review Correction 3" and "Verification Run". No known
   failure.
 - Open decisions or blockers: none.
-- Exact next step: owner review of pull request #82 on the review-correction 2 head and the merge
+- Exact next step: owner review of pull request #82 on the review-correction 3 head and the merge
   decision. The agent MUST NOT merge.
+
+## Review Correction 3
+
+The owner's third review of pull request #82 found four issues; all are corrected on this branch.
+
+1. **Non-canonical JSON tokens were coerced.** `Json.parseToJsonElement` accepts any unquoted token as
+   a literal, kotlinx `booleanOrNull` ignores case, and kotlinx `longOrNull` accepts leading zeros and
+   exponents. `TRUE`, `False`, `007`, `1e3`, `01`, `1e0`, `17E11` and `01700000000000` were therefore
+   written as provider booleans, integers or timestamps, and `01` and `1e0` passed the `schemaVersion`
+   identity check, although RFC 8259 defines none of them as a boolean or an integer token and the
+   `§10` norm requires such a payload to fail closed. `jsonIntegerOrNull` now requires the RFC 8259
+   `[ minus ] int` token and `jsonBooleanOrNull` the exact lowercase `true` or `false`, and `§10`
+   states both definitions.
+2. **Untested `§10` clauses.** No test drove a correctly typed but different `ownerId` or
+   `schemaVersion`, or a mistyped `date`, so weakening either equality to a presence check or removing
+   `date` from `EPOCH_MILLISECOND_FIELDS` passed every test. Three guard cases now pin them.
+3. **Stale pull-request description.** The description of pull request #82 still carried the
+   first-round text, including the `D-38` misattribution that review correction 1 removed from this
+   handoff and from the test KDoc. It now mirrors this handoff.
+4. **Imprecise escape location.** `docs/BACKLOG.md` and the first `E3-19` entry of
+   `docs/PROJECT_LOG.md` said the escaping exception reached "the generic `drainCycles` catch". The
+   catch is in `SyncEngine.runCycle`, which `drainCycles` calls; the backlog now names it, and the
+   review-correction 3 log entry records the correction.
+
+Evidence:
+
+- RED: `aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything` failed on the review-correction 2 code
+  and named all eight tokens (34 tests completed, 1 failed). The three guard cases and
+  `aCanonicalTombstonePayloadStillWritesStrictlyTypedValues` passed there: they are regression guards,
+  not RED tests.
+- GREEN: every `:integration:firebase-firestore` test passes (34 tests, 0 failures).
+- Non-vacuity: weakening `parsed.stringOrNull(OWNER_ID_FIELD) == ownerId.value` to `!= null`,
+  weakening `parsed.longOrNull(SCHEMA_VERSION_FIELD) == schemaVersion.toLong()` to `!= null`, and
+  removing `"date"` from `EPOCH_MILLISECOND_FIELDS` each fail exactly one test,
+  `everyMalformedPayloadFieldFailsClosedWithoutWritingAnything`, at the "mismatched ownerId",
+  "mismatched schemaVersion" and "date is a numeric string" case respectively. Each probe was reverted.
 
 ## Review Correction 2
 
@@ -135,14 +174,19 @@ Evidence:
 - `docs/CONTRACTS.md` §10 gains the push-boundary totality bullet: the payload conversion MUST NOT
   throw, and the bullet lists exactly which payloads MUST be a closed `RemoteError.InvalidArgument`
   before any remote write.
+- Review correction 3: booleans and integers are read through `jsonBooleanOrNull` and
+  `jsonIntegerOrNull`, which accept only the RFC 8259 lowercase `true` / `false` and `[ minus ] int`
+  tokens, so a non-canonical token such as `TRUE`, `007` or `1e3` fails closed instead of being
+  coerced, including in the `schemaVersion` identity check and the epoch-millisecond fields.
 
 ## Acceptance Evidence
 
 - Criterion 1 — every push-boundary field read is total:
   `FirebaseRemoteSyncSourcePushPayloadTotalityTest.everyMalformedPayloadFieldFailsClosedWithoutWritingAnything`
-  drives 21 malformed payload shapes (each identity key missing, wrong-typed, `JsonNull`, non-object,
-  mismatched `id`, mismatched `entityType`, a mistyped `createdAt` and `deletedAt`, an array `brand`, a
-  fractional `initialOdometerKm`, a non-object root, a scalar root and unparseable JSON) and asserts a
+  drives 24 malformed payload shapes (each identity key missing, wrong-typed, `JsonNull`, non-object,
+  mismatched `id`, `ownerId`, `schemaVersion` and `entityType`, a mistyped `createdAt`, `date` and
+  `deletedAt`, an array `brand`, a fractional `initialOdometerKm`, a non-object root, a scalar root and
+  unparseable JSON) and asserts a
   closed `Outcome.Err(RemoteError.InvalidArgument)` with zero writes for each.
   `aCoercibleValueOfTheWrongJsonTypeFailsClosedWithoutWritingAnything` (review correction 1) drives a
   numeric-string `schemaVersion`, an unquoted `entityType` literal and numeric-string `createdAt` and
@@ -151,6 +195,12 @@ Evidence:
   `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` (review correction 2) drives a payload whose
   `updatedAt` is JSON `null` and asserts the written field is `FirestoreServerTimestamp`, proving the
   server-owned timestamp of `§10` survives that shape.
+  `aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything` (review correction 3) drives eight unquoted
+  tokens that kotlinx.serialization parses but RFC 8259 does not define as a boolean or an integer
+  (`TRUE`, `False`, `007`, `1e3`, `01`, `1e0`, `17E11`, `01700000000000`) and asserts each fails closed
+  with zero writes. `aCanonicalTombstonePayloadStillWritesStrictlyTypedValues` (review correction 3)
+  proves the strict readers still write the lowercase `true`, a multi-digit integer and an
+  epoch-millisecond `deletedAt` with the expected provider types.
 - Criterion 2 — a payload missing `id`, `ownerId` and `schemaVersion` does not stay `SYNCING`:
   `FirebaseRemoteSyncSourcePushTotalityEndToEndTest` drives the real `FirebaseRemoteSyncSource`, the
   real `:core:sync` engine and the real staged database for each of the three omissions plus a
@@ -207,11 +257,17 @@ Evidence:
 - `integration/firebase-firestore/build.gradle.kts` adds `:core:database` as a `commonTest` dependency
   so the end-to-end test can drive the real engine over the real staged database factory. This is a
   test-only edge and does not change the module's production dependency surface.
+- Review correction 3 defines a JSON integer as the RFC 8259 `[ minus ] int` token and a JSON boolean
+  as the exact lowercase `true` or `false` token, in the code and in `docs/CONTRACTS.md §10`. This is
+  not a new decision: it makes precise the terms "JSON integer" and "boolean" that the `§10` bullet this
+  story added already used, and applies the review-correction 1 rule that a value MUST fail closed even
+  when its content would coerce to the expected value. The `§8` producers emit only these canonical
+  tokens, so no payload they write is newly rejected.
 
 ## Verification Run
 
-- `./gradlew :integration:firebase-firestore:testAndroidHostTest` — BUILD SUCCESSFUL, including the
-  seven `E3-19` tests.
+- `./gradlew :integration:firebase-firestore:testAndroidHostTest` — BUILD SUCCESSFUL, including every
+  `E3-19` test (ten after review correction 3).
 - `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` —
   BUILD SUCCESSFUL.
 - `./gradlew contractCheck` — BUILD SUCCESSFUL, 195 decisions, 195 ADRs, no unresolved decision and no
@@ -239,6 +295,14 @@ Evidence:
   implementation/documentation head, and again on run
   [36442950495](https://github.com/davidru85/carApp/actions/runs/36442950495) at the record-only commit
   `ba8b43fe`; GitHub's live status is authoritative for any later record-only commit.
+- Review correction 3: `./gradlew :integration:firebase-firestore:testAndroidHostTest` — RED before the
+  token readers on `aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything` (all eight tokens named,
+  34 tests completed, 1 failed) and BUILD SUCCESSFUL after them (34 tests, 0 failures). The three
+  non-vacuity probes of "Review Correction 3" each failed exactly one test at the named case and were
+  reverted. `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt`,
+  `./gradlew contractCheck --rerun-tasks` (zero `PENDING` assertions), the complete non-instrumented
+  repository command of `AGENTS.md` and `git diff --check origin/main...HEAD` — all pass.
+  The ten required checks of the review-correction 3 head: pending.
 
 ## Contract Impact
 
@@ -246,6 +310,8 @@ Evidence:
   bullet lists exactly which payloads MUST be classified as `Outcome.Err(RemoteError.InvalidArgument)`
   before any remote write; the per-entity `§16` schema stays with the Firestore rules. No interface,
   DTO or other normative section changed.
+- Review correction 3 adds to the same bullet the RFC 8259 definition of a JSON integer token and a
+  JSON boolean token; no interface, DTO or other normative section changed.
 
 ## Decision Board Impact
 

@@ -38,6 +38,18 @@
 
 ## Entries
 
+### 2026-09-28 — E3-19 review correction 3: canonical JSON tokens and exact §10 coverage
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** `JsonElement.toFirestoreValue` and the `schemaVersion` identity read now accept only the RFC 8259 lowercase tokens `true` / `false` as a boolean and the `[ minus ] int` token as an integer, through the new `jsonBooleanOrNull` and `jsonIntegerOrNull` readers, so `TRUE`, `False`, `007`, `01`, `1e3`, `1e0`, `17E11` and `01700000000000` fail closed with zero writes instead of being coerced. `docs/CONTRACTS.md §10` defines both tokens. Three guard cases pin the `ownerId` and `schemaVersion` equality clauses and the `date` rule of `§10`, and `aCanonicalTombstonePayloadStillWritesStrictlyTypedValues` proves canonical tokens still write. The pull request #82 description was rewritten to mirror the handoff.
+- **Why:** `Json.parseToJsonElement` accepts any unquoted token, kotlinx `booleanOrNull` ignores case and kotlinx `longOrNull` accepts leading zeros and exponents, so the conversion did not enforce the "JSON integer" and "boolean" the `§10` norm names. The equality and `date` clauses had no test that a weakened implementation would fail. The pull-request description still carried the `D-38` misattribution that review correction 1 removed from the handoff.
+- **Corrections to previous entries:** the first `E3-19` entry says the escaping exception reached "the generic `drainCycles` catch" and that the malformed-payload test drove 19 shapes. The catch is in `SyncEngine.runCycle`, which `drainCycles` calls, and review correction 1 extended the test to 21 shapes; review correction 3 extends it to 24.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
+- **Verification:** RED on `aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything` (34 tests completed, 1 failed, all eight tokens named); GREEN (34 tests, 0 failures); three non-vacuity probes each failed exactly one test at the named case and were reverted; `:integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` BUILD SUCCESSFUL; `contractCheck --rerun-tasks` BUILD SUCCESSFUL with zero `PENDING` assertions; the complete non-instrumented repository command of `AGENTS.md` BUILD SUCCESSFUL; the ten required checks of pull request #82: pending.
+- **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
+
 ### 2026-09-28 — E3-19 review correction 2: null updatedAt remains server-owned
 
 - **Type:** correction

@@ -1797,7 +1797,7 @@ Previously deferred by `E3-03` for low reachability; scheduled and implemented.
 `EntitySnapshot.toFirestoreWrite` (`FirebaseRemoteSyncSource.kt`) reads `ID_FIELD`, `OWNER_ID_FIELD`
 and `SCHEMA_VERSION_FIELD` through `JsonObject.getValue`, which throws `NoSuchElementException`.
 `pushSnapshot` catches only `IllegalArgumentException`, so an outbox payload missing one of those keys
-escapes to the generic `drainCycles` catch: `UnexpectedError`, the row stays `SYNCING`, it never
+escapes to the generic `runCycle` catch: `UnexpectedError`, the row stays `SYNCING`, it never
 poisons, and the same failure repeats every cycle. This is the third round's BLOCKER 1 shape on the
 push boundary.
 
