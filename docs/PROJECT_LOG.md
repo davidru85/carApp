@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-09-28 — E3-19: the push boundary classifies every malformed payload as a closed RemoteError
+
+- **Type:** story
+- **Story / Decision:** `E3-19` / — (no new decision; implements the `Accepted` `D-170` totality
+  principle on the push side and the `§6` `RemoteError` to `SyncError` mapping)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** `EntitySnapshot.toFirestoreWrite` was rewritten as a total conversion returning
+  `Outcome<FirestoreWrite, RemoteError>`. It parses the outbox payload defensively, reads each identity
+  field (`id`, `ownerId`, `schemaVersion`, `entityType`) through a nullable accessor, and converts each
+  field value through a converter that returns `null` instead of throwing. `pushSnapshot` returns the
+  conversion's error directly instead of catching only `IllegalArgumentException`. A missing key, a
+  wrong-typed key, a non-object root and unparseable JSON now become
+  `Outcome.Err(RemoteError.InvalidArgument)` before anything is written, so `§6` poisons the row
+  (`SyncError.ValidationRejected`) on the first attempt. `docs/CONTRACTS.md §10` gains the matching
+  norm.
+- **Why:** the previous `getValue` / `jsonPrimitive` reads threw `NoSuchElementException` /
+  `IllegalStateException`, which escaped the boundary, reached the generic `drainCycles` catch as
+  `UnexpectedError`, and left the entity row `SYNCING` where it re-failed every cycle. This is the
+  third review round's BLOCKER 1 shape on the push boundary, `E3-03`'s follow-up 6. The conversion was
+  fixed rather than the call site so the totality is explicit where the contract governs it, and
+  `RemoteError.InvalidArgument` was reused rather than adding a new error leaf.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log.
+- **Verification:** `:integration:firebase-firestore:testAndroidHostTest` passes with a 19-shape
+  malformed-payload test and a four-case end-to-end test over the real engine and real staged database;
+  `ktlintCheck`, `detekt`, `architectureCheck` and `contractCheck` pass (195 decisions, zero `PENDING`);
+  a mutation probe that restores the throwing `getValue` read for `id` fails exactly the two `id` cases
+  in the new tests.
+- **Follow-ups / risks:** `E3-20` (pull-boundary quarantine totality) and `E3-21` (startup reset of
+  stale `SYNCING` rows) remain open and are untouched. Owner review and the ten required checks remain;
+  the story stays implemented, not complete, until merge.
+
 ### 2026-09-28 — E1-16 record closure: the merged status and the pull request #80 evidence
 
 - **Type:** correction (documentation only)

@@ -154,7 +154,11 @@ review.
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
-  `E3-20` and `E3-21`. `E3-07`, the local 90-day tombstone purge, merged on 2026-09-27 through pull
+  `E3-20` and `E3-21`. `E3-19`, the push-boundary payload totality, is implemented on
+  `story/E3-19-push-boundary-payload-totality` and awaits the owner's gated review; it classifies
+  every malformed outbox payload as a closed `RemoteError.InvalidArgument` so a push poisons its row
+  instead of stranding it in `SYNCING`, its evidence is in `docs/handoff-E3-19.md`, and it introduces
+  no new decision. `E3-07`, the local 90-day tombstone purge, merged on 2026-09-27 through pull
   request #78 after the owner's gated review, with three review correction rounds on the
   `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoff-E3-07.md`, and it
   introduced `D-194`, the purge execution policy (ADR-0195). `E3-12`, the
