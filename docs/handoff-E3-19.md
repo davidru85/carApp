@@ -36,22 +36,43 @@
 
 - Date: 2026-09-28
 - Branch and base: `story/E3-19-push-boundary-payload-totality` from `main` (`ba2c3c17`)
-- Current phase and latest commit: review correction 1 complete. First round: RED `d5ecd400`, GREEN
+- Current phase and latest commit: review correction 2 complete. First round: RED `d5ecd400`, GREEN
   `e740288c`, REFACTOR `c049d478`, records `b2889948`, `ddd9f09f` and `142fcf8d`. Review correction
-  1: RED `ddd8c3c`, GREEN `07f6e6f`, test KDoc correction `fddfaea`, and the record update that
-  carries this checkpoint.
-- Push and pull-request status: pull request #82 is open against `main`. The first-round head
-  `142fcf8d` passed all ten required checks on run 36409500477, and the review-correction head passed
-  all ten on run 36414077708. GitHub's live pull-request status is authoritative for any later head. The
-  agent MUST NOT merge.
-- Completed since the previous checkpoint: review correction 1 — strict JSON typing for the identity
-  and epoch-millisecond reads, the narrowed `docs/CONTRACTS.md` §10 norm, the corrected escape analysis
-  and `D-38` attribution, and the `AGENTS.md`, `docs/BACKLOG.md` and handoff records.
-- Verification evidence and known failures: see "Review Correction 1" and "Verification Run". No known
+  1: RED `ddd8c3c`, GREEN `07f6e6f`, test KDoc correction `fddfaea`, records `69043a0` and `67519db`.
+  Review correction 2: RED `db2a563`, GREEN `d03e60c`.
+- Push and pull-request status: pull request #82 is open against `main` and awaits the owner's gated
+  review. `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` failed with
+  `expected:<FirestoreServerTimestamp> but was:<FirestoreNull>` before the branch reorder and passed
+  after it. Runs 36409500477 (`142fcf8d`) and 36414077708 (`69043a05`) are the earlier green heads;
+  GitHub's live pull-request status is authoritative for the review-correction 2 head, which is
+  recorded in this section once its checks settle. The agent MUST NOT merge.
+- Completed since the previous checkpoint: review correction 2 — the `UPDATED_AT_FIELD` branch moved
+  before the `JsonNull` branch of `JsonElement.toFirestoreValue`, the regression test that proves a
+  present `updatedAt: null` is still replaced with the server timestamp, and the continuity records.
+- Verification evidence and known failures: see "Review Correction 2" and "Verification Run". No known
   failure.
 - Open decisions or blockers: none.
-- Exact next step: owner review of pull request #82 on the review-correction head, after the ten
-  required checks settle green. The agent MUST NOT merge.
+- Exact next step: owner review of pull request #82 on the review-correction 2 head and the merge
+  decision. The agent MUST NOT merge.
+
+## Review Correction 2
+
+`docs/CONTRACTS.md §10` states that every present `updatedAt` payload value is ignored and replaced
+with the server timestamp (`§9.3`). `JsonElement.toFirestoreValue` evaluated `this === JsonNull`
+before `field == UPDATED_AT_FIELD`, so a payload carrying `"updatedAt": null` was converted to
+`FirestoreNull` instead of `FirestoreServerTimestamp`, and the resulting provider write contradicted
+the server-owned timestamp contract and was rejected by the Firestore schema instead of receiving the
+server timestamp.
+
+Moving the `UPDATED_AT_FIELD` branch before the `JsonNull` branch restores the existing contract for
+every present `updatedAt` value — a JSON string, number, boolean, object, array or `null` — while
+`JsonNull` remains the second branch so nullable product fields such as `brand`, `model`, `notes` and
+`deletedAt` are still representable as `FirestoreNull`.
+
+`aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` failed before the reorder with
+`expected:<FirestoreServerTimestamp> but was:<FirestoreNull>` and passed after it. No decision, ADR,
+schema, Firestore-rule, dependency or public API change is introduced; `docs/CONTRACTS.md` is
+unchanged because its sentence was already correct and is the requirement the code now satisfies.
 
 ## Review Correction 1
 
@@ -126,6 +147,9 @@ Evidence:
   numeric-string `schemaVersion`, an unquoted `entityType` literal and numeric-string `createdAt` and
   `deletedAt` values and asserts each fails closed with zero writes.
   `aWellFormedPayloadStillWritesTheDocument` proves the hardening does not reject a canonical payload.
+  `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` (review correction 2) drives a payload whose
+  `updatedAt` is JSON `null` and asserts the written field is `FirestoreServerTimestamp`, proving the
+  server-owned timestamp of `§10` survives that shape.
 - Criterion 2 — a payload missing `id`, `ownerId` and `schemaVersion` does not stay `SYNCING`:
   `FirebaseRemoteSyncSourcePushTotalityEndToEndTest` drives the real `FirebaseRemoteSyncSource`, the
   real `:core:sync` engine and the real staged database for each of the three omissions plus a
@@ -202,6 +226,15 @@ Evidence:
   non-instrumented repository command of `AGENTS.md` and `./gradlew contractCheck` — BUILD SUCCESSFUL,
   zero `PENDING` assertions. The ten required checks of the review-correction head are recorded in the
   In-Progress Checkpoint once they settle.
+- Review correction 2: `./gradlew :integration:firebase-firestore:testAndroidHostTest --rerun-tasks` —
+  RED before the reorder on `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp`
+  (`expected:<FirestoreServerTimestamp> but was:<FirestoreNull>`, 32 tests completed, 1 failed) and
+  BUILD SUCCESSFUL after it (32 tests, 0 failures).
+  `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt`,
+  `./gradlew contractCheck --rerun-tasks` (zero `PENDING` assertions), the complete non-instrumented
+  repository command of `AGENTS.md` (642 actionable tasks) and `git diff --check origin/main...HEAD` —
+  all pass. The ten required checks of the review-correction 2 head are recorded in the In-Progress
+  Checkpoint once they settle.
 
 ## Contract Impact
 
