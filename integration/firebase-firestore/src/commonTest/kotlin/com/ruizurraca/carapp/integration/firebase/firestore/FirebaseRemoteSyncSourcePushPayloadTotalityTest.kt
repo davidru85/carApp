@@ -16,12 +16,13 @@ import kotlin.test.assertTrue
  * `E3-19`: every field read on the push boundary is total.
  *
  * `EntitySnapshot.toFirestoreWrite` used to read the payload identity fields through
- * `JsonObject.getValue`, which throws `NoSuchElementException`, and through `JsonElement.jsonPrimitive`,
- * which throws `IllegalStateException`. `pushSnapshot` caught only `IllegalArgumentException`, so both
- * escaped the closed `Outcome` API, reached the engine's generic cycle catch as `UnexpectedError`, and
- * left the entity row `SYNCING` where it repeated every cycle. A missing or wrong-typed key is a
- * producer defect under `docs/CONTRACTS.md §8`, but the boundary still MUST classify it as a closed
- * `RemoteError.InvalidArgument` so the push path poisons the row instead of stranding it.
+ * `JsonObject.getValue`, which throws `NoSuchElementException` for a missing key. `pushSnapshot` caught
+ * only `IllegalArgumentException` (which a wrong-typed `JsonElement.jsonPrimitive` read throws), so the
+ * missing-key failure escaped the closed `Outcome` API, reached the engine's generic cycle catch as
+ * `UnexpectedError`, and left the entity row `SYNCING` where it repeated every cycle. A missing or
+ * wrong-typed key is a producer defect under `docs/CONTRACTS.md §8`, but the boundary still MUST
+ * classify it as a closed `RemoteError.InvalidArgument` so the push path poisons the row instead of
+ * stranding it.
  */
 class FirebaseRemoteSyncSourcePushPayloadTotalityTest {
     @Test

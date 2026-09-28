@@ -31,12 +31,13 @@ import kotlin.time.Instant
 /**
  * `E3-19` end to end: the production integration, the real sync engine and the real database.
  *
- * This is the acceptance criterion a source-level test cannot express. Before the fix, a malformed
- * payload threw `NoSuchElementException` / `IllegalStateException` out of
+ * This is the acceptance criterion a source-level test cannot express. Before the fix, a payload
+ * missing `id`, `ownerId` or `schemaVersion` threw `NoSuchElementException` out of
  * `FirebaseRemoteSyncSource.pushSnapshot`, escaped the engine's per-row classification, was caught by
- * `drainCycles` as `UnexpectedError`, and left the entity row `SYNCING` where it re-failed every
- * cycle. After the fix the same payload is a closed `RemoteError.InvalidArgument`, which `§6` maps to
- * `SyncError.ValidationRejected` and poisons on the first attempt.
+ * the engine's generic cycle catch as `UnexpectedError`, and left the entity row `SYNCING` where it
+ * re-failed every cycle. After the fix the same payload is a closed `RemoteError.InvalidArgument`,
+ * which `§6` maps to `SyncError.ValidationRejected` and poisons on the first attempt. The wrong-typed
+ * `ownerId` case is a regression guard: that shape was already classified before the fix.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FirebaseRemoteSyncSourcePushTotalityEndToEndTest {
@@ -61,9 +62,9 @@ class FirebaseRemoteSyncSourcePushTotalityEndToEndTest {
      * asserts the observable consequences the story names: the row leaves `SYNCING`, the retained
      * outbox row carries the originating code, and no `UnexpectedError` is reported.
      *
-     * `SyncDatabaseAccess.debugLines()` is the reader instead of a generated query: `:core:sync`
-     * already exposes the row state and the outbox retry context there, and `:integration:*` MUST NOT
-     * reach a generated SQLDelight entity query (`D-38`).
+     * `SyncDatabaseAccess.debugLines()` (`:core:database`) is the reader because it exposes the entity
+     * row state and the retained outbox retry context in one call. This is a convenience, not a rule:
+     * `D-38` forbids generated entity-mutation calls outside `:core:database`, not read queries.
      */
     private suspend fun TestScope.assertMalformedPayloadPoisons(payload: String) {
         val reportedErrors = mutableListOf<AppError>()
