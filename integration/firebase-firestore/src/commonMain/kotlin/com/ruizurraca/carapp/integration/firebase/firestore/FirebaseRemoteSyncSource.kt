@@ -38,7 +38,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlin.time.Instant
@@ -425,13 +424,16 @@ internal suspend fun <T> runProviderRefresh(operation: suspend () -> T): T =
 /**
  * Converts an outbox payload into a provider write with no unchecked escape (`E3-19`).
  *
- * Every field read here is total: the payload is parsed defensively, each identity field is read
- * through a nullable accessor, and each field value is converted through [toFirestoreValue], which
- * returns `null` instead of throwing. A missing key, a wrong-typed key, a non-object root or an
- * unparseable payload therefore yields `Outcome.Err(RemoteError.InvalidArgument)` — the closed result
- * `§6` maps to `SyncError.ValidationRejected` and poisons on the first attempt — where the previous
- * `getValue` / `jsonPrimitive` reads threw `NoSuchElementException` / `IllegalStateException` past the
- * boundary and stranded the entity row in `SYNCING`.
+ * Every field read here is total and strictly typed: the payload is parsed defensively, `id`,
+ * `ownerId` and `entityType` MUST be JSON strings and `schemaVersion` a JSON integer, each equal to the
+ * snapshot's identity, and each field value is converted through [toFirestoreValue], which returns
+ * `null` instead of throwing or coercing. Unparseable JSON, a non-object root, a missing or wrong-typed
+ * identity key and a value with no provider representation therefore yield
+ * `Outcome.Err(RemoteError.InvalidArgument)` before any write — the closed result `§6` maps to
+ * `SyncError.ValidationRejected` and poisons on the first attempt. The previous `getValue` read threw
+ * `NoSuchElementException` for a missing identity key, which the `IllegalArgumentException` catch in
+ * `pushSnapshot` did not handle, so it escaped the boundary and stranded the entity row in `SYNCING`.
+ * The per-entity schema of `docs/CONTRACTS.md §16` is not validated here; the Firestore rules enforce it.
  */
 private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): Outcome<FirestoreWrite, RemoteError> {
     val parsed = parsePayloadObject(json) ?: return Outcome.Err(RemoteError.InvalidArgument)
@@ -473,15 +475,25 @@ private fun parsePayloadObject(json: String): JsonObject? =
         null
     }
 
-/** A string value, or `null` when the key is absent, `JsonNull` or not a primitive. */
-private fun JsonObject.stringOrNull(name: String): String? = (get(name) as? JsonPrimitive)?.contentOrNull
+/**
+ * The value of a JSON string, or `null` when the key is absent, `JsonNull`, not a primitive, or a
+ * primitive that is not a JSON string (a number, a boolean or an unquoted literal).
+ */
+private fun JsonObject.stringOrNull(name: String): String? =
+    (get(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
 
-private fun JsonObject.longOrNull(name: String): Long? = (get(name) as? JsonPrimitive)?.longOrNull
+/**
+ * The value of a JSON integer, or `null` when the key is absent, `JsonNull`, not a primitive, a JSON
+ * string (even one whose content is numeric) or a number that is not an integer.
+ */
+private fun JsonObject.longOrNull(name: String): Long? =
+    (get(name) as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull
 
 /**
  * Converts one payload field to a provider value, or `null` when the value cannot be represented.
- * Nothing here throws, so a wrong-typed field reaches [toFirestoreWrite] as a `null` it turns into a
- * closed error rather than as an escaping exception.
+ * Nothing here throws or coerces: an epoch-millisecond field MUST be a JSON integer (a numeric JSON
+ * string is rejected), so a wrong-typed field reaches [toFirestoreWrite] as a `null` it turns into a
+ * closed error rather than as an escaping exception or a silently converted value.
  */
 private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
     when {
@@ -494,7 +506,7 @@ private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
         }
 
         field in EPOCH_MILLISECOND_FIELDS -> {
-            (this as? JsonPrimitive)?.longOrNull?.let { FirestoreTimestamp(it) }
+            (this as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull?.let { FirestoreTimestamp(it) }
         }
 
         this !is JsonPrimitive -> {
