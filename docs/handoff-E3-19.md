@@ -27,8 +27,8 @@
   tests), the complete non-instrumented repository command of `AGENTS.md`, `contractCheck` output
   inspection, and a mutation probe proving the new tests are not vacuous.
 - Human review gates identified before work: applies. `integration/firebase-firestore` production code
-  is a Firestore boundary change, and `docs/CONTRACTS.md` §10 is a gated path. The gate is the owner's
-  review and merge; the agent MUST NOT merge.
+  is a Firestore boundary change, and `docs/CONTRACTS.md` §10 and `AGENTS.md` are gated paths. The gate
+  is the owner's review and merge; the agent MUST NOT merge.
 - Rule 0 acknowledged: chat replies for this story are in Spanish (es-ES) and every repository
   artifact it produces is in technical English.
 
@@ -36,49 +36,95 @@
 
 - Date: 2026-09-28
 - Branch and base: `story/E3-19-push-boundary-payload-totality` from `main` (`ba2c3c17`)
-- Current phase and latest commit: RED, GREEN, REFACTOR and documentation committed
-  (`d5ecd400`, `e740288c`, `c049d478`, `b2889948`); implementation complete and pushed.
-- Push and pull-request status: pushed to
-  `origin/story/E3-19-push-boundary-payload-totality`; [pull request
-  #82](https://github.com/davidru85/carApp/pull/82) is open and awaiting the owner's review. All ten
-  required checks are green on run
-  [36407639430](https://github.com/davidru85/carApp/actions/runs/36407639430). The agent MUST NOT merge.
-- Completed since the previous checkpoint: the ready check; both RED tests;
-  `EntitySnapshot.toFirestoreWrite` made total; the detekt-driven refactor; the `docs/CONTRACTS.md`
-  §10 push-boundary totality bullet; the handoff, backlog, AGENTS.md and project-log records; the
-  branch push and the pull request.
-- Verification evidence and known failures: the complete non-instrumented repository command of
-  `AGENTS.md` passed (642 actionable tasks, 79 executed); `:integration:firebase-firestore` passes
-  with the six `E3-19` cases; `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (195
-  decisions, zero `PENDING`) pass. The mutation probe that restores the throwing `getValue` read for
-  `id` fails exactly `everyMalformedPayloadFieldFailsClosedWithoutWritingAnything` and
-  `aPayloadMissingIdPoisonsTheRowInsteadOfStrandingIt`. No known failure.
+- Current phase and latest commit: review correction 1 complete. First round: RED `d5ecd400`, GREEN
+  `e740288c`, REFACTOR `c049d478`, records `b2889948`, `ddd9f09f` and `142fcf8d`. Review correction
+  1: RED `ddd8c3c`, GREEN `07f6e6f`, test KDoc correction `fddfaea`, and the record update that
+  carries this checkpoint.
+- Push and pull-request status: pull request #82 is open against `main`. The first-round head
+  `142fcf8d` passed all ten required checks on run 36409500477. GitHub's live pull-request status is
+  authoritative for the review-correction head. The agent MUST NOT merge.
+- Completed since the previous checkpoint: review correction 1 — strict JSON typing for the identity
+  and epoch-millisecond reads, the narrowed `docs/CONTRACTS.md` §10 norm, the corrected escape analysis
+  and `D-38` attribution, and the `AGENTS.md`, `docs/BACKLOG.md` and handoff records.
+- Verification evidence and known failures: see "Review Correction 1" and "Verification Run". No known
+  failure.
 - Open decisions or blockers: none.
-- Exact next step: owner review of pull request #82 and the merge decision, after the ten required
-  checks settle green. The agent MUST NOT merge.
+- Exact next step: owner review of pull request #82 on the review-correction head, after the ten
+  required checks settle green. The agent MUST NOT merge.
+
+## Review Correction 1
+
+The owner's review of pull request #82 found five issues; all are corrected on this branch.
+
+1. **Coercing identity and timestamp reads.** `stringOrNull` returned the content of any primitive and
+   `longOrNull` parsed a JSON string, so `"schemaVersion":"1"` passed the identity check and was
+   written as a provider string, an unquoted `entityType` literal matched the entity type name, and a
+   numeric string in `createdAt` or `deletedAt` was coerced into a provider timestamp. The first shape
+   reached a remote write that the Firestore rules reject, poisoning the row as
+   `REMOTE.PERMISSION_DENIED` instead of `REMOTE.INVALID_ARGUMENT` with zero writes. The readers and the
+   epoch-millisecond branch now require the JSON type itself: `id`, `ownerId` and `entityType` MUST be
+   JSON strings, and `schemaVersion`, `createdAt`, `date` and `deletedAt` MUST be JSON integers (the
+   epoch fields MAY also be `null`).
+2. **Overbroad `§10` norm.** The norm required "a missing required key" and "a wrong-typed key" to be
+   classified before any write, and required `pushSnapshot` never to let an unchecked exception escape.
+   The conversion reads only the identity keys and never validates the per-entity `§16` schema, and the
+   provider write path is outside the conversion. The norm now lists exactly what the conversion
+   classifies, states that the Firestore rules enforce the `§16` schema, and states that for this
+   conversion an unparseable payload is `RemoteError.InvalidArgument` rather than the `§6`
+   `PersistenceError.SerializationFailed`, which the closed `RemoteError` return type cannot carry.
+3. **Incorrect escape analysis.** The KDoc, the test KDoc and the project log stated that
+   `JsonElement.jsonPrimitive` threw `IllegalStateException` past the boundary. In kotlinx.serialization
+   1.11.0 it throws `IllegalArgumentException`, which the previous `catch` handled; only the
+   `JsonObject.getValue` read of a missing identity key (`NoSuchElementException`) escaped.
+4. **Misattributed `D-38` rule.** The end-to-end test KDoc and this handoff stated that `D-38` forbids
+   `:integration:*` from reading through a generated SQLDelight query. `D-38` forbids generated
+   entity-mutation calls outside `:core:database`; `docs/TECHNICAL_PLAN.md §4` keeps read queries
+   available.
+5. **Incomplete records.** `docs/BACKLOG.md` still read "PR pending", `AGENTS.md` did not name pull
+   request #82, and this handoff omitted `AGENTS.md` from "Files Changed" and from the review gate.
+
+Evidence:
+
+- RED: `aCoercibleValueOfTheWrongJsonTypeFailsClosedWithoutWritingAnything` failed on the first-round
+  code and named all four accepted shapes. `everyMalformedPayloadFieldFailsClosedWithoutWritingAnything`,
+  extended with an array `brand` and a fractional `initialOdometerKm` to reach the two converter
+  branches no earlier case reached, kept passing because those shapes were already rejected.
+- GREEN: every `:integration:firebase-firestore` test passes with the strict readers.
+- Against the story-base (`ba2c3c17`) version of `FirebaseRemoteSyncSource.kt`, five of the seven
+  `E3-19` tests fail: `everyMalformedPayloadFieldFailsClosedWithoutWritingAnything`,
+  `aCoercibleValueOfTheWrongJsonTypeFailsClosedWithoutWritingAnything` and the three missing-key
+  end-to-end tests. `aWellFormedPayloadStillWritesTheDocument` and
+  `aWrongTypedOwnerIdPoisonsTheRowInsteadOfStrandingIt` pass there, so the wrong-typed `ownerId` case is
+  a regression guard, not a RED test.
 
 ## Scope Completed
 
 - `FirebaseRemoteSyncSource.toFirestoreWrite` is now total. It returns
-  `Outcome<FirestoreWrite, RemoteError>`; the payload is parsed defensively, each identity field
-  (`id`, `ownerId`, `schemaVersion`, `entityType`) is read through a nullable accessor, and every
-  field value is converted through a converter that returns `null` instead of throwing. A missing key,
-  a wrong-typed key, a non-object root and unparseable JSON all become
-  `Outcome.Err(RemoteError.InvalidArgument)` before any remote write.
+  `Outcome<FirestoreWrite, RemoteError>`; the payload is parsed defensively, each identity field is
+  read through a nullable, strictly typed accessor (`id`, `ownerId` and `entityType` MUST be JSON
+  strings, `schemaVersion` a JSON integer), and every field value is converted through a converter
+  that returns `null` instead of throwing or coercing. Unparseable JSON, a non-object root, a missing
+  or wrong-typed identity key, a non-integer epoch-millisecond value and a value with no provider
+  representation all become `Outcome.Err(RemoteError.InvalidArgument)` before any remote write. The
+  per-entity `§16` schema stays enforced by the Firestore rules.
 - `pushSnapshot` returns the conversion's `Outcome.Err` directly instead of catching only
   `IllegalArgumentException`.
-- `docs/CONTRACTS.md` §10 gains the push-boundary totality bullet: `pushSnapshot` MUST NOT let an
-  unchecked exception escape, and a malformed payload MUST be a closed `RemoteError.InvalidArgument`.
+- `docs/CONTRACTS.md` §10 gains the push-boundary totality bullet: the payload conversion MUST NOT
+  throw, and the bullet lists exactly which payloads MUST be a closed `RemoteError.InvalidArgument`
+  before any remote write.
 
 ## Acceptance Evidence
 
 - Criterion 1 — every push-boundary field read is total:
   `FirebaseRemoteSyncSourcePushPayloadTotalityTest.everyMalformedPayloadFieldFailsClosedWithoutWritingAnything`
-  drives 19 malformed payload shapes (each identity key missing, wrong-typed, `JsonNull`, non-object,
-  mismatched `id`, mismatched `entityType`, a mistyped `createdAt` and `deletedAt`, a non-object root,
-  a scalar root and unparseable JSON) and asserts a closed `Outcome.Err(RemoteError.InvalidArgument)`
-  with zero writes for each. `aWellFormedPayloadStillWritesTheDocument` proves the hardening does not
-  reject a canonical payload.
+  drives 21 malformed payload shapes (each identity key missing, wrong-typed, `JsonNull`, non-object,
+  mismatched `id`, mismatched `entityType`, a mistyped `createdAt` and `deletedAt`, an array `brand`, a
+  fractional `initialOdometerKm`, a non-object root, a scalar root and unparseable JSON) and asserts a
+  closed `Outcome.Err(RemoteError.InvalidArgument)` with zero writes for each.
+  `aCoercibleValueOfTheWrongJsonTypeFailsClosedWithoutWritingAnything` (review correction 1) drives a
+  numeric-string `schemaVersion`, an unquoted `entityType` literal and numeric-string `createdAt` and
+  `deletedAt` values and asserts each fails closed with zero writes.
+  `aWellFormedPayloadStillWritesTheDocument` proves the hardening does not reject a canonical payload.
 - Criterion 2 — a payload missing `id`, `ownerId` and `schemaVersion` does not stay `SYNCING`:
   `FirebaseRemoteSyncSourcePushTotalityEndToEndTest` drives the real `FirebaseRemoteSyncSource`, the
   real `:core:sync` engine and the real staged database for each of the three omissions plus a
@@ -100,6 +146,7 @@
 
 ## Files Changed
 
+- `AGENTS.md` (Repository State: `E3-19` status and pull request #82)
 - `docs/CONTRACTS.md` (§10 push-boundary totality bullet)
 - `docs/BACKLOG.md` (E3-19 status and story-index row)
 - `docs/PROJECT_LOG.md` (story entry)
@@ -123,16 +170,22 @@
   or unrepresentable value". This is safe because such a payload is unrepresentable to the provider and
   can only arise from a producer defect; the alternative of throwing would keep a second unchecked
   escape on the same boundary, which is exactly the defect.
-- The end-to-end test reads state through `SyncDatabaseAccess.debugLines()` rather than a generated
-  SQLDelight query, because `:integration:*` MUST NOT reach a generated entity query (`D-38`).
+- The end-to-end test reads state through `SyncDatabaseAccess.debugLines()` because that one call
+  exposes the entity row state and the retained outbox retry context. This is a convenience, not a
+  rule: `D-38` forbids generated entity-mutation calls outside `:core:database`, not read queries
+  (`docs/TECHNICAL_PLAN.md §4`).
+- Review correction 1 reads `id`, `ownerId` and `entityType` only as JSON strings and `schemaVersion`,
+  `createdAt`, `date` and `deletedAt` only as JSON integers. This is not a new decision: it is what the
+  `docs/CONTRACTS.md` §10 bullet this story added already required ("a wrong-typed key ... before any
+  remote write").
 - `integration/firebase-firestore/build.gradle.kts` adds `:core:database` as a `commonTest` dependency
   so the end-to-end test can drive the real engine over the real staged database factory. This is a
   test-only edge and does not change the module's production dependency surface.
 
 ## Verification Run
 
-- `./gradlew :integration:firebase-firestore:testAndroidHostTest` — BUILD SUCCESSFUL, including the six
-  `E3-19` cases.
+- `./gradlew :integration:firebase-firestore:testAndroidHostTest` — BUILD SUCCESSFUL, including the
+  seven `E3-19` tests.
 - `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` —
   BUILD SUCCESSFUL.
 - `./gradlew contractCheck` — BUILD SUCCESSFUL, 195 decisions, 195 ADRs, no unresolved decision and no
@@ -144,12 +197,17 @@
   [36407639430](https://github.com/davidru85/carApp/actions/runs/36407639430): `android-assemble`,
   `android-instrumented-tests`, `architecture-check`, `contract-check`, `detekt`, `ios-simulator-build`,
   `ktlint`, `objc-header-golden-check`, `provider-decoupling` and `shared-tests`.
+- Review correction 1: `./gradlew :integration:firebase-firestore:testAndroidHostTest`, the complete
+  non-instrumented repository command of `AGENTS.md` and `./gradlew contractCheck` — BUILD SUCCESSFUL,
+  zero `PENDING` assertions. The ten required checks of the review-correction head are recorded in the
+  In-Progress Checkpoint once they settle.
 
 ## Contract Impact
 
-- Updated `docs/CONTRACTS.md` §10: the payload conversion on the push boundary MUST be total, and a
-  malformed payload MUST be classified as `Outcome.Err(RemoteError.InvalidArgument)` before any remote
-  write. No interface, DTO or other normative section changed.
+- Updated `docs/CONTRACTS.md` §10: the payload conversion on the push boundary MUST be total, and the
+  bullet lists exactly which payloads MUST be classified as `Outcome.Err(RemoteError.InvalidArgument)`
+  before any remote write; the per-entity `§16` schema stays with the Firestore rules. No interface,
+  DTO or other normative section changed.
 
 ## Decision Board Impact
 
@@ -173,6 +231,6 @@
 
 ## Human Review Gate
 
-Applies: `integration/firebase-firestore` production code (Firestore boundary) and
-`docs/CONTRACTS.md` §10 (gated path). The gate is the owner's review and merge; the agent MUST NOT
+Applies: `integration/firebase-firestore` production code (Firestore boundary) and the gated paths
+`docs/CONTRACTS.md` §10 and `AGENTS.md`. The gate is the owner's review and merge; the agent MUST NOT
 merge.

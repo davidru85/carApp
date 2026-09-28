@@ -38,6 +38,38 @@
 
 ## Entries
 
+### 2026-09-28 — E3-19 review correction 1: strict push-boundary typing and an exact §10 norm
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** the owner's review of pull request #82 found that the identity readers of
+  `EntitySnapshot.toFirestoreWrite` coerced JSON types: `"schemaVersion":"1"` passed the identity check
+  and was written as a provider string, an unquoted `entityType` literal matched, and a numeric string
+  in `createdAt` or `deletedAt` became a provider timestamp. The readers and the epoch-millisecond
+  branch now require the JSON type itself, and a new test proves all four shapes fail closed with zero
+  writes. The `docs/CONTRACTS.md §10` norm now lists exactly what the conversion classifies, states
+  that the Firestore rules enforce the `§16` schema, and scopes the unparseable-payload classification
+  against item 2 of `§6` "Unexpected exceptions". `AGENTS.md`, `docs/BACKLOG.md` and
+  `docs/handoff-E3-19.md` now name pull request #82, and the handoff lists `AGENTS.md` as a changed
+  gated path.
+- **Why:** the `§10` norm this story added promised a classification before any remote write that the
+  coercing readers did not deliver, and it promised schema and exception coverage that the conversion
+  does not own.
+- **Corrections to the previous entry:** `JsonElement.jsonPrimitive` throws `IllegalArgumentException`
+  in kotlinx.serialization 1.11.0, which the previous `catch` handled; only the `JsonObject.getValue`
+  read of a missing identity key (`NoSuchElementException`) escaped the boundary, so the previous
+  entry's "`IllegalStateException`" is wrong. Reading test state through
+  `SyncDatabaseAccess.debugLines()` is a convenience, not a `D-38` rule: `D-38` forbids generated
+  entity-mutation calls, not read queries.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `AGENTS.md`, `docs/BACKLOG.md`,
+  `docs/handoff-E3-19.md`, this log.
+- **Verification:** `:integration:firebase-firestore:testAndroidHostTest` passes; the new test failed
+  on the first-round code; the complete non-instrumented repository command of `AGENTS.md` passes;
+  `contractCheck` reports zero `PENDING` assertions.
+- **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. The story stays
+  implemented, not complete, until the owner merges pull request #82.
+
 ### 2026-09-28 — E3-19: the push boundary classifies every malformed payload as a closed RemoteError
 
 - **Type:** story
