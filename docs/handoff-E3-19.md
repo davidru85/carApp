@@ -46,7 +46,7 @@
   review; its description was rewritten in review correction 3 to mirror this handoff. Earlier green
   heads: 36409500477 (`142fcf8d`), 36414077708 (`69043a05`), 36440303984 (`d3a13fc8`) and
   36442950495 (`ba8b43fe`).
-  Review-correction 3 checks: pending.
+  Review-correction 3 checks: all ten passed on run 36447550134 at `e33e84f6`.
   GitHub's live pull-request status is authoritative for any later record-only commit. The agent MUST
   NOT merge.
 - Completed since the previous checkpoint: review correction 3 — canonical JSON boolean and integer
@@ -302,7 +302,8 @@ Evidence:
   reverted. `./gradlew :integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt`,
   `./gradlew contractCheck --rerun-tasks` (zero `PENDING` assertions), the complete non-instrumented
   repository command of `AGENTS.md` and `git diff --check origin/main...HEAD` — all pass.
-  The ten required checks of the review-correction 3 head: pending.
+  The ten required checks of the review-correction 3 head passed on run
+  [36447550134](https://github.com/davidru85/carApp/actions/runs/36447550134) at `e33e84f6`.
 
 ## Contract Impact
 
