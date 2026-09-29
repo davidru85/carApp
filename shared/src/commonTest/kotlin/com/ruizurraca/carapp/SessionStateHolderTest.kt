@@ -15,9 +15,9 @@ import com.ruizurraca.carapp.core.testing.FakeAuthClient
 import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
