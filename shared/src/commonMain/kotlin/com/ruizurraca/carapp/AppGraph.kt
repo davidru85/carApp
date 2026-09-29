@@ -14,6 +14,7 @@ import com.ruizurraca.carapp.core.database.AccountDepartureDatabaseAccess
 import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccess
+import com.ruizurraca.carapp.core.database.OwnerActiveRowCountDatabaseAccess
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
@@ -195,18 +196,40 @@ internal class DefaultAppGraph(
             isDebugBuild = dependencies.isDebugBuild,
         )
 
+    /**
+     * `E3-09` (`D-196`): the `§16.1` emission orchestration. It holds the opt-in gate, the
+     * sync-status edge and the bucket counts; the write events live in the two analytics decorators
+     * below, attached to the write that produced them.
+     */
+    private val analyticsEmissions =
+        AnalyticsEmissions(
+            tracker = dependencies.analyticsTracker,
+            ownerContext = ownerAwareDependencies.ownerContext,
+            counts = OwnerActiveRowCountDatabaseAccess(databaseHandle.database),
+        )
+
     private val vehicleRuntime =
-        VehicleSliceRuntime(ownerAwareDependencies, databaseHandle.database, localOwnerAdoption, syncController)
+        VehicleSliceRuntime(
+            ownerAwareDependencies,
+            databaseHandle.database,
+            localOwnerAdoption,
+            syncController,
+            analyticsEmissions,
+        )
     private val fuelRepository: FuelEntryRepository =
         SyncRequestingFuelEntryRepository(
             delegate =
                 AdoptionNotifyingFuelEntryRepository(
                     delegate =
-                        SqlDelightFuelEntryRepository(
-                            databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
-                            ownerContext = ownerAwareDependencies.ownerContext,
-                            clock = dependencies.clock,
-                            uuidGenerator = dependencies.uuidGenerator,
+                        AnalyticsNotifyingFuelEntryRepository(
+                            delegate =
+                                SqlDelightFuelEntryRepository(
+                                    databaseAccess = FuelEntryDatabaseAccess(databaseHandle.database),
+                                    ownerContext = ownerAwareDependencies.ownerContext,
+                                    clock = dependencies.clock,
+                                    uuidGenerator = dependencies.uuidGenerator,
+                                ),
+                            emissions = analyticsEmissions,
                         ),
                     adoption = localOwnerAdoption,
                 ),
@@ -238,6 +261,15 @@ internal class DefaultAppGraph(
                 }
         }
         localOwnerAdoption.launchIn(graphScope)
+        // `E3-09` / `docs/CONTRACTS.md §16.1`: the opt-in gate and the sync-status edge. Launched here
+        // because it reads the settings flow the bootstrap above warms and the one `SyncController`
+        // the whole app observes, and because a rule expressed against those two sources cannot be
+        // re-derived by a second observer elsewhere.
+        analyticsEmissions.launchIn(
+            scope = graphScope,
+            settings = settingsRepository.settings,
+            status = syncController.status,
+        )
         // `E3-07` / `docs/CONTRACTS.md §8`: the local 90-day tombstone purge, once per app start. It
         // is launched after every property it touches and outside the `§9` cycle state machine, which
         // is why it needs no trigger: it reclaims confirmed-deleted rows rather than doing remote work.
@@ -425,6 +457,16 @@ internal class DefaultAppGraph(
         databaseHandle.close()
         closeCompletion.complete(Unit)
     }
+
+    /**
+     * `E3-09` test seams. The analytics cadence is a rule about the chains the graph builds, so the
+     * story's tests drive the real graph rather than a hand-assembled copy of those chains, and they
+     * need the two built repositories to do it. Both are `internal`, so nothing reaches the
+     * Kotlin-facing `AppGraph` surface (`§20.10`) or the Swift ABI.
+     */
+    internal val vehicleRuntimeForTest: VehicleSliceRuntime get() = vehicleRuntime
+
+    internal val fuelRepositoryForTest: FuelEntryRepository get() = fuelRepository
 
     override suspend fun awaitClosed() {
         close()

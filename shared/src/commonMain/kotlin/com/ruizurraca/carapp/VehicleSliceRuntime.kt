@@ -21,17 +21,25 @@ internal class VehicleSliceRuntime(
     private val database: AppDatabase,
     adoption: LocalOwnerAdoption,
     private val syncController: SyncController,
+    // `E3-09`. The analytics decorator sits inside the adoption gate, so a write rejected by the gate
+    // is not a product event, and inside the sync requester, so the `§9.8` post-write trigger still
+    // fires for every committed write.
+    emissions: AnalyticsEmissions,
 ) {
     val repository: VehicleRepository =
         SyncRequestingVehicleRepository(
             delegate =
                 AdoptionGatedVehicleRepository(
                     delegate =
-                        SqlDelightVehicleRepository(
-                            databaseAccess = VehicleDatabaseAccess(database),
-                            ownerContext = dependencies.ownerContext,
-                            clock = dependencies.clock,
-                            uuidGenerator = dependencies.uuidGenerator,
+                        AnalyticsNotifyingVehicleRepository(
+                            delegate =
+                                SqlDelightVehicleRepository(
+                                    databaseAccess = VehicleDatabaseAccess(database),
+                                    ownerContext = dependencies.ownerContext,
+                                    clock = dependencies.clock,
+                                    uuidGenerator = dependencies.uuidGenerator,
+                                ),
+                            emissions = emissions,
                         ),
                     adoption = adoption,
                 ),
