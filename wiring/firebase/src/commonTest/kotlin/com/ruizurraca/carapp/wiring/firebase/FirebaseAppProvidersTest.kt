@@ -106,6 +106,73 @@ class FirebaseAppProvidersTest {
         graph.close()
         assertEquals(true, authClient.closed)
     }
+
+    @Test
+    fun providerFactoryBindsTheGivenAnalyticsTrackerWithoutDecoratingIt() {
+        // `E3-09`: `:wiring:firebase` is the only module that constructs the Firebase Analytics
+        // implementation, and it binds whatever tracker it was handed. Asserting identity rather than
+        // behaviour is the point: a decorator here would be a second construction site.
+        val analyticsTracker = RecordingAnalyticsTracker()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+                analyticsTracker = analyticsTracker,
+            )
+
+        assertSame<Any>(analyticsTracker, providers.analyticsTracker)
+    }
+
+    @Test
+    fun theStagedGraphWithoutAHostCollectsNothing() {
+        // The internal factory's default is the no-op, so a graph built without a host — a test, or a
+        // build with no provider wired — cannot collect. The assertion is behavioural rather than an
+        // identity check, so it stays honest if the silent default is ever replaced by another.
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+            )
+
+        providers.analyticsTracker.setEnabled(true)
+        providers.analyticsTracker.track(AnalyticsEvent.VehicleCreated)
+        providers.analyticsTracker.setUserProperties(
+            AnalyticsUserProperties(CountBucket.ONE, CountBucket.ZERO),
+        )
+    }
+
+    @Test
+    fun theProductionFactoryThreadsItsAnalyticsTrackerIntoTheGraph() {
+        // The production entry point is where the Firebase implementation is constructed, and its
+        // tracker MUST reach the graph's `AppGraphDependencies`, which is the only path by which the
+        // shared orchestration can emit anything.
+        val analyticsTracker = RecordingAnalyticsTracker()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFilePath = "/tmp/carapp-e3-09-provider-shape-test.db",
+                localeProvider =
+                    LocaleProvider {
+                        LocaleInfo(
+                            languageTag = "en",
+                            region = null,
+                            suggestedCurrency = CurrencyCode("EUR"),
+                        )
+                    },
+                connectivityObserver = ConnectivityObserver { MutableStateFlow(false) },
+                analyticsTracker = analyticsTracker,
+            )
+
+        assertSame<Any>(analyticsTracker, providers.analyticsTracker)
+
+        val graph = buildAppGraph(isDebugBuild = true, providers = providers)
+        graph.close()
+    }
 }
 
 private class MutableAuthClient :
