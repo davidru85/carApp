@@ -39,8 +39,8 @@ it in `:wiring:firebase`, and own the complete `docs/CONTRACTS.md §16.1` emissi
 - Branch and base: `story/E3-09-firebase-analytics-integration`, based on `main` at `02dffc54`.
 - Current phase and latest commit: complete; the pull request's ten required checks are green.
 - Push and pull-request status: pushed; pull request
-  [#84](https://github.com/davidru85/carApp/pull/84) is open, mergeable, and every required check
-  passed on the head `63ae9b63` (run `36568751836`).
+  [#84](https://github.com/davidru85/carApp/pull/84) is open, mergeable, and all ten required checks
+  passed on the head `3244c691` (run `36574307384`).
 - Completed since the previous checkpoint: the whole story. `:core:analytics` gained the `§20.9`
   collapse and the closed provider-error taxonomy; `:integration:firebase-analytics` was created with
   the tracker, its narrow gateway and its tests; `:wiring:firebase` binds it and links the iOS
@@ -54,9 +54,12 @@ it in `:wiring:firebase`, and own the complete `docs/CONTRACTS.md §16.1` emissi
   `PASS` and no `PENDING` assertion anywhere. The `objc-header-golden-check` diff is identical
   locally, the iOS app builds and links the new `FirebaseAnalytics` product locally, and the
   provider-free route (`-Pcarapp.excludeFirebaseProviders=true :shared:testAndroidHostTest
-  :shared:iosSimulatorArm64Test`) was reproduced locally before pushing. On CI, two checks failed
-  first — both for the same reason, two pre-existing fixtures that forced the tracker on while the
-  graph's own bootstrap disabled it — and both pass on the corrected head. No known failure.
+  :shared:iosSimulatorArm64Test`) was reproduced locally before pushing, and `:shared:testAndroidHostTest`
+  was re-run with `--rerun-tasks` to rule out a stale pass. Two CI iterations were needed: the first
+  failed on two pre-existing fixtures that forced the tracker on while the graph's own bootstrap
+  disabled it, and the second exposed that the wall-clock wait introduced to fix them competed with
+  the wall-clock budgets other graph tests use. Both are fixed by the two internal test seams and a
+  fixture with no real-time wait at all. No known failure.
 - Open decisions or blockers: none. The one owner decision this story needed — the emission scope —
   was taken on 2026-09-29 (`D-196`).
 - Exact next step: push the branch, open the pull request and watch the ten required checks.
