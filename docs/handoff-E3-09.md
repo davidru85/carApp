@@ -113,7 +113,12 @@ and bind it in `:wiring:firebase`.
 
 ## Shared-Write Modules Touched
 
-- None.
+`:core:database` may be modified by only one story at a time.
+
+- `:core:database` — modified: two read-only owner-scoped count queries and a read-only accessor. No
+  schema change, so no database-version bump and no `.sqm` migration. `core/database/.story-lock`
+  does not exist, so no other in-flight story owns the module (`docs/handoff-E3-07.md` records that
+  `E3-07` left it absent).
 
 ## Project Log Entry
 
