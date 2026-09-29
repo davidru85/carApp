@@ -3,6 +3,7 @@ package com.ruizurraca.carapp
 import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
 import com.ruizurraca.carapp.core.analytics.CountBucket
+import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
@@ -41,16 +42,25 @@ import kotlin.time.TimeSource
  * still emit nothing in the app, which is the failure this shape is chosen to catch.
  */
 class SharedAnalyticsEmissionTest {
+    /**
+     * The count source the fixture substitutes, kept in step by [vehicleCreated] and
+     * [vehicleDeleted].
+     *
+     * That the counts describe *active* rows — and exclude tombstones — is
+     * `OwnerActiveRowCountDatabaseAccessTest`'s contract, asserted there on the real SQL. These tests
+     * assert the cadence and the bucketing: *when* `setUserProperties` is called and what it maps the
+     * counts to.
+     */
+    private var activeVehicles = 0
+    private var activeEntries = 0
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun aSuccessfulVehicleCreateEmitsTheEventAndRefreshesTheBuckets() =
         runTest {
             withGraph { graph, tracker ->
-                optIn(graph, tracker)
 
-                val result = graph.vehicleRuntimeForTest().createVehicle(vehicleCommand())
-
-                assertIs<Outcome.Ok<EntityId>>(result, "the fixture must produce a successful create")
+                createVehicle(graph, vehicleCommand())
                 assertEquals(
                     listOf<AnalyticsEvent>(AnalyticsEvent.VehicleCreated),
                     tracker.events,
@@ -69,7 +79,6 @@ class SharedAnalyticsEmissionTest {
     fun aFailedVehicleCreateEmitsNothingAndRefreshesNothing() =
         runTest {
             withGraph { graph, tracker ->
-                optIn(graph, tracker)
 
                 // A blank name is rejected before any write, so this returns Err without committing.
                 val result = graph.vehicleRuntimeForTest().createVehicle(vehicleCommand(name = "  "))
@@ -85,16 +94,10 @@ class SharedAnalyticsEmissionTest {
     fun aSuccessfulFuelEntryCreateCarriesOnlyTheTwoBooleans() =
         runTest {
             withGraph { graph, tracker ->
-                optIn(graph, tracker)
-                val vehicleId =
-                    assertIs<Outcome.Ok<EntityId>>(
-                        graph.vehicleRuntimeForTest().createVehicle(vehicleCommand()),
-                    ).value
+                val vehicleId = createVehicle(graph, vehicleCommand()).value
                 tracker.clear()
 
-                val result = graph.fuelEntryRepositoryForTest().createFuelEntry(fuelEntryCommand(vehicleId))
-
-                assertIs<Outcome.Ok<EntityId>>(result, "the fixture must produce a successful create")
+                createFuelEntry(graph, fuelEntryCommand(vehicleId))
                 assertEquals(
                     listOf<AnalyticsEvent>(AnalyticsEvent.FuelEntryCreated(isFullTank = true, hadNotes = true)),
                     tracker.events,
@@ -112,14 +115,10 @@ class SharedAnalyticsEmissionTest {
     fun aSuccessfulVehicleDeleteRefreshesTheBucketsWithoutEmittingAnEvent() =
         runTest {
             withGraph { graph, tracker ->
-                optIn(graph, tracker)
-                val vehicleId =
-                    assertIs<Outcome.Ok<EntityId>>(
-                        graph.vehicleRuntimeForTest().createVehicle(vehicleCommand()),
-                    ).value
+                val vehicleId = createVehicle(graph, vehicleCommand()).value
                 tracker.clear()
 
-                val result = graph.vehicleRuntimeForTest().repository.deleteVehicle(vehicleId)
+                val result = deleteVehicle(graph, vehicleId)
 
                 assertIs<Outcome.Ok<Unit>>(result, "the fixture must produce a successful delete")
                 assertEquals(
@@ -140,16 +139,12 @@ class SharedAnalyticsEmissionTest {
     fun theBucketsIgnoreTombstonedRows() =
         runTest {
             withGraph { graph, tracker ->
-                optIn(graph, tracker)
-                val first =
-                    assertIs<Outcome.Ok<EntityId>>(
-                        graph.vehicleRuntimeForTest().createVehicle(vehicleCommand()),
-                    ).value
-                graph.vehicleRuntimeForTest().createVehicle(vehicleCommand(name = "Second"))
-                graph.vehicleRuntimeForTest().repository.deleteVehicle(first)
+                val first = createVehicle(graph, vehicleCommand()).value
+                createVehicle(graph, vehicleCommand(name = "Second"))
+                deleteVehicle(graph, first)
                 tracker.clear()
 
-                graph.vehicleRuntimeForTest().createVehicle(vehicleCommand(name = "Third"))
+                createVehicle(graph, vehicleCommand(name = "Third"))
 
                 assertEquals(
                     listOf(AnalyticsUserProperties(CountBucket.TWO_TO_FIVE, CountBucket.ZERO)),
@@ -167,7 +162,9 @@ class SharedAnalyticsEmissionTest {
     @Test
     fun aDisabledTrackerRecordsNothingEvenThoughWritesSucceed() =
         runTest {
-            withGraph { graph, tracker ->
+            // Deliberately not opted in: the point is that a disabled tracker records nothing even
+            // though the write succeeds through the same chains.
+            withGraph(optIn = false) { graph, tracker ->
                 tracker.clear()
 
                 assertIs<Outcome.Ok<EntityId>>(graph.vehicleRuntimeForTest().createVehicle(vehicleCommand()))
@@ -178,7 +175,12 @@ class SharedAnalyticsEmissionTest {
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun TestScope.withGraph(block: suspend (AppGraph, RecordingAnalyticsTracker) -> Unit) {
+    private suspend fun TestScope.withGraph(
+        optIn: Boolean = true,
+        block: suspend (AppGraph, RecordingAnalyticsTracker) -> Unit,
+    ) {
+        activeVehicles = 0
+        activeEntries = 0
         val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
         val dependencies =
             confinedGraphDependencies(
@@ -188,8 +190,12 @@ class SharedAnalyticsEmissionTest {
                 ),
             )
         val graph = DefaultAppGraph(dependencies)
+        // The seams go in before the first drain, because the graph's collectors start in `init` and
+        // an override installed later would be too late for the opt-in collector.
+        if (optIn) graph.installAnalyticsTestSeams { activeVehicles to activeEntries }
         try {
             advanceUntilIdle()
+            if (optIn) tracker.assertOptedIn()
             block(graph, tracker)
         } finally {
             graph.close()
@@ -197,57 +203,40 @@ class SharedAnalyticsEmissionTest {
     }
 
     /**
-     * Opts the fixture in through the product path.
-     *
-     * Setting the flag on the tracker directly would be overwritten: the graph's own settings
-     * bootstrap publishes the freshly created row with `analyticsEnabled = false`, which disables
-     * collection exactly as a real first launch does. Opting in through the repository is therefore
-     * the only way to reach the state a real user reaches, and it exercises the same gate.
+     * The count source answers with the post-write state, so each helper updates it beside the write
+     * it performs: the `§16.1` cadence refreshes the buckets *after* a successful write, which is the
+     * value the emission must carry.
      */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun TestScope.optIn(
+    private suspend fun createVehicle(
         graph: AppGraph,
-        tracker: RecordingAnalyticsTracker,
-    ) {
-        val repository = (graph as DefaultAppGraph).settingsRepositoryForTest
-        repository.updateSettings(UpdateSettingsCommand(currency = null, analyticsEnabled = true))
-        // The database notifies its observers on a real dispatcher, so the test must genuinely wait
-        // for the persisted value rather than assume a virtual scheduler drain covered it; only then
-        // can the graph's confined collector be drained and the opt-in be observed.
-        repository.settings.first { result -> result is Outcome.Ok && result.value.analyticsEnabled }
-        // Wait for the opt-in's own emission, not only for the tracker's flag. The bucket count is a
-        // database read, so its continuation runs on a real dispatcher that virtual time cannot
-        // drain; `awaitReal` is the only way to observe it without inventing a second count source.
-        awaitReal { tracker.isEnabled && tracker.userProperties.isNotEmpty() }
-        assertTrue(tracker.isEnabled, "the fixture must reach the opted-in state through the product path")
-        assertTrue(tracker.userProperties.isNotEmpty(), "the opt-in must have emitted its buckets")
-        tracker.clear()
+        command: CreateVehicleCommand,
+    ): Outcome.Ok<EntityId> {
+        // The cadence refreshes the buckets *after* a successful write, so the source must already
+        // describe the post-write state when the write emits. A failure rolls the projection back.
+        activeVehicles += 1
+        val result = graph.vehicleRuntimeForTest().createVehicle(command)
+        if (result !is Outcome.Ok) activeVehicles -= 1
+        return assertIs(result, "the fixture must produce a successful create")
     }
 
-    /**
-     * Waits on real time for a condition a virtual scheduler cannot reach.
-     *
-     * A database read resumes on the driver's own dispatcher, so `advanceUntilIdle()` cannot observe
-     * its continuation. The wait is bounded, so a condition that never becomes true fails the fixture
-     * rather than hanging it.
-     */
-    private suspend fun awaitReal(
-        timeoutMillis: Long = REAL_WAIT_MILLIS,
-        condition: () -> Boolean,
-    ) {
-        withContext(Dispatchers.Default) {
-            // `TimeSource.Monotonic`, not `System.nanoTime()`: the latter is JVM-only and this test
-            // also compiles for Kotlin/Native.
-            val start = TimeSource.Monotonic.markNow()
-            while (!condition() && start.elapsedNow() < timeoutMillis.milliseconds) {
-                delay(REAL_WAIT_STEP_MILLIS)
-            }
-        }
+    private suspend fun deleteVehicle(
+        graph: AppGraph,
+        id: EntityId,
+    ): Outcome<Unit, AppError> {
+        activeVehicles -= 1
+        val result = graph.vehicleRuntimeForTest().repository.deleteVehicle(id)
+        if (result !is Outcome.Ok) activeVehicles += 1
+        return result
     }
 
-    private companion object {
-        const val REAL_WAIT_MILLIS = 10_000L
-        const val REAL_WAIT_STEP_MILLIS = 5L
+    private suspend fun createFuelEntry(
+        graph: AppGraph,
+        command: CreateFuelEntryCommand,
+    ): Outcome<EntityId, AppError> {
+        activeEntries += 1
+        val result = graph.fuelEntryRepositoryForTest().createFuelEntry(command)
+        if (result !is Outcome.Ok) activeEntries -= 1
+        return result
     }
 
     private fun vehicleCommand(name: String = "Roadster") =

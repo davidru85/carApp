@@ -301,7 +301,7 @@ class SharedAnalyticsCadenceTest {
         // describe. Production timing is the graph's concern, not this rule's.
         val collectorScope =
             CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
-        emissions.launchIn(scope = collectorScope, settings = settings, status = status)
+        emissions.launchIn(scope = collectorScope, settings = { settings }, status = status)
         advanceUntilIdle()
         try {
             block(emissions, tracker, settings, status, { vehicle, entry ->

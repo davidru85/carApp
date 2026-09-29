@@ -15,6 +15,7 @@ import com.ruizurraca.carapp.core.database.AnonymousReminderDatabaseAccess
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.LocalDataClearDatabaseAccess
 import com.ruizurraca.carapp.core.database.OwnerActiveRowCountDatabaseAccess
+import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.database.SettingsDatabaseAccess
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.model.CurrencyCode
@@ -196,16 +197,23 @@ internal class DefaultAppGraph(
             isDebugBuild = dependencies.isDebugBuild,
         )
 
-    /**
-     * `E3-09` (`D-196`): the `§16.1` emission orchestration. It holds the opt-in gate, the
-     * sync-status edge and the bucket counts; the write events live in the two analytics decorators
-     * below, attached to the write that produced them.
-     */
+    // `E3-09` (`D-196`): the `§16.1` emission orchestration, which holds the opt-in gate, the
+    // sync-status edge and the bucket counts; the write events live in the two analytics decorators
+    // below, attached to the write that produced them.
+    //
+    // The real count accessor is wrapped so the story's tests can substitute a pure count source. A
+    // database read resumes on the driver's own dispatcher, which a virtual test scheduler cannot
+    // drain, so without this seam every fixture would need a wall-clock wait — and a real wait in one
+    // test competes with the real waits other graph tests already use, which is a cross-test hazard
+    // rather than a property of the code under test.
+    private val activeRowCounts: suspend (String) -> OwnerActiveRowCounts =
+        OwnerActiveRowCountDatabaseAccess(databaseHandle.database)::activeRowCounts
+
     private val analyticsEmissions =
         AnalyticsEmissions(
             tracker = dependencies.analyticsTracker,
             ownerContext = ownerAwareDependencies.ownerContext,
-            activeRowCounts = OwnerActiveRowCountDatabaseAccess(databaseHandle.database)::activeRowCounts,
+            activeRowCounts = { ownerId -> activeRowCountsForTest?.invoke(ownerId) ?: activeRowCounts(ownerId) },
         )
 
     private val vehicleRuntime =
@@ -267,7 +275,9 @@ internal class DefaultAppGraph(
         // re-derived by a second observer elsewhere.
         analyticsEmissions.launchIn(
             scope = graphScope,
-            settings = settingsRepository.settings,
+            // A factory, not a value: the graph's `init` wires this before a test can install an
+            // override, so the flow must be resolved when the collector starts.
+            settings = { settingsOverrideForTest ?: settingsRepository.settings },
             status = syncController.status,
         )
         // `E3-07` / `docs/CONTRACTS.md §8`: the local 90-day tombstone purge, once per app start. It
@@ -469,6 +479,24 @@ internal class DefaultAppGraph(
     internal val fuelRepositoryForTest: FuelEntryRepository get() = fuelRepository
 
     internal val settingsRepositoryForTest get() = settingsRepository
+
+    /**
+     * A pure replacement for the count accessor, for the story's tests only. `null` in production, so
+     * the real accessor answers and the production path is unchanged.
+     */
+    @Volatile
+    internal var activeRowCountsForTest: (suspend (String) -> OwnerActiveRowCounts)? = null
+
+    /**
+     * A replacement settings flow for the story's tests. `null` in production.
+     *
+     * The real repository's notifications cross a dispatcher a virtual test scheduler cannot drain,
+     * so a fixture that needs to observe the opt-in has two choices: a wall-clock wait, which would
+     * compete with the wall-clock budgets other graph tests already use, or this substitution. The
+     * product path itself is asserted by the opt-in fixture that drives the repository.
+     */
+    @Volatile
+    internal var settingsOverrideForTest: Flow<Outcome<UserSettings, AppError>>? = null
 
     override suspend fun awaitClosed() {
         close()

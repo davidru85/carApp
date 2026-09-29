@@ -65,15 +65,14 @@ internal class AnalyticsEmissions(
      */
     fun launchIn(
         scope: CoroutineScope,
-        settings: Flow<Outcome<UserSettings, AppError>>,
+        settings: () -> Flow<Outcome<UserSettings, AppError>>,
         status: Flow<SyncStatus>,
     ) {
-        // `UNDISPATCHED`, like the graph's own connectivity observer: subscribing must happen
-        // inside the wiring call, so a baseline the source already holds cannot be mistaken for a
-        // later change, and the opt-in that is already persisted reaches the provider before the
-        // first write rather than one dispatch later.
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            settings
+        // A dispatched launch, unlike the connectivity observer: the settings flow emits its current
+        // value on subscription, so nothing is missed by starting one dispatch later, and a fixture
+        // that must install its own source has a moment to do it before the collector starts.
+        scope.launch {
+            settings()
                 .mapNotNull { result -> (result as? Outcome.Ok)?.value }
                 .map { settings -> settings.analyticsEnabled }
                 // A settings re-emission repeating the value is not a new opt-in transition.

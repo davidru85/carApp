@@ -417,9 +417,14 @@ class SessionStateHolderTest {
         runTest {
             val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val authClient = RecordingAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
-            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker),
+                )
             val graph = DefaultAppGraph(dependencies)
-            optInAnalytics(graph, tracker)
+            graph.installAnalyticsTestSeams { 0 to 0 }
+            advanceUntilIdle()
+            tracker.assertOptedIn()
             val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
             val stateHolder = swiftGraph.sessionStateHolder()
 
@@ -446,9 +451,14 @@ class SessionStateHolderTest {
                     initialState = AuthState.SignedIn(anonymous),
                     linkResult = Outcome.Ok(linked),
                 )
-            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker),
+                )
             val graph = DefaultAppGraph(dependencies)
-            optInAnalytics(graph, tracker)
+            graph.installAnalyticsTestSeams { 0 to 0 }
+            advanceUntilIdle()
+            tracker.assertOptedIn()
             val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
             val stateHolder = swiftGraph.sessionStateHolder()
 
@@ -476,9 +486,14 @@ class SessionStateHolderTest {
                     initialState = AuthState.SignedIn(anonymousSession()),
                     linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
                 )
-            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker),
+                )
             val graph = DefaultAppGraph(dependencies)
-            optInAnalytics(graph, tracker)
+            graph.installAnalyticsTestSeams { 0 to 0 }
+            advanceUntilIdle()
+            tracker.assertOptedIn()
             val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
             val stateHolder = swiftGraph.sessionStateHolder()
 
