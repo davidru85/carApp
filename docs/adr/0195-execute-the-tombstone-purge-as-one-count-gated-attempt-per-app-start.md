@@ -98,4 +98,4 @@ The selected option is: **Option A**, together with two clarifications of `§8`.
 - `docs/SPECIFICATION.md §9`
 - `docs/CONTRACTS.md §6`, `§8`, `§20.3.1`
 - `docs/TECHNICAL_PLAN.md §2`
-- `docs/handoff-E3-07.md`
+- `docs/handoffs/E3-07.md`

@@ -73,4 +73,4 @@ reconciliation after asynchronous departure evaluation.
 - `docs/CONTRACTS.md §11.5`, `§20.10`
 - `docs/TECHNICAL_PLAN.md §2`
 - `docs/BACKLOG.md` (`E5-02`, `E5-03`, `E5-04`)
-- `docs/handoff-E2-05.md`
+- `docs/handoffs/E2-05.md`

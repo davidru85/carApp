@@ -67,7 +67,7 @@ graph or the iOS composition, so it changes no shared API and no generated heade
 `:androidApp:assembleDebug` and `:androidApp:testDebugUnitTest` compile and run against the pinned
 version. The API 36 instrumented suite exercises the Compose flows on the same build. The pin's
 single source is asserted by the repository rule that CI reads the catalog; evidence is in
-`docs/handoff-E3-04.md`.
+`docs/handoffs/E3-04.md`.
 
 ## References
 

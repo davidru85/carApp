@@ -84,4 +84,4 @@ trip; `requestSync(reason)` is unchanged for every other caller.
 - `docs/SPECIFICATION.md §8`, `§12`
 - `docs/TECHNICAL_PLAN.md §2`, `§9`
 - `docs/BACKLOG.md` (`E3-03`)
-- `docs/handoff-E3-03.md`
+- `docs/handoffs/E3-03.md`

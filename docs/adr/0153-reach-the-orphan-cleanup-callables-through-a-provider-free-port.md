@@ -89,4 +89,4 @@ returns and expects. `:wiring:firebase` binds the adapter for the staged and pro
 - `docs/CONTRACTS.md §8`, `§11.3`, `§11.5`, `§11.6`
 - `docs/TECHNICAL_PLAN.md §2`, `§4`
 - `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md`
-- `docs/handoff-E3-11.md`, `docs/handoff-E2-04.md`
+- `docs/handoffs/E3-11.md`, `docs/handoffs/E2-04.md`

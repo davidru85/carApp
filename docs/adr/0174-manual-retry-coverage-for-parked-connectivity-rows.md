@@ -79,4 +79,4 @@ general gesture to a connectivity-specific step.
 - `docs/SPECIFICATION.md §2`, `§12`
 - `docs/TECHNICAL_PLAN.md §2`, `§9`
 - `docs/BACKLOG.md` (`E3-03`, `E3-18`)
-- `docs/handoff-E3-03.md`
+- `docs/handoffs/E3-03.md`

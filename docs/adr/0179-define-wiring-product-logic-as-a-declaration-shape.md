@@ -13,7 +13,7 @@ abstraction, or a platform initialiser. No use cases, repositories, mappers, val
 
 That definition was prose only. `E0-04` built the architecture check from the dependency table and
 recorded the gap: "the `:wiring:firebase` 'product logic' rule needs a Kotlin declaration parser and
-the module itself, so it belongs with `E3-08`" (`docs/handoff-E0-04.md`). `E0-07` then created the
+the module itself, so it belongs with `E3-08`" (`docs/handoffs/E0-04.md`). `E0-07` then created the
 module and left the rule unimplemented, so until now a repository, mapper or use case could be
 declared in the composition root with nothing failing.
 
@@ -137,4 +137,4 @@ restores a green build. The rows and their observed output are in the story hand
 - `docs/TECHNICAL_PLAN.md §4` and `§4.1`
 - `docs/CONTRACTS.md §11.6`
 - `docs/BACKLOG.md` (`E3-08`)
-- `docs/handoff-E0-04.md` (the rule this decision implements)
+- `docs/handoffs/E0-04.md` (the rule this decision implements)

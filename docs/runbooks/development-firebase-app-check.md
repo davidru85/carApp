@@ -49,7 +49,7 @@ every physical build selects App Attest.
 
 ## Acceptance
 
-E0-07 completed this acceptance on 2026-08-27. `docs/handoff-E0-07.md` records all five required
+E0-07 completed this acceptance on 2026-08-27. `docs/handoffs/E0-07.md` records all five required
 results:
 
 1. an anonymous Authentication request without App Check was rejected after propagation;
