@@ -70,7 +70,11 @@ class FirebaseAnalyticsOptInTest {
 
         assertEquals(listOf("vehicle_created"), gateway.loggedEvents.map { it.name })
         assertEquals(emptyList(), gateway.userProperties)
-        assertEquals(listOf<Boolean>(), gateway.collectionStates, "an instance that starts enabled is already on")
+        assertEquals(
+            listOf(true, false),
+            gateway.collectionStates,
+            "an instance that starts enabled commands the provider on at construction, then off",
+        )
     }
 
     @Test
@@ -92,15 +96,16 @@ class FirebaseAnalyticsOptInTest {
 
         tracker.setUserProperties(properties)
 
+        val recorded = gateway.userProperties.fold(emptyMap<String, String>()) { acc, entry -> acc + entry }
         assertEquals(
             mapOf(
                 "vehicle_count_bucket" to "ONE",
                 "entry_count_bucket" to "TWO_TO_FIVE",
             ),
-            gateway.userProperties.single(),
+            recorded,
         )
         assertTrue(
-            gateway.userProperties.single().values.all { value -> value.toIntOrNull() == null },
+            recorded.values.all { value -> value.toIntOrNull() == null },
             "a bucket name MUST NOT be sent as a number",
         )
     }

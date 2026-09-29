@@ -1,9 +1,9 @@
 package com.ruizurraca.carapp.integration.firebase.analytics
 
 import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
+import com.ruizurraca.carapp.core.analytics.AnalyticsProviderError
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
-import com.ruizurraca.carapp.core.common.AnalyticsProviderError
 
 /**
  * The Firebase-backed `AnalyticsTracker` of `docs/CONTRACTS.md §16.1` (`D-10`).
@@ -86,21 +86,30 @@ class FirebaseAnalyticsTracker internal constructor(
      */
     private fun AnalyticsEvent.toProviderEvent(): ProviderEvent =
         when (this) {
-            AnalyticsEvent.OnboardingStarted -> ProviderEvent("onboarding_started", emptyMap())
+            AnalyticsEvent.OnboardingStarted -> {
+                ProviderEvent("onboarding_started", emptyMap())
+            }
 
-            AnalyticsEvent.OnboardingCompleted -> ProviderEvent("onboarding_completed", emptyMap())
+            AnalyticsEvent.OnboardingCompleted -> {
+                ProviderEvent("onboarding_completed", emptyMap())
+            }
 
-            AnalyticsEvent.AnonymousSignInSelected -> ProviderEvent("anonymous_sign_in_selected", emptyMap())
+            AnalyticsEvent.AnonymousSignInSelected -> {
+                ProviderEvent("anonymous_sign_in_selected", emptyMap())
+            }
 
-            is AnalyticsEvent.PermanentSignInSelected ->
+            is AnalyticsEvent.PermanentSignInSelected -> {
                 ProviderEvent(
                     "permanent_sign_in_selected",
                     mapOf(PROVIDER to provider.name),
                 )
+            }
 
-            AnalyticsEvent.VehicleCreated -> ProviderEvent("vehicle_created", emptyMap())
+            AnalyticsEvent.VehicleCreated -> {
+                ProviderEvent("vehicle_created", emptyMap())
+            }
 
-            is AnalyticsEvent.FuelEntryCreated ->
+            is AnalyticsEvent.FuelEntryCreated -> {
                 ProviderEvent(
                     "fuel_entry_created",
                     mapOf(
@@ -108,32 +117,44 @@ class FirebaseAnalyticsTracker internal constructor(
                         HAD_NOTES to hadNotes,
                     ),
                 )
+            }
 
-            is AnalyticsEvent.SyncStatusChanged ->
+            is AnalyticsEvent.SyncStatusChanged -> {
                 ProviderEvent(
                     "sync_status_changed",
                     mapOf(STATUS to status.name),
                 )
+            }
 
-            AnalyticsEvent.AccountConversionStarted -> ProviderEvent("account_conversion_started", emptyMap())
+            AnalyticsEvent.AccountConversionStarted -> {
+                ProviderEvent("account_conversion_started", emptyMap())
+            }
 
-            AnalyticsEvent.AccountConversionCompleted -> ProviderEvent("account_conversion_completed", emptyMap())
+            AnalyticsEvent.AccountConversionCompleted -> {
+                ProviderEvent("account_conversion_completed", emptyMap())
+            }
 
-            is AnalyticsEvent.AccountConversionFailed ->
+            is AnalyticsEvent.AccountConversionFailed -> {
                 ProviderEvent(
                     "account_conversion_failed",
                     mapOf(REASON to reason.name),
                 )
+            }
 
-            AnalyticsEvent.AccountDeletionStarted -> ProviderEvent("account_deletion_started", emptyMap())
+            AnalyticsEvent.AccountDeletionStarted -> {
+                ProviderEvent("account_deletion_started", emptyMap())
+            }
 
-            AnalyticsEvent.AccountDeletionCompleted -> ProviderEvent("account_deletion_completed", emptyMap())
+            AnalyticsEvent.AccountDeletionCompleted -> {
+                ProviderEvent("account_deletion_completed", emptyMap())
+            }
 
-            is AnalyticsEvent.AccountDeletionFailed ->
+            is AnalyticsEvent.AccountDeletionFailed -> {
                 ProviderEvent(
                     "account_deletion_failed",
                     mapOf(REASON to reason.name),
                 )
+            }
         }
 
     private inline fun safely(block: () -> Unit) {

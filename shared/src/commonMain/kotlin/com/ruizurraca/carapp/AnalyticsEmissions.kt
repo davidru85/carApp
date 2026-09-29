@@ -10,15 +10,15 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.SyncStatus
-import com.ruizurraca.carapp.core.database.OwnerActiveRowCountDatabaseAccess
+import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.model.UserSettings
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
-import kotlin.concurrent.Volatile
 
 /**
  * The `docs/CONTRACTS.md §16.1` emission orchestration of `E3-09` (`D-196`, ADR-0196).
@@ -40,18 +40,22 @@ import kotlin.concurrent.Volatile
  * `presentation` package from reaching `:core:analytics` and `§16.1` forbids analytics in domain and
  * data logic, so no other module could hold these call sites.
  *
- * [enabled] is a local mirror of the opt-in, used only to avoid a pointless count query on the write
- * path while collection is off. It is not the gate: the tracker drops everything while disabled, so
- * a stale mirror can waste a query but cannot leak an event.
+ * There is deliberately **no local mirror of the opt-in state**. The tracker is the single gate
+ * (`§16.1`: while disabled, `track` and `setUserProperties` are no-ops), and a second copy here
+ * would be a second source of truth that a write path could disagree with. A refresh issued while
+ * disabled therefore costs one count query and records nothing, which is the honest trade.
  */
 internal class AnalyticsEmissions(
     private val tracker: AnalyticsTracker,
     private val ownerContext: OwnerContext,
-    private val counts: OwnerActiveRowCountDatabaseAccess,
+    /**
+     * A port rather than the accessor itself, so the two rules this class owns are testable without a
+     * database: a test supplies a pure function and observes the cadence synchronously, while
+     * production binds `OwnerActiveRowCountDatabaseAccess::activeRowCounts`. The accessor's own SQL is
+     * verified by its database test.
+     */
+    private val activeRowCounts: suspend (String) -> OwnerActiveRowCounts,
 ) {
-    @Volatile
-    private var enabled = false
-
     /**
      * Wires the opt-in gate and the sync-status edge onto the graph's scope.
      *
@@ -64,7 +68,11 @@ internal class AnalyticsEmissions(
         settings: Flow<Outcome<UserSettings, AppError>>,
         status: Flow<SyncStatus>,
     ) {
-        scope.launch {
+        // `UNDISPATCHED`, like the graph's own connectivity observer: subscribing must happen
+        // inside the wiring call, so a baseline the source already holds cannot be mistaken for a
+        // later change, and the opt-in that is already persisted reaches the provider before the
+        // first write rather than one dispatch later.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             settings
                 .mapNotNull { result -> (result as? Outcome.Ok)?.value }
                 .map { settings -> settings.analyticsEnabled }
@@ -72,7 +80,7 @@ internal class AnalyticsEmissions(
                 .distinctUntilChanged()
                 .collect { enabled -> applyOptIn(enabled) }
         }
-        scope.launch {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             var previous: SyncStatusCategory? = null
             status.collect { value ->
                 val category = value.toSyncStatusCategory()
@@ -88,7 +96,6 @@ internal class AnalyticsEmissions(
 
     /** Refreshes the user-property buckets after a successful write, per the `§16.1` cadence. */
     suspend fun refreshUserProperties() {
-        if (!enabled) return
         tracker.setUserProperties(currentBuckets())
     }
 
@@ -99,7 +106,6 @@ internal class AnalyticsEmissions(
     }
 
     private suspend fun applyOptIn(enabled: Boolean) {
-        this.enabled = enabled
         tracker.setEnabled(enabled)
         // The cadence's opt-in half: the one `setUserProperties` call that belongs to the transition
         // itself. The disabled half deliberately does not call it.
@@ -107,7 +113,7 @@ internal class AnalyticsEmissions(
     }
 
     private suspend fun currentBuckets(): AnalyticsUserProperties {
-        val owned = counts.activeRowCounts(ownerContext.current.value)
+        val owned = activeRowCounts(ownerContext.current.value)
         return AnalyticsUserProperties(
             vehicleCountBucket = CountBucket.ofCount(owned.vehicleCount.toInt()),
             entryCountBucket = CountBucket.ofCount(owned.entryCount.toInt()),

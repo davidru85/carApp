@@ -9,25 +9,26 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SyncStatus
-import com.ruizurraca.carapp.core.database.OwnerActiveRowCountDatabaseAccess
+import com.ruizurraca.carapp.core.common.ValidationError
+import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.DistanceUnit
 import com.ruizurraca.carapp.core.model.UserSettings
 import com.ruizurraca.carapp.core.model.VolumeUnit
 import com.ruizurraca.carapp.core.testing.FakeAuthClient
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
-import com.ruizurraca.carapp.core.testing.InMemoryDatabaseFactory
 import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * `E3-09` (`D-196`, ADR-0196): the `docs/CONTRACTS.md §16.1` opt-in gate, sync-status edge and the
@@ -38,7 +39,7 @@ class SharedAnalyticsCadenceTest {
     @Test
     fun theFirstOptInEnablesCollectionAndRefreshesTheBucketsOnce() =
         runTest {
-            withEmissions { emissions, tracker, settings ->
+            withEmissions { emissions, tracker, settings, _, _ ->
                 tracker.clear()
 
                 settings.value = Outcome.Ok(settings(analyticsEnabled = true))
@@ -57,7 +58,7 @@ class SharedAnalyticsCadenceTest {
     @Test
     fun aRepeatedEnabledEmissionRepeatsNothing() =
         runTest {
-            withEmissions { _, tracker, settings ->
+            withEmissions { _, tracker, settings, _, _ ->
                 settings.value = Outcome.Ok(settings(analyticsEnabled = true))
                 advanceUntilIdle()
                 tracker.clear()
@@ -74,7 +75,7 @@ class SharedAnalyticsCadenceTest {
     @Test
     fun disablingStopsCollectionAndDoesNotTouchTheBuckets() =
         runTest {
-            withEmissions { _, tracker, settings ->
+            withEmissions { _, tracker, settings, _, _ ->
                 settings.value = Outcome.Ok(settings(analyticsEnabled = true))
                 advanceUntilIdle()
                 tracker.clear()
@@ -91,7 +92,7 @@ class SharedAnalyticsCadenceTest {
     @Test
     fun aSecondOptInAfterADisableRepeatsThePair() =
         runTest {
-            withEmissions { _, tracker, settings ->
+            withEmissions { _, tracker, settings, _, _ ->
                 settings.value = Outcome.Ok(settings(analyticsEnabled = true))
                 advanceUntilIdle()
                 settings.value = Outcome.Ok(settings(analyticsEnabled = false))
@@ -110,29 +111,31 @@ class SharedAnalyticsCadenceTest {
     @Test
     fun onlyCategoryChangesProduceSyncStatusEvents() =
         runTest {
-            withEmissions { _, tracker, _, status ->
+            // The wiring baseline (`IDLE`) is itself the first emitted category; this test asserts
+            // that a same-category re-emission is not a second event, and that a change is.
+            withEmissions(initialStatus = SyncStatus.Syncing) { _, tracker, _, status, _ ->
+                // The wiring baseline (`SYNCING`) is consumed while collection is still off, so §16.1
+                // drops it; enabling afterwards must not replay it either.
                 tracker.setEnabled(true)
-                tracker.clear()
 
                 listOf(
-                    SyncStatus.Idle,
-                    SyncStatus.Idle,
+                    SyncStatus.Syncing,
+                    SyncStatus.Syncing,
                     SyncStatus.Pending(1),
                     SyncStatus.Pending(2),
-                    SyncStatus.Idle,
+                    SyncStatus.Syncing,
                 ).forEach { value ->
                     status.value = value
-                    advanceUntilIdle()
                 }
+                advanceUntilIdle()
 
                 assertEquals(
                     listOf(
-                        AnalyticsEvent.SyncStatusChanged(SyncStatusCategory.IDLE),
                         AnalyticsEvent.SyncStatusChanged(SyncStatusCategory.PENDING),
-                        AnalyticsEvent.SyncStatusChanged(SyncStatusCategory.IDLE),
+                        AnalyticsEvent.SyncStatusChanged(SyncStatusCategory.SYNCING),
                     ),
                     tracker.events,
-                    "the first resolved category is the baseline and is emitted; repeats are not new events",
+                    "only a category change is an event, and the disabled baseline is not replayed",
                 )
             }
         }
@@ -145,6 +148,8 @@ class SharedAnalyticsCadenceTest {
             val session =
                 AuthSession(uid = "anonymous-owner", isAnonymous = true, providers = setOf(AuthProvider.ANONYMOUS))
             val sessionHolder = sessionHolder(FakeAuthClient(sessionResult = Outcome.Ok(session)), tracker)
+            advanceUntilIdle()
+            tracker.clear()
 
             sessionHolder.startAnonymousSignIn()
             advanceUntilIdle()
@@ -163,6 +168,8 @@ class SharedAnalyticsCadenceTest {
         runTest {
             val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
             val sessionHolder = sessionHolder(FakeAuthClient(), tracker)
+            advanceUntilIdle()
+            tracker.clear()
 
             sessionHolder.startPermanentSignIn(AuthProvider.GOOGLE)
             advanceUntilIdle()
@@ -179,18 +186,17 @@ class SharedAnalyticsCadenceTest {
     fun onboardingCompletesOnTheFirstSignedInTransition() =
         runTest {
             val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
-            val authClient = FakeAuthClient(initialState = AuthState.SignedOut)
+            val authClient = FakeAuthClient(initialState = AuthState.Unknown)
             val sessionHolder = sessionHolder(authClient, tracker)
             advanceUntilIdle()
-            tracker.clear()
 
-            authClient.state.value = anonymousSession()
+            authClient.setAuthState(anonymousSession())
             advanceUntilIdle()
 
             assertEquals(
-                listOf<AnalyticsEvent>(AnalyticsEvent.OnboardingCompleted),
+                listOf<AnalyticsEvent>(AnalyticsEvent.OnboardingStarted, AnalyticsEvent.OnboardingCompleted),
                 tracker.events,
-                "the welcome-to-signed-in transition completes onboarding exactly once",
+                "the welcome-to-signed-in transition starts and completes onboarding, once each",
             )
             sessionHolder.close()
         }
@@ -217,15 +223,15 @@ class SharedAnalyticsCadenceTest {
     fun aFlippingPhaseEmitsNeitherOnboardingEventTwice() =
         runTest {
             val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
-            val authClient = FakeAuthClient(initialState = AuthState.SignedOut)
+            val authClient = FakeAuthClient(initialState = AuthState.Unknown)
             val sessionHolder = sessionHolder(authClient, tracker)
             advanceUntilIdle()
 
-            authClient.state.value = anonymousSession()
+            authClient.setAuthState(anonymousSession())
             advanceUntilIdle()
-            authClient.state.value = AuthState.SignedOut
+            authClient.setAuthState(AuthState.SignedOut)
             advanceUntilIdle()
-            authClient.state.value = anonymousSession()
+            authClient.setAuthState(anonymousSession())
             advanceUntilIdle()
 
             assertEquals(
@@ -263,33 +269,47 @@ class SharedAnalyticsCadenceTest {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun TestScope.withEmissions(
+        initialStatus: SyncStatus = SyncStatus.Idle,
         block: suspend (
             AnalyticsEmissions,
             RecordingAnalyticsTracker,
             MutableStateFlow<Outcome<UserSettings, AppError>>,
             MutableStateFlow<SyncStatus>,
+            (Int, Int) -> Unit,
         ) -> Unit,
     ) {
         val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
-        val factory = InMemoryDatabaseFactory()
-        val handle = factory.create()
-        val settings = MutableStateFlow<Outcome<UserSettings, AppError>>(
-            Outcome.Err(AppError.ValidationError.InvalidUnit(detail = "none")),
-        )
-        val status = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
+        val settings =
+            MutableStateFlow<Outcome<UserSettings, AppError>>(
+                Outcome.Err(ValidationError.InvalidUnit(detail = "none")),
+            )
+        val status = MutableStateFlow(initialStatus)
+        var counts = OwnerActiveRowCounts(vehicleCount = 0, entryCount = 0)
         val emissions =
             AnalyticsEmissions(
                 tracker = tracker,
                 ownerContext = FakeOwnerContext(),
-                counts = OwnerActiveRowCountDatabaseAccess(handle.database),
+                // A pure count source, so the cadence is observed without a database round trip.
+                // Which rows that count describes is the accessor's own contract, pinned by
+                // OwnerActiveRowCountDatabaseAccessTest.
+                activeRowCounts = { counts },
             )
-        emissions.launchIn(scope = this, settings = settings, status = status)
+        // `backgroundScope`: these collectors never complete, and a `runTest` that waited for them
+        // would fail with UncompletedCoroutinesError.
+        // The graph's own `dispatchers.default` is confined in tests; an unconfined test dispatcher
+        // makes each emission observable as it happens, which is what these cadence assertions
+        // describe. Production timing is the graph's concern, not this rule's.
+        val collectorScope =
+            CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
+        emissions.launchIn(scope = collectorScope, settings = settings, status = status)
         advanceUntilIdle()
         try {
-            block(emissions, tracker, settings, status)
+            block(emissions, tracker, settings, status, { vehicle, entry ->
+                counts =
+                    OwnerActiveRowCounts(vehicle.toLong(), entry.toLong())
+            })
         } finally {
-            handle.close()
-            factory.close()
+            Unit
         }
     }
 }

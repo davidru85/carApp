@@ -20,10 +20,7 @@ import com.ruizurraca.carapp.core.common.SyncStatus
 fun SyncStatus.toSyncStatusCategory(): SyncStatusCategory =
     when (this) {
         SyncStatus.Idle -> SyncStatusCategory.IDLE
-
         SyncStatus.Syncing -> SyncStatusCategory.SYNCING
-
         is SyncStatus.Pending -> SyncStatusCategory.PENDING
-
         is SyncStatus.Failed -> SyncStatusCategory.FAILED
     }

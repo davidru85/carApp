@@ -205,7 +205,7 @@ internal class DefaultAppGraph(
         AnalyticsEmissions(
             tracker = dependencies.analyticsTracker,
             ownerContext = ownerAwareDependencies.ownerContext,
-            counts = OwnerActiveRowCountDatabaseAccess(databaseHandle.database),
+            activeRowCounts = OwnerActiveRowCountDatabaseAccess(databaseHandle.database)::activeRowCounts,
         )
 
     private val vehicleRuntime =
@@ -467,6 +467,8 @@ internal class DefaultAppGraph(
     internal val vehicleRuntimeForTest: VehicleSliceRuntime get() = vehicleRuntime
 
     internal val fuelRepositoryForTest: FuelEntryRepository get() = fuelRepository
+
+    internal val settingsRepositoryForTest get() = settingsRepository
 
     override suspend fun awaitClosed() {
         close()

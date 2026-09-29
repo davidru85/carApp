@@ -59,16 +59,13 @@ class AnalyticsIntegrationContractTest {
 
     @Test
     fun anEnabledByDefaultTrackerIsRejected() {
+        val real = AnalyticsIntegrationContract.Inputs.from(repositoryRoot)
         val mutated =
-            realSources.map { (path, text) ->
-                if (path.endsWith("FirebaseAnalyticsTracker.kt")) {
-                    path to text.replace("enabled: Boolean = false", "enabled: Boolean = true")
-                } else {
-                    path to text
-                }
-            }
+            real.copy(
+                trackerSource = real.trackerSource.replace("enabled: Boolean = false", "enabled: Boolean = true"),
+            )
 
-        val result = AnalyticsIntegrationContract(realInputs(mutated)).validate().first { it.id == 37 }
+        val result = AnalyticsIntegrationContract(mutated).validate().first { it.id == 37 }
 
         assertEquals(AssertionResult.Status.FAIL, result.status)
         assertTrue(result.detail.contains("disabled"), result.detail)

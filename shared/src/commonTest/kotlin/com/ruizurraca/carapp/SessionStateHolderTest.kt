@@ -422,7 +422,12 @@ class SessionStateHolderTest {
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
 
-            assertEquals(listOf(AnalyticsEvent.AccountConversionStarted), tracker.events)
+            // The list is filtered to the events this test owns: the graph also emits the
+            // SyncStatusChanged series, which is asserted by SharedAnalyticsCadenceTest.
+            assertEquals(
+                listOf(AnalyticsEvent.AccountConversionStarted),
+                tracker.events.filter { it is AnalyticsEvent.AccountConversionStarted },
+            )
             graph.close()
         }
 

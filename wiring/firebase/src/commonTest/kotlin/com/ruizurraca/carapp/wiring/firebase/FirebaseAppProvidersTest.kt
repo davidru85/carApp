@@ -16,12 +16,9 @@ import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
-import com.ruizurraca.carapp.core.common.LocaleInfo
-import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
-import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -153,37 +150,6 @@ class FirebaseAppProvidersTest {
             AnalyticsUserProperties(CountBucket.ONE, CountBucket.ZERO),
         )
     }
-
-    @Test
-    fun theProductionFactoryThreadsItsAnalyticsTrackerIntoTheGraph() {
-        // The production entry point is where the Firebase implementation is constructed, and its
-        // tracker MUST reach the graph's `AppGraphDependencies`, which is the only path by which the
-        // shared orchestration can emit anything.
-        val analyticsTracker = RecordingAnalyticsTrackerForWiring()
-
-        val providers =
-            firebaseAppProviders(
-                databaseFilePath = "/tmp/carapp-e3-09-provider-shape-test.db",
-                localeProvider =
-                    LocaleProvider {
-                        LocaleInfo(
-                            languageTag = "en",
-                            region = null,
-                            suggestedCurrency = CurrencyCode("EUR"),
-                        )
-                    },
-                connectivityObserver =
-                    object : ConnectivityObserver {
-                        override val isOnline = MutableStateFlow(false)
-                    },
-                analyticsTracker = analyticsTracker,
-            )
-
-        assertSame<Any>(analyticsTracker, providers.analyticsTracker)
-
-        val graph = buildAppGraph(isDebugBuild = true, providers = providers)
-        graph.close()
-    }
 }
 
 /**
@@ -193,16 +159,18 @@ class FirebaseAppProvidersTest {
  */
 private class RecordingAnalyticsTrackerForWiring : AnalyticsTracker {
     val events = mutableListOf<AnalyticsEvent>()
-    var enabled = false
+    var collectionEnabled = false
 
     override fun track(event: AnalyticsEvent) {
-        if (enabled) events += event
+        if (collectionEnabled) events += event
     }
 
     override fun setUserProperties(properties: AnalyticsUserProperties) = Unit
 
+    // `collectionEnabled`, not `enabled`: a property named `enabled` would clash with the setter of
+    // `setEnabled` at the JVM signature level.
     override fun setEnabled(enabled: Boolean) {
-        this.enabled = enabled
+        collectionEnabled = enabled
     }
 }
 

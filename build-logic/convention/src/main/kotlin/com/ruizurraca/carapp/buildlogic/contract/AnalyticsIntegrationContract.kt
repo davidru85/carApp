@@ -18,7 +18,7 @@ import java.io.File
  *   host app links the product. Nothing else in the repository can observe that coupling: the Kotlin
  *   build succeeds either way and the failure appears only in the Xcode link step.
  */
-internal class AnalyticsIntegrationContract private constructor(
+internal class AnalyticsIntegrationContract internal constructor(
     private val inputs: Inputs,
 ) {
     constructor(repoRoot: File) : this(Inputs.from(repoRoot))

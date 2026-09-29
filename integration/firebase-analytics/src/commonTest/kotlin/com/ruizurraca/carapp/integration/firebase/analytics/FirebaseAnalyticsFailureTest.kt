@@ -59,7 +59,16 @@ class FirebaseAnalyticsFailureTest {
         tracker.track(event)
         tracker.setUserProperties(properties)
 
-        assertEquals(listOf("ANALYTICS.PROVIDER_FAILED", "ANALYTICS.PROVIDER_FAILED"), codes)
+        // Three, not two: the fixture starts enabled, so construction itself commands the provider
+        // on and that command fails too. Every failure is classified, including the construction one.
+        assertEquals(
+            listOf(
+                "ANALYTICS.PROVIDER_FAILED",
+                "ANALYTICS.PROVIDER_FAILED",
+                "ANALYTICS.PROVIDER_FAILED",
+            ),
+            codes,
+        )
     }
 
     @Test
@@ -92,14 +101,18 @@ class FirebaseAnalyticsFailureTest {
     private class ThrowingGateway : AnalyticsGateway {
         var logEventCalls = 0
 
-        override fun logEvent(name: String, parameters: Map<String, Any>) {
+        override fun logEvent(
+            name: String,
+            parameters: Map<String, Any>,
+        ) {
             logEventCalls += 1
             throw IllegalStateException("provider unavailable")
         }
 
-        override fun setUserProperty(name: String, value: String) {
-            throw IllegalStateException("provider unavailable")
-        }
+        override fun setUserProperty(
+            name: String,
+            value: String,
+        ): Unit = throw IllegalStateException("provider unavailable")
 
         override fun setCollectionEnabled(enabled: Boolean) {
             if (!enabled) return

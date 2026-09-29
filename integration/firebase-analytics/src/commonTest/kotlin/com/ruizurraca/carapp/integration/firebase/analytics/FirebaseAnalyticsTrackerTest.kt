@@ -29,21 +29,30 @@ class FirebaseAnalyticsTrackerTest {
         val expectation =
             analyticsLeaves().associateWith { event ->
                 when (event) {
-                    AnalyticsEvent.OnboardingStarted -> EventExpectation("onboarding_started", emptyMap())
+                    AnalyticsEvent.OnboardingStarted -> {
+                        EventExpectation("onboarding_started", emptyMap())
+                    }
 
-                    AnalyticsEvent.OnboardingCompleted -> EventExpectation("onboarding_completed", emptyMap())
+                    AnalyticsEvent.OnboardingCompleted -> {
+                        EventExpectation("onboarding_completed", emptyMap())
+                    }
 
-                    AnalyticsEvent.AnonymousSignInSelected -> EventExpectation("anonymous_sign_in_selected", emptyMap())
+                    AnalyticsEvent.AnonymousSignInSelected -> {
+                        EventExpectation("anonymous_sign_in_selected", emptyMap())
+                    }
 
-                    is AnalyticsEvent.PermanentSignInSelected ->
+                    is AnalyticsEvent.PermanentSignInSelected -> {
                         EventExpectation(
                             "permanent_sign_in_selected",
                             mapOf("provider" to event.provider.name),
                         )
+                    }
 
-                    AnalyticsEvent.VehicleCreated -> EventExpectation("vehicle_created", emptyMap())
+                    AnalyticsEvent.VehicleCreated -> {
+                        EventExpectation("vehicle_created", emptyMap())
+                    }
 
-                    is AnalyticsEvent.FuelEntryCreated ->
+                    is AnalyticsEvent.FuelEntryCreated -> {
                         EventExpectation(
                             "fuel_entry_created",
                             mapOf(
@@ -51,35 +60,44 @@ class FirebaseAnalyticsTrackerTest {
                                 "had_notes" to event.hadNotes,
                             ),
                         )
+                    }
 
-                    is AnalyticsEvent.SyncStatusChanged ->
+                    is AnalyticsEvent.SyncStatusChanged -> {
                         EventExpectation(
                             "sync_status_changed",
                             mapOf("status" to event.status.name),
                         )
+                    }
 
-                    AnalyticsEvent.AccountConversionStarted ->
+                    AnalyticsEvent.AccountConversionStarted -> {
                         EventExpectation("account_conversion_started", emptyMap())
+                    }
 
-                    AnalyticsEvent.AccountConversionCompleted ->
+                    AnalyticsEvent.AccountConversionCompleted -> {
                         EventExpectation("account_conversion_completed", emptyMap())
+                    }
 
-                    is AnalyticsEvent.AccountConversionFailed ->
+                    is AnalyticsEvent.AccountConversionFailed -> {
                         EventExpectation(
                             "account_conversion_failed",
                             mapOf("reason" to event.reason.name),
                         )
+                    }
 
-                    AnalyticsEvent.AccountDeletionStarted -> EventExpectation("account_deletion_started", emptyMap())
+                    AnalyticsEvent.AccountDeletionStarted -> {
+                        EventExpectation("account_deletion_started", emptyMap())
+                    }
 
-                    AnalyticsEvent.AccountDeletionCompleted ->
+                    AnalyticsEvent.AccountDeletionCompleted -> {
                         EventExpectation("account_deletion_completed", emptyMap())
+                    }
 
-                    is AnalyticsEvent.AccountDeletionFailed ->
+                    is AnalyticsEvent.AccountDeletionFailed -> {
                         EventExpectation(
                             "account_deletion_failed",
                             mapOf("reason" to event.reason.name),
                         )
+                    }
                 }
             }
 
@@ -92,9 +110,14 @@ class FirebaseAnalyticsTrackerTest {
             tracker.track(event)
 
             assertEquals(
-                listOf(expected),
-                gateway.loggedEvents,
-                "every leaf maps to exactly one name and one parameter set",
+                listOf(expected.name),
+                gateway.loggedEvents.map { it.name },
+                "every leaf maps to exactly one event name",
+            )
+            assertEquals(
+                listOf(expected.parameters),
+                gateway.loggedEvents.map { it.parameters },
+                "every leaf maps to exactly one parameter set",
             )
         }
     }
@@ -140,29 +163,6 @@ class FirebaseAnalyticsTrackerTest {
         val name: String,
         val parameters: Map<String, Any>,
     )
-
-    private data class LoggedEvent(
-        val name: String,
-        val parameters: Map<String, Any>,
-    )
-
-    private class RecordingGateway : AnalyticsGateway {
-        val loggedEvents = mutableListOf<LoggedEvent>()
-        val userProperties = mutableListOf<Map<String, String>>()
-        val collectionStates = mutableListOf<Boolean>()
-
-        override fun logEvent(name: String, parameters: Map<String, Any>) {
-            loggedEvents += LoggedEvent(name, parameters)
-        }
-
-        override fun setUserProperty(name: String, value: String) {
-            userProperties += mapOf(name to value)
-        }
-
-        override fun setCollectionEnabled(enabled: Boolean) {
-            collectionStates += enabled
-        }
-    }
 
     private fun analyticsLeaves(): List<AnalyticsEvent> =
         listOf(

@@ -396,7 +396,7 @@ class SessionDepartureIntegrityTest {
                     AnalyticsEvent.AccountDeletionStarted,
                     AnalyticsEvent.AccountDeletionCompleted,
                 ),
-                tracker.events,
+                tracker.events.filterNot { it is AnalyticsEvent.SyncStatusChanged },
             )
             holder.close()
         }

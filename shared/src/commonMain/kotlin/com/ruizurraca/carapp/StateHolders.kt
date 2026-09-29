@@ -54,6 +54,7 @@ class SessionStateHolder internal constructor(
     private var operationJob: Job? = null
     private var reminderJob: Job? = null
     private var awaitingRestoredSession = false
+
     // `E3-09` / `docs/CONTRACTS.md §16.1`: one `OnboardingStarted` and one `OnboardingCompleted` per
     // holder. The holder is the process's session orchestrator, so "once per holder" is "once per app
     // run" for a device whose first screen is the welcome screen, and it is the only place the
@@ -126,15 +127,19 @@ class SessionStateHolder internal constructor(
     /**
      * `E3-09` / `docs/CONTRACTS.md §16.1`: the onboarding pair, once per holder.
      *
-     * `OnboardingStarted` fires when the holder's first observed phase is one that requires the
-     * welcome screen (`UNKNOWN` or `SIGNED_OUT`); a holder whose first observation is already a
-     * resolved session emits neither, because that device did not go through onboarding in this run.
-     * `OnboardingCompleted` fires on the first transition from such a phase into `LOCAL`, `ANONYMOUS`
-     * or `PERMANENT`. `DELETING` emits neither: it is a departure, not onboarding.
+     * `OnboardingStarted` fires exactly once, at the first phase the holder observes that is not yet
+     * determined: `UNKNOWN` means the provider has not answered, so the welcome screen is what the
+     * user sees and onboarding has begun. A holder whose first observation is already determined did
+     * not go through onboarding in this run and emits neither event.
+     *
+     * `OnboardingCompleted` fires once, on the first transition from that undetermined phase into a
+     * session: `LOCAL`, `ANONYMOUS` or `PERMANENT`. `SIGNED_OUT` is the end of a session, not the end
+     * of onboarding, and `DELETING` is a departure; neither completes it, so a sign-out on the
+     * welcome screen can never be reported as a completed onboarding.
      */
     private fun trackOnboarding(phase: SessionPhase) {
         val tracker = analyticsTracker ?: return
-        if (!onboardingStartedEmitted && phase in WELCOME_PHASES && !onboardingCompletedEmitted) {
+        if (!onboardingStartedEmitted && !onboardingCompletedEmitted && phase == SessionPhase.UNKNOWN) {
             onboardingStartedEmitted = true
             tracker.track(AnalyticsEvent.OnboardingStarted)
         }
@@ -692,9 +697,6 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         pendingSyncCount = null,
         pendingDepartureRetry = null,
     )
-
-/** The two phases that require the welcome screen, for the `E3-09` onboarding events. */
-private val WELCOME_PHASES = setOf(SessionPhase.UNKNOWN, SessionPhase.SIGNED_OUT)
 
 /** The three phases that mean onboarding succeeded and a session exists. */
 private val SIGNED_IN_PHASES = setOf(SessionPhase.LOCAL, SessionPhase.ANONYMOUS, SessionPhase.PERMANENT)
