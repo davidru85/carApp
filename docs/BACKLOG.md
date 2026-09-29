@@ -1060,9 +1060,15 @@ Acceptance criteria:
 - A test proves a pending tombstone is never purged.
 - A fresh device pulling a tombstone for an entity it has never seen inserts it as a tombstone instead of failing.
 
-### E3-09 - Firebase Analytics Integration - S
+### E3-09 - Firebase Analytics Integration - M
 
 Implement `:integration:firebase-analytics`, the Firebase-backed `AnalyticsTracker` from `E0-08`, and bind it in `:wiring:firebase`.
+
+Scope note (`D-196`, ADR-0196): although the module work is small, the story also owns the complete
+`docs/CONTRACTS.md §16.1` emission surface — the call sites and the `setUserProperties` cadence —
+because that contract attributes the cadence fixture to `E3-09` by name and seven of the thirteen
+event leaves had no emitter. Every call site lives in `:shared` orchestration, since
+`docs/TECHNICAL_PLAN.md §4` keeps feature `presentation` packages out of `:core:analytics`.
 
 Acceptance criteria:
 
@@ -1071,6 +1077,9 @@ Acceptance criteria:
 - No forbidden payload of `docs/CONTRACTS.md §16.1` can be sent: a test asserts no parameter value derives from odometer, volume, cost, notes, entity IDs or the UID.
 - Only `:wiring:firebase` constructs the implementation; no Firebase type crosses the module boundary.
 - Excluding this module leaves the app building and testing on the `:core:analytics` no-op, per `E3-06`.
+- Every event leaf is emitted from `:shared` orchestration at the boundary `§16.1` names, and a
+  fixture asserts the `setUserProperties` cadence — once at opt-in and after every successful
+  vehicle or fuel-entry create or delete — with the buckets computed from the owner's active rows.
 
 ### E3-06 - Provider Decoupling Proof - S
 
@@ -2056,7 +2065,7 @@ proof after E3-04.
 | E3-12 Permanent-account cross-device recovery proof (completed, PR #73) | 3 | S | Yes |
 | E3-05 Backup status UI (completed, PR #74) | 3 | S | — |
 | E3-07 Tombstone purge (completed, PR #78) | 3 | S | — |
-| E3-09 Firebase Analytics integration | 3 | S | — |
+| E3-09 Firebase Analytics integration | 3 | M | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
