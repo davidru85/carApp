@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import kotlin.concurrent.Volatile
 
 /**
  * The `docs/CONTRACTS.md §16.1` emission orchestration of `E3-09` (`D-196`, ADR-0196).
@@ -40,10 +41,11 @@ import kotlinx.coroutines.launch
  * `presentation` package from reaching `:core:analytics` and `§16.1` forbids analytics in domain and
  * data logic, so no other module could hold these call sites.
  *
- * There is deliberately **no local mirror of the opt-in state**. The tracker is the single gate
- * (`§16.1`: while disabled, `track` and `setUserProperties` are no-ops), and a second copy here
- * would be a second source of truth that a write path could disagree with. A refresh issued while
- * disabled therefore costs one count query and records nothing, which is the honest trade.
+ * The only gate is the tracker (`§16.1`: while disabled, `track` and `setUserProperties` are
+ * no-ops). [enabled] is **not** a second gate: it exists so that a write path with analytics off
+ * performs no count query at all, which is what keeps the off state free rather than merely silent.
+ * If it ever disagreed with the tracker, the tracker would still drop the call, so the flag can only
+ * cost or save a read — it can never let a payload through.
  */
 internal class AnalyticsEmissions(
     private val tracker: AnalyticsTracker,
@@ -56,6 +58,13 @@ internal class AnalyticsEmissions(
      */
     private val activeRowCounts: suspend (String) -> OwnerActiveRowCounts,
 ) {
+    /**
+     * A non-authoritative projection of the last opt-in the tracker was commanded, used only to skip
+     * the bucket count while collection is off. See the class KDoc.
+     */
+    @Volatile
+    private var enabled = false
+
     /**
      * Wires the opt-in gate and the sync-status edge onto the graph's scope.
      *
@@ -95,6 +104,8 @@ internal class AnalyticsEmissions(
 
     /** Refreshes the user-property buckets after a successful write, per the `§16.1` cadence. */
     suspend fun refreshUserProperties() {
+        // A no-op while collection is off, so an opted-out device pays nothing for a write it makes.
+        if (!enabled) return
         tracker.setUserProperties(currentBuckets())
     }
 
@@ -105,6 +116,7 @@ internal class AnalyticsEmissions(
     }
 
     private suspend fun applyOptIn(enabled: Boolean) {
+        this.enabled = enabled
         tracker.setEnabled(enabled)
         // The cadence's opt-in half: the one `setUserProperties` call that belongs to the transition
         // itself. The disabled half deliberately does not call it.
