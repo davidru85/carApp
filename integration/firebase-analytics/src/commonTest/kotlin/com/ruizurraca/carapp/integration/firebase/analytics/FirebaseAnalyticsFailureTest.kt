@@ -1,11 +1,10 @@
 package com.ruizurraca.carapp.integration.firebase.analytics
 
 import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
+import com.ruizurraca.carapp.core.analytics.AnalyticsProviderError
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
 import com.ruizurraca.carapp.core.analytics.CountBucket
-import com.ruizurraca.carapp.core.common.FirebaseAnalyticsProviderError
-import com.ruizurraca.carapp.core.common.Outcome
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -47,7 +46,7 @@ class FirebaseAnalyticsFailureTest {
     fun theFailureIsClassifiedIntoTheClosedTaxonomy() {
         // The provider exception is converted to a stable code rather than carried as text, so the
         // tracker can report the fact through the injected sink without leaking provider detail.
-        assertEquals("ANALYTICS.PROVIDER_FAILED", FirebaseAnalyticsProviderError.PROVIDER_FAILED.code)
+        assertEquals("ANALYTICS.PROVIDER_FAILED", AnalyticsProviderError.PROVIDER_FAILED.code)
 
         val codes = mutableListOf<String>()
         val tracker =
@@ -87,8 +86,7 @@ class FirebaseAnalyticsFailureTest {
             )
 
         calls.forEach { call -> call() }
-        assertTrue(calls.size == 3)
-        assertEquals(Outcome.Ok(Unit), Outcome.Ok(Unit))
+        assertEquals(3, calls.size)
     }
 
     private class ThrowingGateway : AnalyticsGateway {
@@ -107,7 +105,5 @@ class FirebaseAnalyticsFailureTest {
             if (!enabled) return
             throw IllegalStateException("provider unavailable")
         }
-
-        override fun close() = Unit
     }
 }

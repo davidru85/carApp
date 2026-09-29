@@ -150,7 +150,6 @@ class FirebaseAnalyticsTrackerTest {
         val loggedEvents = mutableListOf<LoggedEvent>()
         val userProperties = mutableListOf<Map<String, String>>()
         val collectionStates = mutableListOf<Boolean>()
-        var closed = false
 
         override fun logEvent(name: String, parameters: Map<String, Any>) {
             loggedEvents += LoggedEvent(name, parameters)
@@ -162,10 +161,6 @@ class FirebaseAnalyticsTrackerTest {
 
         override fun setCollectionEnabled(enabled: Boolean) {
             collectionStates += enabled
-        }
-
-        override fun close() {
-            closed = true
         }
     }
 

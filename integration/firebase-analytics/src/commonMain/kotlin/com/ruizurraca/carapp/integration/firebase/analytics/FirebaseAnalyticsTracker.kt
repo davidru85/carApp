@@ -3,7 +3,7 @@ package com.ruizurraca.carapp.integration.firebase.analytics
 import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
-import com.ruizurraca.carapp.core.common.FirebaseAnalyticsProviderError
+import com.ruizurraca.carapp.core.common.AnalyticsProviderError
 
 /**
  * The Firebase-backed `AnalyticsTracker` of `docs/CONTRACTS.md §16.1` (`D-10`).
@@ -31,12 +31,12 @@ import com.ruizurraca.carapp.core.common.FirebaseAnalyticsProviderError
  * A provider failure never propagates. The contract declares three non-suspending `Unit` methods
  * with no error channel, so a throw would surface as an unhandled exception on a product path for a
  * feature that exists only to observe. The failure is classified into the closed
- * [FirebaseAnalyticsProviderError] taxonomy and handed to [onProviderError].
+ * [AnalyticsProviderError] taxonomy and handed to [onProviderError].
  */
 class FirebaseAnalyticsTracker internal constructor(
     enabled: Boolean = false,
     private val gateway: AnalyticsGateway,
-    private val onProviderError: (FirebaseAnalyticsProviderError) -> Unit = {},
+    private val onProviderError: (AnalyticsProviderError) -> Unit = {},
 ) : AnalyticsTracker {
     constructor() : this(
         enabled = false,
@@ -70,10 +70,6 @@ class FirebaseAnalyticsTracker internal constructor(
     override fun setEnabled(enabled: Boolean) {
         this.enabled = enabled
         commandCollection(enabled)
-    }
-
-    override fun close() {
-        safely { gateway.close() }
     }
 
     private fun commandCollection(enabled: Boolean) {
@@ -145,7 +141,7 @@ class FirebaseAnalyticsTracker internal constructor(
             block()
         } catch (failure: Throwable) {
             if (failure is kotlin.coroutines.cancellation.CancellationException) throw failure
-            onProviderError(FirebaseAnalyticsProviderError.PROVIDER_FAILED)
+            onProviderError(AnalyticsProviderError.PROVIDER_FAILED)
         }
     }
 
