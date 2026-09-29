@@ -38,6 +38,104 @@
 
 ## Entries
 
+### 2026-09-28 — E3-19 review correction 4: D-170 scope attribution
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** the E3-19 handoff and pull-request description no longer say that the push-boundary correction implements D-170. They now attribute E3-19 to its explicit backlog acceptance gap, the `§6` error mapping, the `§8` outbox contract, the `§9.3` push behavior, the exact `§10` push-boundary rule and the E1-11 push-boundary precedent.
+- **Why:** D-170 / ADR-0171 governs raw per-document transport from `pullChanges` and assigns pulled-document `MalformedPayload` classification to `:core:sync`; it does not govern conversion of local outbox payloads in `pushSnapshot`. Applying its identifier to the push path obscures the architectural boundary the ADR selected.
+- **Correction to the original E3-19 entry:** the statement that E3-19 implements the accepted D-170 totality principle on the push side is incorrect. D-170 remains pull-only and is neither implemented nor modified by E3-19.
+- **Documents touched:** `docs/handoff-E3-19.md`, this log and the pull request #82 description. No production source, test, normative contract, decision or ADR changed.
+- **Verification:** `contractCheck --rerun-tasks` and the complete non-instrumented command from `AGENTS.md` pass locally; `git diff --check origin/main...HEAD` is clean. GitHub's live pull-request status is authoritative for the correction head.
+- **Follow-ups / risks:** none new. E3-20 and E3-21 remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
+
+### 2026-09-28 — E3-19 review correction 3: canonical JSON tokens and exact §10 coverage
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** `JsonElement.toFirestoreValue` and the `schemaVersion` identity read now accept only the RFC 8259 lowercase tokens `true` / `false` as a boolean and the `[ minus ] int` token as an integer, through the new `jsonBooleanOrNull` and `jsonIntegerOrNull` readers, so `TRUE`, `False`, `007`, `01`, `1e3`, `1e0`, `17E11` and `01700000000000` fail closed with zero writes instead of being coerced. `docs/CONTRACTS.md §10` defines both tokens. Three guard cases pin the `ownerId` and `schemaVersion` equality clauses and the `date` rule of `§10`, and `aCanonicalTombstonePayloadStillWritesStrictlyTypedValues` proves canonical tokens still write. The pull request #82 description was rewritten to mirror the handoff.
+- **Why:** `Json.parseToJsonElement` accepts any unquoted token, kotlinx `booleanOrNull` ignores case and kotlinx `longOrNull` accepts leading zeros and exponents, so the conversion did not enforce the "JSON integer" and "boolean" the `§10` norm names. The equality and `date` clauses had no test that a weakened implementation would fail. The pull-request description still carried the `D-38` misattribution that review correction 1 removed from the handoff.
+- **Corrections to previous entries:** the first `E3-19` entry says the escaping exception reached "the generic `drainCycles` catch" and that the malformed-payload test drove 19 shapes. The catch is in `SyncEngine.runCycle`, which `drainCycles` calls, and review correction 1 extended the test to 21 shapes; review correction 3 extends it to 24.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
+- **Verification:** RED on `aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything` (34 tests completed, 1 failed, all eight tokens named); GREEN (34 tests, 0 failures); three non-vacuity probes each failed exactly one test at the named case and were reverted; `:integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` BUILD SUCCESSFUL; `contractCheck --rerun-tasks` BUILD SUCCESSFUL with zero `PENDING` assertions; the complete non-instrumented repository command of `AGENTS.md` BUILD SUCCESSFUL; the ten required checks of pull request #82 passed on run 36447550134 at `e33e84f6`.
+- **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
+
+### 2026-09-28 — E3-19 review correction 2: null updatedAt remains server-owned
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** `JsonElement.toFirestoreValue` now evaluates `UPDATED_AT_FIELD` before `JsonNull`, so every present `updatedAt` payload value is replaced with `FirestoreServerTimestamp`. `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` proves the null case that the previous branch order missed.
+- **Why:** `docs/CONTRACTS.md §10` makes `updatedAt` server-owned and says its payload value is never read. The previous order converted JSON `null` to `FirestoreNull`, allowing a provider write that contradicted that rule and would be rejected by the Firestore schema.
+- **Documents touched:** `docs/handoff-E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
+- **Verification:** RED on `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` before the reorder (`expected:<FirestoreServerTimestamp> but was:<FirestoreNull>`, 32 tests completed, 1 failed); GREEN after it (32 tests, 0 failures); `:integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` BUILD SUCCESSFUL; `contractCheck --rerun-tasks` BUILD SUCCESSFUL with zero `PENDING` assertions; the complete non-instrumented repository command of `AGENTS.md` BUILD SUCCESSFUL (642 actionable tasks); the ten required checks of pull request #82 passed on run 36440303984 at `d3a13fc8`.
+- **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
+
+### 2026-09-28 — E3-19 review correction 1: strict push-boundary typing and an exact §10 norm
+
+- **Type:** correction
+- **Story / Decision:** `E3-19` / — (no new decision)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** the owner's review of pull request #82 found that the identity readers of
+  `EntitySnapshot.toFirestoreWrite` coerced JSON types: `"schemaVersion":"1"` passed the identity check
+  and was written as a provider string, an unquoted `entityType` literal matched, and a numeric string
+  in `createdAt` or `deletedAt` became a provider timestamp. The readers and the epoch-millisecond
+  branch now require the JSON type itself, and a new test proves all four shapes fail closed with zero
+  writes. The `docs/CONTRACTS.md §10` norm now lists exactly what the conversion classifies, states
+  that the Firestore rules enforce the `§16` schema, and scopes the unparseable-payload classification
+  against item 2 of `§6` "Unexpected exceptions". `AGENTS.md`, `docs/BACKLOG.md` and
+  `docs/handoff-E3-19.md` now name pull request #82, and the handoff lists `AGENTS.md` as a changed
+  gated path.
+- **Why:** the `§10` norm this story added promised a classification before any remote write that the
+  coercing readers did not deliver, and it promised schema and exception coverage that the conversion
+  does not own.
+- **Corrections to the previous entry:** `JsonElement.jsonPrimitive` throws `IllegalArgumentException`
+  in kotlinx.serialization 1.11.0, which the previous `catch` handled; only the `JsonObject.getValue`
+  read of a missing identity key (`NoSuchElementException`) escaped the boundary, so the previous
+  entry's "`IllegalStateException`" is wrong. Reading test state through
+  `SyncDatabaseAccess.debugLines()` is a convenience, not a `D-38` rule: `D-38` forbids generated
+  entity-mutation calls, not read queries.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `AGENTS.md`, `docs/BACKLOG.md`,
+  `docs/handoff-E3-19.md`, this log.
+- **Verification:** `:integration:firebase-firestore:testAndroidHostTest` passes; the new test failed
+  on the first-round code; the complete non-instrumented repository command of `AGENTS.md` passes;
+  `contractCheck` reports zero `PENDING` assertions.
+- **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. The story stays
+  implemented, not complete, until the owner merges pull request #82.
+
+### 2026-09-28 — E3-19: the push boundary classifies every malformed payload as a closed RemoteError
+
+- **Type:** story
+- **Story / Decision:** `E3-19` / — (no new decision; implements the `Accepted` `D-170` totality
+  principle on the push side and the `§6` `RemoteError` to `SyncError` mapping)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
+- **What changed:** `EntitySnapshot.toFirestoreWrite` was rewritten as a total conversion returning
+  `Outcome<FirestoreWrite, RemoteError>`. It parses the outbox payload defensively, reads each identity
+  field (`id`, `ownerId`, `schemaVersion`, `entityType`) through a nullable accessor, and converts each
+  field value through a converter that returns `null` instead of throwing. `pushSnapshot` returns the
+  conversion's error directly instead of catching only `IllegalArgumentException`. A missing key, a
+  wrong-typed key, a non-object root and unparseable JSON now become
+  `Outcome.Err(RemoteError.InvalidArgument)` before anything is written, so `§6` poisons the row
+  (`SyncError.ValidationRejected`) on the first attempt. `docs/CONTRACTS.md §10` gains the matching
+  norm.
+- **Why:** the previous `getValue` / `jsonPrimitive` reads threw `NoSuchElementException` /
+  `IllegalStateException`, which escaped the boundary, reached the generic `drainCycles` catch as
+  `UnexpectedError`, and left the entity row `SYNCING` where it re-failed every cycle. This is the
+  third review round's BLOCKER 1 shape on the push boundary, `E3-03`'s follow-up 6. The conversion was
+  fixed rather than the call site so the totality is explicit where the contract governs it, and
+  `RemoteError.InvalidArgument` was reused rather than adding a new error leaf.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log.
+- **Verification:** `:integration:firebase-firestore:testAndroidHostTest` passes with a 19-shape
+  malformed-payload test and a four-case end-to-end test over the real engine and real staged database;
+  `ktlintCheck`, `detekt`, `architectureCheck` and `contractCheck` pass (195 decisions, zero `PENDING`);
+  a mutation probe that restores the throwing `getValue` read for `id` fails exactly the two `id` cases
+  in the new tests.
+- **Follow-ups / risks:** `E3-20` (pull-boundary quarantine totality) and `E3-21` (startup reset of
+  stale `SYNCING` rows) remain open and are untouched. Owner review and the ten required checks remain;
+  the story stays implemented, not complete, until merge.
+
 ### 2026-09-28 — E1-16 record closure: the merged status and the pull request #80 evidence
 
 - **Type:** correction (documentation only)

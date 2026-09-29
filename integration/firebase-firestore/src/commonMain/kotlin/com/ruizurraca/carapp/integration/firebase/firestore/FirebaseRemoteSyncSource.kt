@@ -33,13 +33,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlin.time.Instant
 
@@ -53,16 +50,14 @@ class FirebaseRemoteSyncSource internal constructor(
         gateway.configureMemoryOnlyCache()
     }
 
-    @Suppress("SwallowedException") // Provider failures are deliberately converted to the closed RemoteError API.
     override suspend fun pushSnapshot(
         ownerId: OwnerId,
         snapshot: EntitySnapshot,
     ): Outcome<RemoteAck, RemoteError> {
         val write =
-            try {
-                snapshot.toFirestoreWrite(ownerId)
-            } catch (failure: IllegalArgumentException) {
-                return Outcome.Err(RemoteError.InvalidArgument)
+            when (val converted = snapshot.toFirestoreWrite(ownerId)) {
+                is Outcome.Err -> return converted
+                is Outcome.Ok -> converted.value
             }
         return runRemoteOperation {
             val serverUpdatedAt = gateway.writeDocument(write)
@@ -424,54 +419,135 @@ internal suspend fun <T> runProviderRefresh(operation: suspend () -> T): T =
         throw FirestoreGatewayException(FirestoreGatewayFailure.UNKNOWN, failure)
     }
 
-private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): FirestoreWrite {
-    val jsonObject = Json.parseToJsonElement(json).jsonObject
-    require(jsonObject.getValue(ID_FIELD).jsonPrimitive.content == entityId.value)
-    require(jsonObject.getValue(OWNER_ID_FIELD).jsonPrimitive.content == ownerId.value)
-    require(jsonObject.getValue(SCHEMA_VERSION_FIELD).jsonPrimitive.longOrNull == schemaVersion.toLong())
-    val payloadEntityType = jsonObject[ENTITY_TYPE_FIELD]?.jsonPrimitive?.content
-    require(payloadEntityType == entityType.name)
-    return FirestoreWrite(
-        path = "users/${ownerId.value}/${entityType.collection}/${entityId.value}",
-        fields =
-            jsonObject
-                .filterKeys { it != ENTITY_TYPE_FIELD }
-                .mapValues { (field, value) ->
-                    value.toFirestoreValue(field)
-                },
+/**
+ * Converts an outbox payload into a provider write with no unchecked escape (`E3-19`).
+ *
+ * Every field read here is total and strictly typed: the payload is parsed defensively, `id`,
+ * `ownerId` and `entityType` MUST be JSON strings and `schemaVersion` a JSON integer, each equal to the
+ * snapshot's identity, and each field value is converted through [toFirestoreValue], which returns
+ * `null` instead of throwing or coercing. Unparseable JSON, a non-object root, a missing or wrong-typed
+ * identity key and a value with no provider representation therefore yield
+ * `Outcome.Err(RemoteError.InvalidArgument)` before any write — the closed result `§6` maps to
+ * `SyncError.ValidationRejected` and poisons on the first attempt. The previous `getValue` read threw
+ * `NoSuchElementException` for a missing identity key, which the `IllegalArgumentException` catch in
+ * `pushSnapshot` did not handle, so it escaped the boundary and stranded the entity row in `SYNCING`.
+ * The per-entity schema of `docs/CONTRACTS.md §16` is not validated here; the Firestore rules enforce it.
+ */
+private fun EntitySnapshot.toFirestoreWrite(ownerId: OwnerId): Outcome<FirestoreWrite, RemoteError> {
+    val parsed = parsePayloadObject(json) ?: return Outcome.Err(RemoteError.InvalidArgument)
+    val identityMatches =
+        parsed.stringOrNull(ID_FIELD) == entityId.value &&
+            parsed.stringOrNull(OWNER_ID_FIELD) == ownerId.value &&
+            parsed.longOrNull(SCHEMA_VERSION_FIELD) == schemaVersion.toLong() &&
+            parsed.stringOrNull(ENTITY_TYPE_FIELD) == entityType.name
+    if (!identityMatches) return Outcome.Err(RemoteError.InvalidArgument)
+    val fields = parsed.toFirestoreFields() ?: return Outcome.Err(RemoteError.InvalidArgument)
+    return Outcome.Ok(
+        FirestoreWrite(
+            path = "users/${ownerId.value}/${entityType.collection}/${entityId.value}",
+            fields = fields,
+        ),
     )
 }
 
-private fun JsonElement.toFirestoreValue(field: String): FirestoreValue =
-    when {
-        this === JsonNull -> {
-            FirestoreNull
-        }
+/**
+ * Converts every payload field except the transport-only [ENTITY_TYPE_FIELD] to a provider value,
+ * or `null` as soon as one cannot be represented. Nothing here throws, so a wrong-typed field becomes
+ * a closed error at the call site instead of an exception escaping `pushSnapshot`.
+ */
+private fun JsonObject.toFirestoreFields(): Map<String, FirestoreValue>? {
+    val fields = mutableMapOf<String, FirestoreValue>()
+    forEach { (field, value) ->
+        if (field == ENTITY_TYPE_FIELD) return@forEach
+        val converted = value.toFirestoreValue(field) ?: return null
+        fields[field] = converted
+    }
+    return fields
+}
 
+/** Parses the payload into a JSON object, or `null` when it is malformed or is not an object. */
+private fun parsePayloadObject(json: String): JsonObject? =
+    try {
+        Json.parseToJsonElement(json) as? JsonObject
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+
+/**
+ * The value of a JSON string, or `null` when the key is absent, `JsonNull`, not a primitive, or a
+ * primitive that is not a JSON string (a number, a boolean or an unquoted literal).
+ */
+private fun JsonObject.stringOrNull(name: String): String? =
+    (get(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+/**
+ * The value of a JSON integer, or `null` when the key is absent, `JsonNull`, not a primitive, a JSON
+ * string (even one whose content is numeric) or a token that is not a canonical JSON integer (see
+ * [jsonIntegerOrNull]).
+ */
+private fun JsonObject.longOrNull(name: String): Long? = (get(name) as? JsonPrimitive)?.jsonIntegerOrNull()
+
+/**
+ * The value of this primitive when it is a JSON integer token, or `null`. The token MUST match the
+ * RFC 8259 `[ minus ] int` production — no fraction, no exponent and no leading zero — and fit in a
+ * `Long`. `Json.parseToJsonElement` accepts any unquoted token as a literal, and kotlinx `longOrNull`
+ * also accepts leading zeros and exponents, so it is not used here: `007`, `1e3` and the JSON string
+ * `"1"` all return `null` instead of being coerced to an integer.
+ */
+private fun JsonPrimitive.jsonIntegerOrNull(): Long? =
+    content.takeIf { !isString && JSON_INTEGER_TOKEN.matches(it) }?.toLongOrNull()
+
+/**
+ * The value of this primitive when it is a JSON boolean token, or `null`. RFC 8259 literal names are
+ * lowercase and kotlinx `booleanOrNull` ignores case, so only the exact unquoted tokens `true` and
+ * `false` are accepted: `TRUE`, `False` and the JSON string `"true"` all return `null`.
+ */
+private fun JsonPrimitive.jsonBooleanOrNull(): Boolean? =
+    when {
+        isString -> null
+        content == "true" -> true
+        content == "false" -> false
+        else -> null
+    }
+
+/**
+ * Converts one payload field to a provider value, or `null` when the value cannot be represented.
+ * Nothing here throws or coerces: an epoch-millisecond field MUST be a JSON integer (a numeric JSON
+ * string is rejected), a boolean MUST be the exact token `true` or `false` and an integer MUST be the
+ * RFC 8259 `[ minus ] int` token ([jsonBooleanOrNull], [jsonIntegerOrNull]), so a wrong-typed or
+ * non-canonical field reaches [toFirestoreWrite] as a `null` it turns into a closed error rather than
+ * as an escaping exception or a silently converted value.
+ */
+private fun JsonElement.toFirestoreValue(field: String): FirestoreValue? =
+    when {
         field == UPDATED_AT_FIELD -> {
             FirestoreServerTimestamp
         }
 
-        field in EPOCH_MILLISECOND_FIELDS -> {
-            FirestoreTimestamp(
-                requireNotNull(jsonPrimitive.longOrNull) { "$field must be epoch milliseconds" },
-            )
+        this === JsonNull -> {
+            FirestoreNull
         }
 
-        this is JsonPrimitive && isString -> {
+        field in EPOCH_MILLISECOND_FIELDS -> {
+            (this as? JsonPrimitive)?.jsonIntegerOrNull()?.let { FirestoreTimestamp(it) }
+        }
+
+        this !is JsonPrimitive -> {
+            return null
+        }
+
+        isString -> {
             FirestoreString(content)
         }
 
-        this is JsonPrimitive && booleanOrNull != null -> {
-            FirestoreBoolean(requireNotNull(booleanOrNull))
-        }
-
-        this is JsonPrimitive && longOrNull != null -> {
-            FirestoreLong(requireNotNull(longOrNull))
-        }
-
         else -> {
-            throw IllegalArgumentException("Unsupported Firestore payload field: $field")
+            val boolean = jsonBooleanOrNull()
+            val number = jsonIntegerOrNull()
+            when {
+                boolean != null -> FirestoreBoolean(boolean)
+                number != null -> FirestoreLong(number)
+                else -> null
+            }
         }
     }
 
@@ -510,3 +586,6 @@ private const val UPDATED_AT_FIELD = "updatedAt"
 private const val MICROS_PER_SECOND = 1_000_000L
 private const val NANOS_PER_MICROSECOND = 1_000L
 private val EPOCH_MILLISECOND_FIELDS = setOf("createdAt", "date", "deletedAt")
+
+/** RFC 8259 `[ minus ] int`: an optional minus sign, then `0` or a non-zero digit followed by digits. */
+private val JSON_INTEGER_TOKEN = Regex("-?(0|[1-9][0-9]*)")
