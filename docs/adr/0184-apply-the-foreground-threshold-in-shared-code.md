@@ -83,7 +83,7 @@ as such; the scene-phase `.active` transition reports the measured duration.
 exactly at the threshold and a duration below it. `AndroidForegroundDurationTest` covers the Android
 measurement's cold start, elapsed value, single-use clearing and repeated-entry cases.
 `contractCheck` assertions 34 and 35 compare the `§20.10` declaration of the new member with both real
-surfaces. Evidence is in `docs/handoff-E3-04.md`.
+surfaces. Evidence is in `docs/handoffs/E3-04.md`.
 
 ## References
 

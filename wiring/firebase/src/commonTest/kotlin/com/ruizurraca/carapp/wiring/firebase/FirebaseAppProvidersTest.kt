@@ -2,6 +2,10 @@ package com.ruizurraca.carapp.wiring.firebase
 
 import com.ruizurraca.carapp.AppGraph
 import com.ruizurraca.carapp.buildAppGraph
+import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
+import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
+import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
+import com.ruizurraca.carapp.core.analytics.CountBucket
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
@@ -11,6 +15,7 @@ import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
@@ -105,6 +110,67 @@ class FirebaseAppProvidersTest {
         assertEquals(false, authClient.closed)
         graph.close()
         assertEquals(true, authClient.closed)
+    }
+
+    @Test
+    fun providerFactoryBindsTheGivenAnalyticsTrackerWithoutDecoratingIt() {
+        // `E3-09`: `:wiring:firebase` is the only module that constructs the Firebase Analytics
+        // implementation, and it binds whatever tracker it was handed. Asserting identity rather than
+        // behaviour is the point: a decorator here would be a second construction site.
+        val analyticsTracker = RecordingAnalyticsTrackerForWiring()
+
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+                analyticsTracker = analyticsTracker,
+            )
+
+        assertSame<Any>(analyticsTracker, providers.analyticsTracker)
+    }
+
+    @Test
+    fun theStagedGraphWithoutAHostCollectsNothing() {
+        // The internal factory's default is the no-op, so a graph built without a host — a test, or a
+        // build with no provider wired — cannot collect. The assertion is behavioural rather than an
+        // identity check, so it stays honest if the silent default is ever replaced by another.
+        val providers =
+            firebaseAppProviders(
+                databaseFactory = createStagedDatabaseFactory(),
+                authClient = MutableAuthClient(),
+                tokenProvider = MutableAuthClient(),
+                remoteSyncSource = RecordingRemoteSyncSource(),
+            )
+
+        providers.analyticsTracker.setEnabled(true)
+        providers.analyticsTracker.track(AnalyticsEvent.VehicleCreated)
+        providers.analyticsTracker.setUserProperties(
+            AnalyticsUserProperties(CountBucket.ONE, CountBucket.ZERO),
+        )
+    }
+}
+
+/**
+ * A local analytics recorder. `:wiring:firebase`'s tests deliberately define their own doubles —
+ * `MutableAuthClient` and `RecordingRemoteSyncSource` are already here — so the module keeps its
+ * dependency surface at what production code needs.
+ */
+private class RecordingAnalyticsTrackerForWiring : AnalyticsTracker {
+    val events = mutableListOf<AnalyticsEvent>()
+    var collectionEnabled = false
+
+    override fun track(event: AnalyticsEvent) {
+        if (collectionEnabled) events += event
+    }
+
+    override fun setUserProperties(properties: AnalyticsUserProperties) = Unit
+
+    // `collectionEnabled`, not `enabled`: a property named `enabled` would clash with the setter of
+    // `setEnabled` at the JVM signature level.
+    override fun setEnabled(enabled: Boolean) {
+        collectionEnabled = enabled
     }
 }
 

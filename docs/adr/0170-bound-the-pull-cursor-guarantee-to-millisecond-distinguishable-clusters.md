@@ -108,4 +108,4 @@ at the active cursor's precision. ADR-0175 supersedes this decision only for the
 - `docs/SPECIFICATION.md §9.4`
 - `docs/TECHNICAL_PLAN.md §8`
 - `docs/BACKLOG.md` (`E3-03`)
-- `docs/handoff-E3-02.md`
+- `docs/handoffs/E3-02.md`

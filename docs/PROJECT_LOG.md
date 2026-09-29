@@ -38,6 +38,50 @@
 
 ## Entries
 
+### 2026-09-29 — E3-09 Firebase Analytics integration, its emission surface and four decisions
+
+- **Type:** story
+- **Story / Decision:** `E3-09` / `D-196`, `D-197`, `D-198`, `D-199`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-09-firebase-analytics-integration`)
+- **What changed:** `:integration:firebase-analytics` is created with the Firebase-backed
+  `AnalyticsTracker` of `docs/CONTRACTS.md §16.1`, behind a narrow internal `AnalyticsGateway` the
+  same way the auth and Firestore integrations isolate their providers, and `:wiring:firebase` binds
+  it as the third provider module. The story also delivers the `§16.1` emission surface in `:shared`
+  (`D-196`): the opt-in gate with its single `setUserProperties` call, the sync-status edge that
+  emits `SyncStatusChanged` only on a category change, the two write events with the post-write
+  bucket refresh through decorators placed inside the existing repository chains, the session
+  selection events, and the once-per-holder onboarding pair. The count buckets come from two new
+  read-only, owner-scoped, `deleted = 0` queries in `:core:database` (`D-197`). Event and parameter
+  names are `snake_case`, boolean flags travel as booleans, and a provider failure is classified into
+  the new closed `AnalyticsProviderError` code instead of propagating (`D-198`); the tracker is
+  injectable into `firebaseAppProviders` so the single-construction-site rule is assertable without a
+  runtime (`D-199`). `:integration:firebase-analytics` leaves
+  `ArchitectureChecker.NOT_YET_INTRODUCED_MODULES`, becomes a third D-75 root, and the iOS app links
+  the `FirebaseAnalytics` SwiftPM product the GitLive cinterop needs. The `SyncStatus ->
+  SyncStatusCategory` collapse of `§20.9` is implemented in `:core:analytics`.
+- **Why:** the backlog row sized `E3-09` as `S` and named only the integration, but `§16.1`
+  attributes the `setUserProperties` cadence fixture to this story by name and seven of the thirteen
+  event leaves had no emitter at all. The owner chose to keep the whole `§16.1` surface inside the
+  story rather than split emission into a new one (`D-196`, ADR-0196), and the row is resized to `M`.
+  Every call site is `:shared` orchestration because `docs/TECHNICAL_PLAN.md §4` keeps a feature
+  `presentation` package out of `:core:analytics`.
+- **Documents touched:** `docs/BACKLOG.md` (`E3-09`), `docs/CONTRACTS.md` (`§18` assertions 37 and
+  38, and the D-75 derived set), `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0196`, `0197`, `0198`, `AGENTS.md`
+  (the D-75 count), `.github/workflows/ci.yml` (the fifth Native exclusion),
+  `docs/handoffs/E3-09.md`.
+- **Verification:** the complete CI task command of `AGENTS.md` ran `BUILD SUCCESSFUL` locally,
+  including `iosSimulatorArm64Test`; `contractCheck` reports assertions 21, 37 and 38 `PASS` and no
+  `PENDING`. New tests: `FirebaseAnalyticsTrackerTest`, `FirebaseAnalyticsOptInTest`,
+  `FirebaseAnalyticsFailureTest`, `OwnerActiveRowCountDatabaseAccessTest`, `SyncStatusCategoryTest`,
+  `SharedAnalyticsEmissionTest`, `SharedAnalyticsCadenceTest`, `AnalyticsIntegrationContractTest`,
+  plus the wiring binding cases.
+- **Follow-ups / risks:** the provider-failure sink is wired to nothing in production yet, so a
+  dropped metric is observable only in tests; `docs/adr/0076` requires the Firebase Apple coverage
+  list to be reviewed whenever that surface grows, which the new iOS product triggers; and the
+  emission fixtures need a bounded real-time wait because a database continuation runs on a real
+  dispatcher that virtual time cannot drain.
+
 ### 2026-09-29 — E3-19 record closure: the merged status and the pull request #82 evidence
 
 - **Type:** correction (documentation only)
@@ -49,7 +93,7 @@
   rounds. The places that still described the story as in flight now state the merge and its pull
   request: the `E3-19` status block and its index row in `docs/BACKLOG.md`, the `Remaining Phase 3`
   list in `AGENTS.md`, from which `E3-19` is removed, and the open-decision paragraph in `AGENTS.md`
-  that enumerates the merged stories. `docs/handoff-E3-19.md` gains a dated `Closure update` that
+  that enumerates the merged stories. `docs/handoffs/E3-19.md` gains a dated `Closure update` that
   records the merge, the four correction rounds and their content, and preserves its in-flight
   checkpoint and its acceptance evidence as observed.
 - **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
@@ -59,7 +103,7 @@
   recorded the story as implemented and awaiting the owner's review; the owner approved and merged it
   afterwards, so the status is merged rather than in review. Their content is otherwise unchanged and
   accurate, including the `D-170` scope correction of review correction 4.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E3-19.md`, this log.
 - **Verification:** documentation only, so no test, build or coverage result depends on it. The final
   record-only head `47aef3fe`, an ancestor of `main`, passed all ten required checks on attempt `1`
   (run 36468868905), and the implementation/documentation head `891167d` passed all ten on attempt `1`
@@ -77,7 +121,7 @@
 - **What changed:** the E3-19 handoff and pull-request description no longer say that the push-boundary correction implements D-170. They now attribute E3-19 to its explicit backlog acceptance gap, the `§6` error mapping, the `§8` outbox contract, the `§9.3` push behavior, the exact `§10` push-boundary rule and the E1-11 push-boundary precedent.
 - **Why:** D-170 / ADR-0171 governs raw per-document transport from `pullChanges` and assigns pulled-document `MalformedPayload` classification to `:core:sync`; it does not govern conversion of local outbox payloads in `pushSnapshot`. Applying its identifier to the push path obscures the architectural boundary the ADR selected.
 - **Correction to the original E3-19 entry:** the statement that E3-19 implements the accepted D-170 totality principle on the push side is incorrect. D-170 remains pull-only and is neither implemented nor modified by E3-19.
-- **Documents touched:** `docs/handoff-E3-19.md`, this log and the pull request #82 description. No production source, test, normative contract, decision or ADR changed.
+- **Documents touched:** `docs/handoffs/E3-19.md`, this log and the pull request #82 description. No production source, test, normative contract, decision or ADR changed.
 - **Verification:** `contractCheck --rerun-tasks` and the complete non-instrumented command from `AGENTS.md` pass locally; `git diff --check origin/main...HEAD` is clean. GitHub's live pull-request status is authoritative for the correction head.
 - **Follow-ups / risks:** none new. E3-20 and E3-21 remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
 
@@ -89,7 +133,7 @@
 - **What changed:** `JsonElement.toFirestoreValue` and the `schemaVersion` identity read now accept only the RFC 8259 lowercase tokens `true` / `false` as a boolean and the `[ minus ] int` token as an integer, through the new `jsonBooleanOrNull` and `jsonIntegerOrNull` readers, so `TRUE`, `False`, `007`, `01`, `1e3`, `1e0`, `17E11` and `01700000000000` fail closed with zero writes instead of being coerced. `docs/CONTRACTS.md §10` defines both tokens. Three guard cases pin the `ownerId` and `schemaVersion` equality clauses and the `date` rule of `§10`, and `aCanonicalTombstonePayloadStillWritesStrictlyTypedValues` proves canonical tokens still write. The pull request #82 description was rewritten to mirror the handoff.
 - **Why:** `Json.parseToJsonElement` accepts any unquoted token, kotlinx `booleanOrNull` ignores case and kotlinx `longOrNull` accepts leading zeros and exponents, so the conversion did not enforce the "JSON integer" and "boolean" the `§10` norm names. The equality and `date` clauses had no test that a weakened implementation would fail. The pull-request description still carried the `D-38` misattribution that review correction 1 removed from the handoff.
 - **Corrections to previous entries:** the first `E3-19` entry says the escaping exception reached "the generic `drainCycles` catch" and that the malformed-payload test drove 19 shapes. The catch is in `SyncEngine.runCycle`, which `drainCycles` calls, and review correction 1 extended the test to 21 shapes; review correction 3 extends it to 24.
-- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoffs/E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
 - **Verification:** RED on `aNonCanonicalJsonTokenFailsClosedWithoutWritingAnything` (34 tests completed, 1 failed, all eight tokens named); GREEN (34 tests, 0 failures); three non-vacuity probes each failed exactly one test at the named case and were reverted; `:integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` BUILD SUCCESSFUL; `contractCheck --rerun-tasks` BUILD SUCCESSFUL with zero `PENDING` assertions; the complete non-instrumented repository command of `AGENTS.md` BUILD SUCCESSFUL; the ten required checks of pull request #82 passed on run 36447550134 at `e33e84f6`.
 - **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
 
@@ -100,7 +144,7 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-19-push-boundary-payload-totality`)
 - **What changed:** `JsonElement.toFirestoreValue` now evaluates `UPDATED_AT_FIELD` before `JsonNull`, so every present `updatedAt` payload value is replaced with `FirestoreServerTimestamp`. `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` proves the null case that the previous branch order missed.
 - **Why:** `docs/CONTRACTS.md §10` makes `updatedAt` server-owned and says its payload value is never read. The previous order converted JSON `null` to `FirestoreNull`, allowing a provider write that contradicted that rule and would be rejected by the Firestore schema.
-- **Documents touched:** `docs/handoff-E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
+- **Documents touched:** `docs/handoffs/E3-19.md`, this log. Production code and tests: `:integration:firebase-firestore`.
 - **Verification:** RED on `aNullUpdatedAtIsAlwaysReplacedWithTheServerTimestamp` before the reorder (`expected:<FirestoreServerTimestamp> but was:<FirestoreNull>`, 32 tests completed, 1 failed); GREEN after it (32 tests, 0 failures); `:integration:firebase-firestore:ktlintCheck :integration:firebase-firestore:detekt` BUILD SUCCESSFUL; `contractCheck --rerun-tasks` BUILD SUCCESSFUL with zero `PENDING` assertions; the complete non-instrumented repository command of `AGENTS.md` BUILD SUCCESSFUL (642 actionable tasks); the ten required checks of pull request #82 passed on run 36440303984 at `d3a13fc8`.
 - **Follow-ups / risks:** none new. `E3-20` and `E3-21` remain open and untouched. Pull request #82 still requires the owner's gated review and merge.
 
@@ -117,7 +161,7 @@
   writes. The `docs/CONTRACTS.md §10` norm now lists exactly what the conversion classifies, states
   that the Firestore rules enforce the `§16` schema, and scopes the unparseable-payload classification
   against item 2 of `§6` "Unexpected exceptions". `AGENTS.md`, `docs/BACKLOG.md` and
-  `docs/handoff-E3-19.md` now name pull request #82, and the handoff lists `AGENTS.md` as a changed
+  `docs/handoffs/E3-19.md` now name pull request #82, and the handoff lists `AGENTS.md` as a changed
   gated path.
 - **Why:** the `§10` norm this story added promised a classification before any remote write that the
   coercing readers did not deliver, and it promised schema and exception coverage that the conversion
@@ -129,7 +173,7 @@
   `SyncDatabaseAccess.debugLines()` is a convenience, not a `D-38` rule: `D-38` forbids generated
   entity-mutation calls, not read queries.
 - **Documents touched:** `docs/CONTRACTS.md §10`, `AGENTS.md`, `docs/BACKLOG.md`,
-  `docs/handoff-E3-19.md`, this log.
+  `docs/handoffs/E3-19.md`, this log.
 - **Verification:** `:integration:firebase-firestore:testAndroidHostTest` passes; the new test failed
   on the first-round code; the complete non-instrumented repository command of `AGENTS.md` passes;
   `contractCheck` reports zero `PENDING` assertions.
@@ -157,7 +201,7 @@
   third review round's BLOCKER 1 shape on the push boundary, `E3-03`'s follow-up 6. The conversion was
   fixed rather than the call site so the totality is explicit where the contract governs it, and
   `RemoteError.InvalidArgument` was reused rather than adding a new error leaf.
-- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log.
+- **Documents touched:** `docs/CONTRACTS.md §10`, `docs/BACKLOG.md`, `docs/handoffs/E3-19.md`, this log.
 - **Verification:** `:integration:firebase-firestore:testAndroidHostTest` passes with a 19-shape
   malformed-payload test and a four-case end-to-end test over the real engine and real staged database;
   `ktlintCheck`, `detekt`, `architectureCheck` and `contractCheck` pass (195 decisions, zero `PENDING`);
@@ -178,7 +222,7 @@
   that still described the story as in flight now state the merge and its pull request: the `E1-16`
   status block and its index row in `docs/BACKLOG.md`, the follow-up inventory in `AGENTS.md`, from
   which `E1-16` is removed, and the two planning sentences in `docs/BACKLOG.md` that still put it in
-  the future tense. `docs/handoff-E1-16.md` gains a dated `Closure update` that records the merge, the
+  the future tense. `docs/handoffs/E1-16.md` gains a dated `Closure update` that records the merge, the
   review correction round and the review correction's content, and preserves its in-flight checkpoint
   as observed.
 - **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
@@ -187,7 +231,7 @@
 - **Correction to the previous E1-16 entries:** the review correction 1 entry recorded the story as
   still awaiting the owner's review; the owner approved and merged it afterwards, so the status is
   merged rather than in review. The review correction 1 content itself is unchanged and accurate.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-16.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E1-16.md`, this log.
 - **Verification:** documentation only, so no test, build or coverage result depends on it; the
   complete non-instrumented `AGENTS.md` command and `contractCheck --rerun-tasks` are run before the
   pull request to confirm no check regresses.
@@ -213,7 +257,7 @@
   type the owner did not choose; that the story introduced a new deprecation warning; that the label
   map claimed an exhaustiveness the compiler did not enforce; and that `waitForIdle()` did not wait
   for the off-main-thread save before the test left the form.
-- **Documents touched:** `docs/handoff-E1-16.md` and this log.
+- **Documents touched:** `docs/handoffs/E1-16.md` and this log.
 - **Verification:** RED then GREEN on `VehicleFormStateRestorationTest`; the full instrumented suite
   passes 25/25 on the `E1_07_API_36` emulator; the complete non-instrumented command ends
   `BUILD SUCCESSFUL`; `contractCheck --rerun-tasks` reports no `FAIL` and no `PENDING`; the iOS app
@@ -235,7 +279,7 @@
   §Human Review Gates applies to any change under the three documentation paths above. The previous
   handoff said the gate was not applicable and named `de170f3b` as the current all-green head even
   though PR80 had advanced to `37fe0e64` and run `36346316418`.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-16.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E1-16.md`, this log.
 - **Verification:** `git diff --check`, `contractCheck --rerun-tasks` and the complete
   non-instrumented command from `AGENTS.md` must pass. GitHub's live PR status must show all ten
   required checks green on the final head before owner review.
@@ -267,7 +311,7 @@
   code was written. This is a realignment to an existing decision, not a new one, so it introduces no
   `D-` id and no ADR.
 - **Documents touched:** `docs/SPECIFICATION.md`, `docs/CONTRACTS.md`, `docs/BACKLOG.md`, `AGENTS.md`,
-  `docs/handoff-E1-16.md` and this log.
+  `docs/handoffs/E1-16.md` and this log.
 - **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck
   :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest
   testAndroidHostTest iosSimulatorArm64Test` with the four D-75 exclusions ends `BUILD SUCCESSFUL`;
@@ -294,7 +338,7 @@
   `core/sync/**` and `core/database/**` gated paths. The two places that still described the story as
   in flight now state the merge and its pull request: the `E3-07` status block and its index row in
   `docs/BACKLOG.md`, and the `Remaining Phase 3` list in `AGENTS.md`, from which `E3-07` is removed.
-  `docs/handoff-E3-07.md` gains a dated `Closure update` that records the merge, the three review
+  `docs/handoffs/E3-07.md` gains a dated `Closure update` that records the merge, the three review
   correction rounds, `D-194` and the CI result, and preserves its in-flight checkpoint as observed.
 - **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
   planned, and it is updated by the story that changes it; leaving the in-flight tense in place after
@@ -303,7 +347,7 @@
   `91aeea6c` as an owner decision. The record-only head `e1dd295b`, an ancestor of `main`, is green on
   all ten required checks on attempt `1` (run `36334618645`), and the first CI run of the merge commit
   `29a25647` is a `push` event that does not gate `main`.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-07.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E3-07.md`, this log.
 - **Verification:** documentation only, so no test, build or coverage result depends on it; the
   complete non-instrumented `AGENTS.md` command and `contractCheck` are run before the pull request to
   confirm no check regresses.
@@ -332,7 +376,7 @@
   described the new test as bounded by `awaitCondition` and `runTest`'s timeout, and re-ran the two
   failed jobs. Neither bound covers a thread blocked inside `runBlocking`, and the owner was this
   story's own test teardown.
-- **Documents touched:** `docs/handoff-E3-07.md`, this log.
+- **Documents touched:** `docs/handoffs/E3-07.md`, this log.
 - **Verification:** the focused `TombstonePurgeAppGraphTest` command reports 3 tests and 0 failures on
   Android host and Kotlin/Native; 15 consecutive provider-free Android host runs, 5 provider-free
   Kotlin/Native runs and 3 `:shared:iosSimulatorArm64Test` runs all passed with no hang; the complete
@@ -361,9 +405,9 @@
   branch-history rewrite and no force-push was performed. Before this decision the process
   non-compliance was a blocking, unresolved finding.
 - **Corrections to the previous entry:** the previous entry said the `716976f6` deviation was recorded
-  "for the owner's explicit exemption"; that exemption now exists and is quoted in `docs/handoff-E3-07.md`
+  "for the owner's explicit exemption"; that exemption now exists and is quoted in `docs/handoffs/E3-07.md`
   under "Decisions Made".
-- **Documents touched:** `docs/handoff-E3-07.md`, this log.
+- **Documents touched:** `docs/handoffs/E3-07.md`, this log.
 - **Verification:** the focused `:shared:testAndroidHostTest :shared:iosSimulatorArm64Test --tests
   '*TombstonePurgeAppGraphTest*'` command reports 3 tests, 0 failures on both hosts; the no-op mutation
   fails the new test on both hosts and the restored binding passes; the complete non-instrumented
@@ -399,12 +443,12 @@
   `database.transaction { }`, not `DatabaseMutations`' boundary. The evidence "removing the guard
   failed only `aPendingTombstoneIsNeverPurged`" was measured at `21465a14`, before `716976f6`, and
   stopped holding after it. `716976f6` committed the write-lock tests and the count gate in one commit,
-  a deviation from the `docs/SPECIFICATION.md §11` commit workflow that `docs/handoff-E3-07.md` records
+  a deviation from the `docs/SPECIFICATION.md §11` commit workflow that `docs/handoffs/E3-07.md` records
   for the owner's explicit exemption.
 - **Documents touched:** `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
   `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`,
   `docs/adr/0195-execute-the-tombstone-purge-as-one-count-gated-attempt-per-app-start.md`,
-  `docs/CONTRIBUTING.md`, `docs/BACKLOG.md`, `AGENTS.md`, `docs/handoff-E3-07.md`, this log.
+  `docs/CONTRIBUTING.md`, `docs/BACKLOG.md`, `AGENTS.md`, `docs/handoffs/E3-07.md`, this log.
 - **Verification:** the new RED test failed exactly on the escaping `IllegalStateException` and passes
   at GREEN; the ten purge-guard mutations each fail `TombstonePurgeDatabaseAccessTest`; the complete
   non-instrumented `AGENTS.md` command ends in `BUILD SUCCESSFUL` with every task executed;
@@ -471,7 +515,7 @@
   in-flight retry could still reset outbox rows and request synchronization after `close()`. The
   decision's second `Idle` example contradicted `§9.9`.
 - **Documents touched:** `docs/adr/0194-do-not-let-the-idle-backup-label-claim-a-current-remote-copy.md`,
-  `docs/handoff-E3-05.md`; this log.
+  `docs/handoffs/E3-05.md`; this log.
 - **Verification:** at the RED head `05dbd16` `SyncStateHolderRetryTest` reported 7 tests with 1 failure
   (`closeCancelsAnInFlightRetry`, `expected:<1> but was:<0>`) while the six pre-existing retry tests
   passed; at the GREEN head `0120239` all seven tests pass on the JVM host and
@@ -501,7 +545,7 @@
   iOS announced the bare status label while Android announced "Backup status: <label>"; and an
   unrecognised iOS status would have been drawn as "Synced locally" with nothing failing.
 - **Documents touched:** `docs/CONTRACTS.md §11.6`, `§18`; `docs/adr/0192`, `docs/adr/0193`;
-  `docs/handoff-E3-05.md`; this log.
+  `docs/handoffs/E3-05.md`; this log.
 - **Verification:** at the RED head `7d39394` the contract suite reported 21 tests with 3 failures,
   and at `687bdc6` `SyncStatusIndicatorTest` reported 6 tests with 1 failure on the pinned
   `E1_07_API_36` emulator and `SyncStatusVisualTests` 8 tests with 4 failed assertions inside the one
@@ -530,7 +574,7 @@
   completion order, so an older failure could overwrite a newer success; and assertion 36 iterated
   only the class names found in production sources, so a `§20.10` block with no production class was
   never inspected.
-- **Documents touched:** `docs/adr/0192`, `docs/adr/0193`, `docs/handoff-E3-05.md`; this log.
+- **Documents touched:** `docs/adr/0192`, `docs/adr/0193`, `docs/handoffs/E3-05.md`; this log.
 - **Verification:** at the RED head `8b91eaf` the retry suite reported 6 tests with 2 failures, both
   leaving the stale `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` published, and
   at `f7e234f` the contract suite reported 17 tests with 1 failure
@@ -560,7 +604,7 @@
   which the second `E3-05` criterion forbids; and assertion 36 returned `PASS` for an undeclared
   public hidden member behind a string literal containing `{`, `}` or `;`.
 - **Documents touched:** `docs/CONTRACTS.md §14`; `docs/adr/0192`, `0193`, `0194`;
-  `docs/handoff-E3-05.md`; this log.
+  `docs/handoffs/E3-05.md`; this log.
 - **Verification:** at the RED head `875c137` the holder suite reported 4 tests with 1 failure
   (`retryFailureIsWithdrawnWhenTheStatusLeavesFailed`, the stale
   `UiMessage(id=7, kind=ERROR, code=PERSISTENCE.TRANSACTION_FAILED)` beside `Pending`) and the
@@ -591,7 +635,7 @@
   existing typed `UiMessage`; the code read a second holder for status, rendered no message, and left
   a stale failure published after a successful attempt, so the Retry control looked inert after a
   failure and could disagree with the vehicle-list state it was drawn beside.
-- **Documents touched:** `docs/handoff-E3-05.md`; this log.
+- **Documents touched:** `docs/handoffs/E3-05.md`; this log.
 - **Verification:** `SyncStateHolderRetryTest` failed `successfulRetryClearsPreviousFailureMessage` at
   the RED head with the stale `PERSISTENCE.TRANSACTION_FAILED` still published, then passed after the
   clear; `:shared:testAndroidHostTest --tests SyncStateHolderRetryTest`, `:androidApp:testDebugUnitTest`,
@@ -645,14 +689,14 @@
   refuses to create while the owner is `LOCAL_OWNER`.
 - **Documents touched:** `docs/CONTRACTS.md` `§11.6`, `§14`, `§18`; `docs/DECISION_BOARD.md`;
   `docs/SPECIFICATION.md §12`; `docs/TECHNICAL_PLAN.md §2`; `docs/adr/0192`–`0194`; `docs/adr/README.md`;
-  `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoff-E3-05.md`.
+  `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoffs/E3-05.md`.
 - **Verification:** the three RED units failed 5 of 5 (Android) and 4 of 5 (iOS) on their own behaviour
   before the implementation; the whole `SwiftHiddenMemberContractTest` class failed 13 of 13 before
   assertion 36 existed; the complete non-instrumented `AGENTS.md` command, the build-logic suite (190
   tests) and `contractCheck` all pass with no `PENDING` assertion.
 - **Follow-ups / risks:** the settings row of `docs/SPECIFICATION.md §3.1` stays with `E4-01`, and the
   iOS indicator has no automated UI assertion — its classification and copy are covered by the iOS unit
-  target and the view by the build. Both are recorded in `docs/handoff-E3-05.md`.
+  target and the view by the build. Both are recorded in `docs/handoffs/E3-05.md`.
 
 ### 2026-09-25 — `E1-18` record closure: the merged status and the removed caveat
 
@@ -668,7 +712,7 @@
   after `D-190` removed the deadlock is actively harmful: the reflex it licenses is how a real
   regression gets waved through. Corrects no earlier entry; the `E3-12` entries are accurate as
   written and this one only removes the in-flight tense that followed from them.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-18.md`.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E1-18.md`.
 - **Verification:** documentation only, so no test or build result depends on it; the three documents
   were re-read after the edit and carry no remaining in-flight status for a merged story.
 - **Follow-ups / risks:** none. `E3-05` has its own branch and pull request, so no status here depends
@@ -682,9 +726,9 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
 - **What changed:** the shared sync preflight now sequences `accountConversion.awaitSettled()` before `localOwnerAdoption.awaitAdoption()`, so no normal recovery pull can occur while the durable replacement marker exists; `CrossDeviceRecoveryTest.recoveryCycleCount()` counts only the device's own UID and `EntityType.VEHICLE`; `docs/CONTRACTS.md §14` records `D-190`'s `dispatchers.default` exception for `VehicleListStateHolder`'s recovery-sensitive observation; ADR-0191 names `Dispatchers.Default`; ADR-0189 gains the conversion-barrier constraint and its verification bullet; the `E1-18` handoff records its contract change; and the `D-185` test KDoc calls the enforcement a source rule rather than a Konsist fixture.
 - **Why:** `CONTRACTS.md §11.3` forbids normal recovery while the replacement marker exists, because a pull there could reintroduce permanent-account rows the replacement is removing - and the graph admitted such a cycle. The anonymous-isolation evidence was also owner-agnostic: a global replica pull count could not distinguish the first identity's recovery from the second's, so criterion 3 was satisfied by whichever device happened to pull.
-- **Documents touched:** `docs/CONTRACTS.md` §14; `docs/adr/0189`; `docs/adr/0191`; `docs/handoff-E3-12.md`; `docs/handoff-E1-18.md`; `shared/.../AccountConversionAppGraphTest.kt`; `shared/.../CrossDeviceRecoveryTest.kt`; `shared/.../AppGraph.kt`; `build-logic/.../SwiftTriggerSurfaceContractTest.kt`.
+- **Documents touched:** `docs/CONTRACTS.md` §14; `docs/adr/0189`; `docs/adr/0191`; `docs/handoffs/E3-12.md`; `docs/handoffs/E1-18.md`; `shared/.../AccountConversionAppGraphTest.kt`; `shared/.../CrossDeviceRecoveryTest.kt`; `shared/.../AppGraph.kt`; `build-logic/.../SwiftTriggerSurfaceContractTest.kt`.
 - **Verification:** the new `AccountConversionAppGraphTest.ownerChangedRecoveryNeverPullsWhileTheAccountConversionMarkerExists` failed with `forbids a normal recovery pull while the marker exists expected:<[]> but was:<[LOCAL_REPLACED]>` on three consecutive runs before the production change and passes after it; the anonymous-isolation test failed with `the first identity's pulls must not count as the second identity's recovery expected:<0> but was:<1>` against the global counter; the four directed suites pass 24 tests with 0 failures; the complete non-instrumented `AGENTS.md` command passes and `contractCheck` reports no `PENDING` assertion.
-- **Follow-ups / risks:** the owner-run two-host provider acceptance remains outstanding and is not claimed complete. The TDD-phase breaches already recorded in `docs/handoff-E3-12.md` (`9d3ad28`, `3940cbb`) still await the owner's decision on a retroactive exemption.
+- **Follow-ups / risks:** the owner-run two-host provider acceptance remains outstanding and is not claimed complete. The TDD-phase breaches already recorded in `docs/handoffs/E3-12.md` (`9d3ad28`, `3940cbb`) still await the owner's decision on a retroactive exemption.
 
 ### 2026-09-24 — `E1-18` follow-up: the real-time expectation budget for the offloaded graph paths
 
@@ -701,11 +745,11 @@
 - **Type:** correction
 - **Story / Decision:** `E3-12` / `D-188`; `E1-18` / `D-190`
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
-- **What changed:** `VehicleListStateHolder` keeps the recovery window open for every publisher until its own recovery collector has handled the closing count, and discards an empty listing read before the recovery before re-reading it, so the sync-status collector can no longer publish that listing as a known empty list. `OwnerRecoveryGateTest` covers the count lowering on a failed cycle and on a graph closed mid-recovery. `assertQueuedGraphWork` rejects an `io` bound to the test scheduler under any instance or unconfined. The unused `LOCAL_OWNER` import leaves `AppGraph.kt`, and the cross-device test that claimed to swap device roles is renamed `aFuelEntryAndItsVehicleAreRestoredTogetherOnACleanDevice`. `docs/CONTRACTS.md §20.3` and `§20.10`, ADR-0189, ADR-0191, the `D-190` rows, `docs/BACKLOG.md`, `AGENTS.md` and `docs/handoff-E3-12.md` are corrected, `docs/handoff-E1-18.md` is created and `docs/handoff-E1-14.md` gains a dated supersession note.
+- **What changed:** `VehicleListStateHolder` keeps the recovery window open for every publisher until its own recovery collector has handled the closing count, and discards an empty listing read before the recovery before re-reading it, so the sync-status collector can no longer publish that listing as a known empty list. `OwnerRecoveryGateTest` covers the count lowering on a failed cycle and on a graph closed mid-recovery. `assertQueuedGraphWork` rejects an `io` bound to the test scheduler under any instance or unconfined. The unused `LOCAL_OWNER` import leaves `AppGraph.kt`, and the cross-device test that claimed to swap device roles is renamed `aFuelEntryAndItsVehicleAreRestoredTogetherOnACleanDevice`. `docs/CONTRACTS.md §20.3` and `§20.10`, ADR-0189, ADR-0191, the `D-190` rows, `docs/BACKLOG.md`, `AGENTS.md` and `docs/handoffs/E3-12.md` are corrected, `docs/handoffs/E1-18.md` is created and `docs/handoffs/E1-14.md` gains a dated supersession note.
 - **Why:** the window-closing re-read of `D-190` guarded only its own collector. When the count reached zero before the fresh read arrived, the sync-status collector republished the pre-recovery empty listing as known - in either order of the two signals - which is the state `SPECIFICATION.md` F-1 answers with non-dismissible first-vehicle creation; two new tests reproduced it before the fix. The previous `io` guard compared object identity with `main`, so a second `StandardTestDispatcher(testScheduler)` passed it, contradicting ADR-0191. Several records still described the deleted `drop(1)` baseline, claimed a role swap the test never performed, or kept the `E1-18` caveat that the fix removes.
-- **Documents touched:** `docs/CONTRACTS.md` §20.3, §20.10; `docs/adr/0189`; `docs/adr/0191`; `docs/DECISION_BOARD.md`; `docs/SPECIFICATION.md §12`; `docs/TECHNICAL_PLAN.md §2`; `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoff-E3-12.md`; `docs/handoff-E1-18.md` (new); `docs/handoff-E1-14.md`.
+- **Documents touched:** `docs/CONTRACTS.md` §20.3, §20.10; `docs/adr/0189`; `docs/adr/0191`; `docs/DECISION_BOARD.md`; `docs/SPECIFICATION.md §12`; `docs/TECHNICAL_PLAN.md §2`; `docs/BACKLOG.md`; `AGENTS.md`; `docs/handoffs/E3-12.md`; `docs/handoffs/E1-18.md` (new); `docs/handoffs/E1-14.md`.
 - **Verification:** the two new `VehicleStateHoldersTest` cases failed before the fix with `a listing read before the recovery applied its rows MUST NOT reach F-1 as a known empty list` and pass after it; the two new gate tests fail when the decrement is limited to a successful cycle; re-confining `io` fails both `GraphTestDependenciesTest` paths by name; the complete non-instrumented `AGENTS.md` command passes and `contractCheck` reports no `PENDING` assertion.
-- **Follow-ups / risks:** two commits of the third correction round (`9d3ad28`, `3940cbb`) combined TDD phases; the breach is recorded in `docs/handoff-E3-12.md` for the owner's decision. `TrackedDatabaseHandles.close()` does not await its release, so a never-resumed writer would park a `Dispatchers.Default` worker; recorded in `docs/handoff-E1-18.md`.
+- **Follow-ups / risks:** two commits of the third correction round (`9d3ad28`, `3940cbb`) combined TDD phases; the breach is recorded in `docs/handoffs/E3-12.md` for the owner's decision. `TrackedDatabaseHandles.close()` does not await its release, so a never-resumed writer would park a `Dispatchers.Default` worker; recorded in `docs/handoffs/E1-18.md`.
 
 ### 2026-09-24 — `E1-18` second form: test database handles are released without blocking the caller
 
@@ -725,7 +769,7 @@
 - **What changed:** `io` is a real dispatcher in graph fixtures, `graphScope` and the vehicle list's local observation run on the scheduler-confined `default`, the recovery window's closing republish re-reads over a stale resolved-empty listing, and `assertQueuedGraphWork` now asserts that `io` is not the test scheduler. The `D-189` step-timeout raise is reverted: the two stalling steps are back at 10 and 8 minutes.
 - **Why:** `AndroidxDriverConnectionPool.close()` reaches its writer lock through a `runBlocking`, and with `main`, `default` and `io` all mapped to one `StandardTestDispatcher` that blocking close seized the only thread that could resume the transaction holding the lock - an unbounded self-deadlock with no test result, measured at 1 hang in 10 at this head and the cause of the `shared-tests` and `provider-decoupling` step timeouts. `D-189` had raised the limits as a stopgap and the owner then chose the real fix over continuing to re-run.
 - **The non-obvious half:** moving the sync controller's scope onto the real `io` dispatcher - rather than moving `graphScope` to `default` - measured 8 assertion failures in 10 runs, because the engine schedules its `delay()` calls on the graph scope, so the 2 s post-write debounce stopped being virtual and every test awaiting it became a wall-clock race. That measurement is why the scope moved to `default`; production wires `io` and `default` to `Dispatchers.Default`, so the split is invisible outside tests.
-- **Documents touched:** `docs/adr/0191`, `docs/adr/0190`, `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/handoff-E3-12.md`, `.github/workflows/ci.yml`.
+- **Documents touched:** `docs/adr/0191`, `docs/adr/0190`, `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/handoffs/E3-12.md`, `.github/workflows/ci.yml`.
 - **Verification:** 12 consecutive runs of the exact `provider-decoupling` Android-host command with `--rerun-tasks` - **12 passes, 0 hangs, 0 assertion failures**, each in 15 s, against 1 hang in 10 and 59-89 s before. `:shared`, `:feature:vehicle`, `:core:sync`, `:core:auth` and `:feature:fuel` host suites pass, as do the provider-free route and the complete non-instrumented `AGENTS.md` command; `contractCheck` reports 191 mirrored decisions and no `PENDING` assertion with the step limits restored.
 - **Follow-ups / risks:** this supersedes `E1-14`'s confinement decision - confinement is now scoped to `main` and `default`, and `io` is deliberately outside it. `assertQueuedGraphWork` fails by name if a future edit re-confines `io`, which is what keeps the deadlock from returning unnoticed.
 
@@ -736,7 +780,7 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
 - **What changed:** `OwnerRecoveryGate` is now the `OwnerContext` every owner-scoped `DefaultAppGraph` component observes, and it counts a non-sentinel recovery before publishing the owner that causes it, so the interval in which a resolved empty list could escape is closed by one ordering relation instead of two independent collectors; `observeOwnerChanges()` and its `drop(1)` baseline are deleted, replaced by a value comparison that also detects a transition landing between construction and subscription. `VehicleListStateHolder` reads the atomic `StateFlow<Int>` count directly rather than a cached Boolean. The `syncController()` receiver allowlist in `SwiftTriggerSurfaceRule` matches the member-access shape, so an identifier that merely contains `syncController` no longer passes it. The `E3-12` clean-device assertion installs its list observer before the owner transition. `D-189` records the owner's decision to raise the two stalling macOS step timeouts to 15 minutes temporarily, with Option B - split `io` away from the test scheduler - recorded in `E1-18` as the real fix.
 - **Why:** the `D-188` invariant was not atomic at the owner boundary: the owner was published by one collector and the gate raised by a second, on different dispatchers, so a resolved empty list could be published before the count rose and merely reopened afterwards - the exact state `SPECIFICATION.md` F-1 answers with non-dismissible first-vehicle creation. The old regression could not see it because a `StateFlow` does not replay intermediate states and the collector was installed after `signIn()`. Separately, the receiver allowlist accepted any text containing `syncController`, so `syncControllerAlias.requestSync(reason: .ownerChanged)` on a `SyncStateHolder` passed the rule that exists to ban it. The owner measured a high re-run error rate on the `E1-18` step timeouts, so `D-175`'s re-run-and-merge approach stopped being usable; the owner selected the two-part remedy of a temporary timeout raise plus the real fix in `E1-18`.
-- **Documents touched:** `docs/adr/0190`, `docs/adr/0186`, `docs/adr/0189`, `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/handoff-E3-12.md`, `.github/workflows/ci.yml`.
+- **Documents touched:** `docs/adr/0190`, `docs/adr/0186`, `docs/adr/0189`, `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/BACKLOG.md`, `docs/handoffs/E3-12.md`, `.github/workflows/ci.yml`.
 - **Verification:** `CrossDeviceRecoveryTest` reports 6 tests and 0 failures; `OwnerRecoveryGateTest` reports 6, covering the baseline, the construction-to-subscription window, the sentinel, overlapping recoveries and the count reaching zero; `VehicleStateHoldersTest` reports 16. The two new receiver fixtures were observed failing against the substring allowlist and passing against the shape check, and removing the count increment fails four gate tests, so neither assertion is vacuous. `contractCheck` reports 190 mirrored decisions and no `PENDING` assertion at 15-minute step limits.
 - **Follow-ups / risks:** the timeout raise does **not** make the two checks green - the measured hung run was silent for 7 m 10 s after its last `STARTED` and never self-heals, so a longer limit delays a red failure rather than preventing it. `E1-18` MUST implement Option B and MUST remove the measure when it lands. The owner-transition ordering itself is guaranteed by construction in `OwnerRecoveryGate.launchIn` and is **not** falsifiable by a test in this repository: `MutableStateFlow` conflates and a `StateFlow` observer is not resumed inline, so either side of the owner assignment looks identical downstream. That boundary is stated in the test rather than implied.
 
@@ -747,7 +791,7 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-12-cross-device-recovery-proof`)
 - **What changed:** the permanent-account cross-device recovery proof is implemented, and the two product defects that made it unreachable are fixed. `SyncTrigger.OwnerChanged` becomes the sixth value of the closed `§9.8` inventory and `DefaultAppGraph` requests one cycle whenever the resolved owner becomes a non-sentinel identity; `OwnerRecoveryGate` raises on that transition and lowers when the cycle completes, so the vehicle list keeps `isLoading` true across the recovery window and `SPECIFICATION.md` F-1 no longer opens mandatory first-run creation over data that is still in Firestore. `InMemoryRemoteSyncSource` joins `:core:testing` as a replica whose pull semantics match Firestore - pushes stored under the owner path with the server-owned `updatedAt`, ordered by the total order `(updatedAt, documentId)`, owners isolated by path - and `CrossDeviceRecoveryTest` builds two graphs over two independent in-memory databases sharing it.
 - **Why:** reconnaissance proved the promise of `SPECIFICATION.md §9.1` was unreachable on a clean device for two independent reasons. `executeCycle` refuses `LOCAL_OWNER` and nothing in `:core:sync` observed `OwnerContext`, so a permanent sign-in pulled nothing until an unrelated lifecycle trigger happened to fire. Separately, the owner transition cleared the list and the fresh local observation succeeded with zero rows, which is exactly the state the first-run gate reads as a confirmed empty list; on iOS that presentation is non-dismissible and on Android it removes the back affordance, so the owner was placed in a form they could not leave. The owner chose the dedicated trigger over reusing `AppForeground`, because the `§9.8` table's whole value is that each row names one cause, and confirmed both defects belong to this story because criterion 1 is unreachable while either stands.
-- **Documents touched:** `docs/CONTRACTS.md` §9.8, §20.3, §20.10, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/adr/0189`, `docs/BACKLOG.md`, `docs/handoff-E3-12.md`, `shared/build/generated/objc-header/Shared.h.golden`.
+- **Documents touched:** `docs/CONTRACTS.md` §9.8, §20.3, §20.10, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/DECISION_BOARD.md`, `docs/adr/README.md`, `docs/adr/0189`, `docs/BACKLOG.md`, `docs/handoffs/E3-12.md`, `shared/build/generated/objc-header/Shared.h.golden`.
 - **Verification:** `CrossDeviceRecoveryTest` reports 6 tests and 0 failures, covering both recovery directions, the anonymous-identity prohibition, the pull-only read path and both defect regressions. The clean-device assertion was observed failing before the list gate existed, so it is not vacuous. The complete `AGENTS.md` command is green with `contractCheck` reporting 189 mirrored decisions and no `PENDING` assertion; the Objective-C golden header is byte-identical after regeneration with the one additive `ownerchanged` member; the API 36 instrumented suite reports 17 tests and 0 failures.
 - **Follow-ups / risks:** the real permanent-provider acceptance on two hosts remains owner-run, because no automated test in this repository can complete an interactive Google or Apple sign-in and there is no Auth emulator, service account or token-minting helper. The CI emulator is an AOSP `target: default` image with no Play services, so a CI-resident provider proof would need a different image and would touch the ten protected check names of `§18`. The `shared-tests` stall recorded in earlier entries is diagnosed here to a JVM deadlock in `SqlDriverDatabaseHandle.close()` on the seized test-scheduler thread, and is registered as `E1-18`; until that story lands, a red `shared-tests` or `provider-decoupling` is not by itself evidence of a regression.
 
@@ -758,7 +802,7 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
 - **What changed:** the `§9.8` post-write trigger now fires for every synchronized write. Two `internal` decorators, `SyncRequestingVehicleRepository` and `SyncRequestingFuelEntryRepository`, request `SyncTrigger.PostWriteDebounce` when a write commits, and `VehicleSliceRuntime` no longer requests it itself, so the delete path its list holder reaches directly is covered and no write fires the trigger twice. The `D-185` trigger ban became a receiver allowlist instead of a `StateHolder` denylist, with the four mirroring documents and ADR-0186 corrected in the same change. The single `BGTaskScheduler` identifier is now bound to a contract fixture that compares the Kotlin constant with `iosApp/Info.plist` and to a row in `docs/identifiers.md`. `AGENTS.md` records `E3-08` as merged and `E3-04` as implemented on this branch with pull request #72 open, `docs/BACKLOG.md` marks the story's review gate, and `PlatformHostContractTest` reads the graph file into one variable.
 - **Why:** a Vehicle delete and all three Fuel Entry writes committed an outbox row with no trigger behind it, so the row waited for a foreground return past `FOREGROUND_RESUME_THRESHOLD_MS`, a connectivity recovery, a pull-to-refresh, or the six-hour `Periodic` cadence - the worst case being six hours before the data was backed up. The trigger belongs with the outbox row, and wrapping the whole repository is what makes the rule exhaustive. A one-line alias (`let holder = model.syncStateHolder`) evaded the D-185 denylist, and the `BGTaskScheduler` identifier was written twice with the compiler connecting neither copy, so a divergence would have failed only at runtime with an `NSLog` line and a silently dead cadence.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0186`, `docs/handoff-E3-04.md`.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/identifiers.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/0186`, `docs/handoffs/E3-04.md`.
 - **Verification:** the post-write regression is `PostWriteSyncTriggerTest` (4 tests) and `:shared:testAndroidHostTest` reports 196 tests and 0 failures. The D-185 fixtures report 9 tests and 0 failures, with the aliased-receiver fixture observed failing against the denylist. The identifier fixture was observed failing with the `Info.plist` literal changed and passing after the restore. The complete `AGENTS.md` command is green with 31 `contractCheck` assertions all `PASS` and none `PENDING`, the Objective-C golden header is byte-identical, and the iOS simulator action and the API 36 instrumented suite both pass.
 - **Follow-ups / risks:** the `shared-tests` stall recorded in earlier entries still needs an owner, since `E1-14` and `E1-17` are merged. Two corrections to the review brief are recorded in the handoff: `VehicleSliceRuntime.refresh()` still needs `SyncTrigger.PullToRefresh`, so the brief's instruction to delete that import was wrong, and the brief's own alias fixture did not reproduce the denylist defect.
 
@@ -768,9 +812,9 @@
 - **Type:** correction
 - **Story / Decision:** `E3-04` / `D-186`
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
-- **What changed:** `drainCycles` now claims the parked `§9.8` batch when a cycle ends, using the same `canClaimForParkedRequests()` predicate the window timer uses, and performs the publish-then-re-read shutdown handshake around the claim. `AndroidAppGraph.syncController()` and its now-unused `SyncController` import were removed. Three statements in `docs/handoff-E3-04.md` were corrected: the Android worker both requested the cycle and named `androidAppGraph.requestPeriodicSync()`, so it did not describe the `D-187` await; the iOS clock was described as `ProcessInfo.systemUptime`; and the acceptance criterion quoted the superseded fire-and-forget wording.
+- **What changed:** `drainCycles` now claims the parked `§9.8` batch when a cycle ends, using the same `canClaimForParkedRequests()` predicate the window timer uses, and performs the publish-then-re-read shutdown handshake around the claim. `AndroidAppGraph.syncController()` and its now-unused `SyncController` import were removed. Three statements in `docs/handoffs/E3-04.md` were corrected: the Android worker both requested the cycle and named `androidAppGraph.requestPeriodicSync()`, so it did not describe the `D-187` await; the iOS clock was described as `ProcessInfo.systemUptime`; and the acceptance criterion quoted the superseded fire-and-forget wording.
 - **Why:** `serveParkedWhenWindowsOpen()` is reached only from a window timer, and its predicate requires `!cycleRunning`. A window that opened while a `PullToRefresh` cycle was running therefore served nothing and spent itself; if that cycle then returned before `armFloorWindowLocked()` - the connectivity gate, the `LOCAL_OWNER` gate, or a throwing `adoption()` that schedules no retry - no timer remained and the batch waited for an unrelated later trigger, which may be the six-hour `Periodic` cadence. That is precisely the dropped trigger ADR-0187 forbids, and the rejected Option B behaviour of the same ADR. Evidence that names functions the branch does not contain is not acceptance evidence, which `AGENTS.md` requires.
-- **Documents touched:** `docs/handoff-E3-04.md`, `docs/PROJECT_LOG.md`.
+- **Documents touched:** `docs/handoffs/E3-04.md`, `docs/PROJECT_LOG.md`.
 - **Verification:** the regression is `SyncAdmissionPolicyTest.aWindowThatOpensDuringAManualCycleStillServesItsParkedTrigger`, observed failing with `a parked trigger MUST be served once its window is open and no cycle is running` against the pre-correction controller and passing after it. `:core:sync:testAndroidHostTest` reports 105 tests and 0 failures; the complete `AGENTS.md` command is green with every `contractCheck` assertion `PASS` and none `PENDING`; the Objective-C golden header is byte-identical; `AndroidAppGraph.syncController` has no reference left in `androidApp/`.
 - **Follow-ups / risks:** the `shared-tests` stall recorded in earlier entries still needs an owner, since `E1-14` and `E1-17` are merged. Claiming the parked batch at the end of a cycle runs one more cycle than before in that specific interleaving, which is the intended `D-186` behaviour rather than a new cost: the batch was always owed a cycle, and the alternative was dropping it.
 
@@ -782,8 +826,8 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
 - **What changed:** a correction round on the still-open pull request #72. `shutdown()` now consumes one immutable `ShutdownSnapshot` published under `cycleMutex` instead of reading four volatile fields separately, and every publication is followed by a re-read of `shuttingDown`, so an admitted request can no longer be published after the shutdown snapshot and stay suspended. `PullToRefresh` claims its own cycle and no longer drains the parked automatic batch, which had been serving those requests before their `D-186` boundary. The Android `CoroutineWorker` and the iOS `BGTask` handler now await `sync(SyncTrigger.Periodic)` before reporting platform completion, with an iOS expiration handler and an idempotent completion gate. iOS background time is measured with `ContinuousClock` instead of `ProcessInfo.systemUptime`, which stopped during device sleep and could report a real return as a cold start, and the cold start is consumed exactly once. `AppGraph.awaitClosed()` makes the database release awaitable so the instrumented reset no longer deletes the file under an open handle.
 - **Why:** the platform leases were ending before the cycles they triggered, so WorkManager could release the process and iOS could suspend it mid-cycle, leaving outbox rows marked `SYNCING`. The four independent shutdown reads were the remaining gap in the `D-172` protocol. This corrects the previous entry: it omitted `D-186`, and it recorded the concurrency changes as needing no tests, which `docs/SPECIFICATION.md §11` does not permit. `D-186` is now registered, and the concurrency guarantees carry three deterministic tests through the `SyncConcurrencyHooks` seam.
-- **Documents touched:** `docs/CONTRACTS.md §9.1`, `§9.8`, `§20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0188`, `docs/BACKLOG.md`, `docs/handoff-E3-04.md`.
-- **Verification:** the full step-8 command set, recorded in `docs/handoff-E3-04.md`. The three admission and shutdown tests were observed failing against the pre-correction controller; the Android and iOS source fixtures were each observed failing against a deliberately reverted production file.
+- **Documents touched:** `docs/CONTRACTS.md §9.1`, `§9.8`, `§20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0188`, `docs/BACKLOG.md`, `docs/handoffs/E3-04.md`.
+- **Verification:** the full step-8 command set, recorded in `docs/handoffs/E3-04.md`. The three admission and shutdown tests were observed failing against the pre-correction controller; the Android and iOS source fixtures were each observed failing against a deliberately reverted production file.
 - **Follow-ups / risks:** the `shared-tests` stall of the previous entries still needs an owner, since `E1-14` and `E1-17` are merged. Platform lease completion now depends on the cycle finishing, so the cycle is bounded by the platform's own deadline rather than by the worker returning early; iOS cancels an overrunning cycle on expiration and the work survives in the outbox.
 
 ### 2026-09-21 — `E3-04` repository sync wiring
@@ -793,7 +837,7 @@
 - **Author:** agent, on behalf of David Ruiz (branch `story/E3-04-repository-sync-wiring`)
 - **What changed:** the two `§9.8` admission windows are now enforced in `DefaultSyncController` instead of being declarative constants; the graph derives `ConnectivityRecovered` from the injected connectivity observer and hands `Periodic` to the real `SyncTriggerAdapter`, which arranges `enqueueUniquePeriodicWork(SYNC_WORK, ExistingPeriodicWorkPolicy.KEEP, …)` on Android and a `BGTaskScheduler` request on iOS; `SyncStateHolder.onForegroundReturn(backgroundMillis)` applies the foreground threshold with a nullable duration carrying the cold start; the Android app graph became process-scoped so a WorkManager worker and the UI share one `SyncController`; and `§20.10`'s trigger ban became an executable source rule over both iOS platform file kinds, replacing the Konsist fixture the contract had promised but which cannot see Swift.
 - **Why:** the adapter was dead wiring — the provider graph supplied an empty lambda, so the `§9.8` six-hour cadence was unreachable on both hosts and two of the five trigger constants had no consumer at all. The process-scoped graph was required by `§9.1` (a worker has no Activity) and is also what `D-89` demands, since an `AppGraph` owns the single `DatabaseHandle`.
-- **Documents touched:** `docs/CONTRACTS.md §9.1` and `§20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0182`–`0187`, `docs/versions-matrix.md`, `docs/BACKLOG.md`, `gradle/libs.versions.toml`, `docs/handoff-E3-04.md`, `shared/build/generated/objc-header/Shared.h.golden`.
+- **Documents touched:** `docs/CONTRACTS.md §9.1` and `§20.10`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0182`–`0187`, `docs/versions-matrix.md`, `docs/BACKLOG.md`, `gradle/libs.versions.toml`, `docs/handoffs/E3-04.md`, `shared/build/generated/objc-header/Shared.h.golden`.
 - **Verification:** the complete `AGENTS.md` command green (642 tasks); `contractCheck` all `PASS` with no `PENDING` (186 decisions, 186 ADRs at that point, 187 after the `D-186` correction round); `:shared:testAndroidHostTest` 191 and `iosSimulatorArm64Test` 198 tests green; the Objective-C golden header byte-identical to the linked framework's header and still byte-identical after the correction round; nine of the ten required checks green on the first attempt, with `shared-tests` green only on re-run after the stall described below; the iOS `xcodebuild … test` action green with 27 tests and 0 failures; the API 36 instrumented suite green with 17 tests; `generate-project.sh` reproduces the committed `project.pbxproj` exactly.
 - **Follow-ups / risks:** `BGAppRefresh` is best-effort by platform design, so the six-hour request is not a six-hour guarantee. Human review applies: `core/sync/**` is a CODEOWNERS-gated path and the synchronization admission behaviour is a gated topic, so pull request #72 is held for the owner's review rather than merged on agent judgement. CI green on every check except `shared-tests`, which failed by the ten-minute host-step stall on three of four attempts (hundreds of `STARTED` lines, zero `PASSED`, zero `FAILED`, no test result — the `D-175`/`D-177` signature already recorded for runs `35333547781` and `35336079709`) and passed on re-run. It is not attributable to `E3-04`: the healthy step takes 246 s of its 600 s limit (41 %), the base commit `c38d1fc` failed its own `shared-tests` on a different step (Native, 613 s), one failing attempt was on a commit that changed only Markdown, `:feature:vehicle` imports nothing this story touched, and the stalled class exercises holders that never reach the controller whose admission path changed. **The stall now outlives its assigned owners `E1-14` and `E1-17`, both merged, so it needs a new owner — an owner decision, recorded rather than minted here.**
 
@@ -827,7 +871,7 @@
   fourth are documentation that no longer described reality: a contract block out of order with the
   code it defines, and a gate claim in the index without the gate line in the section.
 - **Documents touched:** `docs/CONTRACTS.md §20.10`, `docs/BACKLOG.md`, `docs/adr/0179-…`,
-  `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code: `SwiftSurfaceContract.kt`,
+  `docs/adr/0181-…`, `docs/handoffs/E3-08.md`, this log. Code: `SwiftSurfaceContract.kt`,
   `ArchitectureChecker.kt` and their two test files. No production source, no decision, no
   dependency, no assertion number and no golden header changed.
 - **Verification:** `:build-logic:convention:test` reports 162 tests and 0 failures; the two
@@ -873,7 +917,7 @@
   `HOLDER_SOURCES` declares two, so a holder could disappear unnoticed. A check that reports `PASS`
   while covering less than it claims is not coverage, and a documented mitigation that does not hold
   is worse than an undocumented limit.
-- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code:
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoffs/E3-08.md`, this log. Code:
   `SwiftSurfaceContract.kt`, `source/KotlinSourceText.kt` and `ArchitectureCheckerTest.kt`. No
   production source, no contract text, no decision, no dependency and no baseline changed.
 - **Verification:** `:build-logic:convention:test` reports 160 tests and 0 failures (153 before this
@@ -914,7 +958,7 @@
   more honest fix than widening each regular expression: it keeps the checks textual, adds no
   dependency, and makes the delimiter counting correct for the bodies, parameter lists and blocks
   that already relied on it.
-- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log, and
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoffs/E3-08.md`, this log, and
   the pull-request description. Code: `ArchitectureChecker.kt`, `SwiftSurfaceContract.kt`, the new
   `source/KotlinSourceText.kt` and the new test-only `Pr71ReviewRegressionTest.kt`. No production
   source, no contract text, no decision, no dependency and no baseline changed.
@@ -950,7 +994,7 @@
   written independently in review round 5, which is what made the concatenation look harmless. A
   property and a function are ordered against each other by the reader, so the check has to order
   them the same way.
-- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log. Code:
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoffs/E3-08.md`, this log. Code:
   `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. No production source, no
   contract text, no decision and no dependency changed.
 - **Verification:** `:build-logic:convention:test` reports 143 tests and 0 failures (141 + 2);
@@ -990,7 +1034,7 @@
   cover the three axes the comparison had left open — declared type, member kind as property, and
   visibility — rather than only the shapes that happened to be exercised when the parser was first
   written.
-- **Documents touched:** `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log, and the pull-request
+- **Documents touched:** `docs/adr/0181-…`, `docs/handoffs/E3-08.md`, this log, and the pull-request
   description. Code: `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. Assertion ids,
   names, member order and the missing-side diagnostics are unchanged.
 - **Verification:** `:build-logic:convention:test` reports 141 tests and 0 failures;
@@ -1035,7 +1079,7 @@
   `docs/BACKLOG.md` under both `E3-08` and `E3-05`, where the owner will see it, rather than only in
   the handoff.
 - **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/BACKLOG.md`,
-  `docs/handoff-E3-08.md`, this log, and the pull-request description. Code:
+  `docs/handoffs/E3-08.md`, this log, and the pull-request description. Code:
   `ArchitectureChecker.kt`, `SwiftSurfaceContract.kt`, `ArchitectureCheckerTest.kt` and
   `SwiftSurfaceContractTest.kt` only. `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md` are unchanged:
@@ -1081,7 +1125,7 @@
 - **Why:** a check that cannot fail for the defect it names is not coverage. Three of the four
   defects were false negatives or false positives in the check itself; the recorded evidence table
   had not been re-run after the refactor that introduced them.
-- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoff-E3-08.md`, this log.
+- **Documents touched:** `docs/adr/0179-…`, `docs/adr/0181-…`, `docs/handoffs/E3-08.md`, this log.
   `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md` and the decision mirrors are unchanged: no decision
   changed, only its implementation.
 - **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
@@ -1158,7 +1202,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   designed. A guard that covers less than it claims is worse than a missing one, because it also
   removes the reviewer's reason to look.
 - **Documents touched:** `docs/adr/0181-…`, `docs/CONTRACTS.md §20.10`, `docs/DECISION_BOARD.md`,
-  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `AGENTS.md`, `docs/handoff-E3-08.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `AGENTS.md`, `docs/handoffs/E3-08.md`,
   this log. Code: `SwiftSurfaceContract.kt` and `SwiftSurfaceContractTest.kt` only. `D-180` is
   unchanged as a decision; only its implementation and its mirror rows were corrected.
 - **Verification:** the canonical CI command of `AGENTS.md` passes (`BUILD SUCCESSFUL`, 642
@@ -1208,7 +1252,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/CONTRACTS.md` (`§11.6`, `§18`, `§20.10`), `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
   `docs/adr/0179-…`, `docs/adr/0180-…`, `docs/adr/0181-…`, `docs/BACKLOG.md`, `AGENTS.md`,
-  `docs/handoff-E3-08.md`, this log.
+  `docs/handoffs/E3-08.md`, this log.
 - **Verification:** the canonical CI command of `AGENTS.md` passes locally (`BUILD SUCCESSFUL`, 642
   actionable tasks), including `contractCheck` with assertions 14 and 34 green and no `PENDING`
   line, `architectureCheck` at `16 rules … 23 modules`, and `:build-logic:convention:test` at 34
@@ -1234,7 +1278,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `story/E3-17-appgraph-close-safety` then merged the new `main` into itself, so pull request #70 is
   now based on a `main` that already contains `E3-03`. The status documents were realigned: `AGENTS.md`
   moved `E3-03` out of Remaining Phase 3 into Completed, `docs/BACKLOG.md` states the merge with its
-  pull request, and `docs/handoff-E3-03.md` records the story as complete.
+  pull request, and `docs/handoffs/E3-03.md` records the story as complete.
 - **Why:** `AGENTS.md` §`Repository State` requires the story that changes the state to update it.
   Before this change, six places still described `E3-03` as implemented and awaiting review, and the
   "Outstanding Owner Decisions" section still said its three decisions gated both pull requests.
@@ -1249,7 +1293,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `git merge --no-ff` of #70 into `main` produced no conflict and a tree **byte-identical** to #70's
   tip. The branch tip is the merge commit `9d31d7f`, which records the `main` integration explicitly
   rather than discarding it.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-03.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E3-03.md`, this log.
 - **Verification:** `contractCheck` reports the same 178 decisions and 178 ADRs; `ktlintCheck` passes.
   The merge of `main` into the `E3-17` branch changed no `.kt`, `.swift`, `.sq`, `.kts` or `.yml`
   file, so no product code was re-verified by this change.
@@ -1275,7 +1319,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   suite pins, and over option A because a blocking bridge risks an ANR on the main thread.
 - **Documents touched:** `docs/CONTRACTS.md §20.7`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md
   §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0173-…md`, `docs/SECURITY.md`,
-  `docs/BACKLOG.md`, `docs/handoff-E3-17.md` and this log.
+  `docs/BACKLOG.md`, `docs/handoffs/E3-17.md` and this log.
 - **Verification:** RED first — three cases failed with `events=[handle-closed]` while a cycle was
   live, and the `sync()` caller hung. GREEN: `AppGraphCloseSafetyTest` 4/4,
   `DefaultSyncControllerShutdownTest` 3/3, both shared suites and the `:core:sync` suites pass on both
@@ -1316,7 +1360,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   wrong and was corrected to `Proposed`. The four mirrors were verified aligned for all three
   decisions; `contractCheck` reports them unchanged in count and status.
 - **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/PROJECT_LOG.md` on both branches, and
-  `docs/handoff-E3-03.md` and `docs/handoff-E3-17.md` on their own branches.
+  `docs/handoffs/E3-03.md` and `docs/handoffs/E3-17.md` on their own branches.
 - **Verification:** `contractCheck` passes with the same decision and ADR counts and the same three
   unresolved decisions; `ktlintCheck` passes. No code, test, dependency or decision status changed.
 - **Two further stale status lines corrected while sweeping the file:** `E2-07` read "awaiting the
@@ -1373,7 +1417,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   loop in production `commonMain`. Bounding the production loop instead was rejected here: the retry
   is `§9` behaviour on the gated `core/sync/**` path, and no current caller reaches the hazard.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
-  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0178-…md`, `docs/handoff-E3-03.md` and
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0178-…md`, `docs/handoffs/E3-03.md` and
   this log. Code: `shared/src/commonTest/**`.
 - **Verification:** the new
   `GraphTestDependenciesTest.boundedAdvanceReturnsWhileWorkKeepsRearmingItselfInVirtualTime` runs a
@@ -1402,7 +1446,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   existed. This is the test-only defect that failed `shared-tests` on `f9e04c8`; it is not related to
   the `D-175` stall work or the `D-176` timeout change, and it is a different failure shape - an
   assertion, not a step timeout.
-- **Documents touched:** `docs/handoff-E3-03.md` and this log. Code:
+- **Documents touched:** `docs/handoffs/E3-03.md` and this log. Code:
   `shared/src/commonTest/kotlin/com/ruizurraca/carapp/LocalOwnerAdoptionTriggerTest.kt`.
 - **Verification:** the reworked test passes 8/8 repeated `--rerun-tasks` runs; `:shared`
   `testAndroidHostTest` and `iosSimulatorArm64Test` pass; `ktlintCheck`, `detekt`,
@@ -1430,7 +1474,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   silently, which is how this defect arose.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
   `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0177-…md`, `docs/CONTRACTS.md §18`,
-  `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log.
+  `.github/workflows/ci.yml`, `docs/handoffs/E3-03.md` and this log.
 - **Verification:** `contractCheck` passes assertions 27-30 with the 40-minute ceiling and reports
   177 decisions and 177 ADRs; `:build-logic:convention:test` passes, including the firing fixtures
   (omitted job timeout fails 27, 41 minutes fails 28); `ktlintCheck` passes. CI `35137642996` on
@@ -1463,7 +1507,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `runTest`'s own `advanceUntilIdleOr` drain, which is why no result was ever produced. The
   re-run of the previously green commit `8b76f6aa` also stalled, proving the defect predates the
   CI-tooling commits and is independent of them.
-- **Documents touched:** `docs/handoff-E3-03.md` and this log. Code: `shared/src/commonTest/**`
+- **Documents touched:** `docs/handoffs/E3-03.md` and this log. Code: `shared/src/commonTest/**`
   (`FlowExpectation.kt`, its test, and the three test classes that held the polls).
 - **Verification:** RED `cd41ed7` (120 s silent hang); GREEN `9c7c51f` (fails in ~8 s naming the
   expectation); REFACTOR `583f077` (real-time poll bound); `a900571` adds per-test log lines.
@@ -1512,7 +1556,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   coverage or the D-35 job separation.
 - **Documents touched:** `.github/workflows/ci.yml`, the D-109 mirror assertion in
   `build-logic/convention/src/test/kotlin/com/ruizurraca/carapp/buildlogic/IosCompositionContractTest.kt`,
-  `docs/handoff-E3-03.md` and this log. `NativeTestExemptionContract` and its omitted/stale exclusion
+  `docs/handoffs/E3-03.md` and this log. `NativeTestExemptionContract` and its omitted/stale exclusion
   tests remain unchanged.
 - **Verification:** YAML syntax validation; `./gradlew contractCheck :build-logic:convention:test
   --rerun-tasks`; exact Android-host and Kotlin/Native commands for both jobs all pass locally.
@@ -1530,7 +1574,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** Default parallelism was materially faster and stable for Android/JVM and shared Native
   tests; provider-free Native consistently benefited from two workers. The no-parallel policy added
   latency without preventing the prior CI test assertion failure.
-- **Documents touched:** `.github/workflows/ci.yml`, `docs/handoff-E3-03.md` and this log. No tests,
+- **Documents touched:** `.github/workflows/ci.yml`, `docs/handoffs/E3-03.md` and this log. No tests,
   exclusions, protected check names or production code changed.
 - **Verification:** 27 local repetitions all passed: 219 actionable tasks for Android/JVM, 136 for
   shared Native, 74 for provider-free Android and 75 for provider-free Native. The latest pre-policy
@@ -1550,7 +1594,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   completed successfully below their 20-minute limits.
 - **Why:** The final workflow run validates that platform-specific diagnostics remain stable on the
   hosted macOS runner after removing `--no-parallel` and constraining only provider-free Native tests.
-- **Documents touched:** `docs/handoff-E3-03.md` and this log. No production code or contractual
+- **Documents touched:** `docs/handoffs/E3-03.md` and this log. No production code or contractual
   test coverage changed.
 - **Verification:** `shared-tests` took 4m05s: Android application and KMP host tests 1m32s,
   Kotlin/Native simulator tests 1m58s and coverage thresholds 6s. `provider-decoupling` took 4m59s:
@@ -1574,7 +1618,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   trigger could reserve a follow-up cycle, while the old wait returned as soon as `pushCalls` became
   non-empty. `AppGraphTestHarness.close()` could consequently cancel the graph and close SQLite while
   the active or pending cycle still owned database work.
-- **Documents touched:** `docs/handoff-E3-03.md` and this log. Test code only:
+- **Documents touched:** `docs/handoffs/E3-03.md` and this log. Test code only:
   `shared/src/commonTest`. `AppGraph`, `DefaultSyncController`, `core/database/**` and every other
   production path are unchanged; E3-17 / D-172 remains the production lifecycle owner.
 - **Verification:** RED `81ed4e4` deterministically records the automatic push, blocks the following
@@ -1594,7 +1638,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Codex, on behalf of David Ruiz
 - **What changed:** Closed one defect and one coverage gap on [pull request #69](https://github.com/davidru85/carApp/pull/69): a connectivity-class pull failure no longer publishes `SyncStatus.Failed`, and `FakeRemoteSyncSource.pullChanges` can now return `Outcome.Err`, which was previously impossible to script. `docs/CONTRACTS.md §9.9` now states that its aggregation rule covers cycle-level failures, not only per-row classification.
 - **Why:** An authenticated, online owner with an empty outbox whose network dropped mid-cycle was shown `Failed(retryable = 1, poisoned = 0)` — an error synthesized from zero failed rows — which `§9.9` names explicitly. The push path had already been fixed by the R5 round through `SyncDatabaseAccess.failPush`; the pull path disagreed for the same error class and had no test coverage at all.
-- **Documents touched:** `docs/CONTRACTS.md §9.9`, `docs/handoff-E3-03.md`, this log, the pull-request description. Production/tests: `:core:sync`. No new decision; `docs/BACKLOG.md` needs no deferral because the item is fixed here.
+- **Documents touched:** `docs/CONTRACTS.md §9.9`, `docs/handoffs/E3-03.md`, this log, the pull-request description. Production/tests: `:core:sync`. No new decision; `docs/BACKLOG.md` needs no deferral because the item is fixed here.
 - **Verification:** RED `6bded94` reproduced the wrong aggregate in three cases (`expected:<Idle> but was:<Failed(retryableCount=1, poisonedCount=0)>` and `expected:<Pending(count=1)> but was:<Failed(retryableCount=1, poisonedCount=0)>`) while both regression guards passed; GREEN `1667857` passes `:core:sync:testAndroidHostTest` and `:core:sync:iosSimulatorArm64Test`, and `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify` passes with all 19 contract assertions `[PASS]` and zero `PENDING`. `sync(reason)` still returns `Outcome.Err` for a failed pull, so D-171 / ADR-0172 pull-to-refresh propagation is unchanged.
 - **Environment note:** mid-session `Xcode.app` was replaced and its license is no longer agreed, so `xcrun` exits 69 and every `iosSimulatorArm64Test` / `linkDebugTestIosSimulatorArm64` task fails on the toolchain. The same iOS suite passed before the replacement; `sudo xcodebuild -license accept` restores the route. No code failure is involved.
 - **Follow-ups / risks:** `SyncTrigger.ConnectivityRecovered` is still unwired (E3-04 scope), so a connectivity failure is not retried automatically; the false `Failed` it used to leave sticky can no longer be published. `E3-17` / `D-172` still owns graph-close safety, and `E3-18` through `E3-21` remain deferred. PR #69 remains unmerged and gated.
@@ -1606,7 +1650,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Codex, on behalf of David Ruiz
 - **What changed:** Closed two findings on [pull request #69](https://github.com/davidru85/carApp/pull/69): made account-conversion remote decoding total at both the coordinator and graph-launched recovery boundaries, and allocated one correlation ID per complete sync cycle rather than per push.
 - **Why:** Missing, mistyped or non-object remote JSON escaped the conversion's closed `Outcome` API and could crash the graph scope; pull-side and unexpected reports used `cycleId = unavailable`, so one cycle's failures could not be correlated.
-- **Documents touched:** `docs/handoff-E3-03.md`, this log and the pull-request description. Production/tests: `:shared`, `:core:sync`.
+- **Documents touched:** `docs/handoffs/E3-03.md`, this log and the pull-request description. Production/tests: `:shared`, `:core:sync`.
 - **Verification:** RED `8c97239` reproduced the unchecked conversion exceptions and split cycle IDs; GREEN `80241a3` passes every focused case and the complete `:shared` / `:core:sync` Android-host suites. The final complete non-instrumented repository run passes 642 tasks on Android host and iOS simulator.
 - **Follow-ups / risks:** Account conversion fails closed with `RemoteError.InvalidArgument` on the first malformed remote document. `E3-17` / `D-172` still owns graph-close safety and completion or failure of every in-flight `sync()` awaiter. PR #69 remains unmerged and gated.
 
@@ -1619,7 +1663,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** A local edit after batch selection could be overwritten to `SYNCING`; the accepted cursor decisions contradicted each other in their mirrors; three aggregate reads could observe different snapshots; and repeated overlap delivery changed a field documented as creation time.
 - **Documents touched:** `docs/CONTRACTS.md` (`§9.3`, `§9.5`), `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md` (`§2`, `§8`), `docs/BACKLOG.md` (`E3-21`),
-  ADR-0170, ADR-0175, `docs/handoff-E3-03.md`, this log. Production/tests: `:core:common`,
+  ADR-0170, ADR-0175, `docs/handoffs/E3-03.md`, this log. Production/tests: `:core:common`,
   `:core:database`, `:core:sync`.
 - **Verification:** RED `9177c70` reproduced four intended failures; GREEN `65a6297` passes the
   focused and full module suites; quality, architecture, contract and coverage gates pass with zero
@@ -1645,7 +1689,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   smaller coverage, fake-fidelity, aggregate-classification and wording gaps.
 - **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§9.5`, `§9.9`),
   `docs/TECHNICAL_PLAN.md` (`§6`, `§9`), `docs/BACKLOG.md` (`E3-03`),
-  `docs/handoff-E3-03.md`, this log. Production code: `:core:common`, `:core:database`; test code:
+  `docs/handoffs/E3-03.md`, this log. Production code: `:core:common`, `:core:database`; test code:
   `:core:database`, `:core:sync`, `:shared`.
 - **Verification:** Intended RED failures were observed before each relevant production correction;
   focused tests pass; quality, architecture, contract and coverage gates pass with zero `PENDING`;
@@ -1681,7 +1725,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   consume the non-connectivity poison budget" — is wrong under `§6`. This entry supersedes it; the
   original entry is preserved as history. The handoff carries the same dated correction.
 - **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§9.7`, `§9.9`), `docs/BACKLOG.md` (`E3-21`),
-  `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`, `:feature:fuel`.
+  `docs/handoffs/E3-03.md`, this log. Production code: `:core:sync`, `:feature:fuel`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (175 decisions,
   zero `PENDING`) and `koverVerify` pass; the new and inverted tests were shown failing against the
   pre-fix code; `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite
@@ -1717,7 +1761,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   duplicated canonical-name function with no parity guard.
 - **Documents touched:** `docs/CONTRACTS.md` (`§9.3`, `§9.4`), `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0175,
-  `docs/handoff-E3-03.md`, this log. Production code: `:core:common`, `:core:model`,
+  `docs/handoffs/E3-03.md`, this log. Production code: `:core:common`, `:core:model`,
   `:core:database`, `:core:sync`, `:integration:firebase-firestore`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (175 decisions,
   zero `PENDING`) and `koverVerify` pass; every new test was shown failing against the pre-fix code
@@ -1755,7 +1799,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   further work, that a manual retry could replace `Syncing` mid-cycle, that two guards and documents
   had drifted, and that one dependency and one statement carried stale state.
 - **Documents touched:** `docs/CONTRACTS.md` (`§7`, `§8`, `§9.3`), `docs/BACKLOG.md` (`E3-03`),
-  `docs/TECHNICAL_PLAN.md` (test 6, test 18), `docs/handoff-E3-03.md`, this log. Production code:
+  `docs/TECHNICAL_PLAN.md` (test 6, test 18), `docs/handoffs/E3-03.md`, this log. Production code:
   `:core:sync`, `:core:database`. Tests and build logic: `:core:sync`, `:core:database`,
   `:build-logic:convention`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (174 decisions,
@@ -1798,7 +1842,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/CONTRACTS.md` (`§9.7`, `§9.9`), `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0173,
   ADR-0174, `docs/BACKLOG.md` (`E3-04`, `E3-17` context, `E3-18`, `E3-19`, `E3-20`),
-  `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`. Tests: `:core:sync`.
+  `docs/handoffs/E3-03.md`, this log. Production code: `:core:sync`. Tests: `:core:sync`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (174 decisions,
   zero `PENDING`) and `koverVerify` pass; the focused module tests pass;
   `:shared:testAndroidHostTest --rerun-tasks` passed 10/10; the full iOS simulator suite passed 10/10;
@@ -1825,7 +1869,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   failures due immediately while preserving `attemptCount`, whether the trigger starts its own cycle
   or is coalesced; the fix implements the existing `§9.7` / `§9.8` guarantee, so no contract
   clarification or new decision was required.
-- **Documents touched:** `docs/handoff-E3-03.md`, this log. Production code: `:core:sync`. Tests:
+- **Documents touched:** `docs/handoffs/E3-03.md`, this log. Production code: `:core:sync`. Tests:
   `:core:sync`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
   zero `PENDING`) and `koverVerify` pass; the two new blocking tests were shown failing on the pre-fix
@@ -1857,7 +1901,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** `FAILED_POISONED` must never be retried automatically (`§7`) and a malformed remote
   document must be quarantined without failing the pull cycle (`§9.5`, `D-170` / ADR-0171); the SQL
   literals and the Kotlin constant must not be able to drift apart silently.
-- **Documents touched:** `docs/handoff-E3-03.md`, `docs/CONTRACTS.md` (`§7`), this log.
+- **Documents touched:** `docs/handoffs/E3-03.md`, `docs/CONTRACTS.md` (`§7`), this log.
   Production code: `:core:database`. Tests and build logic: `:core:sync`, `:core:database`,
   `:integration:firebase-firestore`, `:build-logic:convention`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
@@ -1894,7 +1938,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   "`FAILED_POISONED` is never retried automatically" was false in the SQL, that ADR-0171 failure path
   2 was still open in the integration, and that D-169/ADR-0170's fail-closed conflict error had no
   production call site.
-- **Documents touched:** `docs/handoff-E3-03.md`, `docs/CONTRACTS.md` (`§7`, `§9.4`, `§9.5`),
+- **Documents touched:** `docs/handoffs/E3-03.md`, `docs/CONTRACTS.md` (`§7`, `§9.4`, `§9.5`),
   `docs/adr/0171-quarantine-malformed-remote-documents-through-the-sync-source.md`, this log.
   Production code: `:core:sync`, `:core:database`, `:integration:firebase-firestore`.
 - **Verification:** `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck` (173 decisions,
@@ -1930,7 +1974,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   real counts, that connectivity row state disagreed with the aggregate, that a stale push could
   stamp a newer revision, and that one `when` arm was unreachable. The owner preselected option B for
   R3 and kept the E1-12 production fix out of this pull request.
-- **Documents touched:** `docs/handoff-E3-03.md`, `docs/BACKLOG.md` (`E3-17`), `docs/DECISION_BOARD.md`
+- **Documents touched:** `docs/handoffs/E3-03.md`, `docs/BACKLOG.md` (`E3-17`), `docs/DECISION_BOARD.md`
   (`D-171`, `D-172`), `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`,
   ADR-0172, ADR-0173, `docs/CONTRACTS.md` (`§6`, `§7`, `§9.1`, `§9.9`, `§20.7`), this log.
   Production code: `:core:sync`, `:core:database`, `:shared`.
@@ -1987,7 +2031,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** E3-03 is the gated synchronization-engine story and the prerequisite for the remaining
   Phase 3 sync work. The overlap deduplication closes a double-reporting defect and the persistence
   test restored `:core:sync` coverage, which was below the `D-18` 80% threshold since GREEN.
-- **Documents touched:** `docs/handoff-E3-03.md`, `docs/BACKLOG.md` (`E3-03` status), this log.
+- **Documents touched:** `docs/handoffs/E3-03.md`, `docs/BACKLOG.md` (`E3-03` status), this log.
   Production code: `:core:sync`, `:core:database`, `:integration:firebase-firestore`, `:shared`,
   `:feature:vehicle`, `:feature:fuel`, `androidApp` and `iosApp`.
 - **Verification:** Focused command pass; `:core:sync` Kover 96.01% lines (80% required); complete
@@ -2025,7 +2069,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   decisions at the top of the round: the `§9.4` guarantee is not amended here, and the malformed
   payload defect is escalated rather than fixed.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
-  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0171, ADR-0169, `docs/handoff-E3-02.md`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0171, ADR-0169, `docs/handoffs/E3-02.md`,
   `build-logic/convention` (`DecisionRegistry`, `ContractCheck`, `DecisionRegistryTest`), this log.
 - **Verification:** The new duplicate detector failed `contractCheck` on the real board before the
   fix (`duplicated: D-169 in docs/DECISION_BOARD.md awaiting summary`); the exhaustive mapping and
@@ -2059,7 +2103,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   is a representation question whose resolution the owner reserved.
 - **Documents touched:** `docs/CONTRACTS.md §10`, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0170,
-  `docs/handoff-E3-02.md`, this log.
+  `docs/handoffs/E3-02.md`, this log.
 - **Verification:** The mutation probe made exactly the two new failed-refresh tests fail, then was
   reverted. The focused review-round command passes 18 tests, Android quality gates, iOS
   compilation and all 170 mirrored-decision checks; the emulator suite passes 156 assertions; the
@@ -2076,7 +2120,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   three pushed TDD checkpoints: RED `0dfa7a2`, GREEN `4feda04` and REFACTOR `6dd9b30`.
 - **Why:** E3-02 touches Firestore, backend behavior, sync semantics, authentication recovery,
   module boundaries, the error taxonomy and gated decision records, so owner review is mandatory.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-02.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E3-02.md`, this log.
 - **Verification:** The pull-request body carries the final focused, emulator and complete
   repository evidence. The branch is pushed and the pull request is open.
 - **Follow-ups / risks:** All ten required checks and owner approval remain; E3-02 MUST NOT be
@@ -2097,7 +2141,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   sync engine can safely consume it. Keeping the provider refresh inside the Firestore integration
   completes the transaction without widening provider-free core or graph contracts.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
-  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, ADR-0169, `docs/handoff-E3-02.md`, this log.
+  `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, ADR-0169, `docs/handoffs/E3-02.md`, this log.
 - **Verification:** RED executed 15 tests with the intended four failures; GREEN and REFACTOR pass
   16 focused tests, Android lint and static analysis, iOS simulator compilation, all 169 decision
   consistency checks, 156 Firestore emulator assertions and the complete 638-task non-instrumented
@@ -2124,7 +2168,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   remove and inflated its counter the same way as the earlier `guestTapAttempts`. The timeout
   message and the report were also dishonest once the form was dismissed, and the inert `try?`
   produced a compiler warning and overclaimed safety.
-- **Documents touched:** `docs/handoff-E1-17.md`, this log.
+- **Documents touched:** `docs/handoffs/E1-17.md`, this log.
 - **Verification:** Three RED cycles produced 4, 4 and 2 intended failures against the evolving
   policy; the final suite passes 20/20. The affected end-to-end tests passed locally on an erased
   simulator with a pinned device id, and the complete non-instrumented command passed.
@@ -2132,7 +2176,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `34690649797` plus two same-head reruns); run `34689361543` was also green on head `942df87`.
 - **Follow-ups / risks:** The stale 2026-09-11 story entry below still says "policy GREEN passed
   9/9", "four intended failures" and head `4ac8e85`; those figures are superseded by this entry and
-  by `docs/handoff-E1-17.md`. `CarAppKeychainPersistenceUITests` is the only caller that passes
+  by `docs/handoffs/E1-17.md`. `CarAppKeychainPersistenceUITests` is the only caller that passes
   `handleVehicleForm` and it `XCTSkip`s without the App Check debug token, so green CI is not
   evidence for that path.
 
@@ -2156,12 +2200,12 @@ because no assertion compares a state-holder block and the order is therefore ha
   the onboarding segment, and was therefore wrong. A same-head rerun of the first corrected version
   then exceeded a 120-second cap and exposed an element-resolution race, so the cap became 180
   seconds and resolution was hardened.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-17.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E1-17.md`, this log.
 - **Verification:** Policy RED produced four intended failures against the corrected policy; policy
   GREEN passed 9/9; the affected end-to-end tests passed locally; the complete non-instrumented
   command passed. `ios-simulator-build` passed 3 of 3 consecutive runs on the implementation head
   `4ac8e85` (run `34682336801` plus two same-head reruns), each completing the full iOS suite with
-  zero failures. The full count and per-step measurements are in `docs/handoff-E1-17.md`.
+  zero failures. The full count and per-step measurements are in `docs/handoffs/E1-17.md`.
 - **Follow-ups / risks:** The real network path remains, so the flake is rarer but not eliminated.
   Option (b), a Debug-only launch-environment seam that removes the network round trip, is escalated
   to the owner and not implemented. An unrelated local partial-refuel badge failure remains outside
@@ -2183,7 +2227,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** The `expectation` argument is the only human-readable part of the E1-14 timeout
   diagnostic. The five stale descriptions would have pointed a reader at the wrong behavior, which
   defeats the story's purpose of making a graph-backed wait fail with an actionable message.
-- **Documents touched:** `docs/handoff-E1-14.md` and this log. `AGENTS.md` and `docs/BACKLOG.md`
+- **Documents touched:** `docs/handoffs/E1-14.md` and this log. `AGENTS.md` and `docs/BACKLOG.md`
   were deliberately left unchanged: E1-14 stays implemented on open pull request #66.
 - **Verification:** shared ktlint/detekt passed; `:shared:testAndroidHostTest` and
   `:shared:iosSimulatorArm64Test` were forced to re-execute and reported 162 Android-host and 169
@@ -2212,7 +2256,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   ktlint do not flag, eliminated gratuitous line breaks reintroduced by the stronger predicates,
   removed a near-verbatim duplicated assertion, and separated recorded evidence from outstanding
   instructions so a later reader cannot mistake a record for a task.
-- **Documents touched:** `AGENTS.md`, `docs/handoff-E1-14.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/handoffs/E1-14.md`, this log.
 - **Verification:** shared ktlint and detekt passed; a forced `--rerun-tasks` run of both shared
   targets reported 162 Android-host and 169 Native tests with zero failures and zero skips; the full
   non-instrumented `AGENTS.md` command passed (638 actionable tasks, 39 executed). No production
@@ -2241,7 +2285,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** The review found no product-correctness blocker, but identified scheduler races,
   cross-thread diagnostic publication, cancellation ambiguity and readability gaps that could make a
   red required job difficult to interpret.
-- **Documents touched:** `AGENTS.md`, `docs/handoff-E1-14.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/handoffs/E1-14.md`, this log.
 - **Verification:** RED/GREEN/REFACTOR commits are preserved for each behavioral follow-up. The full
   non-instrumented command passed. Thirty fresh direct repetitions per target passed, each with 162
   Android-host and 169 Native-simulator tests, zero failures and zero skips. One preliminary wrapper
@@ -2264,7 +2308,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** the bounded helper exposed two historical lost-input failures that generic runTest
   timeouts had hidden. An UnconfinedTestDispatcher experiment remained flaky; a second deterministic
   RED/GREEN/REFACTOR cycle established queued fixture execution instead. Production code is unchanged.
-- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E1-14.md`, this log.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E1-14.md`, this log.
 - **Verification:** both RED phases compiled and failed on the intended assertions. Final code
   passed 30 forced full shared-suite repetitions on Apple Silicon per target: 157 Android-host
   tests and 165 Native-simulator tests per run, zero failures/skips. The full non-instrumented
@@ -2300,7 +2344,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/CONTRACTS.md` §11.5, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (E2-09 removed),
   `docs/SECURITY.md` (risk narrowed, not dropped), `docs/adr/README.md`, ADR-0164 (superseded),
-  ADR-0166 to ADR-0168 (new), `AGENTS.md`, `docs/handoff-E2-05.md`.
+  ADR-0166 to ADR-0168 (new), `AGENTS.md`, `docs/handoffs/E2-05.md`.
 - **Verification:** RED commit `05c1117` compiled with 6 of 8 `AccountDepartureDatabaseAccessTest`
   and 5 of 7 `AccountDepartureRecoveryTest` tests failing on assertions; GREEN commit `4e42e04`
   turns all of them green. `:shared` 149, `:core:database` 60, `:integration:firebase-auth` 48 and
@@ -2327,7 +2371,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `AGENTS.md`, `docs/SPECIFICATION.md` §7 F-5 and §12,
   `docs/CONTRACTS.md` §11.5 and §20.10, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md` §2,
   `docs/BACKLOG.md`, `docs/SECURITY.md`, `docs/adr/README.md`, ADR-0165, this log and
-  `docs/handoff-E2-05.md`.
+  `docs/handoffs/E2-05.md`.
 - **Verification:** documentation-only change; `contractCheck` passes with 165 aligned decisions
   and ADR statuses. No product source, test or exported declaration changed.
 - **Follow-ups / risks:** the three accepted windows remain until `E5-02`, `E5-03` and `E5-04` run.
@@ -2366,7 +2410,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/CONTRACTS.md` §11.5 and §20.10, `docs/adr/0160-expose-the-departure-retry-as-typed-state.md`,
   `docs/adr/0161-end-the-provider-session-as-its-own-deletion-step.md`,
   `docs/adr/0162-report-account-deletion-analytics-for-the-permanent-path.md`,
-  `docs/handoff-E2-05.md`. The `D-159` and `D-161` rows in the four mirroring tables already stated
+  `docs/handoffs/E2-05.md`. The `D-159` and `D-161` rows in the four mirroring tables already stated
   the corrected rule and are unchanged.
 - **Verification:** RED commit `ab2cda3` compiled with 12 of 14 `SessionDepartureIntegrityTest` tests
   failing on assertions, one per finding; GREEN commit `bbb995d` turns all 14 green. `:shared` 142,
@@ -2408,7 +2452,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/CONTRACTS.md` §11.5, §20.2, §20.9 and §20.10, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (E2-05 criterion and
   the new `E2-09`), `docs/SECURITY.md`, `docs/adr/README.md`, ADR-0156 (corrected), ADR-0157 to
-  ADR-0164 (new), `AGENTS.md`, `docs/handoff-E2-05.md`.
+  ADR-0164 (new), `AGENTS.md`, `docs/handoffs/E2-05.md`.
 - **Verification:** the complete non-instrumented CI command passes; the Objective-C golden header was
   regenerated and compared; `git diff --check` is clean. `SessionDepartureTest` and
   `SessionDepartureLifecycleTest` cover the three departure kinds, the confirmation protocol, the
@@ -2451,7 +2495,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   precedent, because the message channel transports only a code and is shared by every feature.
 - **Documents touched:** `docs/CONTRACTS.md` §11.5 and §20.10, `docs/BACKLOG.md`,
   `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
-  `docs/adr/README.md`, ADR-0156 (new), `AGENTS.md`, `docs/handoff-E2-05.md`.
+  `docs/adr/README.md`, ADR-0156 (new), `AGENTS.md`, `docs/handoffs/E2-05.md`.
 - **Verification:** the complete non-instrumented CI command passes; `SessionDepartureTest` (23
   tests) and `LocalDataClearDatabaseAccessTest` (5 tests) pass; the Objective-C golden header was
   regenerated for exactly two public additions, `SessionUiState.pendingSyncCount` and
@@ -2460,7 +2504,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Follow-ups / risks:** the branch history was rebuilt with the owner's explicit approval, because
   the original RED commit did not compile and so was not the executable behavioural RED that
   `AGENTS.md` requires. Ending the provider session as part of anonymous "delete local data" is
-  flagged for the owner in `docs/handoff-E2-05.md`. A local clear that fails after a successful
+  flagged for the owner in `docs/handoffs/E2-05.md`. A local clear that fails after a successful
   remote step leaves local data for an account already deleted remotely; the request is retained for
   retry, but a process death at that point loses it. The Settings surface and the native credential
   picker remain owned by E4-01.
@@ -2494,7 +2538,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   the session switch is authorized by the persisted ticket and the permanent session instead.
 - **Documents touched:** `docs/CONTRACTS.md` §11.3 and §11.6, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2 and §6, `docs/BACKLOG.md`, `AGENTS.md`,
-  `docs/adr/README.md`, ADR-0152 to ADR-0155 (new), `docs/handoff-E2-04.md`.
+  `docs/adr/README.md`, ADR-0152 to ADR-0155 (new), `docs/handoffs/E2-04.md`.
 - **Verification:** the complete non-instrumented CI command of `AGENTS.md` passes, including
   `ktlintCheck`, `detekt`, `architectureCheck`, `contractCheck`, `:build-logic:convention:test`,
   `koverVerify`, `:androidApp:assembleDebug`, `:androidApp:testDebugUnitTest`, `testAndroidHostTest`
@@ -2543,7 +2587,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   awaiting-confirmation table), `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2,
   `docs/BACKLOG.md` (`E3-14` acceptance criteria, the new `E3-16`, one index row), `AGENTS.md`,
   `functions/src/auth/anonymousUserEligibility.ts` (the `D-148` doc comment only; no behaviour
-  changed), `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/handoff-E3-14.md` and this log.
+  changed), `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/handoffs/E3-14.md` and this log.
   Earlier entries are left exactly as written; this entry supersedes their wording where they
   restate the stronger `D-148` guarantee.
 - **Verification:** four tests were added to `functions/test/orphanedAnonymousAccount.test.mjs`.
@@ -2579,16 +2623,16 @@ because no assertion compares a state-holder block and the order is therefore ha
   batches of 200 and repeated until no matching records remain, idempotent, bounded to
   `anonymousUid == target`, run after remote-data deletion and before Auth deletion, and complete
   for every matching record its query observes. The same round removed a duplicated closing sentence
-  from the `Exact next step` paragraph of `docs/handoff-E3-14.md`.
+  from the `Exact next step` paragraph of `docs/handoffs/E3-14.md`.
 - **Why:** the constraint is only enforceable if the ADR that introduces it obeys it. An agent
   reading ADR-0144's `Decision` opening or its first MUST would otherwise take the unconditional
   reading the rest of the ADR spends a section refuting.
 - **Documents touched:** `docs/adr/0144-erase-orphan-cleanup-authorizations-on-account-deletion.md`,
-  `docs/handoff-E3-14.md` and this log. The sweep of current, non-historical documentation found no
+  `docs/handoffs/E3-14.md` and this log. The sweep of current, non-historical documentation found no
   further unqualified restatement. Two deliberate exclusions: ADR-0150's numbered restatement of the
   `§11.5` deletion order, which quotes the contract's step order to set up the interleaving analysis
-  that ADR-0150 itself owns; and the lines of `docs/handoff-E3-14.md` that quote pre-correction
-  wording in order to describe what was corrected. `docs/handoff-E3-11.md` and the earlier entries
+  that ADR-0150 itself owns; and the lines of `docs/handoffs/E3-14.md` that quote pre-correction
+  wording in order to describe what was corrected. `docs/handoffs/E3-11.md` and the earlier entries
   of this log were left intact: they record the state observed when `E3-11` merged, and this entry
   corrects their wording without rewriting them.
 - **Verification:** the `rg` sweep over `AGENTS.md` and `docs`;
@@ -2630,8 +2674,8 @@ because no assertion compares a state-holder block and the order is therefore ha
   cleanup there is.
 - **Documents touched:** `docs/SPECIFICATION.md` §12, `docs/adr/0142-...md`,
   `docs/DECISION_BOARD.md` (rows `D-141` and `D-143`), `docs/CONTRACTS.md` §16,
-  `docs/adr/0144-...md`, `docs/TECHNICAL_PLAN.md` §2, `docs/handoff-E3-14.md` and this log, plus the
-  pull-request description, which is not a repository artifact. `docs/handoff-E3-11.md` and the
+  `docs/adr/0144-...md`, `docs/TECHNICAL_PLAN.md` §2, `docs/handoffs/E3-14.md` and this log, plus the
+  pull-request description, which is not a repository artifact. `docs/handoffs/E3-11.md` and the
   earlier entries of this log were deliberately left as written: they record the state observed when
   `E3-11` merged, and this entry corrects their wording without rewriting them. The ADR-0144 title
   and its `docs/adr/README.md` index row name the ADR rather than stating a guarantee and are
@@ -2668,7 +2712,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** an acceptance criterion is what `E3-15` will be judged against, so a phrasing that lets a
   partial mechanism be reported as delivering a globally quantified property would let the story
   close on evidence covering only the interleavings the mechanism happens to observe.
-- **Documents touched:** `docs/BACKLOG.md` (`E3-15` acceptance criteria), `docs/handoff-E3-14.md`
+- **Documents touched:** `docs/BACKLOG.md` (`E3-15` acceptance criteria), `docs/handoffs/E3-14.md`
   and this log; plus the pull-request description, which is not a repository artifact. This entry
   corrects the wording of the earlier `E3-15` criterion; per the append-only rule the previous
   entries are left exactly as written. No production source file changed, `E3-15` was not
@@ -2706,7 +2750,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   P1" tail, the proof obligations and the verification clause are corrected the same way, and the
   equivalent claims were searched for and corrected in `docs/CONTRACTS.md §11.5`, `docs/BACKLOG.md`
   (`E3-15` and its acceptance criteria), the `D-149` rows of `docs/DECISION_BOARD.md` and
-  `docs/TECHNICAL_PLAN.md §2`, and `docs/handoff-E3-14.md`, from which the stale "bounded residual
+  `docs/TECHNICAL_PLAN.md §2`, and `docs/handoffs/E3-14.md`, from which the stale "bounded residual
   window" wording is removed.
 - **Why:** a normative document that states a guarantee unconditionally while another normative
   document documents a counterexample to it leaves the next agent free to pick either reading, and
@@ -2715,7 +2759,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   with evidence that covers only the interleavings the mechanism happens to observe.
 - **Documents touched:** `docs/adr/0144-...md`, `docs/adr/0150-...md`, `docs/CONTRACTS.md` §11.5 and
   §16, `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (`E3-15`),
-  `docs/handoff-E3-14.md` and this log. This entry corrects the wording of the earlier 2026-09-08
+  `docs/handoffs/E3-14.md` and this log. This entry corrects the wording of the earlier 2026-09-08
   entries that restate the `D-143` guarantee unconditionally and that describe options A and B as
   converging eventually. Per the append-only rule those entries are left exactly as written; this
   entry supersedes their wording. `D-143` and `D-148` keep their `Accepted` status, `D-149` stays
@@ -2726,7 +2770,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   corrected head; `contractCheck` still reports 150 aligned decisions, `D-143` `Accepted` and
   `D-149` the one unresolved `Pending` decision with its `Needed by` row. `git diff --check
   origin/main...HEAD` is clean. The figures and the protected-check run are in
-  `docs/handoff-E3-14.md` and the pull-request description.
+  `docs/handoffs/E3-14.md` and the pull-request description.
 - **Follow-ups / risks:** unchanged. `D-149` remains the owner's decision, `E3-15` stays Not Ready,
   and until the decision is taken one UID-bound authorization can outlive a successful account
   deletion with only provider-managed asynchronous Firestore TTL cleanup to remove it.
@@ -2775,7 +2819,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/adr/0150-...md`, `docs/adr/0144-...md`, `docs/adr/0142-...md`,
   `docs/adr/README.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md` §12,
   `docs/TECHNICAL_PLAN.md` §2, `docs/CONTRACTS.md` §11.5 and §16, `docs/BACKLOG.md` (`E3-15`),
-  `docs/handoff-E3-14.md` and this log. This entry corrects the wording of the 2026-09-08 entries
+  `docs/handoffs/E3-14.md` and this log. This entry corrects the wording of the 2026-09-08 entries
   "Correction: the D-149 analysis was unsound and two E3-14 records overstated facts", "E3-14
   hardens ticket issuance and sanitizes the trigger rejection" and "D-148 accepted and D-149
   proposed for the orphan cleanup ticket", each of which describes `D-149` as `Proposed` and the
@@ -2787,7 +2831,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   tests and `./gradlew contractCheck :build-logic:convention:test` all pass on the corrected head;
   `contractCheck` still reports `D-149` as the one unresolved decision, now with status `Pending`,
   and its awaiting-confirmation row. The exact figures and the protected-check run are recorded in
-  `docs/handoff-E3-14.md`.
+  `docs/handoffs/E3-14.md`.
 - **Follow-ups / risks:** `D-149` remains the owner's decision and `E3-15` stays Not Ready. Until it
   is taken, one UID-bound authorization can outlive a successful account deletion, and the only
   cleanup for it is provider-managed asynchronous Firestore TTL after the 30-day expiration horizon,
@@ -2829,14 +2873,14 @@ because no assertion compares a state-holder block and the order is therefore ha
   `docs/SPECIFICATION.md` §12, `docs/TECHNICAL_PLAN.md` §2, `docs/BACKLOG.md` (`E3-14`, `E3-15`),
   `docs/CONTRACTS.md` §11.5, `functions/src/auth/anonymousUserEligibility.ts`,
   `functions/test/orphanedAnonymousAccount.test.mjs`,
-  `functions/test/firebaseAdminDeletionGateways.test.mjs` (new), `docs/handoff-E3-14.md` and this
+  `functions/test/firebaseAdminDeletionGateways.test.mjs` (new), `docs/handoffs/E3-14.md` and this
   log. This entry corrects the 2026-09-08 entries "D-148 accepted and D-149 proposed for the orphan
   cleanup ticket" (the option-A recommendation) and "E3-14 hardens ticket issuance and sanitizes the
   trigger rejection" (the 146-decision count reported before the rebase; the rebased branch reports
   150), and the ADR-0149 verification claim.
 - **Verification:** the complete Functions unit suite is 78 tests with 76 passing and 2
   emulator-gated skips; the emulator, rules, audit, contractCheck and Gradle runs are recorded in
-  `docs/handoff-E3-14.md` from the post-fix head. `contractCheck` reports 150 aligned decisions,
+  `docs/handoffs/E3-14.md` from the post-fix head. `contractCheck` reports 150 aligned decisions,
   `D-149` still the one unresolved.
 - **Follow-ups / risks:** `D-149` remains the owner's decision and `E3-15` stays not Ready. The
   residual risk is unchanged until that decision is taken: one UID-bound authorization can outlive
@@ -2862,14 +2906,14 @@ because no assertion compares a state-holder block and the order is therefore ha
   already-published case was still open.
 - **Documents touched:** `shared/.../StateHolders.kt`,
   `shared/.../AnonymousReminderEvaluationRaceTest.kt`, `docs/CONTRACTS.md` §11.3,
-  `docs/handoff-E2-08.md` and this log.
+  `docs/handoffs/E2-08.md` and this log.
 - **Verification:** RED commit `88f82e9`: the new class ran 9 tests with 1 failure, the failing one
   observing the inherited banner (`expected null, but was:<3>`); GREEN commit `1e3e85c`: the class
   and the full `:shared` Android-host suite pass, ktlint and detekt clean. The full local suite and
-  the parent-commit failure proof are recorded in `docs/handoff-E2-08.md`. No decision was added;
+  the parent-commit failure proof are recorded in `docs/handoffs/E2-08.md`. No decision was added;
   `D-62`, `D-144`, `D-145`, `D-146` and `D-147` are untouched.
 - **Follow-ups / risks:** pull request #62 remains stacked on the open `E2-07` branch and awaits its
-  gated owner review. During intake, `docs/handoff-E2-08.md` was found truncated to an empty file
+  gated owner review. During intake, `docs/handoffs/E2-08.md` was found truncated to an empty file
   by commit `6201d5f` and restored in full from its parent before this fix began.
 
 ### 2026-09-08 — E3-14 hardens ticket issuance and sanitizes the trigger rejection
@@ -2892,7 +2936,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/0149-verify-the-issuing-account-through-the-admin-sdk.md`,
   `docs/adr/0150-close-the-ticket-issuance-and-account-deletion-race.md`, `docs/adr/README.md`,
-  `AGENTS.md`, `docs/handoff-E3-14.md` and this log.
+  `AGENTS.md`, `docs/handoffs/E3-14.md` and this log.
 - **Verification:** the complete Functions suite (73 passing), the Firestore emulator suite, 155
   Firestore rules tests, the dependency audit, `contractCheck` with 146 aligned decisions, the
   complete required Gradle command and the Functions and indexes dry-run all pass. One `E1-14`
@@ -2960,7 +3004,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `docs/BACKLOG.md` (`E2-08`), `docs/CONTRACTS.md §11.3`,
   `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/DECISION_BOARD.md`,
   `docs/adr/0148-complete-a-launch-evaluation-when-the-session-resolves.md`, `docs/adr/README.md`,
-  `docs/handoff-E2-08.md` and this log.
+  `docs/handoffs/E2-08.md` and this log.
 - **Verification:** the full non-instrumented CI command exits `0` with 148 aligned decisions and
   ADRs; the iOS app builds and its whole suite passes on an erased simulator; the committed
   Objective-C golden header is unchanged, because no exported declaration changed.
@@ -3002,7 +3046,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   commit whose `ios-simulator-build` had just passed. It is the cleanest possible demonstration that
   the flake is independent of the change under test, and it shows the defect survives across
   stories rather than being tied to `E1-09` or `E2-03`.
-- **Documents touched:** `docs/BACKLOG.md` (`E1-17`), `docs/handoff-E2-07.md` and this log.
+- **Documents touched:** `docs/BACKLOG.md` (`E1-17`), `docs/handoffs/E2-07.md` and this log.
 - **Verification:** re-running the job on the same commit passed, and the ten required checks are
   green.
 - **Follow-ups / risks:** `E1-14` and `E1-17` together cost `E2-07` two re-runs of jobs that were
@@ -3022,7 +3066,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `litersAndPriceDeriveTotalCostWhileTyping` with `kotlinx.coroutines.test.UncompletedCoroutinesError`
   in the JVM target. A fix that hardened only the Native suite would have left a red
   `shared-tests` ambiguous on the other half.
-- **Documents touched:** `docs/BACKLOG.md` (`E1-14`), `docs/handoff-E2-07.md` and this log.
+- **Documents touched:** `docs/BACKLOG.md` (`E1-14`), `docs/handoffs/E2-07.md` and this log.
 - **Verification:** re-running the identical commit turned all ten required checks green, and the
   same test passed 25 consecutive local `--rerun-tasks` runs on an Apple-silicon host. The failing
   test builds a Fuel Entry form holder and touches nothing `E2-07` changed.
@@ -3045,7 +3089,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   scheduler or an operating-system notification, both of which are out of MVP scope.
 - **Documents touched:** `docs/CONTRACTS.md §11.3` and `§20.10`, `docs/TECHNICAL_PLAN.md §2`
   and `§6`, `docs/SPECIFICATION.md §12`, `docs/DECISION_BOARD.md`, `docs/adr/0145`–`0147`,
-  `docs/adr/README.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`, `docs/handoff-E2-07.md` and
+  `docs/adr/README.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`, `docs/handoffs/E2-07.md` and
   this log.
 - **Verification:** the full non-instrumented CI command exits `0`, including `contractCheck` with
   147 aligned decisions and ADRs and no `PENDING` assertion;
@@ -3105,7 +3149,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `build-logic/convention/.../contract/`, `docs/CONTRACTS.md §11.3`/§11.5/§16`,
   `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/README.md`, ADR-0142 (amended), ADR-0143, ADR-0144, `AGENTS.md` and
-  `docs/handoff-E3-11.md`.
+  `docs/handoffs/E3-11.md`.
 - **Verification:** Functions tests 68 (66 passed, 2 emulator-only skipped); Functions emulator
   integration 2/2 with the pinned CLI; Firestore rules 155/155; Functions audit exit 0 with only
   the seven D-68 moderates; complete 636-task Gradle verification passed with `contractCheck`
@@ -3131,7 +3175,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** Functions implementation and tests, `firestore/firestore.indexes.json`,
   Firestore rules tests, `docs/SPECIFICATION.md` F-4/§12, `docs/CONTRACTS.md §11.3`/§11.5/§16,
   `docs/DECISION_BOARD.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, ADR-0062, ADR-0064,
-  ADR-0133, ADR-0134, ADR-0141, ADR-0142, `AGENTS.md` and `docs/handoff-E3-11.md`.
+  ADR-0133, ADR-0134, ADR-0141, ADR-0142, `AGENTS.md` and `docs/handoffs/E3-11.md`.
 - **Verification:** focused issuance, deletion and retention RED/GREEN cycles; Functions tests 58
   passed with the emulator test skipped; real Admin Firestore emulator lifecycle passed; Firestore
   rules 155/155 passed; audit retained only the accepted D-68 moderates; contract and fixture tests
@@ -3158,7 +3202,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   with the Firebase Admin SDK verifier and composed the cross-project token plus custom-claim attack.
   Existing tests use an injected key pair and omit `aud` and `iss`, so the required CI suite could
   pass without exercising project binding or canonical subject selection.
-- **Documents touched:** `docs/handoff-E3-11.md` and this log. ADR-0141 and its normative mirrors
+- **Documents touched:** `docs/handoffs/E3-11.md` and this log. ADR-0141 and its normative mirrors
   remain to be corrected after the owner chooses between a project-bound expired-token verifier and
   a server-issued cleanup authorization ticket or lease.
 - **Verification:** source review confirms the missing `aud` and `iss` checks and the `uid`-before-
@@ -3176,7 +3220,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Antigravity, on behalf of David Ruiz
 - **What changed:** resolved PR #60 review round 4 findings: reproduced non-convergence defect on 1-hour token expiry with an active Auth user via RED tests; owner selected Option A; superseded D-139 with D-140 (ADR-0141); implemented cryptographic RS256 signature verification of expired anonymous ID tokens against Google public certificates (with 30-day `iat` window) in `deleteOrphanedAnonymousAccount`; made `OrphanCleanupAuthGateway.getUser` mandatory, eliminating unexercised seams; added tests for invalid cryptographic signatures, unknown `kid`, expired `iat` bounds (> 30 days), and certificate fetch failures; updated handoff and PR body removing stale draft/push statements.
 - **Why:** review round 4 identified that interruptions during resumable steps 2–4 of F-4 collision flow caused `deleteOrphanedAnonymousAccount` to fail permanently with `invalid-argument` because D-139 only permitted expired tokens if the Auth user was already deleted, stranding orphaned accounts and violating §11.3 retry convergence.
-- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/test/orphanedAnonymousAccount.test.mjs`, `functions/test/orphanedAnonymousAccountEmulator.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0140, ADR-0141, `AGENTS.md`, `docs/handoff-E3-11.md`, and this log.
+- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/test/orphanedAnonymousAccount.test.mjs`, `functions/test/orphanedAnonymousAccountEmulator.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0140, ADR-0141, `AGENTS.md`, `docs/handoffs/E3-11.md`, and this log.
 - **Verification:** `npm test` 63 passed, 1 skipped, 64 total; `npm run test:emulator` 1 passed against live Firestore emulator; `npm run audit` exit 0 (7 D-68 moderates only); `./gradlew contractCheck` passes across 141 decisions and 141 ADRs; `git diff --check` clean.
 - **Follow-ups / risks:** awaiting owner review round 4 closure.
 
@@ -3187,7 +3231,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Antigravity, on behalf of David Ruiz
 - **What changed:** resolved all review round 3 findings: enforced permanent caller precondition (`failed-precondition`) by inspecting `request.auth.token.firebase.sign_in_provider !== "anonymous"`; added D-139 (ADR-0140) to permit well-formed expired anonymous ID tokens on retry if and only if the Auth user was already deleted (`auth/user-not-found`), restoring §11.3 retry convergence; distinguished client token errors (`invalid-argument`) from Admin SDK infrastructure failures (`internal` at stage `AUTH_USER`) in `resolveCapturedIdentity`; added an integration test running against the real Firestore emulator proving recursive deletion of registered collections under `users/{orphanUid}` while other UIDs remain untouched without trigger involvement; integrated `npm run test:emulator` into CI.
 - **Why:** review round 3 identified unverified permanent caller context, stranded orphan data on retries > 1 hour after partial failure, blanket invalid-argument error mapping, and lack of real Firestore emulator integration testing.
-- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/src/deletion/firebaseAdminDeletionGateways.ts`, `functions/test/orphanedAnonymousAccount.test.mjs`, `functions/test/orphanedAnonymousAccountEmulator.test.mjs`, `functions/package.json`, `.github/workflows/ci.yml`, `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0140, `AGENTS.md`, `docs/handoff-E3-11.md`, and this log.
+- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/src/deletion/firebaseAdminDeletionGateways.ts`, `functions/test/orphanedAnonymousAccount.test.mjs`, `functions/test/orphanedAnonymousAccountEmulator.test.mjs`, `functions/package.json`, `.github/workflows/ci.yml`, `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0140, `AGENTS.md`, `docs/handoffs/E3-11.md`, and this log.
 - **Verification:** `npm test` 59/59 passes; `npm run test:emulator` passes against live Firestore emulator; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passes; `./gradlew contractCheck` passes across 140 decisions and 140 ADRs; `git diff --check` clean.
 - **Follow-ups / risks:** awaiting owner review round 3 closure.
 
@@ -3198,7 +3242,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Antigravity, on behalf of David Ruiz
 - **What changed:** recorded real CLI dry-run validation evidence for `onAnonymousUserDeleted` in `europe-west1` with `failurePolicy: true`; documented `VerifiedIdentityToken` non-optional `uid` typing in ADR-0134; added post-deploy `scripts/verify-cloud-runtime.sh` extension follow-up.
 - **Why:** review round 2 required proving that the Firebase CLI and platform accept a 1st gen Auth trigger deployed to `europe-west1` and recognize its failure policy, beyond SDK-emitted endpoint metadata.
-- **Documents touched:** ADR-0134, ADR-0138, ADR-0139, `docs/handoff-E3-11.md` and this log.
+- **Documents touched:** ADR-0134, ADR-0138, ADR-0139, `docs/handoffs/E3-11.md` and this log.
 - **Verification:** `npx firebase deploy --only functions --dry-run --force --project davidruiz-carapp-dev` exited with code 0 (`Dry run complete!`), explicitly confirming `onAnonymousUserDeleted(europe-west1)` and its retry policy; `npm test` 49/49 passes; Firestore rules 154/154 passes; full Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
 - **Follow-ups / risks:** awaiting owner review round 2 closure.
 
@@ -3209,7 +3253,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Antigravity, on behalf of David Ruiz
 - **What changed:** resolved all five review findings on PR #60: corrected `deleteOrphanedAnonymousAccount` to read `verified.firebase?.sign_in_provider === "anonymous"` from the real Admin SDK `DecodedIdToken` shape; pinned `onAnonymousUserDeleted` to `europe-west1` (`D-137`); bounded `onAnonymousUserDeleted` to two 256 MiB instances, 60-second timeout and enabled execution retries with `failurePolicy: true` (`D-138`); pinned endpoint metadata in `dependencyReachability.test.mjs` for both functions; documented captured anonymous token validity (1-hour standard expiry without `auth_time` freshness or `checkRevoked`).
 - **Why:** verified `DecodedIdToken` does not expose top-level `sign_in_provider`; 1st gen Auth trigger lacked regional pin, resource limits and retry failure policy; endpoint assertions were missing from reachability tests.
-- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/src/auth/onAnonymousUserDeleted.ts`, `functions/test/dependencyReachability.test.mjs`, `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13`, `docs/DECISION_BOARD.md`, `docs/adr/0134-fix-the-orphan-cleanup-callable-wire-contract.md`, `docs/adr/0138-pin-the-anonymous-cleanup-trigger-to-europe-west1.md`, `docs/adr/0139-bound-the-anonymous-cleanup-trigger-runtime-and-enable-retries.md`, `docs/handoff-E3-11.md`.
+- **Documents touched:** `functions/src/callable/deleteOrphanedAnonymousAccount.ts`, `functions/src/auth/onAnonymousUserDeleted.ts`, `functions/test/dependencyReachability.test.mjs`, `functions/test/orphanedAnonymousAccount.test.mjs`, `docs/CONTRACTS.md §11.5`, `docs/TECHNICAL_PLAN.md §13`, `docs/DECISION_BOARD.md`, `docs/adr/0134-fix-the-orphan-cleanup-callable-wire-contract.md`, `docs/adr/0138-pin-the-anonymous-cleanup-trigger-to-europe-west1.md`, `docs/adr/0139-bound-the-anonymous-cleanup-trigger-runtime-and-enable-retries.md`, `docs/handoffs/E3-11.md`.
 - **Verification:** `npm test` 49/49 passes; `npm run audit` exit 0 (7 D-68 moderates only); Firestore rules 154/154 passes; full Gradle command 636 actionable tasks BUILD SUCCESSFUL; `git diff --check` clean.
 - **Follow-ups / risks:** awaiting owner review and merge of PR #60.
 
@@ -3332,7 +3376,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   E3-10 service, and overlap between them is provably harmless.
 - **Documents touched:** `AGENTS.md` repository state is updated by this entry's merge;
   `docs/BACKLOG.md`, `docs/CONTRACTS.md §11.5`, the decision mirrors, ADR-0133..ADR-0137,
-  `docs/handoff-E3-11.md` and this log.
+  `docs/handoffs/E3-11.md` and this log.
 - **Verification:** RED 26/30 then GREEN 47/47 Functions tests; 154/154 Firestore emulator
   tests; production audit exit 0 with only the seven D-68 moderates; complete 636-task
   non-instrumented Gradle command; `contractCheck` including the new assertion 21; draft PR #60.
@@ -3350,7 +3394,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   and the destructive recursive purge needs a longer explicit timeout than the provider default.
 - **Documents touched:** `docs/CONTRACTS.md §11.5`, `docs/DECISION_BOARD.md`,
   `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, ADR-0132, `docs/adr/README.md`,
-  `docs/handoff-E3-10.md` and this log.
+  `docs/handoffs/E3-10.md` and this log.
 - **Verification:** the endpoint-metadata RED test observed four unset Firebase Functions values;
   the GREEN and clean-install Functions runs passed all 26 tests and reported the four accepted
   values. `contractCheck` validated 132 decisions and ADRs, all 154 Firestore Rules tests passed,
@@ -3373,10 +3417,10 @@ because no assertion compares a state-holder block and the order is therefore ha
   Storage prefix could be omitted from deletion without failing the parity gate.
 - **Documents touched:** `functions/test/dataLocationRegistry.test.mjs`,
   `functions/test/accountDeletion.test.mjs`, `AGENTS.md`, `docs/BACKLOG.md`,
-  `docs/handoff-E3-10.md` and this log.
+  `docs/handoffs/E3-10.md` and this log.
 - **Verification:** the RED run failed both schema-mutation tests with
   `Missing expected exception.`; the GREEN Functions run passed all 26 tests. Full Gradle,
-  Firestore emulator and pull-request CI results are recorded in `docs/handoff-E3-10.md`.
+  Firestore emulator and pull-request CI results are recorded in `docs/handoffs/E3-10.md`.
 - **Follow-ups / risks:** callable runtime resource options and Cloud Functions App Check
   enforcement remain a separate owner decision; E3-11 remains the next Phase 3 prerequisite.
 
@@ -3421,7 +3465,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** E3-11 and the E2-04 collision path require one tested cleanup implementation, while D-23
   requires the user-requested path to delete remote data before the Firebase Auth user.
 - **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, the decision mirrors,
-  ADR-0129 through ADR-0131, `docs/versions-matrix.md`, `docs/handoff-E3-10.md` and this log.
+  ADR-0129 through ADR-0131, `docs/versions-matrix.md`, `docs/handoffs/E3-10.md` and this log.
 - **Verification:** 22 Cloud Functions tests; production dependency audit with only the seven D-68
   moderate entries; 154 Firestore emulator tests; complete 636-task non-instrumented command;
   234-task provider-decoupling command; Objective-C header parity.
@@ -3558,7 +3602,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   gap survived four stories.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
   `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0127`, `docs/adr/0126`, `README.md`,
-  `docs/DEFINITION.md`, `docs/handoff-E2-06.md` and this log.
+  `docs/DEFINITION.md`, `docs/handoffs/E2-06.md` and this log.
 - **Verification:** seven new failing tests first, across four canonical routes. The exact
   `AGENTS.md` command passed 636 actionable tasks, forced provider decoupling passed 234, the
   regenerated Objective-C header matches the committed golden, and the `D-84` API 36 instrumented
@@ -3581,7 +3625,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** the log entry was written before the fifth failure-path test was added and was not
   re-counted afterwards. This log is append-only, so the original entry is left as it stands and
   this entry carries the correction.
-- **Documents touched:** this log, and `docs/handoff-E2-06.md`, which now states the current figure
+- **Documents touched:** this log, and `docs/handoffs/E2-06.md`, which now states the current figure
   of twenty-eight and cites the JUnit XML it was counted from.
 - **Verification:** counted from the `iosSimulatorArm64Test` JUnit XML of all four adoption suites.
 - **Follow-ups / risks:** none. A test count in a completion claim is now taken from the XML rather
@@ -3613,7 +3657,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   cancellation, and one observer able to cancel the other.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
   `docs/TECHNICAL_PLAN.md §2`, `docs/CONTRACTS.md §11.2` and `§11.4`, `docs/adr/0125`,
-  `docs/adr/0126`, `docs/BACKLOG.md` (`E3-03` acceptance criteria), `docs/handoff-E2-06.md` and this
+  `docs/adr/0126`, `docs/BACKLOG.md` (`E3-03` acceptance criteria), `docs/handoffs/E2-06.md` and this
   log. `D-124` and `D-125` were revised in place rather than superseded, because neither has been
   merged; `AGENTS.md` requires a superseding decision only for one that has.
 - **Verification:** eight new failing tests first, all on compiled and executing code, with bounded
@@ -3648,7 +3692,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   widening the exported UI contract with a second flag, which `D-116` exists to avoid.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
   `docs/TECHNICAL_PLAN.md §2`, `docs/CONTRACTS.md §11.2` and `§11.4`, `docs/adr/README.md`,
-  `docs/adr/0124`, `docs/adr/0125`, `docs/adr/0126`, `docs/BACKLOG.md`, `docs/handoff-E2-06.md` and
+  `docs/adr/0124`, `docs/adr/0125`, `docs/adr/0126`, `docs/BACKLOG.md`, `docs/handoffs/E2-06.md` and
   this log.
 - **Verification:** thirteen new tests, written failing first, running on both the JVM and
   `iosSimulatorArm64`. The exact `AGENTS.md` command passed 636 actionable tasks; forced provider
@@ -3673,7 +3717,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   updates that section. Six documents still described `E2-03` as awaiting review, which would have
   told the next agent that Phase 2 had an unmerged story in flight.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md`,
-  `docs/BACKLOG.md`, `docs/handoff-E2-03.md` (closure update), `docs/handoff-E2-06.md` (new) and
+  `docs/BACKLOG.md`, `docs/handoffs/E2-03.md` (closure update), `docs/handoffs/E2-06.md` (new) and
   this log.
 - **Verification:** `./gradlew contractCheck architectureCheck`. No normative rule, decision or
   contract changed; the update is a status realignment.
@@ -3697,7 +3741,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** a follow-up recorded only in a handoff is history, and the next agent is not bound by it.
   Both defects had survived several rounds that way. The flake in particular makes a red
   `shared-tests` job ambiguous, which erodes the value of the gate itself.
-- **Documents touched:** `docs/BACKLOG.md`, `docs/handoff-E2-03.md` and this log. The stale story-index
+- **Documents touched:** `docs/BACKLOG.md`, `docs/handoffs/E2-03.md` and this log. The stale story-index
   row that still called `E2-03` complete was corrected in the same change to match its own entry.
 - **Verification:** `./gradlew contractCheck architectureCheck` passed. No normative rule, decision or
   contract changed.
@@ -3727,7 +3771,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   wants an account.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`,
   `docs/TECHNICAL_PLAN.md`, `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0123`,
-  `docs/handoff-E2-03.md` and this log.
+  `docs/handoffs/E2-03.md` and this log.
 - **Verification:** RED failed all four new behaviours for behavioural reasons, each test compiling
   and executing. The exact `AGENTS.md` command passed 636 actionable tasks; forced provider
   decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14; the iOS `carAppTests`
@@ -3754,7 +3798,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   exists. A section that claims a story is complete while its pull request is still open sends that
   agent to the wrong next story and hides the outstanding manual acceptance.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/TECHNICAL_PLAN.md`,
-  `docs/BACKLOG.md`, `docs/handoff-E2-03.md` and this log.
+  `docs/BACKLOG.md`, `docs/handoffs/E2-03.md` and this log.
 - **Verification:** `./gradlew contractCheck architectureCheck` passed; the complete `AGENTS.md`
   non-instrumented command passed. No normative rule, decision or contract changed: only status
   statements about what exists.
@@ -3784,7 +3828,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   already has vehicles, and could leave an owner stuck in front of a spinner with no way out. The
   third made the detail title disagree with the stored name whenever the owner typed extra spaces.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/CONTRACTS.md`, `docs/adr/0121`,
-  `docs/handoff-E2-03.md` and this log.
+  `docs/handoffs/E2-03.md` and this log.
 - **Verification:** the exact `AGENTS.md` command passed 636 actionable tasks; forced provider
   decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14; iOS ran 36 unit tests
   and 7 UI tests on an erased simulator with one environment-gated skip and no failures; the
@@ -3821,7 +3865,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   could still miss most of what it reads.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
   `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0116`, `docs/adr/0120`, `docs/adr/0121`,
-  `docs/adr/0122`, `docs/handoff-E2-03.md` and this log.
+  `docs/adr/0122`, `docs/handoffs/E2-03.md` and this log.
 - **Verification:** the exact `AGENTS.md` command passed 636 actionable tasks; forced provider
   decoupling passed 234; the `D-84` API 36 instrumented suite passed 14 of 14 including the new
   system-back case, proved non-vacuous by disabling the handler; iOS ran 32 unit tests and 7 UI tests
@@ -3846,7 +3890,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   work had committed a team in direct conflict with accepted D-71 / ADR-0072. The owner instructed
   the agent to fix the check; restoring the existing constraint required no new decision.
 - **Documents touched:** `iosApp/project.yml`, `iosApp/carApp.xcodeproj/project.pbxproj` and
-  `docs/handoff-E2-03.md`.
+  `docs/handoffs/E2-03.md`.
 - **Verification:** the focused guard failed before the repair at
   `FirebaseConfigurationTest.kt:130`; the forced `architectureCheck` plus build-logic command now
   passes all 16 architecture rules and 58 build-logic tests; the complete 636-task non-instrumented
@@ -3877,7 +3921,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   one, which is why the `--rerun-tasks` convention was not kept as the answer.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
   `docs/adr/README.md`, `docs/adr/0119`, `docs/adr/0120`, `docs/runbooks/ios-device-signing.md`,
-  `AGENTS.md`, `docs/handoff-E2-03.md` and this log.
+  `AGENTS.md`, `docs/handoffs/E2-03.md` and this log.
 - **Verification:** injecting `DEVELOPMENT_TEAM` into `iosApp/project.yml` now fails the guard on an
   ordinary invocation, where the same command previously reported `UP-TO-DATE`; the simulator build
   passes with no local configuration present; a signed device build passes without
@@ -3910,7 +3954,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   longer exercised the first vehicle, which is the only case that was broken.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`,
   `docs/CONTRACTS.md`, `docs/adr/README.md`, `docs/adr/0116`, `docs/adr/0117`, `docs/adr/0118`,
-  `docs/handoff-E2-03.md` and this log.
+  `docs/handoffs/E2-03.md` and this log.
 - **Verification:** the exact `AGENTS.md` non-instrumented command passed 636 actionable tasks; the
   13-test D-84 API 36 instrumented suite passed, including the new cleared-data first-run test; the
   iOS unit suite passed 31 tests and the iOS UI suite passed with one environment-gated skip; forced
@@ -3941,7 +3985,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   preserve the D-65 Firebase Apple SDK pin and keep `NativeAuthCredential` outside the Swift ABI.
 - **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, all four decision
   mirrors for D-112 through D-114, ADR-0113 through ADR-0115, `docs/versions-matrix.md`,
-  `docs/handoff-E2-03.md` and this log.
+  `docs/handoffs/E2-03.md` and this log.
 - **Verification:** behavior-specific RED failures preceded GREEN on shared, Android and iOS; the
   complete non-instrumented gate passed 636 actionable tasks; forced provider decoupling passed
   234 tasks; the D-84 API 36 Android suite, iOS onboarding and vehicle/fuel UI suites, Android
@@ -3958,7 +4002,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Antigravity, on behalf of David Ruiz
 - **What changed:** bound `FirebaseAuthClient` lifecycle cancellation to `AppGraph.close()` via `(dependencies.authClient as? AutoCloseable)?.close()`, verified in `:shared` (`AppGraphCloseTest`) and `:wiring:firebase` (`FirebaseAppProvidersTest`); eliminated vacuous erased generic `assertIs<Outcome.Err<Specific>>` assertions in `FirebaseAuthClientTest` by asserting concrete errors; removed dead `clock` parameter from `GitLiveFirebaseAuthGateway`; drove token freshness missing-`iat` test end-to-end through empty gateway `tokenClaims`; removed unused `dispose()` alias; unified `stagedDispatcherProvider()` instantiation in `FirebaseAppProviders.kt`; documented blast radius, untested Apple claims bridging under D-75, and E2-05 error guidance; documented accepted risk on exception subclass dispatch order in `mapAuthException`; and raised open questions for the owner on `auth_time` vs `iat` and `AuthClient : AutoCloseable` lifecycle formalization.
 - **Why:** addresses all 8 findings from the second review pass on PR #53 without breaking provider decoupling or violating repository testing rules.
-- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E2-02.md`. Code: `shared/.../AppGraph.kt`, `shared/.../AppGraphCloseTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoffs/E2-02.md`. Code: `shared/.../AppGraph.kt`, `shared/.../AppGraphCloseTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
 - **Verification:** verified failing tests during RED phase (`da75eea`), passing tests during GREEN phase (`f4d162e`), full CI command, provider decoupling check, and Objective-C golden-header check passed with 0 failures.
 - **Follow-ups / risks:** human review gate applies on `integration/firebase-auth/**` and authentication topic. PR #53 remains open for mandatory owner review.
 
@@ -3967,9 +4011,9 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Type:** correction
 - **Story / Decision:** `E2-02` / `D-111`
 - **Author:** Antigravity, on behalf of David Ruiz
-- **What changed:** applied a timing workaround for the pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests` (widening the timing window to match the existing pattern in that file; a permanent fix belongs in its own story); reverted repo-wide test-infrastructure flag in `KmpLibraryConventionPlugin.kt` restoring `withHostTestBuilder {}`; extracted pure platform-free auth failure classification (`classifyAuthFailure`) and tested without SDK exception instantiations; injected `AppClock` and made freshness gate fail closed on missing/unparseable `iat`; remapped 17028 (`appNotAuthorized`) to `Provider`; documented `AccountDeletionInvoker` contract requiring `PermissionDenied` on caller rejection and `AccountDeletionRemoteFailed` otherwise; injected `coroutineScope` into `FirebaseAuthClient` and added `close()`/`dispose()` lifecycle cancellation; updated `FirebaseAppProviders.kt`; added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption; recorded decision `D-111` and `ADR-0112`; enforced token re-minting in `reauthenticate()` via `gateway.getIdToken(forceRefresh = true)`; initialized `FirebaseAuthClient.authState` to `AuthState.Unknown` and observed `gateway.authStateChanged` in coroutine scope; passed `coroutineScope = backgroundScope` across all `FirebaseAuthClientTest` cases; raised open question for the owner on token freshness (`auth_time` vs `iat`); and updated `docs/BACKLOG.md` and `docs/handoff-E2-02.md`.
+- **What changed:** applied a timing workaround for the pre-existing iOS SQLite reader connection pool race during graph teardown in `ViewModelLifecycleTests` (widening the timing window to match the existing pattern in that file; a permanent fix belongs in its own story); reverted repo-wide test-infrastructure flag in `KmpLibraryConventionPlugin.kt` restoring `withHostTestBuilder {}`; extracted pure platform-free auth failure classification (`classifyAuthFailure`) and tested without SDK exception instantiations; injected `AppClock` and made freshness gate fail closed on missing/unparseable `iat`; remapped 17028 (`appNotAuthorized`) to `Provider`; documented `AccountDeletionInvoker` contract requiring `PermissionDenied` on caller rejection and `AccountDeletionRemoteFailed` otherwise; injected `coroutineScope` into `FirebaseAuthClient` and added `close()`/`dispose()` lifecycle cancellation; updated `FirebaseAppProviders.kt`; added `allowUidChange: Boolean = false` to `AuthClient.signInWithCredential(credential, allowUidChange)` across `:core:auth` and `:integration:firebase-auth` to unblock `CONTRACTS.md §11.3` Step 2 Account Adoption; recorded decision `D-111` and `ADR-0112`; enforced token re-minting in `reauthenticate()` via `gateway.getIdToken(forceRefresh = true)`; initialized `FirebaseAuthClient.authState` to `AuthState.Unknown` and observed `gateway.authStateChanged` in coroutine scope; passed `coroutineScope = backgroundScope` across all `FirebaseAuthClientTest` cases; raised open question for the owner on token freshness (`auth_time` vs `iat`); and updated `docs/BACKLOG.md` and `docs/handoffs/E2-02.md`.
 - **Why:** resolves all blocking CI issues and code review findings from PR #53 review while preserving contract safety invariants and architecture decoupling.
-- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E2-02.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0112-explicit-uid-change-opt-in-for-account-adoption.md`. Code: `build-logic/convention/src/main/kotlin/.../KmpLibraryConventionPlugin.kt`, `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `iosApp/Tests/ViewModelLifecycleTests.swift`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoffs/E2-02.md`, `docs/BACKLOG.md`, `docs/CONTRACTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0112-explicit-uid-change-opt-in-for-account-adoption.md`. Code: `build-logic/convention/src/main/kotlin/.../KmpLibraryConventionPlugin.kt`, `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `integration/firebase-auth/.../GitLiveFirebaseAuthGatewayTest.kt`, `iosApp/Tests/ViewModelLifecycleTests.swift`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
 - **Verification:** full CI command, provider decoupling check, and Objective-C golden-header check passed with 0 failures.
 - **Follow-ups / risks:** none. Human review gate applies on `integration/firebase-auth/**` and authentication topic.
 
@@ -3980,7 +4024,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Antigravity, on behalf of David Ruiz
 - **What changed:** completed `FirebaseAuthClient` implementing `AuthClient` and `TokenProvider`; implemented Google, Apple, and anonymous flows, credential linking, reauthentication, and sign out with `GitLiveFirebaseAuthGateway`; mapped SDK errors to canonical `AuthError` hierarchy; enforced client token freshness verification (`FRESH_LOGIN_THRESHOLD_MS = 300_000L`) before calling server account deletion; normalized Android millisecond and iOS Apple reference date creation timestamps to `Instant`; and wired `FirebaseAuthClient` as `tokenProvider` in `:wiring:firebase`.
 - **Why:** `E2-02` delivers the production Firebase Auth provider implementation under provider-free contracts (`D-44`), enforces UID stability and link collision handling (`D-102`), strictly forbids client-side SDK deletion (`D-23`), and exposes JWT `AuthToken` retrieval for authenticated remote sync requests (`D-10`).
-- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §20.8`, `docs/handoff-E2-02.md`, and this log. Code: `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRACTS.md §20.8`, `docs/handoffs/E2-02.md`, and this log. Code: `core/auth/.../AuthContracts.kt`, `core/auth/.../AuthContractsTest.kt`, `integration/firebase-auth/.../FirebaseAuthClient.kt`, `integration/firebase-auth/.../FirebaseAuthClientTest.kt`, `wiring/firebase/.../FirebaseAppProviders.kt`, `wiring/firebase/.../FirebaseAppProvidersTest.kt`.
 - **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test`, `./gradlew -Pcarapp.excludeFirebaseProviders=true testAndroidHostTest iosSimulatorArm64Test`, and Objective-C golden header parity all passed cleanly.
 - **Follow-ups / risks:** `E2-03` will implement the native Android Credential Manager and iOS `AuthenticationServices` credential providers and attach them to `NativeAuthCredential`.
 
@@ -3999,7 +4043,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   Gradle-edge validation; `AuthOwnerContext` emitted redundant `LOCAL_OWNER` values on
   `Unknown -> SignedOut` transitions restarting active repository SQLDelight flows; and
   `AuthContractsTest` overstated outcome coverage over a hard-coded fake.
-- **Documents touched:** `docs/handoff-E2-01.md` and this log. Code:
+- **Documents touched:** `docs/handoffs/E2-01.md` and this log. Code:
   `build-logic/convention/src/main/kotlin/.../ArchitectureChecker.kt`,
   `build-logic/convention/src/test/kotlin/.../ArchitectureCheckerTest.kt`,
   `feature/session/build.gradle.kts`,
@@ -4024,7 +4068,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** E0-07 staged the final auth shapes to construct the walking-skeleton graph, while E2-01
   owns their complete provider-free module boundary and the repository-facing owner adapter.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
-  `docs/TECHNICAL_PLAN.md`, `docs/handoff-E2-01.md` and this log.
+  `docs/TECHNICAL_PLAN.md`, `docs/handoffs/E2-01.md` and this log.
 - **Verification:** behavior-specific RED failures preceded the minimum GREEN implementation on
   separate commits; focused auth tests pass on Android host and iOS simulator; Firebase wiring,
   architecture, contracts, lint, static analysis, coverage and the complete non-instrumented
@@ -4068,7 +4112,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   guard unchanged and named the residual limitation explicitly. Android evidence was corrected for
   the same limitation.
 - **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, D-109 decision mirrors, ADR-0109,
-  ADR-0110, `docs/handoff-E1-10.md`, `docs/handoff-E1-13.md`, the iOS provider tests, the D-109
+  ADR-0110, `docs/handoffs/E1-10.md`, `docs/handoffs/E1-13.md`, the iOS provider tests, the D-109
   build-logic guard and this log.
 - **Verification:** review RED `6bf31fb` failed on the missing renamed JPY test; GREEN `278d0e3`
   passed six Native tests in 117 executed tasks; REFACTOR `afbf54a` passed the focused 97-task
@@ -4094,7 +4138,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   ownership. Exact test-only source reuse executes production behavior under the existing root
   Native task without adding a Firebase Apple dependency route, framework runtime or module edge.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, all four D-109 mirrors,
-  ADR-0109, ADR-0110, `docs/handoff-E1-10.md`, `docs/handoff-E1-13.md` and this log.
+  ADR-0109, ADR-0110, `docs/handoffs/E1-10.md`, `docs/handoffs/E1-13.md` and this log.
 - **Verification:** behavior-specific RED guard failure; focused GREEN passed four provider tests
   and the production framework link; the exact complete non-instrumented command passed with 629
   actionable tasks; the forced provider-decoupling graph passed 229 executed tasks and the same
@@ -4122,7 +4166,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   was accurate at its time. The two harness tests added by the review rounds raise the final count
   to 32 tests, 0 failures, 0 skipped on each of `:shared:testAndroidHostTest` and
   `:shared:iosSimulatorArm64Test`. The original entry is otherwise unchanged.
-- **Documents touched:** `docs/handoff-E1-12.md`, this log, and the E1-12 `:shared` common-test
+- **Documents touched:** `docs/handoffs/E1-12.md`, this log, and the E1-12 `:shared` common-test
   files listed in the handoff.
 - **Verification:** extended constructor test RED against the old implementation
   (`[SupervisorJobImpl{Active}]` attached to the parent), GREEN after the fix; focused shared
@@ -4146,7 +4190,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   `finally` block could release the native SQLite driver while test-owned collectors were still
   subscribed. Kotlin/Native could then abort with signal 11 instead of reporting a test result.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
-  `docs/handoff-E1-12.md`, this log, and the E1-12 `:shared` common-test files listed in the handoff.
+  `docs/handoffs/E1-12.md`, this log, and the E1-12 `:shared` common-test files listed in the handoff.
 - **Verification:** deterministic RED proved the missing ordering; all 30 `:shared` tests pass on
   Android host and `iosSimulatorArm64`; the Native suite passed 10/10 consecutive forced local runs
   on Apple silicon; the complete non-instrumented command from `AGENTS.md` passed with 627
@@ -4166,7 +4210,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   that both coalescence orders were tested. They were not.
   `OutboxCoalescenceParityTest.cascadeDeleteThenSubsequentFuelEntryCoalescenceRetainsCanonicalKeySet`
   re-applied the payload produced by the cascade itself, so it exercised cascade-then-cascade while
-  its name, the E1-11 acceptance criterion and `docs/handoff-E1-11.md` all claimed
+  its name, the E1-11 acceptance criterion and `docs/handoffs/E1-11.md` all claimed
   cascade-then-direct. The test now captures the direct payload from the real
   `SqlDelightFuelEntryRepository` create path before the cascade delete and re-applies that direct
   payload, making the direct writer the last writer of the coalesced row. It additionally asserts
@@ -4180,7 +4224,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   no test, because it makes a gap look covered. This was raised as a blocking finding in the PR #48
   review.
 - **Documents touched:** `shared/src/commonTest/kotlin/com/ruizurraca/carapp/OutboxCoalescenceParityTest.kt`,
-  `docs/handoff-E1-11.md` (acceptance evidence, scope, checkpoint, missing trailing newline).
+  `docs/handoffs/E1-11.md` (acceptance evidence, scope, checkpoint, missing trailing newline).
 - **Verification:** `./gradlew :feature:vehicle:testAndroidHostTest :shared:testAndroidHostTest
   :integration:firebase-firestore:testAndroidHostTest --rerun-tasks` and the full non-instrumented
   command of `AGENTS.md`; `contractCheck` output inspected; `git diff --check` clean.
@@ -4228,7 +4272,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `integration/firebase-firestore/.../FirebaseRemoteSyncSource.kt`,
   `FirebaseRemoteSyncSourceTest.kt`, `FirebaseRemoteSyncSourceEntityTypeBoundaryTest.kt` (new),
   `shared/.../VehicleFormStateHolderTest.kt`, `shared/.../OutboxCoalescenceParityTest.kt` (new),
-  `feature/vehicle/.../VehicleRepositoryDeleteTest.kt`, `docs/handoff-E1-11.md`,
+  `feature/vehicle/.../VehicleRepositoryDeleteTest.kt`, `docs/handoffs/E1-11.md`,
   `docs/adr/0111-outbox-entity-type-token-ownership.md`, `docs/PROJECT_LOG.md`.
 - **Verification:** `./gradlew :feature:vehicle:testAndroidHostTest :feature:fuel:testAndroidHostTest
   :shared:testAndroidHostTest :integration:firebase-firestore:testAndroidHostTest` passes; the full
@@ -4243,14 +4287,14 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Codex, on behalf of David Ruiz
 - **What changed:** fixed five owner-review findings on PR #45: (1) restored the accidentally
   deleted `### 2026-09-01 — E1-10 second-review verification and lifecycle corrections` header in
-  `docs/PROJECT_LOG.md`; (2) corrected the Human Review Gate record in `docs/handoff-E1-11.md` to
+  `docs/PROJECT_LOG.md`; (2) corrected the Human Review Gate record in `docs/handoffs/E1-11.md` to
   declare the four gated paths touched (AGENTS.md, SPECIFICATION.md, DECISION_BOARD.md,
   docs/adr/**); (3) updated the In-Progress Checkpoint to the post-fix state; (4) added missing
   trailing newlines to ADR-0111 and the handoff; (5) added `Closes #36` and checked the Gated path
   line in the PR #45 body.
 - **Why:** the header deletion was an accidental edit during the D-110 entry insertion; the gate
   record was stale because the PR touches gated paths via the D-110 mirrors.
-- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoff-E1-11.md`,
+- **Documents touched:** `docs/PROJECT_LOG.md`, `docs/handoffs/E1-11.md`,
   `docs/adr/0111-outbox-entity-type-token-ownership.md`, PR #45 body.
 - **Verification:** `./gradlew contractCheck` passes; `git diff --check` clean. No Kotlin source
   changed, so the full non-instrumented suite is not required for this fix.
@@ -4276,7 +4320,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   assigned to E3-03.
 - **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
   `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0111-outbox-entity-type-token-ownership.md`,
-  `docs/handoff-E1-11.md`, `docs/PROJECT_LOG.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+  `docs/handoffs/E1-11.md`, `docs/PROJECT_LOG.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
   `feature/vehicle/src/commonTest/.../VehicleOutboxMapperTest.kt`, `VehicleRepositoryCreateTest.kt`,
   `VehicleRepositoryUpdateTest.kt`, `VehicleRepositoryDeleteTest.kt`, `VehicleRepositoryTestScope.kt`.
 - **Verification:** the exact non-instrumented command from `AGENTS.md` passes; `contractCheck`
@@ -4296,7 +4340,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** both defects shared one root cause and one fix surface; the contract
   already mandated `entityType`, so this story made the code conform without any
   contract, schema, migration or decision change.
-- **Documents touched:** `docs/handoff-E1-11.md`, `docs/PROJECT_LOG.md`.
+- **Documents touched:** `docs/handoffs/E1-11.md`, `docs/PROJECT_LOG.md`.
 - **Verification:** `:feature:vehicle:testAndroidHostTest` passes (76 tests); the
   exact non-instrumented command from `AGENTS.md` passes with 627 actionable tasks
   including ktlint, detekt, architecture, contract parity, coverage, Android
@@ -4322,7 +4366,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   executable iOS-host route that preserves D-75 and the D-108 host boundary.
 - **Documents touched:** `AGENTS.md`, `README.md`, `.github/workflows/ci.yml`,
   `docs/CONTRIBUTING.md`, `docs/BACKLOG.md`, all four D-109 decision mirrors, ADR-0107, ADR-0109,
-  ADR-0110, `docs/handoff-E1-10.md` and the pull-request description.
+  ADR-0110, `docs/handoffs/E1-10.md` and the pull-request description.
 - **Verification:** the corrected focused Android and convention-plugin tasks passed with forced
   execution, including both `AndroidLocaleProviderTest` cases. The expanded exact non-instrumented
   command from `AGENTS.md` passed with 627 actionable tasks. `contractCheck` reports 110 aligned
@@ -4350,7 +4394,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/BACKLOG.md`,
   `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`,
   `docs/adr/README.md`, ADR-0106 through ADR-0109, `docs/CONTRIBUTING.md`, the handoff and pull
-  request templates, and `docs/handoff-E1-10.md`.
+  request templates, and `docs/handoffs/E1-10.md`.
 - **Verification:** focused Android-host settings, Fuel Entry and graph tests pass; focused
   `:feature:fuel`, `:feature:session` and `:shared` iOS simulator tests pass; the exact complete
   non-instrumented command from `AGENTS.md` passes with 621 actionable tasks, including ktlint,
@@ -4395,7 +4439,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Story / Decision:** `E1-11` / —
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** added backlog story `E1-11` to `docs/BACKLOG.md` Phase 1, sized S, registering GitHub issue #36. The story restores `docs/CONTRACTS.md §8` compliance of every outbox payload produced by `VehicleOutboxMapper`. Issue #36 reports only `toFuelEntryTombstonePayload`; review of the same mapper found `toVehicleOutboxPayloadOrNull` also omits `entityType`, affecting the vehicle create, update and tombstone write paths of `SqlDelightVehicleRepository`, so the story covers both mappers. Also added the dependency-graph line, the execution-order rationale and the story-index row.
-- **Why:** the defect had no backlog owner: it existed only as a follow-up risk in `docs/handoff-E1-06.md` and the 2026-08-29 log entry. `docs/CONTRACTS.md §8` requires `entityType` in every outbox payload and coalesces on `(entityType, entityId)`, so a Vehicle cascade delete can replace a conformant Fuel Entry payload with an incomplete one. Both omissions were folded into one story because they share a root cause and a single fix surface; splitting them would have produced two PRs touching the same file.
+- **Why:** the defect had no backlog owner: it existed only as a follow-up risk in `docs/handoffs/E1-06.md` and the 2026-08-29 log entry. `docs/CONTRACTS.md §8` requires `entityType` in every outbox payload and coalesces on `(entityType, entityId)`, so a Vehicle cascade delete can replace a conformant Fuel Entry payload with an incomplete one. Both omissions were folded into one story because they share a root cause and a single fix surface; splitting them would have produced two PRs touching the same file.
 - **Documents touched:** `docs/BACKLOG.md`, `docs/PROJECT_LOG.md`.
 - **Verification:** documentation-only change; no code, schema or contract change. The referenced test symbols were confirmed to exist: `VehicleRepositoryDeleteTest.permanentOwnerDeleteEnqueuesFuelTombstonesBeforeTheVehicleTombstone` and `VehicleRepositoryCreateTest.permanentOwnerCreateEnqueuesTheFullVehicleSnapshot`.
 - **Follow-ups / risks:** closes the follow-up of the 2026-09-01 E1-09 review-fixes entry, which recorded that the E1-11 backlog content was removed from PR #40 and needed its own PR. `E1-11` implementation remains open and MUST precede `E2-06` and `E3-03`. Adding `entityType` to the Vehicle payload will fail the exact key-set assertion in `VehicleRepositoryCreateTest`; the implementing agent must update it.
@@ -4407,7 +4451,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** opencode agent, on behalf of David Ruiz
 - **What changed:** applied 3 blocker and 7 minor review findings to PR #40. B1: `VehicleListView` swipe-to-delete now shows a confirmation alert before deleting (two-step protocol matching Android). B2: removed dead `DiagnosticsViewModel` class. B3: removed out-of-scope E1-11 commit from the PR branch via rebase. M1: corrected handoff `VehicleDetailViewModel` → `FuelEntryListViewModel`. M2: removed 4 unused localized strings. M3: removed `graph.close()` from `WalkingSkeletonModel.deinit` and `VehicleListStateHolder.close()` from `VehicleListViewModel.deinit` to prevent premature closure of shared graph holders. M4: removed redundant `onChange` double-dismiss in both form views. M5: extracted `epochMillisFromDate` helper in `FuelEntryCalendarDay`. M6: resolved by M4 (deprecated `onChange` signature removed). M7: fixed `formatScaled` negative sign handling.
 - **Why:** code review of PR #40 identified a data-loss risk (swipe-delete without confirmation), dead code, an out-of-scope commit, and several minor quality issues. TDD protocol followed: RED commit (`24bb51f`) with failing tests, GREEN commit (`47b6209`) with all fixes, REFACTOR commit for documentation.
-- **Documents touched:** `docs/handoff-E1-09.md`, `docs/PROJECT_LOG.md`.
+- **Documents touched:** `docs/handoffs/E1-09.md`, `docs/PROJECT_LOG.md`.
 - **Verification:** `xcodebuild test` on iOS Simulator: 18 unit tests passed, 2 UI tests passed (1 skipped for App Check). Full Gradle verification: `BUILD SUCCESSFUL` (ktlint, detekt, architecture, contract, kover, Android assemble, host tests, iOS Kotlin/Native tests).
 - **Follow-ups / risks:** E1-11 backlog content was removed from this PR and needs its own PR.
 
@@ -4418,7 +4462,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Gemini (Antigravity session), on behalf of David Ruiz
 - **What changed:** implemented native iOS SwiftUI views (`VehicleListView`, `VehicleFormView`, `VehicleDetailView`, `FuelEntryFormView`), `@MainActor ObservableObject` view models with bounded holder lifecycles, scaled value formatting parity with Android (scales 1000, 1000, 100, 100), device-local calendar day conversions, localized UI error mapping, walking-skeleton debug diagnostics view under `#if DEBUG`, dedicated unit test target `carAppTests` (15 tests), end-to-end UI automation in `carAppUITests`, and added iOS test execution to the protected `ios-simulator-build` CI job.
 - **Why:** Delivers Phase 1 story E1-09 providing native iOS user interfaces for Vehicle management (F-2) and Fuel Entry management (F-3) with functional parity with Android while strictly preserving the exported Swift ABI and avoiding business logic duplication in Swift.
-- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0101-walking-skeleton-debug-diagnostics-screen.md`, `docs/adr/0102-ios-deployment-target-and-observableobject-lifecycle.md`, `docs/adr/0103-ios-unit-and-ui-test-targets-in-ci.md`, `docs/adr/0104-ios-navigationstack-and-sheet-presentation.md`, `docs/adr/0105-scaled-value-formatting-parity-on-ios.md`, `docs/handoff-E1-09.md`, `.github/workflows/ci.yml`.
+- **Documents touched:** `docs/BACKLOG.md`, `AGENTS.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0101-walking-skeleton-debug-diagnostics-screen.md`, `docs/adr/0102-ios-deployment-target-and-observableobject-lifecycle.md`, `docs/adr/0103-ios-unit-and-ui-test-targets-in-ci.md`, `docs/adr/0104-ios-navigationstack-and-sheet-presentation.md`, `docs/adr/0105-scaled-value-formatting-parity-on-ios.md`, `docs/handoffs/E1-09.md`, `.github/workflows/ci.yml`.
 - **Verification:** `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -sdk iphonesimulator test` passed 15 unit tests and 1 UI test (1 skipped for AppCheck). Full repository checks pass.
 - **Follow-ups / risks:** E1-10 will deliver persisted user settings (including selected currency).
 
@@ -4477,7 +4521,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   delivery and test-timing risks, plus an obsolete `CONTRACTS.md §20.10` clearing rule that
   contradicted the selected mode-switch behavior.
 - **Documents touched:** D-99 and ADR-0100 in all decision mirrors, `docs/CONTRACTS.md §20.10`,
-  ADR-0099, `docs/handoff-E1-08.md` and this log.
+  ADR-0099, `docs/handoffs/E1-08.md` and this log.
 - **Verification:** every behavioral correction has separate RED and GREEN commits; C-2 adds its
   own RED, GREEN and REFACTOR sequence. The complete repository command passes with 609 actionable
   tasks, the exact provider-decoupling command passes with 222 actionable tasks, Fuel line coverage
@@ -4500,7 +4544,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   boundaries owned by E1-10 and E3-03.
 - **Documents touched:** D-92 through D-98 and ADR-0093 through ADR-0099 in the four decision
   mirrors, `docs/CONTRACTS.md`, current-state documents, `docs/BACKLOG.md` and
-  `docs/handoff-E1-08.md`.
+  `docs/handoffs/E1-08.md`.
 - **Verification:** RED, GREEN and REFACTOR are separate commits. The complete repository command,
   99.13% `:feature:fuel` line coverage, all 7 API 36 instrumented tests, the iOS framework link and
   exact generated-versus-golden header comparison pass; detailed commands are in the handoff.
@@ -4519,7 +4563,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** second-round review found that saveable UI text could diverge from the command persisted
   after process restoration or late edit facts, and that Android duplicated a shared validation
   boundary. The corrections add no decision, ADR or Swift ABI change.
-- **Documents touched:** `docs/handoff-E1-07.md` and this log; D-84 through D-91 remain unchanged.
+- **Documents touched:** `docs/handoffs/E1-07.md` and this log; D-84 through D-91 remain unchanged.
 - **Verification:** both defects have RED, GREEN and REFACTOR commits. Targeted common and API 36
   tests pass; the complete repository and unchanged golden evidence is recorded in the handoff and
   PR #37.
@@ -4541,7 +4585,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   odometer input. D-90 and D-91 make the two Swift ABI changes explicit while the Android fixes stay
   host-private.
 - **Documents touched:** `docs/CONTRACTS.md §15.3` and `§20.10`, D-90 / ADR-0091 and D-91 /
-  ADR-0092 in all decision mirrors, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`.
+  ADR-0092 in all decision mirrors, `docs/BACKLOG.md` and `docs/handoffs/E1-07.md`.
 - **Verification:** each correction has RED, GREEN and REFACTOR commits. Focused common, shared,
   Android compilation and API 36 instrumented tests pass; complete repository, framework-header
   and protected-check evidence is recorded in the handoff and PR #37.
@@ -4562,7 +4606,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   both direct and Swift-transitive close leaked the local database connection. D-89 keeps that
   closeable resource in `:core:database` without changing the Swift ABI.
 - **Documents touched:** `docs/CONTRACTS.md §11.6`, `§20.3.2` and `§20.10`, D-89 and ADR-0090 in
-  the four decision mirrors, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`. Owner-ratified D-84
+  the four decision mirrors, `docs/BACKLOG.md` and `docs/handoffs/E1-07.md`. Owner-ratified D-84
   through D-88 and ADR-0085 through ADR-0089 remain unchanged.
 - **Verification:** the Android-host release tests failed before implementation, then direct and
   Swift-transitive release passed on Android host and iOS. Affected database, fake, feature,
@@ -4585,7 +4629,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   repository, display copy native, provider types outside the shared framework and final sync
   ownership staged for E3-03.
 - **Documents touched:** D-84 through D-88 and ADR-0085 through ADR-0089 in the four decision
-  mirrors, current-state and CI records, `docs/BACKLOG.md` and `docs/handoff-E1-07.md`.
+  mirrors, current-state and CI records, `docs/BACKLOG.md` and `docs/handoffs/E1-07.md`.
 - **Verification:** Vehicle presentation and graph behavior were RED before implementation; the
   API 36 instrumented creation flow, Android-host and iOS tests, lint, detekt, coverage,
   architecture, contract, Android assembly and Shared framework header checks pass. Detailed
@@ -4605,7 +4649,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** confirmed initial-odometer warnings lost their persisted trace, ascending SQL limits hid
   new rows after the memory cap, and repeated segment searches made list projection quadratic.
 - **Documents touched:** `docs/CONTRACTS.md §3.1` and `§12`, D-82 and D-83 in the four decision
-  mirrors, ADR-0083, ADR-0084 and `docs/handoff-E1-06.md`.
+  mirrors, ADR-0083, ADR-0084 and `docs/handoffs/E1-06.md`.
 - **Verification:** four behavior tests failed first on Android host and iOS, then the complete
   repository command passed in 7 seconds with 602 actionable tasks. The Shared framework link
   passed in 4 seconds with 69 actionable tasks; detailed evidence is in the handoff.
@@ -4622,7 +4666,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   guards `:shared` production code, and §20.3 catalogues the public helper explicitly.
 - **Why:** `kotlinx-datetime` must remain an implementation detail of `:core:common`, and matching
   the full helper package path prevents an unrelated file name from claiming the exception.
-- **Documents touched:** `docs/CONTRACTS.md §20.3`, ADR-0082 and `docs/handoff-E1-06.md`.
+- **Documents touched:** `docs/CONTRACTS.md §20.3`, ADR-0082 and `docs/handoffs/E1-06.md`.
 - **Verification:** a new fixture failed before `:shared` entered the guarded scope. The real-tree
   extension found no production violations; focused checks and full evidence are recorded in the
   E1-06 handoff.
@@ -4641,7 +4685,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   D-38 mutation invariants inside one transaction and preserving the UI's local-only source of
   truth.
 - **Documents touched:** D-81 and ADR-0082 in the four decision mirrors,
-  `docs/CONTRACTS.md §2` and `§5`, current-state documents and `docs/handoff-E1-06.md`.
+  `docs/CONTRACTS.md §2` and `§5`, current-state documents and `docs/handoffs/E1-06.md`.
 - **Verification:** 29 repository behavior tests and three D-81 helper tests were RED on both KMP
   targets; GREEN passed the focused Android-host and iOS suites. Lint, detekt, Kover, 16
   architecture rules and 82 decision/ADR mirrors pass; full repository evidence is in the handoff.
@@ -4661,7 +4705,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   E1-06 or allowing Kover and debug Native compilation to invalidate performance evidence.
 - **Documents touched:** D-78 through D-80 and ADR-0079 through ADR-0081 in the four decision
   mirrors, `docs/CONTRACTS.md §4`, `docs/BACKLOG.md`, `docs/versions-matrix.md`, current-state
-  documents and `docs/handoff-E1-05.md`.
+  documents and `docs/handoffs/E1-05.md`.
 - **Verification:** 21 new tests were RED on both Android host and `iosSimulatorArm64`, then all 61
   Android-host and 58 iOS feature tests passed unchanged. The first standalone JVM median was
   3,392,708 ns with `javaAgents=0`; the enabled 100 ms gate passed at 3,568,521 ns and the optimized
@@ -4683,7 +4727,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   preserving database ownership of derived odometer state and canonical-triple-only persistence.
 - **Documents touched:** D-77 and ADR-0078 in the four decision mirrors,
   `docs/CONTRACTS.md §5`, `§13`, `§20.5`, current-state documents and
-  `docs/handoff-E1-04.md`.
+  `docs/handoffs/E1-04.md`.
 - **Verification:** RED produced 33 expected validator failures on both Android host and
   `iosSimulatorArm64`; GREEN passed all 40 Android-host and 37 iOS tests; REFACTOR passed feature
   lint, detekt, 85% Kover, architecture and contract checks. The complete 600-task repository CI
@@ -4703,7 +4747,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   retaining its staged remote push and recovery behavior.
 - **Why:** E1-03 completes the offline Vehicle data boundary while preserving D-38 database-owned
   mutation invariants and D-76's single-transaction validation requirement.
-- **Documents touched:** `docs/BACKLOG.md`, current-state documents and `docs/handoff-E1-03.md`.
+- **Documents touched:** `docs/BACKLOG.md`, current-state documents and `docs/handoffs/E1-03.md`.
 - **Verification:** 26 focused E1-03 tests were RED before implementation; all 57 Vehicle tests pass
   on Android host and `iosSimulatorArm64`. Database and shared runtime regression tests, feature
   coverage, lint, detekt, architecture and contract checks pass; full repository evidence is in the
@@ -4726,10 +4770,10 @@ because no assertion compares a state-holder block and the order is therefore ha
   duplicates remain ingestible. Only one local transaction containing fact loading, validation
   and mutation can guarantee the local rule.
 - **Documents touched:** `docs/CONTRACTS.md §5`, `§13` and `§20.2`, D-76 and ADR-0077 in the four
-  decision mirrors, and `docs/handoff-E1-02.md`.
+  decision mirrors, and `docs/handoffs/E1-02.md`.
 - **Verification:** the correction RED test failed on `VALIDATION.OUT_OF_RANGE`; GREEN passed the
   `:core:common` Android-host tests and Vehicle tests on Android host and `iosSimulatorArm64`.
-  Final repository checks are recorded in `docs/handoff-E1-02.md`.
+  Final repository checks are recorded in `docs/handoffs/E1-02.md`.
 - **Follow-ups / risks:** E1-03 must prove fact loading, validation and mutation share one local
   transaction. It must not add a `ValidatedCommand` key type or change `VehicleRepository`.
 
@@ -4746,7 +4790,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   validation contexts keep those rules Kotlin-pure and testable without adding database-shaped
   query methods to the public repository contract.
 - **Documents touched:** D-76 and ADR-0077 in the four decision mirrors, `docs/CONTRACTS.md §5`,
-  `§13` and `§20.5`, `docs/BACKLOG.md`, current-state documents and `docs/handoff-E1-02.md`.
+  `§13` and `§20.5`, `docs/BACKLOG.md`, current-state documents and `docs/handoffs/E1-02.md`.
 - **Verification:** the RED Android-host run executed 29 tests with 28 expected behavioral
   failures and the pre-existing FuelType inventory passing; GREEN and REFACTOR passed all 29 tests
   on Android host and `iosSimulatorArm64`, feature lint, detekt and the 85% Kover gate. The complete
@@ -4790,7 +4834,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Why:** E0-07 opens Phase 1 only after proving the complete native-to-local-to-Firebase path and
   observing the development cost-control lifecycle rather than treating configured retention as
   evidence of effective cleanup.
-- **Documents touched:** `docs/handoff-E0-07.md`,
+- **Documents touched:** `docs/handoffs/E0-07.md`,
   `docs/runbooks/development-firebase-cost-controls.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
   `docs/DEFINITION.md`, and this log.
 - **Verification:** the final inventory was empty at 2026-08-27T14:31:45Z after both images were
@@ -4974,7 +5018,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   stack.
 - **Why:** the first application Firestore client must use fully reviewed owner isolation and
   schema validation rather than temporary remote rules.
-- **Documents touched:** `docs/handoff-E3-01.md`, the Firestore contract and story records, the
+- **Documents touched:** `docs/handoffs/E3-01.md`, the Firestore contract and story records, the
   D-46 through D-52 decision records and this log.
 - **Verification:** 154 emulator tests and the complete local Gradle CI command passed; the delta
   query paginated with tombstones and without a composite index.
@@ -5092,7 +5136,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   macOS CI proof covering Android host and `iosSimulatorArm64`.
 - **Why:** the first Firebase integration must land only after the protected branch can prove that
   provider modules are removable without breaking the local and shared graph.
-- **Documents touched:** `docs/handoff-E3-06.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+- **Documents touched:** `docs/handoffs/E3-06.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
   `docs/DEFINITION.md`, the D-39 through D-45 decision records and this log.
 - **Verification:** RED/GREEN Gradle TestKit tests passed; the provider-free Android host and
   `iosSimulatorArm64` tests passed; the complete local CI command passed.
@@ -5213,7 +5257,7 @@ because no assertion compares a state-holder block and the order is therefore ha
   read-model invariants, and an executable direct-mutation boundary.
 - **Why:** E1-01 opens Phase 1 and supplies the local source of truth required by the E0-07 walking
   skeleton while preserving the exact SQLite constraints and recomputation contracts.
-- **Documents touched:** `docs/handoff-E1-01.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
+- **Documents touched:** `docs/handoffs/E1-01.md`, `docs/BACKLOG.md`, `AGENTS.md`, `README.md`,
   `docs/DEFINITION.md`, the D-36 through D-38 decision records and this log.
 - **Verification:** full Gradle CI command passed with Android host and `iosSimulatorArm64` tests;
   file-backed close/reopen tests passed on both platforms; the ARM64 shared framework and iOS app
@@ -5229,7 +5273,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Codex, on behalf of David Ruiz
 - **What changed:** synchronized entity writes are routed through a Kotlin/SQLDelight `DatabaseMutations` facade in `:core:database`; direct generated entity-mutation calls outside that module are forbidden.
 - **Why:** the facade can capture pre-write state, apply the exact de-duplicated recompute set and notify SQLDelight observers inside one transaction. SQLite triggers obscure pre/post successor behavior and do not reliably expose indirect table changes to observed queries.
-- **Documents touched:** `docs/adr/0039-database-mutations-use-transaction-facade.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `AGENTS.md`, `docs/handoff-E1-01.md`, and this log.
+- **Documents touched:** `docs/adr/0039-database-mutations-use-transaction-facade.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `AGENTS.md`, `docs/handoffs/E1-01.md`, and this log.
 - **Verification:** `contractCheck` must report 39 decisions with matching statuses; `E1-01` owns RED/GREEN recomputation tests and the direct-mutation architecture fixture.
 - **Follow-ups / risks:** every new synchronized entity mutation must extend both `DatabaseMutations` and the architecture rule; pull and local-owner adoption entry points must preserve supplied mutation sequences.
 
@@ -5240,7 +5284,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Codex, on behalf of David Ruiz
 - **What changed:** Kotlin Multiplatform support is limited to `iosArm64` and `iosSimulatorArm64`; the unlinked `iosX64` target is removed from the shared conventions and framework.
 - **Why:** the complete bundled-SQLite stack accepted by `D-36` publishes no Intel-simulator variants, while the application and CI already build only ARM64 iOS paths. A target-specific driver would defeat the accepted single-engine guarantee.
-- **Documents touched:** `docs/adr/0038-supported-ios-targets-are-arm64.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/versions-matrix.md`, `AGENTS.md`, `docs/handoff-E1-01.md`, and this log.
+- **Documents touched:** `docs/adr/0038-supported-ios-targets-are-arm64.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md`, `docs/TECHNICAL_PLAN.md`, `docs/adr/README.md`, `docs/versions-matrix.md`, `AGENTS.md`, `docs/handoffs/E1-01.md`, and this log.
 - **Verification:** `contractCheck` must report 38 decisions with identical IDs and statuses; `E1-01` owns the target removal and full Android, Kotlin/Native and iOS application verification.
 - **Follow-ups / risks:** Intel Macs and x86_64 simulators are unsupported. Reintroducing `iosX64` requires a complete compatible dependency set, application linking, CI verification and a decision superseding `D-37`.
 
@@ -5260,7 +5304,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Type:** milestone
 - **Story / Decision:** — (no backlog story; handover readiness, owner-directed)
 - **Author:** Claude Opus 5, on behalf of David Ruiz
-- **What changed:** `AGENTS.md` gained a `## Repository State` section as its second section, after Rule 0: which modules exist and which deliberately do not, the three-line template for creating a module, the exact command CI runs, a table of what each check proves, what is enforced on `main`, what is not yet enforced with the story that owns each gap, and a pointer to the per-story handoffs. The Document Map now lists `docs/handoff-*.md`. `README.md` gained a `Build and verify` section and an accurate status line. `docs/CONTRIBUTING.md` gained a "Before Opening a Pull Request" section and now states that `main` is protected, names the nine required checks, and says plainly that administrator bypass is an escape hatch and not a workflow. Stale claims were corrected: `README.md` said "There is no CI yet; `E0-05` creates it", `docs/DEFINITION.md` said "The repository is greenfield: there is no product code yet", and both still listed a "Phase 0.5" for the walking skeleton that `D-30` had already folded into Phase 1.
+- **What changed:** `AGENTS.md` gained a `## Repository State` section as its second section, after Rule 0: which modules exist and which deliberately do not, the three-line template for creating a module, the exact command CI runs, a table of what each check proves, what is enforced on `main`, what is not yet enforced with the story that owns each gap, and a pointer to the per-story handoffs. The Document Map now lists `docs/handoffs/*.md`. `README.md` gained a `Build and verify` section and an accurate status line. `docs/CONTRIBUTING.md` gained a "Before Opening a Pull Request" section and now states that `main` is protected, names the nine required checks, and says plainly that administrator bypass is an escape hatch and not a workflow. Stale claims were corrected: `README.md` said "There is no CI yet; `E0-05` creates it", `docs/DEFINITION.md` said "The repository is greenfield: there is no product code yet", and both still listed a "Phase 0.5" for the walking skeleton that `D-30` had already folded into Phase 1.
 - **Why:** the project is handing over to another agent. An incoming agent reads `AGENTS.md` and `README.md` first, and neither mentioned — once — how to build the project, how to run a check, or that any of this existed. `AGENTS.md` was written when the repository had no code and had never been updated to describe the system that grew under it, so its instructions were complete about process and silent about the thing being built.
 - **Documents touched:** `AGENTS.md`, `README.md`, `docs/DEFINITION.md`, `docs/CONTRIBUTING.md`, and this log.
 - **Verification:** full suite green — `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test`. A grep sweep for "no product code", "there is no CI", "not configured yet", "Phase 0.5" and "Implementation starts with" now returns only the project log, where those statements are history and MUST NOT be edited.
@@ -5306,7 +5350,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** `.editorconfig` (`ktlint_official`) and `detekt.yml` were committed at the root, with **no baseline file anywhere** and a CI step that fails if one appears. `carapp.quality` (ktlint + detekt) and `carapp.coverage` (Kover, with the `D-18` thresholds) are applied by the module convention plugins, so a new module cannot opt out. `contractCheck` implements the assertions of `docs/CONTRACTS.md §18`: 10 pass and 3 report `PENDING` with the story that unblocks them. `.github/workflows/ci.yml` defines the nine check names fixed by `§18`, unchanged.
 - **Why:** everything before this story was advisory. Until a check fails a build, a rule is a sentence in a document. The `PENDING` status exists for the same reason: three assertions cannot run until `E0-07`, `E3-01` and `DEC-2` deliver their inputs, and silently skipping them would report coverage that does not exist.
-- **Documents touched:** `docs/handoff-E0-05.md` (new), `docs/BACKLOG.md`, and this log. Code and config: `.editorconfig`, `detekt.yml`, `.github/workflows/ci.yml`, `build-logic/**`, `build.gradle.kts`, `gradle/libs.versions.toml`, lint fixes across `core/**` and `shared/**`, and a new `ArithmeticGuardsTest`.
+- **Documents touched:** `docs/handoffs/E0-05.md` (new), `docs/BACKLOG.md`, and this log. Code and config: `.editorconfig`, `detekt.yml`, `.github/workflows/ci.yml`, `build-logic/**`, `build.gradle.kts`, `gradle/libs.versions.toml`, lint fixes across `core/**` and `shared/**`, and a new `ArithmeticGuardsTest`.
 - **Verification:** `ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug testAndroidHostTest iosSimulatorArm64Test` — `BUILD SUCCESSFUL in 23s`. This is the first story in which every quality box in the handoff can honestly be ticked. Two real defects were found while writing the checks: `koverVerify` caught `:core:model` at 82.6% against its 90% bound, which the new guard tests closed, and `contractCheck` assertion 5 found six interfaces named in the contract that appeared in no backlog story, which `docs/BACKLOG.md` now names.
 - **Follow-ups / risks:** **CI has never actually run**; the first merge is its first real execution. **Branch protection for `main` is not configured** — it needs repository admin rights and the checks must run once before GitHub offers them by name, so it is an owner action (`DEC-6`), and until it is set a PR can merge red. `MagicNumber` is suppressed in the two arithmetic files with the reason in the file: those literals are the canonical formula of `§2`, and naming them would hide the one thing a reviewer must check. Assertion 1 accepts a declaration anywhere in `docs/CONTRACTS.md` rather than only in `§20`, because implemented literally it fails today — `Logger` is declared in `§17`, `AnalyticsTracker` in `§16.1`, `RemoteSyncSource` in `§10`, `AppGraphDependencies` in `§11.6`, the repositories in `§12` and the use cases in `§13`, while `§20` claims to hold every type; recorded as `DEC-4`. detekt 1.23.8 predates Kotlin 2.4.10, so its analysis is syntactic and type-resolution rules are off.
 
@@ -5317,7 +5361,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** `carapp.architecture` registers an `architectureCheck` task on the root project whose rules are **generated from the dependency table of `docs/TECHNICAL_PLAN.md §4`** — the task parses that table, so editing it changes the check, and a table the parser cannot understand fails instead of being skipped. Module-graph rules cover forbidden edges, undeclared edges and forbidden library capabilities resolved to real coordinates; source rules cover the Phase 0 module set, SKIE outside `:shared`, feature-to-feature edges, `expect`/`actual` in `:core:crash`, `AppDatabase`/`DatabaseFactory` leaks, `Float`/`Double`, free-text `Logger` fields, logging from `:core:database`, `outbox.lastError` reads, read-model writes, `ConsumptionInvalidReason`/`SegmentResult` placement, `createAppGraph` in `:integration:*`, and unreferenced image-loading dependencies. 23 fixtures, one per rule, assert both that the offending shape is rejected and that the legal shape beside it is accepted.
 - **Why:** the rules are written as pure functions over plain data rather than as checks that inspect real Gradle modules, because most of them protect `:core:sync`, `:core:auth`, `:core:database`, `:integration:*` and `:feature:*` — modules the Phase 0 preamble forbids creating and that `E0-04` is itself required to reject. A fixture that had to create the offending module could never exist for those rules. Fabricated modules prove each rule fires today and keep proving it when the real modules arrive.
-- **Documents touched:** `docs/handoff-E0-04.md` (new), `docs/BACKLOG.md`, and this log. Code: `build-logic/convention/src/main/kotlin/.../architecture/**` and its tests (new), `build.gradle.kts`, `build-logic/convention/build.gradle.kts`. No normative document changed and no decision was taken.
+- **Documents touched:** `docs/handoffs/E0-04.md` (new), `docs/BACKLOG.md`, and this log. Code: `build-logic/convention/src/main/kotlin/.../architecture/**` and its tests (new), `build.gradle.kts`, `build-logic/convention/build.gradle.kts`. No normative document changed and no decision was taken.
 - **Verification:** `architectureCheck` reports `14 rules from docs/TECHNICAL_PLAN.md §4, 8 modules` and passes on the real graph; `:build-logic:convention:test` runs 23 fixtures with 0 failures. The fixtures found and fixed two defects that would have made the check vacuous: the glob matcher used `Regex.escape`, which wraps the pattern in `\Q…\E` so `*` was never substituted and `:core:*` matched nothing, and the capability parser matched tokens exactly, so `:core:testing`'s "platform APIs in `commonMain` public API (…)" parsed to no rule at all. Both would have passed everything silently.
 - **Follow-ups / risks:** **the three feature-layer rows of `§4` are not enforced** — feature `domain`, `data` and `presentation` are package-level rules inside one Gradle module, which `D-16` assigns to Konsist, and no `:feature:*` module exists to host them; recorded as `DEC-3` for the owner. Konsist is pinned by `E0-06` and still unused. The `:wiring:firebase` "product logic" rule needs a Kotlin declaration parser and the module itself, so it belongs with `E3-08`. The source scan is line-based and deliberately conservative: it catches the realistic mistake, not a determined workaround. The check is not wired into `check` or CI until `E0-05`.
 
@@ -5328,7 +5372,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** `:core:analytics` was created with `AnalyticsTracker`, the 13-leaf closed `AnalyticsEvent` hierarchy, `SyncStatusCategory`, `ConversionFailureReason`, `DeletionFailureReason`, `AnalyticsUserProperties` and `CountBucket`, all matching `docs/CONTRACTS.md §20.9`, plus the two normative `AuthError` mappings as exhaustive extension functions and `CountBucket.ofCount` writing the exact bucket bounds in one place. `NoOpAnalyticsTracker` and `RecordingAnalyticsTracker` were added to `:core:testing`. The module depends only on `:core:common` and contains no Firebase, GitLive or Android type.
 - **Why:** `AnalyticsTracker` is a mandatory member of `AppGraphDependencies` (`§11.6`), so the graph cannot be constructed or tested without it, which is why the abstraction is Phase 0 while the Firebase implementation is `E3-09`. The closed hierarchy is what makes the forbidden-payload rule of `§16.1` enforceable by the type system instead of by review: no leaf can carry a free-text `String`, so an exact odometer value or a note has nowhere to go.
-- **Documents touched:** `docs/handoff-E0-08.md` (new), `docs/BACKLOG.md`, and this log. Code: `core/analytics/**` (new), `core/testing/**`, `settings.gradle.kts`. No normative document changed and no decision was taken.
+- **Documents touched:** `docs/handoffs/E0-08.md` (new), `docs/BACKLOG.md`, and this log. Code: `core/analytics/**` (new), `core/testing/**`, `settings.gradle.kts`. No normative document changed and no decision was taken.
 - **Verification:** `:core:analytics` and `:core:testing` pass on both the Android host and `iosSimulatorArm64`. Closedness is enforced by an exhaustive `when` with no `else`, so adding, renaming or removing a leaf stops the test compiling. The opt-in tests assert the case an implementation is most likely to get wrong: enabling collection after events were dropped while disabled MUST NOT replay them.
 - **Follow-ups / risks:** the criterion "a no-op `AnalyticsTracker` … is the default in `testAppGraphDependencies(...)`" cannot be closed while `DEC-2` is open, because that factory does not exist. The `SyncStatus -> SyncStatusCategory` mapping of `§20.9` is not implemented here: `SyncStatus` belongs to `:core:sync`, a Phase 3 module Phase 0 forbids creating, so the mapping and its connectivity-code edge case are owned by `E3-03`/`E3-09`, as is the `setUserProperties` call-cadence fixture.
 
@@ -5339,7 +5383,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** `:core:model`, `:core:common`, `:core:crash` and `:core:testing` were created, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20` — the identifier, money and scaled-value types of `§20.0`, the named constants of `§20.0.1`, `Outcome` and its five extensions, the complete `AppError` taxonomy with all 44 stable codes, `Confirmation`, the platform abstractions of `§20.3`, `Logger` of `§17`, `CrashReporter` and its no-op, and deterministic fakes for every Phase 0 abstraction. The five canonical formulas of `§2` are implemented as exact integer arithmetic in `:core:model` and covered by every golden value in the document, with the average test additionally asserting that the distance-weighted result differs from the arithmetic mean of the rounded segments. Each module's build file is four lines or fewer, which is the first real evidence for the `E0-02` "no more than five lines" criterion.
 - **Why:** these are the types every later story depends on, and `§20` exists precisely so two agents cannot produce two incompatible implementations. Writing them against the document leaf by leaf, with the codes pinned in a test, is what makes a later rename fail the build instead of silently breaking the Firestore rules and the log allowlist that refer to those codes as literals.
-- **Documents touched:** `docs/handoff-E0-03.md` (new), `docs/BACKLOG.md`, and this log. Code: `core/model/**`, `core/common/**`, `core/crash/**`, `core/testing/**` (new), `settings.gradle.kts`, `build-logic/**`, `shared/build.gradle.kts`. No normative document changed and no decision was taken.
+- **Documents touched:** `docs/handoffs/E0-03.md` (new), `docs/BACKLOG.md`, and this log. Code: `core/model/**`, `core/common/**`, `core/crash/**`, `core/testing/**` (new), `settings.gradle.kts`, `build-logic/**`, `shared/build.gradle.kts`. No normative document changed and no decision was taken.
 - **Verification:** every module passes on both the Android host and `iosSimulatorArm64`. The `Float`/`Double` ban is enforced by a source-scanning JVM host test, which was proven to fail on an injected `val temporaryOffender: Double` before being returned to green — a runtime assertion cannot detect a floating-point implementation, because it returns the right answer for most inputs and drifts only where nobody looks.
 - **Follow-ups / risks:** **two acceptance criteria could not be met and are put to the owner.** `DEC-1`: `docs/CONTRACTS.md §2` golden row 3 expects `totalCostMinor = 1` for `litersScaled = 1`, `pricePerLiterScaled = 1`, EUR, but the formula in the same section — which that section says MUST be implemented literally — gives `0`, and the formula is the one that is right, since 0.001 L at 0.001 €/L is 0.0001 minor units and HALF_UP of 0.0001 is 0. The other three rows agree with the formula exactly. `DEC-2`: `testAppGraphDependencies(...)` cannot exist in Phase 0, because four of the 15 `AppGraphDependencies` members have types owned by `:core:database`, `:core:auth` and `:core:sync`, which the Phase 0 preamble forbids creating and which `E0-04` is required to enforce. Coverage stays unmeasured until `E0-05` applies Kover, so the Kover criterion of this story is not closed either. The fakes use `Dispatchers.Unconfined`, which will not survive `:core:sync` needing virtual time; `E3-03` should revisit `TestDispatcherProvider`.
 
@@ -5350,7 +5394,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** `build-logic` was added as an included build with five class-based convention plugins — `carapp.kmp.library`, `carapp.android.application`, `carapp.compose`, `carapp.skie` and `carapp.room` — all reading `gradle/libs.versions.toml`, so no version literal exists in build logic. `carapp.kmp.library` derives each module's Android namespace from its Gradle path per `D-24`; `carapp.skie` refuses to apply itself to any module other than `:shared`, turning the `D-2` rule into a build failure instead of a review item; `carapp.room` fixes the schema directory so schema export cannot be quietly disabled. `:shared` and `:androidApp` were migrated onto them and the root build file stopped configuring modules.
 - **Why:** every remaining Phase 0 and Phase 1 story creates modules — `docs/TECHNICAL_PLAN.md §3` plans 17 — and without convention plugins each one would repeat the KMP targets, the Android namespace, the SDK levels, the toolchain and the test wiring, which is exactly where drift starts. Class-based plugins were chosen over precompiled script plugins because they can read the version catalog directly and can refuse to apply themselves, which is what makes the SKIE rule enforceable.
-- **Documents touched:** `docs/handoff-E0-02.md` (new), and this log. Build files: `build-logic/**` (new), `settings.gradle.kts`, `build.gradle.kts`, `shared/build.gradle.kts`, `androidApp/build.gradle.kts`, `gradle/libs.versions.toml`. No normative document changed and no decision was taken.
+- **Documents touched:** `docs/handoffs/E0-02.md` (new), and this log. Build files: `build-logic/**` (new), `settings.gradle.kts`, `build.gradle.kts`, `shared/build.gradle.kts`, `androidApp/build.gradle.kts`, `gradle/libs.versions.toml`. No normative document changed and no decision was taken.
 - **Verification:** `:androidApp:assembleDebug`, `:shared:testAndroidHostTest` and `:shared:iosSimulatorArm64Test` pass, and the iOS simulator app returns `** BUILD SUCCEEDED **` from `xcodebuild` on Xcode 26.6.
 - **Follow-ups / risks:** the "no more than five lines per module" criterion has no instance inside this story, because the repository's only two modules are the iOS framework host and the Android app; `E0-03` provides the first four ordinary modules, each with a three-line build file, so the two stories should be reviewed together. `carapp.room` is written but applied to nothing until `E1-01`. `E0-04` should add an architecture rule asserting that no module other than `:shared` applies SKIE, so the rule survives someone bypassing the convention plugin. The convention plugins themselves have no tests.
 
@@ -5361,7 +5405,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** Claude Opus 5, on behalf of David Ruiz
 - **What changed:** the decision records were validated and found already consistent — 24 ADRs for `D-0` to `D-23`, every ADR `## Status` equal to its board row, and an identical decision ID and status set across `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2` and `docs/adr/README.md`; nothing needed correcting. Two new decisions were then taken during implementation and recorded properly: `D-24` derives every module's Android build namespace from its Gradle module path ([ADR-0025](adr/0025-module-android-namespaces.md)), and `D-25` pins `targetSdk` independently of `compileSdk` at 36 against 37 ([ADR-0026](adr/0026-targetsdk-separate-from-compilesdk.md)). `AGENTS.md` now makes that mandatory: any decision taken while implementing a story MUST get a decision ID, an ADR and rows in the four mirroring documents, in the same PR, because a decision recorded only in a handoff or in this log is history rather than authority. `README.md` and `docs/BACKLOG.md` were refreshed to the real state: Phase 0 in progress, `E0-01` and `E0-06` completed, no CI yet. The toolchain was then pinned: all 25 `TBD` cells of `docs/versions-matrix.md` now carry a concrete version and a "Backed by" citation, and every one of them is declared in `gradle/libs.versions.toml` and nowhere else. The canonical timestamp type is fixed as **`kotlin.time.Instant`** and guarded by a new test, `PinnedInstantPackageTest`, which resolves a kotlinx-datetime extension declared on that receiver so a relocation fails the build. The performance baselines gained their reference OS versions (Pixel 6a on Android 16, iPhone 12 on iOS 26). Pinning forced the toolchain to move as one set: Kotlin 2.0.21 → 2.4.10, KSP 2.0.21-1.0.28 → 2.3.11, Gradle 8.9 → 9.7.1, AGP 8.5.2 → 9.3.1, `compileSdk`/`targetSdk` 35 → 37, Compose BOM 2024.10.01 → 2026.08.00, coroutines 1.9.0 → 1.11.0; SKIE stays at 0.10.14, which supports Kotlin 2.4.10.
 - **Why:** the story could not be satisfied by filling cells with the versions `E0-01` had left provisional. `D-1` requires Room 3 KMP, whose artifacts are `androidx.room3:room3-*` at 3.0.x; the current Compose BOM requires `compileSdk 37` and AGP 9.1.0 or higher; and `E0-01` had itself recorded AGP 8.5.2 and Gradle 8.9 as workarounds to revalidate here. Pinning the old set would have frozen the MVP on a deliberately stale Compose and left `D-1` unimplementable. AGP 9 then forced three build changes that are not optional: Kotlin support is built into AGP so `org.jetbrains.kotlin.android` is rejected, `com.android.library` is incompatible with the KMP plugin so `:shared` moved to `com.android.kotlin.multiplatform.library`, and that plugin creates no host test runner so `withHostTestBuilder` was added to keep the common tests running on the JVM as well as on Kotlin/Native. `kotlin.time.Instant` was chosen over the kotlinx-datetime 0.6.x compatibility artifact because 0.8.0 consumes the standard library type and the compat artifacts exist only to keep the old package alive.
-- **Documents touched:** `docs/versions-matrix.md`, `docs/identifiers.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0025-module-android-namespaces.md` (new), `docs/adr/0026-targetsdk-separate-from-compilesdk.md` (new), `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/handoff-E0-06.md` (new), and this log. `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties`, `gradle.properties`, `build.gradle.kts`, `androidApp/build.gradle.kts`, `shared/build.gradle.kts` and one new test changed on the code side. No pre-existing decision status moved.
+- **Documents touched:** `docs/versions-matrix.md`, `docs/identifiers.md`, `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0025-module-android-namespaces.md` (new), `docs/adr/0026-targetsdk-separate-from-compilesdk.md` (new), `AGENTS.md`, `README.md`, `docs/BACKLOG.md`, `docs/handoffs/E0-06.md` (new), and this log. `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties`, `gradle.properties`, `build.gradle.kts`, `androidApp/build.gradle.kts`, `shared/build.gradle.kts` and one new test changed on the code side. No pre-existing decision status moved.
 - **Verification:** TDD cycle in three pushes — red (`a186646`, 7 unresolved-reference errors), green (`21936bb`), documentation. `:shared:testAndroidHostTest` and `:shared:iosSimulatorArm64Test` both run `GreetingTest` (3) and `PinnedInstantPackageTest` (1) with 0 failures and 0 errors; `:androidApp:assembleDebug` succeeds; the iOS simulator app returns `** BUILD SUCCEEDED **` from `xcodebuild` on Xcode 26.6; no Gradle deprecation warnings. A baseline build was run before any change so that failures were attributable. After `D-25`, the merged Android manifest reports `targetSdkVersion="36"` and `minSdkVersion="26"`. A parity script over the four mirroring documents plus the ADR files reports 26 decisions in all five sources and `PARITY OK`. Requires human review before merge (gated path `docs/versions-matrix.md`; gated topic "technical stack or pinned versions").
 - **Follow-ups / risks:** most pins are declared but unused — Room 3, Firebase, GitLive, Koin, Kermit, Turbine, Konsist, Kover, detekt and ktlint are first exercised by `E1-01`, `E0-07`, `E2-02` and `E0-05`, so each pin is only really proven by the story that consumes it; `D-17` explicitly asks for Turbine to be checked against the pinned coroutines version there. `E0-02` must write its convention plugins against the AGP 9 built-in-Kotlin model rather than the AGP 8 model `E0-01` used. `:shared` still carries its namespace as a literal: `D-24` says the value is derived and that no module build script should hold it, but nothing computes it yet, so `E0-02` MUST derive it from the Gradle project path and delete the literal. `D-25` leaves a `targetSdk` bump owed before release, owned by `E4-04`, which must review the runtime behaviour changes of the new level against the flows and the design assets. The `E0-01` gap where the Xcode project links only the `iosSimulatorArm64` framework, so an x86_64 simulator build fails, is still open and will matter when `E0-07` puts the simulator in CI. Nothing here is enforced by CI until `E0-05` exists.
 
@@ -5416,7 +5460,7 @@ because no assertion compares a state-holder block and the order is therefore ha
 - **Author:** opencode agent (glm-5.2:cloud), on behalf of David Ruiz
 - **What changed:** created the KMP project skeleton with Android and iOS targets, `:shared` framework named `Shared` (canonical SPM module name), Android host app (`:androidApp`) using Compose, and iOS host app (`iosApp/`) using SwiftUI. The `Greeting` class in `commonMain` is consumed by both hosts — Android shows `Greeting().greet("Android")`, iOS shows `Greeting().greet(platform: "iOS")` via `import Shared`. `gradle/libs.versions.toml` is the single source of dependency versions with minimal build-essential pins (Kotlin 2.0.21, KSP, SKIE 0.10.14, AGP 8.5.2, Compose BOM, coroutines, Gradle 8.9, targetSdk 35); remaining versions are `TBD` for `E0-06`. Gradle wrapper, Kotlin DSL build scripts only, root `plugins` block declaring versions once. iOS Xcode project generated via `xcodegen` with `Shared.framework` (static) embedded and linked. `AndroidManifest.xml` has `android:allowBackup="false"` and no backup/settings-sync surface; no iOS entitlements file.
 - **Why:** `E0-01` is the first implementation story and blocks all others. The skeleton proves both platforms consume `commonMain`, identifiers match `docs/identifiers.md` exactly, and no platform backup/settings-sync API surface exists.
-- **Documents touched:** `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/`, `shared/build.gradle.kts`, `shared/src/commonMain/kotlin/com/ruizurraca/carapp/Greeting.kt`, `shared/src/commonTest/kotlin/com/ruizurraca/carapp/GreetingTest.kt`, `androidApp/build.gradle.kts`, `androidApp/src/main/AndroidManifest.xml`, `androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt`, `iosApp/project.yml`, `iosApp/Info.plist`, `iosApp/carAppApp.swift`, `iosApp/ContentView.swift`, `iosApp/carApp.xcodeproj/`, `docs/E0-01-READY-CHECK.md` (preserved per owner request, to be deleted at story close), `docs/handoff-E0-01.md`, and this log. No normative document changed.
+- **Documents touched:** `settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/`, `shared/build.gradle.kts`, `shared/src/commonMain/kotlin/com/ruizurraca/carapp/Greeting.kt`, `shared/src/commonTest/kotlin/com/ruizurraca/carapp/GreetingTest.kt`, `androidApp/build.gradle.kts`, `androidApp/src/main/AndroidManifest.xml`, `androidApp/src/main/java/com/ruizurraca/carapp/MainActivity.kt`, `iosApp/project.yml`, `iosApp/Info.plist`, `iosApp/carAppApp.swift`, `iosApp/ContentView.swift`, `iosApp/carApp.xcodeproj/`, `docs/E0-01-READY-CHECK.md` (preserved per owner request, to be deleted at story close), `docs/handoffs/E0-01.md`, and this log. No normative document changed.
 - **Verification:** `./gradlew :shared:allTests` → BUILD SUCCESSFUL (TDD: red phase confirmed `Unresolved reference 'Greeting'` before `Greeting.kt` existed, green after). `./gradlew :androidApp:assembleDebug` → BUILD SUCCESSFUL. `xcodebuild -project iosApp/carApp.xcodeproj -scheme carApp -destination 'platform=iOS Simulator,name=iPhone 17' -configuration Debug build` → BUILD SUCCEEDED; app installs and launches on simulator (PID 56281); binary contains `Shared.Greeting` symbol (`nm` output: `_$sSo14SharedGreetingCABycfC`). All 7 ACs verified. No human review gate (E0-01 is not gated; the Phase 0 gate is E0-07).
 - **Follow-ups / risks:** version revalidation by E0-06 (Kotlin 2.0.21, AGP 8.5.2 below current stable 8.7.x, Gradle 8.9, SKIE 0.10.14 warns AGP > 8.5 untested). `xcodegen` is a brew dependency; `project.yml` is the source of truth and the `.xcodeproj` is committed. iOS framework path is hardcoded to `iosSimulatorArm64/debugFramework`; E0-07 MUST switch to XCFramework. `docs/E0-01-READY-CHECK.md` must be deleted when E0-01 closes. TDD exemption declared for KMP scaffold (native UI / wiring, no behavior unit); `Greeting` was written test-first.
 

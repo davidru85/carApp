@@ -66,5 +66,5 @@ Firebase nor GitLive types cross the module boundary.
 - `docs/CONTRACTS.md §6`, `§9.4`, `§20.7`
 - `docs/TECHNICAL_PLAN.md §2`, `§4`
 - `docs/BACKLOG.md` (`E3-02`)
-- `docs/handoff-E3-02.md`
+- `docs/handoffs/E3-02.md`
 - `docs/adr/0171-quarantine-malformed-remote-documents-through-the-sync-source.md` (`D-170`)

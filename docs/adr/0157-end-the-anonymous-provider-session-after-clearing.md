@@ -60,4 +60,4 @@ therefore never leaves the owner signed out of an identity whose data is still o
 - `docs/SPECIFICATION.md §7 F-5`, `§12`
 - `docs/CONTRACTS.md §11.5`, `§20.2`, `§20.10`
 - `docs/TECHNICAL_PLAN.md §2`
-- `docs/handoff-E2-05.md`
+- `docs/handoffs/E2-05.md`

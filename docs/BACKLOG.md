@@ -42,7 +42,7 @@ Human review required.
 
 ### E0-01 - KMP Project Bootstrap - M
 
-Status: completed on 2026-08-19, PR #9. See `docs/handoff-E0-01.md`.
+Status: completed on 2026-08-19, PR #9. See `docs/handoffs/E0-01.md`.
 
 Create the KMP project with Android and iOS targets, Android host app, SwiftUI iOS host app, and `:shared` framework.
 
@@ -60,7 +60,7 @@ Blocks: all other stories.
 
 ### E0-02 - Gradle Convention Plugins - M
 
-Status: completed on 2026-08-21, PR #14. See `docs/handoff-E0-02.md`.
+Status: completed on 2026-08-21, PR #14. See `docs/handoffs/E0-02.md`.
 
 Create convention plugins for KMP libraries, features, Android application, Compose, local persistence and SKIE.
 
@@ -75,7 +75,7 @@ Acceptance criteria:
 
 Status: completed. PR #15 delivered the Phase 0 scope; E0-05 later closed the Kover criterion and
 E0-07 closed the test-factory criterion in `:shared:testing` under D-27 and D-56. See
-`docs/handoff-E0-03.md`.
+`docs/handoffs/E0-03.md`.
 
 Create `:core:model`, `:core:common`, `:core:crash` and `:core:testing`, implementing the Phase 0 canonical types of `docs/CONTRACTS.md §20`.
 
@@ -92,7 +92,7 @@ Acceptance criteria:
 
 ### E0-04 - Architecture Guards - M
 
-Status: completed on 2026-08-21, PR #17, except the feature-layer package rules (`DEC-3`). See `docs/handoff-E0-04.md`.
+Status: completed on 2026-08-21, PR #17, except the feature-layer package rules (`DEC-3`). See `docs/handoffs/E0-04.md`.
 
 Implement module-level and package-level dependency checks per `docs/TECHNICAL_PLAN.md §4`.
 
@@ -129,7 +129,7 @@ Acceptance criteria:
 ### E0-05 - Quality Tooling and CI - M
 
 Status: completed. PR #18 delivered the quality and CI implementation; D-34 activated branch
-protection on 2026-08-21. See `docs/handoff-E0-05.md`.
+protection on 2026-08-21. See `docs/handoffs/E0-05.md`.
 
 Configure ktlint, detekt, Kover, the contract check and CI.
 
@@ -149,7 +149,7 @@ CI duration under 20 minutes is an objective, monitored and reported, not a pass
 
 ### E0-06 - ADRs, Version Matrix and Decision Board Validation - S
 
-Status: completed on 2026-08-21, PR #13. See `docs/handoff-E0-06.md`.
+Status: completed on 2026-08-21, PR #13. See `docs/handoffs/E0-06.md`.
 
 Validate all decision records and pin the toolchain.
 
@@ -168,7 +168,7 @@ Blocks: E0-07.
 
 ### E0-08 - `:core:analytics` Abstraction - S
 
-Status: completed on 2026-08-21, PR #16. See `docs/handoff-E0-08.md`.
+Status: completed on 2026-08-21, PR #16. See `docs/handoffs/E0-08.md`.
 
 Create `:core:analytics` with the `AnalyticsTracker` interface and the closed `AnalyticsEvent` hierarchy of `docs/CONTRACTS.md §16.1` and `§20.9`. Abstraction only: no Firebase dependency, no provider SDK.
 
@@ -188,7 +188,7 @@ Goal: the app stores and displays vehicles and fuel entries locally. It is usefu
 
 ### E1-01 - `:core:database` - M
 
-Status: completed on 2026-08-24. See `docs/handoff-E1-01.md`.
+Status: completed on 2026-08-24. See `docs/handoffs/E1-01.md`.
 
 Implement SQLDelight 2.3.2 with AndroidX bundled SQLite, schema v1, typed queries, transactions and migration strategy (`D-36`).
 
@@ -210,7 +210,7 @@ Acceptance criteria:
 ### E0-07 - Walking Skeleton - L
 
 Status: completed on 2026-08-27 through implementation PR #27 and D-73 evidence PR #28. See
-`docs/handoff-E0-07.md`.
+`docs/handoffs/E0-07.md`.
 
 Build a single screen crossing native UI, shared state holder, SQLDelight, Firestore and real anonymous auth.
 
@@ -281,7 +281,7 @@ Human review required.
 
 ### E1-02 - Vehicle Domain - S
 
-Status: completed on 2026-08-28. See `docs/handoff-E1-02.md`.
+Status: completed on 2026-08-28. See `docs/handoffs/E1-02.md`.
 
 Implement the `:feature:vehicle` domain package: entity, repository interface and use cases.
 
@@ -298,7 +298,7 @@ Acceptance criteria:
 
 ### E1-03 - Vehicle Data, Local Only - M
 
-Status: completed on 2026-08-28. See `docs/handoff-E1-03.md`.
+Status: completed on 2026-08-28. See `docs/handoffs/E1-03.md`.
 
 Implements `VehicleRepository` (`docs/CONTRACTS.md §12`).
 
@@ -316,7 +316,7 @@ Acceptance criteria:
 
 ### E1-04 - Fuel Entry Domain - M
 
-Status: completed on 2026-08-28. See `docs/handoff-E1-04.md`.
+Status: completed on 2026-08-28. See `docs/handoffs/E1-04.md`.
 
 Implement the `:feature:fuel` domain package, CRUD use cases and rules R-1 and R-2.
 
@@ -462,7 +462,7 @@ Acceptance criteria:
 
 ### E1-11 - `:feature:vehicle` Outbox Payload `entityType` Fix - S
 
-Status: completed on 2026-09-02. See `docs/handoff-E1-11.md`. D-110 records the owner decision on
+Status: completed on 2026-09-02. See `docs/handoffs/E1-11.md`. D-110 records the owner decision on
 outbox entity-type token ownership.
 
 Restore `docs/CONTRACTS.md §8` compliance of every outbox payload produced by `VehicleOutboxMapper`
@@ -504,7 +504,7 @@ Blocks: E2-06.
 
 ### E1-12 - `FuelEntryStateHolderTest` Kotlin/Native SIGSEGV on Graph Close - S
 
-Status: completed on 2026-09-02. See `docs/handoff-E1-12.md`. Registered as GitHub issue #42.
+Status: completed on 2026-09-02. See `docs/handoffs/E1-12.md`. Registered as GitHub issue #42.
 Tracked as a follow-up of `E1-08` introduced by
 commits `a5150d4`, `87abdd0`, `ba8823a`. This story is a test-infrastructure defect, not a
 production defect: no production code path closes an `AppGraph` while its state holders are still
@@ -542,7 +542,7 @@ Human review required.
 
 ### E1-13 - Executable iOS Locale-Provider Behavior Coverage - S
 
-Status: completed on 2026-09-03. See `docs/handoff-E1-13.md`. Registered as the D-109 follow-up of
+Status: completed on 2026-09-03. See `docs/handoffs/E1-13.md`. Registered as the D-109 follow-up of
 the E1-10 owner review. The exact composition-owned provider source now runs under `:shared`
 `iosSimulatorArm64Test`, outside the D-75 exclusion, and executes reachable Foundation locale and
 currency-code behavior plus a direct `NSNumberFormatter.maximumFractionDigits` premise anchor.
@@ -580,7 +580,7 @@ decision documentation.
 ### E2-01 - `:core:auth` - S
 
 Status: completed on 2026-09-03 through [pull request
-#52](https://github.com/davidru85/carApp/pull/52). See `docs/handoff-E2-01.md`.
+#52](https://github.com/davidru85/carApp/pull/52). See `docs/handoffs/E2-01.md`.
 
 Implement the auth interfaces and models.
 
@@ -593,7 +593,7 @@ Acceptance criteria:
 
 ### E2-02 - Firebase Auth Integration - L
 
-Status: completed on 2026-09-03, PR #53. See `docs/handoff-E2-02.md`.
+Status: completed on 2026-09-03, PR #53. See `docs/handoffs/E2-02.md`.
 
 Implement anonymous, Google, Apple, credential linking, re-authentication, sign-out, account deletion and token refresh.
 
@@ -616,7 +616,7 @@ Acceptance criteria:
 ### E2-03 - Onboarding Flow F-1 - M
 
 Status: completed on 2026-09-06, PR #54, after three owner review rounds on 2026-09-05 and
-2026-09-06. See `docs/handoff-E2-03.md` for the acceptance evidence, the accepted decisions `D-112`
+2026-09-06. See `docs/handoffs/E2-03.md` for the acceptance evidence, the accepted decisions `D-112`
 to `D-122` and the outstanding manual provider acceptance, which stays owner-owned.
 
 Implement the welcome screen, with an offline-capable local start. Provider selection happens on
@@ -636,7 +636,7 @@ Acceptance criteria:
 ### E2-06 - Local Owner Adoption - M
 
 Status: completed on 2026-09-06, PR #55, after two owner review rounds. See
-`docs/handoff-E2-06.md` for the acceptance evidence and the accepted decisions `D-123` to `D-126`.
+`docs/handoffs/E2-06.md` for the acceptance evidence and the accepted decisions `D-123` to `D-126`.
 
 Adopt `LOCAL_OWNER` data into the first real UID.
 
@@ -688,7 +688,7 @@ Human review required.
 Status: merged on 2026-09-08 through [pull request
 #61](https://github.com/davidru85/carApp/pull/61), after its gated owner review. `E2-08`, the
 anonymous reminder launch and race fixes that followed it, merged on 2026-09-08 through pull request
-#62. See `docs/handoff-E2-07.md`.
+#62. See `docs/handoffs/E2-07.md`.
 
 Implement the foreground-only anonymous-account retention notices selected by `D-62`.
 
@@ -715,7 +715,7 @@ Human review required.
 
 Status: merged on 2026-09-10 through [pull request
 #65](https://github.com/davidru85/carApp/pull/65). It introduced `D-155` through `D-164` and its
-evidence lives in `docs/handoff-E2-05.md`. Phase 2 is closed.
+evidence lives in `docs/handoffs/E2-05.md`. Phase 2 is closed.
 
 Implement sign-out, local-data deletion and account deletion.
 
@@ -772,7 +772,7 @@ Human review required.
 
 ### E3-01 - Firestore Structure and Security Rules - M
 
-Status: completed on 2026-08-24, PR #26. See `docs/handoff-E3-01.md`.
+Status: completed on 2026-08-24, PR #26. See `docs/handoffs/E3-01.md`.
 
 Create the Firestore rules, indexes and emulator tests.
 
@@ -797,7 +797,7 @@ Human review required.
 
 ### E3-10 - Account Deletion Server Operation - M
 
-Status: completed on 2026-09-07, PR #58. See `docs/handoff-E3-10.md`.
+Status: completed on 2026-09-07, PR #58. See `docs/handoffs/E3-10.md`.
 
 Implement the Firebase Admin account deletion operation selected by `D-23`.
 
@@ -857,7 +857,7 @@ Human review required.
 
 Status: merged on 2026-09-13 through [pull request
 #68](https://github.com/davidru85/carApp/pull/68), with all ten required checks green. See
-`docs/handoff-E3-02.md` for the TDD commits and acceptance evidence.
+`docs/handoffs/E3-02.md` for the TDD commits and acceptance evidence.
 
 Implement the Firestore remote sync integration.
 
@@ -877,7 +877,7 @@ Acceptance criteria:
 
 Status: merged on 2026-09-17 through [pull request
 #69](https://github.com/davidru85/carApp/pull/69), after the owner's gated review, with all ten
-required checks green. See `docs/handoff-E3-03.md` for the RED, GREEN and REFACTOR commits and
+required checks green. See `docs/handoffs/E3-03.md` for the RED, GREEN and REFACTOR commits and
 acceptance evidence. The seventeenth correction round (`D-175`, `ADR-0176`) fixed the silent
 `shared-tests` step-timeout stall in shared test scaffolding; the decision is recorded there.
 
@@ -913,7 +913,7 @@ Human review required.
 ### E3-08 - App Graph and Firebase Wiring - M
 
 Status: merged through pull request #71 after the owner's gated review. It introduced `D-178`
-through `D-180` and `docs/handoff-E3-08.md` holds its evidence.
+through `D-180` and `docs/handoffs/E3-08.md` holds its evidence.
 
 Complete the Kotlin-facing `AppGraph`, the Swift-facing `SwiftAppGraph` and
 `:wiring:firebase` in place. E0-07 already owns the provider-free `buildAppGraph`, the sole
@@ -949,7 +949,7 @@ Deferred out of this story: the Konsist fixture that `§20.10` requires to ban
 `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from iOS `requestSync` call sites.
 `D-16` assigns package rules to Konsist, `E1-07` introduced it for the feature-layer rows and no
 iOS call site of that method exists yet, so the fixture belongs with the story that first adds one.
-Recorded as a follow-up in `docs/handoff-E3-08.md`; no rule of the contract is contradicted, because
+Recorded as a follow-up in `docs/handoffs/E3-08.md`; no rule of the contract is contradicted, because
 the banned call sites do not exist.
 
 Also deferred: the `§11.6` rule that a public `@HiddenFromObjC` member of an exported state-holder
@@ -967,7 +967,7 @@ Human review required.
 Replace no-op remote sources with real sync wiring and platform triggers.
 
 Status: merged on 2026-09-22 through pull request #72 after the owner's gated review. It
-introduced `D-181` through `D-187`; evidence is in `docs/handoff-E3-04.md`.
+introduced `D-181` through `D-187`; evidence is in `docs/handoffs/E3-04.md`.
 
 Acceptance criteria:
 
@@ -990,7 +990,7 @@ Human review required.
 ### E3-12 - Permanent-Account Cross-Device Recovery Proof - S
 
 Status: merged on 2026-09-25 through pull request #73 after the owner's gated review. Evidence is
-in `docs/handoff-E3-12.md`. It introduced `D-188`; its correction rounds introduced `D-189`
+in `docs/handoffs/E3-12.md`. It introduced `D-188`; its correction rounds introduced `D-189`
 (superseded) and `D-190`, which delivered `E1-18` inside the same pull request, #73.
 
 Prove recovery at the first point where permanent authentication and complete sync coexist.
@@ -1019,7 +1019,7 @@ Human review required.
 ### E3-05 - Backup Status UI - S
 
 Status: merged on 2026-09-26 through pull request #74, after five review correction rounds. Evidence is
-in `docs/handoff-E3-05.md`. It introduced `D-191` to `D-193`, which place the `§11.6` check, choose the
+in `docs/handoffs/E3-05.md`. It introduced `D-191` to `D-193`, which place the `§11.6` check, choose the
 indicator surface and settle what the `Idle` label may claim.
 
 Add a non-intrusive backup status indicator.
@@ -1047,7 +1047,7 @@ The settings row that `docs/SPECIFICATION.md §3.1` also lists stays with its ow
 ### E3-07 - Tombstone Purge - S
 
 Status: merged on 2026-09-27 through pull request #78, after three review correction rounds on the
-`core/sync/**` and `core/database/**` gated paths. Evidence is in `docs/handoff-E3-07.md`. It
+`core/sync/**` and `core/database/**` gated paths. Evidence is in `docs/handoffs/E3-07.md`. It
 introduced `D-194` (ADR-0195), which records how the `docs/CONTRACTS.md §8` purge executes: the
 count-gated transaction, the attempt latch and the strict age boundary.
 
@@ -1060,9 +1060,15 @@ Acceptance criteria:
 - A test proves a pending tombstone is never purged.
 - A fresh device pulling a tombstone for an entity it has never seen inserts it as a tombstone instead of failing.
 
-### E3-09 - Firebase Analytics Integration - S
+### E3-09 - Firebase Analytics Integration - M
 
 Implement `:integration:firebase-analytics`, the Firebase-backed `AnalyticsTracker` from `E0-08`, and bind it in `:wiring:firebase`.
+
+Scope note (`D-196`, ADR-0196): although the module work is small, the story also owns the complete
+`docs/CONTRACTS.md §16.1` emission surface — the call sites and the `setUserProperties` cadence —
+because that contract attributes the cadence fixture to `E3-09` by name and seven of the thirteen
+event leaves had no emitter. Every call site lives in `:shared` orchestration, since
+`docs/TECHNICAL_PLAN.md §4` keeps feature `presentation` packages out of `:core:analytics`.
 
 Acceptance criteria:
 
@@ -1071,12 +1077,15 @@ Acceptance criteria:
 - No forbidden payload of `docs/CONTRACTS.md §16.1` can be sent: a test asserts no parameter value derives from odometer, volume, cost, notes, entity IDs or the UID.
 - Only `:wiring:firebase` constructs the implementation; no Firebase type crosses the module boundary.
 - Excluding this module leaves the app building and testing on the `:core:analytics` no-op, per `E3-06`.
+- Every event leaf is emitted from `:shared` orchestration at the boundary `§16.1` names, and a
+  fixture asserts the `setUserProperties` cadence — once at opt-in and after every successful
+  vehicle or fuel-entry create or delete — with the buckets computed from the owner's active rows.
 
 ### E3-06 - Provider Decoupling Proof - S
 
 Make P4 executable.
 
-Status: completed on 2026-08-24. See `docs/handoff-E3-06.md`.
+Status: completed on 2026-08-24. See `docs/handoffs/E3-06.md`.
 
 Acceptance criteria:
 
@@ -1090,7 +1099,7 @@ Acceptance criteria:
 ### E3-13 - Single source of truth for the outbox entityType wire value - M
 
 Status: open. Registered as GitHub issue #46. Tracked as a follow-up of D-110 in
-`docs/handoff-E1-11.md` and `docs/PROJECT_LOG.md` (2026-09-02 entry).
+`docs/handoffs/E1-11.md` and `docs/PROJECT_LOG.md` (2026-09-02 entry).
 
 Centralize the outbox `entityType` token (`"VEHICLE"`, `"FUEL_ENTRY"`) so that a single source of
 truth covers the Kotlin mapper call sites, `DatabaseMutations`, the SQL `CHECK` constraints and
@@ -1469,11 +1478,11 @@ merged on 2026-09-28 through pull request #80; `E1-15` remains open.
 ### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
 
 Status: completed on 2026-09-11 through
-[pull request #66](https://github.com/davidru85/carApp/pull/66). See `docs/handoff-E1-14.md` for the
+[pull request #66](https://github.com/davidru85/carApp/pull/66). See `docs/handoffs/E1-14.md` for the
 TDD commits, audit and repeated-run evidence.
 
 Tracked as a follow-up found while verifying `E2-03`, recorded under `Risks or Follow-ups` in
-`docs/handoff-E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
+`docs/handoffs/E2-03.md` with its evidence. Like `E1-12`, this is a test-infrastructure defect in the
 same class and not a production defect: no production path depends on the timing these tests assume.
 
 Make `:shared:iosSimulatorArm64Test` pass or fail on an assertion, never on a `runTest` timeout, so a
@@ -1522,7 +1531,7 @@ Acceptance criteria:
 ### E1-15 - iOS Later-Vehicle Creation Routes to the Created Vehicle - S
 
 Tracked as a follow-up of `E1-09`. The divergence predates `E2-03`, and the owner declined to absorb
-it into that story across two review rounds; it is recorded in `docs/handoff-E2-03.md` under
+it into that story across two review rounds; it is recorded in `docs/handoffs/E2-03.md` under
 `Out of Scope / Not Done`.
 
 On Android, saving any vehicle routes to that vehicle's detail. On iOS only the **first** vehicle
@@ -1549,7 +1558,7 @@ Acceptance criteria:
 ### E1-17 - iOS Onboarding UI Test Flake in `ios-simulator-build` - S
 
 Status: merged on 2026-09-12 through [pull request
-#67](https://github.com/davidru85/carApp/pull/67). See `docs/handoff-E1-17.md` for the TDD commits,
+#67](https://github.com/davidru85/carApp/pull/67). See `docs/handoffs/E1-17.md` for the TDD commits,
 timing justification and repeated-run evidence. The flake is a test-infrastructure defect, not a
 product one, and it is the one that still fails occasionally: it was observed once more on
 2026-09-17 in `VehicleAndFuelFlowUITests.testVehicleAndFuelEntryCreationFlow` on a keyboard-focus
@@ -1611,7 +1620,7 @@ Tracked as a defect diagnosed on 2026-09-23 while delivering `E3-12`. It is a te
 defect in the shared test seam, not a product defect. It was registered as its own story because the
 fix changes shared fixtures and a pinned scheduling contract. On 2026-09-24 the owner chose to
 deliver it inside `E3-12`'s pull request #73 (`D-190`), so the fix was reviewed under that pull
-request's gated review rather than landing unreviewed; its own record is `docs/handoff-E1-18.md`.
+request's gated review rather than landing unreviewed; its own record is `docs/handoffs/E1-18.md`.
 
 **Symptom.** `Run Android application and KMP host tests` (`shared-tests`) and `Run provider-free
 Android host tests` (`provider-decoupling`) are occasionally killed at their step timeout with
@@ -1674,7 +1683,7 @@ paragraph.
 
 **Delivery.** `D-190` / ADR-0191 delivers the fix, in `E3-12`'s correction round rather than as a
 separate pull request, because the deadlock had to be removed before that pull request could be
-merged on evidence. The evidence is in `docs/handoff-E1-18.md`.
+merged on evidence. The evidence is in `docs/handoffs/E1-18.md`.
 
 The fix is four coordinated changes, each reached by measurement:
 
@@ -1791,7 +1800,7 @@ Human review required.
 
 Status: merged on 2026-09-29 through pull request #82 as a true merge of
 `story/E3-19-push-boundary-payload-totality` into `main` (merge commit `cfccfe1c`), after the owner's
-gated review and four review correction rounds. See `docs/handoff-E3-19.md`.
+gated review and four review correction rounds. See `docs/handoffs/E3-19.md`.
 
 Previously deferred by `E3-03` for low reachability; scheduled and implemented.
 
@@ -1867,7 +1876,7 @@ Human review required.
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
 
-Status: merged on 2026-09-28 through pull request #80 as a true merge of `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit `78b08047`), after the owner's gated review. See `docs/handoff-E1-16.md`.
+Status: merged on 2026-09-28 through pull request #80 as a true merge of `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit `78b08047`), after the owner's gated review. See `docs/handoffs/E1-16.md`.
 
 Add a fuel type selector to the Vehicle creation and editing forms on Android (Compose) and iOS (SwiftUI), allowing the user to select from the supported MVP `FuelType` values (`GASOLINE`, `DIESEL`, `LPG`, `CNG`, `OTHER`), with `GASOLINE` as the default.
 
@@ -2056,7 +2065,7 @@ proof after E3-04.
 | E3-12 Permanent-account cross-device recovery proof (completed, PR #73) | 3 | S | Yes |
 | E3-05 Backup status UI (completed, PR #74) | 3 | S | — |
 | E3-07 Tombstone purge (completed, PR #78) | 3 | S | — |
-| E3-09 Firebase Analytics integration | 3 | S | — |
+| E3-09 Firebase Analytics integration | 3 | M | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |

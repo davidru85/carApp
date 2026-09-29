@@ -112,22 +112,22 @@ review.
 - **Completed:** all Phase 0 and Phase 1 stories; the pulled-forward `E3-06` and
   `E3-01` prerequisites; the `E0-07` walking-skeleton gate, including D-73 cleanup evidence;
   `E2-01`, `E2-02`, `E2-03` and `E2-06`. `E2-03` introduced `D-112` through `D-122` and
-  `docs/handoff-E2-03.md` holds its evidence and the manual provider acceptance that stays
-  owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoff-E2-06.md` holds its
-  acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoff-E3-10.md`.
+  `docs/handoffs/E2-03.md` holds its evidence and the manual provider acceptance that stays
+  owner-owned; `E2-06` introduced `D-123` through `D-126` and `docs/handoffs/E2-06.md` holds its
+  acceptance evidence. `E3-10` is also complete; its evidence lives in `docs/handoffs/E3-10.md`.
   `E3-11` is also complete; it introduced `D-132` through `D-143` and its evidence lives in
-  `docs/handoff-E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
-  `docs/handoff-E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
-  `docs/handoff-E2-08.md` holds its acceptance evidence. `E1-14` merged through pull request #66;
-  its evidence lives in `docs/handoff-E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
+  `docs/handoffs/E3-11.md`. `E2-07` introduced `D-144` through `D-146` and
+  `docs/handoffs/E2-07.md` holds its acceptance evidence. `E2-08` introduced `D-147` and
+  `docs/handoffs/E2-08.md` holds its acceptance evidence. `E1-14` merged through pull request #66;
+  its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
 - **Next:** Phase 3. The remaining stories and the decisions that gate three of them are listed
   below and in `docs/BACKLOG.md`. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
-  `docs/handoff-E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
+  `docs/handoffs/E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
   through pull request #65. It introduced `D-155` through `D-164`, and its evidence lives in
-  `docs/handoff-E2-05.md`. `D-165` then superseded `D-163`: the durable departure recovery marker is
+  `docs/handoffs/E2-05.md`. `D-165` then superseded `D-163`: the durable departure recovery marker is
   delivered inside `E2-05` itself, so the `E2-09` follow-up `D-163` had created no longer exists. The
   fourth owner review accepted the three low-probability departure concurrency and lifecycle gaps as
   `D-164` and deferred them to the post-MVP stories `E5-02`, `E5-03` and `E5-04`; they do not block
@@ -139,16 +139,16 @@ review.
   UI fuel type selector, merged on 2026-09-28 through pull request #80 as a true merge of
   `story/E1-16-vehicle-fuel-type-selector` into `main` (merge commit `78b08047`), after the owner's
   gated review; the owner had authorised the realignment of the prose that `D-127` already superseded,
-  and its evidence is in `docs/handoff-E1-16.md`. `E1-14` is
+  and its evidence is in `docs/handoffs/E1-16.md`. `E1-14` is
   complete after pull request #66 merged. `E1-17`, the iOS onboarding UI-test flake, merged on 2026-09-12
   through pull request #67; its retry policy, diagnostic bounds and repeated-run evidence live in
-  `docs/handoff-E1-17.md`. `E1-15` remains open. The flake hit
+  `docs/handoffs/E1-17.md`. `E1-15` remains open. The flake hit
   `OnboardingFlowUITests.testFirstRunVehicleFormResistsInteractiveDismissal` once on 2026-09-17 and
   passed on re-run, so a red `ios-simulator-build` is not by itself evidence of a regression.
   `E1-18`, created on 2026-09-23, is the other half of that problem: the JVM test deadlock in
   `DatabaseHandle.close()` on the test-scheduler thread that made `shared-tests` and
   `provider-decoupling` fail at their step timeouts with zero assertion failures. It merged on
-  2026-09-25 inside `E3-12`'s pull request #73 (`D-190`), and its record is `docs/handoff-E1-18.md`.
+  2026-09-25 inside `E3-12`'s pull request #73 (`D-190`), and its record is `docs/handoffs/E1-18.md`.
   A red `shared-tests` or `provider-decoupling` is evidence to investigate, not a reason to re-run:
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
@@ -159,23 +159,23 @@ review.
   commit `cfccfe1c`), after the owner's gated review and four review correction rounds; it classifies
   every outbox payload the push boundary cannot convert as a closed `RemoteError.InvalidArgument` so a
   push poisons its row instead of stranding it in `SYNCING`, its evidence is in
-  `docs/handoff-E3-19.md`, and it introduced no new decision. `E3-07`, the local 90-day
+  `docs/handoffs/E3-19.md`, and it introduced no new decision. `E3-07`, the local 90-day
   tombstone purge, merged on 2026-09-27 through pull
   request #78 after the owner's gated review, with three review correction rounds on the
-  `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoff-E3-07.md`, and it
+  `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoffs/E3-07.md`, and it
   introduced `D-194`, the purge execution policy (ADR-0195). `E3-12`, the
   permanent-account cross-device recovery proof, merged on
   2026-09-25 through pull request #73 after the owner's gated review;
   it introduced `D-188`, its correction rounds introduced `D-189` (superseded) and `D-190`, and its
-  evidence is in `docs/handoff-E3-12.md`. `E3-05`, the backup status UI, merged through pull request
+  evidence is in `docs/handoffs/E3-12.md`. `E3-05`, the backup status UI, merged through pull request
   #74 after five review correction rounds; it introduced `D-191` through `D-193` and its evidence is
-  in `docs/handoff-E3-05.md`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
+  in `docs/handoffs/E3-05.md`. `E3-02` merged on 2026-09-13 through pull request #68, `E3-14` merged through pull request
   #63, `E3-17`, making `AppGraph.close()` safe against an in-flight sync cycle, merged on 2026-09-17
   through pull request #70 with `D-172` accepted as option D, `E3-03`, the `:core:sync` engine,
   merged on 2026-09-17 through pull request #69, and `E3-08`, the app graph and Firebase wiring,
   merged through pull request #71; `E3-08` introduced `D-178` through `D-180` and its evidence is in
-  `docs/handoff-E3-08.md`. `E3-04`, the repository sync wiring, merged on 2026-09-22 through pull
-  request #72; it introduced `D-181` through `D-187` and its evidence is in `docs/handoff-E3-04.md`.
+  `docs/handoffs/E3-08.md`. `E3-04`, the repository sync wiring, merged on 2026-09-22 through pull
+  request #72; it introduced `D-181` through `D-187` and its evidence is in `docs/handoffs/E3-04.md`.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Three decisions remain open, and none of them blocks merged work:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
@@ -278,11 +278,11 @@ Individually:
 | `./gradlew contractCheck` | The repository invariants of `docs/CONTRACTS.md §18`. **Read its output**: assertions it cannot verify yet print `PENDING` with the story that unblocks them, rather than passing silently. |
 | `./gradlew koverVerify` | Coverage thresholds of `D-18`. |
 | `./gradlew ktlintCheck detekt` | Style. Baseline suppression files are forbidden and CI fails if one appears. |
-| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the four current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths. D-109 also compiles the composition-owned `IosLocaleProvider` source into `:shared` `iosTest`, so this route executes its reachable Foundation locale/currency behavior and pins the fraction-digit premise without a second Firebase Apple dependency path. |
+| `./gradlew testAndroidHostTest iosSimulatorArm64Test` with the five current D-75 `-x` paths from the complete command above | Common tests on both the JVM and Kotlin/Native. D-75 derives the exception from the transitive Firebase project graph and compares it with the declared paths. D-109 also compiles the composition-owned `IosLocaleProvider` source into `:shared` `iosTest`, so this route executes its reachable Foundation locale/currency behavior and pins the fraction-digit premise without a second Firebase Apple dependency path. |
 | `./gradlew :androidApp:testDebugUnitTest` | Android host-specific unit behavior, including the native `Currency` minor-unit path used by `AndroidLocaleProvider` (`D-109`). |
 | `./gradlew :androidApp:connectedDebugAndroidTest` on the D-84 API 36 emulator | The protected `android-instrumented-tests` job exercises the Compose Vehicle and Fuel Entry flows. |
 
-The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoff-E0-06.md` for the exact
+The iOS app is built from `iosApp/` with `xcodebuild`; see `docs/handoffs/E0-06.md` for the exact
 invocation, including the `ARCHS=arm64` argument the project currently needs.
 
 #### Emulators and simulators
@@ -342,7 +342,7 @@ provider registry and tests the remaining graph on Android host and `iosSimulato
 
 ### Story records
 
-Each completed story leaves `docs/handoff-<STORY>.md`, filled in from
+Each completed story leaves `docs/handoffs/<STORY>.md`, filled in from
 `docs/templates/agent-handoff.md`. They carry the acceptance evidence, what was deliberately not
 done, and the follow-ups. **Read the handoff of any story you are extending**, and read the most
 recent entries of `docs/PROJECT_LOG.md` before starting anything.
@@ -402,7 +402,7 @@ Everything an agent needs is in this repository. Read in this order; the order i
 | [docs/DOCUMENTATION_AUDIT.md](docs/DOCUMENTATION_AUDIT.md) | Closed record of the documentation audit of the definition package. **Non-normative and historical**: all 20 findings are applied. It is kept only so that the `AUDIT-NN` IDs cited by `docs/PROJECT_LOG.md` resolve. Do not treat it as a source of rules or as a list of open work. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Design entry point. Describes the two platform design systems in general terms and indexes every design asset in `design/stitch/`. **Non-normative**: it creates no rules and decides nothing about behaviour, representation or allowed technologies. |
 | [docs/templates/agent-handoff.md](docs/templates/agent-handoff.md) | The handoff template every completed story fills in. |
-| [docs/handoff-*.md](docs/) | One per completed story: acceptance evidence, what was not done, follow-ups. `docs/E0-01-READY-CHECK.md` is the same record for `E0-01`, which predates the current handoff format. |
+| [docs/handoffs/](docs/handoffs/) | One file per completed story, `<STORY>.md`: acceptance evidence, what was not done, follow-ups. `docs/E0-01-READY-CHECK.md` is the same record for `E0-01`, which predates the current handoff format. |
 | [.github/pull_request_template.md](.github/pull_request_template.md) | Pull request template, a superset of the handoff fields. |
 | [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/) | Issue templates for agent stories, bug reports and decision records. |
 
@@ -576,7 +576,7 @@ If a requested change is not tied to a backlog story, the agent may analyse, pro
 ## Continuous Progress Documentation
 
 An in-flight story MUST remain recoverable from repository artifacts without relying on chat
-history (`D-105`). The agent MUST create `docs/handoff-<STORY>.md` at intake and update its
+history (`D-105`). The agent MUST create `docs/handoffs/<STORY>.md` at intake and update its
 `In-Progress Checkpoint` whenever material state changes, including:
 
 - completion of the ready check or a RED, GREEN or REFACTOR phase;

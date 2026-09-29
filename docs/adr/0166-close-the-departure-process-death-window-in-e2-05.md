@@ -70,4 +70,4 @@ closed by this mechanism, and it is the same class of limit as `D-150`.
 - `docs/CONTRACTS.md §11.5`
 - `docs/TECHNICAL_PLAN.md §2`, `§6`
 - `docs/adr/0164-accept-the-departure-process-death-window.md`
-- `docs/handoff-E2-05.md`
+- `docs/handoffs/E2-05.md`

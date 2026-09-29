@@ -201,5 +201,9 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-192 | [ADR-0193](0193-render-the-backup-status-indicator-on-the-vehicle-list.md) | Render the backup status indicator on the vehicle list surface. | Accepted |
 | D-193 | [ADR-0194](0194-do-not-let-the-idle-backup-label-claim-a-current-remote-copy.md) | Do not let the `Idle` backup label claim a current remote copy. | Accepted |
 | D-194 | [ADR-0195](0195-execute-the-tombstone-purge-as-one-count-gated-attempt-per-app-start.md) | Execute the tombstone purge as one count-gated attempt per app start. | Accepted |
+| D-196 | [ADR-0196](0196-own-the-analytics-emission-surface-in-e3-09.md) | Own the full `§16.1` analytics surface, including emission and the `setUserProperties` cadence, inside `E3-09`. | Accepted |
+| D-197 | [ADR-0197](0197-compute-analytics-buckets-from-active-owner-rows.md) | Compute the analytics count buckets from the owner's active rows in `:core:database`. | Accepted |
+| D-198 | [ADR-0198](0198-analytics-event-names-booleans-and-failure-policy.md) | Fix `snake_case` analytics names, boolean flag typing and the classified non-propagating provider failure. | Accepted |
+| D-199 | [ADR-0198](0198-analytics-event-names-booleans-and-failure-policy.md) | Inject the analytics tracker into `firebaseAppProviders` with the Firebase implementation as its default. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

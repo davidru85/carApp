@@ -209,8 +209,8 @@ jobs:
       - name: Run Android application and KMP host tests
         timeout-minutes: 10
         run: ./gradlew :androidApp:testDebugUnitTest testAndroidHostTest --stacktrace
-      # D-75 derives the current four exclusions from the transitive Native-test project graph
-      # rooted at the two Firebase integrations. Keeping this invocation separate makes a Native
+      # D-75 derives the current five exclusions from the transitive Native-test project graph
+      # rooted at the three Firebase integrations. Keeping this invocation separate makes a Native
       # simulator stall visible instead of hiding it behind the Android-host aggregate.
       - name: Run Kotlin/Native simulator tests
         timeout-minutes: 10
@@ -218,6 +218,7 @@ jobs:
           ./gradlew iosSimulatorArm64Test
           -x :integration:firebase-auth:iosSimulatorArm64Test
           -x :integration:firebase-firestore:iosSimulatorArm64Test
+          -x :integration:firebase-analytics:iosSimulatorArm64Test
           -x :wiring:firebase:iosSimulatorArm64Test
           -x :composition:ios:iosSimulatorArm64Test
           --max-workers=2

@@ -39,7 +39,7 @@ Allowed in the repository:
   Since `D-34` the repository is **public**, so that proviso is a precondition rather than good
   practice: anyone can read those keys the moment the files are committed. E0-07 restricted the
   development keys in the Google Cloud console before committing either file; the completed
-  evidence is in `docs/handoff-E0-07.md`. Every future app registration MUST repeat that ordering.
+  evidence is in `docs/handoffs/E0-07.md`. Every future app registration MUST repeat that ordering.
 
   Under `D-41`, the Android development key is restricted to the debug application ID and the
   owner's current local debug signing certificate. The iOS development key is restricted to the

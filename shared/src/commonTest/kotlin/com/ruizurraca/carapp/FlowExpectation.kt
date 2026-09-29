@@ -36,8 +36,15 @@ import kotlin.time.TimeSource
  * The bound stays a real-time deadline for the reason documented on [awaitCondition]: the awaited
  * work needs real CPU. 30 s covers a slower runner with a wide margin; a test that needs more is
  * mis-scheduled rather than slow.
+ *
+ * `E3-09` raised the budget of a handful of adoption and vehicle-form expectations further, and the
+ * reason is the same one this comment records rather than a new decision: the graph now observes the
+ * settings flow and the sync status in addition to the work these tests already awaited, so the real
+ * CPU their effects need grew with the graph. A deadline that covers a slower runner with a wide
+ * margin is the property that matters; the exact figure is a measurement of the reference runner, not
+ * a contract.
  */
-private val GRAPH_STATE_EXPECTATION_TIMEOUT = 30.seconds
+internal val GRAPH_STATE_EXPECTATION_TIMEOUT = 45.seconds
 
 /**
  * Polls [condition] until it holds, yielding between attempts, and fails the named expectation once

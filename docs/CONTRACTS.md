@@ -1985,12 +1985,12 @@ D-31 and D-84 define the exact CI check names. Required checks:
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
-module whose Native test binary transitively links `:integration:firebase-auth` or
-`:integration:firebase-firestore` qualifies. CI compares that derived set with the explicit task
-exclusions and MUST fail in both directions. The current resolution is
-`:integration:firebase-auth`, `:integration:firebase-firestore`, `:wiring:firebase` and
-`:composition:ios`; this is observed output, not a permanent allowlist, and changes when the graph
-changes.
+module whose Native test binary transitively links `:integration:firebase-auth`,
+`:integration:firebase-firestore` or `:integration:firebase-analytics` qualifies. CI compares that
+derived set with the explicit task exclusions and MUST fail in both directions. The current
+resolution is `:integration:firebase-auth`, `:integration:firebase-firestore`,
+`:integration:firebase-analytics`, `:wiring:firebase` and `:composition:ios`; this is observed
+output, not a permanent allowlist, and changes when the graph changes.
 
 Optional checks:
 
@@ -2059,6 +2059,19 @@ Optional checks:
     Objective-C header cannot see a hidden member at all, and assertions 34 and 35 compare only the
     two `AppGraph` blocks, so no other assertion can observe this drift; `E3-05` added this one after
     `E3-08` declared the two members that exist by hand and recorded the gap as a deferral (`D-191`).
+
+37. The Firebase Analytics implementation is named only by `:wiring:firebase` and defaults
+    collection to disabled. `§11.6` and `D-179` make `:wiring:firebase` the sole construction site;
+    the architecture checker enforces that over the `:integration:*` package prefix, and this
+    assertion covers the public class name as well, because a re-export or a fully-qualified name
+    can reach the implementation without carrying the prefix. `§16.1` requires collection disabled
+    at startup including on a fresh install, so the tracker's own default is asserted here and not
+    only in a unit test, since the default is what a host that constructs it without arguments gets.
+38. The iOS app links the `FirebaseAnalytics` SwiftPM product. GitLive 2.6.0 does not supply Firebase
+    Apple dependencies transitively (`docs/adr/0076`), so the Kotlin/Native cinterop klib for
+    Firebase Analytics resolves to `framework 'FirebaseAnalytics' not found` unless the app target
+    links the product. The Kotlin build succeeds either way and the failure appears only in the
+    Xcode link step, so nothing else in the repository can observe this coupling.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

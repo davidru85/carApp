@@ -72,7 +72,7 @@ layer publishes.
 `SyncStatusVisualTest` (Android) and `SyncStatusVisualTests` (iOS) assert that every visual has its own
 label, and the iOS test asserts both the English and the Spanish catalogue contain copy for each of the
 four visuals, so an untranslated or missing label fails rather than rendering a raw key. Evidence is in
-`docs/handoff-E3-05.md`.
+`docs/handoffs/E3-05.md`.
 
 ## References
 

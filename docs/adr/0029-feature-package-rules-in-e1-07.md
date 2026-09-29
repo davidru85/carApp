@@ -47,4 +47,4 @@ The three feature-layer rows are implemented with Konsist in `E1-07`, the first 
 
 - `docs/DECISION_BOARD.md` (`D-28`)
 - `docs/TECHNICAL_PLAN.md §4`
-- `docs/handoff-E0-04.md`
+- `docs/handoffs/E0-04.md`

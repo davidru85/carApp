@@ -54,6 +54,13 @@ class SessionStateHolder internal constructor(
     private var operationJob: Job? = null
     private var reminderJob: Job? = null
     private var awaitingRestoredSession = false
+
+    // `E3-09` / `docs/CONTRACTS.md §16.1`: one `OnboardingStarted` and one `OnboardingCompleted` per
+    // holder. The holder is the process's session orchestrator, so "once per holder" is "once per app
+    // run" for a device whose first screen is the welcome screen, and it is the only place the
+    // welcome-to-signed-in transition is observed without a host doing the observing.
+    private var onboardingStartedEmitted = false
+    private var onboardingCompletedEmitted = false
     private var activePermanentProvider: AuthProvider? = null
     private var activeSignInKind: SignInKind? = null
     private var pendingCollision: PendingCollision? = null
@@ -86,6 +93,7 @@ class SessionStateHolder internal constructor(
                     // has just failed, which §11.5 forbids.
                     if (departureFlow.ownsState()) return@collect
                     val next = authState.toSessionUiState()
+                    trackOnboarding(next.phase)
                     // A published index belongs to the anonymous UID that produced it. It survives
                     // a re-emission of that same identity and is dropped by every other transition,
                     // including a switch to a different anonymous identity (§11.3).
@@ -116,10 +124,36 @@ class SessionStateHolder internal constructor(
             null
         }
 
+    /**
+     * `E3-09` / `docs/CONTRACTS.md §16.1`: the onboarding pair, once per holder.
+     *
+     * `OnboardingStarted` fires exactly once, at the first phase the holder observes that is not yet
+     * determined: `UNKNOWN` means the provider has not answered, so the welcome screen is what the
+     * user sees and onboarding has begun. A holder whose first observation is already determined did
+     * not go through onboarding in this run and emits neither event.
+     *
+     * `OnboardingCompleted` fires once, on the first transition from that undetermined phase into a
+     * session: `LOCAL`, `ANONYMOUS` or `PERMANENT`. `SIGNED_OUT` is the end of a session, not the end
+     * of onboarding, and `DELETING` is a departure; neither completes it, so a sign-out on the
+     * welcome screen can never be reported as a completed onboarding.
+     */
+    private fun trackOnboarding(phase: SessionPhase) {
+        val tracker = analyticsTracker ?: return
+        if (!onboardingStartedEmitted && !onboardingCompletedEmitted && phase == SessionPhase.UNKNOWN) {
+            onboardingStartedEmitted = true
+            tracker.track(AnalyticsEvent.OnboardingStarted)
+        }
+        if (onboardingStartedEmitted && !onboardingCompletedEmitted && phase in SIGNED_IN_PHASES) {
+            onboardingCompletedEmitted = true
+            tracker.track(AnalyticsEvent.OnboardingCompleted)
+        }
+    }
+
     fun startAnonymousSignIn() {
         if (closed) return
         val operationScope = scope ?: return
         val client = authClient ?: return
+        analyticsTracker?.track(AnalyticsEvent.AnonymousSignInSelected)
         operationJob?.cancel()
         activePermanentProvider = null
         activeSignInKind = null
@@ -167,6 +201,7 @@ class SessionStateHolder internal constructor(
             publishError(AuthError.ProviderUnavailable)
             return
         }
+        analyticsTracker?.track(AnalyticsEvent.PermanentSignInSelected(provider))
         clearPendingCollision()
         activePermanentProvider = provider
         activeSignInKind = SignInKind.PERMANENT
@@ -662,6 +697,9 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         pendingSyncCount = null,
         pendingDepartureRetry = null,
     )
+
+/** The three phases that mean onboarding succeeded and a session exists. */
+private val SIGNED_IN_PHASES = setOf(SessionPhase.LOCAL, SessionPhase.ANONYMOUS, SessionPhase.PERMANENT)
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L
 private const val AUTH_ERROR_MESSAGE_ID = 2L

@@ -17,6 +17,7 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -414,15 +415,27 @@ class SessionStateHolderTest {
     @Test
     fun accountConversionStartTracksTheClosedStartedEvent() =
         runTest {
-            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val authClient = RecordingAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
-            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
-            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
-            val stateHolder = graph.sessionStateHolder()
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker),
+                )
+            val graph = DefaultAppGraph(dependencies)
+            graph.installAnalyticsTestSeams { 0 to 0 }
+            advanceUntilIdle()
+            tracker.assertOptedIn()
+            val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
+            val stateHolder = swiftGraph.sessionStateHolder()
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
 
-            assertEquals(listOf(AnalyticsEvent.AccountConversionStarted), tracker.events)
+            // The list is filtered to the events this test owns: the graph also emits the
+            // SyncStatusChanged series, which is asserted by SharedAnalyticsCadenceTest.
+            assertEquals(
+                listOf(AnalyticsEvent.AccountConversionStarted),
+                tracker.events.filter { it is AnalyticsEvent.AccountConversionStarted },
+            )
             graph.close()
         }
 
@@ -430,7 +443,7 @@ class SessionStateHolderTest {
     @Test
     fun successfulAccountLinkTracksTheClosedCompletedEvent() =
         runTest {
-            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val anonymous = anonymousSession()
             val linked = anonymous.copy(isAnonymous = false, providers = setOf(AuthProvider.GOOGLE))
             val authClient =
@@ -438,15 +451,28 @@ class SessionStateHolderTest {
                     initialState = AuthState.SignedIn(anonymous),
                     linkResult = Outcome.Ok(linked),
                 )
-            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
-            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
-            val stateHolder = graph.sessionStateHolder()
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker),
+                )
+            val graph = DefaultAppGraph(dependencies)
+            graph.installAnalyticsTestSeams { 0 to 0 }
+            advanceUntilIdle()
+            tracker.assertOptedIn()
+            val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
+            val stateHolder = swiftGraph.sessionStateHolder()
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
             stateHolder.completeGoogleSignIn("id-token", null)
             advanceUntilIdle()
 
-            assertEquals(AnalyticsEvent.AccountConversionCompleted, tracker.events.last())
+            // Filtered to the conversion family: the graph also emits the SyncStatusChanged series,
+            // which is asserted by SharedAnalyticsCadenceTest, so a global `last()` would depend on
+            // the relative order of two independent flows.
+            assertEquals(
+                AnalyticsEvent.AccountConversionCompleted,
+                tracker.events.filterIsInstance<AnalyticsEvent.AccountConversionCompleted>().last(),
+            )
             graph.close()
         }
 
@@ -454,15 +480,22 @@ class SessionStateHolderTest {
     @Test
     fun dismissingACollisionTracksTheClosedCancelledFailure() =
         runTest {
-            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val authClient =
                 RecordingAuthClient(
                     initialState = AuthState.SignedIn(anonymousSession()),
                     linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
                 )
-            val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
-            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
-            val stateHolder = graph.sessionStateHolder()
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker),
+                )
+            val graph = DefaultAppGraph(dependencies)
+            graph.installAnalyticsTestSeams { 0 to 0 }
+            advanceUntilIdle()
+            tracker.assertOptedIn()
+            val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
+            val stateHolder = swiftGraph.sessionStateHolder()
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
             stateHolder.completeGoogleSignIn("colliding-id-token", null)
@@ -471,7 +504,9 @@ class SessionStateHolderTest {
 
             assertEquals(
                 AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
-                tracker.events.last(),
+                tracker.events
+                    .filterIsInstance<AnalyticsEvent.AccountConversionFailed>()
+                    .last(),
             )
             graph.close()
         }

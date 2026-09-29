@@ -55,4 +55,4 @@ Correct golden row 3 to `0`, and add a row that demonstrates HALF_UP rounding up
 
 - `docs/DECISION_BOARD.md` (`D-26`)
 - `docs/CONTRACTS.md §2`
-- `docs/handoff-E0-03.md`
+- `docs/handoffs/E0-03.md`

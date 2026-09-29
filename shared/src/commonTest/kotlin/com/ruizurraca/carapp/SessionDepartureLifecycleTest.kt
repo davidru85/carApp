@@ -344,7 +344,10 @@ class SessionDepartureLifecycleTest {
 
             assertEquals(
                 listOf(AnalyticsEvent.AccountDeletionStarted, AnalyticsEvent.AccountDeletionCompleted),
-                tracker.events,
+                tracker.events.filter {
+                    it is AnalyticsEvent.AccountDeletionStarted ||
+                        it is AnalyticsEvent.AccountDeletionCompleted
+                },
             )
             holder.close()
         }
