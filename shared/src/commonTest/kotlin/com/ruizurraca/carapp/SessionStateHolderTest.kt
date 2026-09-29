@@ -415,11 +415,13 @@ class SessionStateHolderTest {
     @Test
     fun accountConversionStartTracksTheClosedStartedEvent() =
         runTest {
-            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val authClient = RecordingAuthClient(initialState = AuthState.SignedIn(anonymousSession()))
             val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
-            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
-            val stateHolder = graph.sessionStateHolder()
+            val graph = DefaultAppGraph(dependencies)
+            optInAnalytics(graph, tracker)
+            val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
+            val stateHolder = swiftGraph.sessionStateHolder()
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
 
@@ -436,7 +438,7 @@ class SessionStateHolderTest {
     @Test
     fun successfulAccountLinkTracksTheClosedCompletedEvent() =
         runTest {
-            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val anonymous = anonymousSession()
             val linked = anonymous.copy(isAnonymous = false, providers = setOf(AuthProvider.GOOGLE))
             val authClient =
@@ -445,8 +447,10 @@ class SessionStateHolderTest {
                     linkResult = Outcome.Ok(linked),
                 )
             val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
-            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
-            val stateHolder = graph.sessionStateHolder()
+            val graph = DefaultAppGraph(dependencies)
+            optInAnalytics(graph, tracker)
+            val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
+            val stateHolder = swiftGraph.sessionStateHolder()
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
             stateHolder.completeGoogleSignIn("id-token", null)
@@ -466,15 +470,17 @@ class SessionStateHolderTest {
     @Test
     fun dismissingACollisionTracksTheClosedCancelledFailure() =
         runTest {
-            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = false)
             val authClient =
                 RecordingAuthClient(
                     initialState = AuthState.SignedIn(anonymousSession()),
                     linkResult = Outcome.Err(AuthError.CredentialAlreadyInUse),
                 )
             val dependencies = testAppGraphDependencies(authClient = authClient, analyticsTracker = tracker)
-            val graph = SwiftAppGraph(DefaultAppGraph(dependencies), dependencies.dispatchers)
-            val stateHolder = graph.sessionStateHolder()
+            val graph = DefaultAppGraph(dependencies)
+            optInAnalytics(graph, tracker)
+            val swiftGraph = SwiftAppGraph(graph, dependencies.dispatchers)
+            val stateHolder = swiftGraph.sessionStateHolder()
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
             stateHolder.completeGoogleSignIn("colliding-id-token", null)
