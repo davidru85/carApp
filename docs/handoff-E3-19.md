@@ -1,5 +1,20 @@
 # Agent Handoff
 
+> **Closure update (2026-09-29):** `E3-19` merged through pull request #82 after the owner's gated
+> review, as a true merge of `story/E3-19-push-boundary-payload-totality` into `main` (merge commit
+> `cfccfe1c`, whose second parent is the branch head `47aef3fe`). It took four review correction
+> rounds: correction 1 made the identity and epoch-millisecond reads require the JSON type itself,
+> correction 2 moved the `UPDATED_AT_FIELD` branch before `JsonNull` so a present `updatedAt` is
+> always server-owned, correction 3 restricted booleans and integers to the RFC 8259 `true` / `false`
+> and `[ minus ] int` tokens, and correction 4 corrected the `D-170` scope attribution. It introduced
+> no decision. The `E3-19` status block and its index row in `docs/BACKLOG.md`, the `Remaining
+> Phase 3` list and the open-decision paragraph in `AGENTS.md` now state the merge and its pull
+> request. The in-flight `In-Progress Checkpoint` below is superseded by this update and preserved as
+> observed; the original acceptance evidence and verification results below are likewise preserved as
+> observed. On the final record-only head `47aef3fe`, which is an ancestor of `main`, all ten required
+> checks are green on attempt `1` (run 36468868905), and the implementation/documentation head
+> `891167d` passed all ten on attempt `1` (run 36466988921).
+
 ## Story
 
 `E3-19 - Push-Boundary Payload Totality`

@@ -1789,8 +1789,9 @@ Human review required.
 
 ### E3-19 - Push-Boundary Payload Totality - S
 
-Status: implemented on `story/E3-19-push-boundary-payload-totality` through pull request #82,
-awaiting the owner's gated review. See `docs/handoff-E3-19.md`.
+Status: merged on 2026-09-29 through pull request #82 as a true merge of
+`story/E3-19-push-boundary-payload-totality` into `main` (merge commit `cfccfe1c`), after the owner's
+gated review and four review correction rounds. See `docs/handoff-E3-19.md`.
 
 Previously deferred by `E3-03` for low reachability; scheduled and implemented.
 
@@ -2063,7 +2064,7 @@ proof after E3-04.
 | E3-16 Close the issuance lookup-to-write window (blocked on `D-150`) | 3 | M | Yes |
 | E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle (completed, PR #70) | 3 | M | Yes |
 | E3-18 Manual retry coverage for parked connectivity rows (blocked on `D-173`) | 3 | S | Yes |
-| E3-19 Push-boundary payload totality (implemented, PR #82) | 3 | S | Yes |
+| E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values | 3 | S | Yes |
 | E3-21 Explicit startup reset of stale `SYNCING` rows | 3 | S | Yes |
 | E4-01 Settings UI | 4 | S | — |

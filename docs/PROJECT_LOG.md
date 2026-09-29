@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-09-29 — E3-19 record closure: the merged status and the pull request #82 evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E3-19` / — (no decision changed; the story introduced no decision)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E3-19-record-closeout`)
+- **What changed:** `E3-19` merged on 2026-09-29 through pull request #82 as a true merge of
+  `story/E3-19-push-boundary-payload-totality` into `main` (merge commit `cfccfe1c`, whose second
+  parent is the branch head `47aef3fe`), after the owner's gated review and four review correction
+  rounds. The places that still described the story as in flight now state the merge and its pull
+  request: the `E3-19` status block and its index row in `docs/BACKLOG.md`, the `Remaining Phase 3`
+  list in `AGENTS.md`, from which `E3-19` is removed, and the open-decision paragraph in `AGENTS.md`
+  that enumerates the merged stories. `docs/handoff-E3-19.md` gains a dated `Closure update` that
+  records the merge, the four correction rounds and their content, and preserves its in-flight
+  checkpoint and its acceptance evidence as observed.
+- **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
+  planned, and it is updated by the story that changes it. Leaving the in-flight tense in place after
+  the merge makes that state false, and the remaining-work list must not include a merged story.
+- **Correction to the previous E3-19 entries:** the four review-correction entries and the story entry
+  recorded the story as implemented and awaiting the owner's review; the owner approved and merged it
+  afterwards, so the status is merged rather than in review. Their content is otherwise unchanged and
+  accurate, including the `D-170` scope correction of review correction 4.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoff-E3-19.md`, this log.
+- **Verification:** documentation only, so no test, build or coverage result depends on it. The final
+  record-only head `47aef3fe`, an ancestor of `main`, passed all ten required checks on attempt `1`
+  (run 36468868905), and the implementation/documentation head `891167d` passed all ten on attempt `1`
+  (run 36466988921). The complete non-instrumented `AGENTS.md` command and `contractCheck
+  --rerun-tasks` are run before the pull request to confirm no check regresses.
+- **Follow-ups / risks:** none new. The push-boundary behavior, its tests and every acceptance
+  criterion are unchanged by this correction. `E3-20` and `E3-21` remain open. Pull request #82 is
+  merged and requires no further action.
+
 ### 2026-09-28 — E3-19 review correction 4: D-170 scope attribution
 
 - **Type:** correction
