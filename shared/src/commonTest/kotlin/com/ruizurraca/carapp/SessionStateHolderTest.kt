@@ -15,6 +15,7 @@ import com.ruizurraca.carapp.core.testing.FakeAuthClient
 import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -451,7 +452,13 @@ class SessionStateHolderTest {
             stateHolder.completeGoogleSignIn("id-token", null)
             advanceUntilIdle()
 
-            assertEquals(AnalyticsEvent.AccountConversionCompleted, tracker.events.last())
+            // Filtered to the conversion family: the graph also emits the SyncStatusChanged series,
+            // which is asserted by SharedAnalyticsCadenceTest, so a global `last()` would depend on
+            // the relative order of two independent flows.
+            assertEquals(
+                AnalyticsEvent.AccountConversionCompleted,
+                tracker.events.filterIsInstance<AnalyticsEvent.AccountConversionCompleted>().last(),
+            )
             graph.close()
         }
 
@@ -476,7 +483,9 @@ class SessionStateHolderTest {
 
             assertEquals(
                 AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
-                tracker.events.last(),
+                tracker.events
+                    .filterIsInstance<AnalyticsEvent.AccountConversionFailed>()
+                    .last(),
             )
             graph.close()
         }
