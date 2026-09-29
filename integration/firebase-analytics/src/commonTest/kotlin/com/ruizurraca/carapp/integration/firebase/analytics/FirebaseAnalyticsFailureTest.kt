@@ -106,17 +106,17 @@ class FirebaseAnalyticsFailureTest {
             parameters: Map<String, Any>,
         ) {
             logEventCalls += 1
-            throw IllegalStateException("provider unavailable")
+            error("provider unavailable")
         }
 
         override fun setUserProperty(
             name: String,
             value: String,
-        ): Unit = throw IllegalStateException("provider unavailable")
+        ): Unit = error("provider unavailable")
 
         override fun setCollectionEnabled(enabled: Boolean) {
             if (!enabled) return
-            throw IllegalStateException("provider unavailable")
+            error("provider unavailable")
         }
     }
 }

@@ -23,83 +23,7 @@ import kotlin.test.assertTrue
 class FirebaseAnalyticsTrackerTest {
     @Test
     fun everyEventLeafMapsToAnEventNameAndParameterSet() {
-        // The expected surface, written as an exhaustive `when` with no `else`: adding, renaming or
-        // removing an `AnalyticsEvent` leaf stops this test compiling, which is the point. Every
-        // parameter is an enum name or a boolean, and no leaf contributes a free-text value.
-        val expectation =
-            analyticsLeaves().associateWith { event ->
-                when (event) {
-                    AnalyticsEvent.OnboardingStarted -> {
-                        EventExpectation("onboarding_started", emptyMap())
-                    }
-
-                    AnalyticsEvent.OnboardingCompleted -> {
-                        EventExpectation("onboarding_completed", emptyMap())
-                    }
-
-                    AnalyticsEvent.AnonymousSignInSelected -> {
-                        EventExpectation("anonymous_sign_in_selected", emptyMap())
-                    }
-
-                    is AnalyticsEvent.PermanentSignInSelected -> {
-                        EventExpectation(
-                            "permanent_sign_in_selected",
-                            mapOf("provider" to event.provider.name),
-                        )
-                    }
-
-                    AnalyticsEvent.VehicleCreated -> {
-                        EventExpectation("vehicle_created", emptyMap())
-                    }
-
-                    is AnalyticsEvent.FuelEntryCreated -> {
-                        EventExpectation(
-                            "fuel_entry_created",
-                            mapOf(
-                                "is_full_tank" to event.isFullTank,
-                                "had_notes" to event.hadNotes,
-                            ),
-                        )
-                    }
-
-                    is AnalyticsEvent.SyncStatusChanged -> {
-                        EventExpectation(
-                            "sync_status_changed",
-                            mapOf("status" to event.status.name),
-                        )
-                    }
-
-                    AnalyticsEvent.AccountConversionStarted -> {
-                        EventExpectation("account_conversion_started", emptyMap())
-                    }
-
-                    AnalyticsEvent.AccountConversionCompleted -> {
-                        EventExpectation("account_conversion_completed", emptyMap())
-                    }
-
-                    is AnalyticsEvent.AccountConversionFailed -> {
-                        EventExpectation(
-                            "account_conversion_failed",
-                            mapOf("reason" to event.reason.name),
-                        )
-                    }
-
-                    AnalyticsEvent.AccountDeletionStarted -> {
-                        EventExpectation("account_deletion_started", emptyMap())
-                    }
-
-                    AnalyticsEvent.AccountDeletionCompleted -> {
-                        EventExpectation("account_deletion_completed", emptyMap())
-                    }
-
-                    is AnalyticsEvent.AccountDeletionFailed -> {
-                        EventExpectation(
-                            "account_deletion_failed",
-                            mapOf("reason" to event.reason.name),
-                        )
-                    }
-                }
-            }
+        val expectation = expectedSurface()
 
         assertEquals(13, expectation.size, "§20.9 declares exactly thirteen leaves")
 
@@ -121,6 +45,89 @@ class FirebaseAnalyticsTrackerTest {
             )
         }
     }
+
+    // The expected surface, written as an exhaustive `when` with no `else`: adding, renaming or
+    // removing an `AnalyticsEvent` leaf stops this compile, which is the point. Every parameter is an
+    // enum name or a boolean, and no leaf contributes a free-text value.
+    //
+    // `LongMethod` and `CyclomaticComplexMethod` are suppressed because this is a flat data table
+    // with one row per contract leaf, not branching logic: splitting it would put half the expected
+    // surface in a second place, which is exactly the drift the table exists to prevent.
+    @Suppress("LongMethod", "CyclomaticComplexMethod")
+    private fun expectedSurface(): Map<AnalyticsEvent, EventExpectation> =
+        analyticsLeaves().associateWith { event ->
+            when (event) {
+                AnalyticsEvent.OnboardingStarted -> {
+                    EventExpectation("onboarding_started", emptyMap())
+                }
+
+                AnalyticsEvent.OnboardingCompleted -> {
+                    EventExpectation("onboarding_completed", emptyMap())
+                }
+
+                AnalyticsEvent.AnonymousSignInSelected -> {
+                    EventExpectation("anonymous_sign_in_selected", emptyMap())
+                }
+
+                is AnalyticsEvent.PermanentSignInSelected -> {
+                    EventExpectation(
+                        "permanent_sign_in_selected",
+                        mapOf("provider" to event.provider.name),
+                    )
+                }
+
+                AnalyticsEvent.VehicleCreated -> {
+                    EventExpectation("vehicle_created", emptyMap())
+                }
+
+                is AnalyticsEvent.FuelEntryCreated -> {
+                    EventExpectation(
+                        "fuel_entry_created",
+                        mapOf(
+                            "is_full_tank" to event.isFullTank,
+                            "had_notes" to event.hadNotes,
+                        ),
+                    )
+                }
+
+                is AnalyticsEvent.SyncStatusChanged -> {
+                    EventExpectation(
+                        "sync_status_changed",
+                        mapOf("status" to event.status.name),
+                    )
+                }
+
+                AnalyticsEvent.AccountConversionStarted -> {
+                    EventExpectation("account_conversion_started", emptyMap())
+                }
+
+                AnalyticsEvent.AccountConversionCompleted -> {
+                    EventExpectation("account_conversion_completed", emptyMap())
+                }
+
+                is AnalyticsEvent.AccountConversionFailed -> {
+                    EventExpectation(
+                        "account_conversion_failed",
+                        mapOf("reason" to event.reason.name),
+                    )
+                }
+
+                AnalyticsEvent.AccountDeletionStarted -> {
+                    EventExpectation("account_deletion_started", emptyMap())
+                }
+
+                AnalyticsEvent.AccountDeletionCompleted -> {
+                    EventExpectation("account_deletion_completed", emptyMap())
+                }
+
+                is AnalyticsEvent.AccountDeletionFailed -> {
+                    EventExpectation(
+                        "account_deletion_failed",
+                        mapOf("reason" to event.reason.name),
+                    )
+                }
+            }
+        }
 
     @Test
     fun noParameterValueIsDerivedFromForbiddenPayload() {

@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.analytics.AnalyticsProviderError
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * The Firebase-backed `AnalyticsTracker` of `docs/CONTRACTS.md §16.1` (`D-10`).
@@ -157,11 +158,19 @@ class FirebaseAnalyticsTracker internal constructor(
             }
         }
 
+    /**
+     * `TooGenericExceptionCaught` is suppressed because the policy *is* to survive an arbitrary
+     * provider failure: the SDK raises provider-specific and platform exceptions, and `D-10` makes
+     * metrics best-effort. Cancellation is rethrown from its own catch so a cancelled coroutine is
+     * never mistaken for a provider failure.
+     */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
     private inline fun safely(block: () -> Unit) {
         try {
             block()
-        } catch (failure: Throwable) {
-            if (failure is kotlin.coroutines.cancellation.CancellationException) throw failure
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Exception) {
             onProviderError(AnalyticsProviderError.PROVIDER_FAILED)
         }
     }

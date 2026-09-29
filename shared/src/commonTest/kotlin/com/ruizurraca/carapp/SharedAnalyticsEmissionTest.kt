@@ -27,7 +27,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
+import kotlin.time.TimeSource
 
 /**
  * `E3-09` (`D-196`, ADR-0196): the `docs/CONTRACTS.md §16.1` emission surface for the two write
@@ -234,8 +236,10 @@ class SharedAnalyticsEmissionTest {
         condition: () -> Boolean,
     ) {
         withContext(Dispatchers.Default) {
-            val deadline = System.nanoTime() + timeoutMillis * 1_000_000
-            while (!condition() && System.nanoTime() < deadline) {
+            // `TimeSource.Monotonic`, not `System.nanoTime()`: the latter is JVM-only and this test
+            // also compiles for Kotlin/Native.
+            val start = TimeSource.Monotonic.markNow()
+            while (!condition() && start.elapsedNow() < timeoutMillis.milliseconds) {
                 delay(REAL_WAIT_STEP_MILLIS)
             }
         }
