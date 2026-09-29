@@ -38,6 +38,7 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.integration.firebase.analytics.FirebaseAnalyticsTracker
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseAuthClient
 import com.ruizurraca.carapp.integration.firebase.auth.FirebaseOrphanCleanupClient
 import com.ruizurraca.carapp.integration.firebase.firestore.FirebaseRemoteSyncSource
@@ -78,6 +79,10 @@ fun firebaseAppProviders(
     localeProvider: LocaleProvider,
     connectivityObserver: ConnectivityObserver,
     syncTriggerAdapter: SyncTriggerAdapter = noSyncScheduling,
+    // `E3-09`: the one place the Firebase Analytics implementation is constructed (`D-10`, `D-179`).
+    // Injected rather than built inline so a host can supply its own tracker — a test, or a build
+    // that must not collect — without this module gaining a second construction site.
+    analyticsTracker: AnalyticsTracker = FirebaseAnalyticsTracker(),
 ): AppProviders {
     val dispatchers = stagedDispatcherProvider()
     val authScope = CoroutineScope(SupervisorJob() + dispatchers.default)
@@ -88,6 +93,7 @@ fun firebaseAppProviders(
         orphanCleanupClient = FirebaseOrphanCleanupClient(),
         tokenProvider = authClient,
         remoteSyncSource = FirebaseRemoteSyncSource(),
+        analyticsTracker = analyticsTracker,
         localeProvider = localeProvider,
         dispatchers = dispatchers,
         connectivityObserver = connectivityObserver,
@@ -114,6 +120,9 @@ internal fun firebaseAppProviders(
     orphanCleanupClient: OrphanCleanupClient = stagedOrphanCleanupClient(),
     tokenProvider: TokenProvider,
     remoteSyncSource: RemoteSyncSource,
+    // `E3-09`. The staged default is the no-op: a graph built without a host therefore collects
+    // nothing, which is the correct posture for a build that has no provider wired.
+    analyticsTracker: AnalyticsTracker = noAnalyticsTracking,
     localeProvider: LocaleProvider = stagedLocaleProvider(),
     dispatchers: DispatcherProvider = stagedDispatcherProvider(),
     // Real platform reachability is injected by each host composition boundary, the same shape
@@ -129,7 +138,7 @@ internal fun firebaseAppProviders(
         override val tokenProvider = tokenProvider
         override val ownerContext = AuthOwnerContext(authClient.authState)
         override val remoteSyncSource = remoteSyncSource
-        override val analyticsTracker = stagedAnalyticsTracker()
+        override val analyticsTracker = analyticsTracker
         override val crashReporter = NoOpCrashReporter
         override val clock = AppClock { Clock.System.now() }
         override val dispatchers = dispatchers
@@ -190,7 +199,14 @@ private fun stagedRemoteSyncSource(): RemoteSyncSource =
         ): Outcome<RemotePage, RemoteError> = Outcome.Err(RemoteError.Unavailable)
     }
 
-private fun stagedAnalyticsTracker(): AnalyticsTracker =
+/**
+ * The staged default for a graph built without a host: it records nothing.
+ *
+ * A `private val` rather than a factory because `docs/TECHNICAL_PLAN.md §4`/`D-178` admits only a
+ * Koin `Module`, a factory or a private property at this module's top level; this is the same shape
+ * as [noSyncScheduling].
+ */
+private val noAnalyticsTracking: AnalyticsTracker =
     object : AnalyticsTracker {
         override fun track(event: AnalyticsEvent) = Unit
 

@@ -2060,6 +2060,19 @@ Optional checks:
     two `AppGraph` blocks, so no other assertion can observe this drift; `E3-05` added this one after
     `E3-08` declared the two members that exist by hand and recorded the gap as a deferral (`D-191`).
 
+37. The Firebase Analytics implementation is named only by `:wiring:firebase` and defaults
+    collection to disabled. `§11.6` and `D-179` make `:wiring:firebase` the sole construction site;
+    the architecture checker enforces that over the `:integration:*` package prefix, and this
+    assertion covers the public class name as well, because a re-export or a fully-qualified name
+    can reach the implementation without carrying the prefix. `§16.1` requires collection disabled
+    at startup including on a fresh install, so the tracker's own default is asserted here and not
+    only in a unit test, since the default is what a host that constructs it without arguments gets.
+38. The iOS app links the `FirebaseAnalytics` SwiftPM product. GitLive 2.6.0 does not supply Firebase
+    Apple dependencies transitively (`docs/adr/0076`), so the Kotlin/Native cinterop klib for
+    Firebase Analytics resolves to `framework 'FirebaseAnalytics' not found` unless the app target
+    links the product. The Kotlin build succeeds either way and the failure appears only in the
+    Xcode link step, so nothing else in the repository can observe this coupling.
+
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
 provider condition restricted to the immutable repository/owner, the

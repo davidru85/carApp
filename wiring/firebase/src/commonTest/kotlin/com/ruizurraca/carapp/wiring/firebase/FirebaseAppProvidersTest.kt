@@ -2,6 +2,10 @@ package com.ruizurraca.carapp.wiring.firebase
 
 import com.ruizurraca.carapp.AppGraph
 import com.ruizurraca.carapp.buildAppGraph
+import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
+import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
+import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
+import com.ruizurraca.carapp.core.analytics.CountBucket
 import com.ruizurraca.carapp.core.auth.AuthClient
 import com.ruizurraca.carapp.core.auth.AuthOwnerContext
 import com.ruizurraca.carapp.core.auth.AuthSession
@@ -11,9 +15,13 @@ import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.auth.TokenProvider
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.LocaleInfo
+import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
+import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
@@ -112,7 +120,7 @@ class FirebaseAppProvidersTest {
         // `E3-09`: `:wiring:firebase` is the only module that constructs the Firebase Analytics
         // implementation, and it binds whatever tracker it was handed. Asserting identity rather than
         // behaviour is the point: a decorator here would be a second construction site.
-        val analyticsTracker = RecordingAnalyticsTracker()
+        val analyticsTracker = RecordingAnalyticsTrackerForWiring()
 
         val providers =
             firebaseAppProviders(
@@ -151,7 +159,7 @@ class FirebaseAppProvidersTest {
         // The production entry point is where the Firebase implementation is constructed, and its
         // tracker MUST reach the graph's `AppGraphDependencies`, which is the only path by which the
         // shared orchestration can emit anything.
-        val analyticsTracker = RecordingAnalyticsTracker()
+        val analyticsTracker = RecordingAnalyticsTrackerForWiring()
 
         val providers =
             firebaseAppProviders(
@@ -164,7 +172,10 @@ class FirebaseAppProvidersTest {
                             suggestedCurrency = CurrencyCode("EUR"),
                         )
                     },
-                connectivityObserver = ConnectivityObserver { MutableStateFlow(false) },
+                connectivityObserver =
+                    object : ConnectivityObserver {
+                        override val isOnline = MutableStateFlow(false)
+                    },
                 analyticsTracker = analyticsTracker,
             )
 
@@ -172,6 +183,26 @@ class FirebaseAppProvidersTest {
 
         val graph = buildAppGraph(isDebugBuild = true, providers = providers)
         graph.close()
+    }
+}
+
+/**
+ * A local analytics recorder. `:wiring:firebase`'s tests deliberately define their own doubles —
+ * `MutableAuthClient` and `RecordingRemoteSyncSource` are already here — so the module keeps its
+ * dependency surface at what production code needs.
+ */
+private class RecordingAnalyticsTrackerForWiring : AnalyticsTracker {
+    val events = mutableListOf<AnalyticsEvent>()
+    var enabled = false
+
+    override fun track(event: AnalyticsEvent) {
+        if (enabled) events += event
+    }
+
+    override fun setUserProperties(properties: AnalyticsUserProperties) = Unit
+
+    override fun setEnabled(enabled: Boolean) {
+        this.enabled = enabled
     }
 }
 

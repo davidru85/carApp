@@ -10,12 +10,13 @@
 		0114D2546E157F273C216787 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33485CD8468B0FE42AC9A0DE /* Onboarding.swift */; };
 		03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */; };
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
+		0EF433FA8D4B3A25B59529C5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
 		1132B312C49E6B6844B3934B /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 8EB8A37AF599C28041EB55CA /* es.lproj */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
 		33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */; };
 		3EB02BFAF2704B6A37EF2FC9 /* WalkingSkeletonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */; };
-		3EC77D959C5B1B210F562663 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
+		3EC77D959C5B1B210F562663 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5DBB937B0D665660531B0A89 /* FirebaseAnalytics */; };
 		40250C151B05AB2AC7EBCD8E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = F238BDE0A677C628F5355C5C /* FirebaseAuth */; };
 		4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */; };
 		4BC8A1097F15EE75D459464C /* OnboardingWaitPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */; };
@@ -134,7 +135,8 @@
 				EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */,
 				9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */,
 				50E658A3BCF6B028487ABB8C /* FirebaseFunctions in Frameworks */,
-				3EC77D959C5B1B210F562663 /* GoogleSignIn in Frameworks */,
+				3EC77D959C5B1B210F562663 /* FirebaseAnalytics in Frameworks */,
+				0EF433FA8D4B3A25B59529C5 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,6 +294,7 @@
 				CFC5898F3BD999E550ABDB6E /* FirebaseCore */,
 				63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */,
 				FFE99D9E34273E411857F7D2 /* FirebaseFunctions */,
+				5DBB937B0D665660531B0A89 /* FirebaseAnalytics */,
 				D5592966EFE660C6BBBA6814 /* GoogleSignIn */,
 			);
 			productName = carApp;
@@ -757,6 +760,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5DBB937B0D665660531B0A89 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
 		63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A40F9DD7B0572E3B09BF0F83 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
