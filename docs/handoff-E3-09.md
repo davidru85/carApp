@@ -40,7 +40,7 @@ it in `:wiring:firebase`, and own the complete `docs/CONTRACTS.md §16.1` emissi
 - Current phase and latest commit: complete; the pull request's ten required checks are green.
 - Push and pull-request status: pushed; pull request
   [#84](https://github.com/davidru85/carApp/pull/84) is open, mergeable, and all ten required checks
-  passed on the head `3244c691` (run `36574307384`).
+  passed on the head `b637edfe` (run `36580728945`).
 - Completed since the previous checkpoint: the whole story. `:core:analytics` gained the `§20.9`
   collapse and the closed provider-error taxonomy; `:integration:firebase-analytics` was created with
   the tracker, its narrow gateway and its tests; `:wiring:firebase` binds it and links the iOS
@@ -59,7 +59,11 @@ it in `:wiring:firebase`, and own the complete `docs/CONTRACTS.md §16.1` emissi
   failed on two pre-existing fixtures that forced the tracker on while the graph's own bootstrap
   disabled it, and the second exposed that the wall-clock wait introduced to fix them competed with
   the wall-clock budgets other graph tests use. Both are fixed by the two internal test seams and a
-  fixture with no real-time wait at all. No known failure.
+  fixture with no real-time wait at all. A third iteration then exposed a deadline inversion the
+  story's extra graph collectors made reachable — three adoption fixtures wrapped the shared 30 s
+  real-time expectation budget in a 10 s `runTest` deadline, so a slow runner reported the framework
+  timeout instead of the expectation — which is now a derived pair. All ten checks pass and stayed
+  green on the head that carries the fixes. No known failure.
 - Open decisions or blockers: none. The one owner decision this story needed — the emission scope —
   was taken on 2026-09-29 (`D-196`).
 - Exact next step: push the branch, open the pull request and watch the ten required checks.
