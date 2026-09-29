@@ -38,6 +38,50 @@
 
 ## Entries
 
+### 2026-09-29 — E3-09 Firebase Analytics integration, its emission surface and four decisions
+
+- **Type:** story
+- **Story / Decision:** `E3-09` / `D-196`, `D-197`, `D-198`, `D-199`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-09-firebase-analytics-integration`)
+- **What changed:** `:integration:firebase-analytics` is created with the Firebase-backed
+  `AnalyticsTracker` of `docs/CONTRACTS.md §16.1`, behind a narrow internal `AnalyticsGateway` the
+  same way the auth and Firestore integrations isolate their providers, and `:wiring:firebase` binds
+  it as the third provider module. The story also delivers the `§16.1` emission surface in `:shared`
+  (`D-196`): the opt-in gate with its single `setUserProperties` call, the sync-status edge that
+  emits `SyncStatusChanged` only on a category change, the two write events with the post-write
+  bucket refresh through decorators placed inside the existing repository chains, the session
+  selection events, and the once-per-holder onboarding pair. The count buckets come from two new
+  read-only, owner-scoped, `deleted = 0` queries in `:core:database` (`D-197`). Event and parameter
+  names are `snake_case`, boolean flags travel as booleans, and a provider failure is classified into
+  the new closed `AnalyticsProviderError` code instead of propagating (`D-198`); the tracker is
+  injectable into `firebaseAppProviders` so the single-construction-site rule is assertable without a
+  runtime (`D-199`). `:integration:firebase-analytics` leaves
+  `ArchitectureChecker.NOT_YET_INTRODUCED_MODULES`, becomes a third D-75 root, and the iOS app links
+  the `FirebaseAnalytics` SwiftPM product the GitLive cinterop needs. The `SyncStatus ->
+  SyncStatusCategory` collapse of `§20.9` is implemented in `:core:analytics`.
+- **Why:** the backlog row sized `E3-09` as `S` and named only the integration, but `§16.1`
+  attributes the `setUserProperties` cadence fixture to this story by name and seven of the thirteen
+  event leaves had no emitter at all. The owner chose to keep the whole `§16.1` surface inside the
+  story rather than split emission into a new one (`D-196`, ADR-0196), and the row is resized to `M`.
+  Every call site is `:shared` orchestration because `docs/TECHNICAL_PLAN.md §4` keeps a feature
+  `presentation` package out of `:core:analytics`.
+- **Documents touched:** `docs/BACKLOG.md` (`E3-09`), `docs/CONTRACTS.md` (`§18` assertions 37 and
+  38, and the D-75 derived set), `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0196`, `0197`, `0198`, `AGENTS.md`
+  (the D-75 count), `.github/workflows/ci.yml` (the fifth Native exclusion),
+  `docs/handoff-E3-09.md`.
+- **Verification:** the complete CI task command of `AGENTS.md` ran `BUILD SUCCESSFUL` locally,
+  including `iosSimulatorArm64Test`; `contractCheck` reports assertions 21, 37 and 38 `PASS` and no
+  `PENDING`. New tests: `FirebaseAnalyticsTrackerTest`, `FirebaseAnalyticsOptInTest`,
+  `FirebaseAnalyticsFailureTest`, `OwnerActiveRowCountDatabaseAccessTest`, `SyncStatusCategoryTest`,
+  `SharedAnalyticsEmissionTest`, `SharedAnalyticsCadenceTest`, `AnalyticsIntegrationContractTest`,
+  plus the wiring binding cases.
+- **Follow-ups / risks:** the provider-failure sink is wired to nothing in production yet, so a
+  dropped metric is observable only in tests; `docs/adr/0076` requires the Firebase Apple coverage
+  list to be reviewed whenever that surface grows, which the new iOS product triggers; and the
+  emission fixtures need a bounded real-time wait because a database continuation runs on a real
+  dispatcher that virtual time cannot drain.
+
 ### 2026-09-29 — E3-19 record closure: the merged status and the pull request #82 evidence
 
 - **Type:** correction (documentation only)
