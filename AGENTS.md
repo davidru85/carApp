@@ -153,12 +153,13 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`, `E3-19`,
-  `E3-20` and `E3-21`. `E3-19`, the push-boundary payload totality, is implemented on
-  `story/E3-19-push-boundary-payload-totality` through pull request #82 and awaits the owner's gated
-  review; it classifies every outbox payload the push boundary cannot convert as a closed
-  `RemoteError.InvalidArgument` so a push poisons its row instead of stranding it in `SYNCING`, its
-  evidence is in `docs/handoff-E3-19.md`, and it introduces no new decision. `E3-07`, the local 90-day
+- **Remaining Phase 3:** `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`,
+  `E3-20` and `E3-21`. `E3-19`, the push-boundary payload totality, merged on 2026-09-29 through pull
+  request #82 as a true merge of `story/E3-19-push-boundary-payload-totality` into `main` (merge
+  commit `cfccfe1c`), after the owner's gated review and four review correction rounds; it classifies
+  every outbox payload the push boundary cannot convert as a closed `RemoteError.InvalidArgument` so a
+  push poisons its row instead of stranding it in `SYNCING`, its evidence is in
+  `docs/handoff-E3-19.md`, and it introduced no new decision. `E3-07`, the local 90-day
   tombstone purge, merged on 2026-09-27 through pull
   request #78 after the owner's gated review, with three review correction rounds on the
   `core/sync/**` and `core/database/**` paths; its evidence is in `docs/handoff-E3-07.md`, and it
@@ -178,8 +179,8 @@ review.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Three decisions remain open, and none of them blocks merged work:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-12` and `E3-17` already merged, and
-  `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open decision gates
+  three documents. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-12`, `E3-17` and `E3-19` already merged,
+  and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open decision gates
   merged work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
