@@ -1985,12 +1985,12 @@ D-31 and D-84 define the exact CI check names. Required checks:
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
-module whose Native test binary transitively links `:integration:firebase-auth` or
-`:integration:firebase-firestore` qualifies. CI compares that derived set with the explicit task
-exclusions and MUST fail in both directions. The current resolution is
-`:integration:firebase-auth`, `:integration:firebase-firestore`, `:wiring:firebase` and
-`:composition:ios`; this is observed output, not a permanent allowlist, and changes when the graph
-changes.
+module whose Native test binary transitively links `:integration:firebase-auth`,
+`:integration:firebase-firestore` or `:integration:firebase-analytics` qualifies. CI compares that
+derived set with the explicit task exclusions and MUST fail in both directions. The current
+resolution is `:integration:firebase-auth`, `:integration:firebase-firestore`,
+`:integration:firebase-analytics`, `:wiring:firebase` and `:composition:ios`; this is observed
+output, not a permanent allowlist, and changes when the graph changes.
 
 Optional checks:
 
