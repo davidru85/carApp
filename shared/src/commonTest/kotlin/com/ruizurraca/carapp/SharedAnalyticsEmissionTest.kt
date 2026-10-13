@@ -14,25 +14,17 @@ import com.ruizurraca.carapp.feature.fuel.domain.CreateFuelEntryCommand
 import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.domain.MoneyInput
 import com.ruizurraca.carapp.feature.fuel.domain.UpdateFuelEntryCommand
-import com.ruizurraca.carapp.feature.session.domain.UpdateSettingsCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
-import kotlin.time.TimeSource
 
 /**
  * `E3-09` (`D-196`, ADR-0196): the `docs/CONTRACTS.md §16.1` emission surface for the two write

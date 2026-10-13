@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.analytics.AnalyticsEvent
 import com.ruizurraca.carapp.core.analytics.AnalyticsProviderError
 import com.ruizurraca.carapp.core.analytics.AnalyticsTracker
 import com.ruizurraca.carapp.core.analytics.AnalyticsUserProperties
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -45,6 +46,8 @@ class FirebaseAnalyticsTracker internal constructor(
         onProviderError = {},
     )
 
+    // Written by the graph's opt-in collector and read by the callers of `track` on other threads.
+    @Volatile
     private var enabled = enabled
 
     init {

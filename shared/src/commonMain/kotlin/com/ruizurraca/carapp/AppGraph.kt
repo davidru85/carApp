@@ -478,8 +478,6 @@ internal class DefaultAppGraph(
 
     internal val fuelRepositoryForTest: FuelEntryRepository get() = fuelRepository
 
-    internal val settingsRepositoryForTest get() = settingsRepository
-
     /**
      * A pure replacement for the count accessor, for the story's tests only. `null` in production, so
      * the real accessor answers and the production path is unchanged.
@@ -493,7 +491,8 @@ internal class DefaultAppGraph(
      * The real repository's notifications cross a dispatcher a virtual test scheduler cannot drain,
      * so a fixture that needs to observe the opt-in has two choices: a wall-clock wait, which would
      * compete with the wall-clock budgets other graph tests already use, or this substitution. The
-     * product path itself is asserted by the opt-in fixture that drives the repository.
+     * opt-in from the real settings repository into the gate is therefore not driven end to end by a
+     * graph test; `docs/handoffs/E3-09.md` records that residual risk.
      */
     @Volatile
     internal var settingsOverrideForTest: Flow<Outcome<UserSettings, AppError>>? = null

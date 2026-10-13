@@ -92,8 +92,9 @@ internal class AnalyticsEmissions(
             var previous: SyncStatusCategory? = null
             status.collect { value ->
                 val category = value.toSyncStatusCategory()
-                // The first resolved category establishes the baseline and is itself an event, which
-                // is what makes the series complete rather than starting at the second value.
+                // The first resolved category establishes the baseline and is offered to the tracker
+                // like any change. At process start the tracker is still disabled, so `§16.1` drops
+                // that baseline and the series begins at the first change after the opt-in.
                 if (category != previous) {
                     previous = category
                     tracker.track(AnalyticsEvent.SyncStatusChanged(category))

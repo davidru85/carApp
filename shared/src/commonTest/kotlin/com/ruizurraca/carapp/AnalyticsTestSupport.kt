@@ -13,7 +13,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.fail
 
 /**
- * Opts a graph-backed analytics fixture in through the product path (`E3-09`).
+ * Opts a graph-backed analytics fixture in through the graph's opt-in gate (`E3-09`).
  *
  * Two things make this necessary rather than optional. Setting the flag on the tracker directly does
  * not survive: the graph's settings bootstrap publishes the freshly created row with
@@ -24,8 +24,9 @@ import kotlin.test.fail
  * The fixture therefore substitutes both seams `DefaultAppGraph` exposes for this story — the count
  * source and the settings flow, both `null` in production — and drains the virtual scheduler.
  * Everything runs without a wall-clock wait, so this fixture cannot interfere with the graph tests
- * that legitimately use real waits. The product path itself is exercised where the opt-in is the
- * behaviour under test: `AnalyticsOptInTest` and the integration's own opt-in suite.
+ * that legitimately use real waits. The opt-in semantics are exercised by `SharedAnalyticsCadenceTest`
+ * over `AnalyticsEmissions` and by the integration's own `FirebaseAnalyticsOptInTest`; the real
+ * settings repository is not driven into the gate end to end (see `docs/handoffs/E3-09.md`).
  */
 internal fun userSettings(
     analyticsEnabled: Boolean,
@@ -55,7 +56,7 @@ internal fun AppGraph.installAnalyticsTestSeams(counts: () -> Pair<Int, Int>) {
 
 /** Fails the fixture unless the opt-in the seams describe has actually been applied. */
 internal fun RecordingAnalyticsTracker.assertOptedIn() {
-    if (!isEnabled) fail("the fixture must reach the opted-in state through the product path")
+    if (!isEnabled) fail("the fixture must reach the opted-in state through the graph's opt-in gate")
     if (userProperties.isEmpty()) fail("the opt-in must have emitted its buckets")
     clear()
 }

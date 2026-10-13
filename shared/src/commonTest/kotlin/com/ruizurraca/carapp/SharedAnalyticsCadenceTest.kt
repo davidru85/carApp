@@ -112,8 +112,8 @@ class SharedAnalyticsCadenceTest {
     @Test
     fun onlyCategoryChangesProduceSyncStatusEvents() =
         runTest {
-            // The wiring baseline (`IDLE`) is itself the first emitted category; this test asserts
-            // that a same-category re-emission is not a second event, and that a change is.
+            // This test asserts that a same-category re-emission is not a second event, and that a
+            // change is.
             withEmissions(initialStatus = SyncStatus.Syncing) { _, tracker, _, status, _ ->
                 // The wiring baseline (`SYNCING`) is consumed while collection is still off, so §16.1
                 // drops it; enabling afterwards must not replay it either.
