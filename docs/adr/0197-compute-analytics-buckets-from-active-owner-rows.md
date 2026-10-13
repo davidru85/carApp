@@ -25,7 +25,7 @@ scope that includes tombstoned rows would report items the owner has deleted.
 
 | Option | Benefits | Costs or risks |
 |--------|----------|----------------|
-| Option A: count the owner's active rows in `:core:database` | One deterministic figure per owner, independent of which screen is open; tombstones excluded; the count has no UI dependency, so it works before any list is mounted | Adds two read-only queries and a read-only accessor to `:core:database`, the shared-write module, so the story must declare the `database-lock` |
+| Option A: count the owner's active rows in `:core:database` | One deterministic figure per owner, independent of which screen is open; tombstones excluded; the count has no UI dependency, so it works before any list is mounted | Adds two read-only queries and a read-only accessor to `:core:database`, the shared-write module, so the story must declare it in its handoff |
 | Option B: derive from presentation `StateFlow`s | Literally "the current list size"; no database change | Only exists while a list holder is alive; `entryCountBucket` becomes per selected vehicle rather than the owner's total; the value depends on which screen is open |
 | Option C: reuse `countRowsOwnedBy` | No new code at all | Counts tombstoned rows, so it is not the size of the list the UI shows and it reports deleted items |
 
@@ -67,7 +67,7 @@ The selected option is **Option A**.
 
 ## Verification
 
-- `AnalyticsCountDatabaseAccessTest` seeds active and tombstoned rows on both tables and asserts the
+- `OwnerActiveRowCountDatabaseAccessTest` seeds active and tombstoned rows on both tables and asserts the
   counts exclude the tombstones.
 - `SharedAnalyticsCadenceTest` asserts the bucketing is applied through `CountBucket.ofCount`.
 

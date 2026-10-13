@@ -42,8 +42,8 @@ sink for the failure policy.
 - A provider failure is caught, converted to the closed `AnalyticsProviderError` code
   (`ANALYTICS.PROVIDER_FAILED`) in `:core:analytics`, and handed to an injected sink. It never
   propagates, and `CancellationException` is rethrown rather than classified.
-- The tracker is injectable into `firebaseAppProviders`. That is what makes the binding assertable
-  without a Firebase runtime and lets a build supply a non-collecting tracker.
+- The tracker's injection into `firebaseAppProviders` is a separate decision, `D-199`, recorded in
+  ADR-0199.
 
 ## Consequences
 
@@ -85,6 +85,7 @@ sink for the failure policy.
 
 ## References
 
-- `docs/DECISION_BOARD.md` (decision IDs `D-198`, `D-199`)
+- `docs/DECISION_BOARD.md` (decision ID `D-198`)
+- `docs/adr/0199-inject-the-analytics-tracker-into-firebase-app-providers.md` (`D-199`)
 - `docs/CONTRACTS.md §16.1`, `§20.9`
 - `docs/adr/0011-firebase-analytics.md` (`D-10`)

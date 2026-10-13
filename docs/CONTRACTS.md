@@ -1938,9 +1938,9 @@ Forbidden in any payload: exact odometer values, exact fuel volume, exact cost o
 
 Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered. The provider SDK initialises at process start, before any `AnalyticsTracker` exists, so each host also disables collection in its platform configuration — the `firebase_analytics_collection_enabled` manifest `meta-data` set to `false` on Android and the `FIREBASE_ANALYTICS_COLLECTION_ENABLED` `Info.plist` key set to `false` on iOS — and only the tracker's `setEnabled(true)` after the opt-in turns collection on (`§18` assertion 39).
 
-`setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete, from the presentation layer. It MUST NOT be called from domain or data. Buckets are computed from the current list size. An `E3-09` fixture MUST assert the call cadence.
+`setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete; a successful update changes no count and MUST NOT call it. The calls are made by `:shared` application-level orchestration (`D-196`): the opt-in call by the opt-in gate, and the post-write calls by the `:shared` decorators that wrap the committed repository write. It MUST NOT be called from domain or data code. Buckets are computed from the owner's active (non-deleted) vehicle and fuel-entry counts, read through read-only owner-scoped queries in `:core:database` (`D-197`). An `E3-09` fixture MUST assert the call cadence.
 
-Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events. A fixture MUST assert failure events are emitted from presentation, not domain or data.
+Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events. A fixture MUST assert failure events are emitted from presentation, not domain or data. The `VehicleCreated` and `FuelEntryCreated` events are emitted by the same `:shared` decorators once the repository write has returned `Ok` (`D-196`); that is application-level orchestration, not domain or data persistence logic.
 
 ## 17. Logging and Privacy
 
@@ -2753,6 +2753,8 @@ data class AnalyticsUserProperties(
 )
 
 enum class CountBucket { ZERO, ONE, TWO_TO_FIVE, SIX_TO_TWENTY, MORE_THAN_TWENTY }
+
+enum class AnalyticsProviderError(val code: String) { PROVIDER_FAILED("ANALYTICS.PROVIDER_FAILED") }
 ```
 
 The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
@@ -2762,6 +2764,8 @@ The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> C
 No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content.
 
 `CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
+
+`AnalyticsProviderError` classifies a provider failure inside an `AnalyticsTracker` implementation (`D-198`). It is not an `AppError` leaf, because the three `AnalyticsTracker` entry points have no error channel: an implementation rethrows `CancellationException`, catches any other provider failure and reports only the stable code to an injected sink, never the provider's exception text (`§17`).
 
 ### 20.10 Shared surface — `:shared`, feature presentation modules and `:core:common`, exported by `:composition:ios`
 
