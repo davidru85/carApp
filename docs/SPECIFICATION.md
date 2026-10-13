@@ -691,6 +691,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-197 | Analytics count-bucket source | The two count buckets come from the owner's active non-deleted row counts read in `:core:database`, through read-only owner-scoped queries. | Accepted |
 | D-198 | Analytics event and parameter naming, and failure policy | `snake_case` names, boolean flags sent as booleans, and a provider failure classified into a closed code instead of propagating. | Accepted |
 | D-199 | Analytics tracker injection | `firebaseAppProviders` accepts the tracker and constructs the Firebase implementation as its default, so the binding is assertable without a Firebase runtime. | Accepted |
+| D-200 | Transitive `@grpc/grpc-js`, `brace-expansion` and `proxy-addr` advisory remediation | The Functions lockfile resolves the existing transitive `proxy-addr`, `@grpc/grpc-js` and `brace-expansion` to patched 2.0.8, 1.14.6 and 2.1.7. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

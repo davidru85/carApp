@@ -38,6 +38,57 @@
 
 ## Entries
 
+### 2026-10-13 — stopBilling function-error alerts traced to transient Cloud Run aborts
+
+- **Type:** incident
+- **Story / Decision:** — / `D-70` (unchanged)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/stopbilling-transient-abort-triage`)
+- **What changed:** the function-error policy `16829276630868734195` fired on 2026-10-07T15:14:26Z
+  and 2026-10-11T23:41:02Z. Both times the Cloud Run platform aborted a budget delivery with a
+  zero-latency HTTP 500, "no available instance", before the handler ran; the Eventarc subscription
+  redelivered the message 24.8 and 21.8 seconds later and the handler evaluated `BELOW_BUDGET`.
+  Billing stayed enabled and no charge, cutoff or product impact occurred. The runbook now records
+  the signature, the triage procedure, the escalation conditions and the occurrences.
+- **Why:** the owner received the 2026-10-11 alert email. The policy matches platform request logs
+  as well as handler errors, and `D-70` requires a notification on every execution error, so the
+  owner directed that the filter is not narrowed; the runbook makes the harmless case quick to
+  confirm without hiding the case in which redelivery also fails.
+- **Documents touched:** `docs/runbooks/development-firebase-cost-controls.md` §Function-Error
+  Alert Triage.
+- **Verification:** read-only `gcloud logging read` over both incident windows and the deliveries
+  since 2026-08-27 (two ERROR entries in total), `gcloud pubsub subscriptions describe` of the
+  Eventarc subscription, the alert policy description and
+  `gcloud billing projects describe davidruiz-carapp-dev` (`billingEnabled: true`).
+- **Follow-ups / risks:** the subscription redelivered an aborted message although the function is
+  deployed with `retry: false`. Whether a handler-raised error is also redelivered, for up to 24
+  hours per message, is unverified and contradicts the premise of `D-70` if true; the decision to
+  investigate or revisit it is the owner's.
+
+### 2026-10-13 — D-200 resolves new high and critical Functions advisories in the lockfile
+
+- **Type:** decision
+- **Story / Decision:** — / `D-200`
+- **Author:** agent, on behalf of David Ruiz (branch `deps/functions-audit-transitive-fixes`)
+- **What changed:** `functions/package-lock.json` resolves `proxy-addr` 2.0.8, `@grpc/grpc-js`
+  1.14.6 and `brace-expansion` 2.1.7 inside their existing parent ranges. No `package.json` pin,
+  override or install-script policy changes. `D-200` / ADR-0201 records the decision, with rows in
+  the four mirrors, three `docs/versions-matrix.md` rows and a re-evaluation row in
+  `docs/SECURITY_ADVISORY_REGISTER.md`.
+- **Why:** on 2026-10-13 the required `contract-check` job failed its production audit on an
+  unchanged lockfile, with one critical and two high findings, which blocks every pull request. The
+  owner chose a lockfile-only fix over accepting new residuals or bypassing the gate. The complete
+  `npm audit fix` result was rejected because it also downgraded `gaxios` 6.7.1 to 6.3.0 to remove
+  a moderate residual that `D-68` already accepts.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0201, `docs/versions-matrix.md`,
+  `docs/SECURITY_ADVISORY_REGISTER.md`.
+- **Verification:** clean `npm ci`; `npm ls` resolves one patched version of each package;
+  `npm run audit` exits 0 with only the six `D-68` moderate entries; `npm test` (80 pass, 2
+  emulator-only skips) and `npm run test:emulator` (2 pass); `./gradlew contractCheck --rerun-tasks`.
+- **Follow-ups / risks:** the deployed `stopBilling` keeps the earlier resolution until the owner
+  redeploys it. Pull request #85 and every other open pull request need `main` merged in after this
+  change lands, so that the audit gate passes on them.
+
 ### 2026-09-29 — E3-09 Firebase Analytics integration, its emission surface and four decisions
 
 - **Type:** story

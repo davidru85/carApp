@@ -83,6 +83,92 @@ therefore delivered multiple zero-cost updates per day and did not require reope
 measured maximum is the current worst-case second-attempt assumption after a dropped event; it is
 evidence, not a guaranteed service-level objective.
 
+## Function-Error Alert Triage
+
+The function-error policy `16829276630868734195` uses the log-match condition
+`resource.type="cloud_run_revision" resource.labels.service_name="stopbilling" severity>=ERROR`,
+with `autoClose: 1800s` and a 300-second notification rate limit. It therefore matches entries the
+Cloud Run platform writes before a request reaches the handler, not only errors the handler logs.
+`docs/CONTRACTS.md` requires an owner notification on every function execution error (`D-70`), so
+the filter is deliberately not narrowed: on 2026-10-13 the owner directed that the transient abort
+below MUST NOT be excluded from it. An exclusion would also hide the dangerous case in which the
+redelivery fails as well.
+
+### Signature: transient platform abort
+
+A transient platform abort matches every one of these conditions:
+
+- the entry's log is `run.googleapis.com/requests`, the platform request log, not the function's
+  `stdout` or `stderr`;
+- `httpRequest.status` is `500` and `httpRequest.latency` is `0s`;
+- `textPayload` begins with `The request was aborted because there was no available instance`;
+- the entry has no `run.googleapis.com/cloud_event_id` label and no `Development billing cutoff
+  evaluated` entry shares its trace: the handler never ran.
+
+The service scales to zero between budget publications, and `maxInstances: 1` with
+`concurrency: 1` leaves a single instance slot. The abort means Cloud Run could not provide that
+instance in time; the logs do not expose a more specific platform cause, so this runbook records the
+mechanism as an inference and not as a confirmed root cause.
+
+### Triage procedure
+
+1. Read every revision entry in a bounded window around the incident start time. A timestamp bound
+   is required: without one, `gcloud logging read` returns only the preceding day.
+
+   ```bash
+   gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="stopbilling" AND timestamp>="<START minus 10 minutes>" AND timestamp<="<START plus 10 minutes>"' \
+     --project=davidruiz-carapp-dev --order=asc \
+     --format='table(timestamp,severity,httpRequest.status,httpRequest.latency,labels."run.googleapis.com/cloud_event_id",jsonPayload.status)'
+   ```
+
+2. Confirm that the ERROR entry matches the complete signature above.
+3. Confirm recovery: a later request entry with status `200` and a `cloud_event_id`, followed by
+   `Development billing cutoff evaluated` with status `BELOW_BUDGET`, `ALREADY_DISABLED` or
+   `BILLING_DISABLED`. Both recorded occurrences recovered within 25 seconds.
+4. Confirm that the next scheduled publication, normally less than one hour later, also returned
+   `200`.
+5. Confirm the billing state with `gcloud billing projects describe davidruiz-carapp-dev`. It MUST
+   report `billingEnabled: true` unless the recovered evaluation returned `BILLING_DISABLED`; in
+   that case the cutoff fired and the Manual Relink Procedure below applies.
+
+When every step holds, the incident is a transient platform abort. No remediation is required, the
+incident closes automatically after 30 minutes, and the occurrence is appended to the table below.
+
+Treat the alert as a cutoff fault, inspect the revision and restore the cutoff before relying on the
+next budget publication when any of these holds:
+
+- the ERROR entry comes from the function's own `stdout` or `stderr`, or carries a status other
+  than a zero-latency `500`;
+- no successful evaluation follows before the next scheduled publication;
+- the abort recurs on consecutive publications.
+
+Record a cutoff fault in this runbook with its timestamps, cause and repair.
+
+### Observed redelivery
+
+Both occurrences recovered because the Eventarc push subscription
+`eventarc-europe-west1-stopbilling-655256-sub-773` redelivered the aborted message, although the
+function is deployed with `retry: false` and `RETRY_POLICY_DO_NOT_RETRY`. On 2026-10-13 the
+subscription reported `retryPolicy` with a 10-second minimum and a 600-second maximum backoff and
+`messageRetentionDuration: 86400s`. The aborted request carries no event ID, so its identity with
+the recovered event is inferred from timing: each recovery came 21 to 25 seconds after the abort,
+well inside the publication cadence, and the next scheduled publication followed normally.
+
+This proves only that a platform-level abort, which never reaches the handler, is redelivered. It
+is unverified whether an error raised by the handler is also redelivered. If it is, a persistent
+handler fault could repeat for up to 24 hours per message, which is the recurring-execution
+behaviour `D-70` set out to exclude. This record does not amend `D-70`; any change is an owner
+decision.
+
+### Transient Abort Occurrences
+
+| Aborted request (UTC) | Recovered delivery (UTC) | Delay | Recovered event ID | Evaluated status | Incident |
+|-----------------------|--------------------------|-------|--------------------|------------------|----------|
+| 2026-10-07T15:14:26.030988Z | 2026-10-07T15:14:50.852960Z | 24.8s | `21387962512650803` | `BELOW_BUDGET` | `0.odjp5154z2o0`, opened 15:15:39Z |
+| 2026-10-11T23:41:02.145496Z | 2026-10-11T23:41:23.993173Z | 21.8s | `21518179717476678` | `BELOW_BUDGET` | `0.odpk8p0e9bgc`, opened 23:41:32Z; the owner received the email notification |
+
+Neither occurrence changed the billing state, so neither appears in the billing-state history above.
+
 ## Manual Relink Procedure
 
 Only recovery owner David Ruiz performs this procedure after identifying and stopping the cause:

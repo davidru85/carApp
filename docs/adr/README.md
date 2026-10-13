@@ -205,5 +205,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-197 | [ADR-0197](0197-compute-analytics-buckets-from-active-owner-rows.md) | Compute the analytics count buckets from the owner's active rows in `:core:database`. | Accepted |
 | D-198 | [ADR-0198](0198-analytics-event-names-booleans-and-failure-policy.md) | Fix `snake_case` analytics names, boolean flag typing and the classified non-propagating provider failure. | Accepted |
 | D-199 | [ADR-0198](0198-analytics-event-names-booleans-and-failure-policy.md) | Inject the analytics tracker into `firebaseAppProviders` with the Firebase implementation as its default. | Accepted |
+| D-200 | [ADR-0201](0201-resolve-grpc-brace-expansion-and-proxy-addr-advisories-within-existing-ranges.md) | Resolve the `@grpc/grpc-js`, `brace-expansion` and `proxy-addr` advisories within existing dependency ranges. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
