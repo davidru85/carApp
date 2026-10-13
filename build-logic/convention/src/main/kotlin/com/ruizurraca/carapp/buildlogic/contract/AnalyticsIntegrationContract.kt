@@ -94,10 +94,17 @@ internal class AnalyticsIntegrationContract internal constructor(
                 listOf("$TRACKER_PATH does not default collection to disabled")
             }
 
+        val publicConstructorNotDisabled =
+            if (PUBLIC_CONSTRUCTOR_DISABLED.containsMatchIn(inputs.trackerSource)) {
+                emptyList()
+            } else {
+                listOf("$TRACKER_PATH public constructor does not start with collection disabled")
+            }
+
         return result(
             id = 37,
             name = "the Firebase Analytics implementation is named only by :wiring:firebase and starts disabled",
-            problems = offenders + missing + notDisabledByDefault,
+            problems = offenders + missing + notDisabledByDefault + publicConstructorNotDisabled,
         )
     }
 
@@ -157,5 +164,6 @@ internal class AnalyticsIntegrationContract internal constructor(
         val ANDROID_COLLECTION_DISABLED =
             Regex("""<meta-data\s+android:name="$ANDROID_COLLECTION_KEY"\s+android:value="false"\s*/>""")
         val IOS_COLLECTION_DISABLED = Regex("""<key>$IOS_COLLECTION_KEY</key>\s*<false\s*/>""")
+        val PUBLIC_CONSTRUCTOR_DISABLED = Regex("""constructor\(\)\s*:\s*this\(\s*enabled\s*=\s*false\s*,""")
     }
 }
