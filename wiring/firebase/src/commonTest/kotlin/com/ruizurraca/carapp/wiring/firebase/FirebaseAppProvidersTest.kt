@@ -27,9 +27,11 @@ import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.integration.firebase.analytics.FirebaseAnalyticsTracker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertSame
 
@@ -132,10 +134,10 @@ class FirebaseAppProvidersTest {
     }
 
     @Test
-    fun theStagedGraphWithoutAHostCollectsNothing() {
-        // The internal factory's default is the no-op, so a graph built without a host — a test, or a
-        // build with no provider wired — cannot collect. The assertion is behavioural rather than an
-        // identity check, so it stays honest if the silent default is ever replaced by another.
+    fun theInternalFactoryDefaultIsNotTheFirebaseTracker() {
+        // The internal factory's default must never be the Firebase implementation: a graph built
+        // without a host — a test, or a build with no provider wired — must not reach the provider
+        // SDK. The public overload is the only construction site (`D-179`, `D-199`).
         val providers =
             firebaseAppProviders(
                 databaseFactory = createStagedDatabaseFactory(),
@@ -144,6 +146,11 @@ class FirebaseAppProvidersTest {
                 remoteSyncSource = RecordingRemoteSyncSource(),
             )
 
+        assertFalse(
+            providers.analyticsTracker is FirebaseAnalyticsTracker,
+            "the internal factory's default must be the private no-op, not the Firebase tracker",
+        )
+        // The silent default accepts every entry point without throwing.
         providers.analyticsTracker.setEnabled(true)
         providers.analyticsTracker.track(AnalyticsEvent.VehicleCreated)
         providers.analyticsTracker.setUserProperties(

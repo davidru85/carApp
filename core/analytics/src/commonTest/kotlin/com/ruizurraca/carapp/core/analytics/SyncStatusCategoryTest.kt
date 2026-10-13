@@ -49,26 +49,10 @@ class SyncStatusCategoryTest {
     }
 
     @Test
-    fun aFailedAggregateIsNeverRenderedFromAConnectivityOnlyCondition() {
-        // The `§9.9` rule the collapse depends on, stated executably: the categories that may be
-        // produced from connectivity-only outstanding work are `PENDING` or `IDLE`, and the only
-        // category that reports an error is reserved for a non-connectivity failure. This pins that
-        // the category vocabulary itself cannot represent the forbidden rendering.
-        val reportable =
-            listOf(SyncStatus.Idle, SyncStatus.Pending(1), SyncStatus.Failed(1, 0), SyncStatus.Syncing)
-                .map { status -> status.toSyncStatusCategory() }
-                .toSet()
-
-        assertEquals(
-            setOf(
-                SyncStatusCategory.IDLE,
-                SyncStatusCategory.PENDING,
-                SyncStatusCategory.FAILED,
-                SyncStatusCategory.SYNCING,
-            ),
-            reportable,
-        )
-        // The rule is expressed on the codes the engines agree on, so the two cannot drift.
+    fun theConnectivityCodesTheCollapseReliesOnArePinned() {
+        // The collapse takes no connectivity parameter because `:core:sync` already keeps these codes
+        // out of the `Failed` bucket (`§9.9`). Pinning the set here makes a change to it fail in the
+        // module whose mapping depends on it, instead of silently changing what `FAILED` means.
         assertEquals(setOf("REMOTE.UNAVAILABLE", "REMOTE.DEADLINE_EXCEEDED"), CONNECTIVITY_ERROR_CODES)
     }
 }

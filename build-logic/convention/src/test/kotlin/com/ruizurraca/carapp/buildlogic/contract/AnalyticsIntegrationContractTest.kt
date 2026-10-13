@@ -25,14 +25,8 @@ class AnalyticsIntegrationContractTest {
 
     @Test
     fun aSecondConstructionSiteIsRejected() {
-        val mutated =
-            realSources.map { (path, text) ->
-                if (path == "shared/src/commonMain/kotlin/com/ruizurraca/carapp/Leak.kt") {
-                    path to text
-                } else {
-                    path to text
-                }
-            } + ("shared/src/commonMain/kotlin/com/ruizurraca/carapp/Leak.kt" to "val leaked = FirebaseAnalyticsTracker()")
+        val leakPath = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/Leak.kt"
+        val mutated = realSources + (leakPath to "val leaked = FirebaseAnalyticsTracker()")
 
         val result = AnalyticsIntegrationContract(realInputs(mutated)).validate().first { it.id == 37 }
 
