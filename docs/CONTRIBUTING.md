@@ -106,6 +106,7 @@ costs seconds instead of a round trip:
           testAndroidHostTest iosSimulatorArm64Test \
           -x :integration:firebase-auth:iosSimulatorArm64Test \
           -x :integration:firebase-firestore:iosSimulatorArm64Test \
+          -x :integration:firebase-analytics:iosSimulatorArm64Test \
           -x :wiring:firebase:iosSimulatorArm64Test \
           -x :composition:ios:iosSimulatorArm64Test
 ```

@@ -211,6 +211,7 @@ build-logic/       convention plugins, an included build
 :core:sync         staged sync contracts for the E0-07 application graph
 :integration:firebase-auth       GitLive Firebase Auth adapter used by the E0-07 slice
 :integration:firebase-firestore  GitLive Firestore backup adapter used by the E0-07 slice
+:integration:firebase-analytics  GitLive Firebase Analytics tracker bound by :wiring:firebase (E3-09)
 :feature:vehicle   Vehicle domain, local repository and shared presentation state holders
 :feature:fuel      Fuel Entry domain, SQLDelight local repository, projections, R-3 consumption and presentation
 :feature:session   device-local settings and anonymous reminder domain plus SQLDelight repositories and the staged session surface
@@ -221,7 +222,7 @@ build-logic/       convention plugins, an included build
 :androidApp        the Android host app and Compose Vehicle and Fuel Entry flows
 ```
 
-`:integration:firebase-analytics` and `:integration:firebase-crashlytics` do **not** exist yet.
+`:integration:firebase-crashlytics` does **not** exist yet.
 `:androidApp` additionally depends on `androidx.work:work-runtime` (`D-184`), which reaches neither
 the shared graph nor the iOS composition.
 D-55 stages only the two provider modules required by the E0-07 slice; later stories create or
@@ -266,7 +267,7 @@ and `carapp.sqldelight`.
 Every non-instrumented CI job runs the tasks in this command:
 
 ```bash
-./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
+./gradlew ktlintCheck detekt architectureCheck contractCheck :build-logic:convention:test koverVerify :androidApp:assembleDebug :androidApp:testDebugUnitTest testAndroidHostTest iosSimulatorArm64Test -x :integration:firebase-auth:iosSimulatorArm64Test -x :integration:firebase-firestore:iosSimulatorArm64Test -x :integration:firebase-analytics:iosSimulatorArm64Test -x :wiring:firebase:iosSimulatorArm64Test -x :composition:ios:iosSimulatorArm64Test
 ```
 
 Individually:
