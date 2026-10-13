@@ -72,6 +72,17 @@ class AnalyticsIntegrationContractTest {
     }
 
     @Test
+    fun aPublicConstructorThatEnablesCollectionIsRejected() {
+        val real = AnalyticsIntegrationContract.Inputs.from(repositoryRoot)
+        val mutated = real.copy(trackerSource = real.trackerSource.replace("enabled = false,", "enabled = true,"))
+
+        val result = AnalyticsIntegrationContract(mutated).validate().first { it.id == 37 }
+
+        assertEquals(AssertionResult.Status.FAIL, result.status)
+        assertTrue(result.detail.contains("public constructor"), result.detail)
+    }
+
+    @Test
     fun aMissingIosProductIsRejected() {
         val real = AnalyticsIntegrationContract.Inputs.from(repositoryRoot)
         val mutated =
