@@ -687,6 +687,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-192 | Backup status indicator surface | The indicator renders on the vehicle list screen of both hosts, beside the status chip the design already draws, and classifies the single relayed `SyncStatus` into four visuals without recomputing the `§9.9` precedence. | Accepted |
 | D-193 | `Idle` backup label | The `Idle` visual is labelled as the designs already word it and never asserts that a remote copy exists or is current; no `SyncStatus` value and no persisted backup flag is added. | Accepted |
 | D-194 | `E3-07` tombstone purge execution | The local purge is attempted once per app start and reads a count with the exact `§8` predicate before it opens its one transaction, so an app start with nothing to purge takes no write lock; "older than 90 days" is strict, a tombstone without `serverUpdatedAt` is never purged, and a failed attempt is reported and retried only by the next app start. | Accepted |
+| D-200 | Transitive `@grpc/grpc-js`, `brace-expansion` and `proxy-addr` advisory remediation | The Functions lockfile resolves the existing transitive `proxy-addr`, `@grpc/grpc-js` and `brace-expansion` to patched 2.0.8, 1.14.6 and 2.1.7. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
