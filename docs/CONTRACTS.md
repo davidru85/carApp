@@ -1936,7 +1936,7 @@ Allowed events are exactly the leaves declared in §20.
 
 Forbidden in any payload: exact odometer values, exact fuel volume, exact cost or price, notes, raw entity IDs, Firebase UID, auth tokens or credentials, raw sync payloads.
 
-Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered.
+Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered. The provider SDK initialises at process start, before any `AnalyticsTracker` exists, so each host also disables collection in its platform configuration — the `firebase_analytics_collection_enabled` manifest `meta-data` set to `false` on Android and the `FIREBASE_ANALYTICS_COLLECTION_ENABLED` `Info.plist` key set to `false` on iOS — and only the tracker's `setEnabled(true)` after the opt-in turns collection on (`§18` assertion 39).
 
 `setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete, from the presentation layer. It MUST NOT be called from domain or data. Buckets are computed from the current list size. An `E3-09` fixture MUST assert the call cadence.
 
@@ -2072,6 +2072,13 @@ Optional checks:
     Firebase Analytics resolves to `framework 'FirebaseAnalytics' not found` unless the app target
     links the product. The Kotlin build succeeds either way and the failure appears only in the
     Xcode link step, so nothing else in the repository can observe this coupling.
+39. Both hosts disable Firebase Analytics collection in their platform configuration:
+    `androidApp/src/main/AndroidManifest.xml` declares the `firebase_analytics_collection_enabled`
+    `meta-data` with the value `false`, and `iosApp/Info.plist` declares
+    `FIREBASE_ANALYTICS_COLLECTION_ENABLED` as `false`. The provider SDK initialises at process
+    start, before any `AnalyticsTracker` exists, so the tracker's disabled default of assertion 37
+    cannot cover a fresh install's first launch, and `§16.1` requires that a fresh install collect
+    nothing before the opt-in.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

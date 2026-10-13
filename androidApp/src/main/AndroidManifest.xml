@@ -16,6 +16,16 @@
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <!--
+            E3-09, docs/CONTRACTS.md §16.1: Firebase Analytics initialises at process start, before
+            the app graph exists, so collection is off here and only
+            FirebaseAnalyticsTracker.setEnabled(true), issued after the explicit opt-in, turns it on.
+            Without this key a fresh install collects automatic events before any opt-in.
+        -->
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
+        <!--
             Native credential acquisition renders over this activity and is cancelled with it, so the
             common configuration changes are handled in place instead of recreating the host mid
             sign-in. Locale changes are deliberately not listed and still recreate the activity.
