@@ -40,8 +40,10 @@ internal class AnalyticsNotifyingVehicleRepository(
     override suspend fun createVehicle(command: CreateVehicleCommand): Outcome<EntityId, AppError> =
         delegate.createVehicle(command).alsoNotify(AnalyticsEvent.VehicleCreated)
 
+    // An update changes neither count and `§16.1` names create and delete only, so it is passed
+    // through without an event or a bucket refresh.
     override suspend fun updateVehicle(command: UpdateVehicleCommand): Outcome<Unit, AppError> =
-        delegate.updateVehicle(command).alsoRefreshBuckets()
+        delegate.updateVehicle(command)
 
     override suspend fun deleteVehicle(id: EntityId): Outcome<Unit, AppError> =
         delegate.deleteVehicle(id).alsoRefreshBuckets()

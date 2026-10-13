@@ -46,8 +46,10 @@ internal class AnalyticsNotifyingFuelEntryRepository(
             }
         }
 
+    // An update changes neither count and `§16.1` names create and delete only, so it is passed
+    // through without an event or a bucket refresh.
     override suspend fun updateFuelEntry(command: UpdateFuelEntryCommand): Outcome<Unit, AppError> =
-        delegate.updateFuelEntry(command).alsoRefreshBuckets()
+        delegate.updateFuelEntry(command)
 
     override suspend fun deleteFuelEntry(id: EntityId): Outcome<Unit, AppError> =
         delegate.deleteFuelEntry(id).alsoRefreshBuckets()
