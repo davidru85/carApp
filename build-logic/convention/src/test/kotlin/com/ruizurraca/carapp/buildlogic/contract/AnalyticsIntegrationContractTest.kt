@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Fixtures for the two `E3-09` assertions, each mutated so the check must fire.
+ * Fixtures for the three `E3-09` assertions, each mutated so the check must fire.
  *
  * A rule with no failing fixture is a rule that passes everything, so the mutations here are the
  * proof that `AnalyticsIntegrationContract` is not vacuous.
@@ -16,10 +16,10 @@ class AnalyticsIntegrationContractTest {
     private val realSources = readSources()
 
     @Test
-    fun theRealRepositorySatisfiesBothAssertions() {
+    fun theRealRepositorySatisfiesEveryAssertion() {
         val results = AnalyticsIntegrationContract(repositoryRoot).validate()
 
-        assertEquals(2, results.size)
+        assertEquals(3, results.size)
         results.forEach { result -> assertEquals(AssertionResult.Status.PASS, result.status, result.detail) }
     }
 
@@ -84,6 +84,42 @@ class AnalyticsIntegrationContractTest {
 
         assertEquals(AssertionResult.Status.FAIL, result.status)
         assertTrue(result.detail.contains("FirebaseAnalytics"), result.detail)
+    }
+
+    @Test
+    fun anAndroidManifestThatLeavesCollectionOnIsRejected() {
+        val real = AnalyticsIntegrationContract.Inputs.from(repositoryRoot)
+        val mutated =
+            real.copy(
+                androidManifest =
+                    real.androidManifest.replace(
+                        "android:name=\"firebase_analytics_collection_enabled\"",
+                        "android:name=\"firebase_analytics_collection_disabled\"",
+                    ),
+            )
+
+        val result = AnalyticsIntegrationContract(mutated).validate().first { it.id == 39 }
+
+        assertEquals(AssertionResult.Status.FAIL, result.status)
+        assertTrue(result.detail.contains("firebase_analytics_collection_enabled"), result.detail)
+    }
+
+    @Test
+    fun anIosInfoPlistThatLeavesCollectionOnIsRejected() {
+        val real = AnalyticsIntegrationContract.Inputs.from(repositoryRoot)
+        val mutated =
+            real.copy(
+                iosInfoPlist =
+                    real.iosInfoPlist.replace(
+                        "<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>",
+                        "<key>FIREBASE_ANALYTICS_COLLECTION_DISABLED</key>",
+                    ),
+            )
+
+        val result = AnalyticsIntegrationContract(mutated).validate().first { it.id == 39 }
+
+        assertEquals(AssertionResult.Status.FAIL, result.status)
+        assertTrue(result.detail.contains("FIREBASE_ANALYTICS_COLLECTION_ENABLED"), result.detail)
     }
 
     private fun realInputs(sources: List<Pair<String, String>>): AnalyticsIntegrationContract.Inputs =

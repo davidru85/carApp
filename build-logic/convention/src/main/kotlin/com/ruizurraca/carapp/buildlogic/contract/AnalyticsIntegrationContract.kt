@@ -5,7 +5,7 @@ import java.io.File
 /**
  * Contract for the Firebase Analytics integration of `E3-09`.
  *
- * Two rules are asserted here because no other check can see them:
+ * Three rules are asserted here because no other check can see them:
  *
  * - `docs/CONTRACTS.md §11.6` and `D-179`: the Firebase Analytics implementation is named only by
  *   `:wiring:firebase`. The architecture checker enforces that for the `:integration:*` package
@@ -17,6 +17,10 @@ import java.io.File
  *   Kotlin/Native compiler consumes resolves to `framework 'FirebaseAnalytics' not found` unless the
  *   host app links the product. Nothing else in the repository can observe that coupling: the Kotlin
  *   build succeeds either way and the failure appears only in the Xcode link step.
+ * - `docs/CONTRACTS.md §16.1`: the provider SDK initialises at process start, before any
+ *   `AnalyticsTracker` exists, so each host disables collection in its platform configuration.
+ *   Without it a fresh install collects the provider's automatic events before the tracker can
+ *   command the provider off.
  */
 internal class AnalyticsIntegrationContract internal constructor(
     private val inputs: Inputs,
@@ -28,6 +32,8 @@ internal class AnalyticsIntegrationContract internal constructor(
         val trackerSource: String,
         val projectSpec: String,
         val xcodeProject: String,
+        val androidManifest: String,
+        val iosInfoPlist: String,
     ) {
         companion object {
             fun from(repoRoot: File): Inputs {
@@ -52,12 +58,14 @@ internal class AnalyticsIntegrationContract internal constructor(
                             .orEmpty(),
                     projectSpec = repoRoot.resolve("iosApp/project.yml").readText(),
                     xcodeProject = repoRoot.resolve("iosApp/carApp.xcodeproj/project.pbxproj").readText(),
+                    androidManifest = repoRoot.resolve(ANDROID_MANIFEST_PATH).readText(),
+                    iosInfoPlist = repoRoot.resolve(IOS_INFO_PLIST_PATH).readText(),
                 )
             }
         }
     }
 
-    fun validate(): List<AssertionResult> = listOf(namingResult(), iosProductResult())
+    fun validate(): List<AssertionResult> = listOf(namingResult(), iosProductResult(), hostCollectionResult())
 
     private fun namingResult(): AssertionResult {
         val offenders =
@@ -108,6 +116,21 @@ internal class AnalyticsIntegrationContract internal constructor(
         )
     }
 
+    private fun hostCollectionResult(): AssertionResult {
+        val problems = mutableListOf<String>()
+        if (!ANDROID_COLLECTION_DISABLED.containsMatchIn(inputs.androidManifest)) {
+            problems += "$ANDROID_MANIFEST_PATH does not set $ANDROID_COLLECTION_KEY to false"
+        }
+        if (!IOS_COLLECTION_DISABLED.containsMatchIn(inputs.iosInfoPlist)) {
+            problems += "$IOS_INFO_PLIST_PATH does not set $IOS_COLLECTION_KEY to false"
+        }
+        return result(
+            id = 39,
+            name = "both hosts disable Firebase Analytics collection before the app graph exists",
+            problems = problems,
+        )
+    }
+
     private fun result(
         id: Int,
         name: String,
@@ -127,5 +150,12 @@ internal class AnalyticsIntegrationContract internal constructor(
                 "integration/firebase/analytics/FirebaseAnalyticsTracker.kt"
         const val WIRING_PATH =
             "wiring/firebase/src/commonMain/kotlin/com/ruizurraca/carapp/wiring/firebase/FirebaseAppProviders.kt"
+        const val ANDROID_MANIFEST_PATH = "androidApp/src/main/AndroidManifest.xml"
+        const val IOS_INFO_PLIST_PATH = "iosApp/Info.plist"
+        const val ANDROID_COLLECTION_KEY = "firebase_analytics_collection_enabled"
+        const val IOS_COLLECTION_KEY = "FIREBASE_ANALYTICS_COLLECTION_ENABLED"
+        val ANDROID_COLLECTION_DISABLED =
+            Regex("""<meta-data\s+android:name="$ANDROID_COLLECTION_KEY"\s+android:value="false"\s*/>""")
+        val IOS_COLLECTION_DISABLED = Regex("""<key>$IOS_COLLECTION_KEY</key>\s*<false\s*/>""")
     }
 }
