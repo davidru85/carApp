@@ -6,6 +6,7 @@ import com.ruizurraca.carapp.core.analytics.SyncStatusCategory
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SyncStatus
@@ -190,6 +191,10 @@ class SharedAnalyticsCadenceTest {
             val sessionHolder = sessionHolder(authClient, tracker)
             advanceUntilIdle()
 
+            // `SIGNED_OUT` is the welcome screen of F-1; `UNKNOWN` is the waiting state every launch
+            // passes through before the provider answers.
+            authClient.setAuthState(AuthState.SignedOut)
+            advanceUntilIdle()
             authClient.setAuthState(anonymousSession())
             advanceUntilIdle()
 
@@ -227,6 +232,8 @@ class SharedAnalyticsCadenceTest {
             val sessionHolder = sessionHolder(authClient, tracker)
             advanceUntilIdle()
 
+            authClient.setAuthState(AuthState.SignedOut)
+            advanceUntilIdle()
             authClient.setAuthState(anonymousSession())
             advanceUntilIdle()
             authClient.setAuthState(AuthState.SignedOut)
@@ -238,6 +245,63 @@ class SharedAnalyticsCadenceTest {
                 listOf<AnalyticsEvent>(AnalyticsEvent.OnboardingStarted, AnalyticsEvent.OnboardingCompleted),
                 tracker.events,
                 "each onboarding event fires at most once per holder, whatever the phase does afterwards",
+            )
+            sessionHolder.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aColdStartThatRestoresASessionEmitsNeitherOnboardingEvent() =
+        runTest {
+            // The production auth client always starts at `Unknown` and answers asynchronously, so
+            // every launch of a returning user is `Unknown -> SignedIn` without the welcome screen.
+            // That launch is not an onboarding.
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient = FakeAuthClient(initialState = AuthState.Unknown)
+            val sessionHolder = sessionHolder(authClient, tracker)
+            advanceUntilIdle()
+
+            authClient.setAuthState(anonymousSession())
+            advanceUntilIdle()
+
+            assertEquals(
+                emptyList(),
+                tracker.events,
+                "a restored session never passed through the welcome screen in this run",
+            )
+            sessionHolder.close()
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun anOfflineLocalStartCompletesOnboarding() =
+        runTest {
+            // F-1 step 2: when anonymous sign-in cannot complete, the session becomes `LOCAL`. The
+            // holder publishes that phase itself, not through the auth collector, and it is a
+            // completed onboarding.
+            val tracker = RecordingAnalyticsTracker(initiallyEnabled = true)
+            val authClient =
+                FakeAuthClient(
+                    initialState = AuthState.Unknown,
+                    sessionResult = Outcome.Err(AuthError.NetworkUnavailable),
+                )
+            val sessionHolder = sessionHolder(authClient, tracker)
+            advanceUntilIdle()
+            authClient.setAuthState(AuthState.SignedOut)
+            advanceUntilIdle()
+
+            sessionHolder.startAnonymousSignIn()
+            advanceUntilIdle()
+
+            assertEquals(SessionPhase.LOCAL, sessionHolder.state.value.phase, "the fixture must reach a local start")
+            assertEquals(
+                listOf<AnalyticsEvent>(
+                    AnalyticsEvent.OnboardingStarted,
+                    AnalyticsEvent.AnonymousSignInSelected,
+                    AnalyticsEvent.OnboardingCompleted,
+                ),
+                tracker.events,
+                "a local start ends onboarding exactly like a signed-in session",
             )
             sessionHolder.close()
         }
