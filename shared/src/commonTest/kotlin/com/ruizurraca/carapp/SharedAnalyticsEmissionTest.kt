@@ -13,8 +13,10 @@ import com.ruizurraca.carapp.core.testing.RecordingAnalyticsTracker
 import com.ruizurraca.carapp.feature.fuel.domain.CreateFuelEntryCommand
 import com.ruizurraca.carapp.feature.fuel.domain.FuelEntryRepository
 import com.ruizurraca.carapp.feature.fuel.domain.MoneyInput
+import com.ruizurraca.carapp.feature.fuel.domain.UpdateFuelEntryCommand
 import com.ruizurraca.carapp.feature.session.domain.UpdateSettingsCommand
 import com.ruizurraca.carapp.feature.vehicle.domain.CreateVehicleCommand
+import com.ruizurraca.carapp.feature.vehicle.domain.UpdateVehicleCommand
 import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -130,6 +132,72 @@ class SharedAnalyticsEmissionTest {
                     listOf(AnalyticsUserProperties(CountBucket.ZERO, CountBucket.ZERO)),
                     tracker.userProperties,
                     "the cadence still refreshes the buckets after the successful delete",
+                )
+            }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aSuccessfulVehicleUpdateNeitherEmitsNorRefreshesTheBuckets() =
+        runTest {
+            withGraph { graph, tracker ->
+                val vehicleId = createVehicle(graph, vehicleCommand()).value
+                tracker.clear()
+
+                val result =
+                    graph.vehicleRuntimeForTest().repository.updateVehicle(
+                        UpdateVehicleCommand(
+                            id = vehicleId,
+                            name = "Renamed",
+                            initialOdometerKm = 1_000,
+                            brand = null,
+                            model = null,
+                            fuelType = FuelType.GASOLINE,
+                            confirmations = emptySet(),
+                        ),
+                    )
+
+                assertIs<Outcome.Ok<Unit>>(result, "the fixture must produce a successful update")
+                assertEquals(emptyList(), tracker.events, "the closed hierarchy declares no update leaf")
+                assertEquals(
+                    emptyList(),
+                    tracker.userProperties,
+                    "§16.1 refreshes the buckets on create and delete only; an update changes no count",
+                )
+            }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun aSuccessfulFuelEntryUpdateNeitherEmitsNorRefreshesTheBuckets() =
+        runTest {
+            withGraph { graph, tracker ->
+                val vehicleId = createVehicle(graph, vehicleCommand()).value
+                val entryId = assertIs<Outcome.Ok<EntityId>>(createFuelEntry(graph, fuelEntryCommand(vehicleId))).value
+                tracker.clear()
+
+                val result =
+                    graph.fuelEntryRepositoryForTest().updateFuelEntry(
+                        UpdateFuelEntryCommand(
+                            id = entryId,
+                            vehicleId = vehicleId,
+                            date = Instant.fromEpochMilliseconds(1_700_000_000_000),
+                            odometerKm = 2_000,
+                            money = MoneyInput.LitersAndTotal(litersScaled = 40_000, totalCostMinor = 6_000),
+                            currency = CurrencyCode("EUR"),
+                            isFullTank = false,
+                            hasMissedEntries = false,
+                            notes = null,
+                            confirmations = emptySet(),
+                        ),
+                    )
+
+                assertIs<Outcome.Ok<Unit>>(result, "the fixture must produce a successful update")
+                assertEquals(emptyList(), tracker.events, "the closed hierarchy declares no update leaf")
+                assertEquals(
+                    emptyList(),
+                    tracker.userProperties,
+                    "§16.1 refreshes the buckets on create and delete only; an update changes no count",
                 )
             }
         }
