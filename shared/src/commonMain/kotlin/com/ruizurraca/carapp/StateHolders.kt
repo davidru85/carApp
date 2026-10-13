@@ -127,19 +127,20 @@ class SessionStateHolder internal constructor(
     /**
      * `E3-09` / `docs/CONTRACTS.md §16.1`: the onboarding pair, once per holder.
      *
-     * `OnboardingStarted` fires exactly once, at the first phase the holder observes that is not yet
-     * determined: `UNKNOWN` means the provider has not answered, so the welcome screen is what the
-     * user sees and onboarding has begun. A holder whose first observation is already determined did
-     * not go through onboarding in this run and emits neither event.
+     * `OnboardingStarted` fires exactly once, at the first `SIGNED_OUT` phase the auth collector
+     * observes: that phase is the welcome screen of F-1, where onboarding begins. `UNKNOWN` is not:
+     * it is the waiting state every launch passes through before the provider answers (§11.1),
+     * including the launch of a returning user whose session is then restored, and that launch is not
+     * an onboarding.
      *
-     * `OnboardingCompleted` fires once, on the first transition from that undetermined phase into a
-     * session: `LOCAL`, `ANONYMOUS` or `PERMANENT`. `SIGNED_OUT` is the end of a session, not the end
-     * of onboarding, and `DELETING` is a departure; neither completes it, so a sign-out on the
-     * welcome screen can never be reported as a completed onboarding.
+     * `OnboardingCompleted` fires once, on the first transition after `OnboardingStarted` into a
+     * session: `LOCAL`, `ANONYMOUS` or `PERMANENT`. `LOCAL` is published by [startAnonymousSignIn]
+     * itself rather than by the auth collector, so that path reports it explicitly. `DELETING` is a
+     * departure and never completes onboarding.
      */
     private fun trackOnboarding(phase: SessionPhase) {
         val tracker = analyticsTracker ?: return
-        if (!onboardingStartedEmitted && !onboardingCompletedEmitted && phase == SessionPhase.UNKNOWN) {
+        if (!onboardingStartedEmitted && !onboardingCompletedEmitted && phase == SessionPhase.SIGNED_OUT) {
             onboardingStartedEmitted = true
             tracker.track(AnalyticsEvent.OnboardingStarted)
         }
@@ -172,6 +173,9 @@ class SessionStateHolder internal constructor(
                             // That choice is the signal returning connectivity retries on, and it is
                             // the only one a device with no rows yet can offer (`D-124`).
                             onLocalStartAccepted()
+                            // `LOCAL` is published here, not by the auth collector, so the onboarding
+                            // pair is completed here too (`E3-09`, `docs/CONTRACTS.md §16.1`).
+                            trackOnboarding(SessionPhase.LOCAL)
                             SessionUiState(
                                 phase = SessionPhase.LOCAL,
                                 providers = emptyList(),

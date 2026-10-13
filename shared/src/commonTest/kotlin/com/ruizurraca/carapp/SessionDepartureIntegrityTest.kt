@@ -396,7 +396,13 @@ class SessionDepartureIntegrityTest {
                     AnalyticsEvent.AccountDeletionStarted,
                     AnalyticsEvent.AccountDeletionCompleted,
                 ),
-                tracker.events.filterNot { it is AnalyticsEvent.SyncStatusChanged },
+                // Scoped to the deletion family: the return to the welcome screen after the deletion
+                // legitimately starts a new onboarding (`E3-09`).
+                tracker.events.filter {
+                    it is AnalyticsEvent.AccountDeletionStarted ||
+                        it is AnalyticsEvent.AccountDeletionFailed ||
+                        it is AnalyticsEvent.AccountDeletionCompleted
+                },
             )
             holder.close()
         }
