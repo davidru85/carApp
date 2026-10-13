@@ -201,5 +201,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-192 | [ADR-0193](0193-render-the-backup-status-indicator-on-the-vehicle-list.md) | Render the backup status indicator on the vehicle list surface. | Accepted |
 | D-193 | [ADR-0194](0194-do-not-let-the-idle-backup-label-claim-a-current-remote-copy.md) | Do not let the `Idle` backup label claim a current remote copy. | Accepted |
 | D-194 | [ADR-0195](0195-execute-the-tombstone-purge-as-one-count-gated-attempt-per-app-start.md) | Execute the tombstone purge as one count-gated attempt per app start. | Accepted |
+| D-200 | [ADR-0201](0201-resolve-grpc-brace-expansion-and-proxy-addr-advisories-within-existing-ranges.md) | Resolve the `@grpc/grpc-js`, `brace-expansion` and `proxy-addr` advisories within existing dependency ranges. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

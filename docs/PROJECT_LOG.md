@@ -64,6 +64,31 @@
   hours per message, is unverified and contradicts the premise of `D-70` if true; the decision to
   investigate or revisit it is the owner's.
 
+### 2026-10-13 — D-200 resolves new high and critical Functions advisories in the lockfile
+
+- **Type:** decision
+- **Story / Decision:** — / `D-200`
+- **Author:** agent, on behalf of David Ruiz (branch `deps/functions-audit-transitive-fixes`)
+- **What changed:** `functions/package-lock.json` resolves `proxy-addr` 2.0.8, `@grpc/grpc-js`
+  1.14.6 and `brace-expansion` 2.1.7 inside their existing parent ranges. No `package.json` pin,
+  override or install-script policy changes. `D-200` / ADR-0201 records the decision, with rows in
+  the four mirrors, three `docs/versions-matrix.md` rows and a re-evaluation row in
+  `docs/SECURITY_ADVISORY_REGISTER.md`.
+- **Why:** on 2026-10-13 the required `contract-check` job failed its production audit on an
+  unchanged lockfile, with one critical and two high findings, which blocks every pull request. The
+  owner chose a lockfile-only fix over accepting new residuals or bypassing the gate. The complete
+  `npm audit fix` result was rejected because it also downgraded `gaxios` 6.7.1 to 6.3.0 to remove
+  a moderate residual that `D-68` already accepts.
+- **Documents touched:** `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0201, `docs/versions-matrix.md`,
+  `docs/SECURITY_ADVISORY_REGISTER.md`.
+- **Verification:** clean `npm ci`; `npm ls` resolves one patched version of each package;
+  `npm run audit` exits 0 with only the six `D-68` moderate entries; `npm test` (80 pass, 2
+  emulator-only skips) and `npm run test:emulator` (2 pass); `./gradlew contractCheck --rerun-tasks`.
+- **Follow-ups / risks:** the deployed `stopBilling` keeps the earlier resolution until the owner
+  redeploys it. Pull request #85 and every other open pull request need `main` merged in after this
+  change lands, so that the audit gate passes on them.
+
 ### 2026-09-29 — E3-19 record closure: the merged status and the pull request #82 evidence
 
 - **Type:** correction (documentation only)
