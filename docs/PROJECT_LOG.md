@@ -109,29 +109,34 @@
   runtime (`D-199`). `:integration:firebase-analytics` leaves
   `ArchitectureChecker.NOT_YET_INTRODUCED_MODULES`, becomes a third D-75 root, and the iOS app links
   the `FirebaseAnalytics` SwiftPM product the GitLive cinterop needs. The `SyncStatus ->
-  SyncStatusCategory` collapse of `§20.9` is implemented in `:core:analytics`.
+  SyncStatusCategory` collapse of `§20.9` is implemented in `:core:analytics`. The owner's first
+  review of PR #84 added the host-level collection switch with contract assertion 39, moved the
+  onboarding start to the welcome screen, limited the bucket refresh to create and delete, and gave
+  `D-199` its own ADR-0199.
 - **Why:** the backlog row sized `E3-09` as `S` and named only the integration, but `§16.1`
   attributes the `setUserProperties` cadence fixture to this story by name and seven of the thirteen
   event leaves had no emitter at all. The owner chose to keep the whole `§16.1` surface inside the
   story rather than split emission into a new one (`D-196`, ADR-0196), and the row is resized to `M`.
   Every call site is `:shared` orchestration because `docs/TECHNICAL_PLAN.md §4` keeps a feature
   `presentation` package out of `:core:analytics`.
-- **Documents touched:** `docs/BACKLOG.md` (`E3-09`), `docs/CONTRACTS.md` (`§18` assertions 37 and
-  38, and the D-75 derived set), `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
-  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0196`, `0197`, `0198`, `AGENTS.md`
-  (the D-75 count), `.github/workflows/ci.yml` (the fifth Native exclusion),
+- **Documents touched:** `docs/BACKLOG.md` (`E3-09`), `docs/CONTRACTS.md` (`§16.1`, `§18` assertions
+  37, 38 and 39, the D-75 derived set, and `§20.9`), `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, `docs/adr/0196`,
+  `0197`, `0198`, `0199`, `docs/adr/0076` (the third D-75 root), `AGENTS.md` (the D-75 count, the
+  verification command and the module inventory), `README.md` and `docs/CONTRIBUTING.md` (the
+  verification command), `.github/workflows/ci.yml` (the fifth Native exclusion),
   `docs/handoffs/E3-09.md`.
 - **Verification:** the complete CI task command of `AGENTS.md` ran `BUILD SUCCESSFUL` locally,
-  including `iosSimulatorArm64Test`; `contractCheck` reports assertions 21, 37 and 38 `PASS` and no
+  including `iosSimulatorArm64Test`; `contractCheck` reports assertions 21, 37, 38 and 39 `PASS` and no
   `PENDING`. New tests: `FirebaseAnalyticsTrackerTest`, `FirebaseAnalyticsOptInTest`,
   `FirebaseAnalyticsFailureTest`, `OwnerActiveRowCountDatabaseAccessTest`, `SyncStatusCategoryTest`,
   `SharedAnalyticsEmissionTest`, `SharedAnalyticsCadenceTest`, `AnalyticsIntegrationContractTest`,
   plus the wiring binding cases.
 - **Follow-ups / risks:** the provider-failure sink is wired to nothing in production yet, so a
-  dropped metric is observable only in tests; `docs/adr/0076` requires the Firebase Apple coverage
-  list to be reviewed whenever that surface grows, which the new iOS product triggers; and the
-  emission fixtures need a bounded real-time wait because a database continuation runs on a real
-  dispatcher that virtual time cannot drain.
+  dropped metric is observable only in tests; no graph test drives the real settings repository into
+  the opt-in gate end to end; and three review points await an owner decision: the provider wire
+  type of the two boolean flags (`D-198`), the `§20.9` wording of the sync-status collapse, and the
+  provider's automatic events and advertising-identifier permissions.
 
 ### 2026-09-29 — E3-19 record closure: the merged status and the pull request #82 evidence
 
