@@ -699,6 +699,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-205 | Phase 3 bundle delivery | The six remaining Phase 3 stories are delivered as two consecutive bundles, `E3-B1` and `E3-B2`, each through one pull request; every story keeps its own ready check, handoff, TDD cycle and project-log entry. | Accepted |
 | D-206 | Outbox entity type wire value source | `EntityType` lives in `:core:common` and is the only Kotlin source of the outbox `entityType` wire value; the SQL literals are verified against it by an executable parity check. | Accepted |
 | D-207 | Stale `SYNCING` startup reset | Once per app start, a `SYNCING` entity row left by process death returns to the state its outbox row implies: `FAILED_RETRYABLE` after a non-connectivity error, `PENDING` otherwise. | Accepted |
+| D-208 | Unsupported provider value at the pull boundary | A remote value the app cannot represent is carried as a reserved marker and its document is quarantined, so the pull cursor still advances. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

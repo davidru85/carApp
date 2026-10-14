@@ -1836,8 +1836,9 @@ Human review required.
 ### E3-20 - Pull-Boundary Quarantine Totality for Unsupported Provider Values - S
 
 **Deferred by `E3-03`; near-unreachable.** Scheduled as the fourth story of bundle `E3-B1`
-(`D-205`, ADR-0206). The representation of an unsupported provider value at the pull boundary is an
-owner decision put to the owner at the bundle intake; the story does not start until it is accepted.
+(`D-205`, ADR-0206). The owner decided the representation on 2026-10-14 as `D-208` (ADR-0209): the
+integration carries an unsupported value as a reserved marker, and `:core:sync` quarantines every
+document carrying it as `MalformedPayload`.
 
 `untypedFields()` (both platform actuals) throws `IllegalArgumentException` for an unsupported
 provider value type, which `runRemoteOperation` converts to `RemoteError.InvalidArgument` for the

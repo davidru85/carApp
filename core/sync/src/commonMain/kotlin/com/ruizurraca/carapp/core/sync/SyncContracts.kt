@@ -12,6 +12,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
+/**
+ * The reserved key of the marker the pull boundary carries in place of a provider value it cannot
+ * represent in JSON (`docs/CONTRACTS.md §9.5`, `D-208`): `{ "<key>": "<provider value type name>" }`.
+ * `:core:sync` quarantines every document carrying it as `QuarantineReason.MalformedPayload`.
+ */
+const val UNSUPPORTED_PROVIDER_VALUE_KEY: String = "__unsupportedProviderValue"
+
 data class EntitySnapshot(
     val entityType: EntityType,
     val entityId: EntityId,

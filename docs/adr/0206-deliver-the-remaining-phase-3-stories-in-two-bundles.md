@@ -40,7 +40,7 @@ one-story-per-pull-request convention.
 
 | Bundle | Stories, in execution order | Branch | Start condition |
 |--------|-----------------------------|--------|-----------------|
-| `E3-B1` Client synchronization hardening | `E3-13`, `E3-21`, `E3-18`, `E3-20` | `story/E3-B1-client-sync-hardening` | `D-173`, `D-206`, `D-207` and `D-208` accepted |
+| `E3-B1` Client synchronization hardening | `E3-13`, `E3-21`, `E3-18`, `E3-20` | `story/E3-B1-client-sync-hardening` | `D-173`, `D-206`, `D-207` and `D-208` accepted (all on 2026-10-14) |
 | `E3-B2` Server-side cleanup races | `E3-15`, `E3-16` | `story/E3-B2-server-cleanup-races` | `E3-B1` merged, and `D-149` and `D-150` accepted |
 
 Inside a bundle:
