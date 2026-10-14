@@ -1078,6 +1078,13 @@ private fun RemoteDocument.toPullRecord(
     if (schemaVersion != null && schemaVersion > CLIENT_MAX_SCHEMA_VERSION) {
         return quarantined(QuarantineReason.UnsupportedSchemaVersion, schemaVersion, createdAt)
     }
+    // `D-208`: the pull boundary carried a provider value it cannot represent as the reserved marker.
+    // Such a document is never applied, whatever shape the schema gives the field; it is quarantined and
+    // the cursor advances. The unsupported-version check stays first, because a future schema may use a
+    // provider type this client cannot represent.
+    if (objectValue?.containsUnsupportedProviderValue() == true) {
+        return quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: UNKNOWN_SCHEMA_VERSION, createdAt)
+    }
     // The classification MUST be total (`§9.5`, ADR-0171): every field read below is reached through
     // `get(name) + require`, so a missing key raises `IllegalArgumentException` and a wrong-typed
     // value raises `IllegalArgumentException`/`IllegalStateException` — never `NoSuchElementException`
