@@ -1062,6 +1062,11 @@ Acceptance criteria:
 
 ### E3-09 - Firebase Analytics Integration - M
 
+Status: merged on 2026-10-14 through pull request #84 as a true merge of
+`story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`), after the owner's
+gated review, two review correction rounds and the owner's closure of `D-201` through `D-203`. See
+`docs/handoffs/E3-09.md`.
+
 Implement `:integration:firebase-analytics`, the Firebase-backed `AnalyticsTracker` from `E0-08`, and bind it in `:wiring:firebase`.
 
 Scope note (`D-196`, ADR-0196): although the module work is small, the story also owns the complete
@@ -2065,7 +2070,7 @@ proof after E3-04.
 | E3-12 Permanent-account cross-device recovery proof (completed, PR #73) | 3 | S | Yes |
 | E3-05 Backup status UI (completed, PR #74) | 3 | S | — |
 | E3-07 Tombstone purge (completed, PR #78) | 3 | S | — |
-| E3-09 Firebase Analytics integration | 3 | M | — |
+| E3-09 Firebase Analytics integration (completed, PR #84) | 3 | M | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |

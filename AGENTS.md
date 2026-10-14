@@ -201,8 +201,13 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-09`, `E3-13`, `E3-15`, `E3-16`, `E3-18`,
-  `E3-20` and `E3-21`. `E3-19`, the push-boundary payload totality, merged on 2026-09-29 through pull
+- **Remaining Phase 3:** `E3-13`, `E3-15`, `E3-16`, `E3-18`,
+  `E3-20` and `E3-21`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
+  emission surface, merged on 2026-10-14 through pull request #84 as a true merge of
+  `story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`), after the
+  owner's gated review, two review correction rounds and the owner's closure of `D-201` through
+  `D-203`; it introduced `D-196` through `D-199` and `D-201` through `D-204`, all `Accepted`, and its
+  evidence is in `docs/handoffs/E3-09.md`. `E3-19`, the push-boundary payload totality, merged on 2026-09-29 through pull
   request #82 as a true merge of `story/E3-19-push-boundary-payload-totality` into `main` (merge
   commit `cfccfe1c`), after the owner's gated review and four review correction rounds; it classifies
   every outbox payload the push boundary cannot convert as a closed `RemoteError.InvalidArgument` so a
@@ -227,9 +232,9 @@ review.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Three decisions remain open, and none of them blocks merged work:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-12`, `E3-17` and `E3-19` already merged,
-  and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open decision gates
-  merged work.
+  three documents. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-17` and `E3-19` already
+  merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
+  decision gates merged work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
     start until the owner decides.

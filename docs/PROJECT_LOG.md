@@ -38,6 +38,41 @@
 
 ## Entries
 
+### 2026-10-14 — E3-09 record closure: the merged status and the pull request #84 evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E3-09` / — (no decision changed; the story's `D-196` to `D-199` and `D-201`
+  to `D-204` are all `Accepted`)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E3-09-record-closeout`)
+- **What changed:** `E3-09` merged on 2026-10-14 through pull request #84 as a true merge of
+  `story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`, whose second
+  parent is the branch head `aad86ae7`), after the owner's gated review, two review correction rounds
+  and the owner's closure of `D-201` through `D-203`. The places that still described the story as in
+  flight or planned now state the merge: the `E3-09` status block and its index row in
+  `docs/BACKLOG.md`, the `Remaining Phase 3` list in `AGENTS.md`, from which `E3-09` is removed, the
+  open-decision paragraph in `AGENTS.md` that enumerates the merged stories, and the `README.md` module
+  tree, which still marked `:integration:firebase-analytics` as `planned: E3-09`.
+  `docs/handoffs/E3-09.md` gains a dated `Closure update` that records the merge, the correction
+  rounds, the decisions and the open follow-ups, and preserves its checkpoint and evidence as observed.
+- **Why:** `AGENTS.md` §Repository State is the fastest way for an incoming agent to tell built from
+  planned, and the remaining-work list must not include a merged story. The `README.md` tree had kept
+  the module as planned since before the story created it.
+- **Correction to the previous E3-09 entries:** the story entry and the correction entries recorded
+  the story as awaiting the owner's review, and the round 2 entry disclosed commit `d5a6f045` for that
+  review. The owner merged the pull request with that commit included, so the status is merged and the
+  handoff relocation to `docs/handoffs/` is part of `main`. Their content is otherwise unchanged.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `README.md`, `docs/handoffs/E3-09.md`, this
+  log.
+- **Verification:** documentation only, so no test, build or coverage result depends on it. The final
+  head `aad86ae7`, an ancestor of `main`, passed all ten required checks on attempt `1` (run
+  `38568356558`). The complete non-instrumented `AGENTS.md` command and `contractCheck --rerun-tasks`
+  are run before the pull request to confirm no check regresses.
+- **Follow-ups / risks:** none new. The `E3-09` follow-ups stay open as its handoff records them and
+  none is a backlog story: the provider-failure sink is not wired in production, the Native-side iOS
+  coverage of the analytics provider path stays an ADR-0076 owner review item, no graph test drives the
+  real settings repository into the opt-in gate end to end, and hardening the assertion 23 parser is a
+  candidate for the owner. Pull request #84 is merged and requires no further action.
+
 ### 2026-10-14 — E3-09 review correction round 2: analytics failure containment and evidence hardening
 
 - **Type:** correction
