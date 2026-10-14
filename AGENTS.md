@@ -203,8 +203,9 @@ review.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-13`, `E3-15`, `E3-16`, `E3-18`,
   `E3-20` and `E3-21`, delivered as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
-  synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), is in flight on
-  `story/E3-B1-client-sync-hardening`; its live checkpoint is `docs/handoffs/E3-B1.md`. Bundle
+  synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), is implemented on
+  `story/E3-B1-client-sync-hardening` through pull request #88 and awaits the owner's gated review; it
+  introduced `D-205` through `D-208` and accepted `D-173`, and its record is `docs/handoffs/E3-B1.md`. Bundle
   `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), starts after `E3-B1` merges and after
   the owner decides `D-149` and `D-150`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
   emission surface, merged on 2026-10-14 through pull request #84 as a true merge of
