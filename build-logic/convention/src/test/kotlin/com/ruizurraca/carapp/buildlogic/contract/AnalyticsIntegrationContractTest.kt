@@ -242,6 +242,45 @@ class AnalyticsIntegrationContractTest {
         }
     }
 
+    @Test
+    fun collectionDeclarationsOnlyInCommentsDoNotCount() {
+        val real = privacyInputs()
+        val mutations =
+            listOf(
+                real.copy(androidManifest = "<!-- ${real.androidManifest} -->") to ANDROID_COLLECTION_KEY,
+                real.copy(iosInfoPlist = "<!-- ${real.iosInfoPlist} -->") to IOS_COLLECTION_KEY,
+            )
+
+        mutations.forEach { (mutated, key) -> assertCollectionRejected(mutated, key) }
+    }
+
+    @Test
+    fun aSecondCollectionDeclarationIsRejected() {
+        val real = privacyInputs()
+        val android = "<meta-data android:name=\"$ANDROID_COLLECTION_KEY\" android:value=\"false\" />"
+        val ios = "<key>$IOS_COLLECTION_KEY</key><false/>"
+        val mutations =
+            listOf(
+                real.copy(
+                    androidManifest = real.androidManifest.replace(android, android + android.replace("false", "true")),
+                ) to ANDROID_COLLECTION_KEY,
+                real.copy(
+                    iosInfoPlist = real.iosInfoPlist.replace(ios, ios + "<key>$IOS_COLLECTION_KEY</key><true/>"),
+                ) to IOS_COLLECTION_KEY,
+            )
+
+        mutations.forEach { (mutated, key) -> assertCollectionRejected(mutated, key) }
+    }
+
+    private fun assertCollectionRejected(
+        inputs: AnalyticsIntegrationContract.Inputs,
+        offendingKey: String,
+    ) {
+        val result = AnalyticsIntegrationContract(inputs).validate().first { it.id == 39 }
+        assertEquals(AssertionResult.Status.FAIL, result.status, "collection guard must reject $offendingKey")
+        assertTrue(result.detail.contains(offendingKey), result.detail)
+    }
+
     private fun assertPrivacyRejected(
         inputs: AnalyticsIntegrationContract.Inputs,
         offendingKey: String,
@@ -297,6 +336,8 @@ class AnalyticsIntegrationContractTest {
 
     private companion object {
         const val NO_AD_PRODUCT = "FirebaseAnalyticsWithoutAdIdSupport"
+        const val ANDROID_COLLECTION_KEY = "firebase_analytics_collection_enabled"
+        const val IOS_COLLECTION_KEY = "FIREBASE_ANALYTICS_COLLECTION_ENABLED"
     }
 
     private fun realInputs(sources: List<Pair<String, String>>): AnalyticsIntegrationContract.Inputs =
