@@ -17,6 +17,7 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -266,6 +267,53 @@ class SqlDelightSyncPersistenceTest {
             assertTrue(lines.any { it.startsWith("cursor type=VEHICLE ") })
             assertTrue(lines.any { it.startsWith("quarantine type=VEHICLE id=$VEHICLE_ID ") })
             assertTrue(lines.none { it.contains("rawJson") })
+        }
+
+    /**
+     * `E3-18` / `D-173` option B through the real controller and database: `retryFailed()` makes a row
+     * parked by a connectivity-only failure due immediately, with its attempt count reset. Offline, so
+     * the cycle `retryFailed()` requests is refused and the reset is observed as it left the row.
+     */
+    @Test
+    fun retryFailedMakesAParkedConnectivityRowDue() =
+        runTest {
+            val persistence = openPersistence()
+            try {
+                seedVehicleOutbox(persistence, payload = "{\"deleted\":false}")
+                persistence.failPush(
+                    row = persistence.dueOutbox(instant(0), limit = 10).single(),
+                    attemptCount = 3,
+                    nextAttemptAt = instant(900_000),
+                    errorCode = RemoteError.Unavailable.code,
+                    poisoned = false,
+                    cycleId = CycleId("cycle-1"),
+                )
+                assertEquals(emptyList(), persistence.dueOutbox(instant(100), limit = 10), "parked behind its backoff")
+                val controller =
+                    createSyncController(
+                        scope = this,
+                        databaseAccess = SyncDatabaseAccess(persistence.handle.database),
+                        ownerContext = StaticOwnerContext(ownerId),
+                        connectivity = StaticConnectivity(false),
+                        remote = NoopRemoteSource,
+                        clock = StaticClock(instant(100)),
+                        uuidGenerator = StaticUuidGenerator,
+                        adoption = { Outcome.Ok(Unit) },
+                        onPoisoned = { _, _ -> },
+                        onQuarantined = {},
+                        isDebugBuild = true,
+                    )
+
+                assertIs<Outcome.Ok<Unit>>(controller.retryFailed())
+                advanceUntilIdle()
+
+                val due = persistence.dueOutbox(instant(100), limit = 10).single()
+                assertEquals(0, due.attemptCount, "manual retry resets the attempt count, as §9.7 requires")
+                assertEquals(null, due.lastErrorCode)
+                assertEquals("PENDING", vehicleState(persistence))
+            } finally {
+                persistence.close()
+            }
         }
 
     @Test

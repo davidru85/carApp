@@ -104,6 +104,7 @@ class ConnectivityCodeParityTest {
                 "countRetryableSyncRows",
                 "resetStaleSyncingVehicles",
                 "resetStaleSyncingFuelEntries",
+                "resetFailedOutbox",
             )
     }
 }
