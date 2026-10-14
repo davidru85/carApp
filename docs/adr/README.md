@@ -209,6 +209,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-201 | [ADR-0202](0202-encode-analytics-boolean-flags-as-long-zero-or-one.md) | Keep domain flags as Boolean and encode false/true as 0L/1L only at the Firebase boundary. | Accepted |
 | D-202 | [ADR-0203](0203-use-the-published-sync-aggregate-for-analytics.md) | Map the published SyncStatus directly to its analytics category; :core:sync alone classifies connectivity and cycle failures. | Accepted |
 | D-203 | [ADR-0204](0204-collect-product-analytics-without-advertising-identification.md) | After Settings opt-in, allow product events and standard technical SDK events; disable AAID, IDFA, IDFV, personalized ad signals and automatic screen reporting. | Accepted |
-| D-204 | [ADR-0205](0205-wait-for-graph-sync-effects-under-stateflow-conflation.md) | Wait for remote effect and terminal sync status independently in graph tests using the existing bounded polling helper. | Accepted |
+| D-204 | [ADR-0205](0205-wait-for-graph-sync-effects-under-stateflow-conflation.md) | Wait for remote effect and terminal sync status independently with bounded real-time polling that lets the test scheduler become idle. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

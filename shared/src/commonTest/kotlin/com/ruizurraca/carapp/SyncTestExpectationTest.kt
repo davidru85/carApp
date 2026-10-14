@@ -5,17 +5,21 @@ import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.sync.SyncController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SyncTestExpectationTest {
@@ -51,8 +55,8 @@ class SyncTestExpectationTest {
                 // its first observed value, so a status-only collector receives no new emission.
                 runCurrent()
 
-                assertTrue(settled.isCompleted, "the remote effect must not need a new status emission")
-                settled.await()
+                // Completion may suspend on a real scheduling pulse, but requires no extra status.
+                withContext(Dispatchers.Default) { withTimeout(1.seconds) { settled.await() } }
                 assertTrue(persistenceChecked)
             } finally {
                 settled.cancelAndJoin()

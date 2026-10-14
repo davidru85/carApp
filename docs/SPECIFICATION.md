@@ -695,7 +695,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-201 | Analytics boolean wire encoding | Keep domain flags as Boolean and encode false/true as 0L/1L only at the Firebase boundary. | Accepted |
 | D-202 | Analytics sync-category source | Map the published SyncStatus directly to its analytics category; :core:sync alone classifies connectivity and cycle failures. | Accepted |
 | D-203 | Analytics without advertising identification | After Settings opt-in, allow product events and standard technical SDK events; disable AAID, IDFA, IDFV, personalized ad signals and automatic screen reporting. | Accepted |
-| D-204 | Graph-test sync wait under StateFlow conflation | Wait for remote effect and terminal sync status independently in graph tests using the existing bounded polling helper. | Accepted |
+| D-204 | Graph-test sync wait under StateFlow conflation | Wait for remote effect and terminal sync status independently with bounded real-time polling that lets the test scheduler become idle. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
