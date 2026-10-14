@@ -503,7 +503,7 @@ Allowed transitions:
 
 `FAILED_POISONED` is never retried automatically. Automatic selection (`selectDueOutbox`) MUST exclude a row whose entity `syncState` is `FAILED_POISONED`, regardless of `nextAttemptAt`, so the backoff expiring cannot reselect it. The push-start transition (`markVehicleSyncing` / `markFuelEntrySyncing`) MUST also fail closed: it MUST NOT move a `FAILED_POISONED` row to `SYNCING`, so a poisoned row cannot silently drop out of `countPoisonedSyncRows` and from the aggregate `SyncStatus.Failed` count. Only `SyncController.retryFailed()` (which resets those rows to `PENDING`) or a local edit that re-enqueues a valid snapshot makes a poisoned row due again. Consequently a `FAILED_POISONED -> SYNCING` transition is not reachable and the crash-reporting policy of `§17` fires once per poison transition, not once per cycle.
 
-The connectivity-code set that qualifies a failure as non-poisoning and counts it as `Pending` is defined once in `:core:common` (`CONNECTIVITY_ERROR_CODES`). The statements that read it (`markConnectivityFailuresDue`, `countPendingSyncRows`, `countRetryableSyncRows`, and the `D-207` startup reset `resetStaleSyncingVehicles` / `resetStaleSyncingFuelEntries`) spell the codes as SQL literals because a SQLDelight `IN` list cannot bind a Kotlin set without changing the query shape. A `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both sources and fails the build when they diverge, so adding a code to the constant without the SQL, or the reverse, is caught rather than silently changing behaviour.
+The connectivity-code set that qualifies a failure as non-poisoning and counts it as `Pending` is defined once in `:core:common` (`CONNECTIVITY_ERROR_CODES`). The statements that read it (`markConnectivityFailuresDue`, `countPendingSyncRows`, `countRetryableSyncRows`, the `D-173` manual-retry selection `resetFailedOutbox`, and the `D-207` startup reset `resetStaleSyncingVehicles` / `resetStaleSyncingFuelEntries`) spell the codes as SQL literals because a SQLDelight `IN` list cannot bind a Kotlin set without changing the query shape. A `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both sources and fails the build when they diverge, so adding a code to the constant without the SQL, or the reverse, is caught rather than silently changing behaviour.
 
 A local edit during an in-flight push leaves the row `PENDING` (`§7` invariant, `§9.3`): the editor sets it in the same transaction, and the ack for the stale revision only stamps `serverUpdatedAt`. The user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
 
@@ -682,11 +682,19 @@ exactly the rows that need it, because the count is already at the ceiling. An `
 is `FAILED_RETRYABLE`, so `retryFailed()` does clear its retry context, which is the manual escape
 hatch for a stuck auth state.
 
-A connectivity-only row is `PENDING` with retry context in the outbox, so it is outside
-`resetFailedOutbox`'s `FAILED_RETRYABLE`/`FAILED_POISONED` selection and `retryFailed()` does not
-clear its retry context. Clearing that gap is a separate decision (`D-173`) and story (`E3-18`),
-because it requires deciding whether manual retry covers such a row; until then the row waits out its
-backoff, which is bounded by `MAX_BACKOFF_MS`.
+Manual retry also covers a row parked by a connectivity-only failure (`D-173` option B). Such a row
+is `PENDING` with its retry context in the outbox, so `retryFailed()` additionally sets
+`nextAttemptAt = now`, resets `attemptCount` to 0 and clears `lastError`, `lastErrorCode` and `cycleId`
+on every outbox row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`, regardless of its entity
+`syncState`; the entity state, already `PENDING`, is not changed. The exact `resetFailedOutbox`
+selection is therefore every outbox row whose entity is `FAILED_RETRYABLE` or `FAILED_POISONED`, plus
+every outbox row whose `lastErrorCode` is a connectivity code. The poison rule is unchanged: only the
+qualifying non-connectivity failures of this section consume the poison budget.
+
+Both hosts show the retry control only while the aggregate is `Failed` (§9.9, `D-191`–`D-193`), so a
+parked connectivity row with no `Failed` row beside it has no manual control. It becomes due when
+connectivity recovers (`ConnectivityRecovered`, §9.8) or when its backoff expires, which is at most
+`MAX_BACKOFF_MS` (900 000 ms) after its last failure.
 
 ### 9.8 Trigger constants
 

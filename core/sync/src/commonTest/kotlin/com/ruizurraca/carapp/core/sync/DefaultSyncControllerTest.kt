@@ -2036,11 +2036,14 @@ private class FakeSyncPersistence : SyncPersistence {
         if (resetResult is Outcome.Err) return resetResult
         outbox.indices.forEach { index ->
             val row = outbox[index]
-            if (states[row.entityId.value] in setOf("FAILED_RETRYABLE", "FAILED_POISONED")) {
+            val failed = states[row.entityId.value] in setOf("FAILED_RETRYABLE", "FAILED_POISONED")
+            // Mirror `resetFailedOutbox` (`D-173` option B): a connectivity-parked row is cleared too, and
+            // its entity, already `PENDING`, keeps its state.
+            if (failed || row.lastErrorCode in CONNECTIVITY_ERROR_CODES) {
                 outbox[index] = row.copy(attemptCount = 0, nextAttemptAt = now, lastErrorCode = null)
                 lastErrors.remove(row.entityId.value)
                 cycleIds.remove(row.entityId.value)
-                transition(row.entityId.value, "PENDING")
+                if (failed) transition(row.entityId.value, "PENDING")
             }
         }
         return Outcome.Ok(Unit)

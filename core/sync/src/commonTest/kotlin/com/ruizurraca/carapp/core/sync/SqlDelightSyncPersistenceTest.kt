@@ -14,6 +14,9 @@ import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -273,11 +276,16 @@ class SqlDelightSyncPersistenceTest {
      * `E3-18` / `D-173` option B through the real controller and database: `retryFailed()` makes a row
      * parked by a connectivity-only failure due immediately, with its attempt count reset. Offline, so
      * the cycle `retryFailed()` requests is refused and the reset is observed as it left the row.
+     *
+     * The controller runs on its own [Job], joined before the database closes: the driver works on a
+     * real executor, so a cycle still reading counts when `persistence.close()` ran would fail on a
+     * closed database instead of reporting this test's result.
      */
     @Test
     fun retryFailedMakesAParkedConnectivityRowDue() =
         runTest {
             val persistence = openPersistence()
+            val controllerJob = Job()
             try {
                 seedVehicleOutbox(persistence, payload = "{\"deleted\":false}")
                 persistence.failPush(
@@ -291,7 +299,7 @@ class SqlDelightSyncPersistenceTest {
                 assertEquals(emptyList(), persistence.dueOutbox(instant(100), limit = 10), "parked behind its backoff")
                 val controller =
                     createSyncController(
-                        scope = this,
+                        scope = CoroutineScope(coroutineContext + controllerJob),
                         databaseAccess = SyncDatabaseAccess(persistence.handle.database),
                         ownerContext = StaticOwnerContext(ownerId),
                         connectivity = StaticConnectivity(false),
@@ -312,6 +320,7 @@ class SqlDelightSyncPersistenceTest {
                 assertEquals(null, due.lastErrorCode)
                 assertEquals("PENDING", vehicleState(persistence))
             } finally {
+                controllerJob.cancelAndJoin()
                 persistence.close()
             }
         }

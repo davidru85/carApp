@@ -478,6 +478,10 @@ UPDATE outbox
 SET nextAttemptAt = :now
 WHERE lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED');
 
+-- Manual retry (`§9.7`). Besides every failed or poisoned entity, it also clears a row parked by a
+-- connectivity-only failure, whose entity is already `PENDING` (`D-173` option B): otherwise the retry
+-- control would leave it waiting out its backoff. The connectivity codes are `CONNECTIVITY_ERROR_CODES`,
+-- held to this SQL by `ConnectivityCodeParityTest`.
 resetFailedOutbox:
 UPDATE outbox
 SET attemptCount = 0,
@@ -489,7 +493,7 @@ WHERE (entityType = 'VEHICLE' AND entityId IN (
     SELECT id FROM vehicle WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED')
   )) OR (entityType = 'FUEL_ENTRY' AND entityId IN (
     SELECT id FROM fuel_entry WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED')
-  ));
+  )) OR lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED');
 
 resetFailedVehicles:
 UPDATE vehicle SET syncState = 'PENDING'
