@@ -13,6 +13,7 @@ import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
+import com.ruizurraca.carapp.core.common.UnexpectedError
 import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
 import com.ruizurraca.carapp.core.common.toEpochMicroseconds
@@ -1704,6 +1705,7 @@ private fun TestScope.fixture(
             uuidGenerator = TestUuidGenerator(),
             jitter = jitter,
             adoption = adoption,
+            staleSyncingReset = persistence::resetStaleSyncing,
             onPoisoned = { error, fields -> reportedErrors += error to fields },
             onQuarantined = reportedQuarantines::add,
             debugEnabled = debugEnabled,
@@ -2019,6 +2021,15 @@ private class FakeSyncPersistence : SyncPersistence {
                 outbox[index] = row.copy(nextAttemptAt = now)
             }
         }
+    }
+
+    /** Scripted failure of the startup stale-`SYNCING` reset (`D-207`); `null` succeeds. */
+    var staleSyncingResetFailure: Throwable? = null
+
+    /** Stands in for `SyncDatabaseAccess.resetStaleSyncing`, which the fixture injects. */
+    suspend fun resetStaleSyncing() {
+        calls += "resetStaleSyncing"
+        staleSyncingResetFailure?.let { throw it }
     }
 
     override suspend fun resetFailed(now: Instant): Outcome<Unit, AppError> {
@@ -2337,6 +2348,71 @@ class DefaultSyncControllerShutdownTest {
             assertEquals(
                 Outcome.Err(PersistenceError.DatabaseUnavailable),
                 fixture.controller.sync(SyncTrigger.AppForeground),
+            )
+        }
+}
+
+/**
+ * `E3-21` / `D-207`: the controller restores rows a process death left `SYNCING` once per app start, as
+ * the first step of its first cycle. Cycles run one at a time, so the reset can never overlap a push of
+ * the same process, and it precedes the offline and `LOCAL_OWNER` refusals so a start without network
+ * still resets.
+ */
+class DefaultSyncControllerStaleSyncingResetTest {
+    @Test
+    fun theFirstCycleResetsStaleSyncingRowsBeforeItPushes() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+
+            fixture.controller.sync(SyncTrigger.OwnerChanged)
+
+            val calls = fixture.persistence.calls
+            assertEquals("resetStaleSyncing", calls.firstOrNull(), "the reset is the cycle's first step")
+            assertTrue("dueOutbox" in calls, "the cycle still pushes after the reset")
+        }
+
+    @Test
+    fun theResetRunsOncePerController() =
+        runTest {
+            val fixture = fixture()
+
+            fixture.controller.sync(SyncTrigger.OwnerChanged)
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(1, fixture.persistence.calls.count { it == "resetStaleSyncing" })
+        }
+
+    @Test
+    fun theResetRunsEvenWhenTheCycleIsRefusedOffline() =
+        runTest {
+            val fixture = fixture(online = false)
+
+            fixture.controller.sync(SyncTrigger.OwnerChanged)
+
+            assertEquals(listOf("resetStaleSyncing"), fixture.persistence.calls)
+        }
+
+    @Test
+    fun aFailedResetIsReportedOnceAndTheCycleStillPushes() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.staleSyncingResetFailure = IllegalStateException("reset failed")
+
+            val outcome = fixture.controller.sync(SyncTrigger.OwnerChanged)
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(Outcome.Ok(Unit), outcome, "a failed reset does not fail the cycle")
+            assertEquals(1, fixture.remote.pushCalls.size, "the push still ran")
+            assertEquals(
+                listOf<AppError>(UnexpectedError(":core:sync", "IllegalStateException")),
+                fixture.reportedErrors.map { it.first },
+                "reported once, and not retried by the second cycle",
+            )
+            assertEquals(
+                setOf("code", "cycleId"),
+                fixture.reportedErrors
+                    .single()
+                    .second.keys,
             )
         }
 }
