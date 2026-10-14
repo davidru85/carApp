@@ -12,6 +12,7 @@ import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.database.OwnerActiveRowCounts
 import com.ruizurraca.carapp.core.model.UserSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.Flow
@@ -107,7 +108,8 @@ internal class AnalyticsEmissions(
     suspend fun refreshUserProperties() {
         // A no-op while collection is off, so an opted-out device pays nothing for a write it makes.
         if (!enabled) return
-        tracker.setUserProperties(currentBuckets())
+        val buckets = currentBucketsOrNull() ?: return
+        tracker.setUserProperties(buckets)
     }
 
     /** Emits one write event and then refreshes the buckets, in that order. */
@@ -121,8 +123,30 @@ internal class AnalyticsEmissions(
         tracker.setEnabled(enabled)
         // The cadence's opt-in half: the one `setUserProperties` call that belongs to the transition
         // itself. The disabled half deliberately does not call it.
-        if (enabled) tracker.setUserProperties(currentBuckets())
+        if (!enabled) return
+        val buckets = currentBucketsOrNull() ?: return
+        tracker.setUserProperties(buckets)
     }
+
+    /**
+     * The current owner's buckets, or `null` when the count cannot be read.
+     *
+     * Metrics are best-effort (`D-10`, ADR-0198), so a failed count drops this one refresh and never
+     * propagates. On the write path a propagated failure would turn a committed write into a thrown
+     * exception and skip the `§9.8` post-write trigger and the `§11.2` adoption re-evaluation that
+     * run after this decorator returns. On the opt-in path it would escape the collector launched on
+     * the graph scope, which installs no exception handler, and end the opt-in gate, so a later
+     * opt-out would never reach the tracker. Cancellation is rethrown unchanged
+     * (`docs/CONTRACTS.md §6`).
+     */
+    private suspend fun currentBucketsOrNull(): AnalyticsUserProperties? =
+        try {
+            currentBuckets()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Throwable) {
+            null
+        }
 
     private suspend fun currentBuckets(): AnalyticsUserProperties {
         val owned = activeRowCounts(ownerContext.current.value)
