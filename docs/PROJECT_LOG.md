@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-10-14 — E3-18 manual retry covers parked connectivity rows (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-18` / `D-173` (accepted as option B on 2026-10-14)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** `resetFailedOutbox` also clears the retry context of every outbox row whose
+  `lastErrorCode` is a connectivity code, regardless of entity state, so `retryFailed()` makes a
+  parked row due with `attemptCount` 0. `docs/CONTRACTS.md §9.7` states the exact selection and that a
+  lone parked row, which has no retry control because the control is shown only while `Failed`,
+  becomes due within `MAX_BACKOFF_MS`.
+- **Why:** the owner accepted option B with the premise correction recorded in ADR-0174: the retry
+  control is never shown for a `Pending` aggregate, so option B helps when a `Failed` row is present
+  and the lone-row wait is bounded rather than removed.
+- **Documents touched:** `docs/CONTRACTS.md §7`, `§9.7`; `docs/handoffs/E3-18.md`.
+- **Verification:** RED `d65b48db` / GREEN `dd7e1b90`, each pushed; the complete `AGENTS.md` command
+  passes. Two test-infrastructure fixes in GREEN (a detekt-driven file split and a controller `Job`
+  joined before the database closes) are declared in the handoff.
+- **Follow-ups / risks:** none new. `E3-20` remains in the bundle and waits for its owner decision.
+
 ### 2026-10-14 — E3-21 startup reset of stale SYNCING rows (bundle E3-B1)
 
 - **Type:** story
