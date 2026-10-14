@@ -121,7 +121,7 @@ Kotlin Multiplatform is used for domain, data, sync and shared presentation logi
 | Dependency injection | Koin KMP for wiring, constructor injection for implementation classes |
 | Logging | Kermit behind `Logger` |
 
-Current module structure, with the two remaining integration modules shown explicitly as planned:
+Current module structure, with the remaining integration module shown explicitly as planned:
 
 ```text
 build-logic/
@@ -138,7 +138,7 @@ gradle/libs.versions.toml
 
 :integration:firebase-auth
 :integration:firebase-firestore
-:integration:firebase-analytics      # planned: E3-09
+:integration:firebase-analytics
 :integration:firebase-crashlytics   # planned: E4-04
 
 :feature:vehicle
