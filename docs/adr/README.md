@@ -179,7 +179,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-170 | [ADR-0171](0171-quarantine-malformed-remote-documents-through-the-sync-source.md) | Quarantine malformed remote documents through the sync source. | Accepted |
 | D-171 | [ADR-0172](0172-make-the-sync-cycle-awaitable-for-user-initiated-refresh.md) | Make the sync cycle awaitable for user-initiated refresh. | Accepted |
 | D-172 | [ADR-0173](0173-make-app-graph-close-safe-against-an-in-flight-sync-cycle.md) | Release the `DatabaseHandle` from `graphScope` completion with a bounded backstop. | Accepted |
-| D-173 | [ADR-0174](0174-manual-retry-coverage-for-parked-connectivity-rows.md) | Manual retry coverage for parked connectivity rows. | Proposed |
+| D-173 | [ADR-0174](0174-manual-retry-coverage-for-parked-connectivity-rows.md) | Manual retry also clears the retry context of parked connectivity rows (option B). | Accepted |
 | D-174 | [ADR-0175](0175-carry-provider-timestamp-precision-in-the-pull-cursor.md) | Carry provider timestamp precision in the pull cursor. | Accepted |
 | D-175 | [ADR-0176](0176-fix-the-silent-shared-test-stall-inside-e3-03.md) | Fix the silent shared-test stall inside `E3-03`. | Accepted |
 | D-176 | [ADR-0177](0177-size-the-ci-job-hang-guard-above-the-slowest-healthy-run.md) | Size the CI job hang guard above the slowest healthy run. | Accepted |
@@ -210,5 +210,8 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-202 | [ADR-0203](0203-use-the-published-sync-aggregate-for-analytics.md) | Map the published SyncStatus directly to its analytics category; :core:sync alone classifies connectivity and cycle failures. | Accepted |
 | D-203 | [ADR-0204](0204-collect-product-analytics-without-advertising-identification.md) | After Settings opt-in, allow product events and standard technical SDK events; disable AAID, IDFA, IDFV, personalized ad signals and automatic screen reporting. | Accepted |
 | D-204 | [ADR-0205](0205-wait-for-graph-sync-effects-under-stateflow-conflation.md) | Wait for remote effect and terminal sync status independently with bounded real-time polling that lets the test scheduler become idle. | Accepted |
+| D-205 | [ADR-0206](0206-deliver-the-remaining-phase-3-stories-in-two-bundles.md) | Deliver the remaining Phase 3 stories as two bundles, one pull request each. | Accepted |
+| D-206 | [ADR-0207](0207-own-the-entity-type-wire-value-in-core-common.md) | Own the outbox entity type wire value in `:core:common`, with SQL literals checked by a parity test. | Accepted |
+| D-207 | [ADR-0208](0208-reset-stale-syncing-rows-from-their-outbox-at-startup.md) | Reset stale `SYNCING` rows at startup to the state their outbox row implies. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

@@ -2,11 +2,12 @@
 
 ## Status
 
-Proposed
+Accepted
 
-The `E3-03` sixth owner-review round raised this on 2026-09-13. `E3-18` MUST NOT start until the
-owner confirms the option. No production fix is delivered by `E3-03`; this ADR records the gap and
-the options only.
+The `E3-03` sixth owner-review round raised this on 2026-09-13. No production fix is delivered by
+`E3-03`; this ADR records the gap and the options. The owner selected **option B** on 2026-10-14,
+with the premise correction recorded under "Decision"; `E3-18` delivers it inside bundle `E3-B1`
+(`D-205`).
 
 ## Context
 
@@ -45,17 +46,50 @@ connectivity codes regardless of entity state restores a complete manual escape 
 existing reset semantics. Option A is honest but leaves a dead-looking control; Option C couples a
 general gesture to a connectivity-specific step.
 
+## Decision
+
+The selected option is **B**, accepted by the owner on 2026-10-14.
+
+`resetFailedOutbox` also clears the outbox retry context (`attemptCount = 0`, `nextAttemptAt = now`,
+`lastError`, `lastErrorCode`, `cycleId`) of every row whose `lastErrorCode` is in
+`CONNECTIVITY_ERROR_CODES`, regardless of the entity `syncState`. The entity state of such a row is
+not changed: it is already `PENDING`.
+
+Premise correction. This ADR was written before `E3-05` delivered the backup status UI
+(`D-191`–`D-193`). On both hosts the retry control is rendered only while the aggregate is `Failed`
+(`SyncStatusIndicatorView` on Android and iOS), a connectivity-class failure publishes `Pending`
+(`§9.9`), and neither host offers a pull-to-refresh gesture. The statements above that the control
+"appears to do nothing" for such a row, and that `Pending` becomes "always actionable", therefore
+overstate the effect. What option B changes is narrower:
+
+- When at least one `FAILED_RETRYABLE` or `FAILED_POISONED` row makes the aggregate `Failed`, the
+  retry control is shown, and pressing it now also makes every parked connectivity row due instead of
+  leaving it to wait out its backoff.
+- When the only stalled rows are parked connectivity rows, the aggregate is `Pending`, no retry
+  control is shown under any option, and the row becomes due within `MAX_BACKOFF_MS` (900_000 ms).
+  `§9.7` states that bound explicitly.
+
+Showing the retry control while `Pending` was considered and rejected: it reopens the `E3-05`
+presentation decisions and the `§9.9` rule that reserves the error presentation for `Failed`.
+Option C was rejected also because no host exposes a pull-to-refresh gesture, so it would give the
+user no path.
+
 ## Consequences
 
 ### Positive
 
-- The manual retry control covers every parked row, so `Pending` is always actionable.
+- The manual retry control, whenever it is shown, makes every parked row due, including connectivity
+  rows that are not themselves failed.
 - The fix is bounded to `resetFailedOutbox` and the `retryFailed()` contract, with no new trigger.
 
 ### Negative
 
 - `retryFailed()`'s selection and its tests widen; the contract text of `§9.7` must be updated with
   the chosen option.
+- A parked connectivity row with no `Failed` row beside it still has no manual control; its wait is
+  bounded by `MAX_BACKOFF_MS` and stated in `§9.7`.
+- `resetFailedOutbox` repeats the connectivity codes as SQL literals, so it joins the statements
+  `ConnectivityCodeParityTest` checks against `CONNECTIVITY_ERROR_CODES`.
 
 ### Constraints Introduced
 

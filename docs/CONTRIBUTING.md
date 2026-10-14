@@ -52,12 +52,16 @@ git worktree add .worktrees/carApp-<slug> -b <type>/<slug> origin/main
 
 ## Branches and Commits
 
-- Branch: `story/<STORY-ID>-<short-slug>`, for example `story/E1-04-fuel-entry-domain`.
+- Branch: `story/<STORY-ID>-<short-slug>`, for example `story/E1-04-fuel-entry-domain`. A `D-205`
+  bundle uses its bundle ID instead, for example `story/E3-B1-client-sync-hardening`.
 - Confirm the branch before every commit. `git status` shows it, and in a shared clone it may not be
   the branch you left.
 - Commits follow Conventional Commits with the story ID as scope: `feat(E1-04): derive price from liters and total`.
 - Commit messages, code comments, ADRs and all repository artifacts are written in technical English. Conversation with the project owner may happen in Spanish.
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.
+  The only exception is the two Phase 3 bundles of `D-205` (ADR-0206): each bundle is delivered
+  through one pull request, and every story inside it keeps its own handoff, TDD cycle, commit scope
+  and project-log entry.
 - **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** The owner is the only
   author this history records; agents commit on their behalf and never under a placeholder identity.
 - An owner prompt file, such as a review's corrective-action prompt, is never committed and never

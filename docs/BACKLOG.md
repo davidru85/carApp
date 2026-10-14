@@ -1103,8 +1103,10 @@ Acceptance criteria:
 
 ### E3-13 - Single source of truth for the outbox entityType wire value - M
 
-Status: open. Registered as GitHub issue #46. Tracked as a follow-up of D-110 in
-`docs/handoffs/E1-11.md` and `docs/PROJECT_LOG.md` (2026-09-02 entry).
+Status: in flight, first story of bundle `E3-B1` (`D-205`, ADR-0206). Registered as GitHub issue
+#46. Tracked as a follow-up of D-110 in `docs/handoffs/E1-11.md` and `docs/PROJECT_LOG.md`
+(2026-09-02 entry). The owner decided its location question on 2026-10-14 as `D-206` (ADR-0207):
+`EntityType` moves to `:core:common`, and the SQL literals are verified against it by a parity test.
 
 Centralize the outbox `entityType` token (`"VEHICLE"`, `"FUEL_ENTRY"`) so that a single source of
 truth covers the Kotlin mapper call sites, `DatabaseMutations`, the SQL `CHECK` constraints and
@@ -1761,13 +1763,13 @@ Human review required.
 
 ### E3-18 - Manual Retry Coverage for Parked Connectivity Rows - S
 
-**Not Ready.** Blocked on owner decision `D-173`, which is `Proposed` in `docs/DECISION_BOARD.md`
-— option B is recommended but no option is preselected — with its analysis in
-[ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md).
+Status: Ready, third story of bundle `E3-B1` (`D-205`, ADR-0206). The owner accepted `D-173` as
+option B on 2026-10-14; [ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md)
+records the decision and a premise correction: both hosts show the retry control only while the
+aggregate is `Failed`, so a lone parked connectivity row has no manual control under any option and
+its wait is bounded by `MAX_BACKOFF_MS`.
 
-`D-173` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
-"Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
-depends on it, and it may not be blocked by it.** `E3-17` touches `:core:sync` but not this story's
+`E3-17` touches `:core:sync` but not this story's
 surface: it adds `shutdown()` and never changes `retryFailed()` or the `resetFailedOutbox` selection,
 so the two are independent and `E3-18` does not rebase onto `E3-17`.
 
@@ -1787,17 +1789,19 @@ aggregate reports `Pending` and the user cannot force it.
 This is a bounded liveness gap, not a data-loss or correctness defect. `E3-03` records it only and
 makes no production change here.
 
-Acceptance criteria (to be finalised once `D-173` is accepted):
+Acceptance criteria (option B of `D-173`):
 
-- The accepted option discharges its proof obligations: the exact manual-retry selection is stated,
-  and the evidence shows which rows `retryFailed()` now clears.
+- `resetFailedOutbox` also clears the outbox retry context of every row whose `lastErrorCode` is in
+  `CONNECTIVITY_ERROR_CODES`, regardless of entity `syncState`; `§9.7` states the exact manual-retry
+  selection, and the evidence shows which rows `retryFailed()` now clears.
 - The poison rule and `attemptCount` semantics of `§9.7` stay intact.
-- If option A is chosen, `§9.7` states the `MAX_BACKOFF_MS` bound explicitly and the residual
-  user-visible effect; if option B is chosen, a test proves a `PENDING` connectivity row with a
-  far-future `nextAttemptAt` becomes due after `retryFailed()`.
-- Option C, if chosen, is tested as a `PullToRefresh` cycle calling `markConnectivityFailuresDue`.
+- A test proves a `PENDING` connectivity row with a far-future `nextAttemptAt` becomes due after
+  `retryFailed()`.
+- `§9.7` states that a parked connectivity row with no `Failed` row beside it has no manual control and
+  becomes due within `MAX_BACKOFF_MS`.
+- The connectivity codes the reset spells in SQL are checked by `ConnectivityCodeParityTest`.
 
-Depends on: `D-173`, E3-03.
+Depends on: `D-173` (accepted), E3-03.
 
 Human review required.
 
@@ -1831,7 +1835,9 @@ Human review required.
 
 ### E3-20 - Pull-Boundary Quarantine Totality for Unsupported Provider Values - S
 
-**Deferred by `E3-03`; near-unreachable.** Not Ready until a story owner is scheduled.
+**Deferred by `E3-03`; near-unreachable.** Scheduled as the fourth story of bundle `E3-B1`
+(`D-205`, ADR-0206). The representation of an unsupported provider value at the pull boundary is an
+owner decision put to the owner at the bundle intake; the story does not start until it is accepted.
 
 `untypedFields()` (both platform actuals) throws `IllegalArgumentException` for an unsupported
 provider value type, which `runRemoteOperation` converts to `RemoteError.InvalidArgument` for the
@@ -1854,7 +1860,10 @@ Human review required.
 
 ### E3-21 - Explicit Startup Reset of Stale `SYNCING` Rows - S
 
-**Deferred by `E3-03`; low impact.** Not Ready until a story owner is scheduled.
+**Deferred by `E3-03`; low impact.** Scheduled as the second story of bundle `E3-B1` (`D-205`,
+ADR-0206). The owner decided the reset target state and its execution on 2026-10-14 as `D-207`
+(ADR-0208): a stale row returns to `FAILED_RETRYABLE` after a non-connectivity `lastErrorCode` and to
+`PENDING` otherwise, once per app start, under the sync cycle's exclusion.
 
 If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row
 is left `SYNCING` with no startup statement that resets it. It is not stranded — the outbox row
@@ -1901,8 +1910,9 @@ Acceptance criteria:
 
 ## Outstanding Owner Decisions
 
-Three decisions are open. **None of them blocks a merged story, and no pull request MUST be held
-for them.** `E3-03`, `E3-04`, `E3-08`, `E3-12` and `E3-17` have all merged, `E1-18` landed with
+Two decisions are open. **Neither blocks a merged story, and no pull request MUST be held
+for them.** The owner accepted `D-173` as option B on 2026-10-14; `E3-18` delivers it in bundle
+`E3-B1`. `E3-03`, `E3-04`, `E3-08`, `E3-12` and `E3-17` have all merged, `E1-18` landed with
 `E3-12`, so this table gates only the unstarted stories named in its `Needed by` column. `D-172` is
 not among them: the owner accepted option D with a 5-second grace on 2026-09-17, and that acceptance
 merged with `E3-17`.
@@ -1911,9 +1921,8 @@ merged with `E3-17`.
 |---|---|---|---|---|
 | `D-149` Ticket issuance and account deletion race | `Pending` — no recommendation, no option pre-selected | `E3-15` | None offered | [ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md) |
 | `D-150` Issuance lookup-to-write window | `Pending` — no recommendation, no option pre-selected | `E3-16` | None offered | [ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md) |
-| `D-173` Manual retry does not cover parked connectivity rows | `Proposed` | `E3-18` | Option B | [ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md) |
 
-What each one is, in one line, so the backlog can be triaged without opening three ADRs:
+What each one is, in one line, so the backlog can be triaged without opening two ADRs:
 
 - **`D-149`.** The deletion order of `docs/CONTRACTS.md §11.5` is remote data, then the authorization
   purge, then the Firebase Auth user. An issuance whose eligibility check passes before the purge and
@@ -1930,13 +1939,6 @@ What each one is, in one line, so the backlog can be triaged without opening thr
   destructive stage for a bound account that became linked, but it does not prevent the record being
   created, does not remove it, and does not reject an account that stays anonymous and becomes
   **disabled**. This is a **different** decision from `D-149` and MUST NOT be merged with it.
-- **`D-173`.** A connectivity-only failure leaves the entity `PENDING` with its retry context in the
-  outbox, which is the correct row state, but `resetFailedOutbox` only clears retry context for
-  `FAILED_RETRYABLE` and `FAILED_POISONED`, so `retryFailed()` silently does nothing for it. A
-  server-side `REMOTE.UNAVAILABLE` or `REMOTE.DEADLINE_EXCEEDED` while the device stays online fires
-  no `ConnectivityRecovered`, so the row waits out its backoff up to `MAX_BACKOFF_MS` (900 000 ms)
-  and the user cannot force it. A bounded liveness gap, not a data-loss defect. This is the smallest
-  of the three and the only one with a recommended option.
 
 Each row is mirrored in `docs/DECISION_BOARD.md`, where the `Needed by` column is authoritative; this
 section restates them for triage and MUST agree with it.
@@ -2014,6 +2016,13 @@ through pull request #80. `E1-15` and `E1-16` change the same two Vehicle screen
 onboarding-wait flake in the iOS UI suite; with `E1-14` it is one of two defects that make a red
 required job ambiguous, and both SHOULD precede any story that relies on that signal.
 
+`D-205` (ADR-0206) delivers the six remaining Phase 3 stories as two consecutive bundles, each
+through one pull request: `E3-B1` runs `E3-13 -> E3-21 -> E3-18 -> E3-20` on
+`story/E3-B1-client-sync-hardening`, so the `E3-13` single-source change lands before the other three
+touch the same statements, and `E3-B2` runs `E3-15 -> E3-16` after `E3-B1` merges and the owner
+decides `D-149` and `D-150`. Inside a bundle every story keeps its own ready check, handoff, TDD cycle
+and project-log entry.
+
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
 metadata; E2-07 owns notices; E3-10 owns the reusable deletion service; E3-11 owns cleanup entry
@@ -2072,15 +2081,15 @@ proof after E3-04.
 | E3-07 Tombstone purge (completed, PR #78) | 3 | S | — |
 | E3-09 Firebase Analytics integration (completed, PR #84) | 3 | M | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
-| E3-13 Outbox entityType single source of truth | 3 | M | — |
+| E3-13 Outbox entityType single source of truth (bundle `E3-B1`) | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
-| E3-15 Close the ticket issuance and account deletion interleaving (blocked on `D-149`) | 3 | M | Yes |
-| E3-16 Close the issuance lookup-to-write window (blocked on `D-150`) | 3 | M | Yes |
+| E3-15 Close the ticket issuance and account deletion interleaving (bundle `E3-B2`, blocked on `D-149`) | 3 | M | Yes |
+| E3-16 Close the issuance lookup-to-write window (bundle `E3-B2`, blocked on `D-150`) | 3 | M | Yes |
 | E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle (completed, PR #70) | 3 | M | Yes |
-| E3-18 Manual retry coverage for parked connectivity rows (blocked on `D-173`) | 3 | S | Yes |
+| E3-18 Manual retry coverage for parked connectivity rows (bundle `E3-B1`) | 3 | S | Yes |
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
-| E3-20 Pull-boundary quarantine totality for unsupported provider values | 3 | S | Yes |
-| E3-21 Explicit startup reset of stale `SYNCING` rows | 3 | S | Yes |
+| E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`) | 3 | S | Yes |
+| E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`) | 3 | S | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |
