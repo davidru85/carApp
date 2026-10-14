@@ -25,7 +25,7 @@ import kotlin.coroutines.cancellation.CancellationException
  *    `setEnabled` calls would collect until the first Settings visit.
  * 2. **While disabled, nothing is buffered.** [track] and [setUserProperties] drop their argument
  *    instead of holding it, so enabling later replays nothing.
- * 3. **The payload is closed.** Every parameter is an enum name or a bucket-level boolean, and the
+ * 3. **The payload is closed.** Every parameter is an enum name or a flag encoded as Long 0/1 (`D-201`), and the
  *    event name comes from the exhaustive mapping below. There is no code path that can put an
  *    odometer, a volume, a cost, a note, an entity ID, a UID or a token into a payload, because no
  *    such value reaches this class: the closed [AnalyticsEvent] hierarchy cannot carry one.
@@ -85,8 +85,8 @@ class FirebaseAnalyticsTracker internal constructor(
      *
      * The `when` is exhaustive with **no `else`**, which is `E3-09`'s first acceptance criterion: a
      * new leaf, a renamed one or a split one stops this function compiling rather than silently
-     * mapping to nothing. The map values are `String` (enum names) and `Boolean` (bucket-level
-     * flags) only, so the §16.1 payload rule is structural, not a review convention.
+     * mapping to nothing. The map values are `String` (enum names) and `Long` (closed 0/1
+     * flags) only. Domain flags stay Boolean; Firebase receives supported integer parameters.
      */
     private fun AnalyticsEvent.toProviderEvent(): ProviderEvent =
         when (this) {
@@ -117,8 +117,8 @@ class FirebaseAnalyticsTracker internal constructor(
                 ProviderEvent(
                     "fuel_entry_created",
                     mapOf(
-                        IS_FULL_TANK to isFullTank,
-                        HAD_NOTES to hadNotes,
+                        IS_FULL_TANK to if (isFullTank) 1L else 0L,
+                        HAD_NOTES to if (hadNotes) 1L else 0L,
                     ),
                 )
             }
