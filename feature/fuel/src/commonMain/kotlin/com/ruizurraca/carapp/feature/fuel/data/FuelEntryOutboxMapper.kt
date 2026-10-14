@@ -2,6 +2,7 @@
 
 package com.ruizurraca.carapp.feature.fuel.data
 
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import kotlinx.serialization.json.JsonNull
@@ -15,7 +16,7 @@ internal fun LocalFuelEntry.toFuelEntryOutboxPayloadOrNull(): String? =
         null
     } else {
         buildJsonObject {
-            put("entityType", "FUEL_ENTRY")
+            put("entityType", EntityType.FUEL_ENTRY.name)
             put("id", id.value)
             put("ownerId", ownerId.value)
             put("vehicleId", vehicleId.value)

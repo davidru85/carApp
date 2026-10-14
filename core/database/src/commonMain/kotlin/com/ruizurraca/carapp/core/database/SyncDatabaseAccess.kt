@@ -4,6 +4,7 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.CONNECTIVITY_ERROR_CODES
+import com.ruizurraca.carapp.core.common.EntityType
 
 data class SyncOutboxDatabaseRow(
     val sequence: Long,
@@ -111,8 +112,8 @@ class SyncDatabaseAccess(
         pushedLocalRevision: Long,
     ) {
         when (entityType) {
-            "VEHICLE" -> queries.markVehicleSyncing(entityId, pushedLocalRevision)
-            "FUEL_ENTRY" -> queries.markFuelEntrySyncing(entityId, pushedLocalRevision)
+            EntityType.VEHICLE.name -> queries.markVehicleSyncing(entityId, pushedLocalRevision)
+            EntityType.FUEL_ENTRY.name -> queries.markFuelEntrySyncing(entityId, pushedLocalRevision)
             else -> error("Unknown sync entity type")
         }
     }
@@ -125,12 +126,12 @@ class SyncDatabaseAccess(
     ) {
         database.transaction {
             when (entityType) {
-                "VEHICLE" -> {
+                EntityType.VEHICLE.name -> {
                     queries.confirmVehiclePush(serverUpdatedAt, pushedLocalRevision, entityId)
                     queries.deleteConfirmedVehicleOutbox(entityId, pushedLocalRevision)
                 }
 
-                "FUEL_ENTRY" -> {
+                EntityType.FUEL_ENTRY.name -> {
                     queries.confirmFuelEntryPush(serverUpdatedAt, pushedLocalRevision, entityId)
                     queries.deleteConfirmedFuelEntryOutbox(entityId, pushedLocalRevision)
                 }
@@ -175,8 +176,8 @@ class SyncDatabaseAccess(
                     else -> "FAILED_RETRYABLE"
                 }
             when (entityType) {
-                "VEHICLE" -> queries.markVehiclePushFailed(state, entityId, pushedLocalRevision)
-                "FUEL_ENTRY" -> queries.markFuelEntryPushFailed(state, entityId, pushedLocalRevision)
+                EntityType.VEHICLE.name -> queries.markVehiclePushFailed(state, entityId, pushedLocalRevision)
+                EntityType.FUEL_ENTRY.name -> queries.markFuelEntryPushFailed(state, entityId, pushedLocalRevision)
                 else -> error("Unknown sync entity type")
             }
         }
@@ -296,7 +297,7 @@ class SyncDatabaseAccess(
         }
 
     private suspend fun applyVehicleIfNewer(vehicle: RemoteVehicleDatabaseWrite) {
-        if (queries.selectOutboxByEntity("VEHICLE", vehicle.id).awaitAsOneOrNull() != null) return
+        if (queries.selectOutboxByEntity(EntityType.VEHICLE.name, vehicle.id).awaitAsOneOrNull() != null) return
         val local = queries.selectVehicleById(vehicle.id).awaitAsOneOrNull()
         if (local?.serverUpdatedAt != null && vehicle.serverUpdatedAt <= local.serverUpdatedAt) return
         mutations.applyRemoteVehicle(
@@ -318,7 +319,7 @@ class SyncDatabaseAccess(
     }
 
     private suspend fun applyFuelEntryIfNewer(entry: RemoteFuelEntryDatabaseWrite) {
-        if (queries.selectOutboxByEntity("FUEL_ENTRY", entry.id).awaitAsOneOrNull() != null) return
+        if (queries.selectOutboxByEntity(EntityType.FUEL_ENTRY.name, entry.id).awaitAsOneOrNull() != null) return
         val local = queries.selectFuelEntryById(entry.id).awaitAsOneOrNull()
         if (local?.serverUpdatedAt != null && entry.serverUpdatedAt <= local.serverUpdatedAt) return
         if (local == null) {

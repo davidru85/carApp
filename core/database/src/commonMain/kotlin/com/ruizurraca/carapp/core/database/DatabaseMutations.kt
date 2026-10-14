@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.core.database
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import kotlin.jvm.JvmName
 
@@ -52,7 +53,7 @@ class DatabaseMutations(
             )
             if (outboxPayload != null) {
                 queries.coalesceOutbox(
-                    entityType = "VEHICLE",
+                    entityType = EntityType.VEHICLE.name,
                     entityId = id,
                     payload = outboxPayload,
                     localRevision = 1,
@@ -111,7 +112,7 @@ class DatabaseMutations(
             queries.recomputeVehicleCurrentOdometer(id)
             if (outboxPayload != null) {
                 queries.coalesceOutbox(
-                    entityType = "VEHICLE",
+                    entityType = EntityType.VEHICLE.name,
                     entityId = id,
                     payload = outboxPayload,
                     localRevision = localRevision,
@@ -151,7 +152,7 @@ class DatabaseMutations(
                 )
                 if (payload != null) {
                     queries.coalesceOutbox(
-                        entityType = "FUEL_ENTRY",
+                        entityType = EntityType.FUEL_ENTRY.name,
                         entityId = entry.id,
                         payload = payload,
                         localRevision = localRevision,
@@ -175,7 +176,7 @@ class DatabaseMutations(
             )
             if (vehicleOutboxPayload != null) {
                 queries.coalesceOutbox(
-                    entityType = "VEHICLE",
+                    entityType = EntityType.VEHICLE.name,
                     entityId = id,
                     payload = vehicleOutboxPayload,
                     localRevision = vehicleRevision,
@@ -311,7 +312,7 @@ class DatabaseMutations(
             )
             val stored = queries.selectFuelEntryById(entry.id).awaitAsOne().toFuelEntryDatabaseRow()
             outboxPayload(stored)?.let { payload ->
-                queries.coalesceOutbox("FUEL_ENTRY", stored.id, payload, stored.localRevision)
+                queries.coalesceOutbox(EntityType.FUEL_ENTRY.name, stored.id, payload, stored.localRevision)
             }
         }
     }
@@ -427,7 +428,7 @@ class DatabaseMutations(
             )
             val stored = queries.selectFuelEntryById(entry.id).awaitAsOne().toFuelEntryDatabaseRow()
             outboxPayload(stored)?.let { payload ->
-                queries.coalesceOutbox("FUEL_ENTRY", stored.id, payload, stored.localRevision)
+                queries.coalesceOutbox(EntityType.FUEL_ENTRY.name, stored.id, payload, stored.localRevision)
             }
         }
     }
@@ -474,7 +475,7 @@ class DatabaseMutations(
             )
             val stored = queries.selectFuelEntryById(entry.id).awaitAsOne().toFuelEntryDatabaseRow()
             outboxPayload(stored)?.let { payload ->
-                queries.coalesceOutbox("FUEL_ENTRY", stored.id, payload, stored.localRevision)
+                queries.coalesceOutbox(EntityType.FUEL_ENTRY.name, stored.id, payload, stored.localRevision)
             }
         }
     }
@@ -559,7 +560,7 @@ class DatabaseMutations(
     ) {
         val adopted = queries.selectVehicleById(id).awaitAsOne().toVehicleDatabaseRow()
         queries.coalesceOutbox(
-            entityType = "VEHICLE",
+            entityType = EntityType.VEHICLE.name,
             entityId = adopted.id,
             payload = outboxPayload(adopted),
             localRevision = adopted.localRevision,
@@ -572,7 +573,7 @@ class DatabaseMutations(
     ) {
         val adopted = queries.selectFuelEntryById(id).awaitAsOne().toFuelEntryDatabaseRow()
         queries.coalesceOutbox(
-            entityType = "FUEL_ENTRY",
+            entityType = EntityType.FUEL_ENTRY.name,
             entityId = adopted.id,
             payload = outboxPayload(adopted),
             localRevision = adopted.localRevision,

@@ -2,6 +2,7 @@
 
 package com.ruizurraca.carapp.feature.vehicle.data
 
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
 import com.ruizurraca.carapp.core.database.VehicleDatabaseRow
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
@@ -16,7 +17,7 @@ internal fun LocalVehicle.toVehicleOutboxPayloadOrNull(): String? =
         null
     } else {
         buildJsonObject {
-            put("entityType", "VEHICLE")
+            put("entityType", EntityType.VEHICLE.name)
             put("id", id.value)
             put("ownerId", ownerId.value)
             put("name", name)
@@ -37,7 +38,7 @@ internal fun FuelEntryDatabaseRow.toFuelEntryTombstonePayload(
     timestamp: Long,
 ): String =
     buildJsonObject {
-        put("entityType", "FUEL_ENTRY")
+        put("entityType", EntityType.FUEL_ENTRY.name)
         put("id", id)
         put("ownerId", ownerId)
         put("vehicleId", vehicleId)
