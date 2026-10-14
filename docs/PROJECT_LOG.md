@@ -38,6 +38,29 @@
 
 ## Entries
 
+### 2026-10-14 — E3-21 startup reset of stale SYNCING rows (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-21` / `D-207`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** a row a process death left `SYNCING` is restored once per app start, as the first
+  step of the controller's first executed cycle and before its offline and `LOCAL_OWNER` refusals, to
+  `FAILED_RETRYABLE` after a non-connectivity outbox `lastErrorCode` and to `PENDING` otherwise. The
+  reset is count-gated, runs both tables in one transaction, never touches the outbox row, and a
+  failure is reported once as a non-fatal `UnexpectedError`. `docs/CONTRACTS.md §7` and `§9.9` describe
+  it instead of its absence.
+- **Why:** the owner chose to restore the pre-attempt state with the `failPush` rule (`D-207`,
+  ADR-0208), so no `PENDING` row carries a non-connectivity code; the `D-194` count gate avoids a
+  writing transaction on every start, the `SQLITE_BUSY` hazard `E3-07` met on iOS.
+- **Documents touched:** `docs/CONTRACTS.md §7`, `§9.9`; `docs/TECHNICAL_PLAN.md §8`;
+  `docs/handoffs/E3-21.md`.
+- **Verification:** three RED / GREEN cycles (database, write lock on Android and iOS, controller),
+  an app-graph acceptance test proved non-vacuous by mutation, and a KDoc refactor; the complete
+  `AGENTS.md` command passes.
+- **Follow-ups / risks:** none new. The intake's assumption that `OwnerRecoveryGate` starts every
+  launch's first cycle was wrong; the hosts' cold-start `AppForeground` report does, and the
+  placement holds.
+
 ### 2026-10-14 — E3-13 outbox entityType single source (bundle E3-B1)
 
 - **Type:** story
