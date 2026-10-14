@@ -38,6 +38,24 @@
 
 ## Entries
 
+### 2026-10-14 — Project-local workspaces required and stale merge worktree removed
+
+- **Type:** correction
+- **Story / Decision:** —
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** the owner required agents to always attempt to keep created directories inside
+  the project. `AGENTS.md` now owns the rule: external directories require strict necessity and
+  must be removed as soon as possible after their last required use. The collaboration example
+  uses an ignored project-local `.worktrees/` directory. The stale sibling worktree
+  `/Users/davidruizurraca/Projects/carApp-e3-09-merge` was removed with `git worktree remove`.
+- **Why:** the earlier merge workspace remained after its purpose ended, with no recorded reason
+  to retain it.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRIBUTING.md`, `.gitignore`, `docs/PROJECT_LOG.md`.
+- **Verification:** the removed worktree had no pending changes or unique commits; its ignored
+  files were build outputs and caches. Its directory and Git registration are absent. Documentation
+  diff and the project-local ignore rule were checked.
+- **Follow-ups / risks:** none.
+
 ### 2026-10-14 — Graph-test sync wait made independent of StateFlow conflation
 
 - **Type:** decision

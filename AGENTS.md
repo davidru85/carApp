@@ -77,6 +77,29 @@ An agent that notices it has replied in the wrong language MUST:
 - Localized user-facing strings are the one place both languages legitimately appear in the repository (`docs/SPECIFICATION.md §11`). Their **keys** are English; their **values** exist in Spanish and English. This is not an exception to the rule above: a resource value is product content, not a development artifact.
 - An agent that replies in English when Spanish was required, or writes Spanish into a repository artifact, has violated a MUST and MUST self-correct before continuing.
 
+## Workspace Location and Cleanup
+
+Agents MUST always attempt to keep every directory they create inside the project folder.
+This applies to temporary workspaces, Git worktrees, auxiliary checkouts, and directories for
+generated artifacts, logs or verification output. Use an ignored `.worktrees/` directory inside
+the project for additional Git worktrees.
+
+An external directory MAY be created only when it is strictly necessary and no viable location
+inside the project can serve the task. Convenience alone does not satisfy this exception. The
+agent MUST record its exact path, why it is necessary and when its use will end in the current
+handoff, or in `docs/PROJECT_LOG.md` for work without a story.
+
+The agent MUST remove an external directory as soon as possible after its last required use,
+preserving any required results in the project first. Cleanup MUST NOT wait for story completion,
+pull-request merge or the end of the session. Before removing a Git worktree, confirm that no
+uncommitted work or unique commits would be lost and preserve any required ignored files. Use
+`git worktree remove` for Git worktrees and verify that both the directory and its worktree
+registration are gone.
+
+If safe removal is blocked, the agent MUST record the exact path and blocking reason in the
+handoff or project log, report it to the owner, and remove the directory as soon as the blocker is
+resolved. An external directory MUST NOT be left behind without that explicit record.
+
 ## Repository State
 
 **This section describes what exists right now.** It is the fastest way for an incoming agent to

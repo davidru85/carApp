@@ -42,10 +42,12 @@ it only for a genuine recovery, with `CARAPP_ALLOW_DIRECT_PUSH=1`.
 
 **If more than one agent shares a clone, work in a `git worktree`.** Branch checkouts are global to a
 clone, so a concurrent agent switching branches moves the ground under everyone else. A worktree
-gives each agent its own checkout of its own branch:
+gives each agent its own checkout of its own branch. From the project root, use the ignored
+`.worktrees/` directory and follow the canonical
+[workspace location and cleanup rules](../AGENTS.md#workspace-location-and-cleanup):
 
 ```bash
-git worktree add ../carApp-<slug> -b <type>/<slug> origin/main
+git worktree add .worktrees/carApp-<slug> -b <type>/<slug> origin/main
 ```
 
 ## Branches and Commits
