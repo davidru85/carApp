@@ -11,6 +11,7 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -48,7 +49,7 @@ class FirebaseAnalyticsTrackerTest {
 
     // The expected surface, written as an exhaustive `when` with no `else`: adding, renaming or
     // removing an `AnalyticsEvent` leaf stops this compile, which is the point. Every parameter is an
-    // enum name or a boolean, and no leaf contributes a free-text value.
+    // enum name or a Long 0/1 flag, and no leaf contributes a free-text value.
     //
     // `LongMethod` and `CyclomaticComplexMethod` are suppressed because this is a flat data table
     // with one row per contract leaf, not branching logic: splitting it would put half the expected
@@ -84,8 +85,8 @@ class FirebaseAnalyticsTrackerTest {
                     EventExpectation(
                         "fuel_entry_created",
                         mapOf(
-                            "is_full_tank" to event.isFullTank,
-                            "had_notes" to event.hadNotes,
+                            "is_full_tank" to if (event.isFullTank) 1L else 0L,
+                            "had_notes" to if (event.hadNotes) 1L else 0L,
                         ),
                     )
                 }
@@ -134,9 +135,9 @@ class FirebaseAnalyticsTrackerTest {
         // The §16.1 allowlist, stated as the complete set of parameter keys this module may emit.
         // An entity id, an odometer, a volume, a cost, a note, a UID or a token would have to arrive
         // as one of these keys or as a new value type; the key set is closed and every value type is
-        // an enum name, a boolean or a bucketed integer.
+        // an enum name or a closed Long 0/1 flag.
         val allowedKeys = setOf("provider", "is_full_tank", "had_notes", "status", "reason")
-        val allowedValueTypes = setOf(String::class, Boolean::class, Int::class, Long::class)
+        val allowedValueTypes = setOf(String::class, Long::class)
 
         analyticsLeaves().forEach { event ->
             val gateway = RecordingGateway()
@@ -161,9 +162,31 @@ class FirebaseAnalyticsTrackerTest {
         FirebaseAnalyticsTracker(enabled = true, gateway = gateway)
             .track(AnalyticsEvent.FuelEntryCreated(isFullTank = true, hadNotes = true))
         assertEquals(
-            mapOf<String, Any>("is_full_tank" to true, "had_notes" to true),
+            mapOf<String, Any>("is_full_tank" to 1L, "had_notes" to 1L),
             gateway.loggedEvents.single().parameters,
         )
+    }
+
+    @Test
+    fun fuelFlagsUseLongZeroOrOneForEveryCombination() {
+        val cases =
+            listOf(
+                AnalyticsEvent.FuelEntryCreated(false, false) to listOf(0L, 0L),
+                AnalyticsEvent.FuelEntryCreated(false, true) to listOf(0L, 1L),
+                AnalyticsEvent.FuelEntryCreated(true, false) to listOf(1L, 0L),
+                AnalyticsEvent.FuelEntryCreated(true, true) to listOf(1L, 1L),
+            )
+
+        cases.forEach { (event, expected) ->
+            val gateway = RecordingGateway()
+            FirebaseAnalyticsTracker(enabled = true, gateway = gateway).track(event)
+
+            val logged = gateway.loggedEvents.single()
+            assertEquals("fuel_entry_created", logged.name)
+            assertEquals(setOf("is_full_tank", "had_notes"), logged.parameters.keys)
+            assertEquals(expected[0], assertIs<Long>(logged.parameters.getValue("is_full_tank")))
+            assertEquals(expected[1], assertIs<Long>(logged.parameters.getValue("had_notes")))
+        }
     }
 
     private data class EventExpectation(
