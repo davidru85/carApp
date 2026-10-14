@@ -194,22 +194,49 @@ class SharedAnalyticsEmissionTest {
             }
         }
 
+    /**
+     * The production count path, end to end: once the opt-in has been applied the fixture's count
+     * seam is removed, so every refresh below reads `OwnerActiveRowCountDatabaseAccess` over the
+     * graph's own database with the graph's own owner. The fixture counters are deliberately left at
+     * zero, so a refresh that still read the seam would report `ZERO` and fail. This is also the
+     * fuel-entry delete half of the `§16.1` cadence: the delete refreshes the buckets and emits no
+     * event.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun theBucketsIgnoreTombstonedRows() =
+    fun theCadenceReadsTheOwnersActiveRowsAcrossCreatesAndDeletes() =
         runTest {
             withGraph { graph, tracker ->
-                val first = createVehicle(graph, vehicleCommand()).value
-                createVehicle(graph, vehicleCommand(name = "Second"))
-                deleteVehicle(graph, first)
-                tracker.clear()
+                (graph as DefaultAppGraph).activeRowCountsForTest = null
+                val vehicles = graph.vehicleRuntimeForTest()
+                val entries = graph.fuelEntryRepositoryForTest()
 
-                createVehicle(graph, vehicleCommand(name = "Third"))
+                val first = assertIs<Outcome.Ok<EntityId>>(vehicles.createVehicle(vehicleCommand(name = "First"))).value
+                val second =
+                    assertIs<Outcome.Ok<EntityId>>(vehicles.createVehicle(vehicleCommand(name = "Second"))).value
+                val entry = assertIs<Outcome.Ok<EntityId>>(entries.createFuelEntry(fuelEntryCommand(second))).value
+                assertIs<Outcome.Ok<Unit>>(vehicles.repository.deleteVehicle(first))
+                assertIs<Outcome.Ok<Unit>>(entries.deleteFuelEntry(entry))
 
                 assertEquals(
-                    listOf(AnalyticsUserProperties(CountBucket.TWO_TO_FIVE, CountBucket.ZERO)),
+                    listOf(
+                        AnalyticsUserProperties(CountBucket.ONE, CountBucket.ZERO),
+                        AnalyticsUserProperties(CountBucket.TWO_TO_FIVE, CountBucket.ZERO),
+                        AnalyticsUserProperties(CountBucket.TWO_TO_FIVE, CountBucket.ONE),
+                        AnalyticsUserProperties(CountBucket.ONE, CountBucket.ONE),
+                        AnalyticsUserProperties(CountBucket.ONE, CountBucket.ZERO),
+                    ),
                     tracker.userProperties,
-                    "two active vehicles remain: the tombstoned one is not in the list the bucket describes",
+                    "each create and delete refreshes the buckets from the owner's active rows",
+                )
+                assertEquals(
+                    listOf<AnalyticsEvent>(
+                        AnalyticsEvent.VehicleCreated,
+                        AnalyticsEvent.VehicleCreated,
+                        AnalyticsEvent.FuelEntryCreated(isFullTank = true, hadNotes = true),
+                    ),
+                    tracker.events.filterNot { it is AnalyticsEvent.SyncStatusChanged },
+                    "the closed hierarchy declares no delete leaf, so the two deletes emit no event",
                 )
             }
         }

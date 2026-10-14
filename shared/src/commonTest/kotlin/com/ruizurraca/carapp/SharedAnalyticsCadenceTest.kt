@@ -367,13 +367,9 @@ class SharedAnalyticsCadenceTest {
             CoroutineScope(backgroundScope.coroutineContext + UnconfinedTestDispatcher(testScheduler))
         emissions.launchIn(scope = collectorScope, settings = { settings }, status = status)
         advanceUntilIdle()
-        try {
-            block(emissions, tracker, settings, status, { vehicle, entry ->
-                counts =
-                    OwnerActiveRowCounts(vehicle.toLong(), entry.toLong())
-            })
-        } finally {
-            Unit
-        }
+        block(emissions, tracker, settings, status, { vehicle, entry ->
+            counts =
+                OwnerActiveRowCounts(vehicle.toLong(), entry.toLong())
+        })
     }
 }

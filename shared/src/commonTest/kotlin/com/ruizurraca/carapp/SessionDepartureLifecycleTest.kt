@@ -346,6 +346,7 @@ class SessionDepartureLifecycleTest {
                 listOf(AnalyticsEvent.AccountDeletionStarted, AnalyticsEvent.AccountDeletionCompleted),
                 tracker.events.filter {
                     it is AnalyticsEvent.AccountDeletionStarted ||
+                        it is AnalyticsEvent.AccountDeletionFailed ||
                         it is AnalyticsEvent.AccountDeletionCompleted
                 },
             )

@@ -17,7 +17,6 @@ import com.ruizurraca.carapp.shared.testing.testAppGraphDependencies
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -430,11 +429,12 @@ class SessionStateHolderTest {
 
             stateHolder.startAccountConversion(AuthProvider.GOOGLE)
 
-            // The list is filtered to the events this test owns: the graph also emits the
-            // SyncStatusChanged series, which is asserted by SharedAnalyticsCadenceTest.
+            // Filtered to the conversion family: the graph also emits the SyncStatusChanged series,
+            // which is asserted by SharedAnalyticsCadenceTest. The whole family is kept, so a
+            // spurious completed or failed conversion event still fails this test.
             assertEquals(
-                listOf(AnalyticsEvent.AccountConversionStarted),
-                tracker.events.filter { it is AnalyticsEvent.AccountConversionStarted },
+                listOf<AnalyticsEvent>(AnalyticsEvent.AccountConversionStarted),
+                tracker.events.conversionEvents(),
             )
             graph.close()
         }
@@ -468,10 +468,11 @@ class SessionStateHolderTest {
 
             // Filtered to the conversion family: the graph also emits the SyncStatusChanged series,
             // which is asserted by SharedAnalyticsCadenceTest, so a global `last()` would depend on
-            // the relative order of two independent flows.
+            // the relative order of two independent flows. The exact family sequence keeps the
+            // original guarantee that nothing follows the completion.
             assertEquals(
-                AnalyticsEvent.AccountConversionCompleted,
-                tracker.events.filterIsInstance<AnalyticsEvent.AccountConversionCompleted>().last(),
+                listOf(AnalyticsEvent.AccountConversionStarted, AnalyticsEvent.AccountConversionCompleted),
+                tracker.events.conversionEvents(),
             )
             graph.close()
         }
@@ -502,15 +503,25 @@ class SessionStateHolderTest {
             advanceUntilIdle()
             stateHolder.clearMessage()
 
+            // Filtered to the conversion family for the same reason as the two tests above.
             assertEquals(
-                AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
-                tracker.events
-                    .filterIsInstance<AnalyticsEvent.AccountConversionFailed>()
-                    .last(),
+                listOf(
+                    AnalyticsEvent.AccountConversionStarted,
+                    AnalyticsEvent.AccountConversionFailed(ConversionFailureReason.CANCELLED),
+                ),
+                tracker.events.conversionEvents(),
             )
             graph.close()
         }
 }
+
+/** The account-conversion family of `docs/CONTRACTS.md §20.9`, in emission order. */
+private fun List<AnalyticsEvent>.conversionEvents(): List<AnalyticsEvent> =
+    filter {
+        it is AnalyticsEvent.AccountConversionStarted ||
+            it is AnalyticsEvent.AccountConversionCompleted ||
+            it is AnalyticsEvent.AccountConversionFailed
+    }
 
 private fun anonymousSession(): AuthSession =
     AuthSession(
