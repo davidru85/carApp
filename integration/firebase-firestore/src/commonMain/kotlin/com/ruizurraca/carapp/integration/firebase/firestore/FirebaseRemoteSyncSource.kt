@@ -311,7 +311,8 @@ internal fun unsupportedProviderValue(typeName: String): Map<String, String> =
 /** The marker's type name for a provider map whose keys are not all strings. */
 internal const val NON_STRING_KEY_MAP: String = "MapWithNonStringKey"
 
-private const val UNKNOWN_PROVIDER_TYPE = "Unknown"
+/** The marker's type name when the platform cannot name the value's class. */
+internal const val UNKNOWN_PROVIDER_TYPE: String = "Unknown"
 
 internal sealed interface FirestoreValue
 

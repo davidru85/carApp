@@ -16,7 +16,9 @@ import platform.Foundation.NSString
  * native `FIRDocumentSnapshot`, whose `data()` bridges to a Kotlin `Map<Any?, Any?>` with provider
  * values still represented natively. Values are normalized to JSON-friendly Kotlin types and
  * timestamps to epoch milliseconds here; no product field is decoded or asserted, so `§9.5`
- * classification stays in `:core:sync`.
+ * classification stays in `:core:sync`. A value with no JSON form (`FIRGeoPoint`, `NSData`,
+ * `FIRDocumentReference`, a vector) becomes the `D-208` marker in its own position instead of failing
+ * the page. Map keys keep their existing string coercion, which never failed.
  */
 private const val MILLIS_PER_SECOND = 1_000L
 private const val MICROS_PER_SECOND = 1_000_000L
@@ -77,7 +79,7 @@ private fun Any?.toJsonFriendly(): Any? =
         }
 
         else -> {
-            throw IllegalArgumentException("Unsupported remote field type: ${this::class.simpleName}")
+            unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE)
         }
     }
 
