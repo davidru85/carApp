@@ -239,14 +239,24 @@ class SyncDatabaseAccess(
      * `FAILED_RETRYABLE` after a non-connectivity `lastErrorCode`, `PENDING` otherwise. The outbox row
      * is not modified, so the backoff and the poison budget of `§9.7` carry over unchanged.
      *
+     * The count is read **before** the transaction is opened, for the reason `purgeConfirmedTombstones`
+     * documents: every transaction begins with `BEGIN IMMEDIATE` and no `busy_timeout` is set, and this
+     * runs on every app start, so an unconditional reset would turn each start into a writing
+     * transaction that a concurrent writer could fail with `SQLITE_BUSY`. With nothing stale it only
+     * reads.
+     *
      * The two statements share one transaction, so a failure in the second rolls the first back.
      */
     suspend fun resetStaleSyncing() {
+        if (countStaleSyncingRows() == 0L) return
         database.transaction {
             queries.resetStaleSyncingVehicles()
             queries.resetStaleSyncingFuelEntries()
         }
     }
+
+    private suspend fun countStaleSyncingRows(): Long =
+        queries.countStaleSyncingVehicles().awaitAsOne() + queries.countStaleSyncingFuelEntries().awaitAsOne()
 
     /**
      * Deletes every locally purgeable tombstone in one transaction (`docs/CONTRACTS.md §8`).

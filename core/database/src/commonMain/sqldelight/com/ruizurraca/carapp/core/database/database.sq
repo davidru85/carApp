@@ -504,6 +504,15 @@ WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 -- no error, a connectivity code or (unreachably) no outbox row gives `PENDING`. The outbox row is not
 -- touched. The connectivity codes are `CONNECTIVITY_ERROR_CODES`, held to this SQL by
 -- `ConnectivityCodeParityTest`.
+-- The two counts gate the reset (`D-207` adopts the `D-194` count gate): they MUST stay predicate-identical
+-- to the reset statements' `WHERE`, so a start with nothing stale stays a pure read and never takes the
+-- SQLite write lock. `AndroidStaleSyncingResetWriteLockTest` and `IosStaleSyncingResetWriteLockTest` pin it.
+countStaleSyncingVehicles:
+SELECT COUNT(*) FROM vehicle WHERE syncState = 'SYNCING';
+
+countStaleSyncingFuelEntries:
+SELECT COUNT(*) FROM fuel_entry WHERE syncState = 'SYNCING';
+
 resetStaleSyncingVehicles:
 UPDATE vehicle
 SET syncState = CASE
