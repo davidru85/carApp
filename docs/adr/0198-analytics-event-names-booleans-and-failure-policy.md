@@ -4,6 +4,12 @@
 
 Accepted
 
+## Partial supersession — 2026-10-14
+
+`D-201` supersedes the original Boolean provider encoding with `0L`/`1L`. Domain flags,
+event names, enum names and the failure policy remain unchanged. The original premise below
+was invalid: accepting Boolean in GitLive does not establish support in the native Firebase API.
+
 ## Context
 
 `docs/CONTRACTS.md §16.1` fixes the events and their parameter *kinds* — "enum, boolean or
@@ -14,9 +20,9 @@ three, and the choices are observable in Firebase and in production behaviour.
 The provider behaviour was checked against the pinned dependency rather than assumed. GitLive
 `firebase-analytics` 2.6.0 on Android converts the parameter map into an `android.os.Bundle`,
 handling exactly `String`, `Int`, `Long`, `Double` and `Boolean` and dropping any other value type
-silently; on Apple it passes the map to `FIRAnalytics.logEventWithName`, which accepts the Swift
-number and boolean types. A boolean is therefore representable on both platforms without
-stringifying it.
+silently. The original review inferred Boolean support on both platforms from that conversion.
+The native APIs document only String, integer and floating-point parameters; that inference
+was corrected by `D-201`. The domain Boolean values remain representable through integer encoding.
 
 ## Options Considered
 
@@ -38,7 +44,8 @@ sink for the failure policy.
   `vehicle_count_bucket` and `entry_count_bucket`.
 - Enum parameters travel as the Kotlin enum's `name` (`GOOGLE`, `PENDING`, `NETWORK`), which
   `§20.9` already fixes as the canonical spelling.
-- `is_full_tank` and `had_notes` travel as booleans, matching `§20.9`'s wording.
+- Originally `is_full_tank` and `had_notes` travelled as booleans. `D-201` now requires
+  `false -> 0L` and `true -> 1L` at the provider boundary; domain flags remain Boolean.
 - A provider failure is caught, converted to the closed `AnalyticsProviderError` code
   (`ANALYTICS.PROVIDER_FAILED`) in `:core:analytics`, and handed to an injected sink. It never
   propagates, and `CancellationException` is rethrown rather than classified.
@@ -69,7 +76,7 @@ sink for the failure policy.
 
 - Adding, renaming or removing a leaf MUST update the mapping in the same change; the mapping's
   exhaustive `when` with no `else` makes the omission a compile error.
-- A parameter value MUST be an enum `name` or a `Boolean`. Adding another value type is a contract
+- Under `D-201`, a parameter value MUST be an enum `name` or a flag encoded as `0L`/`1L`. Adding another value type is a contract
   change, because it would need a new `§20.9` parameter kind.
 - The provider failure path MUST classify rather than rethrow, and MUST rethrow `CancellationException`.
 

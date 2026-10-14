@@ -453,7 +453,7 @@ where aggressive alerts require manual intervention (`D-66`).
 | Quality | ktlint, detekt, architecture checks, contract check, unit tests with coverage thresholds, backup and recovery tests, Firestore emulator tests. |
 | Development | Test-driven development (TDD) is compulsory for product code, per the rule below. |
 | CI | Build, tests, lint, Android, iOS simulator and shared framework verification on every PR, on a macOS runner from the first PR. |
-| Privacy | Analytics off by default, privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
+| Privacy | Analytics off by default; after opt-in, pseudonymous product and technical SDK measurement without advertising identifiers, IDFV, personalized ad signals or automatic screen reporting (`D-203`); privacy policy, store privacy labels, in-app account deletion, crash reporting redaction. |
 
 ### TDD rule
 
@@ -689,9 +689,12 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-194 | `E3-07` tombstone purge execution | The local purge is attempted once per app start and reads a count with the exact `§8` predicate before it opens its one transaction, so an app start with nothing to purge takes no write lock; "older than 90 days" is strict, a tombstone without `serverUpdatedAt` is never purged, and a failed attempt is reported and retried only by the next app start. | Accepted |
 | D-196 | Analytics emission ownership | `E3-09` owns the complete `docs/CONTRACTS.md §16.1` surface, including the emission call sites and the `setUserProperties` cadence, all inside `:shared` orchestration. | Accepted |
 | D-197 | Analytics count-bucket source | The two count buckets come from the owner's active non-deleted row counts read in `:core:database`, through read-only owner-scoped queries. | Accepted |
-| D-198 | Analytics event and parameter naming, and failure policy | `snake_case` names, boolean flags sent as booleans, and a provider failure classified into a closed code instead of propagating. | Accepted |
+| D-198 | Analytics event and parameter naming, and failure policy | `snake_case` names and a provider failure classified into a closed code instead of propagating; the original Boolean wire choice is partially superseded by `D-201` (`0L`/`1L`). | Accepted |
 | D-199 | Analytics tracker injection | `firebaseAppProviders` accepts the tracker and constructs the Firebase implementation as its default, so the binding is assertable without a Firebase runtime. | Accepted |
 | D-200 | Transitive `@grpc/grpc-js`, `brace-expansion` and `proxy-addr` advisory remediation | The Functions lockfile resolves the existing transitive `proxy-addr`, `@grpc/grpc-js` and `brace-expansion` to patched 2.0.8, 1.14.6 and 2.1.7. | Accepted |
+| D-201 | Analytics boolean wire encoding | Keep domain flags as Boolean and encode false/true as 0L/1L only at the Firebase boundary. | Accepted |
+| D-202 | Analytics sync-category source | Map the published SyncStatus directly to its analytics category; :core:sync alone classifies connectivity and cycle failures. | Accepted |
+| D-203 | Analytics without advertising identification | After Settings opt-in, allow product events and standard technical SDK events; disable AAID, IDFA, IDFV, personalized ad signals and automatic screen reporting. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

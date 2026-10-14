@@ -164,7 +164,11 @@ Requirements:
 ## Privacy
 
 - Analytics collection is disabled by default and requires an explicit opt-in.
-- Analytics events carry no odometer, volume, cost, notes, entity IDs or UID.
+- Application-defined analytics events carry no odometer, volume, cost, notes, entity IDs or UID.
+- After opt-in, standard technical Firebase SDK events and its app instance ID are accepted for
+  pseudonymous session measurement (`D-203`). AAID, IDFA, IDFV, personalized ad signals and automatic
+  screen reporting are disabled; Android advertising permissions are removed and iOS links the
+  no-ad-ID product. The app never sets an analytics user ID or links analytics to the Firebase UID.
 - Release logs never contain the Firebase UID, notes, exact odometer values or costs.
 - In-app account deletion is available and uses the `D-23` Firebase Admin server operation to delete remote data before the auth account. Mobile clients never receive a Firestore hard-delete permission.
 - App Check debug tokens are secrets. They MUST NOT be committed, printed by CI or embedded in a

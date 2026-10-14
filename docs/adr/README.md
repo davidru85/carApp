@@ -203,8 +203,11 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-194 | [ADR-0195](0195-execute-the-tombstone-purge-as-one-count-gated-attempt-per-app-start.md) | Execute the tombstone purge as one count-gated attempt per app start. | Accepted |
 | D-196 | [ADR-0196](0196-own-the-analytics-emission-surface-in-e3-09.md) | Own the full `§16.1` analytics surface, including emission and the `setUserProperties` cadence, inside `E3-09`. | Accepted |
 | D-197 | [ADR-0197](0197-compute-analytics-buckets-from-active-owner-rows.md) | Compute the analytics count buckets from the owner's active rows in `:core:database`. | Accepted |
-| D-198 | [ADR-0198](0198-analytics-event-names-booleans-and-failure-policy.md) | Fix `snake_case` analytics names, boolean flag typing and the classified non-propagating provider failure. | Accepted |
+| D-198 | [ADR-0198](0198-analytics-event-names-booleans-and-failure-policy.md) | Fix `snake_case` names and the classified non-propagating failure; `D-201` partially supersedes Boolean wire typing. | Accepted |
 | D-199 | [ADR-0199](0199-inject-the-analytics-tracker-into-firebase-app-providers.md) | Inject the analytics tracker into `firebaseAppProviders` with the Firebase implementation as its default. | Accepted |
 | D-200 | [ADR-0201](0201-resolve-grpc-brace-expansion-and-proxy-addr-advisories-within-existing-ranges.md) | Resolve the `@grpc/grpc-js`, `brace-expansion` and `proxy-addr` advisories within existing dependency ranges. | Accepted |
+| D-201 | [ADR-0202](0202-encode-analytics-boolean-flags-as-long-zero-or-one.md) | Keep domain flags as Boolean and encode false/true as 0L/1L only at the Firebase boundary. | Accepted |
+| D-202 | [ADR-0203](0203-use-the-published-sync-aggregate-for-analytics.md) | Map the published SyncStatus directly to its analytics category; :core:sync alone classifies connectivity and cycle failures. | Accepted |
+| D-203 | [ADR-0204](0204-collect-product-analytics-without-advertising-identification.md) | After Settings opt-in, allow product events and standard technical SDK events; disable AAID, IDFA, IDFV, personalized ad signals and automatic screen reporting. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

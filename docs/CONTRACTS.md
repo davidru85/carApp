@@ -1932,7 +1932,15 @@ interface AnalyticsTracker {
 
 `AnalyticsEvent` is a **closed sealed hierarchy** (§20): one leaf per allowed event, each carrying only enum, boolean or bucketed-integer parameters. No leaf may carry a free-text `String`. This makes the forbidden-payload rule enforceable by the type system rather than by review.
 
-Allowed events are exactly the leaves declared in §20.
+Allowed application-defined events are exactly the leaves declared in §20. After explicit
+Settings opt-in, standard technical events automatically produced by the Firebase SDK (such as
+session start and engagement) are also accepted (`D-203`); they are provider metadata and are not
+new `AnalyticsEvent` leaves. Automatic screen reporting MUST be disabled on both hosts.
+Advertising identifiers (AAID and IDFA), iOS IDFV collection and personalized ad signals MUST be
+disabled. Android advertising permissions MUST be removed from the merged manifest, and the iOS
+app MUST link the pinned SDK's `FirebaseAnalyticsWithoutAdIdSupport` product. The SDK app instance
+ID remains for session measurement: this is pseudonymous analytics, not fully anonymous data.
+The application MUST NOT set a provider user ID or link the app instance ID to the Firebase UID.
 
 Forbidden in any payload: exact odometer values, exact fuel volume, exact cost or price, notes, raw entity IDs, Firebase UID, auth tokens or credentials, raw sync payloads.
 
@@ -2067,7 +2075,8 @@ Optional checks:
     can reach the implementation without carrying the prefix. `§16.1` requires collection disabled
     at startup including on a fresh install, so the tracker's own default is asserted here and not
     only in a unit test, since the default is what a host that constructs it without arguments gets.
-38. The iOS app links the `FirebaseAnalytics` SwiftPM product. GitLive 2.6.0 does not supply Firebase
+38. The iOS app links exactly the `FirebaseAnalyticsWithoutAdIdSupport` SwiftPM product (`D-203`),
+    which still supplies the `FirebaseAnalytics` framework required by cinterop. GitLive 2.6.0 does not supply Firebase
     Apple dependencies transitively (`docs/adr/0076`), so the Kotlin/Native cinterop klib for
     Firebase Analytics resolves to `framework 'FirebaseAnalytics' not found` unless the app target
     links the product. The Kotlin build succeeds either way and the failure appears only in the
@@ -2079,6 +2088,12 @@ Optional checks:
     start, before any `AnalyticsTracker` exists, so the tracker's disabled default of assertion 37
     cannot cover a fresh install's first launch, and `§16.1` requires that a fresh install collect
     nothing before the opt-in.
+40. Both hosts disable automatic screen reporting and personalized ad signals; Android disables
+    advertising-ID collection and removes `com.google.android.gms.permission.AD_ID`,
+    `android.permission.ACCESS_ADSERVICES_AD_ID`, `android.permission.ACCESS_ADSERVICES_ATTRIBUTION`
+    and `android.permission.ACCESS_ADSERVICES_TOPICS`; iOS disables IDFV collection (`D-203`).
+    Assertion 38 enforces the no-IDFA SwiftPM product in both the source specification and the
+    generated Xcode project. Each privacy setting and permission-removal rule has a failing fixture.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -2757,11 +2772,11 @@ enum class CountBucket { ZERO, ONE, TWO_TO_FIVE, SIX_TO_TWENTY, MORE_THAN_TWENTY
 enum class AnalyticsProviderError(val code: String) { PROVIDER_FAILED("ANALYTICS.PROVIDER_FAILED") }
 ```
 
-The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
+The `SyncStatus -> SyncStatusCategory` mapping is a direct, total rename of the aggregate published by `:core:sync`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` (`D-202`). Only the engine applies `§9.9`: a connectivity-only cycle failure falls through to row-derived status (`Pending` with pending work, `Idle` with an empty outbox), while a non-connectivity cycle failure can publish `Failed` even with zero failed rows, using the representative retryable count of at least one. Analytics MUST NOT read row errors or reclassify the aggregate. Unit tests MUST assert every published shape; engine fixtures MUST cover connectivity with pending work, connectivity with an empty outbox and non-connectivity cycle failure with no failed rows.
 
 The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`. The `AuthError -> DeletionFailureReason` mapping is normative: `RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`. Unit tests MUST assert exhaustiveness of both mappings.
 
-No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content.
+No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content. They remain `Boolean` in the domain and are encoded only at the Firebase boundary as integer `Long` parameters: `false -> 0L`, `true -> 1L` (`D-201`). The parameter keys remain `is_full_tank` and `had_notes`.
 
 `CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
 
