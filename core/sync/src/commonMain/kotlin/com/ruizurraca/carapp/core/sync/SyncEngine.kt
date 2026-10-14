@@ -775,8 +775,10 @@ internal class DefaultSyncController(
      *
      * It runs inside the first executed cycle because cycles run one at a time, so no push of this
      * process can be in flight and no row this process marked can be reset. It runs before the offline
-     * and `LOCAL_OWNER` refusals, so a start without network still resets; `OwnerRecoveryGate` runs that
-     * first cycle whenever the owner resolves to a real identity. The latch is set before the attempt,
+     * and `LOCAL_OWNER` refusals, so a start without network still resets. Every launch begins a cycle:
+     * both hosts report the cold start through `SyncStateHolder.onForegroundReturn(null)`, which requests
+     * `AppForeground`, and an owner resolved after the graph is built adds `OwnerChanged`; whichever
+     * runs first carries the reset. The latch is set before the attempt,
      * so a failure is not retried in the same app start: like `TombstonePurge`, it is reported once as
      * a non-fatal `UnexpectedError`, and the cycle continues, because the stale rows are only cosmetic
      * while their outbox rows still drive the push.
