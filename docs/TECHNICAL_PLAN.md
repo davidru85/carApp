@@ -564,6 +564,8 @@ For entityType in [VEHICLE, FUEL_ENTRY]:
 - `(updatedAt, documentId)` provides a deterministic total order over the pull stream.
 - Pull overlap prevents silent cursor loss; `startAt(overlapSince)` includes every document at the first-page boundary. Under `D-174`, `startAfter` carries the provider's microsecond timestamp plus document ID and advances every cluster distinguishable at that cursor precision. Under `D-169`, a full page that cannot advance at the active cursor's precision fails closed with `SyncError.ConflictUnresolved`; the persisted cross-cycle anchor remains epoch milliseconds.
 - Tombstones are regular LWW documents.
+- A row a process death left `SYNCING` is restored at the next app start, by the first cycle and
+  before any push, to the state its outbox row implies (`docs/CONTRACTS.md §7`, `D-207`).
 
 ## 9. Backup and Recovery Tests
 
