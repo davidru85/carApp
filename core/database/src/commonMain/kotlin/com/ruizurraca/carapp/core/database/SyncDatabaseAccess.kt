@@ -230,8 +230,23 @@ class SyncDatabaseAccess(
         }
     }
 
-    /** `E3-21` / `D-207`: the startup reset of stale `SYNCING` rows. Not implemented yet. */
-    suspend fun resetStaleSyncing() = Unit
+    /**
+     * Resets every entity row a process death left `SYNCING` (`docs/CONTRACTS.md §7`, `D-207`).
+     *
+     * `SYNCING` is a push transient: the row is marked before the remote call and resolved by the
+     * acknowledgement or the failure. A process death in between leaves it marked with no attempt in
+     * flight. Each such row returns to the state its outbox row implies, with the `failPush` rule:
+     * `FAILED_RETRYABLE` after a non-connectivity `lastErrorCode`, `PENDING` otherwise. The outbox row
+     * is not modified, so the backoff and the poison budget of `§9.7` carry over unchanged.
+     *
+     * The two statements share one transaction, so a failure in the second rolls the first back.
+     */
+    suspend fun resetStaleSyncing() {
+        database.transaction {
+            queries.resetStaleSyncingVehicles()
+            queries.resetStaleSyncingFuelEntries()
+        }
+    }
 
     /**
      * Deletes every locally purgeable tombstone in one transaction (`docs/CONTRACTS.md §8`).

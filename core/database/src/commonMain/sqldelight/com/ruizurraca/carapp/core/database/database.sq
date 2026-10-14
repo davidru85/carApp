@@ -499,6 +499,37 @@ resetFailedFuelEntries:
 UPDATE fuel_entry SET syncState = 'PENDING'
 WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 
+-- `E3-21` / `D-207`: a row a process death left `SYNCING` returns to the state its outbox row implies,
+-- with the `failPush` rule. A non-null, non-connectivity `lastErrorCode` gives `FAILED_RETRYABLE`;
+-- no error, a connectivity code or (unreachably) no outbox row gives `PENDING`. The outbox row is not
+-- touched. The connectivity codes are `CONNECTIVITY_ERROR_CODES`, held to this SQL by
+-- `ConnectivityCodeParityTest`.
+resetStaleSyncingVehicles:
+UPDATE vehicle
+SET syncState = CASE
+    WHEN EXISTS (
+      SELECT 1 FROM outbox
+      WHERE outbox.entityType = 'VEHICLE' AND outbox.entityId = vehicle.id
+        AND outbox.lastErrorCode IS NOT NULL
+        AND outbox.lastErrorCode NOT IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+    ) THEN 'FAILED_RETRYABLE'
+    ELSE 'PENDING'
+  END
+WHERE syncState = 'SYNCING';
+
+resetStaleSyncingFuelEntries:
+UPDATE fuel_entry
+SET syncState = CASE
+    WHEN EXISTS (
+      SELECT 1 FROM outbox
+      WHERE outbox.entityType = 'FUEL_ENTRY' AND outbox.entityId = fuel_entry.id
+        AND outbox.lastErrorCode IS NOT NULL
+        AND outbox.lastErrorCode NOT IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+    ) THEN 'FAILED_RETRYABLE'
+    ELSE 'PENDING'
+  END
+WHERE syncState = 'SYNCING';
+
 -- The two count queries below MUST stay predicate-identical to their DELETE counterparts (`D-194`): the
 -- purge reads the count first and opens a transaction only when it is non-zero, so a drift would either
 -- take the writer for nothing or skip rows that are genuinely purgeable. `TombstonePurgeDatabaseAccessTest`
