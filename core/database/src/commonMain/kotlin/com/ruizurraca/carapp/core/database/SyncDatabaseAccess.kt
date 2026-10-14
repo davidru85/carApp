@@ -230,6 +230,9 @@ class SyncDatabaseAccess(
         }
     }
 
+    /** `E3-21` / `D-207`: the startup reset of stale `SYNCING` rows. Not implemented yet. */
+    suspend fun resetStaleSyncing() = Unit
+
     /**
      * Deletes every locally purgeable tombstone in one transaction (`docs/CONTRACTS.md §8`).
      *
