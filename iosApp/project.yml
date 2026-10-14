@@ -59,8 +59,9 @@ targets:
         product: FirebaseFunctions
       # E3-09: the GitLive firebase-analytics cinterop binds FIRAnalytics, so the static Shared
       # framework's FirebaseAnalytics references must be linked by the app target (D-65, ADR-0076).
+      # D-203 selects the pinned no-ad-ID product; FIRAnalytics remains the same framework.
       - package: Firebase
-        product: FirebaseAnalytics
+        product: FirebaseAnalyticsWithoutAdIdSupport
       - package: GoogleSignIn
         product: GoogleSignIn
     preBuildScripts:

@@ -38,6 +38,52 @@
 
 ## Entries
 
+### 2026-10-14 — Analytics measurement without advertising identification accepted
+
+- **Type:** decision
+- **Story / Decision:** `E3-09` / `D-203`
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** the owner selected 3B in [PR #84](https://github.com/davidru85/carApp/pull/84).
+  After Settings opt-in, product and technical SDK measurement remains; AAID, IDFA, IDFV,
+  personalized ad signals and automatic screen reporting are disabled. Android removes advertising
+  permissions; the pinned Apple SDK links `FirebaseAnalyticsWithoutAdIdSupport`.
+- **Why:** a closed custom event list does not suppress SDK events or identifiers. The app instance
+  ID remains for pseudonymous measurement; no Auth/analytics identity link is allowed.
+- **Documents touched:** ADR-0204 and four mirrors; CONTRACTS §16.1/§18; SECURITY; version matrix;
+  ADR-0066/0076; E3-09 handoff.
+- **Verification:** privacy RED committed/pushed before GREEN; sixteen targeted guard tests pass;
+  full local checks and compiled host artifact verification are recorded in the handoff.
+- **Follow-ups / risks:** owner review before merge; the existing Native provider-call coverage gap remains.
+
+### 2026-10-14 — Analytics category contract aligned with the sync engine
+
+- **Type:** decision
+- **Story / Decision:** `E3-09` / `D-202`
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** the owner selected 2A: §20.9 and mapper KDoc now specify a direct rename of the
+  published SyncStatus. Only the engine classifies connectivity and non-connectivity cycle failures.
+  No engine behavior or public API changed.
+- **Why:** the prior counted-row-only prose could not represent a non-connectivity cycle failure
+  with no failed rows, and asked a consumer without error context to classify the same aggregate again.
+- **Documents touched:** ADR-0203 and four mirrors; CONTRACTS §20.9; E3-09 handoff.
+- **Verification:** category tests and existing empty/pending connectivity and empty-outbox
+  non-connectivity engine fixtures pass with `--rerun-tasks`.
+- **Follow-ups / risks:** owner review before merge.
+
+### 2026-10-14 — Analytics Boolean wire encoding corrected
+
+- **Type:** decision
+- **Story / Decision:** `E3-09` / `D-201` (partially supersedes `D-198`)
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** the owner selected 1A: domain Boolean flags retain their types; the Firebase
+  boundary encodes false/true as 0L/1L. Event names, parameter keys and failure policy are unchanged.
+  This corrects the Boolean support premise in the 2026-09-29 E3-09 entry without rewriting history.
+- **Why:** Boolean accepted by GitLive conversion does not establish support in the native event API.
+- **Documents touched:** ADR-0202 and four mirrors; ADR-0198; CONTRACTS §20.9; E3-09 handoff.
+- **Verification:** RED `b7b1a157` pushed before GREEN `43ecd8d9`; all fifteen provider tests pass,
+  including all four flag pairs and exact Long values/types.
+- **Follow-ups / risks:** owner review before merge.
+
 ### 2026-10-13 — stopBilling function-error alerts traced to transient Cloud Run aborts
 
 - **Type:** incident

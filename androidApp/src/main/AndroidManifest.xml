@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       carApp MVP. No platform backup or settings-sync surface (docs/BACKLOG.md E0-01 AC#7,
@@ -7,6 +9,12 @@
       Google Play services / Android backup / iCloud is explicitly excluded).
     -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- D-203: product measurement has no advertising identification or attribution permissions. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove" />
 
     <application
         android:name=".CarAppApplication"
@@ -23,6 +31,17 @@
         -->
         <meta-data
             android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
+        <!-- D-203: after opt-in, retain technical SDK events without ad IDs or screen reporting. -->
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_automatic_screen_reporting_enabled"
             android:value="false" />
 
         <!--

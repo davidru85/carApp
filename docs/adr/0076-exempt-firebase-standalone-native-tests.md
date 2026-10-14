@@ -65,6 +65,10 @@ The current resolution is:
 
 Every KMP module outside the derived set continues to execute `iosSimulatorArm64Test`.
 
+The E3-09 app target links `FirebaseAnalyticsWithoutAdIdSupport` under `D-203`; it supplies the
+`FirebaseAnalytics` framework that GitLive cinterop requires without IDFA support. This product
+selection does not change the transitive exception or restore standalone Native provider coverage.
+
 ## Compensating Coverage and Its Gap
 
 XCUITest is a partial compensating control, not equivalent coverage. The current real iOS UI

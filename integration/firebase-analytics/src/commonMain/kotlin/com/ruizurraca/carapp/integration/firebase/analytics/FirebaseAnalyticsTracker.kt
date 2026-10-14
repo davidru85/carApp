@@ -117,8 +117,8 @@ class FirebaseAnalyticsTracker internal constructor(
                 ProviderEvent(
                     "fuel_entry_created",
                     mapOf(
-                        IS_FULL_TANK to if (isFullTank) 1L else 0L,
-                        HAD_NOTES to if (hadNotes) 1L else 0L,
+                        IS_FULL_TANK to isFullTank.toProviderFlag(),
+                        HAD_NOTES to hadNotes.toProviderFlag(),
                     ),
                 )
             }
@@ -160,6 +160,8 @@ class FirebaseAnalyticsTracker internal constructor(
                 )
             }
         }
+
+    private fun Boolean.toProviderFlag(): Long = if (this) 1L else 0L
 
     /**
      * `TooGenericExceptionCaught` is suppressed because the policy *is* to survive an arbitrary
