@@ -60,6 +60,10 @@ git worktree add .worktrees/carApp-<slug> -b <type>/<slug> origin/main
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.
 - **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** The owner is the only
   author this history records; agents commit on their behalf and never under a placeholder identity.
+- An owner prompt file, such as a review's corrective-action prompt, is never committed and never
+  listed in `.gitignore` or `.git/info/exclude`; only the owner deletes it, and while one is present
+  files are staged by explicit path. The canonical rule is
+  [owner prompt files](../AGENTS.md#owner-prompt-files).
 
 ### Commit identity
 

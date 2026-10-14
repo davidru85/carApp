@@ -38,6 +38,34 @@
 
 ## Entries
 
+### 2026-10-14 — Owner prompt files rule: never committed, never ignored, deleted only by the owner
+
+- **Type:** decision
+- **Story / Decision:** — (an operating rule of `AGENTS.md`, committed on the `E3-09` branch at the
+  owner's request)
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** `AGENTS.md` gains an `Owner Prompt Files` section. A prompt the owner asks an
+  agent to write for another agent, such as a review's corrective-action prompt, is temporary and
+  belongs to the owner: it MUST NOT be committed or staged, and MUST NOT be listed in `.gitignore`,
+  `.git/info/exclude` or any other ignore source. Only the owner deletes it, so an agent MUST NOT
+  delete, move, stash or clean it, the workspace cleanup duty does not apply to it, an agent that
+  executes one MUST NOT edit it, and while one is present files are staged by explicit path.
+  `docs/CONTRIBUTING.md` points to the section from Branches and Commits.
+- **Why:** the owner stated the rule on 2026-10-14, after the `PR84-E3-09-CORRECTIVE-ACTION-PROMPT.md`
+  review prompt had been appended to `.git/info/exclude`, following the local precedent of an earlier
+  `E3-04` review prompt. Hiding the file defeats its purpose: the owner wants it visible as untracked
+  until they have used and deleted it.
+- **Documents touched:** `AGENTS.md`, `docs/CONTRIBUTING.md`, `docs/handoffs/E3-09.md` (checkpoint),
+  this log.
+- **Verification:** `./gradlew ktlintCheck detekt architectureCheck contractCheck`; `git diff
+  --check`; no product code changed.
+- **Follow-ups / risks:** the rule is prose, like the device-lifecycle rule of 2026-09-25: an agent
+  that does not read `AGENTS.md` gets no warning. A machine check would need a fixed file-naming
+  convention and its own decision. No decision ID: this is a local working-tree policy that changes
+  no library, service, module boundary or product behaviour. A first draft was pushed on the branch
+  `chore/owner-prompt-files-rule` (`7bd5f6a6`) before the owner asked for the current branch; no pull
+  request uses it.
+
 ### 2026-10-14 — Project-local workspaces required and stale merge worktree removed
 
 - **Type:** correction

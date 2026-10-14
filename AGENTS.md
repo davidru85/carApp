@@ -100,6 +100,31 @@ If safe removal is blocked, the agent MUST record the exact path and blocking re
 handoff or project log, report it to the owner, and remove the directory as soon as the blocker is
 resolved. An external directory MUST NOT be left behind without that explicit record.
 
+## Owner Prompt Files
+
+The owner sometimes asks an agent for a prompt that the owner then hands to another agent, for
+example the corrective-action prompt that closes a pull request review, such as
+`PR84-E3-09-CORRECTIVE-ACTION-PROMPT.md`. When such a prompt is written to a file in the working
+tree, that file is an **owner prompt file**.
+
+An owner prompt file is temporary and belongs to the owner, who reads it, uses it and deletes it. It
+is not a repository artifact. Therefore:
+
+- It MUST NOT be committed or staged, on any branch.
+- It MUST NOT be listed in `.gitignore`, in `.git/info/exclude` or in any other ignore source,
+  including a global `core.excludesFile`. It stays visible in `git status` as untracked (`??`) on
+  purpose: the owner sees it until they delete it.
+- Only the owner deletes it. An agent MUST NOT delete, move, rename, stash or clean it:
+  `git stash --include-untracked`, `git stash --all` and `git clean` all remove an untracked file
+  from the working tree, so none of them may run in a way that reaches it. The cleanup duty of
+  §Workspace Location and Cleanup does not apply to an owner prompt file.
+- An agent that receives an owner prompt file to execute MUST NOT edit it.
+- While one is present, an agent stages files by explicit path only. `git add -A`, `git add --all`
+  and `git add .` stage untracked files and MUST NOT be used.
+- Its presence is expected: an untracked owner prompt file is neither a dirty working tree nor a
+  reason to stop. No repository artifact links to it, because it does not outlive the owner's use
+  of it.
+
 ## Repository State
 
 **This section describes what exists right now.** It is the fastest way for an incoming agent to
