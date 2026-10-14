@@ -115,9 +115,15 @@ private class SyncOnlyGraph(
 
     override fun vehicleListStateHolder(scope: CoroutineScope): Nothing = error("No holders in the fixture")
 
-    override fun vehicleFormStateHolder(scope: CoroutineScope, vehicleId: String?): Nothing = error("No holders in the fixture")
+    override fun vehicleFormStateHolder(
+        scope: CoroutineScope,
+        vehicleId: String?,
+    ): Nothing = error("No holders in the fixture")
 
-    override fun fuelEntryListStateHolder(scope: CoroutineScope, vehicleId: String): Nothing = error("No holders in the fixture")
+    override fun fuelEntryListStateHolder(
+        scope: CoroutineScope,
+        vehicleId: String,
+    ): Nothing = error("No holders in the fixture")
 
     override fun fuelEntryFormStateHolder(
         scope: CoroutineScope,

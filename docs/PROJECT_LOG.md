@@ -38,6 +38,24 @@
 
 ## Entries
 
+### 2026-10-14 — Graph-test sync wait made independent of StateFlow conflation
+
+- **Type:** decision
+- **Story / Decision:** `E3-09` / `D-204`
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** CI failed one Native vehicle-payload fixture; investigation proved a race in
+  `awaitSyncCycleSettled`. A status-only collector can miss Idle -> Syncing -> Idle while the remote
+  effect arrives. The test helper now reevaluates both conditions with bounded real polling and
+  checks persistence afterwards, without changing the engine, public API, assertions or deadline.
+- **Why:** restarting a failed check or increasing its timeout would leave the missed emission.
+  A bare yield poll also kept runCurrent busy while another fixture intentionally blocked pull;
+  a real scheduling pulse suspends the wait and lets the scheduler become idle.
+- **Documents touched:** ADR-0205 and four mirrors; E3-09 handoff.
+- **Verification:** deterministic RED committed/pushed before GREEN; all three helper regressions
+  and all seven vehicle-form tests pass on JVM and Native. Complete validation remains mandatory.
+- **Follow-ups / risks:** CI omitted the original assertion message and uploaded no report, so the
+  proven race is not presented as the recovered remote assertion. Owner review before merge.
+
 ### 2026-10-14 — Analytics measurement without advertising identification accepted
 
 - **Type:** decision

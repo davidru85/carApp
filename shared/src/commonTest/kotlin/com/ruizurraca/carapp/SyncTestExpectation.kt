@@ -1,10 +1,17 @@
 package com.ruizurraca.carapp
 
 import com.ruizurraca.carapp.core.common.SyncStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Keeps graph teardown behind the complete sync boundary used by shared integration tests.
+ * Remote completion and terminal status are reevaluated independently: StateFlow can conflate
+ * Idle -> Syncing -> Idle into no new emission (`D-204`). A real scheduling pulse suspends outside
+ * the virtual scheduler so runCurrent remains finite while a fixture intentionally blocks a cycle.
  * Persistence is checked after the terminal status because the controller publishes it only after
  * all cycle-owned database work finishes.
  */
@@ -13,8 +20,13 @@ internal suspend fun AppGraph.awaitSyncCycleSettled(
     expectedRemoteEffect: () -> Boolean,
     expectedPersistedState: suspend () -> Boolean = { true },
 ) {
-    syncController().status.awaitState(expectation) { status ->
-        expectedRemoteEffect() && status !is SyncStatus.Syncing
+    awaitCondition(
+        expectation = expectation,
+        attempt = { withContext(Dispatchers.Default) { delay(SYNC_EXPECTATION_POLL_INTERVAL) } },
+    ) {
+        expectedRemoteEffect() && syncController().status.value !is SyncStatus.Syncing
     }
     assertTrue(expectedPersistedState(), "Expected persisted state was not observed after $expectation")
 }
+
+private val SYNC_EXPECTATION_POLL_INTERVAL = 1.milliseconds
