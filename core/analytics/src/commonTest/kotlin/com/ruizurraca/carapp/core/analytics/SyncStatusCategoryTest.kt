@@ -6,24 +6,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The `SyncStatus -> SyncStatusCategory` collapse of `docs/CONTRACTS.md §20.9`.
+ * The direct `SyncStatus -> SyncStatusCategory` mapping of `§20.9` (`D-202`).
  *
- * `§20.9` defines it as the one-to-one rename **qualified by the connectivity rule of `§9.9`**:
- * `Failed -> FAILED` only when at least one counted row has a `lastErrorCode` outside
- * `CONNECTIVITY_ERROR_CODES`; otherwise `Failed -> PENDING`.
- *
- * That qualification is applied where the aggregate is derived, once, by `:core:sync`
- * (`§9.9` "cycle-level failures" and `SyncEngine.refreshStatus`): the retryable and poisoned counts
- * the engine publishes already exclude connectivity-class rows, and a connectivity-only cycle
- * failure falls through to the row-derived buckets rather than publishing `Failed`. A published
- * `SyncStatus.Failed` therefore *entails* a non-connectivity condition, which is why the collapse
- * here is total over `SyncStatus` and has no connectivity parameter: re-deriving it from a second
- * observation would be the second implementation of the aggregate that `§14`, `D-192` and `D-193`
- * forbid.
- *
- * The entailment itself is pinned at the layer that produces it:
- * `DefaultSyncControllerTest.connectivityFailureKeepsRowStateAndAggregateInAgreement` asserts that an
- * offline failure publishes `Pending`, never `Failed`.
+ * The engine alone classifies connectivity and cycle failures. Existing fixtures in
+ * `DefaultSyncControllerThirteenthReviewTest` cover connectivity with an empty outbox (Idle),
+ * connectivity with pending work (Pending), and non-connectivity pull failure with zero failed rows
+ * (Failed with a representative retryable count of one). This consumer preserves the published
+ * shape without reclassifying it from row errors or a second connectivity observation.
  */
 class SyncStatusCategoryTest {
     @Test
