@@ -44,8 +44,11 @@ The selected option is **A**.
 - Production Kotlin emits and matches the wire value only through `EntityType`; no production source
   outside its declaration carries the `"VEHICLE"` or `"FUEL_ENTRY"` literal.
 - The SQL keeps its literals. A `build-logic` parity test parses the enum from its declaration and
-  fails when a `CHECK (entityType IN (...))` list in `schema.sq` or any `.sqm` migration differs from
-  the enum entries, or when an `entityType` literal in `database.sq` is not an enum entry.
+  fails when a `CHECK (entityType IN (...))` list in `schema.sq` differs from the enum entries, when a
+  list in a `.sqm` migration names a value outside them (a historical migration may predate a later
+  entry), or when an `entityType` literal in `database.sq` is not an enum entry.
+- This supersedes the `D-110` clause that kept explicit contract tokens in production code; the
+  `D-110` test-only anchor stays.
 - The column type and the schema version are unchanged.
 
 ## Consequences
@@ -53,7 +56,7 @@ The selected option is **A**.
 ### Positive
 
 - One Kotlin source for the wire value; a new entity type cannot be added to the enum without the
-  build pointing at every SQL list that must change.
+  build failing on the `schema.sq` `CHECK` lists that must change with it.
 - No migration and no change to the Swift-facing surface.
 
 ### Negative
@@ -70,9 +73,9 @@ The selected option is **A**.
 
 ## Verification
 
-- `EntityTypeWireValueParityTest` in `build-logic` checks the enum against every `CHECK` list and
-  every `entityType` literal in the SQL, with failing fixtures for a divergent list and a foreign
-  literal.
+- `EntityTypeWireValueParityTest` in `build-logic` checks that the enum is declared once, in
+  `:core:common`, and checks it against every `CHECK` list and every `entityType` literal in the SQL,
+  with failing fixtures for a divergent list and a foreign literal.
 - The same test rejects an `"VEHICLE"` or `"FUEL_ENTRY"` string literal in any production Kotlin
   source outside the enum declaration, with a failing fixture.
 - `entityTypeEnumNamesMatchTheOutboxWireValues` keeps passing.

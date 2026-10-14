@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.core.sync
 
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncStatus
@@ -10,13 +11,6 @@ import com.ruizurraca.carapp.core.model.OwnerId
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
 import kotlin.time.Instant
-
-enum class EntityType(
-    val collection: String,
-) {
-    VEHICLE("vehicles"),
-    FUEL_ENTRY("fuelEntries"),
-}
 
 data class EntitySnapshot(
     val entityType: EntityType,

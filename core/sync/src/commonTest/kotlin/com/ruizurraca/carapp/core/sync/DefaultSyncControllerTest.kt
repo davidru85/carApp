@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.CONNECTIVITY_ERROR_CODES
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.MAX_RETRYABLE_ATTEMPTS
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext

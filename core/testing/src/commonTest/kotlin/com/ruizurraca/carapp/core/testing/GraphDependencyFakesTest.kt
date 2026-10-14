@@ -3,9 +3,9 @@ package com.ruizurraca.carapp.core.testing
 import com.ruizurraca.carapp.core.auth.AuthSession
 import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.model.OwnerId
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage
 import kotlinx.coroutines.test.runTest

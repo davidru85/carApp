@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.core.sync
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.RemoteError

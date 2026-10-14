@@ -7,6 +7,7 @@ import com.ruizurraca.carapp.core.auth.OrphanCleanupClient
 import com.ruizurraca.carapp.core.auth.OrphanCleanupTicket
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.database.AccountConversionDatabaseAccess
@@ -18,7 +19,6 @@ import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemoteDocument

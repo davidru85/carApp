@@ -2330,6 +2330,12 @@ interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 enum class SyncTrigger { OwnerChanged, AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
+@HiddenFromObjC
+enum class EntityType(val collection: String) {
+    VEHICLE("vehicles"),
+    FUEL_ENTRY("fuelEntries"),
+}
+
 @ObjCName(name = "SharedSyncSyncStatus", swiftName = "SyncSyncStatus", exact = true)
 sealed class SyncStatus {
     data object Idle : SyncStatus()
@@ -2626,12 +2632,12 @@ data class ConsumptionReport(
 
 ### 20.7 Sync types — `:core:sync`
 
-```kotlin
-enum class EntityType(val collection: String) {
-    VEHICLE("vehicles"),
-    FUEL_ENTRY("fuelEntries"),
-}
+`EntityType` is declared in §20.3 (`:core:common`, `D-206`): an entry's `name` is the outbox
+`entityType` wire value of §8 and the only Kotlin source of it, so that `:core:database` can use it
+without the forbidden `:core:database -> :core:sync` edge. The SQL repeats the values as literals,
+checked against the enum by `EntityTypeWireValueParityTest`.
 
+```kotlin
 data class EntitySnapshot(
     val entityType: EntityType,
     val entityId: EntityId,
