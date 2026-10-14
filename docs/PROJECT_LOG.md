@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-10-14 — E3-20 pull-boundary totality for unsupported provider values (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-20` / `D-208`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** a provider value with no JSON form no longer fails the whole pull page. The
+  Firestore integration writes the reserved marker `{UNSUPPORTED_PROVIDER_VALUE_KEY: <type name>}` in
+  its place and keeps every other field verbatim, and `:core:sync` quarantines every marked document
+  as `MalformedPayload` after the unsupported-`schemaVersion` check, so the cursor advances.
+  `docs/CONTRACTS.md §9.5` and `§20.7` define it.
+- **Why:** one such document stalled the pull permanently, which `§9.5` totality forbids; the owner
+  chose the marker (`D-208`, ADR-0209) over omitting the field or changing `RemotePage`.
+- **Documents touched:** `docs/CONTRACTS.md §9.5`, `§20.7`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0209;
+  `docs/BACKLOG.md`; `docs/handoffs/E3-20.md`.
+- **Verification:** two RED / GREEN cycles plus the platform actuals under the provider-integration
+  TDD exemption; an end-to-end test through the real engine and database; the complete `AGENTS.md`
+  command passes.
+- **Follow-ups / risks:** none new. This completes bundle `E3-B1`.
+
 ### 2026-10-14 — E3-18 manual retry covers parked connectivity rows (bundle E3-B1)
 
 - **Type:** story
