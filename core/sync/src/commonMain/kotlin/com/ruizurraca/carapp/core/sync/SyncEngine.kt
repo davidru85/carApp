@@ -345,6 +345,10 @@ internal class DefaultSyncController(
     @Volatile
     private var activeCycleRequests = emptyList<SyncRequest>()
 
+    // `D-207`: set before the first executed cycle attempts the stale-`SYNCING` reset. Only the single
+    // running cycle reads or writes it, and cycles are handed over under `cycleMutex`.
+    private var staleSyncingResetAttempted = false
+
     private var unexpectedFailure = false
     private var cycleFailure = false
     private var lastCycleError: AppError? = null
@@ -722,6 +726,7 @@ internal class DefaultSyncController(
     ): Outcome<Unit, AppError> {
         cycleFailure = false
         lastCycleError = null
+        resetStaleSyncingOnce(cycleId)
         // A refused cycle is a successful outcome with no error: offline or `LOCAL_OWNER` is not a
         // failure the caller must surface (`§9.1`, `§9.2`).
         if (!connectivity.isOnline.value) {
@@ -762,6 +767,32 @@ internal class DefaultSyncController(
             pull(ownerId, cycleId)
         }
         return if (cycleFailure) Outcome.Err(lastCycleError ?: SyncError.ConflictUnresolved) else Outcome.Ok(Unit)
+    }
+
+    /**
+     * Restores the entity rows a process death left `SYNCING` (`§7`, `D-207`), at most once per
+     * controller, which is once per app start.
+     *
+     * It runs inside the first executed cycle because cycles run one at a time, so no push of this
+     * process can be in flight and no row this process marked can be reset. It runs before the offline
+     * and `LOCAL_OWNER` refusals, so a start without network still resets; `OwnerRecoveryGate` runs that
+     * first cycle whenever the owner resolves to a real identity. The latch is set before the attempt,
+     * so a failure is not retried in the same app start: like `TombstonePurge`, it is reported once as
+     * a non-fatal `UnexpectedError`, and the cycle continues, because the stale rows are only cosmetic
+     * while their outbox rows still drive the push.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun resetStaleSyncingOnce(cycleId: CycleId) {
+        if (staleSyncingResetAttempted) return
+        staleSyncingResetAttempted = true
+        try {
+            staleSyncingReset()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Throwable) {
+            val error = UnexpectedError(":core:sync", failure::class.simpleName ?: "Throwable")
+            onPoisoned(error, mapOf("code" to error.code, "cycleId" to cycleId.value))
+        }
     }
 
     private suspend fun push(
