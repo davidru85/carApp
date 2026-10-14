@@ -627,6 +627,8 @@ The classification MUST be total: every field read on the pull-validation path, 
 
 The integration transports product fields without decoding or asserting them (`D-170`). Only the document id and the ordering `updatedAt` timestamp are strongly read; the provider exposes that timestamp through `orderingUpdatedAtMicros()` at microsecond precision, and a document whose ordering timestamp is missing or unusable at that precision fails the page as `RemoteError.InvalidArgument`, because the pull stream cannot be ordered without it. Every other field is carried into `rawJson` verbatim, including a missing or mistyped product field, so `:core:sync` can classify it.
 
+The integration's conversion of provider values is total (`D-208`). A provider value with no JSON form — a geopoint, a blob, a document reference, a vector, or a map whose keys are not all strings — MUST NOT fail the page. The integration writes, in that value's own position, the reserved marker object `{ UNSUPPORTED_PROVIDER_VALUE_KEY: "<provider value type name>" }` (§20.7), naming only the value's class and never its content, and keeps every other field verbatim; it still classifies nothing. `:core:sync` quarantines every document whose raw JSON contains the marker key at any depth as `MalformedPayload`, after the unsupported-`schemaVersion` check, so a document of an unsupported version stays `UnsupportedSchemaVersion`. The stored quarantine `rawJson` carries the marker in place of the unrepresentable value. The missing or unusable ordering timestamp above is therefore the only page-level failure the conversion produces.
+
 For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
 ### 9.6 Conflict resolution
@@ -2646,6 +2648,8 @@ without the forbidden `:core:database -> :core:sync` edge. The SQL repeats the v
 checked against the enum by `EntityTypeWireValueParityTest`.
 
 ```kotlin
+const val UNSUPPORTED_PROVIDER_VALUE_KEY: String = "__unsupportedProviderValue"   // §9.5, D-208
+
 data class EntitySnapshot(
     val entityType: EntityType,
     val entityId: EntityId,
