@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-10-14 — E3-09 review correction round 2: analytics failure containment and evidence hardening
+
+- **Type:** correction
+- **Story / Decision:** `E3-09` / —
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** a bucket count that cannot be read is now dropped inside `AnalyticsEmissions`
+  instead of propagating into the graph-scope opt-in collector or the committed write path; contract
+  assertion 39 now ignores XML comments and requires one declaration per host, like assertion 40.
+  The cadence fixture reads the real count accessor across vehicle and fuel-entry creates and
+  deletes, the narrowed conversion and deletion analytics assertions are strict again, and two test
+  documentation defects were corrected.
+- **Why:** `D-10` and ADR-0198 make metrics best-effort, so an analytics read must not end the
+  opt-in gate, throw from a committed write or skip the `§9.8` trigger and the `§11.2`
+  re-evaluation; the acceptance criterion requires the buckets to come from the owner's active rows.
+- **Documents touched:** `docs/handoffs/E3-09.md`; no normative document changed.
+- **Verification:** RED `b366795f` / GREEN `4f955309` and RED `3e7ffdea` / GREEN
+  `c931dc13`, each pushed separately; the complete `AGENTS.md` command and the provider-free run
+  pass.
+- **Follow-ups / risks:** PR #84 also carries commit `d5a6f045`, a path-only relocation of every
+  story handoff that rewrites path references inside past entries of this log; it is disclosed for the
+  owner's gated review. No new decision ID.
+
 ### 2026-10-14 — Owner prompt files rule: never committed, never ignored, deleted only by the owner
 
 - **Type:** decision
