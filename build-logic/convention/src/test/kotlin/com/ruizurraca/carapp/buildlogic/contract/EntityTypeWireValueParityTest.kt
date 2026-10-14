@@ -79,6 +79,48 @@ class EntityTypeWireValueParityTest {
         assertEquals(setOf("TRIP"), queryLiterals(mutated) - REFERENCE_ENTRIES)
     }
 
+    @Test
+    fun noProductionKotlinSourceRepeatsAWireValueLiteral() {
+        val entries = enumEntries()
+
+        val offenders =
+            productionKotlinSources()
+                .filter { (path, _) -> path != ENTITY_TYPE_PATH }
+                .flatMap { (path, text) -> wireValueLiteralLines(text, entries).map { line -> "$path:$line" } }
+
+        assertEquals(
+            emptyList(),
+            offenders,
+            "Production Kotlin MUST take the entityType wire value from EntityType (D-206), not from a string literal.",
+        )
+    }
+
+    @Test
+    fun aProductionWireValueLiteralIsRejected() {
+        // Failing fixture: a payload writer spelling the token, beside the comment and enum forms the
+        // guard must accept.
+        val source =
+            """
+            |package fixture
+            |
+            |val payload = mapOf("entityType" to "FUEL_ENTRY")
+            |// "VEHICLE" in a comment is not code
+            |val name = EntityType.VEHICLE.name
+            """.trimMargin()
+
+        assertEquals(listOf(3), wireValueLiteralLines(source, REFERENCE_ENTRIES))
+    }
+
+    private fun wireValueLiteralLines(
+        source: String,
+        entries: Set<String>,
+    ): List<Int> =
+        source.lines().mapIndexedNotNull { index, line ->
+            val trimmed = line.trim()
+            val code = if (trimmed.startsWith("*") || trimmed.startsWith("/*")) "" else line.substringBefore("//")
+            if (entries.any { entry -> "\"$entry\"" in code }) index + 1 else null
+        }
+
     private fun read(path: String): String = File(repositoryRoot, path).readText()
 
     private fun enumEntries(): Set<String> {
