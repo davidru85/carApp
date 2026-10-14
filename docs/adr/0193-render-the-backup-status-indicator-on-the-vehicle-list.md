@@ -93,7 +93,7 @@ retry affordance, the mapped retry failure under its own `backup_status_error` t
 vehicle list's `vehicle_error`, and the absence of that failure beside a non-`Failed` status. `SyncStateHolderRetryTest`
 covers the manual-retry outcome in both interleavings the aggregate allows: a retry that resolves
 after the status has left `Failed` publishes no message, and an older retry that fails after a newer
-one succeeded does not overwrite it. Evidence is in `docs/handoff-E3-05.md`.
+one succeeded does not overwrite it. Evidence is in `docs/handoffs/E3-05.md`.
 
 ## References
 

@@ -53,4 +53,4 @@ The two prose paragraphs in `§20.9` were moved below the fence.
 
 - `docs/DECISION_BOARD.md` (`D-29`)
 - `docs/CONTRACTS.md §18`, `§20`, `§20.9`
-- `docs/handoff-E0-05.md`
+- `docs/handoffs/E0-05.md`

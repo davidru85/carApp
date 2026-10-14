@@ -87,4 +87,4 @@ than restarts. Only when the whole ordering completes does `phase` advance to `R
 - `docs/SPECIFICATION.md §3.2`, `§7 F-4`
 - `docs/CONTRACTS.md §11.3`, `§16`, `§20.2`
 - `docs/TECHNICAL_PLAN.md §2`, `§5`
-- `docs/handoff-E2-04.md`
+- `docs/handoffs/E2-04.md`

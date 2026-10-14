@@ -54,6 +54,13 @@ class SessionStateHolder internal constructor(
     private var operationJob: Job? = null
     private var reminderJob: Job? = null
     private var awaitingRestoredSession = false
+
+    // `E3-09` / `docs/CONTRACTS.md §16.1`: one `OnboardingStarted` and one `OnboardingCompleted` per
+    // holder. The holder is the process's session orchestrator, so "once per holder" is "once per app
+    // run" for a device whose first screen is the welcome screen, and it is the only place the
+    // welcome-to-signed-in transition is observed without a host doing the observing.
+    private var onboardingStartedEmitted = false
+    private var onboardingCompletedEmitted = false
     private var activePermanentProvider: AuthProvider? = null
     private var activeSignInKind: SignInKind? = null
     private var pendingCollision: PendingCollision? = null
@@ -86,6 +93,7 @@ class SessionStateHolder internal constructor(
                     // has just failed, which §11.5 forbids.
                     if (departureFlow.ownsState()) return@collect
                     val next = authState.toSessionUiState()
+                    trackOnboarding(next.phase)
                     // A published index belongs to the anonymous UID that produced it. It survives
                     // a re-emission of that same identity and is dropped by every other transition,
                     // including a switch to a different anonymous identity (§11.3).
@@ -116,10 +124,37 @@ class SessionStateHolder internal constructor(
             null
         }
 
+    /**
+     * `E3-09` / `docs/CONTRACTS.md §16.1`: the onboarding pair, once per holder.
+     *
+     * `OnboardingStarted` fires exactly once, at the first `SIGNED_OUT` phase the auth collector
+     * observes: that phase is the welcome screen of F-1, where onboarding begins. `UNKNOWN` is not:
+     * it is the waiting state every launch passes through before the provider answers (§11.1),
+     * including the launch of a returning user whose session is then restored, and that launch is not
+     * an onboarding.
+     *
+     * `OnboardingCompleted` fires once, on the first transition after `OnboardingStarted` into a
+     * session: `LOCAL`, `ANONYMOUS` or `PERMANENT`. `LOCAL` is published by [startAnonymousSignIn]
+     * itself rather than by the auth collector, so that path reports it explicitly. `DELETING` is a
+     * departure and never completes onboarding.
+     */
+    private fun trackOnboarding(phase: SessionPhase) {
+        val tracker = analyticsTracker ?: return
+        if (!onboardingStartedEmitted && !onboardingCompletedEmitted && phase == SessionPhase.SIGNED_OUT) {
+            onboardingStartedEmitted = true
+            tracker.track(AnalyticsEvent.OnboardingStarted)
+        }
+        if (onboardingStartedEmitted && !onboardingCompletedEmitted && phase in SIGNED_IN_PHASES) {
+            onboardingCompletedEmitted = true
+            tracker.track(AnalyticsEvent.OnboardingCompleted)
+        }
+    }
+
     fun startAnonymousSignIn() {
         if (closed) return
         val operationScope = scope ?: return
         val client = authClient ?: return
+        analyticsTracker?.track(AnalyticsEvent.AnonymousSignInSelected)
         operationJob?.cancel()
         activePermanentProvider = null
         activeSignInKind = null
@@ -138,6 +173,9 @@ class SessionStateHolder internal constructor(
                             // That choice is the signal returning connectivity retries on, and it is
                             // the only one a device with no rows yet can offer (`D-124`).
                             onLocalStartAccepted()
+                            // `LOCAL` is published here, not by the auth collector, so the onboarding
+                            // pair is completed here too (`E3-09`, `docs/CONTRACTS.md §16.1`).
+                            trackOnboarding(SessionPhase.LOCAL)
                             SessionUiState(
                                 phase = SessionPhase.LOCAL,
                                 providers = emptyList(),
@@ -167,6 +205,7 @@ class SessionStateHolder internal constructor(
             publishError(AuthError.ProviderUnavailable)
             return
         }
+        analyticsTracker?.track(AnalyticsEvent.PermanentSignInSelected(provider))
         clearPendingCollision()
         activePermanentProvider = provider
         activeSignInKind = SignInKind.PERMANENT
@@ -662,6 +701,9 @@ private fun AuthSession.toSessionUiState(): SessionUiState =
         pendingSyncCount = null,
         pendingDepartureRetry = null,
     )
+
+/** The three phases that mean onboarding succeeded and a session exists. */
+private val SIGNED_IN_PHASES = setOf(SessionPhase.LOCAL, SessionPhase.ANONYMOUS, SessionPhase.PERMANENT)
 
 private const val LOCAL_AUTH_MESSAGE_ID = 1L
 private const val AUTH_ERROR_MESSAGE_ID = 2L

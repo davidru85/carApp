@@ -121,4 +121,4 @@ Option B MUST therefore be understood to include this obligation, and `E3-17` MU
 - GitHub issue #42
 - `docs/CONTRACTS.md §11.6`, `§14`, `§20.3.2`
 - `docs/adr/0090-*` (D-89 handle ownership), ADR-0172 / D-171
-- `docs/handoff-E1-12.md`, `docs/handoff-E3-03.md`
+- `docs/handoffs/E1-12.md`, `docs/handoffs/E3-03.md`

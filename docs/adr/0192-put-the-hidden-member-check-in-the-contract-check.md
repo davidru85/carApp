@@ -97,7 +97,7 @@ braced block, which is why a contract-only class reaches the reverse-direction p
 of passing unexamined. Three further fixtures pin that a public hidden property with no explicit type,
 plain or delegated, is reported under its own name rather than skipped or attributed to the next
 parsed member, and a passing fixture keeps a `private` untyped hidden property outside the rule.
-Evidence is in `docs/handoff-E3-05.md`.
+Evidence is in `docs/handoffs/E3-05.md`.
 
 ## References
 
@@ -105,4 +105,4 @@ Evidence is in `docs/handoff-E3-05.md`.
 - `docs/CONTRACTS.md §11.6`, `§18` assertion 36 and `§20.10`
 - `docs/adr/0181-guard-both-app-graph-surfaces.md`
 - `docs/adr/0186-enforce-the-ios-trigger-ban-as-a-source-rule.md`
-- `docs/handoff-E3-08.md`
+- `docs/handoffs/E3-08.md`

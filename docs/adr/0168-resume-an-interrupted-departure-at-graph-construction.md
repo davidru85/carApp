@@ -66,4 +66,4 @@ removed and the owner keeps both account and data.
 - `docs/CONTRACTS.md §11.5`, `§20.10`
 - `docs/TECHNICAL_PLAN.md §2`
 - `docs/adr/0152-store-the-conversion-marker-in-normalized-tables.md`
-- `docs/handoff-E2-05.md`
+- `docs/handoffs/E2-05.md`

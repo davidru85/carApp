@@ -18,6 +18,7 @@ The MVP is intentionally limited to **fuel expenses**: users can create vehicles
           testAndroidHostTest iosSimulatorArm64Test \
           -x :integration:firebase-auth:iosSimulatorArm64Test \
           -x :integration:firebase-firestore:iosSimulatorArm64Test \
+          -x :integration:firebase-analytics:iosSimulatorArm64Test \
           -x :wiring:firebase:iosSimulatorArm64Test \
           -x :composition:ios:iosSimulatorArm64Test
 ```

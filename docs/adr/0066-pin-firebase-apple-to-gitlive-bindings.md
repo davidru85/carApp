@@ -39,7 +39,9 @@ evaluated together rather than allowing the SDK pin and test topology to drift i
 ## Consequences
 
 - The Xcode Swift package dependency uses an exact 11.8.0 requirement.
-- The iOS application links only the Firebase products required by the E0-07 path.
+- The iOS application links only products required by accepted stories. E3-09 selects
+  `FirebaseAnalyticsWithoutAdIdSupport` within the same pin (`D-203`), supplying FIRAnalytics
+  without IDFA support.
 - The older Apple SDK is explicit migration debt, not an accidental transitive version.
 - Android remains governed independently by the Firebase BOM, but any GitLive upgrade still
   requires revalidating both platforms.

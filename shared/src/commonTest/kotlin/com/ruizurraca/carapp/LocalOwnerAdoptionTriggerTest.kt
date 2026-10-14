@@ -273,7 +273,9 @@ class LocalOwnerAdoptionTriggerTest {
 
     private companion object {
         const val VEHICLE_ID = "vehicle-1"
-        val AWAIT_TIMEOUT = 10.seconds
+
+        // See LocalOwnerAdoptionTest: the outer deadline stays above the inner one.
+        val AWAIT_TIMEOUT = GRAPH_STATE_EXPECTATION_TIMEOUT + 15.seconds
     }
 }
 

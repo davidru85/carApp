@@ -77,4 +77,4 @@ yields nothing to confirm.
 - `docs/CONTRACTS.md §11.1`, `§11.3`, `§17`
 - `docs/TECHNICAL_PLAN.md §2`
 - `docs/adr/0152-store-the-conversion-marker-in-normalized-tables.md`
-- `docs/handoff-E2-04.md`
+- `docs/handoffs/E2-04.md`

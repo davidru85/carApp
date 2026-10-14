@@ -16,9 +16,14 @@ object ArchitectureChecker {
     private const val D81_HELPER_FILE =
         "src/commonMain/kotlin/com/ruizurraca/carapp/core/common/PlatformAbstractions.kt"
 
-    /** Planned provider modules whose owning stories have not started yet. */
+    /**
+     * Planned provider modules whose owning stories have not started yet.
+     *
+     * `:integration:firebase-analytics` left this set when `E3-09` created it. What remains is
+     * `:integration:firebase-crashlytics`, which `E4-04` owns.
+     */
     val NOT_YET_INTRODUCED_MODULES =
-        setOf(":integration:firebase-analytics", ":integration:firebase-crashlytics")
+        setOf(":integration:firebase-crashlytics")
 
     private val PLATFORM_IMPORT_PREFIXES = listOf(
         "android.", "androidx.", "platform.Foundation", "platform.UIKit", "platform.darwin",

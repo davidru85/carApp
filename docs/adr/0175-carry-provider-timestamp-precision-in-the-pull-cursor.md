@@ -103,4 +103,4 @@ cross-cycle truncation cannot skip a document.
 - `docs/SPECIFICATION.md §8`, `§12`
 - `docs/TECHNICAL_PLAN.md §2`, `§9`
 - `docs/BACKLOG.md` (`E3-03`)
-- ADR-0170 / D-169, `docs/handoff-E3-03.md`
+- ADR-0170 / D-169, `docs/handoffs/E3-03.md`

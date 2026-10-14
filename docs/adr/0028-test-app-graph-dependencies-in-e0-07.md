@@ -49,4 +49,4 @@ Three of the backlog's own rules therefore could not all hold.
 
 - `docs/DECISION_BOARD.md` (`D-27`)
 - `docs/CONTRACTS.md §11.6`
-- `docs/handoff-E0-03.md`
+- `docs/handoffs/E0-03.md`

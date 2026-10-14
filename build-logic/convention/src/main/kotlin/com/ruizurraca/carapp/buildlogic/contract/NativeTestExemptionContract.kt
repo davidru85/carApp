@@ -5,6 +5,9 @@ internal object NativeTestExemptionContract {
     private val rootModules = setOf(
         ":integration:firebase-auth",
         ":integration:firebase-firestore",
+        // `E3-09`: the GitLive firebase-analytics klib binds FIRAnalytics through a cinterop, so its
+        // standalone Native test binary needs the same Apple-side linking the other two roots do.
+        ":integration:firebase-analytics",
     )
 
     fun deriveExpectedModules(

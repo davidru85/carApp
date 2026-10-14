@@ -95,7 +95,7 @@ the same cycle. The Android library that cadence needs is pinned by `D-184`.
 `AppGraphTriggerAdapterTest` mounts the real graph with a `RecordingSyncTriggerAdapter` and asserts
 that `Periodic` was requested exactly once. `:build-logic:convention:test` and the Android host
 compile task prove the injection path and the worker. The Android instrumented suite on the API 36
-emulator exercises the worker's controller request; its evidence is in `docs/handoff-E3-04.md`.
+emulator exercises the worker's controller request; its evidence is in `docs/handoffs/E3-04.md`.
 
 ## References
 

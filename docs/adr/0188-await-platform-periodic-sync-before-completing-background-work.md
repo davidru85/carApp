@@ -105,7 +105,7 @@ already accepted coroutine stack, with no `work-testing` dependency. Source fixt
 that helper and no production code calls `requestPeriodicSync()` any more, and that iOS calls
 `sync(SyncTrigger.Periodic)`, installs `expirationHandler` before starting the job, and completes the
 task only through the idempotent gate. The exact commands and their results are in
-`docs/handoff-E3-04.md`.
+`docs/handoffs/E3-04.md`.
 
 ## References
 

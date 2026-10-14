@@ -64,4 +64,4 @@ operation control state, not owner data, in the same sense as `local_sequence`.
 - `docs/CONTRACTS.md §11.5`, `§16`
 - `docs/TECHNICAL_PLAN.md §2`, `§6`
 - `docs/adr/0152-store-the-conversion-marker-in-normalized-tables.md`
-- `docs/handoff-E2-05.md`
+- `docs/handoffs/E2-05.md`

@@ -89,7 +89,7 @@ consumes its state holders and does **not** contain `graph.close()`. `IosComposi
 asserts the real connectivity observer and the scheduling adapter are constructed by the graph owner
 on both hosts. `:androidApp:testDebugUnitTest` and the API 36 instrumented suite
 (`:androidApp:connectedDebugAndroidTest`) exercise the UI path and the reset entry point. Evidence is
-in `docs/handoff-E3-04.md`.
+in `docs/handoffs/E3-04.md`.
 
 ## References
 

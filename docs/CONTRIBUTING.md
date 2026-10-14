@@ -42,10 +42,12 @@ it only for a genuine recovery, with `CARAPP_ALLOW_DIRECT_PUSH=1`.
 
 **If more than one agent shares a clone, work in a `git worktree`.** Branch checkouts are global to a
 clone, so a concurrent agent switching branches moves the ground under everyone else. A worktree
-gives each agent its own checkout of its own branch:
+gives each agent its own checkout of its own branch. From the project root, use the ignored
+`.worktrees/` directory and follow the canonical
+[workspace location and cleanup rules](../AGENTS.md#workspace-location-and-cleanup):
 
 ```bash
-git worktree add ../carApp-<slug> -b <type>/<slug> origin/main
+git worktree add .worktrees/carApp-<slug> -b <type>/<slug> origin/main
 ```
 
 ## Branches and Commits
@@ -58,6 +60,10 @@ git worktree add ../carApp-<slug> -b <type>/<slug> origin/main
 - One story per pull request. A PR touching more than 40 files, or more than two modules outside its story's scope, should be split.
 - **Every commit MUST be authored by `David Ruiz <davidru85@gmail.com>`.** The owner is the only
   author this history records; agents commit on their behalf and never under a placeholder identity.
+- An owner prompt file, such as a review's corrective-action prompt, is never committed and never
+  listed in `.gitignore` or `.git/info/exclude`; only the owner deletes it, and while one is present
+  files are staged by explicit path. The canonical rule is
+  [owner prompt files](../AGENTS.md#owner-prompt-files).
 
 ### Commit identity
 
@@ -106,6 +112,7 @@ costs seconds instead of a round trip:
           testAndroidHostTest iosSimulatorArm64Test \
           -x :integration:firebase-auth:iosSimulatorArm64Test \
           -x :integration:firebase-firestore:iosSimulatorArm64Test \
+          -x :integration:firebase-analytics:iosSimulatorArm64Test \
           -x :wiring:firebase:iosSimulatorArm64Test \
           -x :composition:ios:iosSimulatorArm64Test
 ```

@@ -92,4 +92,4 @@ because every step limit stays below that ceiling.
 - `docs/BACKLOG.md` (`E1-18`, Option B)
 - `docs/adr/0176-fix-the-silent-shared-test-stall-inside-e3-03.md` (`D-175`)
 - `docs/adr/0177-size-the-ci-job-hang-guard-above-the-slowest-healthy-run.md` (`D-176`)
-- `docs/handoff-E3-12.md` (the deadlock diagnosis, thread stacks and measured rates)
+- `docs/handoffs/E3-12.md` (the deadlock diagnosis, thread stacks and measured rates)

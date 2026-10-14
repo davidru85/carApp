@@ -49,6 +49,7 @@ class ContractCheck(
             dependencyGraph = nativeTestDependencyGraph,
             nativeTestProjects = nativeTestDependencyGraph.keys,
         ),
+        *AnalyticsIntegrationContract(repoRoot).validate().toTypedArray(),
         reportProseInCodeFences(),
     )
 

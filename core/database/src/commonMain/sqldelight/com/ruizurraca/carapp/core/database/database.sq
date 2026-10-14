@@ -126,6 +126,17 @@ countRowsOwnedBy:
 SELECT (SELECT COUNT(*) FROM vehicle WHERE ownerId = :ownerId)
      + (SELECT COUNT(*) FROM fuel_entry WHERE ownerId = :ownerId);
 
+-- `E3-09` (`D-197`): the analytics count buckets describe the list the owner can see, so they count
+-- active rows only. A tombstone is a deletion the owner already made and MUST NOT be counted; use
+-- countRowsOwnedBy when the question is ownership rather than visibility.
+countActiveVehiclesByOwner:
+SELECT COUNT(*) FROM vehicle
+WHERE ownerId = :ownerId AND deleted = 0;
+
+countActiveFuelEntriesByOwner:
+SELECT COUNT(*) FROM fuel_entry
+WHERE ownerId = :ownerId AND deleted = 0;
+
 selectOutboxByEntity:
 SELECT *
 FROM outbox

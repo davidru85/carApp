@@ -10,10 +10,12 @@ class NativeTestExemptionContractTest {
     private val dependencyGraph = mapOf(
         ":integration:firebase-auth" to emptySet(),
         ":integration:firebase-firestore" to emptySet(),
+        ":integration:firebase-analytics" to emptySet(),
         ":wiring:firebase" to
             setOf(
                 ":integration:firebase-auth",
                 ":integration:firebase-firestore",
+                ":integration:firebase-analytics",
             ),
         ":composition:ios" to setOf(":wiring:firebase"),
         ":shared" to emptySet(),
@@ -25,6 +27,7 @@ class NativeTestExemptionContractTest {
         assertEquals(
             setOf(
                 ":composition:ios",
+                ":integration:firebase-analytics",
                 ":integration:firebase-auth",
                 ":integration:firebase-firestore",
                 ":wiring:firebase",

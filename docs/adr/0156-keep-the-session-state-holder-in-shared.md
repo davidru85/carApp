@@ -72,4 +72,4 @@ in place.
 - `docs/CONTRACTS.md §11.5`, `§20.10`
 - `docs/TECHNICAL_PLAN.md §4`
 - `docs/adr/0086-own-vehicle-presentation-in-feature-module.md`
-- `docs/handoff-E2-05.md`
+- `docs/handoffs/E2-05.md`

@@ -114,7 +114,7 @@ is recorded rather than silently carried.
 ## References
 
 - `docs/BACKLOG.md` (`E3-03`, `E1-14`)
-- `docs/handoff-E3-03.md`
+- `docs/handoffs/E3-03.md`
 - `docs/PROJECT_LOG.md` (2026-09-16 entry)
 - `.github/workflows/ci.yml` (`shared-tests`, `provider-decoupling`)
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/FlowExpectation.kt`

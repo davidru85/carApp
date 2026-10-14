@@ -398,4 +398,7 @@ private suspend fun AppDatabase.outboxRowCount(entityId: String): Int =
     databaseQueries.selectOutboxByEntity(entityType = "VEHICLE", entityId = entityId).awaitAsList().size
 
 // Awaiting an effect that a missing behaviour never produces must fail fast, not hang the suite.
-private val AWAIT_TIMEOUT = 10.seconds
+// Derived from the shared expectation budget: the outer `runTest` deadline must stay
+// above the inner real-time deadline, or a slow runner reports a framework timeout with no
+// diagnosis instead of the named expectation that did not hold.
+private val AWAIT_TIMEOUT = GRAPH_STATE_EXPECTATION_TIMEOUT + 15.seconds

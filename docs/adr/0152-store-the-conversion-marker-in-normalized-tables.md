@@ -83,4 +83,4 @@ repeats at most one already-completed step and never skips one.
 - `docs/SPECIFICATION.md §7 F-4`, `§12`
 - `docs/CONTRACTS.md §11.3`, `§16`
 - `docs/TECHNICAL_PLAN.md §2`, `§6`
-- `docs/handoff-E2-04.md`
+- `docs/handoffs/E2-04.md`

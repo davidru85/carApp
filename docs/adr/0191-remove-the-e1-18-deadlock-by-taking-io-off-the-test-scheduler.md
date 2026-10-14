@@ -131,5 +131,5 @@ publishes directly.
 
 - `docs/BACKLOG.md` (`E1-18`)
 - `docs/adr/0190` (`D-189`, the superseded temporary measure)
-- `docs/handoff-E1-14.md` (the confinement decision this supersedes)
-- `docs/handoff-E3-12.md` (the diagnosis, the two captured stacks and the measured rates)
+- `docs/handoffs/E1-14.md` (the confinement decision this supersedes)
+- `docs/handoffs/E3-12.md` (the diagnosis, the two captured stacks and the measured rates)

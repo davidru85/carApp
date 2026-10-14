@@ -35,7 +35,7 @@ constructs `LocalOwnerAdoption(dependencies, databaseHandle.database)` without `
 the only failure injection lives in `LocalOwnerAdoptionFailureTest`, and that class never calls
 `buildAppGraph`. The hazard is therefore **latent, not live**: one future test that injects a failing
 adoption into a graph, or one future production re-arming loop on `graphScope`, makes every later
-test in that task non-terminating. An earlier note in `docs/handoff-E3-03.md` attributed the observed
+test in that task non-terminating. An earlier note in `docs/handoffs/E3-03.md` attributed the observed
 stall to the first of those three tests; that attribution was wrong and is withdrawn there.
 
 ## Options Considered
@@ -95,6 +95,6 @@ already paid.
 ## References
 
 - `docs/DECISION_BOARD.md` (decision ID `D-177`)
-- `docs/handoff-E3-03.md` (rounds 17-19, including the withdrawn attribution)
+- `docs/handoffs/E3-03.md` (rounds 17-19, including the withdrawn attribution)
 - `docs/adr/0176-fix-the-silent-shared-test-stall-inside-e3-03.md` (`D-175`)
 - `shared/src/commonTest/kotlin/com/ruizurraca/carapp/GraphTestDependencies.kt`

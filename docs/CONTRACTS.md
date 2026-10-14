@@ -1932,15 +1932,23 @@ interface AnalyticsTracker {
 
 `AnalyticsEvent` is a **closed sealed hierarchy** (§20): one leaf per allowed event, each carrying only enum, boolean or bucketed-integer parameters. No leaf may carry a free-text `String`. This makes the forbidden-payload rule enforceable by the type system rather than by review.
 
-Allowed events are exactly the leaves declared in §20.
+Allowed application-defined events are exactly the leaves declared in §20. After explicit
+Settings opt-in, standard technical events automatically produced by the Firebase SDK (such as
+session start and engagement) are also accepted (`D-203`); they are provider metadata and are not
+new `AnalyticsEvent` leaves. Automatic screen reporting MUST be disabled on both hosts.
+Advertising identifiers (AAID and IDFA), iOS IDFV collection and personalized ad signals MUST be
+disabled. Android advertising permissions MUST be removed from the merged manifest, and the iOS
+app MUST link the pinned SDK's `FirebaseAnalyticsWithoutAdIdSupport` product. The SDK app instance
+ID remains for session measurement: this is pseudonymous analytics, not fully anonymous data.
+The application MUST NOT set a provider user ID or link the app instance ID to the Firebase UID.
 
 Forbidden in any payload: exact odometer values, exact fuel volume, exact cost or price, notes, raw entity IDs, Firebase UID, auth tokens or credentials, raw sync payloads.
 
-Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered.
+Collection is **disabled by default**. It is enabled only after the user opts in from Settings. While disabled, `track` and `setUserProperties` are no-ops and nothing is buffered. The provider SDK initialises at process start, before any `AnalyticsTracker` exists, so each host also disables collection in its platform configuration — the `firebase_analytics_collection_enabled` manifest `meta-data` set to `false` on Android and the `FIREBASE_ANALYTICS_COLLECTION_ENABLED` `Info.plist` key set to `false` on iOS — and only the tracker's `setEnabled(true)` after the opt-in turns collection on (`§18` assertion 39).
 
-`setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete, from the presentation layer. It MUST NOT be called from domain or data. Buckets are computed from the current list size. An `E3-09` fixture MUST assert the call cadence.
+`setUserProperties` is called once on analytics opt-in, and thereafter on every successful vehicle or fuel-entry create/delete; a successful update changes no count and MUST NOT call it. The calls are made by `:shared` application-level orchestration (`D-196`): the opt-in call by the opt-in gate, and the post-write calls by the `:shared` decorators that wrap the committed repository write. It MUST NOT be called from domain or data code. Buckets are computed from the owner's active (non-deleted) vehicle and fuel-entry counts, read through read-only owner-scoped queries in `:core:database` (`D-197`). An `E3-09` fixture MUST assert the call cadence.
 
-Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events. A fixture MUST assert failure events are emitted from presentation, not domain or data.
+Analytics calls are FORBIDDEN in domain logic and data persistence logic. Shared presentation or application-level orchestration may track product events after a use case returns `Ok` **or** `Err`, provided the event payload carries no user data. Success and failure events are both permitted; the closed `AnalyticsEvent` hierarchy is the sole source of allowed events. A fixture MUST assert failure events are emitted from presentation, not domain or data. The `VehicleCreated` and `FuelEntryCreated` events are emitted by the same `:shared` decorators once the repository write has returned `Ok` (`D-196`); that is application-level orchestration, not domain or data persistence logic.
 
 ## 17. Logging and Privacy
 
@@ -1985,12 +1993,12 @@ D-31 and D-84 define the exact CI check names. Required checks:
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
-module whose Native test binary transitively links `:integration:firebase-auth` or
-`:integration:firebase-firestore` qualifies. CI compares that derived set with the explicit task
-exclusions and MUST fail in both directions. The current resolution is
-`:integration:firebase-auth`, `:integration:firebase-firestore`, `:wiring:firebase` and
-`:composition:ios`; this is observed output, not a permanent allowlist, and changes when the graph
-changes.
+module whose Native test binary transitively links `:integration:firebase-auth`,
+`:integration:firebase-firestore` or `:integration:firebase-analytics` qualifies. CI compares that
+derived set with the explicit task exclusions and MUST fail in both directions. The current
+resolution is `:integration:firebase-auth`, `:integration:firebase-firestore`,
+`:integration:firebase-analytics`, `:wiring:firebase` and `:composition:ios`; this is observed
+output, not a permanent allowlist, and changes when the graph changes.
 
 Optional checks:
 
@@ -2059,6 +2067,33 @@ Optional checks:
     Objective-C header cannot see a hidden member at all, and assertions 34 and 35 compare only the
     two `AppGraph` blocks, so no other assertion can observe this drift; `E3-05` added this one after
     `E3-08` declared the two members that exist by hand and recorded the gap as a deferral (`D-191`).
+
+37. The Firebase Analytics implementation is named only by `:wiring:firebase` and defaults
+    collection to disabled. `§11.6` and `D-179` make `:wiring:firebase` the sole construction site;
+    the architecture checker enforces that over the `:integration:*` package prefix, and this
+    assertion covers the public class name as well, because a re-export or a fully-qualified name
+    can reach the implementation without carrying the prefix. `§16.1` requires collection disabled
+    at startup including on a fresh install, so the tracker's own default is asserted here and not
+    only in a unit test, since the default is what a host that constructs it without arguments gets.
+38. The iOS app links exactly the `FirebaseAnalyticsWithoutAdIdSupport` SwiftPM product (`D-203`),
+    which still supplies the `FirebaseAnalytics` framework required by cinterop. GitLive 2.6.0 does not supply Firebase
+    Apple dependencies transitively (`docs/adr/0076`), so the Kotlin/Native cinterop klib for
+    Firebase Analytics resolves to `framework 'FirebaseAnalytics' not found` unless the app target
+    links the product. The Kotlin build succeeds either way and the failure appears only in the
+    Xcode link step, so nothing else in the repository can observe this coupling.
+39. Both hosts disable Firebase Analytics collection in their platform configuration:
+    `androidApp/src/main/AndroidManifest.xml` declares the `firebase_analytics_collection_enabled`
+    `meta-data` with the value `false`, and `iosApp/Info.plist` declares
+    `FIREBASE_ANALYTICS_COLLECTION_ENABLED` as `false`. The provider SDK initialises at process
+    start, before any `AnalyticsTracker` exists, so the tracker's disabled default of assertion 37
+    cannot cover a fresh install's first launch, and `§16.1` requires that a fresh install collect
+    nothing before the opt-in.
+40. Both hosts disable automatic screen reporting and personalized ad signals; Android disables
+    advertising-ID collection and removes `com.google.android.gms.permission.AD_ID`,
+    `android.permission.ACCESS_ADSERVICES_AD_ID`, `android.permission.ACCESS_ADSERVICES_ATTRIBUTION`
+    and `android.permission.ACCESS_ADSERVICES_TOPICS`; iOS disables IDFV collection (`D-203`).
+    Assertion 38 enforces the no-IDFA SwiftPM product in both the source specification and the
+    generated Xcode project. Each privacy setting and permission-removal rule has a failing fixture.
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
@@ -2733,15 +2768,19 @@ data class AnalyticsUserProperties(
 )
 
 enum class CountBucket { ZERO, ONE, TWO_TO_FIVE, SIX_TO_TWENTY, MORE_THAN_TWENTY }
+
+enum class AnalyticsProviderError(val code: String) { PROVIDER_FAILED("ANALYTICS.PROVIDER_FAILED") }
 ```
 
-The `SyncStatus -> SyncStatusCategory` mapping uses the same connectivity-code rule as `§9.9`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` only when at least one counted row has `lastErrorCode` not in `CONNECTIVITY_ERROR_CODES` (`§9.7`); otherwise `Failed -> PENDING`. A unit test MUST assert the mapping under all combinations, including a `Failed` whose every counted row has a connectivity `lastErrorCode` mapping to `PENDING`.
+The `SyncStatus -> SyncStatusCategory` mapping is a direct, total rename of the aggregate published by `:core:sync`: `Idle -> IDLE`, `Syncing -> SYNCING`, `Pending -> PENDING`, and `Failed -> FAILED` (`D-202`). Only the engine applies `§9.9`: a connectivity-only cycle failure falls through to row-derived status (`Pending` with pending work, `Idle` with an empty outbox), while a non-connectivity cycle failure can publish `Failed` even with zero failed rows, using the representative retryable count of at least one. Analytics MUST NOT read row errors or reclassify the aggregate. Unit tests MUST assert every published shape; engine fixtures MUST cover connectivity with pending work, connectivity with an empty outbox and non-connectivity cycle failure with no failed rows.
 
 The `AuthError -> ConversionFailureReason` mapping is normative: `Cancelled -> CANCELLED`, `CredentialAlreadyInUse -> CREDENTIAL_IN_USE`, `NetworkUnavailable -> NETWORK`, `UidWouldChange -> UID_WOULD_CHANGE`, everything else -> `UNKNOWN`. The `AuthError -> DeletionFailureReason` mapping is normative: `RequiresRecentLogin -> REQUIRES_RECENT_LOGIN`, `AccountDeletionRemoteFailed -> REMOTE_FAILED`, `NetworkUnavailable -> NETWORK`, everything else -> `UNKNOWN`. Unit tests MUST assert exhaustiveness of both mappings.
 
-No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content.
+No leaf carries a free-text `String`. Adding one is a contract violation. The leaves are fixed; renaming or splitting a leaf requires a contract change. `FuelEntryCreated.isFullTank` and `FuelEntryCreated.hadNotes` are bucket-level booleans and never carry exact values or note content. They remain `Boolean` in the domain and are encoded only at the Firebase boundary as integer `Long` parameters: `false -> 0L`, `true -> 1L` (`D-201`). The parameter keys remain `is_full_tank` and `had_notes`.
 
 `CountBucket` bounds are exact: `ZERO == 0`, `ONE == 1`, `TWO_TO_FIVE == 2..5`, `SIX_TO_TWENTY == 6..20`, and `MORE_THAN_TWENTY >= 21`.
+
+`AnalyticsProviderError` classifies a provider failure inside an `AnalyticsTracker` implementation (`D-198`). It is not an `AppError` leaf, because the three `AnalyticsTracker` entry points have no error channel: an implementation rethrows `CancellationException`, catches any other provider failure and reports only the stable code to an injected sink, never the provider's exception text (`§17`).
 
 ### 20.10 Shared surface — `:shared`, feature presentation modules and `:core:common`, exported by `:composition:ios`
 

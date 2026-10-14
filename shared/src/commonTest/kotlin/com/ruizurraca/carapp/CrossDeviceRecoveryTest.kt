@@ -90,7 +90,7 @@ class CrossDeviceRecoveryTest {
      * the platform-specific halves of the path - the native sign-in and the GitLive bindings on each
      * host - are outside a `commonTest`. A Fuel Entry and its Vehicle written by one graph are both
      * restored, still attached to each other, by a clean graph signing into the same permanent
-     * identity. `docs/handoff-E3-12.md` records criterion 2 under its "same shared path" clause.
+     * identity. `docs/handoffs/E3-12.md` records criterion 2 under its "same shared path" clause.
      */
     @Test
     fun aFuelEntryAndItsVehicleAreRestoredTogetherOnACleanDevice() =

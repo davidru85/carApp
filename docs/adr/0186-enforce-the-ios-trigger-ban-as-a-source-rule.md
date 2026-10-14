@@ -94,7 +94,7 @@ ban could be evaded by renaming a local.
 `SwiftTriggerSurfaceContractTest` holds the seven fixtures and runs on `:build-logic:convention:test`,
 which is one of the required CI checks. The repository-wide direction is asserted against the real
 `composition/ios/src/iosMain` and `iosApp` trees, so a real violation fails the build rather than
-being caught in review. Evidence is in `docs/handoff-E3-04.md`.
+being caught in review. Evidence is in `docs/handoffs/E3-04.md`.
 
 ## References
 

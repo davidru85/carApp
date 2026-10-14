@@ -140,7 +140,7 @@ struct OnboardingTapPosition: Equatable {
 /// exceeded a 120-second cap on a rate-limited runner. 180 seconds is the observed successful worst
 /// case plus a large margin. It is a pragmatic bound, not a guarantee: the real Firebase anonymous
 /// sign-in remains in the path, which is why the Debug-only seam is recommended to the owner in
-/// `docs/handoff-E1-17.md`.
+/// `docs/handoffs/E1-17.md`.
 enum OnboardingWaitBudget {
     static let absoluteLimit: TimeInterval = 180
 

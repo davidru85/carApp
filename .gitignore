@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Project-local Git worktrees
+/.worktrees/
+
 # IntelliJ / Android Studio
 .idea/
 *.iml

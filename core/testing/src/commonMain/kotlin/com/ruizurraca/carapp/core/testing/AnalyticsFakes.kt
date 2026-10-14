@@ -31,9 +31,17 @@ class RecordingAnalyticsTracker(
     private var enabled = initiallyEnabled
     private val recordedEvents = mutableListOf<AnalyticsEvent>()
     private val recordedProperties = mutableListOf<AnalyticsUserProperties>()
+    private val recordedEnableCommands = mutableListOf<Boolean>()
 
     val events: List<AnalyticsEvent> get() = recordedEvents.toList()
     val userProperties: List<AnalyticsUserProperties> get() = recordedProperties.toList()
+
+    /**
+     * Every `setEnabled` the caller issued, in order. It is the only way to observe the opt-in
+     * *transition* rather than the resulting state: a `false` followed by a `false` leaves
+     * [isEnabled] indistinguishable from one `false`.
+     */
+    val enableCommands: List<Boolean> get() = recordedEnableCommands.toList()
     val isEnabled: Boolean get() = enabled
 
     override fun track(event: AnalyticsEvent) {
@@ -46,10 +54,12 @@ class RecordingAnalyticsTracker(
 
     override fun setEnabled(enabled: Boolean) {
         this.enabled = enabled
+        recordedEnableCommands += enabled
     }
 
     fun clear() {
         recordedEvents.clear()
         recordedProperties.clear()
+        recordedEnableCommands.clear()
     }
 }
