@@ -2419,3 +2419,57 @@ class DefaultSyncControllerStaleSyncingResetTest {
             )
         }
 }
+
+/**
+ * `E3-20` / `D-208`: a pulled document carrying the unsupported-provider-value marker is quarantined as
+ * `MalformedPayload` and the cursor advances; a document of an unsupported `schemaVersion` keeps that
+ * classification even when it also carries the marker, because a future schema may legitimately use a
+ * provider type this client cannot represent.
+ */
+class DefaultSyncControllerUnsupportedProviderValueTest {
+    @Test
+    fun aDocumentCarryingTheMarkerIsQuarantinedAsMalformedPayload() =
+        runTest {
+            val fixture = fixture()
+            val marked = markedVehicle(schemaVersion = 1)
+            fixture.remote.pullHandler = { type, _ -> if (type == EntityType.VEHICLE) page(marked) else page() }
+
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            val quarantine = fixture.persistence.quarantine.single()
+            assertEquals(QuarantineReason.MalformedPayload, quarantine.reason)
+            assertEquals(marked.rawJson, quarantine.rawJson, "the marker is stored in place of the value")
+            assertFalse(fixture.persistence.vehicleIds.contains("vehicle-1"))
+            assertEquals(
+                "vehicle-1",
+                fixture.persistence.cursors
+                    .getValue(EntityType.VEHICLE)
+                    .lastDocumentId
+                    ?.value,
+            )
+        }
+
+    @Test
+    fun anUnsupportedSchemaVersionKeepsPrecedenceOverTheMarker() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullHandler = { type, _ ->
+                if (type == EntityType.VEHICLE) page(markedVehicle(schemaVersion = 2)) else page()
+            }
+
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(
+                QuarantineReason.UnsupportedSchemaVersion,
+                fixture.persistence.quarantine
+                    .single()
+                    .reason,
+            )
+        }
+
+    private fun markedVehicle(schemaVersion: Int): RemoteDocument {
+        val document = remoteVehicle("vehicle-1", 1_000, schemaVersion = schemaVersion)
+        val marker = "{\"$UNSUPPORTED_PROVIDER_VALUE_KEY\":\"GeoPoint\"}"
+        return document.copy(rawJson = document.rawJson.replace("\"brand\":null", "\"brand\":$marker"))
+    }
+}
