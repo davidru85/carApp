@@ -1,6 +1,5 @@
-package com.ruizurraca.carapp.core.sync
+package com.ruizurraca.carapp.core.common
 
-import com.ruizurraca.carapp.core.common.EntityType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
