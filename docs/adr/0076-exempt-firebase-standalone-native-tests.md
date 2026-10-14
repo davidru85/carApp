@@ -59,7 +59,7 @@ The current resolution is:
 |--------|------------------|-----------------------|
 | `:integration:firebase-auth` | Root Firebase integration module. | Its common unit tests run on Android host but not as a standalone Native binary. |
 | `:integration:firebase-firestore` | Root Firebase integration module. | Its common unit tests run on Android host but not as a standalone Native binary; Firestore read and write paths have no Native-side automated iOS coverage. |
-| `:integration:firebase-analytics` | Root Firebase integration module, added by `E3-09`. | Its common unit tests run on Android host but not as a standalone Native binary; the Firebase Analytics provider calls have no Native-side automated iOS coverage. |
+| `:integration:firebase-analytics` | Root Firebase integration module, added by `E3-09`. | Its common unit tests run on Android host but not as a standalone Native binary; enabled event logging and user-property writes have no Native-side automated iOS coverage; app construction reaches the disabled collection setter. |
 | `:wiring:firebase` | Transitively depends on all three roots. | Its provider-assembly unit tests run on Android host but not as a standalone Native binary. |
 | `:composition:ios` | Transitively depends on `:wiring:firebase`. | No coverage is lost today because it has no test sources; only Gradle's empty test binary is suppressed. If the module gains tests, that is a larger loss and triggers an explicit coverage review. |
 
@@ -77,14 +77,16 @@ acceptance exercises:
 - `createSwiftAppGraph` in `:composition:ios`;
 - concrete provider construction in `:wiring:firebase`;
 - Firebase Core, App Check, Auth and Firestore initialization in the signed application;
+- Firebase Analytics tracker construction, which commands the Native SDK collection setter off;
 - anonymous Firebase Auth sign-in and propagation to visible SwiftUI state;
 - Firebase Auth session restoration from the application's Keychain after real process
   termination and relaunch.
 
 It performs **no Firestore operations**. Firestore read and write paths have no Native-side
 automated coverage on iOS at present. It also does not cover Auth failure or collision paths, or
-any Firebase path not reached by that UI flow, and it makes no Firebase Analytics call, because
-collection is off until the owner opts in. A Native-compiler-specific failure in the four modules
+any Firebase path not reached by that UI flow. Analytics collection is off until Settings opt-in,
+so these tests reach the disabled collection setter at construction but do not enable collection,
+log product events or set count-bucket properties. A Native-compiler-specific failure in the four modules
 that currently contain tests remains undetected by the standalone route. This coverage
 list MUST be reviewed whenever the Firebase surface grows.
 
