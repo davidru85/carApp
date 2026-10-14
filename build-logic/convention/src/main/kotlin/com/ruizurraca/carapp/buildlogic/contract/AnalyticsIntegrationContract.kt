@@ -139,11 +139,16 @@ internal class AnalyticsIntegrationContract internal constructor(
     }
 
     private fun hostCollectionResult(): AssertionResult {
+        // Parsed exactly like the privacy settings of assertion 40: comments are removed first and
+        // the key must be declared once, so a commented-out or a second, contradicting declaration
+        // cannot satisfy the check.
+        val android = inputs.androidManifest.replace(XML_COMMENTS, "")
+        val ios = inputs.iosInfoPlist.replace(XML_COMMENTS, "")
         val problems = mutableListOf<String>()
-        if (!ANDROID_COLLECTION_DISABLED.containsMatchIn(inputs.androidManifest)) {
+        if (!androidSetting(android, "meta-data", ANDROID_COLLECTION_KEY, "android:value", "false")) {
             problems += "$ANDROID_MANIFEST_PATH does not set $ANDROID_COLLECTION_KEY to false"
         }
-        if (!IOS_COLLECTION_DISABLED.containsMatchIn(inputs.iosInfoPlist)) {
+        if (!iosDisabledOnce(ios, IOS_COLLECTION_KEY)) {
             problems += "$IOS_INFO_PLIST_PATH does not set $IOS_COLLECTION_KEY to false"
         }
         return result(
@@ -163,8 +168,7 @@ internal class AnalyticsIntegrationContract internal constructor(
             }
         }
         IOS_PRIVACY_KEYS.forEach { key ->
-            val declaredOnce = Regex("""<key>$key</key>""").findAll(ios).count() == 1
-            if (!declaredOnce || !Regex("""<key>$key</key>\s*<false\s*/>""").containsMatchIn(ios)) {
+            if (!iosDisabledOnce(ios, key)) {
                 problems += "$IOS_INFO_PLIST_PATH does not disable $key"
             }
         }
@@ -179,6 +183,13 @@ internal class AnalyticsIntegrationContract internal constructor(
             problems = problems,
         )
     }
+
+    private fun iosDisabledOnce(
+        text: String,
+        key: String,
+    ): Boolean =
+        Regex("""<key>$key</key>""").findAll(text).count() == 1 &&
+            Regex("""<key>$key</key>\s*<false\s*/>""").containsMatchIn(text)
 
     private fun androidSetting(
         text: String,
@@ -240,9 +251,6 @@ internal class AnalyticsIntegrationContract internal constructor(
                 "android.permission.ACCESS_ADSERVICES_ATTRIBUTION",
                 "android.permission.ACCESS_ADSERVICES_TOPICS",
             )
-        val ANDROID_COLLECTION_DISABLED =
-            Regex("""<meta-data\s+android:name="$ANDROID_COLLECTION_KEY"\s+android:value="false"\s*/>""")
-        val IOS_COLLECTION_DISABLED = Regex("""<key>$IOS_COLLECTION_KEY</key>\s*<false\s*/>""")
         val PUBLIC_CONSTRUCTOR_DISABLED = Regex("""constructor\(\)\s*:\s*this\(\s*enabled\s*=\s*false\s*,""")
     }
 }
