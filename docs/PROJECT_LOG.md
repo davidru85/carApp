@@ -38,6 +38,28 @@
 
 ## Entries
 
+### 2026-10-14 — E3-13 outbox entityType single source (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-13` / `D-206` (and `D-205`, the bundle)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** `EntityType` moved from `:core:sync` to `:core:common` with `@HiddenFromObjC`
+  and is now the only Kotlin source of the outbox `entityType` wire value: the 22 production literals
+  in `:core:database` and the two outbox mappers use `EntityType.<entry>.name`. The SQL keeps its
+  literals under the new `build-logic` `EntityTypeWireValueParityTest`, which also rejects a
+  production Kotlin literal. `docs/CONTRACTS.md §20.3` declares the enum; the `D-110` production-token
+  clause is superseded by `D-206`.
+- **Why:** `docs/TECHNICAL_PLAN.md §4` forbids `:core:database -> :core:sync`, so the enum could not
+  be the single source where it lived; the owner chose `:core:common` (`D-206`, ADR-0207), following
+  `SyncStatus`, `SyncTrigger`, `CONNECTIVITY_ERROR_CODES` and `ConnectivityCodeParityTest`.
+- **Documents touched:** `docs/CONTRACTS.md §20.3`, `§20.7`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md` (`D-110` note);
+  ADR-0111, ADR-0207; `docs/handoffs/E3-13.md`.
+- **Verification:** two RED / GREEN cycles and a refactor, each pushed; the complete `AGENTS.md`
+  command passes; the generated Objective-C header is identical to the golden file. One native SQLite
+  `signal 11` on the first GREEN run was investigated and did not reproduce in five Native runs.
+- **Follow-ups / risks:** none new. `E3-21`, `E3-18` and `E3-20` continue in bundle `E3-B1`.
+
 ### 2026-10-14 — E3-09 record closure: the merged status and the pull request #84 evidence
 
 - **Type:** correction (documentation only)
