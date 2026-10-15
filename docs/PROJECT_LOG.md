@@ -64,7 +64,8 @@
   `iosSimulatorArm64`; both provider iOS targets compile; the complete non-instrumented `AGENTS.md`
   command passes and `contractCheck` reports no `FAIL` or `PENDING`. Non-vacuity was proved by
   temporarily restoring the unconditional `JsonPrimitive(this)` branch, which failed all three
-  numeric end-to-end cases; the mutation was never committed.
+  numeric end-to-end cases; the mutation was never committed. CI run `38731331472` on the
+  correction's final head `aee71d78` passed all ten required checks.
 - **Follow-ups / risks:** none new. No new decision ID was required; the change implements `D-208`
   literally without touching the public API or the engine's classification policy. Bundle `E3-B1`
   still awaits the owner's gated review; the pull request is not merged.
