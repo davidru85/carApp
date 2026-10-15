@@ -112,6 +112,22 @@ Requirements:
   departure or by uninstalling the app; no remote copy survives. The window is now a single
   round-trip completion rather than a whole tail of network and database work, but it is not zero,
   and no document may describe the departure as fully recoverable across process death.
+- **One orphan-cleanup authorization can outlive a successful account deletion** (`D-149`, accepted
+  as option D on 2026-10-15). `deleteAccount` deletes the remote data, purges the
+  `orphanCleanupTickets` records bound to the UID and then deletes the Firebase Auth user. If a
+  ticket issuance for the same UID passes its Admin eligibility read before that purge and lands its
+  write after it, the authorization survives the deletion that returned success. No mechanism closes
+  this: Firebase Auth and Cloud Firestore share no transaction, and the only candidate with a
+  serialization point — a marker read inside the issuance transaction — would retain every deleted
+  UID indefinitely, the retention `D-143` was accepted to remove. The owner accepted the window
+  because only the account owner can start either operation, the app never runs the account
+  conversion and the account deletion concurrently, and the surviving record holds only the
+  pseudonymous UID of an account that no longer exists, a ticket hash, a status and an expiry — no
+  product data and no capability against anyone else. Its only cleanup is the Firestore TTL on
+  `expiresAt`: provider-managed eventual deletion after the 30-day expiration horizon, with no
+  proven maximum. No document may describe the account deletion as erasing every UID-bound
+  authorization, or cite that TTL as a retention bound. `functions/test/accountDeletionIssuanceRace.test.mjs`
+  pins the interleaving.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the

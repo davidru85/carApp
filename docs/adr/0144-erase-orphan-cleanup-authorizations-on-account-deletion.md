@@ -49,10 +49,10 @@ when it runs**. That is the whole of what this decision guarantees, and it is de
 zero-retention guarantee for the account as a whole: `D-149` (ADR-0150) documents a concurrent
 issuance whose eligibility check passes before the purge and whose write lands after it, so one
 UID-bound authorization can still exist when `deleteAccount` returns success. Closing that race is
-outside this decision — it is owned by `D-149` and the story `E3-15`, and it requires a change to
-the deletion order or a new store, not a change to this purge. Until `D-149` is decided and `E3-15`
-ships, the zero-retention reading of this decision is **conditional**, and no document may state it
-unconditionally.
+outside this decision — it is owned by `D-149` and the story `E3-15`, and it would require a change
+to the deletion order or a new store, not a change to this purge. The owner accepted the race as a
+residual risk on 2026-10-15 (`D-149`, option D), so the zero-retention reading of this decision is
+**conditional**, permanently under that decision, and no document may state it unconditionally.
 
 Internal server-only collections are declared in a new "Internal server-only collections"
 subsection of `docs/CONTRACTS.md` §16 with an executable registry

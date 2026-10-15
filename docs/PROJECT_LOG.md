@@ -38,6 +38,24 @@
 
 ## Entries
 
+### 2026-10-15 — E3-15 accepted issuance-after-purge residual (bundle E3-B2)
+
+- **Type:** story
+- **Story / Decision:** `E3-15` / `D-149` (accepted as option D)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** the owner accepted, rather than closed, the interleaving in which a ticket
+  issuance passes its Admin read before the account-deletion purge and writes after it. No mechanism
+  is added. `docs/SECURITY.md` records the residual risk, `docs/CONTRACTS.md §11.5` and `§16` and
+  ADR-0144 state it as accepted, and a deterministic `functions` test pins it with the real handlers.
+- **Why:** only the account owner can start either operation, the app never runs them concurrently,
+  and the surviving record carries a pseudonymous UID of a deleted account and no data; the only
+  closing mechanism would retain every deleted UID indefinitely, against `D-143`.
+- **Documents touched:** `docs/SECURITY.md`, `docs/CONTRACTS.md §11.5`, `§16`, ADR-0144, ADR-0150 and
+  the `D-149` mirrors; `docs/handoffs/E3-15.md`.
+- **Verification:** the `functions` suite passes (81 pass, 2 emulator skips); a temporary second purge
+  made the pinning test fail; `contractCheck` passes.
+- **Follow-ups / risks:** the residual risk stands by decision; its TTL cleanup has no proven maximum.
+
 ### 2026-10-15 — E3-B1 record closure: the merged status and the pull request #88 evidence
 
 - **Type:** correction (documentation only)
