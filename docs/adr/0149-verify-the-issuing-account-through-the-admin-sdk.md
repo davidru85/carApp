@@ -53,8 +53,9 @@ the Admin lookup returned. This decision therefore guarantees exactly this much:
 Firebase Auth and Firestore share no atomic transaction, so `auth.getUser`, the predicate and
 `authorizations.issue` are three separate operations and the account can move between them. That
 residual window — linking, disabling or deletion after an eligible snapshot has been observed and
-before the authorization write commits — is **not** closed here. It is `D-150` (ADR-0151), an
-unresolved owner decision, with `E3-16` as its story. No wording in this repository may describe
+before the authorization write commits — is **not** closed here. The owner accepted it as a
+residual risk on 2026-10-15 (`D-150`, option A, ADR-0151), recorded by `E3-16` in bundle `E3-B2`.
+No wording in this repository may describe
 `D-148` as making a stale token unable to mint an authorization for a linked, disabled or deleted
 identity without that qualification.
 

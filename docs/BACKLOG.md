@@ -1103,8 +1103,8 @@ Acceptance criteria:
 
 ### E3-13 - Single source of truth for the outbox entityType wire value - M
 
-Status: implemented in bundle `E3-B1` (`D-205`, ADR-0206) through pull request #88, awaiting the
-owner's gated review. Registered as GitHub issue
+Status: merged in bundle `E3-B1` (`D-205`, ADR-0206) on 2026-10-15 through pull request #88 (merge
+commit `a71e1767`), after the owner's gated review. Registered as GitHub issue
 #46. Tracked as a follow-up of D-110 in `docs/handoffs/E1-11.md` and `docs/PROJECT_LOG.md`
 (2026-09-02 entry). The owner decided its location question on 2026-10-14 as `D-206` (ADR-0207):
 `EntityType` moves to `:core:common`, and the SQL literals are verified against it by a parity test.
@@ -1134,8 +1134,8 @@ Depends on: E3-02 or later (whichever sync-engine story first consumes `entityTy
 
 Status: merged on 2026-09-09 through [pull request
 #63](https://github.com/davidru85/carApp/pull/63). It is therefore **not** an outstanding
-prerequisite of `E3-15` or `E3-16`; see the "Outstanding Owner Decisions" section, where only the
-`D-149` and `D-150` decisions remain.
+prerequisite of `E3-15` or `E3-16`. The owner accepted `D-149` option D and `D-150` option A on
+2026-10-15; bundle `E3-B2` records both residual risks through pull request #89, awaiting gated review.
 
 Tracked as two post-merge security and privacy findings of the `E3-11` review of pull request #60.
 Both are defects in merged behaviour, not new features.
@@ -1176,20 +1176,18 @@ Acceptance criteria:
 
 Depends on: E3-10, E3-11.
 
-Does **not** close the issuance/deletion interleaving; that is `E3-15`.
+Does **not** close the issuance/deletion interleaving. `E3-15` records it as an accepted residual
+risk under `D-149` option D; it adds no mechanism.
 
 Human review required.
 
 ### E3-15 - Close the Ticket Issuance and Account Deletion Interleaving - M
 
-**Not Ready.** Blocked on owner decision `D-149`, which is `Pending` in `docs/DECISION_BOARD.md`
-— no recommendation is offered and no option is pre-selected — with its options in
-[ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md).
-
-`D-149` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
-"Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
-depends on it, and it may not be blocked by it.** `E3-03` merged through pull request #69 and
-`E3-14` through pull request #63, so this story's only remaining prerequisite is the decision itself.
+Status: implemented in bundle `E3-B2` (`D-205`, ADR-0206) through pull request #89, awaiting the
+owner's gated review. The owner accepted `D-149` as
+option D on 2026-10-15 ([ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md)):
+the residual interleaving below is accepted and recorded rather than closed, so this story adds no
+mechanism. The analysis that follows is preserved as written while the decision was `Pending`.
 
 `E3-14` stops a stale token from minting a ticket, but it cannot by itself guarantee that no
 UID-bound authorization survives a successful account deletion. The normative deletion order of
@@ -1223,7 +1221,23 @@ never-expiring marker retains a UID-correlatable key for every deleted account i
 conflicts with `D-143`. Option C is therefore not a clean solution as drafted: its serialization
 half and its retention half are separate, and the retention half is unresolved.
 
-Acceptance criteria (to be finalised once `D-149` is accepted):
+Acceptance criteria (option D of `D-149`):
+
+- `docs/SECURITY.md` records the accepted residual risk: one UID-bound authorization can outlive a
+  successful `deleteAccount` when an issuance's eligibility read precedes the purge and its write
+  lands after it; its only cleanup is the pre-existing Firestore TTL, provider-managed and with no
+  proven maximum; and only the account owner can produce the interleaving.
+- `docs/CONTRACTS.md §11.5` and `§16` state the accepted scope instead of an open decision, and no
+  document cites the TTL as a retention bound.
+- A deterministic `functions` test pins the interleaving `I1, D1, D2, I2, D3, D4`: `deleteAccount`
+  returns success while the authorization still exists, so the limitation cannot later be described
+  as safe.
+- The deletion order of `§11.5`, consumption, completion-last semantics and idempotent retries are
+  unchanged, and no client-selected UID, JWT verification fallback or weaker authorization path is
+  introduced.
+
+Superseded criteria, kept for the record of the `Pending` analysis (they applied to options A, B
+and C, none of which was accepted):
 
 - The accepted option discharges the proof obligations of ADR-0150: every interleaving of
   `issueOrphanCleanupTicket` and `deleteAccount` for the same UID, including every crash point, is
@@ -1250,21 +1264,18 @@ Acceptance criteria (to be finalised once `D-149` is accepted):
 - Consumption, completion-last semantics and idempotent retries stay intact.
 - The interleavings are proven against the real Firestore emulator, not only against fakes.
 
-Depends on: E3-14, `D-149`.
+Depends on: E3-14, `D-149` (accepted, option D).
 
 Human review required.
 
 ### E3-16 - Close the Issuance Lookup-to-Write Window - M
 
-**Not Ready.** Blocked on owner decision `D-150`, which is `Pending` in `docs/DECISION_BOARD.md`
-— no recommendation is offered and no option is pre-selected — with its analysis in
-[ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md).
-
-`D-150` is one of the three owner decisions outstanding after `E3-03` and `E3-17`; see the
-"Outstanding owner decisions" section of `docs/BACKLOG.md`. **Neither pull request #69 nor #70
-depends on it, and it may not be blocked by it.** `E3-03` merged through pull request #69 and
-`E3-14` through pull request #63, so this story's only remaining prerequisite is the decision itself. `D-149` / `E3-15` is a **different**
-decision and MUST NOT be broadened to cover this one.
+Status: implemented in bundle `E3-B2` (`D-205`, ADR-0206) through pull request #89, awaiting the
+owner's gated review. The owner accepted `D-150` as
+option A on 2026-10-15 ([ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md)): the
+window below is accepted as a residual risk, so this story adds no mechanism. `D-149` / `E3-15` is a
+**different** decision and was not broadened to cover this one. The analysis that follows is
+preserved as written while the decision was `Pending`.
 
 `E3-14` made the issuer resolve the caller's Admin record before writing (`D-148`), which rejects a
 token whose identity was **already** linked, disabled, deleted or state-unknown when that lookup
@@ -1289,7 +1300,23 @@ their proof obligations. **This is a different decision from `D-149`**, which ow
 the `deleteAccount` server operation's authorization purge; `D-149` MUST NOT be broadened to cover
 linking or disabling.
 
-Acceptance criteria (to be finalised once `D-150` is accepted):
+Acceptance criteria (option A of `D-150`):
+
+- `docs/SECURITY.md` records the accepted residual risk: an authorization can be created for an
+  identity linked, disabled or deleted between the `D-148` Admin lookup and the write, and states
+  what each case leads to. Successful consumption retains the record, its UID and its unchanged
+  expiry with status `COMPLETED`; a missing Auth user does not suppress deletion of remaining
+  registered remote data. Physical record erasure requires a `D-143` purge that observes it or
+  asynchronous Firestore TTL cleanup, with no proven maximum.
+- `docs/CONTRACTS.md §11.5` keeps `D-148` scoped to the observed snapshot and states the window as
+  accepted instead of `Pending`.
+- The three `D-150` interleaving tests and the `D-148` fail-closed test stay in place and pass.
+- Consumption, completion-last semantics and idempotent retries stay intact, no client-selected UID,
+  JWT verification fallback or weaker authorization path is introduced, and `D-149` / `E3-15` are
+  not broadened.
+
+Superseded criteria, kept for the record of the `Pending` analysis (they applied to a mechanism,
+which was not accepted):
 
 - The accepted option discharges the proof obligations of ADR-0151: the orderings of the lookup, the
   predicate, the write and the Auth-side transition are enumerated for linking, disabling and
@@ -1309,7 +1336,7 @@ Acceptance criteria (to be finalised once `D-150` is accepted):
   UID, JWT verification fallback or weaker authorization path is introduced.
 - `D-149` and `E3-15` are left untouched.
 
-Depends on: E3-14, `D-150`.
+Depends on: E3-14, `D-150` (accepted, option A).
 
 Human review required.
 
@@ -1764,8 +1791,8 @@ Human review required.
 
 ### E3-18 - Manual Retry Coverage for Parked Connectivity Rows - S
 
-Status: implemented in bundle `E3-B1` (`D-205`, ADR-0206) through pull request #88, awaiting the
-owner's gated review. The owner accepted `D-173` as
+Status: merged in bundle `E3-B1` (`D-205`, ADR-0206) on 2026-10-15 through pull request #88 (merge
+commit `a71e1767`), after the owner's gated review. The owner accepted `D-173` as
 option B on 2026-10-14; [ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md)
 records the decision and a premise correction: both hosts show the retry control only while the
 aggregate is `Failed`, so a lone parked connectivity row has no manual control under any option and
@@ -1837,8 +1864,8 @@ Human review required.
 
 ### E3-20 - Pull-Boundary Quarantine Totality for Unsupported Provider Values - S
 
-**Deferred by `E3-03`; near-unreachable.** Implemented through pull request #88 as the fourth story
-of bundle `E3-B1`
+**Deferred by `E3-03`; near-unreachable.** Merged on 2026-10-15 through pull request #88 (merge commit
+`a71e1767`) as the fourth story of bundle `E3-B1`, after two review correction rounds
 (`D-205`, ADR-0206). The owner decided the representation on 2026-10-14 as `D-208` (ADR-0209): the
 integration carries an unsupported value as a reserved marker, and `:core:sync` quarantines every
 document carrying it as `MalformedPayload`.
@@ -1864,8 +1891,8 @@ Human review required.
 
 ### E3-21 - Explicit Startup Reset of Stale `SYNCING` Rows - S
 
-**Deferred by `E3-03`; low impact.** Implemented through pull request #88 as the second story of
-bundle `E3-B1` (`D-205`,
+**Deferred by `E3-03`; low impact.** Merged on 2026-10-15 through pull request #88 (merge commit
+`a71e1767`) as the second story of bundle `E3-B1` (`D-205`,
 ADR-0206). The owner decided the reset target state and its execution on 2026-10-14 as `D-207`
 (ADR-0208): a stale row returns to `FAILED_RETRYABLE` after a non-connectivity `lastErrorCode` and to
 `PENDING` otherwise, once per app start, under the sync cycle's exclusion.
@@ -1915,35 +1942,16 @@ Acceptance criteria:
 
 ## Outstanding Owner Decisions
 
-Two decisions are open. **Neither blocks a merged story, and no pull request MUST be held
-for them.** The owner accepted `D-173` as option B on 2026-10-14; `E3-18` delivers it in bundle
-`E3-B1`. `E3-03`, `E3-04`, `E3-08`, `E3-12` and `E3-17` have all merged, `E1-18` landed with
-`E3-12`, so this table gates only the unstarted stories named in its `Needed by` column. `D-172` is
-not among them: the owner accepted option D with a 5-second grace on 2026-09-17, and that acceptance
-merged with `E3-17`.
+No decision is open. The owner accepted `D-173` as option B on 2026-10-14, delivered by `E3-18` in
+bundle `E3-B1`, and accepted `D-149` as option D and `D-150` as option A on 2026-10-15, recorded by
+`E3-15` and `E3-16` in bundle `E3-B2` through pull request #89. The table below keeps its header and
+has no rows, so its columns stay stable for the next open decision; the one-line triage notes that
+described `D-149` and `D-150` were removed with their rows. The table gates only the unstarted
+stories named in its `Blocks` column. `D-172` is not among them: the owner accepted option D with a
+5-second grace on 2026-09-17, and that acceptance merged with `E3-17`.
 
 | Decision | Status | Blocks | Recommended option | Analysis |
 |---|---|---|---|---|
-| `D-149` Ticket issuance and account deletion race | `Pending` — no recommendation, no option pre-selected | `E3-15` | None offered | [ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md) |
-| `D-150` Issuance lookup-to-write window | `Pending` — no recommendation, no option pre-selected | `E3-16` | None offered | [ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md) |
-
-What each one is, in one line, so the backlog can be triaged without opening two ADRs:
-
-- **`D-149`.** The deletion order of `docs/CONTRACTS.md §11.5` is remote data, then the authorization
-  purge, then the Firebase Auth user. An issuance whose eligibility check passes before the purge and
-  whose write lands after it leaves a UID-bound authorization behind while `deleteAccount` still
-  returns success. No check inside the issuer closes that, because at write time the Auth user
-  legitimately still exists. Closing it means changing something outside the issuer — the deletion
-  order, an extra purge pass, or a server-side marker — and each option has different cost. Today the
-  only cleanup for a record that escapes is the provider-managed Firestore TTL, which is
-  asynchronous and has **no proven maximum**; it is not a hard 30-day bound and MUST NOT be cited as
-  one.
-- **`D-150`.** The issuer performs `auth.getUser`, the `D-148` eligibility predicate and the Firestore
-  authorization write as three operations across two services with no shared transaction, so the
-  account can be linked, disabled or deleted between the lookup and the write. `D-142` refuses the
-  destructive stage for a bound account that became linked, but it does not prevent the record being
-  created, does not remove it, and does not reject an account that stays anonymous and becomes
-  **disabled**. This is a **different** decision from `D-149` and MUST NOT be merged with it.
 
 Each row is mirrored in `docs/DECISION_BOARD.md`, where the `Needed by` column is authoritative; this
 section restates them for triage and MUST agree with it.
@@ -2025,7 +2033,7 @@ required job ambiguous, and both SHOULD precede any story that relies on that si
 through one pull request: `E3-B1` runs `E3-13 -> E3-21 -> E3-18 -> E3-20` on
 `story/E3-B1-client-sync-hardening`, so the `E3-13` single-source change lands before the other three
 touch the same statements, and `E3-B2` runs `E3-15 -> E3-16` after `E3-B1` merges and the owner
-decides `D-149` and `D-150`. Inside a bundle every story keeps its own ready check, handoff, TDD cycle
+decides `D-149` and `D-150`; both conditions were met on 2026-10-15. Inside a bundle every story keeps its own ready check, handoff, TDD cycle
 and project-log entry.
 
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
@@ -2086,15 +2094,15 @@ proof after E3-04.
 | E3-07 Tombstone purge (completed, PR #78) | 3 | S | — |
 | E3-09 Firebase Analytics integration (completed, PR #84) | 3 | M | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
-| E3-13 Outbox entityType single source of truth (bundle `E3-B1`, implemented, PR #88) | 3 | M | — |
+| E3-13 Outbox entityType single source of truth (bundle `E3-B1`, completed, PR #88) | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
-| E3-15 Close the ticket issuance and account deletion interleaving (bundle `E3-B2`, blocked on `D-149`) | 3 | M | Yes |
-| E3-16 Close the issuance lookup-to-write window (bundle `E3-B2`, blocked on `D-150`) | 3 | M | Yes |
+| E3-15 Close the ticket issuance and account deletion interleaving (bundle `E3-B2`, implemented, PR #89) | 3 | M | Yes |
+| E3-16 Close the issuance lookup-to-write window (bundle `E3-B2`, implemented, PR #89) | 3 | M | Yes |
 | E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle (completed, PR #70) | 3 | M | Yes |
-| E3-18 Manual retry coverage for parked connectivity rows (bundle `E3-B1`, implemented, PR #88) | 3 | S | Yes |
+| E3-18 Manual retry coverage for parked connectivity rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
-| E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, implemented, PR #88) | 3 | S | Yes |
-| E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, implemented, PR #88) | 3 | S | Yes |
+| E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
+| E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |

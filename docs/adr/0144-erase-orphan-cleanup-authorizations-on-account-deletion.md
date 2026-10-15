@@ -49,10 +49,10 @@ when it runs**. That is the whole of what this decision guarantees, and it is de
 zero-retention guarantee for the account as a whole: `D-149` (ADR-0150) documents a concurrent
 issuance whose eligibility check passes before the purge and whose write lands after it, so one
 UID-bound authorization can still exist when `deleteAccount` returns success. Closing that race is
-outside this decision — it is owned by `D-149` and the story `E3-15`, and it requires a change to
-the deletion order or a new store, not a change to this purge. Until `D-149` is decided and `E3-15`
-ships, the zero-retention reading of this decision is **conditional**, and no document may state it
-unconditionally.
+outside this decision — it is owned by `D-149` and the story `E3-15`, and it would require a change
+to the deletion order or a new store, not a change to this purge. The owner accepted the race as a
+residual risk on 2026-10-15 (`D-149`, option D), so the zero-retention reading of this decision is
+**conditional**, permanently under that decision, and no document may state it unconditionally.
 
 Internal server-only collections are declared in a new "Internal server-only collections"
 subsection of `docs/CONTRACTS.md` §16 with an executable registry
@@ -81,7 +81,8 @@ bound, nor cited as proof of the maximum time a record can survive.
   This is **not** an unconditional guarantee that no `anonymousUid` survives — the ADR-0150
   interleaving can leave one authorization written after the purge has run, and that record is
   removed only by provider-managed asynchronous TTL cleanup, with no proven maximum. The
-  unconditional guarantee is `D-149`'s to deliver, not this decision's.
+  owner accepted this limitation under `D-149` option D; neither decision delivers an unconditional
+  zero-retention guarantee.
 - The client-facing remote schema stays closed while every server-only collection is explicit and
   executable.
 - The D-63 registry keeps its exact `users/{uid}` meaning; the internal collection cannot leak

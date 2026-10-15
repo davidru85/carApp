@@ -38,6 +38,110 @@
 
 ## Entries
 
+### 2026-10-15 — E3-B2 review round R2: accepted-decision references, grounds and status records
+
+- **Type:** correction
+- **Story / Decision:** `E3-15`, `E3-16` / `D-149`, `D-150` (accepted options unchanged)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** the `canIssueOrphanCleanupTicket` KDoc no longer calls the `D-150` window
+  unresolved (comment only). The ADR-0150 option D grounds and the `docs/SECURITY.md` `D-149` entry
+  attribute the in-app separation of ticket issuance and `deleteAccount` to the session kind each
+  requires, not to the account-conversion mutex. The ADR-0150 and ADR-0151 `Status` notes name what
+  changed after the `Pending` analysis. `docs/TECHNICAL_PLAN.md` states the Phase 3 status, and the
+  `docs/BACKLOG.md` outstanding-decisions paragraph describes the empty table accurately.
+- **Why:** the code comment contradicted the accepted `D-150`; the conversion mutex serializes
+  conversions only with each other; the two ADRs claimed an unmodified analysis that had been
+  edited; and the derived plan still listed almost every Phase 3 story as remaining.
+- **Documents touched:** `functions/src/auth/anonymousUserEligibility.ts` (KDoc), ADR-0150,
+  ADR-0151, `docs/SECURITY.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, and the `E3-15`,
+  `E3-16` and `E3-B2` handoffs.
+- **Verification:** `npm --prefix functions test` exit 0 (83 tests: 81 pass, 0 fail, 2 emulator
+  skips with `FIRESTORE_EMULATOR_HOST` unset); `./gradlew contractCheck` exit 0 with no `FAIL` or
+  `PENDING` assertion.
+- **Follow-ups / risks:** none new; both accepted residual risks remain. Pull request #89 still
+  requires the owner's gated review and merge decision.
+
+### 2026-10-15 — E3-B2 review: ticket retention, missing-user cleanup and decision closure
+
+- **Type:** correction
+- **Story / Decision:** `E3-15`, `E3-16` / `D-149`, `D-150` (accepted options unchanged)
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** corrects the E3-16 entry of 2026-10-15: missing Auth state is idempotent for Auth
+  deletion, but consumption still deletes any remaining registered remote data. Successful
+  consumption retains the UID-bound authorization as `COMPLETED` with its original expiry;
+  expiration does not erase the document. Physical erasure requires an observing `D-143` purge or
+  asynchronous TTL deletion, with no proven maximum. ADR verification sections now distinguish the
+  accepted characterization evidence from future mechanism proofs, and current references record
+  the two accepted decisions.
+- **Why:** the previous prose understated retained identifiers and remote deletion, and left
+  contradictory verification and decision-status statements after the accepted risk decisions.
+- **Documents touched:** `docs/SECURITY.md`, the decision records and mirrors, `docs/BACKLOG.md`,
+  and the E3-B2/E3-15/E3-16 and E3-14 handoff records.
+- **Verification:** `npm --prefix functions test` exit 0 (83 tests: 81 pass, 0 fail, 2 emulator
+  skips with `FIRESTORE_EMULATOR_HOST` unset); `./gradlew contractCheck` exit 0 with no `FAIL` or
+  `PENDING` assertion; the complete non-instrumented `AGENTS.md` command exit 0 with
+  `BUILD SUCCESSFUL`; the post-application guarded preview reported `CHECK_OK files_to_write=0` for
+  all ten static documents.
+- **Follow-ups / risks:** both accepted residual races remain; no product code, schema, API or
+  dependency changed. Pull request #89 still requires the owner's gated review and merge decision.
+
+### 2026-10-15 — E3-16 accepted issuance lookup-to-write window (bundle E3-B2)
+
+- **Type:** story
+- **Story / Decision:** `E3-16` / `D-150` (accepted as option A)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** the owner accepted the window between the ticket issuer's Admin lookup and its
+  Firestore write as a residual risk. No mechanism is added. `docs/SECURITY.md` records what linking,
+  disabling and deletion inside the window lead to, and `docs/CONTRACTS.md §11.5` states the window as
+  accepted while keeping `D-148` scoped to the observed snapshot.
+- **Why:** linking and deletion have no destructive consequence (`D-142` refuses a linked account; a
+  missing one is idempotent), the disabled case needs an administrator inside the window, and a
+  marker would miss console and Admin transitions while adding UID-correlatable retention.
+- **Documents touched:** `docs/SECURITY.md`, `docs/CONTRACTS.md §11.5`, ADR-0151 and the `D-150`
+  mirrors; `docs/handoffs/E3-16.md`.
+- **Verification:** the existing three `D-150` tests and the `D-148` fail-closed test pass;
+  `contractCheck` passes.
+- **Follow-ups / risks:** option B stays available as a separate decision if accounts are ever
+  disabled operationally. This completes bundle `E3-B2` and Phase 3 once it merges.
+
+### 2026-10-15 — E3-15 accepted issuance-after-purge residual (bundle E3-B2)
+
+- **Type:** story
+- **Story / Decision:** `E3-15` / `D-149` (accepted as option D)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** the owner accepted, rather than closed, the interleaving in which a ticket
+  issuance passes its Admin read before the account-deletion purge and writes after it. No mechanism
+  is added. `docs/SECURITY.md` records the residual risk, `docs/CONTRACTS.md §11.5` and `§16` and
+  ADR-0144 state it as accepted, and a deterministic `functions` test pins it with the real handlers.
+- **Why:** only the account owner can start either operation, the app never runs them concurrently,
+  and the surviving record carries a pseudonymous UID of a deleted account and no data; the only
+  closing mechanism would retain every deleted UID indefinitely, against `D-143`.
+- **Documents touched:** `docs/SECURITY.md`, `docs/CONTRACTS.md §11.5`, `§16`, ADR-0144, ADR-0150 and
+  the `D-149` mirrors; `docs/handoffs/E3-15.md`.
+- **Verification:** the `functions` suite passes (81 pass, 2 emulator skips); a temporary second purge
+  made the pinning test fail; `contractCheck` passes.
+- **Follow-ups / risks:** the residual risk stands by decision; its TTL cleanup has no proven maximum.
+
+### 2026-10-15 — E3-B1 record closure: the merged status and the pull request #88 evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E3-13`, `E3-21`, `E3-18`, `E3-20` (bundle `E3-B1`) / — (no decision changed)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** bundle `E3-B1` merged on 2026-10-15 through pull request #88 as a true merge of
+  `story/E3-B1-client-sync-hardening` into `main` (merge commit `a71e1767`, whose second parent is the
+  branch head `b85b3153`), after the owner's gated review and two review correction rounds on `E3-20`.
+  The four story status blocks and index rows in `docs/BACKLOG.md`, the `AGENTS.md` Repository State
+  and the open-decision paragraph now state the merge, and the bundle and story handoffs gain a dated
+  `Closure update` over their preserved evidence.
+- **Why:** `AGENTS.md` §Repository State must not describe a merged bundle as in review. The closure
+  rides in the `E3-B2` pull request rather than a separate one, so the two bundles' records change in
+  one gated review.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E3-B1.md`, `E3-13.md`,
+  `E3-21.md`, `E3-18.md`, `E3-20.md`, this log.
+- **Verification:** documentation only. The final head `b85b3153` passed all ten required checks on
+  attempt `1` (run `38733845781`).
+- **Follow-ups / risks:** none new. Pull request #88 is merged and requires no further action.
+
 ### 2026-10-15 — E3-20 review correction R2: non-finite provider numbers use the marker (bundle E3-B1)
 
 - **Type:** story

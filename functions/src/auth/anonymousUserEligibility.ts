@@ -20,10 +20,10 @@ export function isAnonymousAuthUser(user: AuthUserProviderSnapshot): boolean {
  * deleted or state-unknown when the lookup resolved, and that rejection creates no authorization.
  * It does **not** prove the identity is still eligible when the Firestore write commits: Firebase
  * Auth and Firestore share no transaction, so the account can be linked, disabled or deleted in the
- * window between the lookup returning and the write committing. That window is `D-150` / `E3-16`,
- * and it is unresolved. A second Admin read, a post-write read-back, a retry or a compensating
- * delete does not close it, because none of them is atomic with both the Auth transition and the
- * Firestore write.
+ * window between the lookup returning and the write committing. That window is an accepted
+ * residual risk (`D-150`, option A, recorded by `E3-16` in `docs/SECURITY.md`), and nothing here
+ * closes it: a second Admin read, a post-write read-back, a retry or a compensating delete would
+ * not, because none of them is atomic with both the Auth transition and the Firestore write.
  */
 export function canIssueOrphanCleanupTicket(user: AuthUserProviderSnapshot | null): boolean {
     return user !== null && user.disabled === false && isAnonymousAuthUser(user);

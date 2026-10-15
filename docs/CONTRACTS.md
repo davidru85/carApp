@@ -991,8 +991,8 @@ Account deletion order is normative:
 4. Only after remote document deletion fully succeeds, the server operation purges every internal
    orphan-cleanup authorization bound to the same UID that its paged query sees when the purge runs.
    This stage is the `D-143` mechanism, not a zero-retention guarantee for the account: a concurrent
-   issuance can still write one afterwards, and that race is owned by `D-149` / `E3-15` (see the
-   `D-148` and `D-149` rules below and §16).
+   issuance can still write one afterwards, and that race is an accepted residual risk (`D-149`,
+   option D; see the `D-148` and `D-149` rules below, §16 and `docs/SECURITY.md`).
 5. Only after the authorization purge fully succeeds, the server operation deletes the Firebase
    Auth user for the same UID.
 6. Only after the server operation returns success, the app ends the persisted Firebase client
@@ -1124,7 +1124,8 @@ Two anonymous-deletion entry points reuse this service:
   longer eligible. `D-148` therefore guarantees exactly that a token whose identity was **already**
   linked, disabled, deleted or state-unknown when the lookup resolved is rejected without creating
   an authorization; it does **not** guarantee eligibility at commit time, and no document MAY state
-  otherwise. That window is `D-150`, which is `Pending`, with `E3-16` as its story. `D-142` covers
+  otherwise. That window is an accepted residual risk (`D-150`, option A, 2026-10-15, recorded in
+  `docs/SECURITY.md`): no mechanism closes it, and `E3-16` recorded it. `D-142` covers
   only part of the consequence: consumption-time revalidation refuses the destructive stage for a
   bound account that has become linked, but it does not prevent the authorization from being created
   or retained, and it does not reject a bound account that stays anonymous and became disabled after
@@ -1136,20 +1137,22 @@ Two anonymous-deletion entry points reuse this service:
 - `D-148` does not by itself guarantee that no UID-bound authorization survives a successful
   account deletion. Because the deletion order above purges authorizations before deleting the Auth
   user, an issuance whose eligibility check passes before the purge and whose write lands after it
-  outlives that deletion, and no check inside the issuer can close that window. Closing it is
-  `D-149`, which is `Pending` — no recommendation is on the table and the choice is the owner's.
-  Until it is accepted and `E3-15` ships, that single interleaving is a known residual risk whose
-  only cleanup is the pre-existing Firestore TTL on `expiresAt`: provider-managed eventual cleanup
-  after a 30-day expiration horizon, with an asynchronous and non-hard-bounded deletion delay. That
-  TTL MUST NOT be described as bounding the residual risk or as proving the maximum time a record
-  can survive; a provable maximum retention period would require an additional deterministic
-  cleanup mechanism, which is part of the `D-149` decision and is not specified here. `D-149`
+  outlives that deletion, and no check inside the issuer can close that window. The owner accepted
+  that interleaving as a residual risk rather than closing it (`D-149`, option D, 2026-10-15): the
+  deletion order above is unchanged and no mechanism is added, so the interleaving remains possible,
+  and its only cleanup is the pre-existing Firestore TTL on `expiresAt`: provider-managed eventual
+  cleanup after a 30-day expiration horizon, with an asynchronous and non-hard-bounded deletion
+  delay. That TTL MUST NOT be described as bounding the residual risk or as proving the maximum time
+  a record can survive; a provable maximum retention period would require an additional
+  deterministic cleanup mechanism, which option D deliberately does not add.
+  `functions/test/accountDeletionIssuanceRace.test.mjs` pins the interleaving. `D-149`
   distinguishes eventual convergence from synchronous crash-safe erasure: a post-write read-back or
   a later purge pass is not atomic with either the deletion or the authorization creation, so such
   mechanisms deliver at most a partial synchronous cleanup of the interleavings they observe, never
   the global convergence property, and MUST NOT be described as guaranteeing zero UID-bound
   authorizations when deletion returns success; only a mechanism with a proven serialization point
-  may claim that, and the accepted option MUST discharge the proof obligations of ADR-0150.
+  may claim that, and a future decision that adds one MUST discharge the proof obligations of
+  ADR-0150.
 - The issuer stores only the ticket's SHA-256 digest as the document ID under
   `orphanCleanupTickets/{ticketHash}`. The server record contains exactly the verified
   `anonymousUid`, `expiresAt` as a server-generated Firestore timestamp 30 days after issuance,
@@ -1676,8 +1679,8 @@ Firestore TTL is not the account-deletion retention path but only a fallback for
 completed authorizations.
 
 The purge is **not** by itself a zero-retention guarantee for the account. `D-149` documents a
-concurrent issuance whose write can land after the purge has run; closing that race is `D-149` and
-`E3-15`, not this stage (§11.5). A record written by such an issuance is cleaned up **solely** by
+concurrent issuance whose write can land after the purge has run; the owner accepted that race as a
+residual risk (`D-149`, option D), and this stage does not close it (§11.5). A record written by such an issuance is cleaned up **solely** by
 the Firestore TTL, which is provider-managed eventual cleanup after the 30-day expiration horizon
 with an asynchronous and non-hard-bounded deletion delay, so it MUST NOT be cited as a retention
 bound or as a proven maximum.

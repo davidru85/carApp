@@ -112,6 +112,41 @@ Requirements:
   departure or by uninstalling the app; no remote copy survives. The window is now a single
   round-trip completion rather than a whole tail of network and database work, but it is not zero,
   and no document may describe the departure as fully recoverable across process death.
+- **One orphan-cleanup authorization can outlive a successful account deletion** (`D-149`, accepted
+  as option D on 2026-10-15). `deleteAccount` deletes the remote data, purges the
+  `orphanCleanupTickets` records bound to the UID and then deletes the Firebase Auth user. If a
+  ticket issuance for the same UID passes its Admin eligibility read before that purge and lands its
+  write after it, the authorization survives the deletion that returned success. No mechanism closes
+  this: Firebase Auth and Cloud Firestore share no transaction, and the only candidate with a
+  serialization point — a marker read inside the issuance transaction — would retain every deleted
+  UID indefinitely, the retention `D-143` was accepted to remove. The owner accepted the window
+  because only the account owner can start either operation, the app issues a ticket only from an
+  anonymous session and calls `deleteAccount` only from a permanent one, so it does not run the two
+  operations against one account at the same time, and the surviving record holds only the
+  pseudonymous UID of an account that no longer exists, a ticket hash, a status and an expiry — no
+  product data and no capability against anyone else. Its only cleanup is the Firestore TTL on
+  `expiresAt`: provider-managed eventual deletion after the 30-day expiration horizon, with no
+  proven maximum. No document may describe the account deletion as erasing every UID-bound
+  authorization, or cite that TTL as a retention bound. `functions/test/accountDeletionIssuanceRace.test.mjs`
+  pins the interleaving.
+- **An orphan-cleanup authorization can be created for an identity that changed during issuance**
+  (`D-150`, accepted as option A on 2026-10-15). The ticket issuer reads the caller's Firebase Auth
+  record, checks that it exists, is enabled and is still anonymous (`D-148`), and then writes the
+  authorization to Cloud Firestore. The two services share no transaction, so the account can be
+  linked, disabled or deleted between the read and the write, and the authorization is created
+  anyway. Consumption rejects a bound account observed to be linked (`D-142`) before deletion.
+  If the bound Auth user is missing, consumption skips Auth deletion but still deletes any remaining
+  registered remote data for that UID, then marks the authorization `COMPLETED`; it is not a no-op.
+  An account that remains anonymous but becomes disabled can still be cleaned up by its ticket,
+  and that case requires an administrator to disable the account inside the lookup-to-write window.
+  Linking and the app's own deletion paths can be started only by the account owner. Successful
+  consumption changes only the authorization's status to `COMPLETED`; it does not erase the
+  document or its bound UID, and it does not change `expiresAt`. Expiration rejects subsequent
+  consumption but does not itself erase the record. Physical erasure is provided by a `D-143`
+  account-deletion purge that observes the record, or by asynchronous Firestore TTL cleanup on
+  `expiresAt` after the 30-day expiration horizon, with no proven maximum. No document may describe
+  `D-148` as guaranteeing eligibility when the authorization is written. The three `D-150` tests in
+  `functions/test/orphanedAnonymousAccount.test.mjs` pin the interleavings.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the

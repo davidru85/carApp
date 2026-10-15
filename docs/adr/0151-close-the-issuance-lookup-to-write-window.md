@@ -2,11 +2,15 @@
 
 ## Status
 
-Pending
+Accepted
 
-No option is recommended here, no default is presented and none is selected. This ADR states the
-problem, the interleavings, the options and their proof obligations; the choice is the owner's, and
-`E3-16` MUST NOT start until this decision is `Accepted`.
+The owner selected **option A** on 2026-10-15: accept the window as a residual risk (see
+"Decision"). The context and option analysis below are preserved as written while the decision was
+`Pending`, when no option was recommended, except for the retention statements under "A. Linking
+between the lookup and the write", in the option A row of "Options Considered" and under "Privacy
+and retention implications", which the pull request #89 review corrected on 2026-10-15: successful
+consumption retains the record as `COMPLETED`, and only an observing `D-143` purge or asynchronous
+Firestore TTL deletion erases it.
 
 ## Context
 
@@ -45,8 +49,9 @@ for an identity whose `providerData` is no longer empty.
 re-resolves the bound UID's Admin record before any destructive stage and rejects a bound account
 that still exists and is no longer anonymous, so the linked account is **not** destructively
 cleaned up. It does not prevent the authorization from being created, and it does not remove it. The
-record, containing `anonymousUid`, persists until it is consumed, expires, or is purged by a
-`D-143` account deletion.
+record, containing `anonymousUid`, remains stored until an observing `D-143` account-deletion purge
+or asynchronous Firestore TTL deletion. Successful consumption retains it as `COMPLETED`, with the
+same UID and expiry; expiration alone does not erase it.
 
 ### B. Disabling between the lookup and the write
 
@@ -99,7 +104,7 @@ The table states what each option can deliver and what it cannot. None is recomm
 
 | Option | Mechanism | What it can deliver | What it cannot deliver |
 |--------|-----------|---------------------|------------------------|
-| **A. Accept the window as a residual risk** | No mechanism. The issuance contract states the scope honestly and `docs/SECURITY.md` records an accepted residual risk. | An accurate contract at zero implementation cost. The authorization stays a bearer capability bound to one UID, default-denied to clients, and `D-142` still refuses destructive cleanup of a linked account. | Nothing about retention: the record persists until consumption, expiry or a `D-143` purge. Requires the owner to accept, in writing, that an authorization can exist for a linked or disabled identity. |
+| **A. Accept the window as a residual risk** | No mechanism. The issuance contract states the scope honestly and `docs/SECURITY.md` records an accepted residual risk. | An accurate contract at zero implementation cost. The authorization stays a bearer capability bound to one UID, default-denied to clients, and `D-142` still refuses destructive cleanup of a linked account. | Nothing about creation or retention: successful consumption retains the UID-bound record as `COMPLETED`, and expiration alone does not erase it. Physical erasure requires an observing `D-143` purge or asynchronous TTL deletion, with no proven maximum. Requires the owner to accept, in writing, that an authorization can exist for a linked or disabled identity. |
 | **B. Revalidate at consumption for the disabled state too** | Extend the `D-142` consumption check to reject a bound account that exists and is disabled, not only one that is no longer anonymous. | Closes the *destructive* consequence of interleaving B, matching what `D-142` already does for interleaving A. Cheap: one predicate, on a path that already resolves the record. | **Not the creation or the retention.** The authorization is still written and still retained. It also changes the `D-142` contract and the `E3-10` / `E3-11` tests that pin it, and it must be reconciled with the missing-account idempotency rule. |
 | **C. Serialize issuance against an Auth-lifecycle marker in Firestore** | The Auth lifecycle writes a server-only marker (linked / disabled / deleted) that the issuer reads inside the same Firestore transaction as its authorization write. | A genuine serialization point for transitions that go through a path which writes the marker. | **Only as complete as the marker.** A transition that does not write one — a console action, an Admin SDK call outside the app's flows, a provider-side change — is invisible. It also inherits the whole `D-149` option C retention problem: a UID-keyed marker is UID-correlatable retention, which conflicts with `D-143`, and its lifetime is an unresolved design question, not a detail. |
 
@@ -112,10 +117,11 @@ The owner should weigh these explicitly, because they are the substance of the t
 
 - The record created by this window contains `anonymousUid`. It is a UID-bound identifier persisted
   for an identity that is, by the time it exists, linked or disabled.
-- Nothing removes it early. It is removed by consumption, by its `expiresAt` Firestore TTL — which
-  is provider-managed eventual cleanup after a 30-day expiration horizon with an asynchronous,
-  non-hard-bounded deletion delay, and therefore not a proven maximum — or by a `D-143`
-  account-deletion purge, whose own guarantee is scoped to what that purge observes.
+- Successful consumption changes the status to `COMPLETED` and retains `anonymousUid` and the
+  unchanged expiry. Expiration makes the ticket invalid and the record eligible for TTL deletion;
+  it does not erase the document. Physical erasure is provided by a `D-143` account-deletion purge
+  that observes the record, or by Firestore TTL cleanup after the 30-day expiration horizon, with
+  an asynchronous deletion delay and no proven maximum.
 - Option C would introduce a second UID-linked store to fix the first, which is the same conflict
   with `D-143` that ADR-0150 records for its own option C. Any marker design must state its
   retention rule and justify it against `D-143`, or use a representation that is not
@@ -123,13 +129,41 @@ The owner should weigh these explicitly, because they are the substance of the t
 
 ## Decision
 
-Not yet taken. This ADR presents the interleavings and the options; the owner selects. It offers no
-recommendation, presents no default, and selects nothing — which is why this decision's status is
-`Pending` rather than `Proposed`.
+The selected option is **A**, accepted by the owner on 2026-10-15.
+
+- No mechanism is added. `D-148` stays scoped to the snapshot its Admin lookup returns, as
+  `docs/CONTRACTS.md §11.5` already states.
+- An authorization can be created for an identity linked, disabled or deleted between the lookup and
+  the write; `docs/SECURITY.md` records that as an accepted residual risk.
+- The owner accepted it on these grounds:
+  - linking: `D-142` refuses the destructive stage at consumption, so a linked account is never
+    cleaned up, and only the account owner can link it;
+  - deletion: a missing Auth user is accepted idempotently, so Auth deletion is skipped, but the
+    callable still deletes any remaining registered remote data for the bound UID before marking
+    the authorization `COMPLETED`. Missing Auth state does not prove that Firestore data is absent,
+    and successful consumption does not erase the authorization record;
+  - disabling: the only case with a destructive consequence, and it requires an administrator to
+    disable the anonymous account inside the interval between the lookup and the write; what
+    consumption would then delete is the orphaned anonymous account its owner asked to remove;
+  - option C would serialize only transitions that write a marker, missing console and Admin actions,
+    and would add UID-correlatable retention against `D-143`; option B was not taken because no
+    process disables accounts in the MVP.
+- The three `D-150` tests in `functions/test/orphanedAnonymousAccount.test.mjs` keep the limitation
+  pinned; `E3-16` records the risk and makes no product change.
+- Option B remains available as a later, separate decision if disabling accounts becomes an
+  operational process.
 
 ## Proof obligations for the accepted option
 
-`E3-16` MUST, before it can close:
+Option A adds no mechanism. For option A, `E3-16` MUST record the residual risk in
+`docs/SECURITY.md`, stating what remains retained and that its TTL cleanup has no proven maximum;
+keep `docs/CONTRACTS.md §11.5` scoping `D-148` to the observed snapshot; and keep the three `D-150`
+interleaving tests and the `D-148` fail-closed test passing. The obligations below apply to any future
+decision that adds a mechanism.
+
+## Proof obligations for a future mechanism
+
+A future story that adds a mechanism for this window MUST, before it can close:
 
 - enumerate the orderings of `I1`, `I2`, `I3` and `T` for each of linking, disabling and deletion,
   including a crash at every point between two consecutive steps of either flow, and state for each
@@ -156,10 +190,12 @@ recommendation, presents no default, and selects nothing — which is why this d
 
 ### Negative
 
-- Until this decision is taken, an authorization can exist for an identity that was linked or
-  disabled between the lookup and the write, and nothing removes it early.
-- `docs/SECURITY.md` carries no accepted-residual-risk entry for this, because that entry is correct
-  only if the owner explicitly chooses option A.
+- Under accepted option A, an authorization can exist for an identity linked, disabled or deleted
+  between the lookup and the write. Successful consumption retains its UID as `COMPLETED`; only an
+  observing `D-143` purge or asynchronous TTL deletion physically erases the record, with no proven
+  maximum.
+- `docs/SECURITY.md` carries the accepted-residual-risk entry for this window, because the owner
+  chose option A.
 
 ### Constraints Introduced
 
@@ -171,7 +207,10 @@ recommendation, presents no default, and selects nothing — which is why this d
 
 ## Verification
 
-- To be defined by the accepted option, per the proof obligations above.
+- Accepted option A adds no mechanism. Run `npm test` in `functions/`, preserving the three `D-150`
+  characterization tests and the `D-148` fail-closed test, and run `./gradlew contractCheck`.
+  Exhaustive crash and serialization proofs apply only to a future mechanism under the section
+  above.
 - The current limitation is already pinned deterministically, so it cannot be re-described as safe:
   `functions/test/orphanedAnonymousAccount.test.mjs` contains three `D-150` tests in which the
   account is linked, disabled or deleted between the Admin lookup and the authorization write, each
