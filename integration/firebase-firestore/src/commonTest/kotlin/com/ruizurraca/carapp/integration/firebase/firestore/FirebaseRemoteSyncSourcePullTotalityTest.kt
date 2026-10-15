@@ -77,6 +77,17 @@ class FirebaseRemoteSyncSourcePullTotalityTest {
             assertEquals(marker(NON_STRING_KEY_MAP), json["brand"])
         }
 
+    @Test
+    fun aMapNormalizedBeforeThePullBoundaryRetainsItsMarker() =
+        runTest {
+            val normalized = mapOf<Any?, Any?>(1L to "value").toProviderFieldMap { it }
+
+            val json = pulledJson(vehicleFields + ("brand" to normalized))
+
+            assertEquals(marker(NON_STRING_KEY_MAP), json["brand"])
+            assertEquals(JsonPrimitive(DOCUMENT_ID), json["id"])
+        }
+
     private suspend fun pulledJson(fields: Map<String, Any?>): JsonObject {
         val document =
             FirestoreDocument(
