@@ -38,6 +38,25 @@
 
 ## Entries
 
+### 2026-10-15 — E3-16 accepted issuance lookup-to-write window (bundle E3-B2)
+
+- **Type:** story
+- **Story / Decision:** `E3-16` / `D-150` (accepted as option A)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** the owner accepted the window between the ticket issuer's Admin lookup and its
+  Firestore write as a residual risk. No mechanism is added. `docs/SECURITY.md` records what linking,
+  disabling and deletion inside the window lead to, and `docs/CONTRACTS.md §11.5` states the window as
+  accepted while keeping `D-148` scoped to the observed snapshot.
+- **Why:** linking and deletion have no destructive consequence (`D-142` refuses a linked account; a
+  missing one is idempotent), the disabled case needs an administrator inside the window, and a
+  marker would miss console and Admin transitions while adding UID-correlatable retention.
+- **Documents touched:** `docs/SECURITY.md`, `docs/CONTRACTS.md §11.5`, ADR-0151 and the `D-150`
+  mirrors; `docs/handoffs/E3-16.md`.
+- **Verification:** the existing three `D-150` tests and the `D-148` fail-closed test pass;
+  `contractCheck` passes.
+- **Follow-ups / risks:** option B stays available as a separate decision if accounts are ever
+  disabled operationally. This completes bundle `E3-B2` and Phase 3 once it merges.
+
 ### 2026-10-15 — E3-15 accepted issuance-after-purge residual (bundle E3-B2)
 
 - **Type:** story

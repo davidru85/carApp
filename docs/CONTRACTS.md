@@ -1124,7 +1124,8 @@ Two anonymous-deletion entry points reuse this service:
   longer eligible. `D-148` therefore guarantees exactly that a token whose identity was **already**
   linked, disabled, deleted or state-unknown when the lookup resolved is rejected without creating
   an authorization; it does **not** guarantee eligibility at commit time, and no document MAY state
-  otherwise. That window is `D-150`, which is `Pending`, with `E3-16` as its story. `D-142` covers
+  otherwise. That window is an accepted residual risk (`D-150`, option A, 2026-10-15, recorded in
+  `docs/SECURITY.md`): no mechanism closes it, and `E3-16` recorded it. `D-142` covers
   only part of the consequence: consumption-time revalidation refuses the destructive stage for a
   bound account that has become linked, but it does not prevent the authorization from being created
   or retained, and it does not reject a bound account that stays anonymous and became disabled after

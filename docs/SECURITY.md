@@ -128,6 +128,21 @@ Requirements:
   proven maximum. No document may describe the account deletion as erasing every UID-bound
   authorization, or cite that TTL as a retention bound. `functions/test/accountDeletionIssuanceRace.test.mjs`
   pins the interleaving.
+- **An orphan-cleanup authorization can be created for an identity that changed during issuance**
+  (`D-150`, accepted as option A on 2026-10-15). The ticket issuer reads the caller's Firebase Auth
+  record, checks that it exists, is enabled and is still anonymous (`D-148`), and then writes the
+  authorization to Cloud Firestore. The two services share no transaction, so the account can be
+  linked, disabled or deleted between the read and the write, and the authorization is created
+  anyway. A linked account is never cleaned up, because consumption re-checks that the bound account
+  is still anonymous (`D-142`); a deleted one makes consumption an idempotent no-op; a disabled one
+  that stays anonymous can still be cleaned up by its ticket — which deletes the orphaned anonymous
+  account its owner asked to remove — and that case needs an administrator to disable the account
+  inside the interval between the read and the write. Linking and the app's own deletion paths can be
+  started only by the account owner. The record holds the bound UID, a ticket hash, a status and an
+  expiry, and it is removed by consumption, by a `D-143` account-deletion purge or by the Firestore
+  TTL on `expiresAt`, whose deletion delay has no proven maximum. No document may describe `D-148`
+  as guaranteeing eligibility when the authorization is written. The three `D-150` tests in
+  `functions/test/orphanedAnonymousAccount.test.mjs` pin the interleavings.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to
   the cutoff through the broad standard `roles/billing.admin` role. The role belongs only to the
