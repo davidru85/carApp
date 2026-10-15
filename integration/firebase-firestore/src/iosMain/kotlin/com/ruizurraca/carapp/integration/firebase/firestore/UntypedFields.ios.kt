@@ -18,7 +18,8 @@ import platform.Foundation.NSString
  * timestamps to epoch milliseconds here; no product field is decoded or asserted, so `§9.5`
  * classification stays in `:core:sync`. A value with no JSON form (`FIRGeoPoint`, `NSData`,
  * `FIRDocumentReference`, a vector) becomes the `D-208` marker in its own position instead of failing
- * the page. Map keys keep their existing string coercion, which never failed.
+ * the page. A map with a non-string key becomes one marker before raw JSON serialization; native
+ * NSString keys retain their string representation.
  */
 private const val MILLIS_PER_SECOND = 1_000L
 private const val MICROS_PER_SECOND = 1_000_000L
