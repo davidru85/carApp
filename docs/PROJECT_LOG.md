@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-10-15 — E3-20 review correction R1: the iOS map-key coercion removed (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-20` / `D-208` (ADR-0209); correction of pull request #88
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** the iOS `untypedFields()` actual and its recursive map branch coerced every map
+  key with `(key as? String ?: key?.toString().orEmpty())`, so a numeric key became text, a null key
+  became the empty string, two keys like `1L` and `"1"` collapsed into one JSON field name, and the
+  common conversion never saw the unsupported original shape. The `D-208` marker was therefore absent
+  on iOS and the quarantine payload lost the representation `§9.5` requires. The map-key rule now
+  lives in `integration/firebase-firestore/src/commonMain/.../ProviderFieldMaps.kt` as
+  `Map<*, *>.toProviderFieldMap()`, which emits one
+  `{UNSUPPORTED_PROVIDER_VALUE_KEY: NON_STRING_KEY_MAP}` marker before converting any value when a key
+  is not a `String`; both the iOS root accessor and the recursive map branch route through one
+  `toIosFieldMap()` that renders a key only when it is a native `NSString`.
+- **Why:** `docs/CONTRACTS.md §9.5` and ADR-0209 make the rule independent of the map's position and
+  no accepted decision exempts iOS, so this applies the existing decision literally rather than
+  permitting coercion. The old handoff sentence that retained the coercion is removed.
+- **Documents touched:** `docs/handoffs/E3-20.md` (the removed claim, the review-correction section,
+  files and verification), `docs/handoffs/E3-B1.md` (checkpoint), this entry.
+- **Verification:** extraction `4a12bb79` preserved behaviour (module host suite and both iOS target
+  compiles pass); RED `73de0c24` failed five cases (numeric, null and colliding keys lacked the
+  marker; the throwing key raised from its `toString()`; the pull-boundary map produced
+  `{"1":"value"}`); GREEN `21467813` made them pass, with the full module host suite at 45 tests and
+  zero failures, `:core:sync` JVM and Native passing, `:build-logic:convention:test`,
+  `architectureCheck` and `contractCheck` passing with no `FAIL` or `PENDING`, and both iOS targets
+  compiling. New tests: `ProviderFieldMapsTest` and
+  `FirebaseRemoteSyncSourcePullTotalityTest.aMapNormalizedBeforeThePullBoundaryRetainsItsMarker`.
+- **Follow-ups / risks:** none new. No new decision ID was required; the change implements `D-208`
+  literally. Bundle `E3-B1` still awaits the owner's gated review; the pull request is not merged.
+
 ### 2026-10-14 — E3-20 pull-boundary totality for unsupported provider values (bundle E3-B1)
 
 - **Type:** story
