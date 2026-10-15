@@ -2,11 +2,11 @@
 
 ## Status
 
-Pending
+Accepted
 
-No option is recommended here, no default is presented and none is selected. This ADR states the
-problem, the interleavings, the options and their proof obligations; the choice is the owner's, and
-`E3-16` MUST NOT start until this decision is `Accepted`.
+The owner selected **option A** on 2026-10-15: accept the window as a residual risk (see
+"Decision"). The analysis below is preserved as written while the decision was `Pending`, when no
+option was recommended.
 
 ## Context
 
@@ -123,11 +123,35 @@ The owner should weigh these explicitly, because they are the substance of the t
 
 ## Decision
 
-Not yet taken. This ADR presents the interleavings and the options; the owner selects. It offers no
-recommendation, presents no default, and selects nothing — which is why this decision's status is
-`Pending` rather than `Proposed`.
+The selected option is **A**, accepted by the owner on 2026-10-15.
+
+- No mechanism is added. `D-148` stays scoped to the snapshot its Admin lookup returns, as
+  `docs/CONTRACTS.md §11.5` already states.
+- An authorization can be created for an identity linked, disabled or deleted between the lookup and
+  the write; `docs/SECURITY.md` records that as an accepted residual risk.
+- The owner accepted it on these grounds:
+  - linking: `D-142` refuses the destructive stage at consumption, so a linked account is never
+    cleaned up, and only the account owner can link it;
+  - deletion: consuming a ticket for a missing account is idempotent success and deletes nothing;
+    the record holds the UID of an account that no longer exists;
+  - disabling: the only case with a destructive consequence, and it requires an administrator to
+    disable the anonymous account inside the interval between the lookup and the write; what
+    consumption would then delete is the orphaned anonymous account its owner asked to remove;
+  - option C would serialize only transitions that write a marker, missing console and Admin actions,
+    and would add UID-correlatable retention against `D-143`; option B was not taken because no
+    process disables accounts in the MVP.
+- The three `D-150` tests in `functions/test/orphanedAnonymousAccount.test.mjs` keep the limitation
+  pinned; `E3-16` records the risk and makes no product change.
+- Option B remains available as a later, separate decision if disabling accounts becomes an
+  operational process.
 
 ## Proof obligations for the accepted option
+
+Option A adds no mechanism. For option A, `E3-16` MUST record the residual risk in
+`docs/SECURITY.md`, stating what remains retained and that its TTL cleanup has no proven maximum;
+keep `docs/CONTRACTS.md §11.5` scoping `D-148` to the observed snapshot; and keep the three `D-150`
+interleaving tests and the `D-148` fail-closed test passing. The obligations below apply to any future
+decision that adds a mechanism.
 
 `E3-16` MUST, before it can close:
 
@@ -158,8 +182,8 @@ recommendation, presents no default, and selects nothing — which is why this d
 
 - Until this decision is taken, an authorization can exist for an identity that was linked or
   disabled between the lookup and the write, and nothing removes it early.
-- `docs/SECURITY.md` carries no accepted-residual-risk entry for this, because that entry is correct
-  only if the owner explicitly chooses option A.
+- `docs/SECURITY.md` carries the accepted-residual-risk entry for this window, because the owner
+  chose option A.
 
 ### Constraints Introduced
 

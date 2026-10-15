@@ -151,7 +151,7 @@ merged on 2026-09-07 through pull request #58, after two owner review rounds, wi
 checks green. `E3-11`, the Anonymous Identity Cleanup Entry Points, merged on 2026-09-07 through
 pull request #60, after five owner review rounds, with all ten required checks green; its
 post-merge review findings are `E3-14`, which merged on 2026-09-09 through pull request #63, and
-`E3-15`, which is still open and blocked on the `Pending` decision `D-149`. `E2-07`, the Anonymous
+`E3-15`, which bundle `E3-B2` closes by accepting `D-149` (option D). `E2-07`, the Anonymous
 Sign-In Benefit Reminders, merged on 2026-09-08 through pull request #61, after its gated owner
 review.
 
@@ -201,14 +201,16 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-13`, `E3-15`, `E3-16`, `E3-18`,
-  `E3-20` and `E3-21`, delivered as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
+- **Remaining Phase 3:** `E3-15` and `E3-16`, the second of the two bundles under `D-205`
+  (ADR-0206). Bundle `E3-B1`, client
   synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), merged on 2026-10-15 through pull
   request #88 as a true merge of `story/E3-B1-client-sync-hardening` into `main` (merge commit
   `a71e1767`), after the owner's gated review and two review correction rounds on `E3-20`; it
   introduced `D-205` through `D-208` and accepted `D-173`, and its record is `docs/handoffs/E3-B1.md`. Bundle
-  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), starts after `E3-B1` merges and after
-  the owner decides `D-149` and `D-150`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
+  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), is in flight on
+  `story/E3-B2-server-cleanup-races`: the owner accepted both races as residual risks on 2026-10-15
+  (`D-149` option D, `D-150` option A), so the bundle records them and pins the `D-149` interleaving
+  with a test, adding no mechanism; its live checkpoint is `docs/handoffs/E3-B2.md`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
   emission surface, merged on 2026-10-14 through pull request #84 as a true merge of
   `story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`), after the
   owner's gated review, two review correction rounds and the owner's closure of `D-201` through
@@ -236,17 +238,11 @@ review.
   `docs/handoffs/E3-08.md`. `E3-04`, the repository sync wiring, merged on 2026-09-22 through pull
   request #72; it introduced `D-181` through `D-187` and its evidence is in `docs/handoffs/E3-04.md`.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
-- **Two decisions remain open, and none of them blocks merged work:** the tables below are the
-  authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. The owner accepted `D-173` as option B on 2026-10-14; `E3-18` delivered it inside
-  `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-17`, `E3-18`, `E3-19`,
+- **No decision remains open.** The owner accepted `D-149` (option D) and `D-150` (option A) on
+  2026-10-15; `docs/DECISION_BOARD.md` holds the authoritative rows. The owner accepted `D-173` as
+  option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-17`, `E3-18`, `E3-19`,
   `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-  - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
-    no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot
-    start until the owner decides.
-  - **`D-150` / `E3-16` — issuance lookup-to-write window.** `Pending`, no recommendation, no option
-    pre-selected; the analysis is in ADR-0151. `E3-16` cannot start until the owner decides.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation

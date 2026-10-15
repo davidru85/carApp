@@ -2,10 +2,11 @@
 
 ## Status
 
-Pending
+Accepted
 
-No option is recommended here. This ADR presents the trade-off and its proof obligations; the
-selection is the owner's, and `E3-15` MUST NOT start until this decision is `Accepted`.
+The owner selected **option D** on 2026-10-15: accept the residual window and record it, adding no
+mechanism (see "Decision"). The analysis below is preserved as written while the decision was
+`Pending`, when no option was recommended.
 
 ## Context
 
@@ -133,6 +134,7 @@ conflating the two is exactly the error the first draft made.
 | **A. Second purge pass after Auth deletion** | `§11.5` runs the authorization purge a second time after the Auth user is deleted. | **Partial synchronous cleanup — neither P1 nor P2.** The option itself removes exactly those authorizations that were already visible when the second pass ran; that removal is synchronous with the deletion flow and needs no TTL. It covers only the interleavings in which the racing write precedes the pass, so it is not the global P1 property. | For every write that lands after the second pass, the option contributes nothing; such a record is removed solely by the pre-existing provider-managed TTL cleanup, eventually and without a hard bound. Whatever eventual convergence the system has for those interleavings is the TTL's, not the option's. | **Neither P1 nor P2.** The owner's counterexample: the issuer writes after the second purge and crashes; nothing in the option revisits the record. The pass is a cleanup over one class of orderings, not a serialization point and not a global convergence proof. |
 | **B. Disable the Auth user as the first deletion stage** | `§11.5` disables the account before deleting data; `D-148` rejects a disabled record, so most racing issuances are refused at the eligibility read. | **Neither P1 nor P2 — a probability reduction only.** The option itself refuses those issuances whose eligibility read happens after the disable, which is a real and useful narrowing of the set of interleavings that can produce a surviving record, but it removes no record that has already been written and adds no cleanup step at all. | Every record written by an issuance whose eligibility read preceded the disable survives the flow entirely; the only thing that removes it is the pre-existing provider-managed TTL cleanup, eventually and without a hard bound. | **Neither P1 nor P2, and no cleanup of its own.** To remove anything at all it must be combined with option A's second purge pass, and even that combination is partial synchronous cleanup rather than P1. It also adds a user-visible lockout when a deletion fails midway. |
 | **C. Internal `deletedUids` marker collection read inside the issuance transaction** | A server-only marker is written by the deletion flow before the purge; the issuer reads the marker inside the same Firestore transaction as its authorization write and refuses if present. | **P2 for the interleaving, by construction — conditional on an unresolved retention design.** The transaction is a real serialization point: the marker write and the authorization create conflict on Firestore's transaction ordering, so no crash interleaving leaves a UID-bound authorization after success, *provided the marker is written before the purge and is still present when a racing issuance runs*. | None needed for the authorizations themselves. | **Not a clean solution as currently drafted.** The marker lifetime that makes the serialization argument work is itself unresolved and conflicts with `D-143`; see the next section. It is also the heaviest option: a new internal server-only collection, a `§16` internal-registry entry, the parity test, and an extra transaction on every issuance. |
+| **D. Accept the residual window and record it** | No mechanism. The `§11.5` order is unchanged; the contract and `docs/SECURITY.md` state the residual interleaving. | **Neither P1 nor P2 — an honest contract at no implementation cost.** | Every record the interleaving leaves is removed solely by the pre-existing provider-managed TTL, eventually and without a hard bound. | Nothing about the interleaving itself. Requires the owner to accept, in writing, that one UID-bound authorization can outlive a successful deletion. |
 
 No option is recommended. Only option C can provide P2 as stated, and it can only do so once its
 marker retention problem is answered; whether the project wants P2 at that cost, or accepts a
@@ -205,14 +207,41 @@ amended by a new decision that the owner takes deliberately.
 
 ## Decision
 
-Not yet taken. This ADR presents the corrected options and the owner selects one. It does not
-select one on the owner's behalf, it does not present a default, and it offers no recommendation —
-which is why this decision's status is `Pending` rather than `Proposed`.
+The selected option is **D**, accepted by the owner on 2026-10-15.
 
-Whichever option is accepted, `E3-15` MUST discharge the proof obligations below before the story
-can close.
+- The `§11.5` deletion order is unchanged and no mechanism is added: no second purge pass, no
+  disable stage, no marker collection and no issuer read-back.
+- The interleaving `I1, D1, D2, I2, D3, D4` remains possible. When it occurs, one UID-bound
+  authorization record outlives a successful `deleteAccount`, and its only cleanup is the
+  pre-existing Firestore TTL: provider-managed eventual cleanup after the 30-day expiration horizon,
+  with no proven maximum.
+- The owner accepted that risk on these grounds:
+  - only the account owner can start either operation: the issuer binds the authorization to the
+    caller's own anonymous UID, and `deleteAccount` requires the caller UID to equal the target UID,
+    so no third party can produce the interleaving for someone else's account;
+  - the app never runs the two operations concurrently: issuance happens only inside the
+    account-conversion flow under its mutex, account deletion is the separate `F-5` departure flow,
+    and an unlinked anonymous identity is device-bound;
+  - the surviving record holds the pseudonymous UID of an account that no longer exists, a ticket
+    hash, a status and an expiry; it carries no product data and no capability against anyone else,
+    and consuming it deletes nothing that still exists;
+  - option C, the only candidate with a serialization point, would retain every deleted UID
+    indefinitely — the class of retention `D-143` was accepted to remove — so it would trade a
+    residual record with a 30-day expiration horizon for a permanent one.
+- `docs/SECURITY.md` records the accepted residual risk, `docs/CONTRACTS.md §11.5` and `§16` state
+  it, and `E3-15` pins the interleaving with a deterministic test so that it cannot later be
+  described as safe.
+- A future decision MAY add a mechanism; it would supersede this one and discharge the proof
+  obligations below.
 
 ## Proof obligations for the accepted option
+
+Option D adds no mechanism, so it makes no serialization or convergence claim to prove. For option
+D, `E3-15` MUST record the residual risk in `docs/SECURITY.md`, attributing the only cleanup to the
+provider-managed TTL with no proven maximum; state the accepted scope in `docs/CONTRACTS.md §11.5`
+and `§16`; and pin the interleaving with a deterministic test that shows `deleteAccount` returning
+success while the authorization still exists. The obligations below apply to any future decision that
+adds a mechanism.
 
 Any accepted option MUST come with a complete crash-safe argument, not a convergence argument.
 Options A and B deliver neither P1 nor P2 on their own: A is partial synchronous cleanup and B is a
@@ -261,8 +290,8 @@ option touches Auth state):
 
 ### Constraints Introduced
 
-- Until this decision is accepted and `E3-15` ships, the residual risk stands and MUST be recorded
-  as an accepted residual risk in `docs/SECURITY.md` if the owner chooses to defer.
+- The residual risk stands, by the owner's choice of option D, and is recorded as an accepted
+  residual risk in `docs/SECURITY.md`.
 - No implementation under this decision may claim P2 without the crash-safe serialization proof of
   the **Proof obligations** section.
 - No document may describe the residual window as bounded by the 30-day TTL, or cite that TTL as
