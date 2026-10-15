@@ -1183,8 +1183,8 @@ Human review required.
 
 ### E3-15 - Close the Ticket Issuance and Account Deletion Interleaving - M
 
-Status: implemented in bundle `E3-B2` (`D-205`, ADR-0206) through pull request #89, awaiting the
-owner's gated review. The owner accepted `D-149` as
+Status: merged in bundle `E3-B2` (`D-205`, ADR-0206) on 2026-10-15 through pull request #89 (merge
+commit `aa8e9c68`), after the owner's gated review. The owner accepted `D-149` as
 option D on 2026-10-15 ([ADR-0150](adr/0150-close-the-ticket-issuance-and-account-deletion-race.md)):
 the residual interleaving below is accepted and recorded rather than closed, so this story adds no
 mechanism. The analysis that follows is preserved as written while the decision was `Pending`.
@@ -1270,8 +1270,8 @@ Human review required.
 
 ### E3-16 - Close the Issuance Lookup-to-Write Window - M
 
-Status: implemented in bundle `E3-B2` (`D-205`, ADR-0206) through pull request #89, awaiting the
-owner's gated review. The owner accepted `D-150` as
+Status: merged in bundle `E3-B2` (`D-205`, ADR-0206) on 2026-10-15 through pull request #89 (merge
+commit `aa8e9c68`), after the owner's gated review. The owner accepted `D-150` as
 option A on 2026-10-15 ([ADR-0151](adr/0151-close-the-issuance-lookup-to-write-window.md)): the
 window below is accepted as a residual risk, so this story adds no mechanism. `D-149` / `E3-15` is a
 **different** decision and was not broadened to cover this one. The analysis that follows is
@@ -2096,8 +2096,8 @@ proof after E3-04.
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
 | E3-13 Outbox entityType single source of truth (bundle `E3-B1`, completed, PR #88) | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
-| E3-15 Close the ticket issuance and account deletion interleaving (bundle `E3-B2`, implemented, PR #89) | 3 | M | Yes |
-| E3-16 Close the issuance lookup-to-write window (bundle `E3-B2`, implemented, PR #89) | 3 | M | Yes |
+| E3-15 Close the ticket issuance and account deletion interleaving (bundle `E3-B2`, completed, PR #89) | 3 | M | Yes |
+| E3-16 Close the issuance lookup-to-write window (bundle `E3-B2`, completed, PR #89) | 3 | M | Yes |
 | E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle (completed, PR #70) | 3 | M | Yes |
 | E3-18 Manual retry coverage for parked connectivity rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |

@@ -623,16 +623,15 @@ Local database, vehicle and fuel domains, repositories, consumption calculation,
 
 ### Phase 2 - Authentication
 
-Status: open; `E2-01`, `E2-02`, `E2-03` and `E2-06` are complete, having merged on 2026-09-06 through pull requests #54 and #55. `E2-07` is the first Ready story that remains, because `E2-04` depends on `E3-11`.
+Status: complete. `E2-04` (pull request #64) and `E2-05` (pull request #65, 2026-09-10) closed the phase.
 
 Auth abstractions, Firebase Auth integration, onboarding, local owner adoption, conversion,
 anonymous retention notices, sign-out and account deletion.
 
 ### Phase 3 - Backend Backup and Recovery
 
-Status: open; every Phase 3 story except `E3-15` and `E3-16` has merged, and bundle `E3-B2` delivers
-those two through pull request #89, awaiting the owner's gated review. The phase closes when that
-pull request merges.
+Status: complete. Bundle `E3-B2` (`E3-15`, `E3-16`) closed the phase on 2026-10-15 through pull
+request #89, after bundle `E3-B1` merged through pull request #88 (`D-205`).
 
 Firestore rules and emulator tests, Firestore integration for the development project, backup and
 recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account

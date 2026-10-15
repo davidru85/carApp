@@ -130,7 +130,7 @@ is not a repository artifact. Therefore:
 **This section describes what exists right now.** It is the fastest way for an incoming agent to
 tell what is already built from what is still a plan, and it is updated by the story that changes it.
 
-### Phases 1 and 2 are complete and Phase 3 is open
+### Phases 1 to 3 are complete and Phase 4 is open
 
 `E0-01` to `E0-06` and `E0-08` are merged. `E1-01` has delivered the local database, and `E3-06`
 has made provider decoupling executable before any Firebase integration module exists. The owner
@@ -151,7 +151,7 @@ merged on 2026-09-07 through pull request #58, after two owner review rounds, wi
 checks green. `E3-11`, the Anonymous Identity Cleanup Entry Points, merged on 2026-09-07 through
 pull request #60, after five owner review rounds, with all ten required checks green; its
 post-merge review findings are `E3-14`, which merged on 2026-09-09 through pull request #63, and
-`E3-15`, which bundle `E3-B2` closes by accepting `D-149` (option D). `E2-07`, the Anonymous
+`E3-15`, which bundle `E3-B2` closed by accepting `D-149` (option D). `E2-07`, the Anonymous
 Sign-In Benefit Reminders, merged on 2026-09-08 through pull request #61, after its gated owner
 review.
 
@@ -170,8 +170,8 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** Phase 3. The remaining stories and the decisions that gate three of them are listed
-  below and in `docs/BACKLOG.md`. Phase 2 closed with `E2-04`, the anonymous account conversion, which
+- **Next:** Phase 4, `E4-01` through `E4-04`, listed below and in `docs/BACKLOG.md`. Phase 3 closed
+  on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
   `docs/handoffs/E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
   through pull request #65. It introduced `D-155` through `D-164`, and its evidence lives in
@@ -201,17 +201,17 @@ review.
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
-- **Remaining Phase 3:** `E3-15` and `E3-16`, the second of the two bundles under `D-205`
-  (ADR-0206). Bundle `E3-B1`, client
+- **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
+  as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
   synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), merged on 2026-10-15 through pull
   request #88 as a true merge of `story/E3-B1-client-sync-hardening` into `main` (merge commit
   `a71e1767`), after the owner's gated review and two review correction rounds on `E3-20`; it
   introduced `D-205` through `D-208` and accepted `D-173`, and its record is `docs/handoffs/E3-B1.md`. Bundle
-  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), is implemented on
-  `story/E3-B2-server-cleanup-races` through pull request #89 and awaits the owner's gated review: the
-  owner accepted both races as residual risks on 2026-10-15
-  (`D-149` option D, `D-150` option A), so the bundle records them and pins the `D-149` interleaving
-  with a test, adding no mechanism; its record is `docs/handoffs/E3-B2.md`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
+  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), merged on 2026-10-15 through pull request
+  #89 as a true merge of `story/E3-B2-server-cleanup-races` into `main` (merge commit `aa8e9c68`),
+  after the owner's gated review and two review correction rounds: the owner accepted both races as
+  residual risks (`D-149` option D, `D-150` option A), so the bundle recorded them and pinned the
+  `D-149` interleaving with a test, adding no mechanism; its record is `docs/handoffs/E3-B2.md`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
   emission surface, merged on 2026-10-14 through pull request #84 as a true merge of
   `story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`), after the
   owner's gated review, two review correction rounds and the owner's closure of `D-201` through
@@ -241,8 +241,8 @@ review.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **No decision remains open.** The owner accepted `D-149` (option D) and `D-150` (option A) on
   2026-10-15; `docs/DECISION_BOARD.md` holds the authoritative rows. The owner accepted `D-173` as
-  option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-17`, `E3-18`, `E3-19`,
-  `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
+  option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
+  `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
