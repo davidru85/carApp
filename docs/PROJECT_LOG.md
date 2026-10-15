@@ -38,6 +38,27 @@
 
 ## Entries
 
+### 2026-10-15 — E3-B2 record closure and Phase 3 completion
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E3-15`, `E3-16` (bundle `E3-B2`) / — (no decision changed)
+- **Author:** agent, on behalf of David Ruiz (branch `docs/E3-B2-record-closeout`)
+- **What changed:** bundle `E3-B2` merged on 2026-10-15 through pull request #89 as a true merge of
+  `story/E3-B2-server-cleanup-races` into `main` (merge commit `aa8e9c68`, whose second parent is the
+  branch head `550b6245`), after the owner's gated review and two review correction rounds on
+  records. That merge completes Phase 3. `AGENTS.md` now reads "Phases 1 to 3 are complete and
+  Phase 4 is open", lists no remaining Phase 3 story and names Phase 4 as next; the two backlog status
+  blocks and index rows state the merge; `docs/TECHNICAL_PLAN.md` marks Phase 3 complete and corrects
+  the Phase 2 status, which still read "open" although `E2-04` and `E2-05` closed it on 2026-09-10;
+  the bundle and story handoffs gain a dated `Closure update`.
+- **Why:** `AGENTS.md` §Repository State must tell an incoming agent what is built; a merged bundle
+  and a closed phase must not read as in review or open.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/TECHNICAL_PLAN.md`,
+  `docs/handoffs/E3-B2.md`, `E3-15.md`, `E3-16.md`, this log.
+- **Verification:** documentation only. The final head `550b6245` passed all ten required checks on
+  attempt `1` (run `38780325544`). `contractCheck` is run before the pull request.
+- **Follow-ups / risks:** none new. No decision is open; Phase 4 (`E4-01` to `E4-04`) is next.
+
 ### 2026-10-15 — E3-B2 review round R2: accepted-decision references, grounds and status records
 
 - **Type:** correction
