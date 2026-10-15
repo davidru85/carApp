@@ -5,8 +5,12 @@
 Accepted
 
 The owner selected **option A** on 2026-10-15: accept the window as a residual risk (see
-"Decision"). The analysis below is preserved as written while the decision was `Pending`, when no
-option was recommended.
+"Decision"). The context and option analysis below are preserved as written while the decision was
+`Pending`, when no option was recommended, except for the retention statements under "A. Linking
+between the lookup and the write", in the option A row of "Options Considered" and under "Privacy
+and retention implications", which the pull request #89 review corrected on 2026-10-15: successful
+consumption retains the record as `COMPLETED`, and only an observing `D-143` purge or asynchronous
+Firestore TTL deletion erases it.
 
 ## Context
 
