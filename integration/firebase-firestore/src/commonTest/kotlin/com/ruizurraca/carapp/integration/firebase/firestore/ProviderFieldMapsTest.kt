@@ -10,10 +10,11 @@ class ProviderFieldMapsTest {
         var convertedValues = 0
         val fields = linkedMapOf<Any?, Any?>("kept" to "value", 1L to "unsupported")
 
-        val result = fields.toProviderFieldMap {
-            convertedValues += 1
-            it
-        }
+        val result =
+            fields.toProviderFieldMap {
+                convertedValues += 1
+                it
+            }
 
         assertEquals(marker(), result)
         assertEquals(0, convertedValues)
@@ -54,8 +55,7 @@ class ProviderFieldMapsTest {
         assertEquals(emptyMap(), emptyMap<Any?, Any?>().toProviderFieldMap { it })
     }
 
-    private fun marker(): Map<String, Any?> =
-        mapOf(UNSUPPORTED_PROVIDER_VALUE_KEY to NON_STRING_KEY_MAP)
+    private fun marker(): Map<String, Any?> = mapOf(UNSUPPORTED_PROVIDER_VALUE_KEY to NON_STRING_KEY_MAP)
 
     private class KeyWhoseToStringThrows {
         override fun toString(): String = error("An unsupported key must not be rendered")
