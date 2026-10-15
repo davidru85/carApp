@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.core.sync
 
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.PersistenceError
 import com.ruizurraca.carapp.core.database.QuarantineDatabaseWrite

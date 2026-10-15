@@ -98,6 +98,13 @@ class ConnectivityCodeParityTest {
         const val DROPPED_CODE = "REMOTE.UNAVAILABLE"
         val REFERENCE_CODES = setOf("REMOTE.UNAVAILABLE", "REMOTE.DEADLINE_EXCEEDED")
         val CONNECTIVITY_STATEMENTS =
-            setOf("markConnectivityFailuresDue", "countPendingSyncRows", "countRetryableSyncRows")
+            setOf(
+                "markConnectivityFailuresDue",
+                "countPendingSyncRows",
+                "countRetryableSyncRows",
+                "resetStaleSyncingVehicles",
+                "resetStaleSyncingFuelEntries",
+                "resetFailedOutbox",
+            )
     }
 }

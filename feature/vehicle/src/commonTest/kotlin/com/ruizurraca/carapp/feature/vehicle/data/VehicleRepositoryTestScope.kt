@@ -2,6 +2,7 @@ package com.ruizurraca.carapp.feature.vehicle.data
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import com.ruizurraca.carapp.core.common.Confirmation
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.database.DatabaseMutations
 import com.ruizurraca.carapp.core.database.Fuel_entry
 import com.ruizurraca.carapp.core.database.Outbox
@@ -10,7 +11,6 @@ import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import com.ruizurraca.carapp.core.testing.FakeUuidGenerator

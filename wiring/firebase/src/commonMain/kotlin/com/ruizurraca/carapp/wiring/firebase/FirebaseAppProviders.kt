@@ -17,6 +17,7 @@ import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
 import com.ruizurraca.carapp.core.common.DispatcherProvider
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.LocaleInfo
 import com.ruizurraca.carapp.core.common.LocaleProvider
 import com.ruizurraca.carapp.core.common.LogLevel
@@ -33,7 +34,6 @@ import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemotePage

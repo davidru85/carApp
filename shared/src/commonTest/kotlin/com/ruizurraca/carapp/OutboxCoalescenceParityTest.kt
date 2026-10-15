@@ -1,5 +1,6 @@
 package com.ruizurraca.carapp
 
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseAccess
 import com.ruizurraca.carapp.core.database.VehicleDatabaseAccess
@@ -8,7 +9,6 @@ import com.ruizurraca.carapp.core.model.CurrencyCode
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.OwnerId
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext
 import com.ruizurraca.carapp.core.testing.FakeUuidGenerator

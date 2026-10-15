@@ -202,7 +202,12 @@ review.
   "investigate it" is now exactly how a real regression gets waved through.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-13`, `E3-15`, `E3-16`, `E3-18`,
-  `E3-20` and `E3-21`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
+  `E3-20` and `E3-21`, delivered as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
+  synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), is implemented on
+  `story/E3-B1-client-sync-hardening` through pull request #88 and awaits the owner's gated review; it
+  introduced `D-205` through `D-208` and accepted `D-173`, and its record is `docs/handoffs/E3-B1.md`. Bundle
+  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), starts after `E3-B1` merges and after
+  the owner decides `D-149` and `D-150`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
   emission surface, merged on 2026-10-14 through pull request #84 as a true merge of
   `story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`), after the
   owner's gated review, two review correction rounds and the owner's closure of `D-201` through
@@ -230,9 +235,10 @@ review.
   `docs/handoffs/E3-08.md`. `E3-04`, the repository sync wiring, merged on 2026-09-22 through pull
   request #72; it introduced `D-181` through `D-187` and its evidence is in `docs/handoffs/E3-04.md`.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
-- **Three decisions remain open, and none of them blocks merged work:** the tables below are the
+- **Two decisions remain open, and none of them blocks merged work:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-17` and `E3-19` already
+  three documents. The owner accepted `D-173` as option B on 2026-10-14; `E3-18` delivers it inside
+  `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-17` and `E3-19` already
   merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
@@ -240,9 +246,6 @@ review.
     start until the owner decides.
   - **`D-150` / `E3-16` — issuance lookup-to-write window.** `Pending`, no recommendation, no option
     pre-selected; the analysis is in ADR-0151. `E3-16` cannot start until the owner decides.
-  - **`D-173` / `E3-18` — manual retry does not cover parked connectivity rows.** `Proposed`;
-    option B is recommended and no option is pre-selected. The analysis is in ADR-0174. `E3-18`
-    cannot start until the owner confirms an option.
 - **Remaining Phase 4:** `E4-01` through `E4-04`.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
@@ -502,7 +505,10 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 
 ## Scope Discipline
 
-Work only on the assigned backlog story. The authoritative out-of-scope list is
+Work only on the assigned backlog story. `D-205` (ADR-0206) assigns the six remaining Phase 3
+stories as two bundles, `E3-B1` and `E3-B2`, each delivered through one pull request; inside a
+bundle the stories run one at a time, and each keeps its own ready check, handoff and TDD cycle.
+No other story may be bundled without a new decision. The authoritative out-of-scope list is
 `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
 export, receipt and odometer photos and OCR, local or on-device AI text recognition, fuel and
 maintenance reminders, operating-system notifications, shared vehicles, widgets, wearables and

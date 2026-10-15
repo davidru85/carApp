@@ -478,6 +478,10 @@ UPDATE outbox
 SET nextAttemptAt = :now
 WHERE lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED');
 
+-- Manual retry (`§9.7`). Besides every failed or poisoned entity, it also clears a row parked by a
+-- connectivity-only failure, whose entity is already `PENDING` (`D-173` option B): otherwise the retry
+-- control would leave it waiting out its backoff. The connectivity codes are `CONNECTIVITY_ERROR_CODES`,
+-- held to this SQL by `ConnectivityCodeParityTest`.
 resetFailedOutbox:
 UPDATE outbox
 SET attemptCount = 0,
@@ -489,7 +493,7 @@ WHERE (entityType = 'VEHICLE' AND entityId IN (
     SELECT id FROM vehicle WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED')
   )) OR (entityType = 'FUEL_ENTRY' AND entityId IN (
     SELECT id FROM fuel_entry WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED')
-  ));
+  )) OR lastErrorCode IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED');
 
 resetFailedVehicles:
 UPDATE vehicle SET syncState = 'PENDING'
@@ -498,6 +502,46 @@ WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
 resetFailedFuelEntries:
 UPDATE fuel_entry SET syncState = 'PENDING'
 WHERE syncState IN ('FAILED_RETRYABLE', 'FAILED_POISONED');
+
+-- `E3-21` / `D-207`: a row a process death left `SYNCING` returns to the state its outbox row implies,
+-- with the `failPush` rule. A non-null, non-connectivity `lastErrorCode` gives `FAILED_RETRYABLE`;
+-- no error, a connectivity code or (unreachably) no outbox row gives `PENDING`. The outbox row is not
+-- touched. The connectivity codes are `CONNECTIVITY_ERROR_CODES`, held to this SQL by
+-- `ConnectivityCodeParityTest`.
+-- The two counts gate the reset (`D-207` adopts the `D-194` count gate): they MUST stay predicate-identical
+-- to the reset statements' `WHERE`, so a start with nothing stale stays a pure read and never takes the
+-- SQLite write lock. `AndroidStaleSyncingResetWriteLockTest` and `IosStaleSyncingResetWriteLockTest` pin it.
+countStaleSyncingVehicles:
+SELECT COUNT(*) FROM vehicle WHERE syncState = 'SYNCING';
+
+countStaleSyncingFuelEntries:
+SELECT COUNT(*) FROM fuel_entry WHERE syncState = 'SYNCING';
+
+resetStaleSyncingVehicles:
+UPDATE vehicle
+SET syncState = CASE
+    WHEN EXISTS (
+      SELECT 1 FROM outbox
+      WHERE outbox.entityType = 'VEHICLE' AND outbox.entityId = vehicle.id
+        AND outbox.lastErrorCode IS NOT NULL
+        AND outbox.lastErrorCode NOT IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+    ) THEN 'FAILED_RETRYABLE'
+    ELSE 'PENDING'
+  END
+WHERE syncState = 'SYNCING';
+
+resetStaleSyncingFuelEntries:
+UPDATE fuel_entry
+SET syncState = CASE
+    WHEN EXISTS (
+      SELECT 1 FROM outbox
+      WHERE outbox.entityType = 'FUEL_ENTRY' AND outbox.entityId = fuel_entry.id
+        AND outbox.lastErrorCode IS NOT NULL
+        AND outbox.lastErrorCode NOT IN ('REMOTE.UNAVAILABLE', 'REMOTE.DEADLINE_EXCEEDED')
+    ) THEN 'FAILED_RETRYABLE'
+    ELSE 'PENDING'
+  END
+WHERE syncState = 'SYNCING';
 
 -- The two count queries below MUST stay predicate-identical to their DELETE counterparts (`D-194`): the
 -- purge reads the count first and opens a transaction only when it is non-zero, so a drift would either

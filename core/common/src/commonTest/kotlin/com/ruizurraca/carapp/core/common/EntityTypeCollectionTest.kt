@@ -1,4 +1,4 @@
-package com.ruizurraca.carapp.core.sync
+package com.ruizurraca.carapp.core.common
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

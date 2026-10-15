@@ -8,7 +8,9 @@ import dev.gitlive.firebase.firestore.android
  * The Android provider's untyped field map (`D-170`). GitLive's `DocumentSnapshot.android` exposes
  * the native `com.google.firebase.firestore.DocumentSnapshot`, whose `data` is the product-neutral
  * field map. Timestamps are normalized to epoch milliseconds and no product field is decoded or
- * asserted, so `§9.5` classification stays in `:core:sync`.
+ * asserted, so `§9.5` classification stays in `:core:sync`. A value with no JSON form (`GeoPoint`,
+ * `Blob`, `DocumentReference`, a vector) or a map with a non-string key becomes the `D-208` marker in
+ * its own position instead of failing the page.
  */
 private const val MILLIS_PER_SECOND = 1_000L
 private const val MICROS_PER_SECOND = 1_000_000L
@@ -45,8 +47,10 @@ private fun Any?.toJsonFriendly(): Any? =
         }
 
         is Map<*, *> -> {
-            entries.associate { (key, value) ->
-                requireNotNull(key as? String) { "Non-string map key in remote document" } to value.toJsonFriendly()
+            if (keys.all { it is String }) {
+                entries.associate { (key, value) -> key as String to value.toJsonFriendly() }
+            } else {
+                unsupportedProviderValue(NON_STRING_KEY_MAP)
             }
         }
 
@@ -63,6 +67,6 @@ private fun Any?.toJsonFriendly(): Any? =
         }
 
         else -> {
-            throw IllegalArgumentException("Unsupported remote field type: ${this::class.simpleName}")
+            unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE)
         }
     }

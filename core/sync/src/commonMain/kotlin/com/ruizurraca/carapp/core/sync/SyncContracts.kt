@@ -1,6 +1,7 @@
 package com.ruizurraca.carapp.core.sync
 
 import com.ruizurraca.carapp.core.common.AppError
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncStatus
@@ -11,12 +12,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
 import kotlin.time.Instant
 
-enum class EntityType(
-    val collection: String,
-) {
-    VEHICLE("vehicles"),
-    FUEL_ENTRY("fuelEntries"),
-}
+/**
+ * The reserved key of the marker the pull boundary carries in place of a provider value it cannot
+ * represent in JSON (`docs/CONTRACTS.md §9.5`, `D-208`): `{ "<key>": "<provider value type name>" }`.
+ * `:core:sync` quarantines every document carrying it as `QuarantineReason.MalformedPayload`.
+ */
+const val UNSUPPORTED_PROVIDER_VALUE_KEY: String = "__unsupportedProviderValue"
 
 data class EntitySnapshot(
     val entityType: EntityType,

@@ -4,6 +4,7 @@ import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.CONNECTIVITY_ERROR_CODES
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.MAX_RETRYABLE_ATTEMPTS
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
@@ -12,6 +13,7 @@ import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.SyncError
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.SyncTrigger
+import com.ruizurraca.carapp.core.common.UnexpectedError
 import com.ruizurraca.carapp.core.common.UuidGenerator
 import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
 import com.ruizurraca.carapp.core.common.toEpochMicroseconds
@@ -1703,6 +1705,7 @@ private fun TestScope.fixture(
             uuidGenerator = TestUuidGenerator(),
             jitter = jitter,
             adoption = adoption,
+            staleSyncingReset = persistence::resetStaleSyncing,
             onPoisoned = { error, fields -> reportedErrors += error to fields },
             onQuarantined = reportedQuarantines::add,
             debugEnabled = debugEnabled,
@@ -2020,15 +2023,27 @@ private class FakeSyncPersistence : SyncPersistence {
         }
     }
 
+    /** Scripted failure of the startup stale-`SYNCING` reset (`D-207`); `null` succeeds. */
+    var staleSyncingResetFailure: Throwable? = null
+
+    /** Stands in for `SyncDatabaseAccess.resetStaleSyncing`, which the fixture injects. */
+    suspend fun resetStaleSyncing() {
+        calls += "resetStaleSyncing"
+        staleSyncingResetFailure?.let { throw it }
+    }
+
     override suspend fun resetFailed(now: Instant): Outcome<Unit, AppError> {
         if (resetResult is Outcome.Err) return resetResult
         outbox.indices.forEach { index ->
             val row = outbox[index]
-            if (states[row.entityId.value] in setOf("FAILED_RETRYABLE", "FAILED_POISONED")) {
+            val failed = states[row.entityId.value] in setOf("FAILED_RETRYABLE", "FAILED_POISONED")
+            // Mirror `resetFailedOutbox` (`D-173` option B): a connectivity-parked row is cleared too, and
+            // its entity, already `PENDING`, keeps its state.
+            if (failed || row.lastErrorCode in CONNECTIVITY_ERROR_CODES) {
                 outbox[index] = row.copy(attemptCount = 0, nextAttemptAt = now, lastErrorCode = null)
                 lastErrors.remove(row.entityId.value)
                 cycleIds.remove(row.entityId.value)
-                transition(row.entityId.value, "PENDING")
+                if (failed) transition(row.entityId.value, "PENDING")
             }
         }
         return Outcome.Ok(Unit)
@@ -2338,4 +2353,123 @@ class DefaultSyncControllerShutdownTest {
                 fixture.controller.sync(SyncTrigger.AppForeground),
             )
         }
+}
+
+/**
+ * `E3-21` / `D-207`: the controller restores rows a process death left `SYNCING` once per app start, as
+ * the first step of its first cycle. Cycles run one at a time, so the reset can never overlap a push of
+ * the same process, and it precedes the offline and `LOCAL_OWNER` refusals so a start without network
+ * still resets.
+ */
+class DefaultSyncControllerStaleSyncingResetTest {
+    @Test
+    fun theFirstCycleResetsStaleSyncingRowsBeforeItPushes() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+
+            fixture.controller.sync(SyncTrigger.OwnerChanged)
+
+            val calls = fixture.persistence.calls
+            assertEquals("resetStaleSyncing", calls.firstOrNull(), "the reset is the cycle's first step")
+            assertTrue("dueOutbox" in calls, "the cycle still pushes after the reset")
+        }
+
+    @Test
+    fun theResetRunsOncePerController() =
+        runTest {
+            val fixture = fixture()
+
+            fixture.controller.sync(SyncTrigger.OwnerChanged)
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(1, fixture.persistence.calls.count { it == "resetStaleSyncing" })
+        }
+
+    @Test
+    fun theResetRunsEvenWhenTheCycleIsRefusedOffline() =
+        runTest {
+            val fixture = fixture(online = false)
+
+            fixture.controller.sync(SyncTrigger.OwnerChanged)
+
+            assertEquals(listOf("resetStaleSyncing"), fixture.persistence.calls)
+        }
+
+    @Test
+    fun aFailedResetIsReportedOnceAndTheCycleStillPushes() =
+        runTest {
+            val fixture = fixture().withOutbox(vehicleOutbox("vehicle-1"))
+            fixture.persistence.staleSyncingResetFailure = IllegalStateException("reset failed")
+
+            val outcome = fixture.controller.sync(SyncTrigger.OwnerChanged)
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(Outcome.Ok(Unit), outcome, "a failed reset does not fail the cycle")
+            assertEquals(1, fixture.remote.pushCalls.size, "the push still ran")
+            assertEquals(
+                listOf<AppError>(UnexpectedError(":core:sync", "IllegalStateException")),
+                fixture.reportedErrors.map { it.first },
+                "reported once, and not retried by the second cycle",
+            )
+            assertEquals(
+                setOf("code", "cycleId"),
+                fixture.reportedErrors
+                    .single()
+                    .second.keys,
+            )
+        }
+}
+
+/**
+ * `E3-20` / `D-208`: a pulled document carrying the unsupported-provider-value marker is quarantined as
+ * `MalformedPayload` and the cursor advances; a document of an unsupported `schemaVersion` keeps that
+ * classification even when it also carries the marker, because a future schema may legitimately use a
+ * provider type this client cannot represent.
+ */
+class DefaultSyncControllerUnsupportedProviderValueTest {
+    @Test
+    fun aDocumentCarryingTheMarkerIsQuarantinedAsMalformedPayload() =
+        runTest {
+            val fixture = fixture()
+            val marked = markedVehicle(schemaVersion = 1)
+            fixture.remote.pullHandler = { type, _ -> if (type == EntityType.VEHICLE) page(marked) else page() }
+
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            val quarantine = fixture.persistence.quarantine.single()
+            assertEquals(QuarantineReason.MalformedPayload, quarantine.reason)
+            assertEquals(marked.rawJson, quarantine.rawJson, "the marker is stored in place of the value")
+            assertFalse(fixture.persistence.vehicleIds.contains("vehicle-1"))
+            assertEquals(
+                "vehicle-1",
+                fixture.persistence.cursors
+                    .getValue(EntityType.VEHICLE)
+                    .lastDocumentId
+                    ?.value,
+            )
+        }
+
+    @Test
+    fun anUnsupportedSchemaVersionKeepsPrecedenceOverTheMarker() =
+        runTest {
+            val fixture = fixture()
+            fixture.remote.pullHandler = { type, _ ->
+                if (type == EntityType.VEHICLE) page(markedVehicle(schemaVersion = 2)) else page()
+            }
+
+            fixture.controller.sync(SyncTrigger.PullToRefresh)
+
+            assertEquals(
+                QuarantineReason.UnsupportedSchemaVersion,
+                fixture.persistence.quarantine
+                    .single()
+                    .reason,
+            )
+        }
+
+    private fun markedVehicle(schemaVersion: Int): RemoteDocument {
+        val document = remoteVehicle("vehicle-1", 1_000, schemaVersion = schemaVersion)
+        val marker = "{\"$UNSUPPORTED_PROVIDER_VALUE_KEY\":\"GeoPoint\"}"
+        return document.copy(rawJson = document.rawJson.replace("\"brand\":null", "\"brand\":$marker"))
+    }
 }

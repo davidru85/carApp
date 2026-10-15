@@ -1,9 +1,9 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.ValidationError
 import com.ruizurraca.carapp.core.model.OwnerId
-import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject

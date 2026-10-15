@@ -1,17 +1,18 @@
 package com.ruizurraca.carapp.integration.firebase.firestore
 
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.RemoteError
 import com.ruizurraca.carapp.core.common.instantFromEpochMicroseconds
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
 import com.ruizurraca.carapp.core.sync.EntitySnapshot
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.sync.RemoteAck
 import com.ruizurraca.carapp.core.sync.RemoteCursor
 import com.ruizurraca.carapp.core.sync.RemoteDocument
 import com.ruizurraca.carapp.core.sync.RemotePage
 import com.ruizurraca.carapp.core.sync.RemoteSyncSource
+import com.ruizurraca.carapp.core.sync.UNSUPPORTED_PROVIDER_VALUE_KEY
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.FirebaseException
 import dev.gitlive.firebase.auth.FirebaseAuth
@@ -244,7 +245,11 @@ internal fun DocumentSnapshot.toFirestoreDocument(): FirestoreDocument =
 
 /**
  * Serializes the untyped product fields to JSON without decoding or asserting any of them. The
- * provider-free value set is String, Long, Double, Boolean, Map, List and null.
+ * provider-free JSON value set is String, Long, Int, finite Double, Boolean, Map, List and null.
+ *
+ * The conversion is total (`D-208`, `§9.5`): a value outside that set, or a map with a non-string key,
+ * is written as the [unsupportedProviderValue] marker in its own position, and every other field stays
+ * verbatim. The integration does not classify the document; `:core:sync` quarantines it.
  */
 internal fun Map<String, Any?>.toRawJson(): String =
     buildJsonObject {
@@ -276,17 +281,14 @@ private fun Any?.toJsonElement(): JsonElement =
         }
 
         is Double -> {
-            JsonPrimitive(this)
+            toJsonNumberOrMarker()
         }
 
         is Map<*, *> -> {
-            buildJsonObject {
-                forEach { (key, value) ->
-                    put(
-                        requireNotNull(key as? String) { "Non-string map key in remote document" },
-                        value.toJsonElement(),
-                    )
-                }
+            if (keys.all { it is String }) {
+                buildJsonObject { forEach { (key, value) -> put(key as String, value.toJsonElement()) } }
+            } else {
+                unsupportedProviderValue(NON_STRING_KEY_MAP).toJsonElement()
             }
         }
 
@@ -295,9 +297,33 @@ private fun Any?.toJsonElement(): JsonElement =
         }
 
         else -> {
-            throw IllegalArgumentException("Unsupported remote field type: ${this::class.simpleName}")
+            unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE).toJsonElement()
         }
     }
+
+/**
+ * A finite provider number is a JSON number; `NaN` and both infinities have no JSON number form
+ * (RFC 8259 §6), so they become the `D-208` marker instead of an invalid token.
+ */
+private fun Double.toJsonNumberOrMarker(): JsonElement =
+    if (isFinite()) {
+        JsonPrimitive(this)
+    } else {
+        unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE).toJsonElement()
+    }
+
+/**
+ * The `D-208` marker for a provider value with no JSON form: `{ UNSUPPORTED_PROVIDER_VALUE_KEY: [typeName] }`.
+ * It names only the value's type, never its content, so it carries no user data (`§17`).
+ */
+internal fun unsupportedProviderValue(typeName: String): Map<String, String> =
+    mapOf(UNSUPPORTED_PROVIDER_VALUE_KEY to typeName)
+
+/** The marker's type name for a provider map whose keys are not all strings. */
+internal const val NON_STRING_KEY_MAP: String = "MapWithNonStringKey"
+
+/** The marker's type name when the platform cannot name the value's class. */
+internal const val UNKNOWN_PROVIDER_TYPE: String = "Unknown"
 
 internal sealed interface FirestoreValue
 

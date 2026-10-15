@@ -5,6 +5,7 @@ import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.CLIENT_MAX_SCHEMA_VERSION
 import com.ruizurraca.carapp.core.common.CONNECTIVITY_ERROR_CODES
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.MAX_RETRYABLE_ATTEMPTS
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
@@ -175,6 +176,7 @@ fun createSyncController(
         uuidGenerator = uuidGenerator,
         jitter = JitterSource { from, until -> Random.nextInt(from, until) },
         adoption = adoption,
+        staleSyncingReset = databaseAccess::resetStaleSyncing,
         onPoisoned = onPoisoned,
         onQuarantined = onQuarantined,
         debugEnabled = isDebugBuild,
@@ -292,6 +294,7 @@ internal class DefaultSyncController(
     private val uuidGenerator: UuidGenerator,
     private val jitter: JitterSource,
     private val adoption: suspend () -> Outcome<Unit, AppError> = { Outcome.Ok(Unit) },
+    private val staleSyncingReset: suspend () -> Unit = {},
     private val onPoisoned: (AppError, Map<String, String>) -> Unit = { _, _ -> },
     private val onQuarantined: (QuarantineRecord) -> Unit = {},
     private val debugEnabled: Boolean = false,
@@ -341,6 +344,10 @@ internal class DefaultSyncController(
     // `drainCycles` never reaches the loop that would complete them (`D-172`).
     @Volatile
     private var activeCycleRequests = emptyList<SyncRequest>()
+
+    // `D-207`: set before the first executed cycle attempts the stale-`SYNCING` reset. Only the single
+    // running cycle reads or writes it, and cycles are handed over under `cycleMutex`.
+    private var staleSyncingResetAttempted = false
 
     private var unexpectedFailure = false
     private var cycleFailure = false
@@ -719,6 +726,7 @@ internal class DefaultSyncController(
     ): Outcome<Unit, AppError> {
         cycleFailure = false
         lastCycleError = null
+        resetStaleSyncingOnce(cycleId)
         // A refused cycle is a successful outcome with no error: offline or `LOCAL_OWNER` is not a
         // failure the caller must surface (`§9.1`, `§9.2`).
         if (!connectivity.isOnline.value) {
@@ -759,6 +767,34 @@ internal class DefaultSyncController(
             pull(ownerId, cycleId)
         }
         return if (cycleFailure) Outcome.Err(lastCycleError ?: SyncError.ConflictUnresolved) else Outcome.Ok(Unit)
+    }
+
+    /**
+     * Restores the entity rows a process death left `SYNCING` (`§7`, `D-207`), at most once per
+     * controller, which is once per app start.
+     *
+     * It runs inside the first executed cycle because cycles run one at a time, so no push of this
+     * process can be in flight and no row this process marked can be reset. It runs before the offline
+     * and `LOCAL_OWNER` refusals, so a start without network still resets. Every launch begins a cycle:
+     * both hosts report the cold start through `SyncStateHolder.onForegroundReturn(null)`, which requests
+     * `AppForeground`, and an owner resolved after the graph is built adds `OwnerChanged`; whichever
+     * runs first carries the reset. The latch is set before the attempt,
+     * so a failure is not retried in the same app start: like `TombstonePurge`, it is reported once as
+     * a non-fatal `UnexpectedError`, and the cycle continues, because the stale rows are only cosmetic
+     * while their outbox rows still drive the push.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun resetStaleSyncingOnce(cycleId: CycleId) {
+        if (staleSyncingResetAttempted) return
+        staleSyncingResetAttempted = true
+        try {
+            staleSyncingReset()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: Throwable) {
+            val error = UnexpectedError(":core:sync", failure::class.simpleName ?: "Throwable")
+            onPoisoned(error, mapOf("code" to error.code, "cycleId" to cycleId.value))
+        }
     }
 
     private suspend fun push(
@@ -1041,6 +1077,13 @@ private fun RemoteDocument.toPullRecord(
     val schemaVersion = objectValue?.schemaVersionOrNull()
     if (schemaVersion != null && schemaVersion > CLIENT_MAX_SCHEMA_VERSION) {
         return quarantined(QuarantineReason.UnsupportedSchemaVersion, schemaVersion, createdAt)
+    }
+    // `D-208`: the pull boundary carried a provider value it cannot represent as the reserved marker.
+    // Such a document is never applied, whatever shape the schema gives the field; it is quarantined and
+    // the cursor advances. The unsupported-version check stays first, because a future schema may use a
+    // provider type this client cannot represent.
+    if (objectValue?.containsUnsupportedProviderValue() == true) {
+        return quarantined(QuarantineReason.MalformedPayload, schemaVersion ?: UNKNOWN_SCHEMA_VERSION, createdAt)
     }
     // The classification MUST be total (`§9.5`, ADR-0171): every field read below is reached through
     // `get(name) + require`, so a missing key raises `IllegalArgumentException` and a wrong-typed

@@ -493,9 +493,9 @@ Allowed transitions:
 | `SYNCED` | `PENDING` | Local create/update/delete. |
 | `PENDING` | `PENDING` | Further local edit. Payload coalesced, `attemptCount = 0`, `nextAttemptAt = 0`. |
 | `PENDING` | `SYNCING` | Sync engine starts push for the row. |
-| `SYNCING` | `PENDING` | Local edit during an in-flight push — the editor sets `PENDING` in the same transaction, so the row never stays `SYNCING` after the edit — **or** a connectivity-only failure (`lastErrorCode` in `CONNECTIVITY_ERROR_CODES`, §9.7). |
+| `SYNCING` | `PENDING` | Local edit during an in-flight push — the editor sets `PENDING` in the same transaction, so the row never stays `SYNCING` after the edit — **or** a connectivity-only failure (`lastErrorCode` in `CONNECTIVITY_ERROR_CODES`, §9.7) **or** the startup reset of a row a process death left `SYNCING`, when its outbox `lastErrorCode` is null or a connectivity code (`D-207`). |
 | `SYNCING` | `SYNCED` | Remote ack received and `localRevision` unchanged. |
-| `SYNCING` | `FAILED_RETRYABLE` | Non-connectivity retryable remote push failure. |
+| `SYNCING` | `FAILED_RETRYABLE` | Non-connectivity retryable remote push failure, **or** the startup reset of a row a process death left `SYNCING`, when its outbox `lastErrorCode` is a non-connectivity code (`D-207`). |
 | `FAILED_RETRYABLE` | `SYNCING` | Sync engine starts an automatic due retry for the row. |
 | `FAILED_RETRYABLE` | `PENDING` | Manual retry or a local edit. |
 | `SYNCING` | `FAILED_POISONED` | Validation, security or payload failure, or a qualifying non-connectivity retryable remote failure reaches the §9.7 attempt ceiling. |
@@ -503,13 +503,13 @@ Allowed transitions:
 
 `FAILED_POISONED` is never retried automatically. Automatic selection (`selectDueOutbox`) MUST exclude a row whose entity `syncState` is `FAILED_POISONED`, regardless of `nextAttemptAt`, so the backoff expiring cannot reselect it. The push-start transition (`markVehicleSyncing` / `markFuelEntrySyncing`) MUST also fail closed: it MUST NOT move a `FAILED_POISONED` row to `SYNCING`, so a poisoned row cannot silently drop out of `countPoisonedSyncRows` and from the aggregate `SyncStatus.Failed` count. Only `SyncController.retryFailed()` (which resets those rows to `PENDING`) or a local edit that re-enqueues a valid snapshot makes a poisoned row due again. Consequently a `FAILED_POISONED -> SYNCING` transition is not reachable and the crash-reporting policy of `§17` fires once per poison transition, not once per cycle.
 
-The connectivity-code set that qualifies a failure as non-poisoning and counts it as `Pending` is defined once in `:core:common` (`CONNECTIVITY_ERROR_CODES`). The three statements that read it (`markConnectivityFailuresDue`, `countPendingSyncRows`, `countRetryableSyncRows`) spell the codes as SQL literals because a SQLDelight `IN` list cannot bind a Kotlin set without changing the query shape. A `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both sources and fails the build when they diverge, so adding a code to the constant without the SQL, or the reverse, is caught rather than silently changing behaviour.
+The connectivity-code set that qualifies a failure as non-poisoning and counts it as `Pending` is defined once in `:core:common` (`CONNECTIVITY_ERROR_CODES`). The statements that read it (`markConnectivityFailuresDue`, `countPendingSyncRows`, `countRetryableSyncRows`, the `D-173` manual-retry selection `resetFailedOutbox`, and the `D-207` startup reset `resetStaleSyncingVehicles` / `resetStaleSyncingFuelEntries`) spell the codes as SQL literals because a SQLDelight `IN` list cannot bind a Kotlin set without changing the query shape. A `:build-logic:convention` guard (`ConnectivityCodeParityTest`) parses both sources and fails the build when they diverge, so adding a code to the constant without the SQL, or the reverse, is caught rather than silently changing behaviour.
 
 A local edit during an in-flight push leaves the row `PENDING` (`§7` invariant, `§9.3`): the editor sets it in the same transaction, and the ack for the stale revision only stamps `serverUpdatedAt`. The user can keep editing, and the old in-flight remote payload is allowed to be stale. That transient resolves to `SYNCED` only after a later push of the new payload succeeds and its acknowledgement sees an unchanged `localRevision`.
 
 The table above is the complete reachable set. An automatic due retry moves directly from `FAILED_RETRYABLE` to `SYNCING`; it does not pass through `PENDING`. Poison is stamped only after `markVehicleSyncing` / `markFuelEntrySyncing`, so `FAILED_RETRYABLE -> FAILED_POISONED` is not reachable; the qualified poison transition governed by §9.7 is `SYNCING -> FAILED_POISONED`. `SYNCING -> SYNCING` and `FAILED_POISONED -> SYNCING` are also not reachable. These unreachable transitions MUST NOT be represented as allowed or asserted as reachable in any document or test.
 
-**The `SYNCING` state is transient across a push, not a durable one.** If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row is left `SYNCING` with no startup statement that resets it. It is not stranded: the outbox row survives and is re-pushed on the next cycle, and `markSyncing` is idempotent, so the row resolves as soon as a cycle runs. The aggregate `SyncStatus` is unaffected because all three counts derive from the outbox, not from the entity `syncState`, so it is correct while the entity row still reads `SYNCING`. There is deliberately no startup reset in the MVP; an explicit reset is a possible future hardening, tracked by the `E3-21` backlog item.
+**The `SYNCING` state is transient across a push, not a durable one.** If the process dies between `markSyncing` and the push's acknowledgement or failure, the entity row is left `SYNCING` until the next app start resets it (`D-207`, ADR-0208). Once per app start, as the first step of the controller's first executed cycle and before its offline and `LOCAL_OWNER` refusals, every `SYNCING` row returns to `FAILED_RETRYABLE` when its outbox `lastErrorCode` is non-null and not in `CONNECTIVITY_ERROR_CODES`, and to `PENDING` otherwise — the state it had before the interrupted attempt, by the same rule `failPush` applies. The reset reads a count first and opens its single transaction only when a row is stale, so a start with nothing to reset never takes the SQLite write lock; it never modifies the outbox row, so the backoff and the poison budget of §9.7 are unchanged; and because cycles run one at a time it never overlaps a push of the same process. A failure is reported once as a non-fatal `UnexpectedError` and is not retried in the same app start. Until the reset runs the row is not stranded: the outbox row survives and is re-pushed when due, and `markSyncing` is idempotent. The aggregate `SyncStatus` derives from the outbox throughout (§9.9), and push ordering is unchanged.
 
 `SYNCING -> FAILED_POISONED` is governed by the qualified poison rule of §9.7. A connectivity-only failure never poisons.
 
@@ -627,6 +627,8 @@ The classification MUST be total: every field read on the pull-validation path, 
 
 The integration transports product fields without decoding or asserting them (`D-170`). Only the document id and the ordering `updatedAt` timestamp are strongly read; the provider exposes that timestamp through `orderingUpdatedAtMicros()` at microsecond precision, and a document whose ordering timestamp is missing or unusable at that precision fails the page as `RemoteError.InvalidArgument`, because the pull stream cannot be ordered without it. Every other field is carried into `rawJson` verbatim, including a missing or mistyped product field, so `:core:sync` can classify it.
 
+The integration's conversion of provider values is total (`D-208`). A provider value with no JSON form — a geopoint, a blob, a document reference, a vector, or a map whose keys are not all strings — MUST NOT fail the page. The integration writes, in that value's own position, the reserved marker object `{ UNSUPPORTED_PROVIDER_VALUE_KEY: "<provider value type name>" }` (§20.7), naming only the value's class and never its content, and keeps every other field verbatim; it still classifies nothing. `:core:sync` quarantines every document whose raw JSON contains the marker key at any depth as `MalformedPayload`, after the unsupported-`schemaVersion` check, so a document of an unsupported version stays `UnsupportedSchemaVersion`. The stored quarantine `rawJson` carries the marker in place of the unrepresentable value. The missing or unusable ordering timestamp above is therefore the only page-level failure the conversion produces.
+
 For both reasons, cursor advance is allowed only after the quarantine row is written in the same local transaction that processes the page. If quarantine persistence fails, the pull cycle fails and the cursor does not advance. A quarantined document is logged once with redacted fields and no raw payload. Quarantined rows are re-evaluated on app upgrade and may also be re-evaluated by an explicit repair story. During the MVP, mobile-client Firestore rules accept exactly `schemaVersion == CLIENT_MAX_SCHEMA_VERSION == 1` (`D-49`). Unsupported higher versions remain a defensive quarantine case for a future reviewed schema rollout or an Admin path; that rollout MUST decide client, rule and deployment sequencing before changing either value.
 
 ### 9.6 Conflict resolution
@@ -682,11 +684,19 @@ exactly the rows that need it, because the count is already at the ceiling. An `
 is `FAILED_RETRYABLE`, so `retryFailed()` does clear its retry context, which is the manual escape
 hatch for a stuck auth state.
 
-A connectivity-only row is `PENDING` with retry context in the outbox, so it is outside
-`resetFailedOutbox`'s `FAILED_RETRYABLE`/`FAILED_POISONED` selection and `retryFailed()` does not
-clear its retry context. Clearing that gap is a separate decision (`D-173`) and story (`E3-18`),
-because it requires deciding whether manual retry covers such a row; until then the row waits out its
-backoff, which is bounded by `MAX_BACKOFF_MS`.
+Manual retry also covers a row parked by a connectivity-only failure (`D-173` option B). Such a row
+is `PENDING` with its retry context in the outbox, so `retryFailed()` additionally sets
+`nextAttemptAt = now`, resets `attemptCount` to 0 and clears `lastError`, `lastErrorCode` and `cycleId`
+on every outbox row whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES`, regardless of its entity
+`syncState`; the entity state, already `PENDING`, is not changed. The exact `resetFailedOutbox`
+selection is therefore every outbox row whose entity is `FAILED_RETRYABLE` or `FAILED_POISONED`, plus
+every outbox row whose `lastErrorCode` is a connectivity code. The poison rule is unchanged: only the
+qualifying non-connectivity failures of this section consume the poison budget.
+
+Both hosts show the retry control only while the aggregate is `Failed` (§9.9, `D-191`–`D-193`), so a
+parked connectivity row with no `Failed` row beside it has no manual control. It becomes due when
+connectivity recovers (`ConnectivityRecovered`, §9.8) or when its backoff expires, which is at most
+`MAX_BACKOFF_MS` (900 000 ms) after its last failure.
 
 ### 9.8 Trigger constants
 
@@ -707,7 +717,7 @@ All six are `SyncTrigger` values passed to the same `SyncController` - through `
 
 Being offline with pending rows renders as `Pending`, never as an error. This is a rule about aggregation, not only about admission: a connectivity-only failure leaves the entity `PENDING` (`§9.7`), so it counts towards `Pending`, never towards `Failed`. Otherwise a single failure as the network dropped mid-cycle would show the user an error for a condition that is not one.
 
-The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES` and whose entity is `FAILED_RETRYABLE` or `FAILED_POISONED`. Every outbox row MUST belong to exactly one aggregate bucket. An outbox row in any other entity state counts as `Pending`, even when it retains a non-connectivity `lastErrorCode`; this includes a `SYNCING` row stranded by process death between `markSyncing` and its acknowledgement or failure. The surviving outbox row is outstanding work, so the aggregate MUST NOT publish `Idle`.
+The precedence function for `Failed` MUST count only rows whose `lastErrorCode` is not in `CONNECTIVITY_ERROR_CODES` and whose entity is `FAILED_RETRYABLE` or `FAILED_POISONED`. Every outbox row MUST belong to exactly one aggregate bucket. An outbox row in any other entity state counts as `Pending`, even when it retains a non-connectivity `lastErrorCode`; this includes a `SYNCING` row stranded by process death between `markSyncing` and its acknowledgement or failure, until the `D-207` startup reset restores its pre-attempt state (§7). The surviving outbox row is outstanding work, so the aggregate MUST NOT publish `Idle`.
 
 The per-row `syncState` and the aggregate MUST agree for a connectivity failure. A push failure whose `lastErrorCode` is in `CONNECTIVITY_ERROR_CODES` leaves the entity `syncState = PENDING` (not `FAILED_RETRYABLE`) and keeps its retry context in the outbox; the aggregate therefore reports the row as `Pending`, and both representations say the same thing. `FAILED_RETRYABLE` is reserved for a non-connectivity retryable failure, including `Unauthenticated`, which the aggregate therefore reports as `Failed`. Poison classification is unchanged: a connectivity-only failure and an `Unauthenticated` failure never poison (`§6`, `§9.7`).
 
@@ -2330,6 +2340,12 @@ interface ConnectivityObserver { val isOnline: StateFlow<Boolean> }
 enum class SyncTrigger { OwnerChanged, AppForeground, ConnectivityRecovered, PostWriteDebounce, PullToRefresh, Periodic }
 fun interface SyncTriggerAdapter { fun schedule(reason: SyncTrigger) }
 
+@HiddenFromObjC
+enum class EntityType(val collection: String) {
+    VEHICLE("vehicles"),
+    FUEL_ENTRY("fuelEntries"),
+}
+
 @ObjCName(name = "SharedSyncSyncStatus", swiftName = "SyncSyncStatus", exact = true)
 sealed class SyncStatus {
     data object Idle : SyncStatus()
@@ -2626,11 +2642,13 @@ data class ConsumptionReport(
 
 ### 20.7 Sync types — `:core:sync`
 
+`EntityType` is declared in §20.3 (`:core:common`, `D-206`): an entry's `name` is the outbox
+`entityType` wire value of §8 and the only Kotlin source of it, so that `:core:database` can use it
+without the forbidden `:core:database -> :core:sync` edge. The SQL repeats the values as literals,
+checked against the enum by `EntityTypeWireValueParityTest`.
+
 ```kotlin
-enum class EntityType(val collection: String) {
-    VEHICLE("vehicles"),
-    FUEL_ENTRY("fuelEntries"),
-}
+const val UNSUPPORTED_PROVIDER_VALUE_KEY: String = "__unsupportedProviderValue"   // §9.5, D-208
 
 data class EntitySnapshot(
     val entityType: EntityType,

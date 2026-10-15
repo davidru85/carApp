@@ -6,6 +6,10 @@ Accepted
 
 Selected during the E1-11 owner review on 2026-09-02.
 
+The clause that keeps explicit contract tokens in production code is superseded by `D-206`
+(ADR-0207, `E3-13`, 2026-10-14): `EntityType` moves to `:core:common` and becomes the single Kotlin
+source of the wire value. The test-only anchor this ADR introduced is unchanged.
+
 ## Context
 
 `docs/CONTRACTS.md §8` mandates that every outbox payload includes an `entityType` field whose

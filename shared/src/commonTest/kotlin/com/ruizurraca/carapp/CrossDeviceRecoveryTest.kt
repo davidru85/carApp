@@ -8,6 +8,7 @@ import com.ruizurraca.carapp.core.auth.AuthState
 import com.ruizurraca.carapp.core.auth.NativeAuthCredential
 import com.ruizurraca.carapp.core.common.AuthError
 import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.SyncTrigger
 import com.ruizurraca.carapp.core.database.AppDatabase
@@ -15,7 +16,6 @@ import com.ruizurraca.carapp.core.database.DatabaseFactory
 import com.ruizurraca.carapp.core.database.DatabaseHandle
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.OwnerId
-import com.ruizurraca.carapp.core.sync.EntityType
 import com.ruizurraca.carapp.core.testing.FakeAppClock
 import com.ruizurraca.carapp.core.testing.FakeConnectivityObserver
 import com.ruizurraca.carapp.core.testing.FakeOwnerContext

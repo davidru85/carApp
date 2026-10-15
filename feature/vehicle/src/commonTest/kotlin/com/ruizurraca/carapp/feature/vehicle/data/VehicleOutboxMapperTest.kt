@@ -1,11 +1,11 @@
 package com.ruizurraca.carapp.feature.vehicle.data
 
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.database.FuelEntryDatabaseRow
 import com.ruizurraca.carapp.core.model.EntityId
 import com.ruizurraca.carapp.core.model.FuelType
 import com.ruizurraca.carapp.core.model.LOCAL_OWNER
 import com.ruizurraca.carapp.core.model.OwnerId
-import com.ruizurraca.carapp.core.sync.EntityType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

@@ -38,6 +38,154 @@
 
 ## Entries
 
+### 2026-10-15 — E3-20 review correction R2: non-finite provider numbers use the marker (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-20` / `D-208` (ADR-0209); correction of pull request #88
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** the common `Any?.toJsonElement()` passed every `Double` to `JsonPrimitive`, so a
+  provider `NaN`, positive infinity or negative infinity — all three supported by Cloud Firestore and
+  all three excluded by JSON's number grammar (RFC 8259 §6) — reached `rawJson` as the literal tokens
+  `NaN`, `Infinity` and `-Infinity` instead of the reserved marker. The numeric branch is now guarded
+  by `isFinite()` and emits the existing `{UNSUPPORTED_PROVIDER_VALUE_KEY: "Double"}` marker at the
+  value's own position otherwise; the `toRawJson` KDoc names the finite-only numeric set.
+- **Why:** `docs/CONTRACTS.md §9.5` and ADR-0209 require every value with no JSON representation to
+  become the marker, independently of where it sits, and both platform adapters reach the common
+  branch. This is a closure gap, not a reachable pull stall or a data-loss incident.
+- **Documents touched:** `docs/handoffs/E3-20.md` (ready check, R2 section, files, decisions,
+  verification, and the corrected historical R1 breakdown `6 + 4 + 19 + 16`), `docs/handoffs/E3-B1.md`
+  (checkpoint), and the pull request #88 body; this entry.
+- **Verification:** RED `e3bc0866` failed four transport cases with the observed `NaN`, `Infinity`,
+  `-Infinity` and nested `NaN` outputs; GREEN `dd8e8712` passed them; `c1b8f4d3` added the end-to-end
+  assertions reading the record the real engine and database committed; `bfb4ade9` extracted the
+  numeric branch to `Double.toJsonNumberOrMarker()` after detekt reported a cyclomatic complexity of
+  16/15, and applied the module formatter. The module host suite with `--rerun-tasks` reports 53 tests
+  and zero failures, errors or skips; `:core:sync` and `:core:database` pass on the Android host and
+  `iosSimulatorArm64`; both provider iOS targets compile; the complete non-instrumented `AGENTS.md`
+  command passes and `contractCheck` reports no `FAIL` or `PENDING`. Non-vacuity was proved by
+  temporarily restoring the unconditional `JsonPrimitive(this)` branch, which failed all three
+  numeric end-to-end cases; the mutation was never committed. CI run `38731331472` on the
+  correction's final head `aee71d78` passed all ten required checks.
+- **Follow-ups / risks:** none new. No new decision ID was required; the change implements `D-208`
+  literally without touching the public API or the engine's classification policy. Bundle `E3-B1`
+  still awaits the owner's gated review; the pull request is not merged.
+
+### 2026-10-15 — E3-20 review correction R1: the iOS map-key coercion removed (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-20` / `D-208` (ADR-0209); correction of pull request #88
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** the iOS `untypedFields()` actual and its recursive map branch coerced every map
+  key with `(key as? String ?: key?.toString().orEmpty())`, so a numeric key became text, a null key
+  became the empty string, two keys like `1L` and `"1"` collapsed into one JSON field name, and the
+  common conversion never saw the unsupported original shape. The `D-208` marker was therefore absent
+  on iOS and the quarantine payload lost the representation `§9.5` requires. The map-key rule now
+  lives in `integration/firebase-firestore/src/commonMain/.../ProviderFieldMaps.kt` as
+  `Map<*, *>.toProviderFieldMap()`, which emits one
+  `{UNSUPPORTED_PROVIDER_VALUE_KEY: NON_STRING_KEY_MAP}` marker before converting any value when a key
+  is not a `String`; both the iOS root accessor and the recursive map branch route through one
+  `toIosFieldMap()` that renders a key only when it is a native `NSString`.
+- **Why:** `docs/CONTRACTS.md §9.5` and ADR-0209 make the rule independent of the map's position and
+  no accepted decision exempts iOS, so this applies the existing decision literally rather than
+  permitting coercion. The old handoff sentence that retained the coercion is removed.
+- **Documents touched:** `docs/handoffs/E3-20.md` (the removed claim, the review-correction section,
+  files and verification), `docs/handoffs/E3-B1.md` (checkpoint), this entry.
+- **Verification:** extraction `4a12bb79` preserved behaviour (module host suite and both iOS target
+  compiles pass); RED `73de0c24` failed five cases (numeric, null and colliding keys lacked the
+  marker; the throwing key raised from its `toString()`; the pull-boundary map produced
+  `{"1":"value"}`); GREEN `21467813` made them pass, with the full module host suite at 45 tests and
+  zero failures, `:core:sync` JVM and Native passing, `:build-logic:convention:test`,
+  `architectureCheck` and `contractCheck` passing with no `FAIL` or `PENDING`, and both iOS targets
+  compiling. New tests: `ProviderFieldMapsTest` and
+  `FirebaseRemoteSyncSourcePullTotalityTest.aMapNormalizedBeforeThePullBoundaryRetainsItsMarker`. CI
+  run `38720422484` on the correction's code head `dcafc92b` passed all ten required checks.
+- **Follow-ups / risks:** none new. No new decision ID was required; the change implements `D-208`
+  literally. Bundle `E3-B1` still awaits the owner's gated review; the pull request is not merged.
+
+### 2026-10-14 — E3-20 pull-boundary totality for unsupported provider values (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-20` / `D-208`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** a provider value with no JSON form no longer fails the whole pull page. The
+  Firestore integration writes the reserved marker `{UNSUPPORTED_PROVIDER_VALUE_KEY: <type name>}` in
+  its place and keeps every other field verbatim, and `:core:sync` quarantines every marked document
+  as `MalformedPayload` after the unsupported-`schemaVersion` check, so the cursor advances.
+  `docs/CONTRACTS.md §9.5` and `§20.7` define it.
+- **Why:** one such document stalled the pull permanently, which `§9.5` totality forbids; the owner
+  chose the marker (`D-208`, ADR-0209) over omitting the field or changing `RemotePage`.
+- **Documents touched:** `docs/CONTRACTS.md §9.5`, `§20.7`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0209;
+  `docs/BACKLOG.md`; `docs/handoffs/E3-20.md`.
+- **Verification:** two RED / GREEN cycles plus the platform actuals under the provider-integration
+  TDD exemption; an end-to-end test through the real engine and database; the complete `AGENTS.md`
+  command passes.
+- **Follow-ups / risks:** none new. This completes bundle `E3-B1`.
+
+### 2026-10-14 — E3-18 manual retry covers parked connectivity rows (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-18` / `D-173` (accepted as option B on 2026-10-14)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** `resetFailedOutbox` also clears the retry context of every outbox row whose
+  `lastErrorCode` is a connectivity code, regardless of entity state, so `retryFailed()` makes a
+  parked row due with `attemptCount` 0. `docs/CONTRACTS.md §9.7` states the exact selection and that a
+  lone parked row, which has no retry control because the control is shown only while `Failed`,
+  becomes due within `MAX_BACKOFF_MS`.
+- **Why:** the owner accepted option B with the premise correction recorded in ADR-0174: the retry
+  control is never shown for a `Pending` aggregate, so option B helps when a `Failed` row is present
+  and the lone-row wait is bounded rather than removed.
+- **Documents touched:** `docs/CONTRACTS.md §7`, `§9.7`; `docs/handoffs/E3-18.md`.
+- **Verification:** RED `d65b48db` / GREEN `dd7e1b90`, each pushed; the complete `AGENTS.md` command
+  passes. Two test-infrastructure fixes in GREEN (a detekt-driven file split and a controller `Job`
+  joined before the database closes) are declared in the handoff.
+- **Follow-ups / risks:** none new. `E3-20` remains in the bundle and waits for its owner decision.
+
+### 2026-10-14 — E3-21 startup reset of stale SYNCING rows (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-21` / `D-207`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** a row a process death left `SYNCING` is restored once per app start, as the first
+  step of the controller's first executed cycle and before its offline and `LOCAL_OWNER` refusals, to
+  `FAILED_RETRYABLE` after a non-connectivity outbox `lastErrorCode` and to `PENDING` otherwise. The
+  reset is count-gated, runs both tables in one transaction, never touches the outbox row, and a
+  failure is reported once as a non-fatal `UnexpectedError`. `docs/CONTRACTS.md §7` and `§9.9` describe
+  it instead of its absence.
+- **Why:** the owner chose to restore the pre-attempt state with the `failPush` rule (`D-207`,
+  ADR-0208), so no `PENDING` row carries a non-connectivity code; the `D-194` count gate avoids a
+  writing transaction on every start, the `SQLITE_BUSY` hazard `E3-07` met on iOS.
+- **Documents touched:** `docs/CONTRACTS.md §7`, `§9.9`; `docs/TECHNICAL_PLAN.md §8`;
+  `docs/handoffs/E3-21.md`.
+- **Verification:** three RED / GREEN cycles (database, write lock on Android and iOS, controller),
+  an app-graph acceptance test proved non-vacuous by mutation, and a KDoc refactor; the complete
+  `AGENTS.md` command passes.
+- **Follow-ups / risks:** none new. The intake's assumption that `OwnerRecoveryGate` starts every
+  launch's first cycle was wrong; the hosts' cold-start `AppForeground` report does, and the
+  placement holds.
+
+### 2026-10-14 — E3-13 outbox entityType single source (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-13` / `D-206` (and `D-205`, the bundle)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** `EntityType` moved from `:core:sync` to `:core:common` with `@HiddenFromObjC`
+  and is now the only Kotlin source of the outbox `entityType` wire value: the 22 production literals
+  in `:core:database` and the two outbox mappers use `EntityType.<entry>.name`. The SQL keeps its
+  literals under the new `build-logic` `EntityTypeWireValueParityTest`, which also rejects a
+  production Kotlin literal. `docs/CONTRACTS.md §20.3` declares the enum; the `D-110` production-token
+  clause is superseded by `D-206`.
+- **Why:** `docs/TECHNICAL_PLAN.md §4` forbids `:core:database -> :core:sync`, so the enum could not
+  be the single source where it lived; the owner chose `:core:common` (`D-206`, ADR-0207), following
+  `SyncStatus`, `SyncTrigger`, `CONNECTIVITY_ERROR_CODES` and `ConnectivityCodeParityTest`.
+- **Documents touched:** `docs/CONTRACTS.md §20.3`, `§20.7`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md` (`D-110` note);
+  ADR-0111, ADR-0207; `docs/handoffs/E3-13.md`.
+- **Verification:** two RED / GREEN cycles and a refactor, each pushed; the complete `AGENTS.md`
+  command passes; the generated Objective-C header is identical to the golden file. One native SQLite
+  `signal 11` on the first GREEN run was investigated and did not reproduce in five Native runs.
+- **Follow-ups / risks:** none new. `E3-21`, `E3-18` and `E3-20` continue in bundle `E3-B1`.
+
 ### 2026-10-14 — E3-09 record closure: the merged status and the pull request #84 evidence
 
 - **Type:** correction (documentation only)

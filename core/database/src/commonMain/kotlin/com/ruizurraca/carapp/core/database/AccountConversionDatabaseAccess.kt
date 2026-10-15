@@ -2,6 +2,7 @@ package com.ruizurraca.carapp.core.database
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
+import com.ruizurraca.carapp.core.common.EntityType
 
 enum class AccountConversionPhase {
     SNAPSHOT_CAPTURED,
@@ -95,7 +96,7 @@ class AccountConversionDatabaseAccess(
             queries.selectVehiclesForAdoption(anonymousUid).awaitAsList().forEach { row ->
                 val vehicle = row.toVehicleDatabaseRow()
                 queries.insertAccountConversionSnapshot(
-                    entityType = "VEHICLE",
+                    entityType = EntityType.VEHICLE.name,
                     entityId = vehicle.id,
                     payload = vehiclePayload(vehicle),
                     localRevision = vehicle.localRevision,
@@ -105,7 +106,7 @@ class AccountConversionDatabaseAccess(
             queries.selectFuelEntriesForAdoption(anonymousUid).awaitAsList().forEach { row ->
                 val fuelEntry = row.toFuelEntryDatabaseRow()
                 queries.insertAccountConversionSnapshot(
-                    entityType = "FUEL_ENTRY",
+                    entityType = EntityType.FUEL_ENTRY.name,
                     entityId = fuelEntry.id,
                     payload = fuelEntryPayload(fuelEntry),
                     localRevision = fuelEntry.localRevision,

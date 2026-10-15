@@ -102,7 +102,7 @@ class IosTombstonePurgeWriteLockTest {
 
 /** Creates an iOS file-backed database at a fresh temporary path and removes its files afterwards. */
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun withIosFileBackedDatabase(block: suspend (path: String, handle: TestDatabase) -> Unit) {
+internal suspend fun withIosFileBackedDatabase(block: suspend (path: String, handle: TestDatabase) -> Unit) {
     val path = "${NSTemporaryDirectory()}carapp-e3-07-${Random.nextLong()}.db"
     val handle = TestDatabase.create(AndroidxSqliteDatabaseType.File(path))
     try {
@@ -153,7 +153,7 @@ private suspend fun TestDatabase.seedVehicleTombstone(
 
 /** A second, independent connection onto the same file - what a concurrent writer in the app is. */
 @OptIn(ExperimentalForeignApi::class)
-private class IosSecondConnection(
+internal class IosSecondConnection(
     path: String,
 ) {
     private val driver =
