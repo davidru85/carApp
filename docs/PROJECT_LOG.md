@@ -38,6 +38,29 @@
 
 ## Entries
 
+### 2026-10-15 — E3-B2 review round R2: accepted-decision references, grounds and status records
+
+- **Type:** correction
+- **Story / Decision:** `E3-15`, `E3-16` / `D-149`, `D-150` (accepted options unchanged)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** the `canIssueOrphanCleanupTicket` KDoc no longer calls the `D-150` window
+  unresolved (comment only). The ADR-0150 option D grounds and the `docs/SECURITY.md` `D-149` entry
+  attribute the in-app separation of ticket issuance and `deleteAccount` to the session kind each
+  requires, not to the account-conversion mutex. The ADR-0150 and ADR-0151 `Status` notes name what
+  changed after the `Pending` analysis. `docs/TECHNICAL_PLAN.md` states the Phase 3 status, and the
+  `docs/BACKLOG.md` outstanding-decisions paragraph describes the empty table accurately.
+- **Why:** the code comment contradicted the accepted `D-150`; the conversion mutex serializes
+  conversions only with each other; the two ADRs claimed an unmodified analysis that had been
+  edited; and the derived plan still listed almost every Phase 3 story as remaining.
+- **Documents touched:** `functions/src/auth/anonymousUserEligibility.ts` (KDoc), ADR-0150,
+  ADR-0151, `docs/SECURITY.md`, `docs/TECHNICAL_PLAN.md`, `docs/BACKLOG.md`, and the `E3-15`,
+  `E3-16` and `E3-B2` handoffs.
+- **Verification:** `npm --prefix functions test` exit 0 (83 tests: 81 pass, 0 fail, 2 emulator
+  skips with `FIRESTORE_EMULATOR_HOST` unset); `./gradlew contractCheck` exit 0 with no `FAIL` or
+  `PENDING` assertion.
+- **Follow-ups / risks:** none new; both accepted residual risks remain. Pull request #89 still
+  requires the owner's gated review and merge decision.
+
 ### 2026-10-15 — E3-B2 review: ticket retention, missing-user cleanup and decision closure
 
 - **Type:** correction

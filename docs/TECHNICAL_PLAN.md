@@ -630,7 +630,9 @@ anonymous retention notices, sign-out and account deletion.
 
 ### Phase 3 - Backend Backup and Recovery
 
-Status: partially complete. E3-06 and E3-01 are complete; every other Phase 3 story remains.
+Status: open; every Phase 3 story except `E3-15` and `E3-16` has merged, and bundle `E3-B2` delivers
+those two through pull request #89, awaiting the owner's gated review. The phase closes when that
+pull request merges.
 
 Firestore rules and emulator tests, Firestore integration for the development project, backup and
 recovery engine, app graph wiring, repository wiring, backup status UI, tombstone purge, account

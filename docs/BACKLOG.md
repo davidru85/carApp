@@ -1943,12 +1943,12 @@ Acceptance criteria:
 ## Outstanding Owner Decisions
 
 No decision is open. The owner accepted `D-173` as option B on 2026-10-14, delivered by `E3-18` in
-bundle `E3-B1`, and accepted `D-149` as option D and `D-150` as option A on 2026-10-15, delivered by
-`E3-15` and `E3-16` in bundle `E3-B2`. The table and triage notes below are kept empty rather than
-removed, so the section's columns stay stable for the next open decision. `E3-03`, `E3-04`, `E3-08`, `E3-12` and `E3-17` have all merged, `E1-18` landed with
-`E3-12`, so this table gates only the unstarted stories named in its `Needed by` column. `D-172` is
-not among them: the owner accepted option D with a 5-second grace on 2026-09-17, and that acceptance
-merged with `E3-17`.
+bundle `E3-B1`, and accepted `D-149` as option D and `D-150` as option A on 2026-10-15, recorded by
+`E3-15` and `E3-16` in bundle `E3-B2` through pull request #89. The table below keeps its header and
+has no rows, so its columns stay stable for the next open decision; the one-line triage notes that
+described `D-149` and `D-150` were removed with their rows. The table gates only the unstarted
+stories named in its `Blocks` column. `D-172` is not among them: the owner accepted option D with a
+5-second grace on 2026-09-17, and that acceptance merged with `E3-17`.
 
 | Decision | Status | Blocks | Recommended option | Analysis |
 |---|---|---|---|---|
