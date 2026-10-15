@@ -88,6 +88,75 @@ class FirebaseRemoteSyncSourcePullTotalityTest {
             assertEquals(JsonPrimitive(DOCUMENT_ID), json["id"])
         }
 
+    @Test
+    fun aNaNProviderNumberBecomesAMarker() =
+        runTest {
+            assertNonFiniteProviderNumberBecomesAMarker(Double.NaN)
+        }
+
+    @Test
+    fun aPositiveInfinityProviderNumberBecomesAMarker() =
+        runTest {
+            assertNonFiniteProviderNumberBecomesAMarker(Double.POSITIVE_INFINITY)
+        }
+
+    @Test
+    fun aNegativeInfinityProviderNumberBecomesAMarker() =
+        runTest {
+            assertNonFiniteProviderNumberBecomesAMarker(Double.NEGATIVE_INFINITY)
+        }
+
+    @Test
+    fun nonFiniteProviderNumbersInsideMapsAndListsBecomeMarkersInPlace() =
+        runTest {
+            for (value in listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
+                val json =
+                    pulledJson(
+                        vehicleFields +
+                            ("brand" to mapOf("kept" to "value", "nested" to value)) +
+                            ("model" to listOf("kept", value)),
+                    )
+
+                assertEquals(
+                    buildJsonObject {
+                        put("kept", "value")
+                        put("nested", marker("Double"))
+                    },
+                    json["brand"],
+                )
+                assertEquals(
+                    buildJsonArray {
+                        add(JsonPrimitive("kept"))
+                        add(marker("Double"))
+                    },
+                    json["model"],
+                )
+            }
+        }
+
+    @Test
+    fun finiteProviderNumbersAndNonFiniteLookingStringsStayVerbatim() =
+        runTest {
+            for (value in listOf(-1.5, 0.0, 1.25, Double.MAX_VALUE)) {
+                val json = pulledJson(vehicleFields + ("brand" to value))
+
+                assertEquals(JsonPrimitive(value), json["brand"])
+            }
+            for (value in listOf("NaN", "Infinity", "-Infinity")) {
+                val json = pulledJson(vehicleFields + ("brand" to value))
+
+                assertEquals(JsonPrimitive(value), json["brand"])
+            }
+        }
+
+    private suspend fun assertNonFiniteProviderNumberBecomesAMarker(value: Double) {
+        val json = pulledJson(vehicleFields + ("brand" to value))
+
+        assertEquals(marker("Double"), json["brand"])
+        assertEquals(JsonPrimitive("GASOLINE"), json["fuelType"])
+        assertEquals(JsonPrimitive(DOCUMENT_ID), json["id"])
+    }
+
     private suspend fun pulledJson(fields: Map<String, Any?>): JsonObject {
         val document =
             FirestoreDocument(
