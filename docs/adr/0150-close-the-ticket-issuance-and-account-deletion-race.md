@@ -5,8 +5,9 @@
 Accepted
 
 The owner selected **option D** on 2026-10-15: accept the residual window and record it, adding no
-mechanism (see "Decision"). The analysis below is preserved as written while the decision was
-`Pending`, when no option was recommended.
+mechanism (see "Decision"). The context and option analysis below are preserved as written while the
+decision was `Pending`, when no option was recommended, except for the option D row, which was added
+to the options table when the owner selected it.
 
 ## Context
 
@@ -219,9 +220,13 @@ The selected option is **D**, accepted by the owner on 2026-10-15.
   - only the account owner can start either operation: the issuer binds the authorization to the
     caller's own anonymous UID, and `deleteAccount` requires the caller UID to equal the target UID,
     so no third party can produce the interleaving for someone else's account;
-  - the app never runs the two operations concurrently: issuance happens only inside the
-    account-conversion flow under its mutex, account deletion is the separate `F-5` departure flow,
-    and an unlinked anonymous identity is device-bound;
+  - the app does not run the two operations against one account at the same time: it issues a
+    ticket only while the session is anonymous, inside the account-conversion flow
+    (`AccountConversionCoordinator.confirm`), and it calls `deleteAccount` only while the session is
+    permanent (`DepartureKind.DELETE_PERMANENT` in `AccountDepartureFlow`); an anonymous session's
+    departure never calls `deleteAccount`, and an unlinked anonymous identity is device-bound. The
+    conversion flow's mutex serializes conversions with each other, not with the departure flow, so
+    this ground rests on the session-kind separation, not on that mutex;
   - the surviving record holds the pseudonymous UID of an account that no longer exists, a ticket
     hash, a status and an expiry; it carries no product data and no capability against anyone else,
     and consuming it deletes nothing that still exists;

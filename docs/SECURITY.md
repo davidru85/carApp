@@ -120,8 +120,9 @@ Requirements:
   this: Firebase Auth and Cloud Firestore share no transaction, and the only candidate with a
   serialization point — a marker read inside the issuance transaction — would retain every deleted
   UID indefinitely, the retention `D-143` was accepted to remove. The owner accepted the window
-  because only the account owner can start either operation, the app never runs the account
-  conversion and the account deletion concurrently, and the surviving record holds only the
+  because only the account owner can start either operation, the app issues a ticket only from an
+  anonymous session and calls `deleteAccount` only from a permanent one, so it does not run the two
+  operations against one account at the same time, and the surviving record holds only the
   pseudonymous UID of an account that no longer exists, a ticket hash, a status and an expiry — no
   product data and no capability against anyone else. Its only cleanup is the Firestore TTL on
   `expiresAt`: provider-managed eventual deletion after the 30-day expiration horizon, with no
