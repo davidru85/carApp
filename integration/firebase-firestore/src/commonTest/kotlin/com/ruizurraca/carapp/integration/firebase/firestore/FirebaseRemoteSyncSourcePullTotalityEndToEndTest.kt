@@ -3,6 +3,7 @@ package com.ruizurraca.carapp.integration.firebase.firestore
 import com.ruizurraca.carapp.core.common.AppClock
 import com.ruizurraca.carapp.core.common.AppError
 import com.ruizurraca.carapp.core.common.ConnectivityObserver
+import com.ruizurraca.carapp.core.common.EntityType
 import com.ruizurraca.carapp.core.common.Outcome
 import com.ruizurraca.carapp.core.common.OwnerContext
 import com.ruizurraca.carapp.core.common.SyncTrigger
@@ -11,6 +12,8 @@ import com.ruizurraca.carapp.core.common.toEpochMicroseconds
 import com.ruizurraca.carapp.core.database.SyncDatabaseAccess
 import com.ruizurraca.carapp.core.database.createStagedDatabaseFactory
 import com.ruizurraca.carapp.core.model.OwnerId
+import com.ruizurraca.carapp.core.sync.QuarantineRecord
+import com.ruizurraca.carapp.core.sync.UNSUPPORTED_PROVIDER_VALUE_KEY
 import com.ruizurraca.carapp.core.sync.createSyncController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -21,6 +24,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -43,12 +50,32 @@ import kotlin.time.Instant
 class FirebaseRemoteSyncSourcePullTotalityEndToEndTest {
     @Test
     fun aDocumentWithAnUnsupportedValueIsQuarantinedAndTheCursorAdvances() =
+        assertQuarantinedAndCursorAdvanced(UnrepresentableProviderValue(), "UnrepresentableProviderValue")
+
+    @Test
+    fun aDocumentWithNaNIsQuarantinedWithAMarkerAndTheCursorAdvances() =
+        assertQuarantinedAndCursorAdvanced(Double.NaN, "Double")
+
+    @Test
+    fun aDocumentWithPositiveInfinityIsQuarantinedWithAMarkerAndTheCursorAdvances() =
+        assertQuarantinedAndCursorAdvanced(Double.POSITIVE_INFINITY, "Double")
+
+    @Test
+    fun aDocumentWithNegativeInfinityIsQuarantinedWithAMarkerAndTheCursorAdvances() =
+        assertQuarantinedAndCursorAdvanced(Double.NEGATIVE_INFINITY, "Double")
+
+    private fun assertQuarantinedAndCursorAdvanced(
+        providerValue: Any?,
+        expectedTypeName: String,
+    ) =
         runTest {
             val reportedErrors = mutableListOf<AppError>()
+            val reportedQuarantines = mutableListOf<QuarantineRecord>()
             val handle = createStagedDatabaseFactory().create()
             val controllerJob = Job()
             try {
-                val gateway = RecordingFirestoreGateway(documents = listOf(documentWithUnsupportedValue()))
+                val gateway =
+                    RecordingFirestoreGateway(documents = listOf(documentWithUnsupportedValue(providerValue)))
                 val controller =
                     createSyncController(
                         scope = CoroutineScope(coroutineContext + controllerJob),
@@ -60,7 +87,7 @@ class FirebaseRemoteSyncSourcePullTotalityEndToEndTest {
                         uuidGenerator = StaticUuidGenerator,
                         adoption = { Outcome.Ok(Unit) },
                         onPoisoned = { error, _ -> reportedErrors += error },
-                        onQuarantined = {},
+                        onQuarantined = reportedQuarantines::add,
                         isDebugBuild = false,
                     )
 
@@ -79,13 +106,22 @@ class FirebaseRemoteSyncSourcePullTotalityEndToEndTest {
                     "the vehicle cursor advanced past the quarantined document. Saw $lines",
                 )
                 assertEquals(emptyList(), reportedErrors, "a quarantined document is not an error report")
+
+                val quarantined = reportedQuarantines.single { it.entityType == EntityType.VEHICLE }
+                assertEquals(
+                    buildJsonObject {
+                        put(UNSUPPORTED_PROVIDER_VALUE_KEY, JsonPrimitive(expectedTypeName))
+                    },
+                    Json.parseToJsonElement(quarantined.rawJson).jsonObject["brand"],
+                    "the committed quarantine record carries the reserved marker at the original position",
+                )
             } finally {
                 controllerJob.cancelAndJoin()
                 handle.close()
             }
         }
 
-    private fun documentWithUnsupportedValue(): FirestoreDocument =
+    private fun documentWithUnsupportedValue(providerValue: Any?): FirestoreDocument =
         FirestoreDocument(
             id = DOCUMENT_ID,
             orderingUpdatedAtMicros = SERVER_UPDATED_AT.toEpochMicroseconds(),
@@ -95,7 +131,7 @@ class FirebaseRemoteSyncSourcePullTotalityEndToEndTest {
                     "ownerId" to OWNER_ID,
                     "name" to "Roadster",
                     "initialOdometerKm" to 0L,
-                    "brand" to UnrepresentableProviderValue(),
+                    "brand" to providerValue,
                     "model" to null,
                     "fuelType" to "GASOLINE",
                     "createdAt" to 1_700_000_000_000L,
