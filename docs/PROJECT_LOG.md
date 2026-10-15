@@ -65,7 +65,8 @@
   zero failures, `:core:sync` JVM and Native passing, `:build-logic:convention:test`,
   `architectureCheck` and `contractCheck` passing with no `FAIL` or `PENDING`, and both iOS targets
   compiling. New tests: `ProviderFieldMapsTest` and
-  `FirebaseRemoteSyncSourcePullTotalityTest.aMapNormalizedBeforeThePullBoundaryRetainsItsMarker`.
+  `FirebaseRemoteSyncSourcePullTotalityTest.aMapNormalizedBeforeThePullBoundaryRetainsItsMarker`. CI
+  run `38720422484` on the correction's code head `dcafc92b` passed all ten required checks.
 - **Follow-ups / risks:** none new. No new decision ID was required; the change implements `D-208`
   literally. Bundle `E3-B1` still awaits the owner's gated review; the pull request is not merged.
 
