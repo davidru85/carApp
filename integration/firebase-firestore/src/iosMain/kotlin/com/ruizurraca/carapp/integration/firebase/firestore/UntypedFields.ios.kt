@@ -27,9 +27,7 @@ private const val NANOS_PER_MICROSECOND = 1_000L
 private const val UPDATED_AT_FIELD = "updatedAt"
 
 internal actual fun DocumentSnapshot.untypedFields(): Map<String, Any?> =
-    (ios.data() as? Map<*, *>)?.entries?.associate { (key, value) ->
-        (key as? String ?: key?.toString().orEmpty()) to value.toJsonFriendly()
-    } ?: emptyMap()
+    (ios.data() as? Map<*, *>)?.toIosFieldMap() ?: emptyMap()
 
 /**
  * The full-precision `updatedAt` ordering timestamp as epoch microseconds (`D-174`). GitLive's
@@ -65,9 +63,7 @@ private fun Any?.toJsonFriendly(): Any? =
         }
 
         is Map<*, *> -> {
-            entries.associate { (key, value) ->
-                (key as? String ?: key?.toString().orEmpty()) to value.toJsonFriendly()
-            }
+            toIosFieldMap()
         }
 
         is List<*> -> {
@@ -82,6 +78,13 @@ private fun Any?.toJsonFriendly(): Any? =
             unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE)
         }
     }
+
+/** Preserves Foundation string keys before applying the provider-neutral map rule. */
+private fun Map<*, *>.toIosFieldMap(): Map<String, Any?> =
+    entries
+        .associate { (key, value) ->
+            (if (key is NSString) key.toString() else key) to value
+        }.toProviderFieldMap { it.toJsonFriendly() }
 
 /**
  * Distinguishes an `NSNumber` boolean from its integer and floating-point forms using the Objective-C
