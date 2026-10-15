@@ -203,8 +203,9 @@ review.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** `E3-13`, `E3-15`, `E3-16`, `E3-18`,
   `E3-20` and `E3-21`, delivered as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
-  synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), is implemented on
-  `story/E3-B1-client-sync-hardening` through pull request #88 and awaits the owner's gated review; it
+  synchronization hardening (`E3-13`, `E3-21`, `E3-18`, `E3-20`), merged on 2026-10-15 through pull
+  request #88 as a true merge of `story/E3-B1-client-sync-hardening` into `main` (merge commit
+  `a71e1767`), after the owner's gated review and two review correction rounds on `E3-20`; it
   introduced `D-205` through `D-208` and accepted `D-173`, and its record is `docs/handoffs/E3-B1.md`. Bundle
   `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), starts after `E3-B1` merges and after
   the owner decides `D-149` and `D-150`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
@@ -237,9 +238,9 @@ review.
   `E3-01`, `E3-06`, `E3-10` and `E3-11` are already complete.
 - **Two decisions remain open, and none of them blocks merged work:** the tables below are the
   authoritative rows; this paragraph exists so the outstanding owner work is visible without reading
-  three documents. The owner accepted `D-173` as option B on 2026-10-14; `E3-18` delivers it inside
-  `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-17` and `E3-19` already
-  merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
+  three documents. The owner accepted `D-173` as option B on 2026-10-14; `E3-18` delivered it inside
+  `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-17`, `E3-18`, `E3-19`,
+  `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
   - **`D-149` / `E3-15` — ticket issuance against account deletion.** `Pending`, no recommendation,
     no option pre-selected; the options and the proof obligations are in ADR-0150. `E3-15` cannot

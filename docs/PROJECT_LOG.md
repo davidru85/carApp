@@ -38,6 +38,26 @@
 
 ## Entries
 
+### 2026-10-15 — E3-B1 record closure: the merged status and the pull request #88 evidence
+
+- **Type:** correction (documentation only)
+- **Story / Decision:** `E3-13`, `E3-21`, `E3-18`, `E3-20` (bundle `E3-B1`) / — (no decision changed)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B2-server-cleanup-races`)
+- **What changed:** bundle `E3-B1` merged on 2026-10-15 through pull request #88 as a true merge of
+  `story/E3-B1-client-sync-hardening` into `main` (merge commit `a71e1767`, whose second parent is the
+  branch head `b85b3153`), after the owner's gated review and two review correction rounds on `E3-20`.
+  The four story status blocks and index rows in `docs/BACKLOG.md`, the `AGENTS.md` Repository State
+  and the open-decision paragraph now state the merge, and the bundle and story handoffs gain a dated
+  `Closure update` over their preserved evidence.
+- **Why:** `AGENTS.md` §Repository State must not describe a merged bundle as in review. The closure
+  rides in the `E3-B2` pull request rather than a separate one, so the two bundles' records change in
+  one gated review.
+- **Documents touched:** `AGENTS.md`, `docs/BACKLOG.md`, `docs/handoffs/E3-B1.md`, `E3-13.md`,
+  `E3-21.md`, `E3-18.md`, `E3-20.md`, this log.
+- **Verification:** documentation only. The final head `b85b3153` passed all ten required checks on
+  attempt `1` (run `38733845781`).
+- **Follow-ups / risks:** none new. Pull request #88 is merged and requires no further action.
+
 ### 2026-10-15 — E3-20 review correction R2: non-finite provider numbers use the marker (bundle E3-B1)
 
 - **Type:** story

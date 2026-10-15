@@ -1103,8 +1103,8 @@ Acceptance criteria:
 
 ### E3-13 - Single source of truth for the outbox entityType wire value - M
 
-Status: implemented in bundle `E3-B1` (`D-205`, ADR-0206) through pull request #88, awaiting the
-owner's gated review. Registered as GitHub issue
+Status: merged in bundle `E3-B1` (`D-205`, ADR-0206) on 2026-10-15 through pull request #88 (merge
+commit `a71e1767`), after the owner's gated review. Registered as GitHub issue
 #46. Tracked as a follow-up of D-110 in `docs/handoffs/E1-11.md` and `docs/PROJECT_LOG.md`
 (2026-09-02 entry). The owner decided its location question on 2026-10-14 as `D-206` (ADR-0207):
 `EntityType` moves to `:core:common`, and the SQL literals are verified against it by a parity test.
@@ -1764,8 +1764,8 @@ Human review required.
 
 ### E3-18 - Manual Retry Coverage for Parked Connectivity Rows - S
 
-Status: implemented in bundle `E3-B1` (`D-205`, ADR-0206) through pull request #88, awaiting the
-owner's gated review. The owner accepted `D-173` as
+Status: merged in bundle `E3-B1` (`D-205`, ADR-0206) on 2026-10-15 through pull request #88 (merge
+commit `a71e1767`), after the owner's gated review. The owner accepted `D-173` as
 option B on 2026-10-14; [ADR-0174](adr/0174-manual-retry-coverage-for-parked-connectivity-rows.md)
 records the decision and a premise correction: both hosts show the retry control only while the
 aggregate is `Failed`, so a lone parked connectivity row has no manual control under any option and
@@ -1837,8 +1837,8 @@ Human review required.
 
 ### E3-20 - Pull-Boundary Quarantine Totality for Unsupported Provider Values - S
 
-**Deferred by `E3-03`; near-unreachable.** Implemented through pull request #88 as the fourth story
-of bundle `E3-B1`
+**Deferred by `E3-03`; near-unreachable.** Merged on 2026-10-15 through pull request #88 (merge commit
+`a71e1767`) as the fourth story of bundle `E3-B1`, after two review correction rounds
 (`D-205`, ADR-0206). The owner decided the representation on 2026-10-14 as `D-208` (ADR-0209): the
 integration carries an unsupported value as a reserved marker, and `:core:sync` quarantines every
 document carrying it as `MalformedPayload`.
@@ -1864,8 +1864,8 @@ Human review required.
 
 ### E3-21 - Explicit Startup Reset of Stale `SYNCING` Rows - S
 
-**Deferred by `E3-03`; low impact.** Implemented through pull request #88 as the second story of
-bundle `E3-B1` (`D-205`,
+**Deferred by `E3-03`; low impact.** Merged on 2026-10-15 through pull request #88 (merge commit
+`a71e1767`) as the second story of bundle `E3-B1` (`D-205`,
 ADR-0206). The owner decided the reset target state and its execution on 2026-10-14 as `D-207`
 (ADR-0208): a stale row returns to `FAILED_RETRYABLE` after a non-connectivity `lastErrorCode` and to
 `PENDING` otherwise, once per app start, under the sync cycle's exclusion.
@@ -2086,15 +2086,15 @@ proof after E3-04.
 | E3-07 Tombstone purge (completed, PR #78) | 3 | S | — |
 | E3-09 Firebase Analytics integration (completed, PR #84) | 3 | M | — |
 | E3-06 Provider decoupling proof (completed) | 3 | S | — |
-| E3-13 Outbox entityType single source of truth (bundle `E3-B1`, implemented, PR #88) | 3 | M | — |
+| E3-13 Outbox entityType single source of truth (bundle `E3-B1`, completed, PR #88) | 3 | M | — |
 | E3-14 Orphan cleanup ticket issuance hardening (completed, PR #63) | 3 | M | Yes |
 | E3-15 Close the ticket issuance and account deletion interleaving (bundle `E3-B2`, blocked on `D-149`) | 3 | M | Yes |
 | E3-16 Close the issuance lookup-to-write window (bundle `E3-B2`, blocked on `D-150`) | 3 | M | Yes |
 | E3-17 Make `AppGraph.close()` safe against an in-flight sync cycle (completed, PR #70) | 3 | M | Yes |
-| E3-18 Manual retry coverage for parked connectivity rows (bundle `E3-B1`, implemented, PR #88) | 3 | S | Yes |
+| E3-18 Manual retry coverage for parked connectivity rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
-| E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, implemented, PR #88) | 3 | S | Yes |
-| E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, implemented, PR #88) | 3 | S | Yes |
+| E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
+| E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E4-01 Settings UI | 4 | S | — |
 | E4-02 Accessibility and localization | 4 | M | — |
 | E4-03 Performance hardening | 4 | M | — |
