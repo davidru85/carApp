@@ -207,10 +207,11 @@ review.
   request #88 as a true merge of `story/E3-B1-client-sync-hardening` into `main` (merge commit
   `a71e1767`), after the owner's gated review and two review correction rounds on `E3-20`; it
   introduced `D-205` through `D-208` and accepted `D-173`, and its record is `docs/handoffs/E3-B1.md`. Bundle
-  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), is in flight on
-  `story/E3-B2-server-cleanup-races`: the owner accepted both races as residual risks on 2026-10-15
+  `E3-B2`, the server-side cleanup races (`E3-15`, `E3-16`), is implemented on
+  `story/E3-B2-server-cleanup-races` through pull request #89 and awaits the owner's gated review: the
+  owner accepted both races as residual risks on 2026-10-15
   (`D-149` option D, `D-150` option A), so the bundle records them and pins the `D-149` interleaving
-  with a test, adding no mechanism; its live checkpoint is `docs/handoffs/E3-B2.md`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
+  with a test, adding no mechanism; its record is `docs/handoffs/E3-B2.md`. `E3-09`, the Firebase Analytics integration and the `docs/CONTRACTS.md §16.1`
   emission surface, merged on 2026-10-14 through pull request #84 as a true merge of
   `story/E3-09-firebase-analytics-integration` into `main` (merge commit `244cbdaf`), after the
   owner's gated review, two review correction rounds and the owner's closure of `D-201` through
