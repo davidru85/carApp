@@ -245,7 +245,7 @@ internal fun DocumentSnapshot.toFirestoreDocument(): FirestoreDocument =
 
 /**
  * Serializes the untyped product fields to JSON without decoding or asserting any of them. The
- * provider-free value set is String, Long, Double, Boolean, Map, List and null.
+ * provider-free JSON value set is String, Long, Int, finite Double, Boolean, Map, List and null.
  *
  * The conversion is total (`D-208`, `§9.5`): a value outside that set, or a map with a non-string key,
  * is written as the [unsupportedProviderValue] marker in its own position, and every other field stays
@@ -281,7 +281,11 @@ private fun Any?.toJsonElement(): JsonElement =
         }
 
         is Double -> {
-            JsonPrimitive(this)
+            if (isFinite()) {
+                JsonPrimitive(this)
+            } else {
+                unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE).toJsonElement()
+            }
         }
 
         is Map<*, *> -> {
