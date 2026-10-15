@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-10-15 — E3-20 review correction R2: non-finite provider numbers use the marker (bundle E3-B1)
+
+- **Type:** story
+- **Story / Decision:** `E3-20` / `D-208` (ADR-0209); correction of pull request #88
+- **Author:** agent, on behalf of David Ruiz (branch `story/E3-B1-client-sync-hardening`)
+- **What changed:** the common `Any?.toJsonElement()` passed every `Double` to `JsonPrimitive`, so a
+  provider `NaN`, positive infinity or negative infinity — all three supported by Cloud Firestore and
+  all three excluded by JSON's number grammar (RFC 8259 §6) — reached `rawJson` as the literal tokens
+  `NaN`, `Infinity` and `-Infinity` instead of the reserved marker. The numeric branch is now guarded
+  by `isFinite()` and emits the existing `{UNSUPPORTED_PROVIDER_VALUE_KEY: "Double"}` marker at the
+  value's own position otherwise; the `toRawJson` KDoc names the finite-only numeric set.
+- **Why:** `docs/CONTRACTS.md §9.5` and ADR-0209 require every value with no JSON representation to
+  become the marker, independently of where it sits, and both platform adapters reach the common
+  branch. This is a closure gap, not a reachable pull stall or a data-loss incident.
+- **Documents touched:** `docs/handoffs/E3-20.md` (ready check, R2 section, files, decisions,
+  verification, and the corrected historical R1 breakdown `6 + 4 + 19 + 16`), `docs/handoffs/E3-B1.md`
+  (checkpoint), and the pull request #88 body; this entry.
+- **Verification:** RED `e3bc0866` failed four transport cases with the observed `NaN`, `Infinity`,
+  `-Infinity` and nested `NaN` outputs; GREEN `dd8e8712` passed them; `c1b8f4d3` added the end-to-end
+  assertions reading the record the real engine and database committed; `bfb4ade9` extracted the
+  numeric branch to `Double.toJsonNumberOrMarker()` after detekt reported a cyclomatic complexity of
+  16/15, and applied the module formatter. The module host suite with `--rerun-tasks` reports 53 tests
+  and zero failures, errors or skips; `:core:sync` and `:core:database` pass on the Android host and
+  `iosSimulatorArm64`; both provider iOS targets compile; the complete non-instrumented `AGENTS.md`
+  command passes and `contractCheck` reports no `FAIL` or `PENDING`. Non-vacuity was proved by
+  temporarily restoring the unconditional `JsonPrimitive(this)` branch, which failed all three
+  numeric end-to-end cases; the mutation was never committed.
+- **Follow-ups / risks:** none new. No new decision ID was required; the change implements `D-208`
+  literally without touching the public API or the engine's classification policy. Bundle `E3-B1`
+  still awaits the owner's gated review; the pull request is not merged.
+
 ### 2026-10-15 — E3-20 review correction R1: the iOS map-key coercion removed (bundle E3-B1)
 
 - **Type:** story
