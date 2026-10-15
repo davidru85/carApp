@@ -133,15 +133,18 @@ Requirements:
   record, checks that it exists, is enabled and is still anonymous (`D-148`), and then writes the
   authorization to Cloud Firestore. The two services share no transaction, so the account can be
   linked, disabled or deleted between the read and the write, and the authorization is created
-  anyway. A linked account is never cleaned up, because consumption re-checks that the bound account
-  is still anonymous (`D-142`); a deleted one makes consumption an idempotent no-op; a disabled one
-  that stays anonymous can still be cleaned up by its ticket — which deletes the orphaned anonymous
-  account its owner asked to remove — and that case needs an administrator to disable the account
-  inside the interval between the read and the write. Linking and the app's own deletion paths can be
-  started only by the account owner. The record holds the bound UID, a ticket hash, a status and an
-  expiry, and it is removed by consumption, by a `D-143` account-deletion purge or by the Firestore
-  TTL on `expiresAt`, whose deletion delay has no proven maximum. No document may describe `D-148`
-  as guaranteeing eligibility when the authorization is written. The three `D-150` tests in
+  anyway. Consumption rejects a bound account observed to be linked (`D-142`) before deletion.
+  If the bound Auth user is missing, consumption skips Auth deletion but still deletes any remaining
+  registered remote data for that UID, then marks the authorization `COMPLETED`; it is not a no-op.
+  An account that remains anonymous but becomes disabled can still be cleaned up by its ticket,
+  and that case requires an administrator to disable the account inside the lookup-to-write window.
+  Linking and the app's own deletion paths can be started only by the account owner. Successful
+  consumption changes only the authorization's status to `COMPLETED`; it does not erase the
+  document or its bound UID, and it does not change `expiresAt`. Expiration rejects subsequent
+  consumption but does not itself erase the record. Physical erasure is provided by a `D-143`
+  account-deletion purge that observes the record, or by asynchronous Firestore TTL cleanup on
+  `expiresAt` after the 30-day expiration horizon, with no proven maximum. No document may describe
+  `D-148` as guaranteeing eligibility when the authorization is written. The three `D-150` tests in
   `functions/test/orphanedAnonymousAccount.test.mjs` pin the interleavings.
 - **Broad billing-account role on one isolated identity** (`D-69`). A personal Cloud Billing
   account cannot host a custom IAM role, and `billing.resourceAssociations.delete` is available to

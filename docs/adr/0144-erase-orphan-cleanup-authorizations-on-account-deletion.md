@@ -81,7 +81,8 @@ bound, nor cited as proof of the maximum time a record can survive.
   This is **not** an unconditional guarantee that no `anonymousUid` survives — the ADR-0150
   interleaving can leave one authorization written after the purge has run, and that record is
   removed only by provider-managed asynchronous TTL cleanup, with no proven maximum. The
-  unconditional guarantee is `D-149`'s to deliver, not this decision's.
+  owner accepted this limitation under `D-149` option D; neither decision delivers an unconditional
+  zero-retention guarantee.
 - The client-facing remote schema stays closed while every server-only collection is explicit and
   executable.
 - The D-63 registry keeps its exact `users/{uid}` meaning; the internal collection cannot leak

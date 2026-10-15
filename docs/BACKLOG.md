@@ -1134,8 +1134,8 @@ Depends on: E3-02 or later (whichever sync-engine story first consumes `entityTy
 
 Status: merged on 2026-09-09 through [pull request
 #63](https://github.com/davidru85/carApp/pull/63). It is therefore **not** an outstanding
-prerequisite of `E3-15` or `E3-16`; see the "Outstanding Owner Decisions" section, where only the
-`D-149` and `D-150` decisions remain.
+prerequisite of `E3-15` or `E3-16`. The owner accepted `D-149` option D and `D-150` option A on
+2026-10-15; bundle `E3-B2` records both residual risks through pull request #89, awaiting gated review.
 
 Tracked as two post-merge security and privacy findings of the `E3-11` review of pull request #60.
 Both are defects in merged behaviour, not new features.
@@ -1176,7 +1176,8 @@ Acceptance criteria:
 
 Depends on: E3-10, E3-11.
 
-Does **not** close the issuance/deletion interleaving; that is `E3-15`.
+Does **not** close the issuance/deletion interleaving. `E3-15` records it as an accepted residual
+risk under `D-149` option D; it adds no mechanism.
 
 Human review required.
 
@@ -1302,9 +1303,11 @@ linking or disabling.
 Acceptance criteria (option A of `D-150`):
 
 - `docs/SECURITY.md` records the accepted residual risk: an authorization can be created for an
-  identity linked, disabled or deleted between the `D-148` Admin lookup and the write; what each case
-  leads to; and that the record is removed by consumption, a `D-143` purge or the TTL, with no proven
-  maximum.
+  identity linked, disabled or deleted between the `D-148` Admin lookup and the write, and states
+  what each case leads to. Successful consumption retains the record, its UID and its unchanged
+  expiry with status `COMPLETED`; a missing Auth user does not suppress deletion of remaining
+  registered remote data. Physical record erasure requires a `D-143` purge that observes it or
+  asynchronous Firestore TTL cleanup, with no proven maximum.
 - `docs/CONTRACTS.md §11.5` keeps `D-148` scoped to the observed snapshot and states the window as
   accepted instead of `Pending`.
 - The three `D-150` interleaving tests and the `D-148` fail-closed test stay in place and pass.

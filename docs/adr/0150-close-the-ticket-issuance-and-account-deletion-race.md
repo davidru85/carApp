@@ -243,7 +243,9 @@ and `§16`; and pin the interleaving with a deterministic test that shows `delet
 success while the authorization still exists. The obligations below apply to any future decision that
 adds a mechanism.
 
-Any accepted option MUST come with a complete crash-safe argument, not a convergence argument.
+## Proof obligations for a future mechanism
+
+Any future option that adds a mechanism MUST come with a complete crash-safe argument, not a convergence argument.
 Options A and B deliver neither P1 nor P2 on their own: A is partial synchronous cleanup and B is a
 probability reduction, and with the mechanisms that exist today the only thing that covers the
 interleavings they miss is the pre-existing Firestore TTL, in its non-hard-bounded eventual form.
@@ -252,8 +254,8 @@ actually produces it, and the handoff and `docs/SECURITY.md` MUST state the resi
 explicitly, including that no maximum retention time is proven. For option C, the argument MUST
 establish P2 **and** resolve the marker retention problem above.
 
-Concretely, `E3-15` MUST, on the real Firestore emulator (plus the Auth emulator if the accepted
-option touches Auth state):
+Concretely, a future story implementing such a mechanism MUST, on the real Firestore emulator
+(plus the Auth emulator if that mechanism touches Auth state):
 
 - enumerate every interleaving of the issuer's steps and the deletion flow's steps, including every
   crash point between two consecutive steps of either flow, and show, for each, the property that
@@ -282,11 +284,10 @@ option touches Auth state):
 
 ### Negative
 
-- Every option changes the normative deletion order of `§11.5` or adds a store, so `E3-10` and
-  `E3-11` tests that pin that order change with it.
-- Until the decision is taken, the erasure guarantee remains conditional, and the record that
-  survives the interleaving is removed only by provider-managed asynchronous TTL cleanup after its
-  30-day expiration horizon, with no proven maximum.
+- Option D preserves the existing deletion order and adds no store or cleanup mechanism. A racing
+  issuance can therefore leave a UID-bound authorization after successful account deletion.
+- The surviving record is erased only by provider-managed asynchronous Firestore TTL cleanup after
+  the 30-day expiration horizon, with no proven maximum. The accepted decision makes no P2 claim.
 
 ### Constraints Introduced
 
@@ -299,11 +300,15 @@ option touches Auth state):
 
 ## Verification
 
-- To be defined by the accepted option, per the proof obligations above. In every case `E3-15`
-  MUST prove the interleavings against the real Firestore emulator, and MUST state exactly which
-  property its evidence establishes — P2, P1, or neither, with each part of the outcome attributed
-  to the mechanism that actually produces it. Partial synchronous cleanup MUST be reported as
-  partial synchronous cleanup, never as P1.
+- For accepted option D, `functions/test/accountDeletionIssuanceRace.test.mjs` runs the real issuer
+  and account-deletion handlers with injected gateways and one shared in-memory Map. It forces
+  `I1, D1, D2, I2, D3, D4` and asserts successful deletion with a surviving UID-bound authorization.
+  This is a deterministic handler characterization test, not a Firestore emulator test, and proves
+  neither a serialization guarantee nor a maximum retention period.
+- `npm test` in `functions/` executes that test and the existing deletion and cleanup tests.
+  `./gradlew contractCheck` checks the decision status mirrors and repository contracts.
+- The real-emulator crash and transaction proofs in **Proof obligations for a future mechanism**
+  apply only to a future decision that adds such a mechanism; option D adds none.
 
 ## References
 

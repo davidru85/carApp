@@ -38,6 +38,30 @@
 
 ## Entries
 
+### 2026-10-15 — E3-B2 review: ticket retention, missing-user cleanup and decision closure
+
+- **Type:** correction
+- **Story / Decision:** `E3-15`, `E3-16` / `D-149`, `D-150` (accepted options unchanged)
+- **Author:** agent, on behalf of David Ruiz
+- **What changed:** corrects the E3-16 entry of 2026-10-15: missing Auth state is idempotent for Auth
+  deletion, but consumption still deletes any remaining registered remote data. Successful
+  consumption retains the UID-bound authorization as `COMPLETED` with its original expiry;
+  expiration does not erase the document. Physical erasure requires an observing `D-143` purge or
+  asynchronous TTL deletion, with no proven maximum. ADR verification sections now distinguish the
+  accepted characterization evidence from future mechanism proofs, and current references record
+  the two accepted decisions.
+- **Why:** the previous prose understated retained identifiers and remote deletion, and left
+  contradictory verification and decision-status statements after the accepted risk decisions.
+- **Documents touched:** `docs/SECURITY.md`, the decision records and mirrors, `docs/BACKLOG.md`,
+  and the E3-B2/E3-15/E3-16 and E3-14 handoff records.
+- **Verification:** `npm --prefix functions test` exit 0 (83 tests: 81 pass, 0 fail, 2 emulator
+  skips with `FIRESTORE_EMULATOR_HOST` unset); `./gradlew contractCheck` exit 0 with no `FAIL` or
+  `PENDING` assertion; the complete non-instrumented `AGENTS.md` command exit 0 with
+  `BUILD SUCCESSFUL`; the post-application guarded preview reported `CHECK_OK files_to_write=0` for
+  all ten static documents.
+- **Follow-ups / risks:** both accepted residual races remain; no product code, schema, API or
+  dependency changed. Pull request #89 still requires the owner's gated review and merge decision.
+
 ### 2026-10-15 — E3-16 accepted issuance lookup-to-write window (bundle E3-B2)
 
 - **Type:** story
