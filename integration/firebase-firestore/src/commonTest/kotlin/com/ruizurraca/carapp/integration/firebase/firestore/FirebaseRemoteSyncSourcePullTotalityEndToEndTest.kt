@@ -67,59 +67,58 @@ class FirebaseRemoteSyncSourcePullTotalityEndToEndTest {
     private fun assertQuarantinedAndCursorAdvanced(
         providerValue: Any?,
         expectedTypeName: String,
-    ) =
-        runTest {
-            val reportedErrors = mutableListOf<AppError>()
-            val reportedQuarantines = mutableListOf<QuarantineRecord>()
-            val handle = createStagedDatabaseFactory().create()
-            val controllerJob = Job()
-            try {
-                val gateway =
-                    RecordingFirestoreGateway(documents = listOf(documentWithUnsupportedValue(providerValue)))
-                val controller =
-                    createSyncController(
-                        scope = CoroutineScope(coroutineContext + controllerJob),
-                        databaseAccess = SyncDatabaseAccess(handle.database),
-                        ownerContext = StaticOwnerContext(OwnerId(OWNER_ID)),
-                        connectivity = StaticConnectivity,
-                        remote = FirebaseRemoteSyncSource(gateway),
-                        clock = StaticClock,
-                        uuidGenerator = StaticUuidGenerator,
-                        adoption = { Outcome.Ok(Unit) },
-                        onPoisoned = { error, _ -> reportedErrors += error },
-                        onQuarantined = reportedQuarantines::add,
-                        isDebugBuild = false,
-                    )
-
-                val outcome = controller.sync(SyncTrigger.PullToRefresh)
-                advanceUntilIdle()
-
-                val lines = SyncDatabaseAccess(handle.database).debugLines()
-                assertEquals(Outcome.Ok(Unit), outcome, "the page no longer fails, so the cycle succeeds")
-                assertTrue(
-                    "quarantine type=VEHICLE id=$DOCUMENT_ID reason=MalformedPayload schema=1 " +
-                        "at=${SERVER_UPDATED_AT.toEpochMilliseconds()}" in lines,
-                    "the document is quarantined as MalformedPayload. Saw $lines",
+    ) = runTest {
+        val reportedErrors = mutableListOf<AppError>()
+        val reportedQuarantines = mutableListOf<QuarantineRecord>()
+        val handle = createStagedDatabaseFactory().create()
+        val controllerJob = Job()
+        try {
+            val gateway =
+                RecordingFirestoreGateway(documents = listOf(documentWithUnsupportedValue(providerValue)))
+            val controller =
+                createSyncController(
+                    scope = CoroutineScope(coroutineContext + controllerJob),
+                    databaseAccess = SyncDatabaseAccess(handle.database),
+                    ownerContext = StaticOwnerContext(OwnerId(OWNER_ID)),
+                    connectivity = StaticConnectivity,
+                    remote = FirebaseRemoteSyncSource(gateway),
+                    clock = StaticClock,
+                    uuidGenerator = StaticUuidGenerator,
+                    adoption = { Outcome.Ok(Unit) },
+                    onPoisoned = { error, _ -> reportedErrors += error },
+                    onQuarantined = reportedQuarantines::add,
+                    isDebugBuild = false,
                 )
-                assertTrue(
-                    "cursor type=VEHICLE at=${SERVER_UPDATED_AT.toEpochMilliseconds()} id=$DOCUMENT_ID" in lines,
-                    "the vehicle cursor advanced past the quarantined document. Saw $lines",
-                )
-                assertEquals(emptyList(), reportedErrors, "a quarantined document is not an error report")
 
-                val quarantined = reportedQuarantines.single { it.entityType == EntityType.VEHICLE }
-                assertEquals(
-                    buildJsonObject {
-                        put(UNSUPPORTED_PROVIDER_VALUE_KEY, JsonPrimitive(expectedTypeName))
-                    },
-                    Json.parseToJsonElement(quarantined.rawJson).jsonObject["brand"],
-                    "the committed quarantine record carries the reserved marker at the original position",
-                )
-            } finally {
-                controllerJob.cancelAndJoin()
-                handle.close()
-            }
+            val outcome = controller.sync(SyncTrigger.PullToRefresh)
+            advanceUntilIdle()
+
+            val lines = SyncDatabaseAccess(handle.database).debugLines()
+            assertEquals(Outcome.Ok(Unit), outcome, "the page no longer fails, so the cycle succeeds")
+            assertTrue(
+                "quarantine type=VEHICLE id=$DOCUMENT_ID reason=MalformedPayload schema=1 " +
+                    "at=${SERVER_UPDATED_AT.toEpochMilliseconds()}" in lines,
+                "the document is quarantined as MalformedPayload. Saw $lines",
+            )
+            assertTrue(
+                "cursor type=VEHICLE at=${SERVER_UPDATED_AT.toEpochMilliseconds()} id=$DOCUMENT_ID" in lines,
+                "the vehicle cursor advanced past the quarantined document. Saw $lines",
+            )
+            assertEquals(emptyList(), reportedErrors, "a quarantined document is not an error report")
+
+            val quarantined = reportedQuarantines.single { it.entityType == EntityType.VEHICLE }
+            assertEquals(
+                buildJsonObject {
+                    put(UNSUPPORTED_PROVIDER_VALUE_KEY, JsonPrimitive(expectedTypeName))
+                },
+                Json.parseToJsonElement(quarantined.rawJson).jsonObject["brand"],
+                "the committed quarantine record carries the reserved marker at the original position",
+            )
+        } finally {
+            controllerJob.cancelAndJoin()
+            handle.close()
         }
+    }
 
     private fun documentWithUnsupportedValue(providerValue: Any?): FirestoreDocument =
         FirestoreDocument(

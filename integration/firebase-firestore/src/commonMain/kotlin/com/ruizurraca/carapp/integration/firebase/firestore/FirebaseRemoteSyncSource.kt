@@ -281,11 +281,7 @@ private fun Any?.toJsonElement(): JsonElement =
         }
 
         is Double -> {
-            if (isFinite()) {
-                JsonPrimitive(this)
-            } else {
-                unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE).toJsonElement()
-            }
+            toJsonNumberOrMarker()
         }
 
         is Map<*, *> -> {
@@ -303,6 +299,17 @@ private fun Any?.toJsonElement(): JsonElement =
         else -> {
             unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE).toJsonElement()
         }
+    }
+
+/**
+ * A finite provider number is a JSON number; `NaN` and both infinities have no JSON number form
+ * (RFC 8259 §6), so they become the `D-208` marker instead of an invalid token.
+ */
+private fun Double.toJsonNumberOrMarker(): JsonElement =
+    if (isFinite()) {
+        JsonPrimitive(this)
+    } else {
+        unsupportedProviderValue(this::class.simpleName ?: UNKNOWN_PROVIDER_TYPE).toJsonElement()
     }
 
 /**
