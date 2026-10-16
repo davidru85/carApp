@@ -229,6 +229,7 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-213 | Wait for sync on the pending-sync prompt | `SessionStateHolder.clearMessage()` plus `SyncStateHolder.requestSync(SyncTrigger.PullToRefresh)` | Accepted | No new departure state in `:shared`. Needed by `E4-01`. See ADR-0214. |
 | D-214 | Departure progress and failure surface | Root-level `DepartureScreen` (Android) and `DepartureView` (iOS) while `DELETING` or while `pendingDepartureRetry` is not null | Accepted | Host routing only; shared tests only if the routing input changes. Needed by `E4-01`. See ADR-0215. |
 | D-215 | Settings session rows per phase | `PERMANENT`: sign-out and account deletion; `LOCAL` and `ANONYMOUS`: one local-data deletion row through `requestDeleteAccount()` | Accepted | Host rendering over existing intents. Needed by `E4-01`. See ADR-0216. |
+| D-224 | Account-link row while `LOCAL` | Hidden while `LOCAL`; derived on the host from `SessionUiState.phase` | Accepted | No shared change. Needed by `E4-05`. See ADR-0225. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 

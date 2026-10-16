@@ -1384,7 +1384,8 @@ Acceptance criteria:
 
 - Settings shows a "link account" row only while the session is `ANONYMOUS`. It never shows it for
   `PERMANENT`.
-- While the session is `LOCAL`, the row follows the decision recorded at this story's intake.
+- While the session is `LOCAL`, the row is hidden; it appears once local owner adoption makes the
+  session `ANONYMOUS` (`D-224`, ADR-0225).
 - Android offers Google; iOS offers Apple and Google (`docs/SPECIFICATION.md §7 F-1`).
 - The host starts with `startAccountConversion(provider)`, runs the existing native picker and
   completes through `completeGoogleSignIn` or `completeAppleSignIn`. It never calls
