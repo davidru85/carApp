@@ -3,6 +3,7 @@ import Shared
 
 struct FuelEntryFormView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var viewModel: FuelEntryFormViewModel
     var onDismiss: (() -> Void)? = nil
 
@@ -29,7 +30,11 @@ struct FuelEntryFormView: View {
                         ),
                         displayedComponents: .date
                     ) {
-                        Text("fuel_date_value")
+                        // `E4-02`: `fuel_date_value` is "Date: %@"; it now receives the formatted day.
+                        Text(String(
+                            format: String(localized: "fuel_date_value"),
+                            viewModel.calendarDay.format(epochMillis: viewModel.state.dateEpochMillis)
+                        ))
                     }
                     .accessibilityIdentifier("fuel_date")
 
@@ -42,18 +47,7 @@ struct FuelEntryFormView: View {
                 }
 
                 Section(header: Text("money_input_method")) {
-                    Picker("money_input_method", selection: Binding(
-                        get: { viewModel.state.moneyInputMode },
-                        set: { viewModel.setMoneyInputMode($0) }
-                    )) {
-                        Text("money_mode_liters_price").tag(MoneyInputMode.litersAndPrice)
-                            .accessibilityIdentifier("fuel_mode_liters_price")
-                        Text("money_mode_liters_total").tag(MoneyInputMode.litersAndTotal)
-                            .accessibilityIdentifier("fuel_mode_liters_total")
-                        Text("money_mode_price_total").tag(MoneyInputMode.priceAndTotal)
-                            .accessibilityIdentifier("fuel_mode_price_total")
-                    }
-                    .pickerStyle(.segmented)
+                    moneyModePicker
 
                     switch viewModel.state.moneyInputMode {
                     case .litersAndPrice:
@@ -71,20 +65,17 @@ struct FuelEntryFormView: View {
                         .keyboardType(.decimalPad)
                         .accessibilityIdentifier("fuel_price_per_liter")
 
-                        HStack {
-                            Text("calculated_total")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            if let total = viewModel.state.totalCostMinor {
-                                Text("\(formatScaled(total.int64Value, scale: ScaledFormat.minorUnitScale)) \(viewModel.state.currencyCode)")
-                                    .fontWeight(.medium)
-                                    .accessibilityIdentifier("fuel_derived_value")
-                            } else {
-                                Text("value_pending")
-                                    .foregroundColor(.secondary)
-                                    .accessibilityIdentifier("fuel_derived_value")
+                        DerivedValueRow(
+                            labelKey: "calculated_total",
+                            value: viewModel.state.totalCostMinor.map { total in
+                                formatCurrencyAmount(
+                                    total.int64Value,
+                                    scale: ScaledFormat.minorUnitScale,
+                                    currencyCode: viewModel.state.currencyCode,
+                                    locale: .current
+                                )
                             }
-                        }
+                        )
 
                     case .litersAndTotal:
                         TextField(String(localized: "liters"), text: Binding(
@@ -101,20 +92,17 @@ struct FuelEntryFormView: View {
                         .keyboardType(.decimalPad)
                         .accessibilityIdentifier("fuel_total_cost")
 
-                        HStack {
-                            Text("calculated_price")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            if let price = viewModel.state.pricePerLiterScaled {
-                                Text("\(formatScaled(price.int64Value, scale: ScaledFormat.pricePerLiterScale)) \(viewModel.state.currencyCode)")
-                                    .fontWeight(.medium)
-                                    .accessibilityIdentifier("fuel_derived_value")
-                            } else {
-                                Text("value_pending")
-                                    .foregroundColor(.secondary)
-                                    .accessibilityIdentifier("fuel_derived_value")
+                        DerivedValueRow(
+                            labelKey: "calculated_price",
+                            value: viewModel.state.pricePerLiterScaled.map { price in
+                                formatCurrencyAmount(
+                                    price.int64Value,
+                                    scale: ScaledFormat.pricePerLiterScale,
+                                    currencyCode: viewModel.state.currencyCode,
+                                    locale: .current
+                                )
                             }
-                        }
+                        )
 
                     case .priceAndTotal:
                         TextField(String(localized: "price_per_liter"), text: Binding(
@@ -131,34 +119,43 @@ struct FuelEntryFormView: View {
                         .keyboardType(.decimalPad)
                         .accessibilityIdentifier("fuel_total_cost")
 
-                        HStack {
-                            Text("calculated_liters")
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            if let liters = viewModel.state.litersScaled {
-                                Text("\(formatScaled(liters.int64Value, scale: ScaledFormat.litersScale)) L")
-                                    .fontWeight(.medium)
-                                    .accessibilityIdentifier("fuel_derived_value")
-                            } else {
-                                Text("value_pending")
-                                    .foregroundColor(.secondary)
-                                    .accessibilityIdentifier("fuel_derived_value")
+                        DerivedValueRow(
+                            labelKey: "calculated_liters",
+                            value: viewModel.state.litersScaled.map { liters in
+                                String(
+                                    format: String(localized: "liters_value"),
+                                    formatScaledDecimal(liters.int64Value, scale: ScaledFormat.litersScale, locale: .current)
+                                )
                             }
-                        }
+                        )
                     }
                 }
 
                 Section {
-                    Toggle(String(localized: "full_tank"), isOn: Binding(
+                    // `E4-02`: each toggle carries its help text, as on Android, so VoiceOver reads the
+                    // consequence of switching it.
+                    Toggle(isOn: Binding(
                         get: { viewModel.state.isFullTank },
                         set: { viewModel.setFullTank($0) }
-                    ))
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("full_tank")
+                            Text("full_tank_help")
+                                .font(.footnote)
+                        }
+                    }
                     .accessibilityIdentifier("fuel_full_tank")
 
-                    Toggle(String(localized: "missed_entries"), isOn: Binding(
+                    Toggle(isOn: Binding(
                         get: { viewModel.state.hasMissedEntries },
                         set: { viewModel.setMissedEntries($0) }
-                    ))
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("missed_entries")
+                            Text("missed_entries_help")
+                                .font(.footnote)
+                        }
+                    }
                     .accessibilityIdentifier("fuel_missed_entries")
 
                     TextField(String(localized: "notes_optional"), text: Binding(
@@ -171,9 +168,10 @@ struct FuelEntryFormView: View {
                 if let message = viewModel.state.message, message.confirmation == nil {
                     Section {
                         Text(message.localizedText)
-                            .foregroundColor(.red)
+                            .foregroundStyle(AccessibleColors.errorText)
                             .font(.caption)
                             .accessibilityIdentifier("fuel_error")
+                            .announcedOnAppearance(message.localizedText)
                     }
                 }
             }
@@ -196,6 +194,7 @@ struct FuelEntryFormView: View {
                     }) {
                         if viewModel.state.isSaving {
                             ProgressView()
+                                .accessibilityLabel(Text("saving"))
                         } else {
                             Text("save_fuel_entry")
                                 .fontWeight(.semibold)
@@ -219,6 +218,58 @@ struct FuelEntryFormView: View {
                 }
             } message: {
                 Text("odometer_warning_body")
+            }
+        }
+    }
+
+    /// `E4-02`: the segmented control truncates its three labels at accessibility text sizes, so it
+    /// becomes a menu there; the selection and the identifiers are the same in both styles.
+    @ViewBuilder
+    private var moneyModePicker: some View {
+        let picker = Picker("money_input_method", selection: Binding(
+            get: { viewModel.state.moneyInputMode },
+            set: { viewModel.setMoneyInputMode($0) }
+        )) {
+            Text("money_mode_liters_price").tag(MoneyInputMode.litersAndPrice)
+                .accessibilityIdentifier("fuel_mode_liters_price")
+            Text("money_mode_liters_total").tag(MoneyInputMode.litersAndTotal)
+                .accessibilityIdentifier("fuel_mode_liters_total")
+            Text("money_mode_price_total").tag(MoneyInputMode.priceAndTotal)
+                .accessibilityIdentifier("fuel_mode_price_total")
+        }
+        if dynamicTypeSize.isAccessibilitySize {
+            picker.pickerStyle(.menu)
+        } else {
+            picker.pickerStyle(.segmented)
+        }
+    }
+}
+
+/// A value the shared holder derived from the two the owner typed (`E4-02`). At accessibility text
+/// sizes the label and the value stack vertically, so neither is clipped.
+private struct DerivedValueRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let labelKey: LocalizedStringKey
+    let value: String?
+
+    var body: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout())
+        layout {
+            Text(labelKey)
+                .foregroundStyle(.primary)
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer()
+            }
+            if let value {
+                Text(value)
+                    .fontWeight(.medium)
+                    .accessibilityIdentifier("fuel_derived_value")
+            } else {
+                Text("value_pending")
+                    .foregroundStyle(.primary)
+                    .accessibilityIdentifier("fuel_derived_value")
             }
         }
     }

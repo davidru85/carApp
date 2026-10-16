@@ -51,9 +51,11 @@ struct SettingsView: View {
                     identifier: "settings_volume_unit"
                 )
                 if let message = viewModel.state.message {
-                    Text(message.localizedText)
+                    let text = message.localizedText
+                    Text(text)
                         .font(.footnote)
-                        .foregroundColor(.red)
+                        .foregroundStyle(AccessibleColors.errorText)
+                        .announcedOnAppearance(text)
                         .accessibilityIdentifier("settings_message")
                 }
             }
@@ -73,7 +75,7 @@ struct SettingsView: View {
                         Text("settings_analytics")
                         Text("settings_analytics_description")
                             .font(.footnote)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.primary)
                     }
                 }
                 .disabled(viewModel.state.isSaving)
@@ -90,6 +92,7 @@ struct SettingsView: View {
                 }
                 if skeletonModel.sessionState.isBusy {
                     ProgressView()
+                        .accessibilityLabel(Text("loading"))
                         .accessibilityIdentifier("settings_session_busy")
                 }
             }
@@ -99,7 +102,7 @@ struct SettingsView: View {
                     Text("settings_version")
                     Spacer()
                     Text(appVersion)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.primary)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("settings_version")
@@ -134,6 +137,7 @@ struct SettingsView: View {
                 Text("settings_currency")
                 Spacer()
                 ProgressView()
+                    .accessibilityLabel(Text("loading"))
             }
         }
     }
@@ -144,7 +148,7 @@ struct SettingsView: View {
             Text(LocalizedStringKey(labelKey))
             Spacer()
             Text(LocalizedStringKey(valueKey))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.primary)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
@@ -169,6 +173,7 @@ struct SettingsView: View {
             Button(role: .destructive, action: skeletonModel.requestDeleteAccount) {
                 Text("settings_delete_local_data")
             }
+            .tint(AccessibleColors.controlAccent)
             .disabled(skeletonModel.sessionState.isBusy)
             .accessibilityIdentifier("settings_delete_local_data")
         }

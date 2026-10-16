@@ -290,9 +290,9 @@ final class FuelEntryFormViewModel: ObservableObject {
         self.state = initial
         self.selectedDate = calendarDay.date(from: initial.dateEpochMillis)
         self.odometerText = initial.odometerKm == 0 ? "" : String(initial.odometerKm)
-        self.litersText = initial.litersScaled != nil ? formatScaled(initial.litersScaled!.int64Value, scale: ScaledFormat.litersScale) : ""
-        self.priceText = initial.pricePerLiterScaled != nil ? formatScaled(initial.pricePerLiterScaled!.int64Value, scale: ScaledFormat.pricePerLiterScale) : ""
-        self.totalText = initial.totalCostMinor != nil ? formatScaled(initial.totalCostMinor!.int64Value, scale: ScaledFormat.minorUnitScale) : ""
+        self.litersText = FuelEntryFormViewModel.inputText(initial.litersScaled, scale: ScaledFormat.litersScale)
+        self.priceText = FuelEntryFormViewModel.inputText(initial.pricePerLiterScaled, scale: ScaledFormat.pricePerLiterScale)
+        self.totalText = FuelEntryFormViewModel.inputText(initial.totalCostMinor, scale: ScaledFormat.minorUnitScale)
         self.notesText = initial.notes ?? ""
 
         self.observationTask = Task { [weak self, holder] in
@@ -313,28 +313,28 @@ final class FuelEntryFormViewModel: ObservableObject {
         switch s.moneyInputMode {
         case .litersAndPrice:
             if !hasEditedLiters {
-                litersText = s.litersScaled != nil ? formatScaled(s.litersScaled!.int64Value, scale: ScaledFormat.litersScale) : ""
+                litersText = FuelEntryFormViewModel.inputText(s.litersScaled, scale: ScaledFormat.litersScale)
             }
             if !hasEditedPrice {
-                priceText = s.pricePerLiterScaled != nil ? formatScaled(s.pricePerLiterScaled!.int64Value, scale: ScaledFormat.pricePerLiterScale) : ""
+                priceText = FuelEntryFormViewModel.inputText(s.pricePerLiterScaled, scale: ScaledFormat.pricePerLiterScale)
             }
-            totalText = s.totalCostMinor != nil ? formatScaled(s.totalCostMinor!.int64Value, scale: ScaledFormat.minorUnitScale) : ""
+            totalText = FuelEntryFormViewModel.inputText(s.totalCostMinor, scale: ScaledFormat.minorUnitScale)
         case .litersAndTotal:
             if !hasEditedLiters {
-                litersText = s.litersScaled != nil ? formatScaled(s.litersScaled!.int64Value, scale: ScaledFormat.litersScale) : ""
+                litersText = FuelEntryFormViewModel.inputText(s.litersScaled, scale: ScaledFormat.litersScale)
             }
             if !hasEditedTotal {
-                totalText = s.totalCostMinor != nil ? formatScaled(s.totalCostMinor!.int64Value, scale: ScaledFormat.minorUnitScale) : ""
+                totalText = FuelEntryFormViewModel.inputText(s.totalCostMinor, scale: ScaledFormat.minorUnitScale)
             }
-            priceText = s.pricePerLiterScaled != nil ? formatScaled(s.pricePerLiterScaled!.int64Value, scale: ScaledFormat.pricePerLiterScale) : ""
+            priceText = FuelEntryFormViewModel.inputText(s.pricePerLiterScaled, scale: ScaledFormat.pricePerLiterScale)
         case .priceAndTotal:
             if !hasEditedPrice {
-                priceText = s.pricePerLiterScaled != nil ? formatScaled(s.pricePerLiterScaled!.int64Value, scale: ScaledFormat.pricePerLiterScale) : ""
+                priceText = FuelEntryFormViewModel.inputText(s.pricePerLiterScaled, scale: ScaledFormat.pricePerLiterScale)
             }
             if !hasEditedTotal {
-                totalText = s.totalCostMinor != nil ? formatScaled(s.totalCostMinor!.int64Value, scale: ScaledFormat.minorUnitScale) : ""
+                totalText = FuelEntryFormViewModel.inputText(s.totalCostMinor, scale: ScaledFormat.minorUnitScale)
             }
-            litersText = s.litersScaled != nil ? formatScaled(s.litersScaled!.int64Value, scale: ScaledFormat.litersScale) : ""
+            litersText = FuelEntryFormViewModel.inputText(s.litersScaled, scale: ScaledFormat.litersScale)
         }
 
         if wasSaving && !s.isSaving {
@@ -350,6 +350,14 @@ final class FuelEntryFormViewModel: ObservableObject {
 
         state = s
     }
+
+/// `E4-02`, `D-222`: an editable field shows the canonical value with the locale's decimal
+/// comma where it has one, never grouped, so `parseScaled` reads it back unchanged.
+private static func inputText(_ value: KotlinLong?, scale: Int) -> String {
+    guard let value else { return "" }
+    return formatScaledInput(value.int64Value, scale: scale, locale: .current)
+}
+
 
     func setDate(_ date: Date) {
         selectedDate = date

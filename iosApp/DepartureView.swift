@@ -55,6 +55,7 @@ struct DepartureView: View {
     private var progress: some View {
         VStack(spacing: 12) {
             ProgressView()
+                .accessibilityLabel(Text("loading"))
                 .accessibilityIdentifier("departure_progress")
             Text("departure_in_progress")
                 .multilineTextAlignment(.center)
@@ -80,6 +81,7 @@ struct DepartureView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccent)
             .accessibilityIdentifier("departure_retry")
         } else {
             Button(action: onDismissMessage) {
@@ -104,9 +106,11 @@ struct DepartureView: View {
             .multilineTextAlignment(.center)
             .accessibilityIdentifier("departure_reauth_message")
         if let failureCode {
-            Text(localizedUiMessage(for: failureCode))
+            let failureText = localizedUiMessage(for: failureCode)
+            Text(failureText)
                 .font(.footnote)
-                .foregroundStyle(.red)
+                .foregroundStyle(AccessibleColors.errorText)
+                .announcedOnAppearance(failureText)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("departure_failure")
         }
@@ -141,6 +145,7 @@ struct DepartureView: View {
         .disabled(state.isBusy)
         if state.isBusy {
             ProgressView()
+                .accessibilityLabel(Text("loading"))
                 .accessibilityIdentifier("departure_progress")
         }
     }

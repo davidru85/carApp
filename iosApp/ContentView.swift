@@ -23,7 +23,32 @@ struct ContentView: View {
     }
 
     var body: some View {
-        switch destination {
+        #if DEBUG
+        // `E4-02`: UI tests cannot make a real departure fail, so this Debug-only seam renders the
+        // B1-D4 departure screen in its failed state for the accessibility audits. It cannot exist in
+        // a Release build, like CARAPP_UI_TEST_FORCE_WELCOME.
+        if ProcessInfo.processInfo.environment["CARAPP_UI_TEST_FORCE_DEPARTURE_FAILURE"] == "1" {
+            DepartureView(
+                state: forcedDepartureFailureState(),
+                isReauthenticating: false,
+                onRetry: {},
+                onDismissMessage: {},
+                onReauthenticateWithGoogle: {},
+                onPrepareAppleReauthentication: { _ in },
+                onCompleteAppleAuthorization: { _ in },
+                onCancelReauthentication: {}
+            )
+        } else {
+            routedContent
+        }
+        #else
+        routedContent
+        #endif
+    }
+
+    @ViewBuilder
+    private var routedContent: some View {
+switch destination {
         case .waiting:
             ProgressView()
         case .departure:
@@ -73,3 +98,18 @@ struct ContentView: View {
         }
     }
 }
+
+#if DEBUG
+/// The failed local clear the departure seam renders (`E4-02`); no real departure produces it here.
+private func forcedDepartureFailureState() -> SessionUiState {
+    SessionUiState(
+        phase: .deleting,
+        providers: [],
+        isBusy: false,
+        message: UiMessage(id: 1, kind: .error, code: "PERSISTENCE.TRANSACTION_FAILED", confirmation: nil),
+        anonymousReminderIndex: nil,
+        pendingSyncCount: nil,
+        pendingDepartureRetry: .localClear
+    )
+}
+#endif

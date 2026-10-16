@@ -44,6 +44,7 @@ struct VehicleListView: View {
                 switch gate {
                 case .waiting:
                     ProgressView()
+                        .accessibilityLabel(Text("loading"))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color(UIColor.systemBackground))
                 case .unreadable:
@@ -51,6 +52,7 @@ struct VehicleListView: View {
                         Text("vehicle_list_unreadable")
                             .multilineTextAlignment(.center)
                             .accessibilityIdentifier("vehicle_list_unreadable")
+                            .announcedOnAppearance(String(localized: "vehicle_list_unreadable"))
                         Button("retry") { viewModel.refresh() }
                             .buttonStyle(.borderedProminent)
                             .accessibilityIdentifier("vehicle_list_retry")
@@ -88,12 +90,15 @@ struct VehicleListView: View {
 
                 if viewModel.state.vehicles.isEmpty {
                     VStack(spacing: 12) {
+                        // `E4-02`: a Dynamic Type style instead of a fixed 48-point size; decorative.
                         Image(systemName: "car.2.fill")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
+                            .font(.largeTitle)
+                            .imageScale(.large)
+                            .foregroundStyle(.secondary)
+                            .accessibilityHidden(true)
                         Text("empty_vehicles")
                             .font(.headline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.primary)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
@@ -106,9 +111,12 @@ struct VehicleListView: View {
                                 Text(vehicle.name)
                                     .font(.headline)
 
-                                Text(String(format: String(localized: "vehicle_odometer"), vehicle.currentOdometerKm))
+                                Text(String(
+                                    format: String(localized: "vehicle_odometer"),
+                                    formatInteger(vehicle.currentOdometerKm, locale: .current)
+                                ))
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.primary)
                             }
                             .padding(.vertical, 4)
                         }
@@ -131,6 +139,7 @@ struct VehicleListView: View {
                     NavigationLink(destination: DiagnosticsView(model: skeletonModel)) {
                         Image(systemName: "wrench.and.screwdriver")
                     }
+                    .accessibilityLabel(Text("diagnostics_button"))
                     .accessibilityIdentifier("diagnostics_button")
                 }
                 #endif
@@ -151,6 +160,7 @@ struct VehicleListView: View {
                     }) {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel(Text("add_vehicle"))
                     .accessibilityIdentifier("add_vehicle")
                 }
             }

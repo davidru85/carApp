@@ -71,16 +71,18 @@ struct VehicleFormView: View {
                 if let message = viewModel.state.message {
                     Section {
                         Text(message.localizedText)
-                            .foregroundColor(.red)
+                            .foregroundStyle(AccessibleColors.errorText)
                             .font(.caption)
                             .accessibilityIdentifier("vehicle_error")
+                            .announcedOnAppearance(message.localizedText)
                     }
                 } else if viewModel.hasOdometerError {
                     Section {
                         Text("error_out_of_range")
-                            .foregroundColor(.red)
+                            .foregroundStyle(AccessibleColors.errorText)
                             .font(.caption)
                             .accessibilityIdentifier("vehicle_error")
+                            .announcedOnAppearance(String(localized: "error_out_of_range"))
                     }
                 }
             }
@@ -110,6 +112,7 @@ struct VehicleFormView: View {
                     }) {
                         if viewModel.state.isSaving {
                             ProgressView()
+                                .accessibilityLabel(Text("saving"))
                         } else {
                             Text("save_vehicle")
                                 .fontWeight(.semibold)

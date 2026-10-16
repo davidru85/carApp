@@ -20,7 +20,7 @@ final class SettingsFlowUITests: XCTestCase {
     func testSettingsIsReachableFromTheVehicleList() {
         let app = launchApp()
 
-        openSettings(in: app)
+        openSettingsFromTheToolbar(in: app)
 
         XCTAssertTrue(
             app.staticTexts["settings_version"].waitForExistence(timeout: timeout),
@@ -32,7 +32,7 @@ final class SettingsFlowUITests: XCTestCase {
     /// chevron on both, which would invite a tap that can do nothing; they are static text instead.
     func testUnitsAreShownAsStaticTextAndNotAsButtons() {
         let app = launchApp()
-        openSettings(in: app)
+        openSettingsFromTheToolbar(in: app)
         waitForStoredSettings(in: app)
 
         let distance = app.staticTexts["settings_distance_unit"]
@@ -55,7 +55,7 @@ final class SettingsFlowUITests: XCTestCase {
     /// locally erased simulator start with no stored settings.
     func testAnalyticsSharingIsOffByDefault() {
         let app = launchApp()
-        openSettings(in: app)
+        openSettingsFromTheToolbar(in: app)
         waitForStoredSettings(in: app)
 
         let toggle = app.switches["settings_analytics_toggle"]
@@ -65,7 +65,7 @@ final class SettingsFlowUITests: XCTestCase {
 
     func testTheSelectedCurrencyIsKeptWhenSettingsIsReopened() {
         let app = launchApp()
-        openSettings(in: app)
+        openSettingsFromTheToolbar(in: app)
         selectCurrency(endingWith: "(CHF)", in: app)
 
         app.navigationBars["Settings"].buttons.element(boundBy: 0).tap()
@@ -88,7 +88,7 @@ final class SettingsFlowUITests: XCTestCase {
     /// vehicle survived, and settings recreated from defaults (`docs/CONTRACTS.md §11.5`).
     func testDeletingLocalDataReturnsToFirstRunWithDefaultSettings() {
         let app = launchApp()
-        openSettings(in: app)
+        openSettingsFromTheToolbar(in: app)
         // A non-default currency proves below that the settings row was recreated from defaults.
         selectCurrency(endingWith: "(GBP)", in: app)
 
@@ -115,7 +115,7 @@ final class SettingsFlowUITests: XCTestCase {
             "No vehicle survives the deletion, so first-vehicle creation is mandatory again"
         )
 
-        openSettings(in: app)
+        openSettingsFromTheToolbar(in: app)
         waitForStoredSettings(in: app)
         let picker = app.buttons["settings_currency_picker"]
         XCTAssertFalse(picker.label.hasSuffix("(GBP)"), "The currency must be back to its default, saw \(picker.label)")
@@ -132,7 +132,9 @@ final class SettingsFlowUITests: XCTestCase {
 
     /// Reaches the vehicle list from wherever onboarding stands, creating the first vehicle when F-1
     /// asks for it, and opens Settings from the toolbar.
-    private func openSettings(in app: XCUIApplication) {
+    /// Named apart from the shared `XCTestCase.openSettings(in:)` of `E4-02`, which it would
+    /// otherwise override with a narrower access level.
+    private func openSettingsFromTheToolbar(in app: XCUIApplication) {
         let settingsButton = app.buttons["settings_open"]
         let vehicleNameField = app.textFields["vehicle_name"]
         let odometerField = app.textFields["vehicle_odometer"]

@@ -42,7 +42,7 @@ struct VehicleDetailView: View {
                 if viewModel.state.entries.isEmpty {
                     Text("add_first_fuel_entry_invitation")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.primary)
                         .padding(.vertical, 8)
                         .accessibilityIdentifier("first_fuel_invitation")
                 } else {
@@ -85,6 +85,8 @@ struct VehicleDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityLabel(Text("vehicle_more_actions"))
+                .accessibilityIdentifier("vehicle_more_actions")
             }
         }
         .alert(String(localized: "delete_vehicle_title"), isPresented: $isDeleteAlertPresented) {
@@ -126,10 +128,23 @@ struct VehicleDetailView: View {
             }) {
                 Image(systemName: "plus.circle.fill")
                     .font(.title3)
+                    // `E4-02`: the 44-point minimum hit region of the Human Interface Guidelines.
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel(Text("add_fuel_entry"))
             .accessibilityIdentifier("add_fuel_entry")
         }
     }
+}
+
+/// The consumption value with its unit from the catalogue, formatted for the current locale
+/// (`E4-02`, `D-222`): `7,24 L/100 km` in Spanish.
+func consumptionText(_ scaled: Int64) -> String {
+    String(
+        format: String(localized: "consumption_value"),
+        formatScaledDecimal(scaled, scale: ScaledFormat.consumptionScale, locale: .current)
+    )
 }
 
 struct HeroConsumptionCardView: View {
@@ -141,29 +156,30 @@ struct HeroConsumptionCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("consumption_average_title")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.primary)
+                .accessibilityAddTraits(.isHeader)
 
             if let avg = averageScaled {
-                let avgFormatted = formatScaled(avg.int64Value, scale: ScaledFormat.consumptionScale)
-                Text("\(avgFormatted) L/100 km")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                // `E4-02`: a Dynamic Type style instead of a fixed 32-point size.
+                Text(consumptionText(avg.int64Value))
+                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     .accessibilityIdentifier("consumption_average")
 
                 if isReliable {
                     let text = String(format: String(localized: "consumption_reliable"), validSegmentCount)
                     Text(text)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.primary)
                 } else {
                     let text = String(format: String(localized: "consumption_not_yet_reliable"), validSegmentCount)
                     Text(text)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.primary)
                 }
             } else {
                 Text("consumption_empty")
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.primary)
                     .accessibilityIdentifier("consumption_empty")
             }
         }
@@ -172,8 +188,17 @@ struct HeroConsumptionCardView: View {
 }
 
 struct FuelEntryRowView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let entry: FuelEntryListItemUi
     let calendarDay: FuelEntryCalendarDay
+
+    /// `E4-02`: at accessibility text sizes the header and the badges stack vertically, so they wrap
+    /// instead of clipping.
+    private var adaptiveLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 6))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -186,71 +211,81 @@ struct FuelEntryRowView: View {
     }
 
     private var headerRow: some View {
-        HStack {
+        adaptiveLayout {
             Text(calendarDay.format(epochMillis: entry.dateEpochMillis))
                 .font(.headline)
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer()
+            }
             if let consumption = entry.consumptionScaled {
-                Text("\(formatScaled(consumption.int64Value, scale: ScaledFormat.consumptionScale)) L/100 km")
+                // `E4-02`, `D-223`: the accent colour measured 4.02:1 on white (C6), so the value
+                // uses the primary label colour.
+                Text(consumptionText(consumption.int64Value))
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(.primary)
                     .accessibilityIdentifier("fuel_explanation_\(entry.id)")
             } else {
                 Text(consumptionExplanation(for: entry.invalidReason))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.primary)
                     .accessibilityIdentifier("fuel_explanation_\(entry.id)")
             }
         }
     }
 
     private var factsRow: some View {
-        let litersText = formatScaled(entry.litersScaled, scale: ScaledFormat.litersScale)
-        let totalCostText = formatScaled(entry.totalCostMinor, scale: ScaledFormat.minorUnitScale)
-        let formatTemplate = String(localized: "fuel_entry_facts")
-        let facts = String(format: formatTemplate, entry.odometerKm, litersText, totalCostText, entry.currencyCode)
+        let locale = Locale.current
+        let facts = String(
+            format: String(localized: "fuel_entry_facts"),
+            formatInteger(entry.odometerKm, locale: locale),
+            formatScaledDecimal(entry.litersScaled, scale: ScaledFormat.litersScale, locale: locale),
+            formatCurrencyAmount(
+                entry.totalCostMinor,
+                scale: ScaledFormat.minorUnitScale,
+                currencyCode: entry.currencyCode,
+                locale: locale
+            )
+        )
         return Text(facts)
             .font(.caption)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.primary)
     }
 
     private var indicatorsRow: some View {
-        HStack(spacing: 6) {
+        adaptiveLayout {
             if !entry.isFullTank {
-                Text("partial_tank")
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.orange.opacity(0.15))
-                    .foregroundColor(.orange)
-                    .cornerRadius(4)
+                IndicatorBadge(key: "partial_tank", tint: .orange)
                     .accessibilityIdentifier("fuel_indicator_\(entry.id)_partial")
             }
             if entry.hasMissedEntries {
-                Text("missed_entries")
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.red.opacity(0.15))
-                    .foregroundColor(.red)
-                    .cornerRadius(4)
+                IndicatorBadge(key: "missed_entries", tint: .red)
                     .accessibilityIdentifier("fuel_indicator_\(entry.id)_missed")
             }
             if entry.odometerInconsistent {
-                Text("inconsistent_odometer")
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.15))
-                    .foregroundColor(.purple)
-                    .cornerRadius(4)
+                IndicatorBadge(key: "inconsistent_odometer", tint: .purple)
                     .accessibilityIdentifier("fuel_indicator_\(entry.id)_odometer")
             }
         }
+    }
+}
+
+/// A tinted fact badge (`E4-02`, `D-223`). Its text uses the primary label colour, because the
+/// tint colours measured below the 4.5:1 text contrast on their own 15 % background: orange 1.95:1,
+/// red 2.91:1 and purple 3.42:1 in light appearance (C1–C3). The tint stays as background and border.
+private struct IndicatorBadge: View {
+    let key: LocalizedStringKey
+    let tint: Color
+
+    var body: some View {
+        Text(key)
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(tint, lineWidth: 1))
     }
 }
 

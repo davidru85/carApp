@@ -8,10 +8,20 @@ struct WelcomeView: View {
     let onContinueWithoutAccount: () -> Void
 
     var body: some View {
+        // `E4-02`: `ViewThatFits` renders both branches in the hierarchy, which the accessibility audit
+        // reads as duplicated, partially unsupported Dynamic Type text, so the welcome scrolls.
+        ScrollView {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 18) {
             Text("welcome_title")
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("welcome_title")
             Text("welcome_body")
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -32,6 +42,7 @@ struct WelcomeView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccent)
             .accessibilityIdentifier("welcome_google")
             .disabled(state.isBusy)
 
@@ -41,16 +52,19 @@ struct WelcomeView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccent)
             .accessibilityIdentifier("welcome_guest")
             .disabled(state.isBusy)
 
             if state.isBusy {
                 ProgressView()
+                    .accessibilityLabel(Text("loading"))
             }
             if let message = state.message {
                 Text(message.localizedText)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AccessibleColors.errorText)
                     .font(.caption)
+                    .announcedOnAppearance(message.localizedText)
             }
         }
         .padding(24)
