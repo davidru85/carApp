@@ -135,6 +135,16 @@ struct VehicleListView: View {
                 }
                 #endif
 
+                // `D-162` / ADR-0163: Settings is reachable from the vehicle list. The icon carries an
+                // accessible name because it has no visible text.
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SettingsView(graph: graph, skeletonModel: skeletonModel)) {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel(Text("settings_title"))
+                    .accessibilityIdentifier("settings_open")
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
                         creation = VehicleCreationPresentation(isFirstRun: false)
