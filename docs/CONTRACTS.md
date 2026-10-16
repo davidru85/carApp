@@ -2197,6 +2197,22 @@ Optional checks:
         `error_unexpected`, and `UiMessageStringsTest.kt` and `UiMessageMappingTests.swift` name every
         code. Neither compiler can prove a `when` or `switch` over a `String` exhaustive, so this assertion
         is what keeps the `§6` safety net unreachable (`{D-B1-D10}`).
+        42. Every string key a host references exists in both catalogues of that host, and the two catalogues
+            of each host declare the same keys. On Android the references are every `R.string` and
+            `R.plurals` use in `androidApp/src/main/java` and every `@string/` use in the other XML files of
+            `androidApp/src/main`, checked against `res/values/strings.xml` and `res/values-es/strings.xml`; a
+            string declared `translatable="false"` is exempt from the Spanish catalogue. On iOS the references
+            are the lowercase snake_case literals of the top-level `iosApp/*.swift` sources that are passed as
+            the first argument of a SwiftUI `LocalizedStringKey` initializer or modifier (`Text`, `Button`,
+            `Label`, `Toggle`, `Picker`, `Section`, `TextField`, `SecureField`, `Link`, `Menu`, `Stepper`,
+            `DatePicker`, `ProgressView`, `LocalizedStringKey`, `navigationTitle`, `accessibilityLabel`,
+            `accessibilityHint`, `accessibilityValue`, `alert`, `confirmationDialog`, `help`), passed to
+            `String(localized:)`, `String.LocalizationValue` or `NSLocalizedString`, or returned by a function
+            whose name ends in `Key`, checked against `en.lproj` and `es.lproj` `Localizable.strings`. A key
+            rendered without arguments, through a SwiftUI initializer or modifier or through Compose
+            `stringResource(R.string.x)` or `getString(R.string.x)` with no further argument, carries no format
+            argument in either catalogue, because nothing would fill it. Neither build fails on a missing
+            translation or an unfilled placeholder, so no other check sees these gaps (`{D-B1-D11}`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
