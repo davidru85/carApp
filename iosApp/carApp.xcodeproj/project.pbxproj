@@ -28,6 +28,7 @@
 		5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */; };
 		5DD3FA0766D149AEDEB1E011 /* VehicleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B896BC0A600D06C316462EF0 /* VehicleFormView.swift */; };
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
+		6721E4D135091B6B6B073E05 /* SettingsFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 633650E394377F53C8FBECE4 /* SettingsFlowUITests.swift */; };
 		7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */; };
 		71B2BC3A80BE759D783D438F /* OnboardingRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */; };
 		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
@@ -107,6 +108,7 @@
 		54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisualTests.swift; sourceTree = "<group>"; };
 		5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePresentation.swift; sourceTree = "<group>"; };
 		586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		633650E394377F53C8FBECE4 /* SettingsFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsFlowUITests.swift; sourceTree = "<group>"; };
 		6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInFailureMappingTests.swift; sourceTree = "<group>"; };
 		6DF7A56E87D9090EED34A1AB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInCoordinatorTests.swift; sourceTree = "<group>"; };
@@ -202,6 +204,7 @@
 				8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */,
 				AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */,
 				A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */,
+				633650E394377F53C8FBECE4 /* SettingsFlowUITests.swift */,
 				88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */,
 			);
 			path = UITests;
@@ -482,6 +485,7 @@
 				E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */,
 				91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */,
 				4BC8A1097F15EE75D459464C /* OnboardingWaitPolicyTests.swift in Sources */,
+				6721E4D135091B6B6B073E05 /* SettingsFlowUITests.swift in Sources */,
 				F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
