@@ -38,6 +38,42 @@
 
 ## Entries
 
+### 2026-10-16 — E4-01 Settings UI and the host departure surface (bundle E4-B1)
+
+- **Type:** story
+- **Story / Decision:** `E4-01` / `D-211` to `D-215` (and `D-209`, the bundle)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** both hosts gained a Settings screen, reachable from the vehicle list, over the
+  new `:shared` `SettingsStateHolder` (`D-211`): the currency picker over `SUPPORTED_CURRENCY_CODES`,
+  the read-only units, the backup status with its retry, the pseudonymous analytics opt-in (off by
+  default, applied immediately), the session rows per phase (`D-215`) and the native app version
+  (`D-212`). The host departure surface is complete: the pending-sync prompt with its count and the
+  wait action of `D-213`, the two-step destructive confirmations, re-authentication through
+  `startReauthentication(provider)`, and the root-level departure screen of `D-214`. The shared
+  holder closes the `E3-09` residual: `SettingsGraphTest` drives the real SQLDelight settings
+  repository into the `§16.1` opt-in gate end to end. `D-209` records the two Phase 4 bundles, and
+  the postponed `E4-06` privacy-policy link was added to the backlog.
+- **Why:** `D-162` left the store-required account deletion without a host surface until this story,
+  and `docs/handoffs/E3-09.md` left the analytics opt-in without a production caller.
+- **Documents touched:** `docs/CONTRACTS.md` (`§14`, `§20.10`); `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0210, ADR-0212 to
+  ADR-0216; `AGENTS.md`; `docs/CONTRIBUTING.md`; `docs/BACKLOG.md`; `docs/DESIGN.md`; `docs/handoffs/E3-09.md`,
+  `docs/handoffs/E4-B1.md`, `docs/handoffs/E4-01.md`.
+- **Verification:** shared RED `66cb982e`, GREEN `69f49134`, REFACTOR `6bd37640`, records `77f5f524`;
+  Android host RED `cef3832e`, GREEN `e36874e6`, screens `f811f6d6`, `0ce90d84`, `5e48fc45`,
+  `d2546103`, helper fix `13bda79a`, records `9abc15d0`; iOS host RED `32e2b5ed`, GREEN `df7c45af`,
+  re-authentication `2dee6db4`, view model `7ff8afb1`, settings screen `6df80679`, departure
+  `d18b8153`, UI flows `a1decd5c`, records `2e7195b5`. The complete non-instrumented `AGENTS.md`
+  command passes; the generated Objective-C header equals the updated golden; `:androidApp:testDebugUnitTest`
+  is 80/0; the Android instrumented suite is 71/0 on `E1_07_API_36` (API 36);
+  `carAppTests` is 113/0 and `carAppUITests` 33 with 1 environment-gated skip and 0 failures (iPhone
+  Air simulator, iOS 26.4, Xcode 27.0); the end-to-end analytics opt-in graph test closes the `E3-09`
+  residual.
+- **Follow-ups / risks:** the permanent-account departure checklists in `docs/handoffs/E4-01.md`
+  (Android M1-M9 and iOS IOS-M1-IOS-M12) are owner-run and still open. A pre-existing instrumented
+  helper defect was corrected with the owner's approval (`13bda79a`). `E4-05` and `E4-02` continue in
+  bundle `E4-B1`.
+
 ### 2026-10-15 — E3-B2 record closure and Phase 3 completion
 
 - **Type:** correction (documentation only)
