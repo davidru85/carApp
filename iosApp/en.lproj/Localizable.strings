@@ -129,6 +129,15 @@
 "confirm_delete_account" = "This permanently deletes your account and every vehicle and refuel in it, on this device and in the backup. This cannot be undone.";
 "confirm_delete_local_data" = "This permanently deletes every vehicle and refuel on this device. There is no account to recover them from, so this cannot be undone.";
 "confirm_replace_existing_account" = "This permanently replaces every vehicle and refuel in the existing account with the data on this device. This cannot be undone.";
+"settings_link_account_title" = "Link an account";
+"settings_link_account_body" = "Link an Apple or Google account to keep your vehicles and refuels recoverable on another device. They also stay on this device.";
+"settings_link_account_in_progress" = "Linking the account…";
+"conversion_collision_title" = "This account already has data";
+"conversion_collision_confirm" = "Replace data";
+"error_auth_uid_would_change" = "This account could not be linked. Try again or use a different account.";
+"error_auth_credential_in_use" = "This account is already linked to other carApp data.";
+"error_auth_permission_denied" = "The account operation was not allowed. Try again later.";
+"error_conversion_replacement_pending" = "The data could not be copied to the account yet. carApp will keep trying automatically.";
 
 "settings_title" = "Settings";
 "settings_section_units" = "Units and currency";
