@@ -151,4 +151,13 @@
     <string name="departure_failed_title">This could not be completed</string>
     <string name="departure_retry_session_cleanup">carApp could not finish signing out of your account on this device. Retry to finish.</string>
     <string name="departure_retry_local_clear">carApp could not finish removing the data stored on this device. Retry to finish.</string>
+    <string name="settings_link_account_title">Link an account</string>
+    <string name="settings_link_account_body">Link a Google account to keep your vehicles and refuels recoverable on another device. They also stay on this device.</string>
+    <string name="settings_link_account_in_progress">Linking the account…</string>
+    <string name="conversion_collision_title">This account already has data</string>
+    <string name="conversion_collision_confirm">Replace data</string>
+    <string name="error_auth_uid_would_change">This account could not be linked. Try again or use a different account.</string>
+    <string name="error_auth_credential_in_use">This account is already linked to other carApp data.</string>
+    <string name="error_auth_permission_denied">The account operation was not allowed. Try again later.</string>
+    <string name="error_conversion_replacement_pending">The data could not be copied to the account yet. carApp will keep trying automatically.</string>
 </resources>
