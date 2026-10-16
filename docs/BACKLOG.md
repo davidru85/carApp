@@ -1579,6 +1579,11 @@ is not the current objective; it is low priority and not Ready, it is not part o
 bundles, it does not block Phase 4, and it MUST be done before any App Store or Google Play
 submission.
 
+`E2-10`, account conversion interruption hardening, was added on 2026-10-16 under
+"Defects found after Phase 2 closed" by `D-228` during `E4-05`. It is a correctness follow-up
+that closes two `E2-04` hazards the `E4-05` surface made reachable; it is not Ready until its
+intake decision, it is not part of the `D-209` bundles and it does not block Phase 4.
+
 ### Defects found after Phase 1 closed
 
 ### E1-14 - `FuelEntryStateHolderTest` Kotlin/Native Timeout Flake - S
@@ -1989,6 +1994,39 @@ Acceptance criteria:
 
 Human review required.
 
+### Defects found after Phase 2 closed
+
+### E2-10 - Account Conversion Interruption Hardening - M
+
+Status: Not Ready. Created on 2026-10-16 by `D-228` (ADR-0229) during `E4-05`. A
+correctness follow-up: it is not part of the `D-209` bundles and does not block Phase 4. Its intake
+needs a decision for the `docs/CONTRACTS.md §11.3` amendment.
+
+Close the two interruption hazards of the `E2-04` replacement protocol that the `E4-05` host
+surface made reachable. Both are accepted residual risks in `docs/SECURITY.md` until this story
+merges.
+
+Acceptance criteria:
+
+- A confirmed conversion that fails, or whose process dies, before the session switch (marker phase
+  `SNAPSHOT_CAPTURED`, with or without a cleanup ticket) no longer blocks the backup of the
+  still-anonymous owner: no sync cycle is refused because of that marker.
+- A conversion retried after such a failure replaces the permanent account with the anonymous
+  owner's data as it is at the retry, so no vehicle or fuel entry written between the failure and
+  the retry is lost.
+- After the session switch and before the local rebuild, the vehicle list is not reported as a
+  confirmed empty list while the replacement marker exists, so F-1 does not offer first-vehicle
+  creation over rows the replacement will rebuild.
+- Deterministic shared tests cover a failure and a process death at each pre-switch checkpoint
+  (`SNAPSHOT_CAPTURED`, `CLEANUP_TICKET_SAVED`), and an offline relaunch at `SESSION_SWITCHED` and at
+  `REMOTE_REPLACED`.
+- `docs/CONTRACTS.md §11.3` states the corrected semantics, and the two `D-228` entries of
+  `docs/SECURITY.md` are removed or rewritten as closed in the same change.
+
+Depends on: E2-04, E4-05.
+
+Human review required.
+
 ### Deferred scope, now scheduled
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
@@ -2197,6 +2235,7 @@ proof after E3-04.
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |
 | E2-08 Anonymous reminder launch and sign-in race fixes | 2 | S | Yes |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
+| E2-10 Account conversion interruption hardening | follow-up | M | Yes |
 | E3-01 Firestore rules (completed) | 3 | M | Yes |
 | E3-10 Account deletion server operation | 3 | M | Yes |
 | E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
