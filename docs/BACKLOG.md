@@ -1412,7 +1412,12 @@ Harden accessibility and ES/EN localization.
 
 Acceptance criteria:
 
-- TalkBack and VoiceOver audits pass for F-1 through F-3.
+- TalkBack and VoiceOver audits pass for F-1 through F-3, the Settings screen, the departure screens
+  and the `E4-05` account-conversion surface (`D-225`). The owner confirmed this audit scope at the
+  `E4-B1` bundle intake on 2026-10-16.
+- The screen-reader acceptance combines the agent's emulator and simulator evidence with a manual
+  TalkBack and VoiceOver walkthrough that the owner runs on a device from a checklist the agent
+  prepares; both are recorded in `docs/handoffs/E4-02.md` (`D-226`).
 - UI is usable at 200% font size.
 - Spanish and English strings are complete, including every `AppError` and `ConsumptionInvalidReason` mapping.
 - No hardcoded user-facing strings remain, and no user-facing text appears in `UiState`.
