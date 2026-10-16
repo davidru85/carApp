@@ -76,6 +76,8 @@ interface AppGraph {
 
     fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder
 
+    fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder
+
     fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
 
     fun syncController(): SyncController
@@ -411,6 +413,15 @@ internal class DefaultAppGraph(
             accountConversion = accountConversion,
             analyticsTracker = dependencies.analyticsTracker,
             accountDeparture = accountDeparture,
+        )
+    }
+
+    override fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder {
+        checkOpen()
+        return SettingsStateHolder(
+            scope = scope,
+            repository = settingsRepository,
+            dispatchers = dependencies.dispatchers,
         )
     }
 

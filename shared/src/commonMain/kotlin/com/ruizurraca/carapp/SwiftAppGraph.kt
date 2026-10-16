@@ -91,6 +91,12 @@ class SwiftAppGraph {
                 .holder
     }
 
+    fun settingsStateHolder(): SettingsStateHolder {
+        val graph = requireOpenGraph()
+        // RED (E4-01): neither cached nor closed with the graph, so the lifecycle specification fails.
+        return newScopedHolder { scope -> graph.settingsStateHolder(scope) }.holder
+    }
+
     fun syncStateHolder(): SyncStateHolder {
         val graph = requireOpenGraph()
         return cachedSync?.holder

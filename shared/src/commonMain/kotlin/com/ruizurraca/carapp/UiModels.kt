@@ -6,6 +6,8 @@ import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.Confirmation
 import com.ruizurraca.carapp.core.common.SyncStatus
 import com.ruizurraca.carapp.core.common.UiMessage
+import com.ruizurraca.carapp.core.model.DistanceUnit
+import com.ruizurraca.carapp.core.model.VolumeUnit
 import kotlin.native.ObjCName
 
 enum class SessionPhase { UNKNOWN, LOCAL, ANONYMOUS, PERMANENT, SIGNED_OUT, DELETING }
@@ -51,5 +53,23 @@ data class SessionUiState(
 data class SyncUiState(
     val status: SyncStatus,
     val isOnline: Boolean,
+    val message: UiMessage?,
+)
+
+/**
+ * The state of the Settings screen (`docs/CONTRACTS.md §20.10`).
+ *
+ * [currencyCode] is `null` until the settings repository has emitted the settings once; until then
+ * the other settings fields are placeholders that a host MUST NOT render as known values. Currency
+ * codes cross as `String` and carry no display name: each host resolves the name through its
+ * platform currency API, so this state holds no user-facing text (`docs/CONTRACTS.md §14`).
+ */
+data class SettingsUiState(
+    val currencyCode: String?,
+    val supportedCurrencyCodes: List<String>,
+    val distanceUnit: DistanceUnit,
+    val volumeUnit: VolumeUnit,
+    val analyticsEnabled: Boolean,
+    val isSaving: Boolean,
     val message: UiMessage?,
 )

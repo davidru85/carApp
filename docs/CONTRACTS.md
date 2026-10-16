@@ -1506,8 +1506,8 @@ Contract: `entries` MUST contain only non-deleted entries for one vehicle, in an
 
 Shared state holders:
 
-- Live in feature `presentation` packages. `SyncStateHolder` is the app-level exception and lives
-  in `:shared`.
+- Live in feature `presentation` packages. `SessionStateHolder`, `SyncStateHolder` and
+  `SettingsStateHolder` are the app-level exceptions and live in `:shared` (`D-155`, `D-211`).
 - Expose immutable `StateFlow<UiState>` built with `stateIn(scope = scope + dispatchers.main, started = SharingStarted.WhileSubscribed(STATE_HOLDER_TIMEOUT_MS), initialValue = initialValue)`.
 - Accept intent functions.
 - Kotlin-facing factories take a `scope: CoroutineScope` parameter and the caller owns that scope. Android passes `viewModelScope`.
@@ -2813,6 +2813,7 @@ interface AppGraph {
     fun fuelEntryListStateHolder(scope: CoroutineScope, vehicleId: String): FuelEntryListStateHolder
     fun fuelEntryFormStateHolder(scope: CoroutineScope, vehicleId: String, entryId: String?): FuelEntryFormStateHolder
     fun sessionStateHolder(scope: CoroutineScope): SessionStateHolder
+    fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder
     fun syncStateHolder(scope: CoroutineScope): SyncStateHolder
     fun syncController(): SyncController
     fun close()
@@ -2832,6 +2833,7 @@ class SwiftAppGraph {
     fun fuelEntryFormStateHolder(vehicleId: String, entryId: String?): FuelEntryFormStateHolder
     fun releaseFuelEntryFormStateHolder(vehicleId: String, entryId: String?)
     fun sessionStateHolder(): SessionStateHolder
+    fun settingsStateHolder(): SettingsStateHolder
     fun syncStateHolder(): SyncStateHolder
     fun close()
 }
@@ -2918,6 +2920,14 @@ class SyncStateHolder {
     fun retryFailed()
     fun clearMessage()
     fun refreshDebug()
+    fun close()
+}
+
+class SettingsStateHolder {
+    val state: StateFlow<SettingsUiState>
+    fun selectCurrency(code: String)
+    fun setAnalyticsEnabled(enabled: Boolean)
+    fun clearMessage()
     fun close()
 }
 
@@ -3014,6 +3024,16 @@ data class SyncUiState(
     val message: UiMessage?,
 )
 
+data class SettingsUiState(
+    val currencyCode: String?,
+    val supportedCurrencyCodes: List<String>,
+    val distanceUnit: DistanceUnit,
+    val volumeUnit: VolumeUnit,
+    val analyticsEnabled: Boolean,
+    val isSaving: Boolean,
+    val message: UiMessage?,
+)
+
 // UiMessage and UiMessageKind are declared in §20.3 and owned by :core:common.
 ```
 
@@ -3066,6 +3086,8 @@ message, which is the owner transition.
 `SyncStateHolder.requestSync` is intended for user-initiated sync only. The Swift-facing surface MUST pass `SyncTrigger.PullToRefresh` (and `SyncTrigger.AppForeground` if the platform emits it from a lifecycle hook). `SyncTrigger.OwnerChanged`, `SyncTrigger.PostWriteDebounce`, `SyncTrigger.ConnectivityRecovered` and `SyncTrigger.Periodic` are fired exclusively by the app graph or by `SyncTriggerAdapter` from platform wiring and MUST NOT be invoked from Swift UI code, to avoid duplicating `BGTaskScheduler`/`WorkManager` wiring and bypassing the single-`SyncController` invariant of `§9.1`. From platform wiring those triggers enter the controller through `requestSync(reason)` or, when the platform holds an execution lease for the work, through `sync(Periodic)`, which the lease awaits before reporting completion (`D-187`). An executable check MUST ban `OwnerChanged`, `PostWriteDebounce`, `ConnectivityRecovered` and `Periodic` from any call site of `SyncStateHolder.requestSync` on the iOS platform boundary (`composition/ios/src/iosMain` and `iosApp`), and MUST accept `AppForeground` and `PullToRefresh` there. The check is not a Konsist fixture: Konsist parses Kotlin only, and this surface contains Swift, so the ban covers both file kinds and is implemented as a source rule with a failing fixture (`D-185`).
 
 `SyncStateHolder.onForegroundReturn(backgroundMillis)` is the `§9.8` foreground entry point, and `backgroundMillis` is nullable on purpose. Each host observes its own lifecycle and calls this member with how long the app spent in the background, or with `null` on a cold start: a cold start has no measurable background duration and `§9.8` names it as a trigger in its own right, so it MUST NOT be encoded as a duration. The `FOREGROUND_RESUME_THRESHOLD_MS` comparison is applied here, so both hosts share one rule and one test instead of repeating the comparison, and a return of exactly the threshold is not a trigger because `§9.8` requires **more than** the threshold in the background. The member fires `SyncTrigger.AppForeground`, never `Periodic` or `ConnectivityRecovered`, and it is a no-op after `close()`. `SyncTrigger.ConnectivityRecovered` remains platform-owned and is derived by the graph from the `ConnectivityObserver` offline-to-online edge, never invoked from Swift UI code. The host's background measurement MUST outlive the UI that reports it: recreating a view, a scene or an Activity is not a cold start, so a measurement discarded with that UI would report `null` and request a cycle `§9.8` does not permit. Each host therefore holds it for the process.
+
+`SettingsStateHolder` is the Settings surface of `SPECIFICATION.md §3.1` (`D-211`). It observes the graph's single `SettingsRepository.settings` flow, the same flow the `§16.1` opt-in gate observes, so an opt-in or an opt-out written through it reaches the analytics tracker without a restart. `SettingsUiState.currencyCode` is `null` until the repository has emitted the settings once; until then the other settings fields are placeholders that a host MUST NOT render as known values. `supportedCurrencyCodes` is `SUPPORTED_CURRENCY_CODES` (§20.0.1) in its declared order. Currency codes cross as `String` (§15.3) and carry no display name: each host produces the name through its platform currency API. `distanceUnit` and `volumeUnit` are read-only in the MVP (§3), so the holder exposes no intent for them. `selectCurrency(code)` writes nothing when `code` equals the published `currencyCode`; for a code outside `SUPPORTED_CURRENCY_CODES` it writes nothing and publishes a `UiMessage` with `code = "VALIDATION.INVALID_UNIT"`; for any other code it writes exactly `UpdateSettingsCommand(currency = CurrencyCode(code), analyticsEnabled = null)`. `setAnalyticsEnabled(enabled)` writes nothing when the published value already equals `enabled`, and otherwise writes exactly `UpdateSettingsCommand(currency = null, analyticsEnabled = enabled)`. Published values change only when the repository emits; an intent never updates them optimistically. `isSaving` is `true` from an accepted write until the repository answers, and both write intents do nothing while it is `true`, so a host disables the two controls for that interval. A settings read failure and a failed write each publish their `AppError` code as an `ERROR` `UiMessage`, and `clearMessage()` withdraws the message an intent published. Backup status and the session rows of the Settings screen stay on `SyncStateHolder` and `SessionStateHolder`.
 
 `SessionStateHolder.startAccountConversion(provider)` calls `AuthClient.linkCredential` (not `signInWithCredential`), preserves the UID, and maps `AuthError.UidWouldChange` / `AuthError.CredentialAlreadyInUse` to the F-4 collision flow (`SPECIFICATION.md §7 F-4`). `confirmAccountConversion(confirmation)` handles the collision confirmation through `Confirmation.AdoptExistingAccount` or cancellation.
 

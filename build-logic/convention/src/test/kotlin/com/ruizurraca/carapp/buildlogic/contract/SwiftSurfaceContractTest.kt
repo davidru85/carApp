@@ -174,6 +174,21 @@ class SwiftSurfaceContractTest {
     }
 
     /**
+     * `E4-01`: the settings holder lives in its own file, so assertion 14 sees it only through
+     * `HOLDER_SOURCES`. The real source is mutated, so the fixture fails if that entry is dropped.
+     */
+    @Test
+    fun aDefaultArgumentOnTheSettingsHolderIsRejected() {
+        val source = assertNotNull(real.sources[SETTINGS_HOLDERS], "HOLDER_SOURCES does not cover the settings holder")
+        val mutated = source.replace("fun selectCurrency(code: String)", "fun selectCurrency(code: String = \"EUR\")")
+        assertFails(
+            KOTLIN_FACTORIES_TAKE_SCOPE,
+            "$SETTINGS_HOLDERS: class SettingsStateHolder.selectCurrency defaults code: String = \"EUR\"",
+            SwiftSurfaceContract(real.copy(sources = real.sources + (SETTINGS_HOLDERS to mutated))).validate(),
+        )
+    }
+
+    /**
      * A function-typed parameter must not swallow the parameters after it. The `>` of `->` closes
      * nothing, and treating it as a closing delimiter merged the whole list into one parameter and
      * reported the default under the wrong name.
@@ -840,8 +855,10 @@ class SwiftSurfaceContractTest {
         const val APP_GRAPH = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/AppGraph.kt"
         const val SWIFT_APP_GRAPH = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/SwiftAppGraph.kt"
         const val SESSION_HOLDERS = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt"
+        const val SETTINGS_HOLDERS = "shared/src/commonMain/kotlin/com/ruizurraca/carapp/SettingsStateHolder.kt"
         val HOLDER_SOURCES = listOf(
             SESSION_HOLDERS,
+            SETTINGS_HOLDERS,
             "feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt",
             "feature/fuel/src/commonMain/kotlin/com/ruizurraca/carapp/feature/fuel/presentation/FuelEntryStateHolders.kt",
         )
