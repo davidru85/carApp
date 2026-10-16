@@ -12,7 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,10 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -333,7 +333,7 @@ private fun UnreadableVehicleList(onRetry: () -> Unit) {
         ) {
             Text(
                 text = stringResource(R.string.vehicle_list_unreadable),
-                modifier = Modifier.testTag(VehicleTestTags.LIST_UNREADABLE),
+                modifier = Modifier.testTag(VehicleTestTags.LIST_UNREADABLE).announcedError(),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -397,7 +397,7 @@ private fun rememberGoogleSignIn(
 private fun WaitingIndicator() {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            LabelledProgressIndicator()
         }
     }
 }
@@ -616,7 +616,7 @@ private fun VehicleListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.vehicle_list_title)) },
+                title = { Text(stringResource(R.string.vehicle_list_title), modifier = Modifier.screenHeading()) },
                 actions = {
                     TextButton(
                         onClick = onSettings,
@@ -705,13 +705,14 @@ private fun VehicleListContent(
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val locale = currentDisplayLocale()
     Box(
         modifier = modifier.fillMaxSize().padding(horizontal = 20.dp),
         contentAlignment = Alignment.Center,
     ) {
         when {
             state.isLoading && state.vehicles.isEmpty() -> {
-                CircularProgressIndicator()
+                LabelledProgressIndicator()
             }
 
             state.message != null && state.vehicles.isEmpty() -> {
@@ -734,7 +735,8 @@ private fun VehicleListContent(
                                     .testTag(VehicleTestTags.vehicleRow(vehicle.id)),
                         ) {
                             Text(vehicle.name, style = MaterialTheme.typography.titleMedium)
-                            Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
+                            val odometer = formatInteger(vehicle.currentOdometerKm, locale)
+                            Text(stringResource(R.string.vehicle_odometer, odometer))
                         }
                         HorizontalDivider()
                     }
@@ -751,7 +753,7 @@ internal fun VehicleFormTopBar(
     onBack: (() -> Unit)?,
 ) {
     TopAppBar(
-        title = { Text(stringResource(titleResource)) },
+        title = { Text(stringResource(titleResource), modifier = Modifier.screenHeading()) },
         navigationIcon = {
             if (onBack != null) {
                 TextButton(
@@ -921,7 +923,8 @@ private fun VehicleForm(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(20.dp),
+        // `E4-02`: every field and the save action stay reachable at a 200% font scale.
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         VehicleTextFields(
@@ -941,7 +944,7 @@ private fun VehicleForm(
             Text(
                 text = stringResource(R.string.error_out_of_range),
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.testTag(VehicleTestTags.ERROR),
+                modifier = Modifier.testTag(VehicleTestTags.ERROR).announcedError(),
             )
         } else {
             state.message?.let { ErrorText(it) }
@@ -952,7 +955,7 @@ private fun VehicleForm(
             modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.SAVE),
         ) {
             if (state.isSaving) {
-                CircularProgressIndicator()
+                LabelledProgressIndicator(labelResource = R.string.saving)
             } else {
                 Text(stringResource(R.string.save_vehicle))
             }
@@ -1060,7 +1063,6 @@ private fun FuelType.labelResource(): Int =
         FuelType.OTHER -> R.string.fuel_type_other
     }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun VehicleDetailScreen(
     navController: NavHostController,
@@ -1083,96 +1085,139 @@ private fun VehicleDetailScreen(
         )
     }
 
+    VehicleDetailLayout(
+        vehicle = vehicle,
+        isLoading = state.isLoading,
+        fuelState = fuelState,
+        onBack = { navController.popBackStack() },
+        onAddFuelEntry = { navController.navigate(VehicleRoutes.fuelCreate(vehicleId)) },
+        onEdit = { navController.navigate(VehicleRoutes.edit(vehicleId)) },
+        onDelete = { stateHolder.requestDelete(vehicleId) },
+        onEditEntry = { entryId -> navController.navigate(VehicleRoutes.fuelEdit(vehicleId, entryId)) },
+    )
+}
+
+/**
+ * The stateless vehicle detail (`E4-02`). The header, the consumption summary and the entries are one
+ * scrolling list, so at a 200% font scale nothing is pushed off the screen, and the two actions are
+ * full-width buttons stacked vertically instead of a row that cannot fit both labels.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun VehicleDetailLayout(
+    vehicle: VehicleListItemUi?,
+    isLoading: Boolean,
+    fuelState: FuelEntryListUiState,
+    onBack: () -> Unit,
+    onAddFuelEntry: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onEditEntry: (String) -> Unit,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.vehicle_detail_title)) },
+                title = { Text(stringResource(R.string.vehicle_detail_title), modifier = Modifier.screenHeading()) },
                 navigationIcon = {
-                    TextButton(onClick = navController::popBackStack) { Text(stringResource(R.string.back)) }
+                    TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
                 },
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { navController.navigate(VehicleRoutes.fuelCreate(vehicleId)) },
+                onClick = onAddFuelEntry,
                 modifier = Modifier.testTag(FuelEntryTestTags.ADD_FUEL_ENTRY),
             ) {
                 Text(stringResource(R.string.add_fuel_entry))
             }
         },
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            when {
-                state.isLoading && vehicle == null -> {
-                    CircularProgressIndicator()
+        val contentModifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp)
+        when {
+            isLoading && vehicle == null -> {
+                Box(modifier = contentModifier, contentAlignment = Alignment.Center) {
+                    LabelledProgressIndicator()
                 }
+            }
 
-                vehicle == null -> {
-                    Text(stringResource(R.string.vehicle_not_found))
-                }
+            vehicle == null -> {
+                Text(stringResource(R.string.vehicle_not_found), modifier = contentModifier.padding(top = 20.dp))
+            }
 
-                else -> {
-                    VehicleDetailContent(
-                        vehicle = vehicle,
-                        fuelState = fuelState,
-                        navController = navController,
-                        stateHolder = stateHolder,
-                        fuelListModifier = Modifier.weight(1f),
-                    )
-                }
+            else -> {
+                FuelEntryListContent(
+                    state = fuelState,
+                    onEdit = onEditEntry,
+                    modifier = contentModifier,
+                    header = { VehicleDetailHeader(vehicle = vehicle, onEdit = onEdit, onDelete = onDelete) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun VehicleDeleteConfirmation(
+private fun VehicleDetailHeader(
+    vehicle: VehicleListItemUi,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val locale = currentDisplayLocale()
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = vehicle.name,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.testTag(VehicleTestTags.DETAIL_NAME).screenHeading(),
+        )
+        Text(stringResource(R.string.vehicle_odometer, formatInteger(vehicle.currentOdometerKm, locale)))
+        Button(
+            onClick = onEdit,
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.EDIT),
+        ) {
+            Text(stringResource(R.string.edit_vehicle))
+        }
+        OutlinedButton(
+            onClick = onDelete,
+            modifier = Modifier.fillMaxWidth().testTag(VehicleTestTags.DELETE),
+        ) {
+            Text(stringResource(R.string.delete_vehicle))
+        }
+    }
+}
+
+/** The vehicle deletion confirmation; its body scrolls at a 200% font scale (`E4-02`). */
+@Composable
+internal fun VehicleDeleteConfirmation(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.delete_vehicle_title)) },
-        text = { Text(stringResource(R.string.delete_vehicle_confirmation)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.delete_vehicle_confirmation))
+            }
+        },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
+            TextButton(
+                onClick = onConfirm,
+                modifier = Modifier.testTag(VehicleTestTags.CONFIRM_DELETE_VEHICLE),
+            ) {
+                Text(stringResource(R.string.delete))
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag(VehicleTestTags.CANCEL_DELETE_VEHICLE),
+            ) {
+                Text(stringResource(R.string.cancel))
+            }
         },
-    )
-}
-
-@Composable
-private fun VehicleDetailContent(
-    vehicle: VehicleListItemUi,
-    fuelState: FuelEntryListUiState,
-    navController: NavHostController,
-    stateHolder: VehicleListStateHolder,
-    fuelListModifier: Modifier,
-) {
-    Text(
-        text = vehicle.name,
-        style = MaterialTheme.typography.headlineMedium,
-        modifier = Modifier.testTag(VehicleTestTags.DETAIL_NAME),
-    )
-    Text(stringResource(R.string.vehicle_odometer, vehicle.currentOdometerKm))
-    Row {
-        Button(onClick = { navController.navigate(VehicleRoutes.edit(vehicle.id)) }) {
-            Text(stringResource(R.string.edit_vehicle))
-        }
-        Spacer(Modifier.width(12.dp))
-        OutlinedButton(onClick = { stateHolder.requestDelete(vehicle.id) }) {
-            Text(stringResource(R.string.delete_vehicle))
-        }
-    }
-    FuelEntryListContent(
-        state = fuelState,
-        onEdit = { entryId -> navController.navigate(VehicleRoutes.fuelEdit(vehicle.id, entryId)) },
-        modifier = fuelListModifier,
     )
 }
 
@@ -1185,7 +1230,7 @@ internal fun ErrorText(
     Text(
         text = stringResource(message.stringResource()),
         color = MaterialTheme.colorScheme.error,
-        modifier = Modifier.testTag(testTag),
+        modifier = Modifier.testTag(testTag).announcedError(),
     )
 }
 
@@ -1307,6 +1352,10 @@ object VehicleTestTags {
     const val ERROR = "vehicle_error"
     const val FUEL_TYPE_INPUT = "fuel_type_input"
     const val FUEL_TYPE_OPTION = "fuel_type_option"
+    const val EDIT = "vehicle_detail_edit"
+    const val DELETE = "vehicle_detail_delete"
+    const val CONFIRM_DELETE_VEHICLE = "confirm_delete_vehicle"
+    const val CANCEL_DELETE_VEHICLE = "cancel_delete_vehicle"
 
     fun vehicleRow(vehicleId: String): String = "vehicle_row_$vehicleId"
 }
