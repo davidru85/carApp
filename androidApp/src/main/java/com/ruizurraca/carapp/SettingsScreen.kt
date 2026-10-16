@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -165,7 +166,7 @@ internal fun SettingsScreen(
 @Composable
 private fun SettingsTopBar(onBack: () -> Unit) {
     TopAppBar(
-        title = { Text(stringResource(R.string.settings_title)) },
+        title = { Text(stringResource(R.string.settings_title), modifier = Modifier.screenHeading()) },
         navigationIcon = {
             TextButton(
                 onClick = onBack,
@@ -327,7 +328,7 @@ private fun CurrencyPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag(SettingsTestTags.CURRENCY_PICKER),
-        title = { Text(stringResource(R.string.settings_currency_picker_title)) },
+        title = { Text(stringResource(R.string.settings_currency_picker_title), modifier = Modifier.screenHeading()) },
         text = {
             Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
                 codes.forEach { code ->
@@ -351,7 +352,12 @@ private fun CurrencyPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag(SettingsTestTags.CURRENCY_PICKER_CANCEL),
+            ) {
+                Text(stringResource(R.string.cancel))
+            }
         },
     )
 }
@@ -428,11 +434,13 @@ private fun AccountSection(
         onLinkAccount = callbacks.onLinkAccount,
     )
     if (session.isBusy) {
+        val label = stringResource(R.string.loading)
         LinearProgressIndicator(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
+                    .semantics { contentDescription = label }
                     .testTag(SettingsTestTags.SESSION_PROGRESS),
         )
     }
@@ -521,6 +529,7 @@ internal object SettingsTestTags {
     const val CURRENCY_ROW = "settings_currency_row"
     const val CURRENCY_VALUE = "settings_currency_value"
     const val CURRENCY_PICKER = "settings_currency_picker"
+    const val CURRENCY_PICKER_CANCEL = "settings_currency_picker_cancel"
     const val DISTANCE_UNIT_ROW = "settings_distance_unit_row"
     const val VOLUME_UNIT_ROW = "settings_volume_unit_row"
     const val BACKUP_ROW = "settings_backup_row"

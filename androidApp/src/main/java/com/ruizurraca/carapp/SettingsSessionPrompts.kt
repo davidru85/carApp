@@ -1,6 +1,8 @@
 package com.ruizurraca.carapp
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -183,13 +185,15 @@ private fun PendingSyncDialog(
     AlertDialog(
         onDismissRequest = callbacks.onWithdraw,
         modifier = Modifier.testTag(SettingsTestTags.PENDING_SYNC_DIALOG),
-        title = { Text(stringResource(R.string.pending_sync_title)) },
+        title = { Text(stringResource(R.string.pending_sync_title), modifier = Modifier.screenHeading()) },
         text = {
-            pendingSyncCount?.let { count ->
-                Text(
-                    text = pluralStringResource(R.plurals.pending_sync_body, count, count),
-                    modifier = Modifier.testTag(SettingsTestTags.PENDING_SYNC_BODY),
-                )
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                pendingSyncCount?.let { count ->
+                    Text(
+                        text = pluralStringResource(R.plurals.pending_sync_body, count, count),
+                        modifier = Modifier.testTag(SettingsTestTags.PENDING_SYNC_BODY),
+                    )
+                }
             }
         },
         confirmButton = {
@@ -235,8 +239,12 @@ private fun DestructiveConfirmationDialog(
     AlertDialog(
         onDismissRequest = onWithdraw,
         modifier = Modifier.testTag(dialogTag),
-        title = { Text(stringResource(titleResource)) },
-        text = { Text(stringResource(message.stringResource())) },
+        title = { Text(stringResource(titleResource), modifier = Modifier.screenHeading()) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(message.stringResource()))
+            }
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
@@ -269,10 +277,12 @@ private fun SessionErrorDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag(SettingsTestTags.SESSION_ERROR_DIALOG),
         text = {
-            Text(
-                text = stringResource(sessionMessageStringResource(message)),
-                modifier = Modifier.testTag(SettingsTestTags.SESSION_ERROR_TEXT),
-            )
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = stringResource(sessionMessageStringResource(message)),
+                    modifier = Modifier.testTag(SettingsTestTags.SESSION_ERROR_TEXT),
+                )
+            }
         },
         confirmButton = {
             TextButton(

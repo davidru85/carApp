@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,7 +82,10 @@ internal fun DepartureScreen(
 
 @Composable
 private fun DepartureProgress() {
-    CircularProgressIndicator(modifier = Modifier.testTag(DepartureTestTags.PROGRESS))
+    LabelledProgressIndicator(
+        modifier = Modifier.testTag(DepartureTestTags.PROGRESS),
+        labelResource = R.string.departure_progress,
+    )
     Text(
         text = stringResource(R.string.departure_progress),
         textAlign = TextAlign.Center,
