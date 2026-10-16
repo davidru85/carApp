@@ -620,19 +620,11 @@ private fun FuelEntryErrorText(
 ) {
     if (message == null) return
     Text(
-        text = stringResource(message.fuelStringResource()),
+        text = stringResource(message.stringResource()),
         color = MaterialTheme.colorScheme.error,
         modifier = modifier.testTag(FuelEntryTestTags.ERROR).announcedError(),
     )
 }
-
-private fun UiMessage.fuelStringResource(): Int =
-    when (code) {
-        "VALIDATION.FUTURE_DATE" -> R.string.error_future_date
-        "VALIDATION.INVALID_MONEY_INPUT" -> R.string.error_money_input
-        "VALIDATION.INVALID_UNIT" -> R.string.error_currency
-        else -> stringResource()
-    }
 
 private fun ConsumptionInvalidReason?.explanationResource(): Int =
     when (this) {

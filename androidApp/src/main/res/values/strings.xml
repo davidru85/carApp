@@ -42,7 +42,6 @@
     <string name="error_edit_not_allowed">The initial odometer can no longer be changed.</string>
     <string name="error_duplicate_vehicle_name">Another vehicle already has this name.</string>
     <string name="error_no_changes">There are no changes to save.</string>
-    <string name="error_vehicle_deleted">This vehicle has been deleted.</string>
     <string name="error_persistence">The change could not be saved on this device. Try again.</string>
     <string name="error_restore">The backup could not be restored. Your local data is still available.</string>
     <string name="error_unexpected">Something went wrong. Try again.</string>
@@ -56,7 +55,7 @@
     <string name="backup_status_retry">Retry backup</string>
     <string name="backup_status_description">Backup status: %1$s</string>
     <string name="error_auth_cancelled">Sign-in was cancelled. You can try again.</string>
-    <string name="error_auth_network">Sign-in needs a network connection. Try again when you are online.</string>
+    <string name="error_auth_network">This needs a network connection. Try again when you are online.</string>
     <string name="error_auth_provider">This sign-in provider is not configured yet.</string>
     <string name="add_fuel_entry">New refuel</string>
     <string name="create_fuel_entry_title">New refuel</string>

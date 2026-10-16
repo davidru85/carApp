@@ -51,17 +51,17 @@ class AccountConversionSurfaceRulesTest {
 
     @Test
     fun aUidChangeRefusalHasItsOwnMessage() {
-        assertEquals(R.string.error_auth_uid_would_change, authStringResource("AUTH.UID_WOULD_CHANGE"))
+        assertEquals(R.string.error_auth_uid_would_change, uiMessageStringResource("AUTH.UID_WOULD_CHANGE"))
     }
 
     @Test
     fun aCredentialAlreadyInUseFailureHasItsOwnMessage() {
-        assertEquals(R.string.error_auth_credential_in_use, authStringResource("AUTH.CREDENTIAL_ALREADY_IN_USE"))
+        assertEquals(R.string.error_auth_credential_in_use, uiMessageStringResource("AUTH.CREDENTIAL_ALREADY_IN_USE"))
     }
 
     @Test
     fun aDeniedAccountOperationHasItsOwnMessage() {
-        assertEquals(R.string.error_auth_permission_denied, authStringResource("AUTH.PERMISSION_DENIED"))
+        assertEquals(R.string.error_auth_permission_denied, uiMessageStringResource("AUTH.PERMISSION_DENIED"))
     }
 
     @Test

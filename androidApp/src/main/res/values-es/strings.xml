@@ -42,7 +42,6 @@
     <string name="error_edit_not_allowed">Ya no se puede cambiar el kilometraje inicial.</string>
     <string name="error_duplicate_vehicle_name">Ya existe otro vehículo con este nombre.</string>
     <string name="error_no_changes">No hay cambios que guardar.</string>
-    <string name="error_vehicle_deleted">Este vehículo se ha eliminado.</string>
     <string name="error_persistence">No se ha podido guardar el cambio en este dispositivo. Inténtalo de nuevo.</string>
     <string name="error_restore">No se ha podido recuperar la copia. Tus datos locales siguen disponibles.</string>
     <string name="error_unexpected">Algo ha salido mal. Inténtalo de nuevo.</string>
@@ -56,7 +55,7 @@
     <string name="backup_status_retry">Reintentar copia</string>
     <string name="backup_status_description">Estado de la copia: %1$s</string>
     <string name="error_auth_cancelled">Se ha cancelado el inicio de sesión. Puedes intentarlo de nuevo.</string>
-    <string name="error_auth_network">Necesitas conexión para iniciar sesión. Inténtalo cuando vuelvas a tener red.</string>
+    <string name="error_auth_network">Esta acción necesita conexión. Inténtalo de nuevo cuando vuelvas a tener red.</string>
     <string name="error_auth_provider">Este proveedor de inicio de sesión aún no está configurado.</string>
     <string name="add_fuel_entry">Nueva recarga</string>
     <string name="create_fuel_entry_title">Nueva recarga</string>

@@ -7,7 +7,7 @@ import kotlin.test.assertNotEquals
 class AuthMessageResourceTest {
     @Test
     fun anUnclassifiedAuthFailureDoesNotClaimTheProviderIsUnconfigured() {
-        val resource = authStringResource("AUTH.UNKNOWN")
+        val resource = uiMessageStringResource("AUTH.UNKNOWN")
 
         assertNotEquals(R.string.error_auth_provider, resource)
         assertEquals(R.string.error_unexpected, resource)
@@ -15,12 +15,12 @@ class AuthMessageResourceTest {
 
     @Test
     fun anUnavailableProviderKeepsItsOwnMessage() {
-        assertEquals(R.string.error_auth_provider, authStringResource("AUTH.PROVIDER_UNAVAILABLE"))
+        assertEquals(R.string.error_auth_provider, uiMessageStringResource("AUTH.PROVIDER_UNAVAILABLE"))
     }
 
     @Test
     fun aDeviceWithoutAnAvailableAccountGetsItsOwnMessageInsteadOfTheGenericOne() {
-        val resource = authStringResource("AUTH.NO_ACCOUNT_AVAILABLE")
+        val resource = uiMessageStringResource("AUTH.NO_ACCOUNT_AVAILABLE")
 
         assertEquals(
             R.string.error_auth_no_account,
@@ -33,7 +33,7 @@ class AuthMessageResourceTest {
     fun aStaleLoginGetsTheReauthenticationMessage() {
         assertEquals(
             R.string.error_auth_requires_recent_login,
-            authStringResource("AUTH.REQUIRES_RECENT_LOGIN"),
+            uiMessageStringResource("AUTH.REQUIRES_RECENT_LOGIN"),
         )
     }
 
@@ -41,7 +41,7 @@ class AuthMessageResourceTest {
     fun aRemoteAccountDeletionFailureGetsItsOwnMessage() {
         assertEquals(
             R.string.error_account_deletion_remote_failed,
-            authStringResource("AUTH.ACCOUNT_DELETION_REMOTE_FAILED"),
+            uiMessageStringResource("AUTH.ACCOUNT_DELETION_REMOTE_FAILED"),
         )
     }
 }

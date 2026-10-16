@@ -22,7 +22,10 @@ class UiMessageStringsTest {
 
     @Test
     fun onlyTheUnclassifiedFailuresRenderTheGenericCopy() {
-        val generic = UI_MESSAGE_TABLE.keys.filter { code -> uiMessageStringResource(code) == R.string.error_unexpected }
+        val generic =
+            UI_MESSAGE_TABLE.keys.filter { code ->
+                uiMessageStringResource(code) == R.string.error_unexpected
+            }
 
         assertEquals(
             setOf("AUTH.UNKNOWN", "UNEXPECTED"),
