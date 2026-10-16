@@ -492,6 +492,12 @@ private fun SettingsActionRow(
 internal object SettingsTestTags {
     const val ENTRY = "settings_entry"
     const val SCREEN = "settings_screen"
+    const val LINK_ACCOUNT_ROW = "settings_link_account_row"
+    const val LINK_ACCOUNT_GOOGLE = "settings_link_account_google"
+    const val LINK_ACCOUNT_PROGRESS = "settings_link_account_progress"
+    const val CONVERSION_DIALOG = "settings_conversion_dialog"
+    const val CONVERSION_CONFIRM = "settings_conversion_confirm"
+    const val CONVERSION_CANCEL = "settings_conversion_cancel"
     const val BACK = "settings_back"
     const val ERROR = "settings_error"
     const val DISMISS_ERROR = "settings_dismiss_error"
