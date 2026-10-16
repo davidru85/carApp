@@ -121,6 +121,7 @@ internal data class GoogleSignInActions(
 internal class AndroidGoogleSignInCoordinator(
     private val acquireCredential: suspend () -> GoogleCredentialAcquisition,
     private val startPermanentSignIn: (AuthProvider) -> Unit,
+    private val startAccountConversion: (AuthProvider) -> Unit,
     private val completeGoogleSignIn: (String, String?) -> Unit,
     private val failSignIn: (NativeSignInFailure) -> Unit,
     private val setAcquisitionInFlight: (Boolean) -> Unit,
@@ -128,6 +129,11 @@ internal class AndroidGoogleSignInCoordinator(
     /** F-1 permanent sign-in: the picker path behind `startPermanentSignIn`. */
     suspend fun signIn() {
         acquireAndComplete(startPermanentSignIn)
+    }
+
+    /** `E4-05` account conversion: the same picker path behind `startAccountConversion`. */
+    suspend fun convert() {
+        acquireAndComplete(startAccountConversion)
     }
 
     /**

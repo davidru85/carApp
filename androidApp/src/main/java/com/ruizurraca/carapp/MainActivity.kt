@@ -363,6 +363,7 @@ private fun rememberGoogleSignIn(
             AndroidGoogleSignInCoordinator(
                 acquireCredential = acquireGoogleCredential,
                 startPermanentSignIn = sessionStateHolder::startPermanentSignIn,
+                startAccountConversion = sessionStateHolder::startAccountConversion,
                 completeGoogleSignIn = sessionStateHolder::completeGoogleSignIn,
                 failSignIn = sessionStateHolder::failSignIn,
                 setAcquisitionInFlight = { inFlight -> acquisitionInFlight = inFlight },
@@ -386,7 +387,7 @@ private fun rememberGoogleSignIn(
         // Undispatched for the same reason as `reauthenticate`.
         convert = {
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                coordinator.acquireAndComplete(sessionStateHolder::startAccountConversion)
+                coordinator.convert()
             }
         },
     )

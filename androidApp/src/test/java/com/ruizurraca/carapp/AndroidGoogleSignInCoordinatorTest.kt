@@ -16,6 +16,7 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -39,6 +40,7 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Failure(NativeSignInFailure.NETWORK)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { _, _ -> calls += "complete" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -67,6 +69,7 @@ class AndroidGoogleSignInCoordinatorTest {
                     GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
                 },
                 startPermanentSignIn = { provider -> calls += "start:$provider" },
+                startAccountConversion = { provider -> calls += "convert:$provider" },
                 completeGoogleSignIn = { _, _ -> calls += "complete" },
                 failSignIn = { failure -> calls += "fail:$failure" },
                 setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -95,6 +98,7 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Success(idToken = "fresh-id-token", accessToken = null)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -123,6 +127,7 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Failure(NativeSignInFailure.CANCELLED)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { _, _ -> calls += "complete" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
@@ -156,12 +161,13 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
                 )
 
-            coordinator.acquireAndComplete { provider -> calls += "convert:$provider" }
+            coordinator.convert()
 
             assertEquals(
                 listOf("convert:${AuthProvider.GOOGLE}", "inFlight:true", "inFlight:false", "complete:id-token:null"),
@@ -179,12 +185,13 @@ class AndroidGoogleSignInCoordinatorTest {
                         GoogleCredentialAcquisition.Failure(NativeSignInFailure.CANCELLED)
                     },
                     startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    startAccountConversion = { provider -> calls += "convert:$provider" },
                     completeGoogleSignIn = { _, _ -> calls += "complete" },
                     failSignIn = { failure -> calls += "fail:$failure" },
                     setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
                 )
 
-            coordinator.acquireAndComplete { provider -> calls += "convert:$provider" }
+            coordinator.convert()
 
             assertEquals(
                 listOf(
