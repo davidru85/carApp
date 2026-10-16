@@ -707,7 +707,17 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-213 | Wait for sync on the pending-sync prompt | Waiting withdraws the sign-out and requests a sync cycle; the user signs out again once the pending rows have synced. | Accepted |
 | D-214 | Departure progress and failure surface | A dedicated host screen shows departure progress, its typed failure and the retry whenever a departure is running or has an unfinished part. | Accepted |
 | D-215 | Settings session rows per phase | A permanent account sees "Sign out" and "Delete account"; a local or anonymous owner sees one "Delete local data" row. | Accepted |
+| D-216 | Android automated accessibility checks | Android UI tests run the Accessibility Test Framework through the Compose BOM-managed `ui-test-junit4-accessibility` artifact. | Accepted |
+| D-217 | iOS automated accessibility audit | iOS UI tests run the XCTest accessibility audit on every audited screen where the runtime supports it, with a documented allowlist. | Accepted |
+| D-218 | iOS meaning of 200% text | The iOS 200% font-size requirement is tested at the AX3 content size category. | Accepted |
+| D-219 | `AppError` copy granularity | Every `AppError` code maps to copy for its user-actionable outcome through an explicit, tested table; codes share copy only where the table says so. | Accepted |
+| D-220 | Host message-mapping exhaustiveness | An executable contract assertion proves that every error, confirmation and information code has an explicit mapping on both hosts. | Accepted |
+| D-221 | Executable text rules | Executable checks enforce that `UiState` carries no user-facing text and that hosts contain no hardcoded user-facing strings outside allowlisted Debug surfaces. | Accepted |
+| D-222 | Locale-aware number and currency display | Numbers and currency amounts are displayed with the device locale's separators and currency placement; the exact arithmetic is unchanged. | Accepted |
+| D-223 | Contrast scope | WCAG AA contrast is met by fixing each failure the accessibility audits measure on the current themes. | Accepted |
 | D-224 | Account-link row while `LOCAL` | The account-link row is hidden until the session is anonymous. | Accepted |
+| D-225 | `E4-02` screen-reader audit scope | The TalkBack and VoiceOver audit of `E4-02` covers F-1 to F-3, Settings, the departure screens and the account-conversion surface. | Accepted |
+| D-226 | Screen-reader acceptance method | Screen-reader acceptance combines the agent's emulator and simulator evidence with an owner-run device walkthrough. | Accepted |
 | D-227 | Credential-collision cancellation | Cancelling a displayed credential collision is `clearMessage()`; nothing is replaced and the anonymous session is kept. | Accepted |
 | D-228 | Account conversion interruption hazards | The two `E2-04` interruption hazards reachable through the `E4-05` surface are accepted residual risks, fixed by the correctness follow-up story `E2-10`. | Accepted |
 

@@ -221,7 +221,17 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-213 | [ADR-0214](0214-make-wait-for-sync-withdraw-the-sign-out-and-request-a-cycle.md) | Make "wait for sync" withdraw the sign-out and request a sync cycle. | Accepted |
 | D-214 | [ADR-0215](0215-render-departure-progress-and-failure-at-the-root-route.md) | Render departure progress, failure and retry on a root-level host screen. | Accepted |
 | D-215 | [ADR-0216](0216-show-the-session-rows-per-session-phase.md) | Show the Settings session rows per session phase. | Accepted |
+| D-216 | [ADR-0217](0217-check-android-accessibility-with-the-compose-accessibility-test-framework.md) | Check Android accessibility with the Compose Accessibility Test Framework artifact. | Accepted |
+| D-217 | [ADR-0218](0218-audit-ios-accessibility-with-xctest-on-ios-17.md) | Audit iOS accessibility with the XCTest audit on an iOS 17 or later runtime. | Accepted |
+| D-218 | [ADR-0219](0219-test-ios-200-percent-text-at-accessibility-xl.md) | Test the iOS 200% text requirement at the AX3 content size category. | Accepted |
+| D-219 | [ADR-0220](0220-map-app-error-copy-per-user-actionable-outcome.md) | Map `AppError` copy per user-actionable outcome through an explicit tested table. | Accepted |
+| D-220 | [ADR-0221](0221-check-host-message-mapping-completeness-in-the-contract-check.md) | Check host message-mapping completeness in the contract check. | Accepted |
+| D-221 | [ADR-0222](0222-make-the-ui-text-rules-executable.md) | Make the no-text-in-`UiState` and no-hardcoded-strings rules executable. | Accepted |
+| D-222 | [ADR-0223](0223-format-numbers-and-currency-with-platform-locale-formatters.md) | Format numbers and currency with the platform locale formatters. | Accepted |
+| D-223 | [ADR-0224](0224-fix-only-measured-wcag-aa-contrast-failures.md) | Fix only the WCAG AA contrast failures the audits measure. | Accepted |
 | D-224 | [ADR-0225](0225-hide-the-account-link-row-while-the-owner-is-local.md) | Hide the account-link row while the owner is local. | Accepted |
+| D-225 | [ADR-0226](0226-extend-the-e4-02-screen-reader-audit-to-the-bundle-screens.md) | Extend the `E4-02` screen-reader audit to Settings, the departure screens and the conversion surface. | Accepted |
+| D-226 | [ADR-0227](0227-combine-agent-evidence-with-an-owner-screen-reader-walkthrough.md) | Combine the agent's emulator and simulator evidence with an owner-run screen-reader walkthrough. | Accepted |
 | D-227 | [ADR-0228](0228-cancel-the-credential-collision-through-clear-message.md) | Cancel the credential collision through `clearMessage()`. | Accepted |
 | D-228 | [ADR-0229](0229-defer-the-account-conversion-interruption-hazards.md) | Defer the account conversion interruption hazards to a follow-up story. | Accepted |
 
