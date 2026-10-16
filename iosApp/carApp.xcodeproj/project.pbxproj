@@ -12,6 +12,7 @@
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
 		0EF433FA8D4B3A25B59529C5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
 		1132B312C49E6B6844B3934B /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 8EB8A37AF599C28041EB55CA /* es.lproj */; };
+		15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
 		33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */; };
@@ -27,12 +28,14 @@
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
 		7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */; };
 		71B2BC3A80BE759D783D438F /* OnboardingRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */; };
+		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */; };
 		920755EF8BDC39E70A00581B /* SyncStatusVisual.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */; };
 		93C089A2C96E7E5816107AC5 /* NativeSignInFailureMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */; };
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
+		A596AB5ED1CA24A8BC2151B2 /* SettingsPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87243F51351B46DEF5827671 /* SettingsPresentation.swift */; };
 		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
 		B60291A05FD5B3F2CBAE944E /* AnonymousReminderCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */; };
 		BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */; };
@@ -44,6 +47,8 @@
 		CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */; };
 		CF76E2866B20727B645FBF18 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D0012A49F50A57958DB6A615 /* GoogleSignIn */; };
 		CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */; };
+		CFABAA31B66085D6DBBD92EA /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA444957D2C856A4395A3F80 /* AppVersion.swift */; };
+		D19C2E053761C52C87350EF4 /* DeparturePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */; };
 		DE83D9D20C346925BE98EFD7 /* NativeSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386580F3F32E7C04067DEE4E /* NativeSignIn.swift */; };
 		E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */; };
 		E40D8982412D833C47095BAF /* AnonymousReminderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */; };
@@ -51,6 +56,7 @@
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
 		EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 90CED6835AA58C9424996B48 /* en.lproj */; };
 		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
+		F832F62E1DCDA93481252412 /* AppVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979D67C50BB47615E2A81B98 /* AppVersionTests.swift */; };
 		F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */; };
 		FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */; };
 /* End PBXBuildFile section */
@@ -78,6 +84,7 @@
 		13677EB163BA55FAE43164CE /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
 		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
+		2990EC393011D730A1640108 /* SettingsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentationTests.swift; sourceTree = "<group>"; };
 		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
 		2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = carAppApp.swift; sourceTree = "<group>"; };
 		2D997286223049D1A5F7AA30 /* carAppUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,11 +99,13 @@
 		4B75BD49AED901E7C93582F7 /* carAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingRouteTests.swift; sourceTree = "<group>"; };
 		54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisualTests.swift; sourceTree = "<group>"; };
+		5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePresentation.swift; sourceTree = "<group>"; };
 		586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInFailureMappingTests.swift; sourceTree = "<group>"; };
 		76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
 		83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderCopyTests.swift; sourceTree = "<group>"; };
 		8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowUITests.swift; sourceTree = "<group>"; };
+		87243F51351B46DEF5827671 /* SettingsPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentation.swift; sourceTree = "<group>"; };
 		88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAndFuelFlowUITests.swift; sourceTree = "<group>"; };
 		8B4DDF68481A819B505F8816 /* ViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels.swift; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
@@ -107,11 +116,14 @@
 		950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
 		95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisual.swift; sourceTree = "<group>"; };
 		96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayTests.swift; sourceTree = "<group>"; };
+		979D67C50BB47615E2A81B98 /* AppVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionTests.swift; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWaitPolicyTests.swift; sourceTree = "<group>"; };
 		AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWait.swift; sourceTree = "<group>"; };
 		AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTrackingTests.swift; sourceTree = "<group>"; };
 		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
+		BA444957D2C856A4395A3F80 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
+		EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePresentationTests.swift; sourceTree = "<group>"; };
 		F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnonymousReminderView.swift; sourceTree = "<group>"; };
 		F7BD4918D057DEA4C8FB450F /* carApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = carApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTracking.swift; sourceTree = "<group>"; };
@@ -188,11 +200,14 @@
 			children = (
 				83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */,
 				950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */,
+				979D67C50BB47615E2A81B98 /* AppVersionTests.swift */,
 				96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */,
+				EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */,
 				6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */,
 				5447EC3A84AB582F56118C83 /* OnboardingRouteTests.swift */,
 				278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */,
 				AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */,
+				2990EC393011D730A1640108 /* SettingsPresentationTests.swift */,
 				54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */,
 				48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */,
 				3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */,
@@ -205,8 +220,10 @@
 			children = (
 				F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */,
 				15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */,
+				BA444957D2C856A4395A3F80 /* AppVersion.swift */,
 				2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */,
 				9E4EF4FF64EF14187A25E413 /* ContentView.swift */,
+				5770F61A6CAFB0EC99A44661 /* DeparturePresentation.swift */,
 				76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */,
 				90CED6835AA58C9424996B48 /* en.lproj */,
 				8EB8A37AF599C28041EB55CA /* es.lproj */,
@@ -216,6 +233,7 @@
 				33485CD8468B0FE42AC9A0DE /* Onboarding.swift */,
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
 				FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */,
+				87243F51351B46DEF5827671 /* SettingsPresentation.swift */,
 				3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */,
 				95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */,
 				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
@@ -387,12 +405,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				B60291A05FD5B3F2CBAE944E /* AnonymousReminderCopyTests.swift in Sources */,
+				F832F62E1DCDA93481252412 /* AppVersionTests.swift in Sources */,
 				03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */,
 				4574B2C277CFECABD17272D5 /* CalendarDayTests.swift in Sources */,
+				15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */,
 				93C089A2C96E7E5816107AC5 /* NativeSignInFailureMappingTests.swift in Sources */,
 				71B2BC3A80BE759D783D438F /* OnboardingRouteTests.swift in Sources */,
 				1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */,
 				CA71C8F7CBC028CBA705143E /* SceneBackgroundTrackingTests.swift in Sources */,
+				779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */,
 				33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */,
 				5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */,
 				CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */,
@@ -405,7 +426,9 @@
 			files = (
 				E40D8982412D833C47095BAF /* AnonymousReminderView.swift in Sources */,
 				C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */,
+				CFABAA31B66085D6DBBD92EA /* AppVersion.swift in Sources */,
 				8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */,
+				D19C2E053761C52C87350EF4 /* DeparturePresentation.swift in Sources */,
 				CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */,
 				0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */,
 				1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */,
@@ -413,6 +436,7 @@
 				0114D2546E157F273C216787 /* Onboarding.swift in Sources */,
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
 				BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */,
+				A596AB5ED1CA24A8BC2151B2 /* SettingsPresentation.swift in Sources */,
 				FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */,
 				920755EF8BDC39E70A00581B /* SyncStatusVisual.swift in Sources */,
 				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,

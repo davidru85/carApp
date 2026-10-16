@@ -41,6 +41,9 @@ targets:
       - path: AnonymousReminderView.swift
       - path: SyncStatusVisual.swift
       - path: SyncStatusIndicatorView.swift
+      - path: AppVersion.swift
+      - path: SettingsPresentation.swift
+      - path: DeparturePresentation.swift
       - path: en.lproj
         buildPhase: resources
       - path: es.lproj

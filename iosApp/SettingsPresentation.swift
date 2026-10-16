@@ -1,0 +1,40 @@
+import Foundation
+import Shared
+
+/// One account row of the Settings screen (`docs/SPECIFICATION.md §3.1`, `B1-D5`).
+enum SettingsSessionRow: Hashable {
+    case signOut
+    case deleteAccount
+    case deleteLocalData
+}
+
+/// The account rows a session phase is offered (`B1-D5`).
+///
+/// A permanent owner can sign out and delete the account. A local or anonymous identity exists only
+/// on this device (`D-156`), so its one row deletes the local data through `requestDeleteAccount()`
+/// and it has no sign-out (`docs/SPECIFICATION.md §7 F-5`). Without an active session there is
+/// nothing to leave. The anonymous-only "link account" row belongs to `E4-05`.
+func settingsSessionRows(for phase: SessionPhase) -> [SettingsSessionRow] {
+    // RED stub: settingsSessionRows
+    return []
+}
+
+/// The catalogue key naming a distance unit. Units are read-only in the MVP (`§3.1`).
+func distanceUnitLabelKey(_ unit: ModelDistanceUnit) -> String {
+    // RED stub: distanceUnitLabelKey
+    return ""
+}
+
+/// The catalogue key naming a volume unit. Units are read-only in the MVP (`§3.1`).
+func volumeUnitLabelKey(_ unit: ModelVolumeUnit) -> String {
+    // RED stub: volumeUnitLabelKey
+    return ""
+}
+
+/// A currency option: the platform's display name for the code in `locale`, followed by the code.
+/// `SettingsUiState` carries only the code (`docs/CONTRACTS.md §14`, `§15.3`), so the name comes from
+/// the platform. A code the platform cannot name is shown as the code alone.
+func currencyOptionLabel(code: String, locale: Locale) -> String {
+    // RED stub: currencyOptionLabel
+    return ""
+}

@@ -78,6 +78,44 @@ final class UiMessageMappingTests: XCTestCase {
         }
     }
 
+    /// `docs/CONTRACTS.md §11.5` step 1: a stale login suspends the deletion until the owner signs in
+    /// again, and the departure screen says so in both languages instead of the generic fallback.
+    func testAStaleLoginAsksTheOwnerToSignInAgain() {
+        XCTAssertEqual(
+            localizedUiMessage(for: "AUTH.REQUIRES_RECENT_LOGIN"),
+            String(localized: "error_auth_requires_recent_login")
+        )
+        let required = ["en": "sign in again", "es": "vuelve a iniciar sesión"]
+        for (language, phrase) in required {
+            XCTAssertTrue(
+                localizedCopy("error_auth_requires_recent_login", language: language).contains(phrase),
+                "The \(language) copy must contain \"\(phrase)\"."
+            )
+        }
+    }
+
+    /// `§20.10`: a server failure preserves local data and does not report the account as deleted.
+    func testARemoteDeletionFailureSaysTheDataIsStillOnThisDevice() {
+        XCTAssertEqual(
+            localizedUiMessage(for: "AUTH.ACCOUNT_DELETION_REMOTE_FAILED"),
+            String(localized: "error_account_deletion_remote_failed")
+        )
+        let required = ["en": "still on this device", "es": "siguen en este dispositivo"]
+        for (language, phrase) in required {
+            XCTAssertTrue(
+                localizedCopy("error_account_deletion_remote_failed", language: language).contains(phrase),
+                "The \(language) copy must contain \"\(phrase)\"."
+            )
+        }
+    }
+
+    /// The warning has its own sentence. The prompt states the exact count separately through
+    /// `pending_sync_body`, because `UiMessage` carries only the code (`D-157`).
+    func testThePendingSyncWarningHasItsOwnMessage() {
+        XCTAssertEqual(localizedUiMessage(for: "WARNING.PENDING_SYNC"), String(localized: "warning_pending_sync"))
+        XCTAssertNotEqual(localizedUiMessage(for: "WARNING.PENDING_SYNC"), String(localized: "error_unexpected"))
+    }
+
     private func localizedCopy(_ key: String, language: String) -> String {
         for candidate in [Bundle.main, Bundle(for: type(of: self))] {
             if

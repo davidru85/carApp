@@ -6,11 +6,18 @@ enum OnboardingDestination {
     case welcome
     case firstVehicle
     case vehicleList
+    /// The `B1-D4` departure screen: progress, the typed failure and its retry, and the
+    /// re-authentication a stale-login deletion waits for.
+    case departure
 }
 
+/// `showsDepartureScreen` is `requiresDepartureScreen(...)` evaluated over the published session
+/// state. It outranks every phase, because a failed departure step keeps whichever phase it failed in
+/// (`docs/CONTRACTS.md §20.10`).
 func resolveOnboardingDestination(
     sessionPhase: SessionPhase,
-    vehicleCount: Int
+    vehicleCount: Int,
+    showsDepartureScreen: Bool = false
 ) -> OnboardingDestination {
     switch sessionPhase {
     case .unknown, .deleting:

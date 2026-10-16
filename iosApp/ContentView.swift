@@ -17,7 +17,9 @@ struct ContentView: View {
 
     var body: some View {
         switch destination {
-        case .waiting:
+        case .waiting, .departure:
+            // The departure screen is mounted by a later E4-01 host step; until then it is the
+            // waiting indicator it always was.
             ProgressView()
         case .welcome:
             WelcomeView(
