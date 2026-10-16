@@ -1521,7 +1521,7 @@ Shared state holders:
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
-`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code. Each host renders a `UiMessage.code` through the `§14.1` table. The only text-typed fields a `UiState` may carry are listed in `§14.2`.
+`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code. Each host renders a `UiMessage.code` through the `§14.1` table. The only text-typed fields a `UiState` may carry are listed in `§14.2`. Host UI sources render no literal text (`§14.3`).
 
 Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status` from `SyncStateHolder`) observes the same `SyncController.status: StateFlow<SyncStatus>` flow. The values are eventually consistent and converge to the same `SyncStatus`. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
 
@@ -1653,6 +1653,21 @@ that no longer names such a field or that uses another kind (`{D-B1-D11}`).
 | `FuelEntryFormUiState.notes` | User-entered | The optional notes being typed. |
 | `SettingsUiState.currencyCode` | Currency code | The selected ISO 4217 code. |
 | `SettingsUiState.supportedCurrencyCodes` | Currency code | `SUPPORTED_CURRENCY_CODES` as ISO 4217 strings, in contract order. |
+
+### 14.3 Host literal text
+
+Host UI sources render text only through their catalogues. On Android no string literal reaches Compose
+`Text` (positional or `text =`), `contentDescription`, `stateDescription`, `onClickLabel`,
+`onLongClickLabel`, `paneTitle` or `showSnackbar`. On iOS no `Text(verbatim:)` is used, and every literal
+passed to a SwiftUI `LocalizedStringKey` initializer or modifier, to `String(localized:)`,
+`String.LocalizationValue` or `NSLocalizedString` is a catalogue key: lowercase snake_case with no
+interpolation. A value computed at run time, such as a user-entered vehicle name or a formatted number,
+is passed as a variable and is outside this textual rule; a composed string goes through a catalogue key
+with format arguments. The Debug-only diagnostics screen of `D-100`, `iosApp/DiagnosticsView.swift`, is
+the one allowlisted source, and it may be constructed only inside `#if DEBUG`. Android allowlists no
+source: its diagnostics screen is part of `MainActivity.kt` and renders values, not literals.
+`contract-check` assertion 44 enforces this section, and assertion 42 checks that every key a host
+references exists in both of its catalogues (`{D-B1-D11}`).
 
 ## 15. Platform Boundary Contract
 
@@ -2252,6 +2267,18 @@ Optional checks:
                 literals are masked before the parse, so KDoc and default values are not read as types. The table
                 is the allowlist, so a new text field in shared presentation state is a contract change reviewed
                 with its kind (`{D-B1-D11}`).
+                44. No host UI source passes literal text to a rendering API, as `§14.3` defines. On Android no string
+                    literal in `androidApp/src/main/java` reaches Compose `Text` (positional or `text =`),
+                    `contentDescription`, `stateDescription`, `onClickLabel`, `onLongClickLabel`, `paneTitle` or
+                    `showSnackbar`. In the top-level `iosApp/*.swift` sources no `Text(verbatim:)` appears, and every
+                    literal passed to a SwiftUI `LocalizedStringKey` initializer or modifier, to `String(localized:)`,
+                    `String.LocalizationValue` or `NSLocalizedString` is a lowercase snake_case key with no
+                    interpolation. Comments are masked before the scan. The Debug-only allowlist is explicit:
+                    `iosApp/DiagnosticsView.swift` (`D-100`) on iOS and no source on Android. An allowlisted source must
+                    exist, and every construction of an allowlisted iOS view outside its own file must sit inside an
+                    `#if DEBUG` branch that is not negated, joined by `||`, or an `#else`/`#elseif` branch, so the
+                    allowlist cannot exempt a production screen. Text computed at run time is outside this textual
+                    check (`{D-B1-D11}`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
