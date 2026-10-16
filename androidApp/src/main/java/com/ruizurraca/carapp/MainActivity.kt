@@ -81,6 +81,7 @@ import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleFormUiState
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListItemUi
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListStateHolder
 import com.ruizurraca.carapp.feature.vehicle.presentation.VehicleListUiState
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -117,6 +118,7 @@ internal class VehicleAppViewModel(
     val sessionStateHolder: SessionStateHolder = graph.sessionStateHolder(scope = viewModelScope)
     val vehicleListStateHolder: VehicleListStateHolder = graph.vehicleListStateHolder(scope = viewModelScope)
     val syncStateHolder: SyncStateHolder = graph.syncStateHolder(scope = viewModelScope)
+    val settingsStateHolder: SettingsStateHolder = graph.settingsStateHolder(scope = viewModelScope)
     private val formStateHolders = mutableMapOf<String, VehicleFormStateHolder>()
     private val fuelEntryListStateHolders = mutableMapOf<String, FuelEntryListStateHolder>()
     private val fuelEntryFormStateHolders = mutableMapOf<Pair<String, String?>, FuelEntryFormStateHolder>()
@@ -164,6 +166,7 @@ internal class VehicleAppViewModel(
         sessionStateHolder.close()
         vehicleListStateHolder.close()
         syncStateHolder.close()
+        settingsStateHolder.close()
     }
 
     companion object {
@@ -182,7 +185,9 @@ private fun VehicleApp(
 ) {
     val sessionState by viewModel.sessionStateHolder.state.collectAsState()
     val vehicleState by viewModel.vehicleListStateHolder.state.collectAsState()
-    val onGoogle = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
+    val googleSignIn = rememberGoogleSignIn(viewModel.sessionStateHolder, acquireGoogleCredential)
+    val reauthenticationInFlight =
+        rememberReauthenticationInFlight(viewModel.sessionStateHolder, sessionState.isBusy)
 
     // Launch and foreground return are the only evaluation moments of the D-62 schedule (§11.3).
     // The same edge is the §9.8 AppForeground trigger: the holder applies the background-duration
@@ -192,18 +197,29 @@ private fun VehicleApp(
         viewModel.syncStateHolder.onForegroundReturn(backgroundMillis)
     }
 
-    when (resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)) {
-        OnboardingDestination.WAITING,
-        OnboardingDestination.DEPARTURE,
-        -> {
+    // B1-D4: a departure owns the whole window while it runs, retains a step, hands over to the local
+    // clear or waits for re-authentication, because the authenticated `NavHost` is not its surface.
+    when (resolveRootDestination(sessionState, vehicleState.vehicles.size, reauthenticationInFlight.value)) {
+        OnboardingDestination.WAITING -> {
             WaitingIndicator()
         }
 
         OnboardingDestination.WELCOME -> {
             WelcomeScreen(
                 state = sessionState,
-                onGoogle = onGoogle,
+                onGoogle = googleSignIn.signIn,
                 onContinueWithoutAccount = viewModel.sessionStateHolder::startAnonymousSignIn,
+            )
+        }
+
+        OnboardingDestination.DEPARTURE -> {
+            DepartureRoute(
+                session = sessionState,
+                sessionStateHolder = viewModel.sessionStateHolder,
+                onReauthenticateWithGoogle = {
+                    reauthenticationInFlight.value = true
+                    googleSignIn.reauthenticate()
+                },
             )
         }
 
@@ -214,6 +230,17 @@ private fun VehicleApp(
                 viewModel = viewModel,
                 vehicleState = vehicleState,
                 anonymousReminderIndex = sessionState.anonymousReminderIndex,
+            )
+            // A failed deletion re-mounts the `NavHost` at the vehicle list, so the departure prompts
+            // live here, above it, instead of inside the Settings route.
+            SettingsSessionPrompts(
+                session = sessionState,
+                callbacks =
+                    sessionPromptCallbacks(
+                        session = viewModel.sessionStateHolder,
+                        sync = viewModel.syncStateHolder,
+                        phase = sessionState.phase,
+                    ),
             )
         }
     }
@@ -251,6 +278,7 @@ private fun AuthenticatedApp(
             ) {
                 vehicleRoutes(navController, viewModel)
                 fuelEntryRoutes(navController, viewModel)
+                settingsRoute(navController, viewModel)
             }
             when (gate) {
                 VehicleListGate.WAITING -> {
@@ -325,7 +353,7 @@ private fun UnreadableVehicleList(onRetry: () -> Unit) {
 private fun rememberGoogleSignIn(
     sessionStateHolder: SessionStateHolder,
     acquireGoogleCredential: suspend () -> GoogleCredentialAcquisition,
-): () -> Unit {
+): GoogleSignInActions {
     val scope = rememberCoroutineScope()
     var acquisitionInFlight by rememberSaveable { mutableStateOf(false) }
     val coordinator =
@@ -343,7 +371,16 @@ private fun rememberGoogleSignIn(
         if (acquisitionInFlight) coordinator.abandonInterruptedAcquisition()
     }
 
-    return { scope.launch { coordinator.signIn() } }
+    return GoogleSignInActions(
+        signIn = { scope.launch { coordinator.signIn() } },
+        reauthenticate = {
+            // Undispatched, so `startReauthentication` has made the session busy before this returns:
+            // the host's in-flight flag must never observe its own start as an already idle session.
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                coordinator.acquireAndComplete(sessionStateHolder::startReauthentication)
+            }
+        },
+    )
 }
 
 @Composable
@@ -367,6 +404,7 @@ private fun NavGraphBuilder.vehicleRoutes(
             onOpen = { vehicleId -> navController.navigate(VehicleRoutes.detail(vehicleId)) },
             showDiagnostics = viewModel.isDebugBuild,
             onDiagnostics = { navController.navigate(VehicleRoutes.SYNC_DIAGNOSTICS) },
+            onSettings = { navController.navigate(VehicleRoutes.SETTINGS) },
         )
     }
     composable(VehicleRoutes.SYNC_DIAGNOSTICS) {
@@ -561,6 +599,7 @@ private fun VehicleListScreen(
     onOpen: (String) -> Unit,
     showDiagnostics: Boolean,
     onDiagnostics: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     val state by stateHolder.state.collectAsState()
     val syncState by syncStateHolder.state.collectAsState()
@@ -569,6 +608,12 @@ private fun VehicleListScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.vehicle_list_title)) },
                 actions = {
+                    TextButton(
+                        onClick = onSettings,
+                        modifier = Modifier.testTag(SettingsTestTags.ENTRY),
+                    ) {
+                        Text(stringResource(R.string.settings_title))
+                    }
                     if (showDiagnostics) {
                         TextButton(onClick = onDiagnostics) {
                             Text(stringResource(R.string.sync_diagnostics))
@@ -1221,6 +1266,7 @@ internal object VehicleRoutes {
     const val FUEL_CREATE = "vehicles/{$VEHICLE_ID}/fuel/create"
     const val FUEL_EDIT = "vehicles/{$VEHICLE_ID}/fuel/{$ENTRY_ID}/edit"
     const val SYNC_DIAGNOSTICS = "debug/sync"
+    const val SETTINGS = "settings"
 
     fun edit(vehicleId: String): String = "vehicles/edit/$vehicleId"
 

@@ -46,6 +46,10 @@ class PlatformHostContractTest {
         assertTrue(application.contains("AndroidAppGraph.install(this)"))
         assertTrue(host.contains("graph.vehicleListStateHolder(scope = viewModelScope)"))
         assertTrue(host.contains("graph.vehicleFormStateHolder(scope = viewModelScope, vehicleId = vehicleId)"))
+        // `E4-01`: the Settings holder is bound to the same process-scoped graph and released with the
+        // Activity's other holders, never by closing the graph.
+        assertTrue(host.contains("graph.settingsStateHolder(scope = viewModelScope)"))
+        assertTrue(host.contains("settingsStateHolder.close()"))
         assertTrue(host.contains("NavHost("))
         assertTrue(host.contains("VehicleRoutes.LIST"))
         assertTrue(host.contains("VehicleRoutes.CREATE"))

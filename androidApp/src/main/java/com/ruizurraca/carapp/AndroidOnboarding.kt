@@ -106,6 +106,17 @@ internal sealed interface GoogleCredentialAcquisition {
     ) : GoogleCredentialAcquisition
 }
 
+/**
+ * The native Google picker entry points the Android host offers. Each runs the one
+ * [AndroidGoogleSignInCoordinator.acquireAndComplete] path behind its own shared start intent, so
+ * re-authentication is not a second sign-in path (`docs/CONTRACTS.md §20.10`). `E4-05` adds the
+ * account-conversion entry the same way.
+ */
+internal data class GoogleSignInActions(
+    val signIn: () -> Unit,
+    val reauthenticate: () -> Unit,
+)
+
 internal class AndroidGoogleSignInCoordinator(
     private val acquireCredential: suspend () -> GoogleCredentialAcquisition,
     private val startPermanentSignIn: (AuthProvider) -> Unit,

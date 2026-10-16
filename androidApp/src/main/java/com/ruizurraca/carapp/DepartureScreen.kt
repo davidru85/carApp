@@ -15,6 +15,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -175,6 +179,51 @@ internal object DepartureTestTags {
     const val CANCEL_REAUTHENTICATION = "departure_cancel_reauthentication"
 
     fun reauthenticate(provider: AuthProvider): String = "departure_reauthenticate_${provider.name.lowercase()}"
+}
+
+/**
+ * Binds [DepartureScreen] to the session holder at the root (B1-D4). Cancelling re-authentication is
+ * the contract's "cancelled re-authentication" (`docs/CONTRACTS.md §20.10`): it opens the attempt and
+ * reports it cancelled, which abandons the deletion without touching local data — the sequence of the
+ * shared test `cancellingReauthenticationAbandonsTheDeletionWithoutClearingLocalData`. `clearMessage()`
+ * alone would leave the deletion pending and every later departure request silently refused.
+ */
+@Composable
+internal fun DepartureRoute(
+    session: SessionUiState,
+    sessionStateHolder: SessionStateHolder,
+    onReauthenticateWithGoogle: () -> Unit,
+) {
+    DepartureScreen(
+        session = session,
+        onRetry = sessionStateHolder::retryDeparture,
+        onDismissMessage = sessionStateHolder::clearMessage,
+        // Android offers Google only (F-1), so every offered provider opens the Google picker.
+        onReauthenticate = { _ -> onReauthenticateWithGoogle() },
+        onCancelReauthentication = {
+            sessionStateHolder.startReauthentication(AuthProvider.GOOGLE)
+            sessionStateHolder.failSignIn(NativeSignInFailure.CANCELLED)
+        },
+    )
+}
+
+/**
+ * The host's `isReauthenticating` flag. `SessionUiState` has no "awaiting re-authentication" value, so
+ * the host remembers that it started an attempt and keeps the departure surface mounted until the
+ * session is no longer busy ([isReauthenticationStillInFlight]). It reads the holder's current value,
+ * not the collected one, because the collected state can lag one frame behind the synchronous
+ * `startReauthentication` call that made the session busy.
+ */
+@Composable
+internal fun rememberReauthenticationInFlight(
+    sessionStateHolder: SessionStateHolder,
+    isBusy: Boolean,
+): MutableState<Boolean> {
+    val inFlight = rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(inFlight.value, isBusy) {
+        inFlight.value = isReauthenticationStillInFlight(inFlight.value, sessionStateHolder.state.value)
+    }
+    return inFlight
 }
 
 /**
