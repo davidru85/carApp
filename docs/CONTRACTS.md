@@ -408,7 +408,7 @@ Public use cases and repositories return `Outcome<T, AppError>` or `Flow<Outcome
 
 `kotlin.Result` and exceptions-as-control-flow are FORBIDDEN in public signatures. Arrow MUST NOT be added without an ADR.
 
-`AppError` is a `sealed interface`; every leaf is a `data class` or `data object` carrying a stable `code` (§20). Presentation MUST handle it with an exhaustive `when` and MUST NOT use an `else` branch. Retry and poison decisions are made on `code`, never on a message string.
+`AppError` is a `sealed interface`; every leaf is a `data class` or `data object` carrying a stable `code` (§20). Presentation MUST handle it with an exhaustive `when` and MUST NOT use an `else` branch. A platform host is the one exception, because it receives `UiMessage.code` (§20.10), a `String`, and no compiler can prove a `when` or `switch` over a `String` exhaustive: each host maps that code through its single mapping source of `§14.1`, which holds one explicit branch per code, and MAY end in an `else` or `default` branch only as an unreachable safety net that resolves to the generic `error_unexpected` copy. `contract-check` assertion 41 fails when either host lacks an explicit branch for any `AppError` leaf code, `CONFIRMATION.<entry>` or `INFO.*` code, so the safety net never stands in for a missing mapping (`{D-B1-D10}`). Retry and poison decisions are made on `code`, never on a message string.
 
 ### Categories
 
@@ -2184,6 +2184,19 @@ Optional checks:
     and `android.permission.ACCESS_ADSERVICES_TOPICS`; iOS disables IDFV collection (`D-203`).
     Assertion 38 enforces the no-IDFA SwiftPM product in both the source specification and the
     generated Xcode project. Each privacy setting and permission-removal rule has a failing fixture.
+    41. Every `UiMessage.code` the shared layer can publish has an explicit, single-code mapping on both
+        hosts and a row in the `§14.1` table. The code set is parsed from the sources that define it: each
+        `override val code` of `AppError.kt`, `CONFIRMATION.<entry>` for each `Confirmation` entry, and each
+        `INFO.*` string literal of the production Kotlin sources of `:shared`, the feature modules and the
+        core modules. `uiMessageStringResource` in
+        `androidApp/src/main/java/com/ruizurraca/carapp/UiMessageStrings.kt` and `uiMessageKey` in
+        `iosApp/UiMessageMapping.swift` each hold one branch per code; a commented-out branch, or one that
+        names two codes, does not count. The two hosts and the table name the same key for every code, no
+        branch or row names a code that no source defines, no code is mapped twice, each mapped key exists
+        in both catalogues of its host and carries no format argument, both fallbacks resolve to
+        `error_unexpected`, and `UiMessageStringsTest.kt` and `UiMessageMappingTests.swift` name every
+        code. Neither compiler can prove a `when` or `switch` over a `String` exhaustive, so this assertion
+        is what keeps the `§6` safety net unreachable (`{D-B1-D10}`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
