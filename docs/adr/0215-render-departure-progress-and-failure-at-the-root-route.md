@@ -48,6 +48,20 @@ are added only if the routing input changes; the routing itself is host code.
 - The departure screen contains no departure logic: it renders `SessionUiState` and calls existing
   intents.
 
+The departure surface also carries `§20.10` re-authentication on both hosts: the root routes a
+`PERMANENT` session whose message is `AUTH.REQUIRES_RECENT_LOGIN`, and a re-authentication attempt
+the host tracks itself (`SessionUiState` has no such value), to it, so the native picker's result
+arrives while it is mounted; it offers only the session's providers the host can open natively, and
+its cancel calls `startReauthentication(provider)` followed by
+`failSignIn(NativeSignInFailure.CANCELLED)`. On Android the host renders the remaining session
+departure prompts — the pending-sync warning, the two destructive confirmations and `ERROR`-kind
+departure failures — at the root of the authenticated branch rather than inside Settings: a failed
+account deletion returns the phase to `PERMANENT`, which re-mounts the `NavHost` at the vehicle list,
+so a prompt drawn only by the Settings route would be unreachable. Only `ERROR` messages are raised as
+failures, because a failed guest sign-in publishes a `WARNING`. A permanent deletion whose durable
+marker cannot be written stays `DELETING` with no retry until relaunch; that residual risk is
+recorded in the `E4-01` handoff.
+
 ## Verification
 
 - Android component tests over `DepartureScreen` and the routing function; iOS tests over the
