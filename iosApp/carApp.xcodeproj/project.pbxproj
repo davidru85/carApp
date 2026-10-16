@@ -12,7 +12,6 @@
 		0AA2252C979A8A9670F49FAA /* FuelEntryCalendarDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */; };
 		0EF433FA8D4B3A25B59529C5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D5592966EFE660C6BBBA6814 /* GoogleSignIn */; };
 		108BBE054E138D58DB52BCDC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DF7A56E87D9090EED34A1AB /* SettingsView.swift */; };
-		1132B312C49E6B6844B3934B /* es.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 8EB8A37AF599C28041EB55CA /* es.lproj */; };
 		15417C7BC54ABA78C07BEAE0 /* DeparturePresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */; };
 		1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */; };
 		1F55168FDA9EC9FE2162F8D8 /* FuelEntryFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */; };
@@ -52,6 +51,7 @@
 		C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */; };
 		CA71C8F7CBC028CBA705143E /* SceneBackgroundTrackingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */; };
 		CB2113D4C00A9FA352FDCDBF /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */; };
+		CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 76D6203141B99DECA8D14A86 /* Localizable.strings */; };
 		CF76E2866B20727B645FBF18 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D0012A49F50A57958DB6A615 /* GoogleSignIn */; };
 		CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */; };
 		CFABAA31B66085D6DBBD92EA /* AppVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA444957D2C856A4395A3F80 /* AppVersion.swift */; };
@@ -62,7 +62,6 @@
 		E40D8982412D833C47095BAF /* AnonymousReminderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */; };
 		EADFBE09EEEA65FC7BA8498A /* VehicleDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */; };
 		EB7147A26272A7B2C29F97D4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFC5898F3BD999E550ABDB6E /* FirebaseCore */; };
-		EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 90CED6835AA58C9424996B48 /* en.lproj */; };
 		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
 		F31BB6BAD712492DE2273FD9 /* NativeSignInCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */; };
 		F832F62E1DCDA93481252412 /* AppVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979D67C50BB47615E2A81B98 /* AppVersionTests.swift */; };
@@ -89,6 +88,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0046B86E946AAC2C64B7BBD1 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		031ADEB88F21C6B5651E9D8F /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
 		13677EB163BA55FAE43164CE /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
@@ -126,14 +126,13 @@
 		8B4DDF68481A819B505F8816 /* ViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels.swift; sourceTree = "<group>"; };
 		8CA750BBA90A4B95A0D90785 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
-		8EB8A37AF599C28041EB55CA /* es.lproj */ = {isa = PBXFileReference; path = es.lproj; sourceTree = "<group>"; };
 		8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryFormView.swift; sourceTree = "<group>"; };
-		90CED6835AA58C9424996B48 /* en.lproj */ = {isa = PBXFileReference; path = en.lproj; sourceTree = "<group>"; };
 		93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarAppKeychainPersistenceUITests.swift; sourceTree = "<group>"; };
 		950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInNonceTests.swift; sourceTree = "<group>"; };
 		95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusVisual.swift; sourceTree = "<group>"; };
 		96A5AACFC4AAFF0BD5E0A290 /* CalendarDayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDayTests.swift; sourceTree = "<group>"; };
 		979D67C50BB47615E2A81B98 /* AppVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionTests.swift; sourceTree = "<group>"; };
+		9BF7D473CE0D10A2A16535D3 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9E4EF4FF64EF14187A25E413 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWaitPolicyTests.swift; sourceTree = "<group>"; };
 		AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWait.swift; sourceTree = "<group>"; };
@@ -179,6 +178,7 @@
 			isa = PBXGroup;
 			children = (
 				13677EB163BA55FAE43164CE /* Signing.xcconfig */,
+				76D6203141B99DECA8D14A86 /* Localizable.strings */,
 			);
 			name = iosApp;
 			path = .;
@@ -253,8 +253,6 @@
 				B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */,
 				C5E4C62537076BFF979E5662 /* DepartureView.swift */,
 				76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */,
-				90CED6835AA58C9424996B48 /* en.lproj */,
-				8EB8A37AF599C28041EB55CA /* es.lproj */,
 				2E22466ED8875B5C2576DCDB /* FuelEntryCalendarDay.swift */,
 				8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */,
 				386580F3F32E7C04067DEE4E /* NativeSignIn.swift */,
@@ -375,6 +373,7 @@
 			knownRegions = (
 				Base,
 				en,
+				es,
 			);
 			mainGroup = E3D19A4D38694A47DC344CE6;
 			minimizedProjectReferenceProxies = 1;
@@ -400,8 +399,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */,
-				EE41B3CD619EEA1BDDFFF2D6 /* en.lproj in Resources */,
-				1132B312C49E6B6844B3934B /* es.lproj in Resources */,
+				CEAAE474777E6E7827C8DB26 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -516,6 +514,18 @@
 			targetProxy = 60E811793E62CC34C67D64DC /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		76D6203141B99DECA8D14A86 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				0046B86E946AAC2C64B7BBD1 /* en */,
+				9BF7D473CE0D10A2A16535D3 /* es */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		174E1FDA848B95D7D2059842 /* Release */ = {
