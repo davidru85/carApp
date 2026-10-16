@@ -1521,7 +1521,7 @@ Shared state holders:
 - Use the injected `DispatcherProvider`. Never create `GlobalScope`.
 - Never call platform UI, Firebase, GitLive or Koin APIs.
 
-`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code. Each host renders a `UiMessage.code` through the `§14.1` table.
+`UiState` MUST NOT contain user-facing text. Messages are represented as `UiMessage` (§20.10), whose `code` is a stable programmatic code, not display copy. Domain-specific typed values such as `ConsumptionInvalidReason`, enum states and confirmation identifiers remain typed fields. Each platform maps those values to its own string resources. Numbers and dates reach the UI as raw scaled values; formatting is platform-side. This is what makes "no hardcoded user-facing strings" achievable from shared code. Each host renders a `UiMessage.code` through the `§14.1` table. The only text-typed fields a `UiState` may carry are listed in `§14.2`.
 
 Every state holder that exposes `SyncStatus` (`VehicleListUiState.syncStatus`, `FuelEntryListUiState.syncStatus` and `SyncUiState.status` from `SyncStateHolder`) observes the same `SyncController.status: StateFlow<SyncStatus>` flow. The values are eventually consistent and converge to the same `SyncStatus`. List state holders MUST NOT independently compute `SyncStatus`; they MUST relay the single `SyncController.status` source. A unit test MUST assert that two holders fed by the same `SyncController` converge.
 
@@ -1621,6 +1621,38 @@ assertion 41 keeps both host mappings, both host test lists and this table in st
 | `CONFIRMATION.AdoptExistingAccount` | Confirm replacing the existing account's data | `confirm_replace_existing_account` | — | This permanently replaces every vehicle and refuel in the existing account with the data on this device. This cannot be undone. | Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer. | Yes: an account-conversion collision |
 | `INFO.CONFIRM_DELETE_VEHICLE` | Confirm the vehicle deletion | `delete_vehicle_confirmation` | the vehicle delete dialog body | This also deletes its fuel entries from this device. | También se eliminarán sus repostajes de este dispositivo. | Yes: `VehicleListStateHolder.requestDelete` |
 | `INFO.CONFIRM_DELETE_FUEL_ENTRY` | Confirm the refuel deletion | `delete_fuel_entry_confirmation` | — | This refuel will be permanently deleted. | Este repostaje se eliminará de forma permanente. | No: no host calls `FuelEntryListStateHolder.requestDelete` |
+
+### 14.2 UiState text-field allowlist
+
+A `UiState` carries no user-facing text. A constructor property of a `UiState` class (a `data class`
+named `*UiState` or `*Ui`) or of `UiMessage` whose type is `String`, `CharSequence` or contains either
+(for example `List<String>`) is allowed only when this table lists it with one of four kinds:
+**Identifier** (a lowercase UUID string, §15.3), **Currency code** (an ISO 4217 code the host renders
+through its platform currency API), **User-entered** (a value the owner typed, which the host shows back
+unchanged) or **Programmatic code** (a stable code the host maps to its own resources, §14.1).
+`contract-check` assertion 43 reads this table: a text field it does not list fails, and so does a row
+that no longer names such a field or that uses another kind (`{D-B1-D11}`).
+
+| Field | Kind | Why it is not display copy |
+|-------|------|----------------------------|
+| `UiMessage.code` | Programmatic code | A stable code of §20.10, rendered through §14.1. |
+| `VehicleListUiState.selectedVehicleId` | Identifier | The selected vehicle's UUID. |
+| `VehicleListItemUi.id` | Identifier | The vehicle's UUID. |
+| `VehicleListItemUi.name` | User-entered | The vehicle name the owner typed. |
+| `VehicleFormUiState.vehicleId` | Identifier | The edited vehicle's UUID, or none while creating. |
+| `VehicleFormUiState.savedVehicleId` | Identifier | The UUID of the vehicle the last save wrote. |
+| `VehicleFormUiState.name` | User-entered | The vehicle name being typed. |
+| `VehicleFormUiState.brand` | User-entered | The optional brand being typed. |
+| `VehicleFormUiState.model` | User-entered | The optional model being typed. |
+| `FuelEntryListUiState.vehicleId` | Identifier | The listed vehicle's UUID. |
+| `FuelEntryListItemUi.id` | Identifier | The fuel entry's UUID. |
+| `FuelEntryListItemUi.currencyCode` | Currency code | The ISO 4217 code of the entry's cost. |
+| `FuelEntryFormUiState.vehicleId` | Identifier | The vehicle's UUID. |
+| `FuelEntryFormUiState.entryId` | Identifier | The edited entry's UUID, or none while creating. |
+| `FuelEntryFormUiState.currencyCode` | Currency code | The ISO 4217 code of the entry's cost. |
+| `FuelEntryFormUiState.notes` | User-entered | The optional notes being typed. |
+| `SettingsUiState.currencyCode` | Currency code | The selected ISO 4217 code. |
+| `SettingsUiState.supportedCurrencyCodes` | Currency code | `SUPPORTED_CURRENCY_CODES` as ISO 4217 strings, in contract order. |
 
 ## 15. Platform Boundary Contract
 
@@ -2213,6 +2245,13 @@ Optional checks:
             `stringResource(R.string.x)` or `getString(R.string.x)` with no further argument, carries no format
             argument in either catalogue, because nothing would fill it. Neither build fails on a missing
             translation or an unfilled placeholder, so no other check sees these gaps (`{D-B1-D11}`).
+            43. Every constructor property of a `UiState` class (a `data class` named `*UiState` or `*Ui`) and of
+                `UiMessage`, in the production Kotlin sources of `:shared`, the feature modules and the core
+                modules, whose type is `String`, `CharSequence` or contains either, is listed in the `§14.2` table,
+                and every row of that table names such a property with one of its four kinds. Comments and string
+                literals are masked before the parse, so KDoc and default values are not read as types. The table
+                is the allowlist, so a new text field in shared presentation state is a contract change reviewed
+                with its kind (`{D-B1-D11}`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a
