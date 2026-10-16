@@ -222,5 +222,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-214 | [ADR-0215](0215-render-departure-progress-and-failure-at-the-root-route.md) | Render departure progress, failure and retry on a root-level host screen. | Accepted |
 | D-215 | [ADR-0216](0216-show-the-session-rows-per-session-phase.md) | Show the Settings session rows per session phase. | Accepted |
 | D-224 | [ADR-0225](0225-hide-the-account-link-row-while-the-owner-is-local.md) | Hide the account-link row while the owner is local. | Accepted |
+| D-227 | [ADR-0228](0228-cancel-the-credential-collision-through-clear-message.md) | Cancel the credential collision through `clearMessage()`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

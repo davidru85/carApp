@@ -708,6 +708,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-214 | Departure progress and failure surface | A dedicated host screen shows departure progress, its typed failure and the retry whenever a departure is running or has an unfinished part. | Accepted |
 | D-215 | Settings session rows per phase | A permanent account sees "Sign out" and "Delete account"; a local or anonymous owner sees one "Delete local data" row. | Accepted |
 | D-224 | Account-link row while `LOCAL` | The account-link row is hidden until the session is anonymous. | Accepted |
+| D-227 | Credential-collision cancellation | Cancelling a displayed credential collision is `clearMessage()`; nothing is replaced and the anonymous session is kept. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
