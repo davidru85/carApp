@@ -61,6 +61,8 @@ func nativeSignInFailure(for error: Error) -> NativeSignInFailure {
 enum NativeSignInIntent: Equatable {
     case permanentSignIn
     case reauthentication
+    /// `E4-05`: links the anonymous session (`SessionStateHolder.startAccountConversion`).
+    case conversion
 }
 
 @MainActor
@@ -88,6 +90,12 @@ final class NativeSignInCoordinator {
     /// before the native sheet, as `docs/CONTRACTS.md §20.10` requires.
     func prepareAppleReauthenticationRequest(_ request: ASAuthorizationAppleIDRequest) {
         prepareApple(request, intent: .reauthentication)
+    }
+
+    /// The Apple request of an account conversion (`E4-05`). `startAccountConversion(provider)` opens
+    /// the attempt before the native sheet, as `docs/CONTRACTS.md §20.10` requires.
+    func prepareAppleConversionRequest(_ request: ASAuthorizationAppleIDRequest) {
+        prepareApple(request, intent: .conversion)
     }
 
     func completeAppleAuthorization(_ result: Result<ASAuthorization, Error>) {
@@ -119,6 +127,11 @@ final class NativeSignInCoordinator {
         startGoogle(intent: .reauthentication)
     }
 
+    /// The Google picker of an account conversion (`E4-05`), opened by `startAccountConversion(GOOGLE)`.
+    func startGoogleConversion() {
+        startGoogle(intent: .conversion)
+    }
+
     /// The owner declined to re-authenticate. `docs/CONTRACTS.md §20.10`: a cancelled
     /// re-authentication abandons the suspended deletion without deleting anything. The shared holder
     /// expresses that cancellation only through an active re-authentication attempt
@@ -139,6 +152,8 @@ final class NativeSignInCoordinator {
             sessionStateHolder.startPermanentSignIn(provider: provider)
         case .reauthentication:
             sessionStateHolder.startReauthentication(provider: provider)
+        case .conversion:
+            sessionStateHolder.startAccountConversion(provider: provider)
         }
     }
 

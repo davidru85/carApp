@@ -137,6 +137,18 @@ final class WalkingSkeletonModel: ObservableObject {
         syncStateHolder.retryFailed()
     }
 
+    /// `E4-05`: answers the credential collision of `docs/CONTRACTS.md §11.3` with its one accepted
+    /// confirmation.
+    func confirmAccountConversion() {
+        sessionStateHolder.confirmAccountConversion(confirmation: .adoptExistingAccount)
+    }
+
+    /// `E4-05`: cancels the credential collision. The shared holder implements the cancellation as
+    /// `clearMessage()` while the `AdoptExistingAccount` confirmation is shown.
+    func cancelAccountConversion() {
+        sessionStateHolder.clearMessage()
+    }
+
     // MARK: - F-5 departure (`E4-01`)
     //
     // Each member calls one `SessionStateHolder` intent; the departure rules stay in

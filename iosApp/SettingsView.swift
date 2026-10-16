@@ -81,6 +81,10 @@ struct SettingsView: View {
             }
 
             Section(header: Text("settings_section_account")) {
+                LinkAccountRows(
+                    state: skeletonModel.sessionState,
+                    signInCoordinator: skeletonModel.signInCoordinator
+                )
                 ForEach(settingsSessionRows(for: skeletonModel.sessionState.phase), id: \.self) { row in
                     sessionRow(row)
                 }

@@ -203,7 +203,7 @@ func departurePromptMessage(_ prompt: DeparturePrompt) -> String {
     case .confirmDeleteLocalData:
         return localizedUiMessage(for: "CONFIRMATION.DeleteLocalData")
     case let .failure(code):
-        return localizedUiMessage(for: code)
+        return localizedSessionMessage(forCode: code)
     }
 }
 

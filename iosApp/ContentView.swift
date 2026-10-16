@@ -63,6 +63,13 @@ struct ContentView: View {
             // F-5 prompts and departure outcomes are drawn above the navigation stack, so the pushed
             // Settings screen and the list share one presenter.
             .modifier(DeparturePromptPresenter(model: model))
+            // `E4-05`: the credential collision is presented only here, beside the presenter. The
+            // presenter ignores `AdoptExistingAccount`, and this alert ignores everything else.
+            .conversionCollisionAlert(
+                confirmation: model.sessionState.message?.confirmation,
+                onConfirm: model.confirmAccountConversion,
+                onCancel: model.cancelAccountConversion
+            )
         }
     }
 }
