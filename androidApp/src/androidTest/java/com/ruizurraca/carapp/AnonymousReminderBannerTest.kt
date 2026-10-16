@@ -38,13 +38,24 @@ class AnonymousReminderBannerTest {
         composeRule.onNodeWithText(reminderBody(R.string.anonymous_reminder_body_1)).assertIsDisplayed()
     }
 
+    /**
+     * Every reminder states the recovery benefit and the thirty-day risk in both shipped languages.
+     * Each catalogue is read directly, so the result never depends on the device language (`E4-02`).
+     */
     @Test
     fun everyReminderStatesTheRecoveryBenefitAndTheThirtyDayRisk() {
-        (0..3).forEach { index ->
-            val body = reminderBody(anonymousReminderBodyResource(index))
-
-            assertTrue("Reminder $index hides the cleanup deadline.", body.contains("30 days"))
-            assertTrue("Reminder $index hides the recovery benefit.", body.contains("Sign in with"))
+        val requiredPhrases =
+            mapOf(
+                "en-US" to listOf("30 days", "Sign in with"),
+                "es-ES" to listOf("30 días", "Inicia sesión con"),
+            )
+        requiredPhrases.forEach { (languageTag, phrases) ->
+            (0..3).forEach { index ->
+                val body = localizedString(languageTag, anonymousReminderBodyResource(index))
+                phrases.forEach { phrase ->
+                    assertTrue("Reminder $index in $languageTag lacks \"$phrase\".", body.contains(phrase))
+                }
+            }
         }
     }
 
