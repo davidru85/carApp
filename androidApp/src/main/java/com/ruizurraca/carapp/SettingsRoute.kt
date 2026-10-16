@@ -8,6 +8,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import com.ruizurraca.carapp.core.common.AuthProvider
+import com.ruizurraca.carapp.core.common.Confirmation
 
 /**
  * The `E4-01` Settings destination, pushed over the vehicle list. Its holders are ViewModel-scoped like
@@ -17,10 +19,12 @@ import androidx.navigation.compose.composable
 internal fun NavGraphBuilder.settingsRoute(
     navController: NavHostController,
     viewModel: VehicleAppViewModel,
+    googleSignIn: GoogleSignInActions,
 ) {
     composable(VehicleRoutes.SETTINGS) {
         SettingsRoute(
             viewModel = viewModel,
+            googleSignIn = googleSignIn,
             onBack = { navController.popBackStack() },
         )
     }
@@ -33,6 +37,7 @@ internal fun NavGraphBuilder.settingsRoute(
 @Composable
 private fun SettingsRoute(
     viewModel: VehicleAppViewModel,
+    googleSignIn: GoogleSignInActions,
     onBack: () -> Unit,
 ) {
     val settings by viewModel.settingsStateHolder.state.collectAsState()
@@ -55,6 +60,13 @@ private fun SettingsRoute(
                 onDeleteAccount = viewModel.sessionStateHolder::requestDeleteAccount,
                 onDeleteLocalData = viewModel.sessionStateHolder::requestDeleteAccount,
                 onDismissSettingsMessage = viewModel.settingsStateHolder::clearMessage,
+                onLinkAccount = { provider ->
+                    if (provider == AuthProvider.GOOGLE) googleSignIn.convert()
+                },
+                onConfirmAccountConversion = {
+                    viewModel.sessionStateHolder.confirmAccountConversion(Confirmation.AdoptExistingAccount)
+                },
+                onCancelAccountConversion = viewModel.sessionStateHolder::clearMessage,
             ),
     )
 }

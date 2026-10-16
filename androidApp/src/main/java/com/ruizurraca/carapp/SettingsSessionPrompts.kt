@@ -270,7 +270,7 @@ private fun SessionErrorDialog(
         modifier = Modifier.testTag(SettingsTestTags.SESSION_ERROR_DIALOG),
         text = {
             Text(
-                text = stringResource(message.stringResource()),
+                text = stringResource(sessionMessageStringResource(message)),
                 modifier = Modifier.testTag(SettingsTestTags.SESSION_ERROR_TEXT),
             )
         },

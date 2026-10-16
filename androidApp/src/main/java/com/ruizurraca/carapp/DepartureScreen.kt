@@ -108,7 +108,7 @@ private fun DepartureReauthentication(
     )
     session.message?.let { message ->
         Text(
-            text = stringResource(message.stringResource()),
+            text = stringResource(sessionMessageStringResource(message)),
             textAlign = TextAlign.Center,
             modifier = Modifier.testTag(DepartureTestTags.REAUTHENTICATION_REASON),
         )
@@ -141,7 +141,7 @@ private fun DepartureFailure(
         textAlign = TextAlign.Center,
         modifier = Modifier.testTag(DepartureTestTags.FAILURE_TITLE),
     )
-    ErrorText(session.message, testTag = DepartureTestTags.ERROR)
+    SessionErrorText(session.message, testTag = DepartureTestTags.ERROR)
     session.pendingDepartureRetry?.let { retry ->
         Text(
             text = stringResource(departureRetryExplanationResource(retry)),

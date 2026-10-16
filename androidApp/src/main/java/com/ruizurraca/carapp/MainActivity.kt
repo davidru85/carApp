@@ -230,6 +230,7 @@ private fun VehicleApp(
                 viewModel = viewModel,
                 vehicleState = vehicleState,
                 anonymousReminderIndex = sessionState.anonymousReminderIndex,
+                googleSignIn = googleSignIn,
             )
             // A failed deletion re-mounts the `NavHost` at the vehicle list, so the departure prompts
             // live here, above it, instead of inside the Settings route.
@@ -257,6 +258,7 @@ private fun AuthenticatedApp(
     viewModel: VehicleAppViewModel,
     vehicleState: VehicleListUiState,
     anonymousReminderIndex: Int?,
+    googleSignIn: GoogleSignInActions,
 ) {
     val navController = rememberNavController()
     var firstVehicleCreationPresented by rememberSaveable { mutableStateOf(false) }
@@ -278,7 +280,7 @@ private fun AuthenticatedApp(
             ) {
                 vehicleRoutes(navController, viewModel)
                 fuelEntryRoutes(navController, viewModel)
-                settingsRoute(navController, viewModel)
+                settingsRoute(navController, viewModel, googleSignIn)
             }
             when (gate) {
                 VehicleListGate.WAITING -> {

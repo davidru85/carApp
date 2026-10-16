@@ -64,6 +64,9 @@ internal fun recordingSettingsCallbacks(calls: MutableList<String>): SettingsCal
         onDeleteAccount = { calls += "deleteAccount" },
         onDeleteLocalData = { calls += "deleteLocalData" },
         onDismissSettingsMessage = { calls += "dismissSettingsMessage" },
+        onLinkAccount = { provider -> calls += "link:$provider" },
+        onConfirmAccountConversion = { calls += "confirmAccountConversion" },
+        onCancelAccountConversion = { calls += "cancelAccountConversion" },
     )
 
 internal fun recordingSessionPromptCallbacks(calls: MutableList<String>): SessionPromptCallbacks =

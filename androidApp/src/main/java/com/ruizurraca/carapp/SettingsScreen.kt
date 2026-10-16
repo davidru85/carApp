@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.ruizurraca.carapp.core.common.AuthProvider
 import com.ruizurraca.carapp.core.common.UiMessage
 import com.ruizurraca.carapp.core.common.UiMessageKind
 import com.ruizurraca.carapp.core.model.DistanceUnit
@@ -101,6 +102,12 @@ internal data class SettingsCallbacks(
     val onDeleteAccount: () -> Unit,
     val onDeleteLocalData: () -> Unit,
     val onDismissSettingsMessage: () -> Unit,
+    /** `E4-05`: starts linking the anonymous session to [AuthProvider] through the native picker. */
+    val onLinkAccount: (AuthProvider) -> Unit,
+    /** `E4-05`: answers the credential collision with `Confirmation.AdoptExistingAccount`. */
+    val onConfirmAccountConversion: () -> Unit,
+    /** `E4-05`: cancels the credential collision; the shared holder implements it as `clearMessage()`. */
+    val onCancelAccountConversion: () -> Unit,
 )
 
 /**
@@ -146,6 +153,12 @@ internal fun SettingsScreen(
             )
         }
     }
+
+    AccountConversionCollisionDialog(
+        message = session.message,
+        onConfirm = callbacks.onConfirmAccountConversion,
+        onCancel = callbacks.onCancelAccountConversion,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -410,6 +423,10 @@ private fun AccountSection(
     val rows = settingsSessionRows(session.phase)
     if (rows.isEmpty()) return
     SettingsSectionHeader(R.string.settings_section_account)
+    LinkAccountSection(
+        session = session,
+        onLinkAccount = callbacks.onLinkAccount,
+    )
     if (session.isBusy) {
         LinearProgressIndicator(
             modifier =
