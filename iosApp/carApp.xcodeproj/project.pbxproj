@@ -34,6 +34,7 @@
 		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		841CAEB3DAF4FA600E08CD23 /* DeparturePromptPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */; };
+		89A249C0252F022EC21E57BF /* AccountConversionUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6797DC5AF1C5B90BB3CBA115 /* AccountConversionUITests.swift */; };
 		8B465AAA8C9F7D79D03DB1B0 /* AccountConversionSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F78BB5293C4523936DBAD88 /* AccountConversionSurface.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */; };
@@ -114,6 +115,7 @@
 		586A5EAAAC9B9637D5AF4F25 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		633650E394377F53C8FBECE4 /* SettingsFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsFlowUITests.swift; sourceTree = "<group>"; };
 		6548796BC5BD921D5D4930D2 /* NativeSignInFailureMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInFailureMappingTests.swift; sourceTree = "<group>"; };
+		6797DC5AF1C5B90BB3CBA115 /* AccountConversionUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionUITests.swift; sourceTree = "<group>"; };
 		6DF7A56E87D9090EED34A1AB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignInCoordinatorTests.swift; sourceTree = "<group>"; };
 		76C5F0A4E198DC98670FEF17 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
@@ -204,6 +206,7 @@
 		45E5C76700F0706EA075BF34 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
+				6797DC5AF1C5B90BB3CBA115 /* AccountConversionUITests.swift */,
 				93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */,
 				8584A875575B969FB8AA3B00 /* OnboardingFlowUITests.swift */,
 				AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */,
@@ -489,6 +492,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				89A249C0252F022EC21E57BF /* AccountConversionUITests.swift in Sources */,
 				F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */,
 				E379583D2F448CA34A9E31A5 /* OnboardingFlowUITests.swift in Sources */,
 				91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */,
