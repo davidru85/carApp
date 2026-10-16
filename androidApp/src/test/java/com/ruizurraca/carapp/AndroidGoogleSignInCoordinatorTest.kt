@@ -140,4 +140,60 @@ class AndroidGoogleSignInCoordinatorTest {
                 calls,
             )
         }
+
+    /**
+     * `E4-05`: the account-conversion entry point is the same native picker path behind the shared
+     * `startAccountConversion` intent. It never starts the permanent sign-in flow and completes through
+     * the same Google completion intent.
+     */
+    @Test
+    fun conversionAcquisitionStartsTheConversionIntentAndCompletesWithGoogle() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Success(idToken = "id-token", accessToken = null)
+                    },
+                    startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    completeGoogleSignIn = { idToken, accessToken -> calls += "complete:$idToken:$accessToken" },
+                    failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+                )
+
+            coordinator.acquireAndComplete { provider -> calls += "convert:$provider" }
+
+            assertEquals(
+                listOf("convert:${AuthProvider.GOOGLE}", "inFlight:true", "inFlight:false", "complete:id-token:null"),
+                calls,
+            )
+        }
+
+    @Test
+    fun aCancelledConversionPickerReportsTheClosedCancellation() =
+        runBlocking {
+            val calls = mutableListOf<String>()
+            val coordinator =
+                AndroidGoogleSignInCoordinator(
+                    acquireCredential = {
+                        GoogleCredentialAcquisition.Failure(NativeSignInFailure.CANCELLED)
+                    },
+                    startPermanentSignIn = { provider -> calls += "start:$provider" },
+                    completeGoogleSignIn = { _, _ -> calls += "complete" },
+                    failSignIn = { failure -> calls += "fail:$failure" },
+                    setAcquisitionInFlight = { inFlight -> calls += "inFlight:$inFlight" },
+                )
+
+            coordinator.acquireAndComplete { provider -> calls += "convert:$provider" }
+
+            assertEquals(
+                listOf(
+                    "convert:${AuthProvider.GOOGLE}",
+                    "inFlight:true",
+                    "inFlight:false",
+                    "fail:${NativeSignInFailure.CANCELLED}",
+                ),
+                calls,
+            )
+        }
 }

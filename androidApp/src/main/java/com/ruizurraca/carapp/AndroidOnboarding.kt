@@ -115,6 +115,7 @@ internal sealed interface GoogleCredentialAcquisition {
 internal data class GoogleSignInActions(
     val signIn: () -> Unit,
     val reauthenticate: () -> Unit,
+    val convert: () -> Unit,
 )
 
 internal class AndroidGoogleSignInCoordinator(

@@ -380,6 +380,13 @@ private fun rememberGoogleSignIn(
                 coordinator.acquireAndComplete(sessionStateHolder::startReauthentication)
             }
         },
+        // `E4-05`: the same native picker path, entered through the shared account-conversion intent.
+        // Undispatched for the same reason as `reauthenticate`.
+        convert = {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                coordinator.acquireAndComplete(sessionStateHolder::startAccountConversion)
+            }
+        },
     )
 }
 
@@ -1246,6 +1253,10 @@ internal fun authStringResource(code: String): Int =
         "AUTH.NETWORK_UNAVAILABLE" -> R.string.error_auth_network
         "AUTH.PROVIDER_UNAVAILABLE" -> R.string.error_auth_provider
         "AUTH.NO_ACCOUNT_AVAILABLE" -> R.string.error_auth_no_account
+        "AUTH.UID_WOULD_CHANGE" -> R.string.error_auth_uid_would_change
+        "AUTH.CREDENTIAL_ALREADY_IN_USE" -> R.string.error_auth_credential_in_use
+        "AUTH.PERMISSION_DENIED" -> R.string.error_auth_permission_denied
+        "AUTH.UNKNOWN" -> R.string.error_unexpected
         "AUTH.REQUIRES_RECENT_LOGIN" -> R.string.error_auth_requires_recent_login
         "AUTH.ACCOUNT_DELETION_REMOTE_FAILED" -> R.string.error_account_deletion_remote_failed
         else -> R.string.error_unexpected
