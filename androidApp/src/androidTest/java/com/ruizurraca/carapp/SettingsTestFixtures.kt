@@ -66,6 +66,16 @@ internal fun recordingSettingsCallbacks(calls: MutableList<String>): SettingsCal
         onDismissSettingsMessage = { calls += "dismissSettingsMessage" },
     )
 
+internal fun recordingSessionPromptCallbacks(calls: MutableList<String>): SessionPromptCallbacks =
+    SessionPromptCallbacks(
+        onWaitForBackup = { calls += "wait" },
+        onWithdraw = { calls += "withdraw" },
+        onDiscardPendingChanges = { calls += "discard" },
+        onConfirmDeleteAccount = { calls += "confirmDeleteAccount" },
+        onConfirmDeleteLocalData = { calls += "confirmDeleteLocalData" },
+        onDismissError = { calls += "dismissError" },
+    )
+
 @Composable
 internal fun TestSettingsScreen(
     settings: SettingsUiState = settingsState(),
