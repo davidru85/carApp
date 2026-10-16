@@ -702,6 +702,11 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-208 | Unsupported provider value at the pull boundary | A remote value the app cannot represent is carried as a reserved marker and its document is quarantined, so the pull cursor still advances. | Accepted |
 | D-209 | Phase 4 bundle delivery | Phase 4 is delivered as two consecutive bundles, `E4-B1` (`E4-01`, `E4-05`, `E4-02`) and `E4-B2` (`E4-04`, `E4-03`), each through one pull request; every story keeps its own ready check, handoff, TDD cycle and project-log entry. | Accepted |
 | D-210 | Account conversion entry point | Settings offers an anonymous-only account-link row (`§3.1`, `§7 F-4`), delivered by `E4-05` inside bundle `E4-B1`. | Accepted |
+| D-211 | Settings state holder location | The Settings screen is driven by `SettingsStateHolder` in `:shared`, beside `SessionStateHolder` and `SyncStateHolder`. | Accepted |
+| D-212 | App version source | Each host reads the app version from its own platform metadata; no shared contract carries it. | Accepted |
+| D-213 | Wait for sync on the pending-sync prompt | Waiting withdraws the sign-out and requests a sync cycle; the user signs out again once the pending rows have synced. | Accepted |
+| D-214 | Departure progress and failure surface | A dedicated host screen shows departure progress, its typed failure and the retry whenever a departure is running or has an unfinished part. | Accepted |
+| D-215 | Settings session rows per phase | A permanent account sees "Sign out" and "Delete account"; a local or anonymous owner sees one "Delete local data" row. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

@@ -216,5 +216,10 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-208 | [ADR-0209](0209-carry-unsupported-provider-values-as-a-reserved-marker.md) | Carry an unsupported provider value as a reserved marker and quarantine its document. | Accepted |
 | D-209 | [ADR-0210](0210-deliver-phase-4-in-two-bundles.md) | Deliver Phase 4 as two bundles, one pull request each. | Accepted |
 | D-210 | [ADR-0211](0211-place-the-account-conversion-entry-point-in-settings.md) | Offer anonymous account linking from Settings through the new story `E4-05`. | Accepted |
+| D-211 | [ADR-0212](0212-keep-the-settings-state-holder-in-shared.md) | Keep the Settings state holder in `:shared`, beside the session and sync holders. | Accepted |
+| D-212 | [ADR-0213](0213-read-the-app-version-natively-in-each-host.md) | Read the app version natively in each host. | Accepted |
+| D-213 | [ADR-0214](0214-make-wait-for-sync-withdraw-the-sign-out-and-request-a-cycle.md) | Make "wait for sync" withdraw the sign-out and request a sync cycle. | Accepted |
+| D-214 | [ADR-0215](0215-render-departure-progress-and-failure-at-the-root-route.md) | Render departure progress, failure and retry on a root-level host screen. | Accepted |
+| D-215 | [ADR-0216](0216-show-the-session-rows-per-session-phase.md) | Show the Settings session rows per session phase. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).
