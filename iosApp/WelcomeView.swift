@@ -23,7 +23,7 @@ struct WelcomeView: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("welcome_title")
             Text("welcome_body")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
 
             SignInWithAppleButton(
@@ -63,7 +63,8 @@ struct WelcomeView: View {
             if let message = state.message {
                 Text(message.localizedText)
                     .foregroundStyle(AccessibleColors.errorText)
-                    .font(.caption)
+                    .font(.footnote)
+                    .fixedSize(horizontal: false, vertical: true)
                     .announcedOnAppearance(message.localizedText)
             }
         }

@@ -27,6 +27,7 @@ struct VehicleFormView: View {
                         set: { viewModel.setName($0) }
                     ))
                     .accessibilityIdentifier("vehicle_name")
+                    .fixedSize(horizontal: false, vertical: true)
 
                     TextField(String(localized: "initial_odometer"), text: Binding(
                         get: { viewModel.odometerText },
@@ -35,18 +36,21 @@ struct VehicleFormView: View {
                     .keyboardType(.numberPad)
                     .disabled(!viewModel.state.canEditInitialOdometer)
                     .accessibilityIdentifier("vehicle_odometer")
+                    .fixedSize(horizontal: false, vertical: true)
 
                     TextField(String(localized: "vehicle_brand"), text: Binding(
                         get: { viewModel.brand },
                         set: { viewModel.setBrand($0) }
                     ))
                     .accessibilityIdentifier("vehicle_brand")
+                    .fixedSize(horizontal: false, vertical: true)
 
                     TextField(String(localized: "vehicle_model"), text: Binding(
                         get: { viewModel.model },
                         set: { viewModel.setModel($0) }
                     ))
                     .accessibilityIdentifier("vehicle_model")
+                    .fixedSize(horizontal: false, vertical: true)
                 }
 
                 // `D-127`: the five MVP fuel types, defaulting to petrol. The picker only reflects
@@ -72,7 +76,8 @@ struct VehicleFormView: View {
                     Section {
                         Text(message.localizedText)
                             .foregroundStyle(AccessibleColors.errorText)
-                            .font(.caption)
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("vehicle_error")
                             .announcedOnAppearance(message.localizedText)
                     }
@@ -80,7 +85,8 @@ struct VehicleFormView: View {
                     Section {
                         Text("error_out_of_range")
                             .foregroundStyle(AccessibleColors.errorText)
-                            .font(.caption)
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("vehicle_error")
                             .announcedOnAppearance(String(localized: "error_out_of_range"))
                     }

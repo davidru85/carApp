@@ -46,7 +46,7 @@ struct FuelEntryFormView: View {
                     .accessibilityIdentifier("fuel_odometer")
                 }
 
-                Section(header: Text("money_input_method")) {
+                Section(header: Text("money_input_method").foregroundStyle(.primary)) {
                     moneyModePicker
 
                     switch viewModel.state.moneyInputMode {
@@ -169,7 +169,8 @@ struct FuelEntryFormView: View {
                     Section {
                         Text(message.localizedText)
                             .foregroundStyle(AccessibleColors.errorText)
-                            .font(.caption)
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
                             .accessibilityIdentifier("fuel_error")
                             .announcedOnAppearance(message.localizedText)
                     }

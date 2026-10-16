@@ -55,7 +55,7 @@ struct LinkAccountRows: View {
                     .accessibilityAddTraits(.isHeader)
                 Text("settings_link_account_body")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                 if state.isBusy {
                     ProgressView()
                         .accessibilityLabel(Text("settings_link_account_in_progress"))

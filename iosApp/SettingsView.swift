@@ -38,7 +38,7 @@ struct SettingsView: View {
 
     var body: some View {
         List {
-            Section(header: Text("settings_section_units")) {
+            Section(header: Text("settings_section_units").foregroundStyle(.primary)) {
                 currencyRow
                 readOnlyRow(
                     labelKey: "settings_distance_unit",
@@ -60,14 +60,14 @@ struct SettingsView: View {
                 }
             }
 
-            Section(header: Text("settings_section_backup")) {
+            Section(header: Text("settings_section_backup").foregroundStyle(.primary)) {
                 // The `E3-05` indicator: the published `§9.9` aggregate, the `D-193` labels, and the
                 // retry that only the `Failed` visual offers.
                 BackupStatusRow(model: skeletonModel)
                     .listRowInsets(EdgeInsets())
             }
 
-            Section(header: Text("settings_section_privacy")) {
+            Section(header: Text("settings_section_privacy").foregroundStyle(.primary)) {
                 // Off by default and applied at once (`docs/CONTRACTS.md §16.1`); the copy says
                 // pseudonymous, as `D-203` requires.
                 Toggle(isOn: analyticsEnabled) {
@@ -82,7 +82,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings_analytics_toggle")
             }
 
-            Section(header: Text("settings_section_account")) {
+            Section(header: Text("settings_section_account").foregroundStyle(.primary)) {
                 LinkAccountRows(
                     state: skeletonModel.sessionState,
                     signInCoordinator: skeletonModel.signInCoordinator
@@ -97,7 +97,7 @@ struct SettingsView: View {
                 }
             }
 
-            Section(header: Text("settings_section_about")) {
+            Section(header: Text("settings_section_about").foregroundStyle(.primary)) {
                 HStack {
                     Text("settings_version")
                     Spacer()
@@ -172,6 +172,8 @@ struct SettingsView: View {
         case .deleteLocalData:
             Button(role: .destructive, action: skeletonModel.requestDeleteAccount) {
                 Text("settings_delete_local_data")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .tint(AccessibleColors.controlAccent)
             .disabled(skeletonModel.sessionState.isBusy)

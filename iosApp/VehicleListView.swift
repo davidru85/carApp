@@ -94,7 +94,7 @@ struct VehicleListView: View {
                         Image(systemName: "car.2.fill")
                             .font(.largeTitle)
                             .imageScale(.large)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                             .accessibilityHidden(true)
                         Text("empty_vehicles")
                             .font(.headline)
@@ -115,8 +115,9 @@ struct VehicleListView: View {
                                     format: String(localized: "vehicle_odometer"),
                                     formatInteger(vehicle.currentOdometerKm, locale: .current)
                                 ))
-                                    .font(.caption)
+                                    .font(.footnote)
                                     .foregroundStyle(.primary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             .padding(.vertical, 4)
                         }

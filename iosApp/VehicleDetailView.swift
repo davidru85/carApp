@@ -168,13 +168,15 @@ struct HeroConsumptionCardView: View {
                 if isReliable {
                     let text = String(format: String(localized: "consumption_reliable"), validSegmentCount)
                     Text(text)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     let text = String(format: String(localized: "consumption_not_yet_reliable"), validSegmentCount)
                     Text(text)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.primary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else {
                 Text("consumption_empty")
@@ -227,8 +229,9 @@ struct FuelEntryRowView: View {
                     .accessibilityIdentifier("fuel_explanation_\(entry.id)")
             } else {
                 Text(consumptionExplanation(for: entry.invalidReason))
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("fuel_explanation_\(entry.id)")
             }
         }
@@ -248,8 +251,9 @@ struct FuelEntryRowView: View {
             )
         )
         return Text(facts)
-            .font(.caption)
+            .font(.footnote)
             .foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var indicatorsRow: some View {
@@ -286,6 +290,9 @@ private struct IndicatorBadge: View {
             .padding(.vertical, 2)
             .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
             .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(tint, lineWidth: 1))
+            // `E4-02`: the audit reads a short badge as a hit region below 44 points, so every badge
+            // carries the minimum interactive size.
+            .frame(minWidth: 44, minHeight: 44)
     }
 }
 
