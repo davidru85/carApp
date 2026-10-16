@@ -27,7 +27,7 @@
     <string name="refresh_sync_diagnostics">Actualizar</string>
     <string name="empty_sync_diagnostics">No hay filas de sincronización</string>
     <string name="empty_vehicles">Todavía no hay vehículos guardados.</string>
-    <string name="vehicle_odometer">%1$d km</string>
+    <string name="vehicle_odometer">%1$s km</string>
     <string name="add_first_fuel_entry_invitation">Añade el primer repostaje para empezar a medir el consumo.</string>
     <string name="edit_vehicle">Editar vehículo</string>
     <string name="delete_vehicle">Eliminar vehículo</string>
@@ -77,7 +77,7 @@
     <string name="calculated_total">Total calculado</string>
     <string name="calculated_price">Precio por litro calculado</string>
     <string name="calculated_liters">Litros calculados</string>
-    <string name="money_value">%1$s %2$s</string>
+    <string name="liters_value">%1$s L</string>
     <string name="value_pending">Introduce ambos valores</string>
     <string name="full_tank">Tanque lleno</string>
     <string name="full_tank_help">Desactívalo para guardar un repostaje parcial.</string>
@@ -92,7 +92,7 @@
     <string name="consumption_value">%1$s L/100 km</string>
     <string name="consumption_reliable">Media fiable de %1$d tramos válidos</string>
     <string name="consumption_not_yet_reliable">Media de %1$d tramo válido; se necesitan dos para que sea fiable</string>
-    <string name="fuel_entry_facts">%1$d km · %2$s L · %3$s %4$s</string>
+    <string name="fuel_entry_facts">%1$s km · %2$s L · %3$s</string>
     <string name="partial_tank">Tanque parcial</string>
     <string name="inconsistent_odometer">Odómetro incoherente</string>
     <string name="consumption_no_previous_full_tank">Se necesita un tanque lleno anterior.</string>
@@ -114,6 +114,8 @@
     <string name="confirm_delete_account">Esto elimina permanentemente tu cuenta y todos los vehículos y repostajes que contiene, en este dispositivo y en la copia de seguridad. No se puede deshacer.</string>
     <string name="confirm_delete_local_data">Esto elimina permanentemente todos los vehículos y repostajes de este dispositivo. No hay ninguna cuenta desde la que recuperarlos, así que no se puede deshacer.</string>
     <string name="confirm_replace_existing_account">Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por los datos de este dispositivo. No se puede deshacer.</string>
+    <string name="loading">Cargando</string>
+    <string name="saving">Guardando</string>
     <string name="settings_title">Ajustes</string>
     <string name="settings_section_units">Unidades y moneda</string>
     <string name="settings_section_backup">Copia de seguridad</string>
