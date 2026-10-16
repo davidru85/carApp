@@ -4,7 +4,7 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 import java.io.File
 
 /**
- * `docs/CONTRACTS.md §18` assertion 41 (`{D-B1-D10}`): every `UiMessage.code` the shared layer can
+ * `docs/CONTRACTS.md §18` assertion 41 (`D-220`): every `UiMessage.code` the shared layer can
  * publish has an explicit, single-code mapping on both hosts and a row in the `§14.1` table, and the
  * three agree on its key.
  *

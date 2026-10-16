@@ -3,12 +3,12 @@ import Shared
 
 typealias ConsumptionInvalidReason = ModelConsumptionInvalidReason
 
-/// The iOS half of the `docs/CONTRACTS.md §14.1` code-to-copy table (`{D-B1-D9}`).
+/// The iOS half of the `docs/CONTRACTS.md §14.1` code-to-copy table (`D-219`).
 ///
 /// `UiMessage.code` is a `String` (`§20.10`), so the compiler cannot prove this `switch` exhaustive.
 /// Every code the shared layer can publish therefore has its own `case`, one code per case, and
 /// `contract-check` assertion 41 fails when a case is missing or names a different key from the Android
-/// mapping or the table (`{D-B1-D10}`). The `default` branch is the `§6` safety net only: it is
+/// mapping or the table (`D-220`). The `default` branch is the `§6` safety net only: it is
 /// unreachable for every known code and renders the generic copy for a code a future shared change
 /// publishes before this table learns it. Several codes share a key on purpose, because the table
 /// assigns copy per user-actionable outcome rather than per leaf.

@@ -4,7 +4,7 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 import java.io.File
 
 /**
- * `docs/CONTRACTS.md §18` assertion 44 (`{D-B1-D11}`): no host UI source passes literal text to a
+ * `docs/CONTRACTS.md §18` assertion 44 (`D-221`): no host UI source passes literal text to a
  * rendering API (`§14.3`).
  *
  * `§14` keeps display copy out of shared state, but a host can still hard-code it: a Compose

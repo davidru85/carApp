@@ -9,12 +9,12 @@ import com.ruizurraca.carapp.core.common.UiMessage
 internal fun UiMessage.stringResource(): Int = uiMessageStringResource(code)
 
 /**
- * The Android half of the `docs/CONTRACTS.md §14.1` code-to-copy table (`{D-B1-D9}`).
+ * The Android half of the `docs/CONTRACTS.md §14.1` code-to-copy table (`D-219`).
  *
  * `UiMessage.code` is a `String` (`§20.10`), so the compiler cannot prove this `when` exhaustive. Every
  * code the shared layer can publish therefore has its own explicit branch, one code per branch, and
  * `contract-check` assertion 41 fails when a branch is missing or names a different key from the iOS
- * mapping or the table (`{D-B1-D10}`). The `else` branch is the `§6` safety net only: it is unreachable
+ * mapping or the table (`D-220`). The `else` branch is the `§6` safety net only: it is unreachable
  * for every known code and renders the generic copy for a code a future shared change publishes before
  * this table learns it.
  *

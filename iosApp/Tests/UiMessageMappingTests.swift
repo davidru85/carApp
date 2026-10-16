@@ -3,7 +3,7 @@ import Shared
 @testable import carApp
 
 final class UiMessageMappingTests: XCTestCase {
-    /// `docs/CONTRACTS.md §14.1` (`{D-B1-D9}`): the test-side copy of the code-to-copy table.
+    /// `docs/CONTRACTS.md §14.1` (`D-219`): the test-side copy of the code-to-copy table.
     /// `contract-check` assertion 41 fails when this list stops naming a code the shared layer can
     /// publish, so the tests below cannot fall behind the mapping they pin.
     private static let table: [String: String] = [
@@ -63,7 +63,7 @@ final class UiMessageMappingTests: XCTestCase {
     ]
 
     /// Every code renders the key its `§14.1` row assigns. Several codes share a key on purpose: the
-    /// table assigns copy per user-actionable outcome (`{D-B1-D9}`).
+    /// table assigns copy per user-actionable outcome (`D-219`).
     func testEveryCodeMapsToTheKeyTheTableAssigns() {
         for (code, key) in Self.table {
             XCTAssertEqual(uiMessageKey(for: code), key, "\(code) must render the copy docs/CONTRACTS.md §14.1 assigns")

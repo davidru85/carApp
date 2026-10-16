@@ -400,7 +400,11 @@ of `docs/TECHNICAL_PLAN.md §4` executable (`D-178`), added the source rule that
 (`D-180`), made the `§20.10` iOS trigger ban executable as a source rule over both iOS platform file
 kinds, Kotlin `iosMain` and Swift `iosApp` (`D-185`), and bound the single `BGTaskScheduler`
 identifier of `§9.1` to a contract fixture that compares the Kotlin constant with
-`iosApp/Info.plist`. `contractCheck` currently reports no `PENDING` assertions.
+`iosApp/Info.plist`. `E4-02` made the localization rules executable as `docs/CONTRACTS.md §18`
+assertions 41 to 44: every `UiMessage` code has an explicit mapping on both hosts and in the `§14.1`
+table (`D-220`), every referenced key exists in both catalogues of its host, `UiState` text fields
+are limited to the `§14.2` allowlist, and no host UI source renders literal text outside the Debug-only
+allowlist (`D-221`). `contractCheck` currently reports no `PENDING` assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
 provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).

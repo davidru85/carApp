@@ -4,7 +4,7 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 import java.io.File
 
 /**
- * `docs/CONTRACTS.md §18` assertion 42 (`{D-B1-D11}`): every string key a host references exists in
+ * `docs/CONTRACTS.md §18` assertion 42 (`D-221`): every string key a host references exists in
  * both catalogues of that host, and the two catalogues of each host declare the same keys.
  *
  * A missing key fails neither build: Android falls back to the default locale and iOS renders the key

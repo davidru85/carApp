@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * The `docs/CONTRACTS.md §14.1` code-to-copy table on Android (`{D-B1-D9}`).
+ * The `docs/CONTRACTS.md §14.1` code-to-copy table on Android (`D-219`).
  *
  * [UI_MESSAGE_TABLE] is the test-side copy of the table. `contract-check` assertion 41 fails when it
  * stops naming a code the shared layer can publish, so these tests cannot fall behind the mapping

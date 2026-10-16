@@ -4,7 +4,7 @@ import com.ruizurraca.carapp.buildlogic.source.KotlinSourceText
 import java.io.File
 
 /**
- * `docs/CONTRACTS.md §18` assertion 43 (`{D-B1-D11}`): a `UiState` carries no user-facing text.
+ * `docs/CONTRACTS.md §18` assertion 43 (`D-221`): a `UiState` carries no user-facing text.
  *
  * `§14` forbids display copy in `UiState`, but a `String` field is the one place copy could enter
  * shared presentation state unnoticed: an identifier, a currency code and a vehicle name are all

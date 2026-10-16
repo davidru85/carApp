@@ -7,7 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 
 /**
- * `docs/CONTRACTS.md §18` assertion 43 (`{D-B1-D11}`): a `UiState` carries no user-facing text. Its
+ * `docs/CONTRACTS.md §18` assertion 43 (`D-221`): a `UiState` carries no user-facing text. Its
  * text-typed fields are exactly the `§14.2` table, each with one of four kinds.
  */
 class UiStateTextContractTest {

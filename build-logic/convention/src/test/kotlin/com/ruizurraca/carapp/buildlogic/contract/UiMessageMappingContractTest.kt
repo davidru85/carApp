@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 /**
- * `docs/CONTRACTS.md §18` assertion 41 (`{D-B1-D10}`): every `UiMessage.code` has an explicit,
+ * `docs/CONTRACTS.md §18` assertion 41 (`D-220`): every `UiMessage.code` has an explicit,
  * single-code mapping on both hosts and a row in the `§14.1` table, and the three agree.
  *
  * `D-16` requires a failing fixture per rejected shape. Every fixture mutates the real repository

@@ -408,7 +408,7 @@ Public use cases and repositories return `Outcome<T, AppError>` or `Flow<Outcome
 
 `kotlin.Result` and exceptions-as-control-flow are FORBIDDEN in public signatures. Arrow MUST NOT be added without an ADR.
 
-`AppError` is a `sealed interface`; every leaf is a `data class` or `data object` carrying a stable `code` (§20). Presentation MUST handle it with an exhaustive `when` and MUST NOT use an `else` branch. A platform host is the one exception, because it receives `UiMessage.code` (§20.10), a `String`, and no compiler can prove a `when` or `switch` over a `String` exhaustive: each host maps that code through its single mapping source of `§14.1`, which holds one explicit branch per code, and MAY end in an `else` or `default` branch only as an unreachable safety net that resolves to the generic `error_unexpected` copy. `contract-check` assertion 41 fails when either host lacks an explicit branch for any `AppError` leaf code, `CONFIRMATION.<entry>` or `INFO.*` code, so the safety net never stands in for a missing mapping (`{D-B1-D10}`). Retry and poison decisions are made on `code`, never on a message string.
+`AppError` is a `sealed interface`; every leaf is a `data class` or `data object` carrying a stable `code` (§20). Presentation MUST handle it with an exhaustive `when` and MUST NOT use an `else` branch. A platform host is the one exception, because it receives `UiMessage.code` (§20.10), a `String`, and no compiler can prove a `when` or `switch` over a `String` exhaustive: each host maps that code through its single mapping source of `§14.1`, which holds one explicit branch per code, and MAY end in an `else` or `default` branch only as an unreachable safety net that resolves to the generic `error_unexpected` copy. `contract-check` assertion 41 fails when either host lacks an explicit branch for any `AppError` leaf code, `CONFIRMATION.<entry>` or `INFO.*` code, so the safety net never stands in for a missing mapping (`D-220`). Retry and poison decisions are made on `code`, never on a message string.
 
 ### Categories
 
@@ -1552,7 +1552,7 @@ Platform adapters contain rendering and lifecycle glue only. Validation, formatt
 Each host renders a `UiMessage.code` (§20.10) through exactly one mapping source: `uiMessageStringResource`
 in `androidApp/src/main/java/com/ruizurraca/carapp/UiMessageStrings.kt` on Android and `uiMessageKey` in
 `iosApp/UiMessageMapping.swift` on iOS. Both hold one explicit branch per code and both name the key this
-table assigns (`{D-B1-D9}`). Copy is assigned per user-actionable outcome, not per leaf: codes that ask
+table assigns (`D-219`). Copy is assigned per user-actionable outcome, not per leaf: codes that ask
 the owner for the same action share a key, and a key is shared only where the "Shared with" column says
 so. The generic `error_unexpected` copy is reserved for the two unclassified failures, `AUTH.UNKNOWN` and
 `UNEXPECTED`.
@@ -1631,7 +1631,7 @@ named `*UiState` or `*Ui`) or of `UiMessage` whose type is `String`, `CharSequen
 through its platform currency API), **User-entered** (a value the owner typed, which the host shows back
 unchanged) or **Programmatic code** (a stable code the host maps to its own resources, §14.1).
 `contract-check` assertion 43 reads this table: a text field it does not list fails, and so does a row
-that no longer names such a field or that uses another kind (`{D-B1-D11}`).
+that no longer names such a field or that uses another kind (`D-221`).
 
 | Field | Kind | Why it is not display copy |
 |-------|------|----------------------------|
@@ -1667,7 +1667,7 @@ with format arguments. The Debug-only diagnostics screen of `D-100`, `iosApp/Dia
 the one allowlisted source, and it may be constructed only inside `#if DEBUG`. Android allowlists no
 source: its diagnostics screen is part of `MainActivity.kt` and renders values, not literals.
 `contract-check` assertion 44 enforces this section, and assertion 42 checks that every key a host
-references exists in both of its catalogues (`{D-B1-D11}`).
+references exists in both of its catalogues (`D-221`).
 
 ## 15. Platform Boundary Contract
 
@@ -2243,7 +2243,7 @@ Optional checks:
         in both catalogues of its host and carries no format argument, both fallbacks resolve to
         `error_unexpected`, and `UiMessageStringsTest.kt` and `UiMessageMappingTests.swift` name every
         code. Neither compiler can prove a `when` or `switch` over a `String` exhaustive, so this assertion
-        is what keeps the `§6` safety net unreachable (`{D-B1-D10}`).
+        is what keeps the `§6` safety net unreachable (`D-220`).
         42. Every string key a host references exists in both catalogues of that host, and the two catalogues
             of each host declare the same keys. On Android the references are every `R.string` and
             `R.plurals` use in `androidApp/src/main/java` and every `@string/` use in the other XML files of
@@ -2259,14 +2259,14 @@ Optional checks:
             rendered without arguments, through a SwiftUI initializer or modifier or through Compose
             `stringResource(R.string.x)` or `getString(R.string.x)` with no further argument, carries no format
             argument in either catalogue, because nothing would fill it. Neither build fails on a missing
-            translation or an unfilled placeholder, so no other check sees these gaps (`{D-B1-D11}`).
+            translation or an unfilled placeholder, so no other check sees these gaps (`D-221`).
             43. Every constructor property of a `UiState` class (a `data class` named `*UiState` or `*Ui`) and of
                 `UiMessage`, in the production Kotlin sources of `:shared`, the feature modules and the core
                 modules, whose type is `String`, `CharSequence` or contains either, is listed in the `§14.2` table,
                 and every row of that table names such a property with one of its four kinds. Comments and string
                 literals are masked before the parse, so KDoc and default values are not read as types. The table
                 is the allowlist, so a new text field in shared presentation state is a contract change reviewed
-                with its kind (`{D-B1-D11}`).
+                with its kind (`D-221`).
                 44. No host UI source passes literal text to a rendering API, as `§14.3` defines. On Android no string
                     literal in `androidApp/src/main/java` reaches Compose `Text` (positional or `text =`),
                     `contentDescription`, `stateDescription`, `onClickLabel`, `onLongClickLabel`, `paneTitle` or
@@ -2278,7 +2278,7 @@ Optional checks:
                     exist, and every construction of an allowlisted iOS view outside its own file must sit inside an
                     `#if DEBUG` branch that is not negated, joined by `||`, or an `#else`/`#elseif` branch, so the
                     allowlist cannot exempt a production screen. Text computed at run time is outside this textual
-                    check (`{D-B1-D11}`).
+                    check (`D-221`).
 
 The protected `contract-check` job also performs a read-only deployed-runtime assertion for
 internal pull requests targeting `main` and pushes to `main`. GitHub OIDC is admitted through a

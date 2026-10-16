@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 /**
- * `docs/CONTRACTS.md §18` assertion 42 (`{D-B1-D11}`): every key a host references exists in both of
+ * `docs/CONTRACTS.md §18` assertion 42 (`D-221`): every key a host references exists in both of
  * its catalogues, the catalogues of each host declare the same keys, and a key rendered without
  * arguments carries no format argument.
  *

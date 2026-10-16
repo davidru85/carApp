@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 /**
- * `docs/CONTRACTS.md §18` assertion 44 (`{D-B1-D11}`): no host UI source renders literal text, except
+ * `docs/CONTRACTS.md §18` assertion 44 (`D-221`): no host UI source renders literal text, except
  * the explicitly allowlisted Debug-only source, which must itself be reachable only from `#if DEBUG`.
  */
 class HostLiteralTextContractTest {
