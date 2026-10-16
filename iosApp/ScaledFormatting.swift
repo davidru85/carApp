@@ -30,6 +30,26 @@ func formatScaled(_ value: Int64, scale: Int) -> String {
     return "\(sign)\(whole).\(fraction)"
 }
 
+/// RED stub of `D-222`: returns no text yet.
+func formatScaledDecimal(_ value: Int64, scale: Int, locale: Locale) -> String {
+    ""
+}
+
+/// RED stub of `D-222`: returns no text yet.
+func formatScaledInput(_ value: Int64, scale: Int, locale: Locale) -> String {
+    ""
+}
+
+/// RED stub of `D-222`: returns no text yet.
+func formatCurrencyAmount(_ value: Int64, scale: Int, currencyCode: String, locale: Locale) -> String {
+    ""
+}
+
+/// RED stub of `D-222`: returns no text yet.
+func formatInteger(_ value: Int64, locale: Locale) -> String {
+    ""
+}
+
 func parseScaled(_ input: String, scale: Int) -> Int64? {
     let normalised = input.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
     let parts = normalised.split(separator: ".", omittingEmptySubsequences: false).map(String.init)
