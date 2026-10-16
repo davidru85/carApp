@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -248,18 +249,21 @@ internal fun WelcomeScreen(
     onGoogle: () -> Unit,
     onContinueWithoutAccount: () -> Unit,
 ) {
+    // `E4-02`: the box keeps the welcome centred while it fits; the column scrolls once a 200% font
+    // scale makes the copy and both actions taller than the screen.
     Box(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = stringResource(R.string.welcome_title),
                 style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.screenHeading(),
             )
             Text(stringResource(R.string.welcome_body))
             OnboardingAction {
@@ -280,7 +284,7 @@ internal fun WelcomeScreen(
                     Text(stringResource(R.string.continue_without_account))
                 }
             }
-            if (state.isBusy) CircularProgressIndicator()
+            if (state.isBusy) LabelledProgressIndicator()
             state.message?.let { ErrorText(it) }
         }
     }
