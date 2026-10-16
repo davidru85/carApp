@@ -17,7 +17,14 @@ enum AppVersion {
     /// Joins the two bundle values. A missing or blank part is left out rather than drawn as a
     /// placeholder, so a bundle without a build number still shows its marketing version.
     static func format(shortVersion: String?, buildNumber: String?) -> String {
-        // RED stub: AppVersion.format
-        return ""
+        let marketing = shortVersion?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let build = buildNumber?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if marketing.isEmpty {
+            return build
+        }
+        if build.isEmpty {
+            return marketing
+        }
+        return "\(marketing) (\(build))"
     }
 }

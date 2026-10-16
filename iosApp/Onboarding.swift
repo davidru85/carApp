@@ -19,9 +19,14 @@ func resolveOnboardingDestination(
     vehicleCount: Int,
     showsDepartureScreen: Bool = false
 ) -> OnboardingDestination {
+    if showsDepartureScreen {
+        return .departure
+    }
     switch sessionPhase {
-    case .unknown, .deleting:
+    case .unknown:
         return .waiting
+    case .deleting:
+        return .departure
     case .signedOut:
         return .welcome
     case .local, .anonymous, .permanent:

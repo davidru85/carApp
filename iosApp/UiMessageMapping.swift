@@ -56,6 +56,12 @@ func localizedUiMessage(for code: String) -> String {
         key = "error_auth_provider"
     case "AUTH.NO_ACCOUNT_AVAILABLE":
         key = "error_auth_no_account"
+    case "AUTH.REQUIRES_RECENT_LOGIN":
+        key = "error_auth_requires_recent_login"
+    case "AUTH.ACCOUNT_DELETION_REMOTE_FAILED":
+        key = "error_account_deletion_remote_failed"
+    case "WARNING.PENDING_SYNC":
+        key = "warning_pending_sync"
     default:
         key = "error_unexpected"
     }
