@@ -41,6 +41,7 @@ targets:
       - path: AnonymousReminderView.swift
       - path: SyncStatusVisual.swift
       - path: SyncStatusIndicatorView.swift
+      - path: AccountConversionSurface.swift
       - path: AppVersion.swift
       - path: SettingsPresentation.swift
       - path: DeparturePresentation.swift

@@ -56,6 +56,14 @@ func localizedUiMessage(for code: String) -> String {
         key = "error_auth_provider"
     case "AUTH.NO_ACCOUNT_AVAILABLE":
         key = "error_auth_no_account"
+    case "AUTH.UID_WOULD_CHANGE":
+        key = "error_auth_uid_would_change"
+    case "AUTH.CREDENTIAL_ALREADY_IN_USE":
+        key = "error_auth_credential_in_use"
+    case "AUTH.PERMISSION_DENIED":
+        key = "error_auth_permission_denied"
+    case "AUTH.UNKNOWN":
+        key = "error_unexpected"
     case "AUTH.REQUIRES_RECENT_LOGIN":
         key = "error_auth_requires_recent_login"
     case "AUTH.ACCOUNT_DELETION_REMOTE_FAILED":

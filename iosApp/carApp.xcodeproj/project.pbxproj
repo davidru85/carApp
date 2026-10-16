@@ -34,6 +34,7 @@
 		779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2990EC393011D730A1640108 /* SettingsPresentationTests.swift */; };
 		8399940CEEB433EFFC1D26F4 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EF4FF64EF14187A25E413 /* ContentView.swift */; };
 		841CAEB3DAF4FA600E08CD23 /* DeparturePromptPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28D44B02D57A6EF929E4C87 /* DeparturePromptPresenter.swift */; };
+		8B465AAA8C9F7D79D03DB1B0 /* AccountConversionSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F78BB5293C4523936DBAD88 /* AccountConversionSurface.swift */; };
 		8CA801FD5149E9407BF22860 /* GoogleService-Info-Debug.plist in Resources */ = {isa = PBXBuildFile; fileRef = 319D2AAD8992D0845885B643 /* GoogleService-Info-Debug.plist */; };
 		91654DEAE8356297D2D2C746 /* OnboardingWait.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */; };
 		920755EF8BDC39E70A00581B /* SyncStatusVisual.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */; };
@@ -41,6 +42,7 @@
 		9F00CE4CEA4AAAD7F26FC333 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 63BDB1B22E14C56E1A3EFDCD /* FirebaseFirestore */; };
 		A596AB5ED1CA24A8BC2151B2 /* SettingsPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87243F51351B46DEF5827671 /* SettingsPresentation.swift */; };
 		A7CE3C1C85681811BEC2B244 /* VehicleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB807E6528E387D28949629 /* VehicleListView.swift */; };
+		B53B9A59E618F9137CE858C9 /* AccountConversionSurfaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */; };
 		B60291A05FD5B3F2CBAE944E /* AnonymousReminderCopyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */; };
 		BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */; };
 		C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */; };
@@ -90,6 +92,7 @@
 		09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormatting.swift; sourceTree = "<group>"; };
 		13677EB163BA55FAE43164CE /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCheckProviderFactory.swift; sourceTree = "<group>"; };
+		1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionSurfaceTests.swift; sourceTree = "<group>"; };
 		278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScaledFormattingTests.swift; sourceTree = "<group>"; };
 		2990EC393011D730A1640108 /* SettingsPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentationTests.swift; sourceTree = "<group>"; };
 		2AB807E6528E387D28949629 /* VehicleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleListView.swift; sourceTree = "<group>"; };
@@ -101,6 +104,7 @@
 		33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMapping.swift; sourceTree = "<group>"; };
 		386580F3F32E7C04067DEE4E /* NativeSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSignIn.swift; sourceTree = "<group>"; };
 		3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusIndicatorView.swift; sourceTree = "<group>"; };
+		3F78BB5293C4523936DBAD88 /* AccountConversionSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountConversionSurface.swift; sourceTree = "<group>"; };
 		3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModelLifecycleTests.swift; sourceTree = "<group>"; };
 		48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UiMessageMappingTests.swift; sourceTree = "<group>"; };
 		4B75BD49AED901E7C93582F7 /* carAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = carAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -213,6 +217,7 @@
 		C9FE68B9523949AB829ECCA0 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				1DD9B17F62F865143A1BF2EA /* AccountConversionSurfaceTests.swift */,
 				83889FAB5DFA851B69D496F8 /* AnonymousReminderCopyTests.swift */,
 				950A677E999C1015E56D922B /* AppleSignInNonceTests.swift */,
 				979D67C50BB47615E2A81B98 /* AppVersionTests.swift */,
@@ -235,6 +240,7 @@
 		E3D19A4D38694A47DC344CE6 = {
 			isa = PBXGroup;
 			children = (
+				3F78BB5293C4523936DBAD88 /* AccountConversionSurface.swift */,
 				F1D3FF59198975EB35247680 /* AnonymousReminderView.swift */,
 				15A35A1196FD6E851696B0EE /* AppCheckProviderFactory.swift */,
 				BA444957D2C856A4395A3F80 /* AppVersion.swift */,
@@ -425,6 +431,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B53B9A59E618F9137CE858C9 /* AccountConversionSurfaceTests.swift in Sources */,
 				B60291A05FD5B3F2CBAE944E /* AnonymousReminderCopyTests.swift in Sources */,
 				F832F62E1DCDA93481252412 /* AppVersionTests.swift in Sources */,
 				03A95F8341EFA216EC4D700F /* AppleSignInNonceTests.swift in Sources */,
@@ -447,6 +454,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B465AAA8C9F7D79D03DB1B0 /* AccountConversionSurface.swift in Sources */,
 				E40D8982412D833C47095BAF /* AnonymousReminderView.swift in Sources */,
 				C71DA66A2E38961171C02219 /* AppCheckProviderFactory.swift in Sources */,
 				CFABAA31B66085D6DBBD92EA /* AppVersion.swift in Sources */,
