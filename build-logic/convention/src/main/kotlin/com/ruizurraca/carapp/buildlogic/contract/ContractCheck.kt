@@ -50,6 +50,7 @@ class ContractCheck(
             nativeTestProjects = nativeTestDependencyGraph.keys,
         ),
         *AnalyticsIntegrationContract(repoRoot).validate().toTypedArray(),
+        UiMessageMappingContract(repoRoot).validate(),
         reportProseInCodeFences(),
     )
 
