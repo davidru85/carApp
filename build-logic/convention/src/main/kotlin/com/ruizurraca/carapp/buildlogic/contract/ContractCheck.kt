@@ -53,6 +53,7 @@ class ContractCheck(
         UiMessageMappingContract(repoRoot).validate(),
         LocalizationKeyContract(repoRoot).validate(),
         UiStateTextContract(repoRoot).validate(),
+        HostLiteralTextContract(repoRoot).validate(),
         reportProseInCodeFences(),
     )
 
