@@ -349,7 +349,10 @@ class SettingsStateHolderTest {
             SettingsStateHolder(
                 scope = backgroundScope,
                 repository = repository,
-                dispatchers = TestDispatcherProvider(StandardTestDispatcher(testScheduler)),
+                // An unconfined test dispatcher, because `backgroundScope` marks its work as background and
+                // `advanceUntilIdle()` returns as soon as only background events remain
+                // (TestCoroutineScheduler.kt:110): a standard dispatcher would never run the holder.
+                dispatchers = TestDispatcherProvider(UnconfinedTestDispatcher(testScheduler)),
             )
         // `WhileSubscribed` observes the repository only while something collects the state (§14).
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { holder.state.collect {} }
