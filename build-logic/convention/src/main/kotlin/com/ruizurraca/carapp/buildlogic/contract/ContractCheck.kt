@@ -52,6 +52,7 @@ class ContractCheck(
         *AnalyticsIntegrationContract(repoRoot).validate().toTypedArray(),
         UiMessageMappingContract(repoRoot).validate(),
         LocalizationKeyContract(repoRoot).validate(),
+        UiStateTextContract(repoRoot).validate(),
         reportProseInCodeFences(),
     )
 
