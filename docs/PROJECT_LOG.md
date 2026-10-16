@@ -38,6 +38,35 @@
 
 ## Entries
 
+### 2026-10-16 — E4-02 accessibility and localization (bundle E4-B1)
+
+- **Type:** story
+- **Story / Decision:** `E4-02` / `D-216` to `D-223`, `D-225` and `D-226`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** F-1 to F-3, Settings, the departure screens and the `E4-05` conversion surface
+  pass automated accessibility checks on both hosts (`D-216`, `D-217`), at 200% text (`D-218`) and
+  in Spanish. Every `AppError`, `CONFIRMATION.*` and `INFO.*` code has explicit Spanish and English
+  copy per user-actionable outcome (`D-219`), guarded by a new `contractCheck` assertion (`D-220`);
+  assertions 42, 43 and 44 make the no-text-in-`UiState` and no-hardcoded-strings rules executable
+  (`D-221`). Numbers and currency follow the device locale (`D-222`), and every measured WCAG AA
+  contrast failure is fixed (`D-223`).
+- **Why:** `docs/SPECIFICATION.md §11` requires accessibility and complete ES/EN localization, and
+  the owner extended the screen-reader audit to the screens this bundle adds (`D-225`) and chose
+  its acceptance method (`D-226`).
+- **Documents touched:** `docs/CONTRACTS.md §6`, `§14.1`, `§14.2`, `§14.3`, `§18`;
+  `docs/versions-matrix.md`; `gradle/libs.versions.toml`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0217 to
+  ADR-0224, ADR-0226, ADR-0227; `docs/DESIGN.md` accessibility note; `docs/BACKLOG.md`;
+  `docs/handoffs/E4-02.md`.
+- **Verification:** fixtures and their rules `a2e719f3`/`a3bb7c1b`, `ac7fc092`/`94138e47`,
+  `f3e9cd16`/`e7b32dcb`, `8a465ddf`/`e5aa7836`, `19e1a2c9`/`b1160587`, `a4c090a4`/`e4789538`,
+  `b8f13a07`/`80102f94`, `d2b40b9d`/`627bc946`; the complete `AGENTS.md` command passes; the Android
+  instrumented suite is 130 tests / 0 failures with 11 ATF states, 9 flow states, 14 font-scale and 7
+  Spanish tests included and no ATF `ERROR` line; `carAppTests` is 144 tests / 0 failures; every new
+  regression test was shown to fail against the unfixed code.
+- **Follow-ups / risks:** the owner-run TalkBack and VoiceOver device walkthrough (`D-226`) is still
+  open; the iOS audit leaves 24 findings on SwiftUI-rendered chrome that need an owner decision (S-13).
+  This completes bundle `E4-B1`.
 ### 2026-10-16 — E4-05 account conversion host surface (bundle E4-B1)
 
 - **Type:** story
