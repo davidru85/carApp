@@ -31,7 +31,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.ruizurraca.carapp.core.common.AuthProvider
 
-internal enum class OnboardingDestination { WAITING, WELCOME, FIRST_VEHICLE, VEHICLE_LIST }
+internal enum class OnboardingDestination { WAITING, WELCOME, FIRST_VEHICLE, VEHICLE_LIST, DEPARTURE }
 
 internal fun resolveOnboardingDestination(
     sessionPhase: SessionPhase,
@@ -126,6 +126,10 @@ internal class AndroidGoogleSignInCoordinator(
             }
         }
     }
+
+    /** RED stub: the `E4-01` GREEN commit replaces the body. */
+    @Suppress("UnusedParameter")
+    suspend fun acquireAndComplete(startEntryIntent: (AuthProvider) -> Unit) = Unit
 
     /**
      * The Credential Manager call is bound to the host it renders over. When that host is rebuilt

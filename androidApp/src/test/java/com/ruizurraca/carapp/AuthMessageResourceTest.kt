@@ -28,4 +28,20 @@ class AuthMessageResourceTest {
             "Telling the owner that something went wrong hides the one action that resolves it.",
         )
     }
+
+    @Test
+    fun aStaleLoginGetsTheReauthenticationMessage() {
+        assertEquals(
+            R.string.error_auth_requires_recent_login,
+            authStringResource("AUTH.REQUIRES_RECENT_LOGIN"),
+        )
+    }
+
+    @Test
+    fun aRemoteAccountDeletionFailureGetsItsOwnMessage() {
+        assertEquals(
+            R.string.error_account_deletion_remote_failed,
+            authStringResource("AUTH.ACCOUNT_DELETION_REMOTE_FAILED"),
+        )
+    }
 }

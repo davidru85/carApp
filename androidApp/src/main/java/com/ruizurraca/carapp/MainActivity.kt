@@ -193,7 +193,9 @@ private fun VehicleApp(
     }
 
     when (resolveOnboardingDestination(sessionState.phase, vehicleState.vehicles.size)) {
-        OnboardingDestination.WAITING -> {
+        OnboardingDestination.WAITING,
+        OnboardingDestination.DEPARTURE,
+        -> {
             WaitingIndicator()
         }
 
