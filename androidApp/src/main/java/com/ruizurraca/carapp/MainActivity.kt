@@ -1174,6 +1174,8 @@ private fun nonConfirmationStringResource(code: String): Int =
 
         "VALIDATION.ENTITY_NOT_FOUND" -> R.string.vehicle_not_found
 
+        "WARNING.PENDING_SYNC" -> R.string.pending_sync_title
+
         "PERSISTENCE.DATABASE_UNAVAILABLE",
         "PERSISTENCE.TRANSACTION_FAILED",
         "PERSISTENCE.MIGRATION_FAILED",
@@ -1199,6 +1201,8 @@ internal fun authStringResource(code: String): Int =
         "AUTH.NETWORK_UNAVAILABLE" -> R.string.error_auth_network
         "AUTH.PROVIDER_UNAVAILABLE" -> R.string.error_auth_provider
         "AUTH.NO_ACCOUNT_AVAILABLE" -> R.string.error_auth_no_account
+        "AUTH.REQUIRES_RECENT_LOGIN" -> R.string.error_auth_requires_recent_login
+        "AUTH.ACCOUNT_DELETION_REMOTE_FAILED" -> R.string.error_account_deletion_remote_failed
         else -> R.string.error_unexpected
     }
 

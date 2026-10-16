@@ -38,10 +38,12 @@ internal fun resolveOnboardingDestination(
     vehicleCount: Int,
 ): OnboardingDestination =
     when (sessionPhase) {
-        SessionPhase.UNKNOWN,
-        SessionPhase.DELETING,
-        -> {
+        SessionPhase.UNKNOWN -> {
             OnboardingDestination.WAITING
+        }
+
+        SessionPhase.DELETING -> {
+            OnboardingDestination.DEPARTURE
         }
 
         SessionPhase.SIGNED_OUT -> {
@@ -111,8 +113,20 @@ internal class AndroidGoogleSignInCoordinator(
     private val failSignIn: (NativeSignInFailure) -> Unit,
     private val setAcquisitionInFlight: (Boolean) -> Unit,
 ) {
+    /** F-1 permanent sign-in: the picker path behind `startPermanentSignIn`. */
     suspend fun signIn() {
-        startPermanentSignIn(AuthProvider.GOOGLE)
+        acquireAndComplete(startPermanentSignIn)
+    }
+
+    /**
+     * The single native Google picker path. [startEntryIntent] is the shared intent that opens the
+     * attempt: `startPermanentSignIn` for F-1 sign-in, `startReauthentication` for the `§20.10`
+     * re-authentication of a stale-login deletion, and `startAccountConversion` for `E4-05`. It always
+     * runs before the picker, so the holder knows which attempt the credential completes, and every
+     * entry completes through the same `completeGoogleSignIn` / `failSignIn` intents.
+     */
+    suspend fun acquireAndComplete(startEntryIntent: (AuthProvider) -> Unit) {
+        startEntryIntent(AuthProvider.GOOGLE)
         setAcquisitionInFlight(true)
         when (val acquisition = acquireCredential()) {
             is GoogleCredentialAcquisition.Success -> {
@@ -126,10 +140,6 @@ internal class AndroidGoogleSignInCoordinator(
             }
         }
     }
-
-    /** RED stub: the `E4-01` GREEN commit replaces the body. */
-    @Suppress("UnusedParameter")
-    suspend fun acquireAndComplete(startEntryIntent: (AuthProvider) -> Unit) = Unit
 
     /**
      * The Credential Manager call is bound to the host it renders over. When that host is rebuilt

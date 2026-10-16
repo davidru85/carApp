@@ -1,12 +1,36 @@
 package com.ruizurraca.carapp
 
+import android.content.Context
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.pm.PackageInfoCompat
+
 /**
- * The version label of the Settings screen (`docs/SPECIFICATION.md §3.1`, B1-D2).
- *
- * RED stub: the `E4-01` GREEN commit replaces the body.
+ * The app version the Settings screen shows (`docs/SPECIFICATION.md §3.1`). B1-D2 makes each host read
+ * its own version natively, so this reads the installed package and no shared contract carries it.
  */
-@Suppress("UnusedParameter", "FunctionOnlyReturningConstant")
+internal fun Context.appVersionName(): String {
+    val info = installedPackageInfo()
+    return appVersionLabel(
+        versionName = info.versionName,
+        versionCode = PackageInfoCompat.getLongVersionCode(info),
+    )
+}
+
+/**
+ * The version label: the package `versionName` verbatim, or the `versionCode` when the package
+ * declares no usable name, so the version row is never empty.
+ */
 internal fun appVersionLabel(
     versionName: String?,
     versionCode: Long,
-): String = ""
+): String = versionName?.takeIf(String::isNotBlank) ?: versionCode.toString()
+
+private fun Context.installedPackageInfo(): PackageInfo =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0L))
+    } else {
+        @Suppress("DEPRECATION")
+        packageManager.getPackageInfo(packageName, 0)
+    }
