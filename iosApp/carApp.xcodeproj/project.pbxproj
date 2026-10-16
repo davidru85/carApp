@@ -23,6 +23,7 @@
 		4BC8A1097F15EE75D459464C /* OnboardingWaitPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */; };
 		4C060553EC46B345A3A651A4 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = F69C05AC6EDB4D25BD6729CD /* FirebaseAppCheck */; };
 		50E658A3BCF6B028487ABB8C /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = FFE99D9E34273E411857F7D2 /* FirebaseFunctions */; };
+		5702CB6836FADBB7326AE175 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CA750BBA90A4B95A0D90785 /* SettingsViewModel.swift */; };
 		5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */; };
 		5DD3FA0766D149AEDEB1E011 /* VehicleFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B896BC0A600D06C316462EF0 /* VehicleFormView.swift */; };
 		624A2E0B033573ADDE299BD6 /* carAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AE8C2DC42F87B2479960CF4 /* carAppApp.swift */; };
@@ -58,6 +59,7 @@
 		F0935B37788D0491C56BB7E9 /* CarAppKeychainPersistenceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93AF1D4FCC767900DC89D5A4 /* CarAppKeychainPersistenceUITests.swift */; };
 		F31BB6BAD712492DE2273FD9 /* NativeSignInCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70342BB37514222353B651C4 /* NativeSignInCoordinatorTests.swift */; };
 		F832F62E1DCDA93481252412 /* AppVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 979D67C50BB47615E2A81B98 /* AppVersionTests.swift */; };
+		F852EA19B6E4BBA331227BFC /* SettingsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */; };
 		F8DEC9DB35BA13C51EC2FC8C /* VehicleAndFuelFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */; };
 		FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */; };
 /* End PBXBuildFile section */
@@ -110,6 +112,7 @@
 		87243F51351B46DEF5827671 /* SettingsPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPresentation.swift; sourceTree = "<group>"; };
 		88B30B5B9CD36EC3AB3706F5 /* VehicleAndFuelFlowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleAndFuelFlowUITests.swift; sourceTree = "<group>"; };
 		8B4DDF68481A819B505F8816 /* ViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels.swift; sourceTree = "<group>"; };
+		8CA750BBA90A4B95A0D90785 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		8E1D3B85A3545B1596B8CBAF /* WalkingSkeletonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkingSkeletonModel.swift; sourceTree = "<group>"; };
 		8EB8A37AF599C28041EB55CA /* es.lproj */ = {isa = PBXFileReference; path = es.lproj; sourceTree = "<group>"; };
 		8F1D692A6004DC3C7281A5D1 /* FuelEntryFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelEntryFormView.swift; sourceTree = "<group>"; };
@@ -123,6 +126,7 @@
 		A8A8811E6F8FCD7ED6FE8936 /* OnboardingWaitPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWaitPolicyTests.swift; sourceTree = "<group>"; };
 		AC0DADA5B744ADC998CE304D /* OnboardingWait.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWait.swift; sourceTree = "<group>"; };
 		AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBackgroundTrackingTests.swift; sourceTree = "<group>"; };
+		B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModelTests.swift; sourceTree = "<group>"; };
 		B896BC0A600D06C316462EF0 /* VehicleFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleFormView.swift; sourceTree = "<group>"; };
 		BA444957D2C856A4395A3F80 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 		EA936CDF4A501C6A7C6AF909 /* DeparturePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeparturePresentationTests.swift; sourceTree = "<group>"; };
@@ -211,6 +215,7 @@
 				278E3E1E0E4D2CA189875349 /* ScaledFormattingTests.swift */,
 				AD08976CE2DBD12CBEBCCF7D /* SceneBackgroundTrackingTests.swift */,
 				2990EC393011D730A1640108 /* SettingsPresentationTests.swift */,
+				B10740A4E074657A1EFE3839 /* SettingsViewModelTests.swift */,
 				54EE40DF65B64FEE7A9F834E /* SyncStatusVisualTests.swift */,
 				48E39334923353E0FFE12355 /* UiMessageMappingTests.swift */,
 				3FD13A969DE94744EB3A954E /* ViewModelLifecycleTests.swift */,
@@ -237,6 +242,7 @@
 				09D2AAF54663C639D3EB8122 /* ScaledFormatting.swift */,
 				FA084DA2E47947A8081B2978 /* SceneBackgroundTracking.swift */,
 				87243F51351B46DEF5827671 /* SettingsPresentation.swift */,
+				8CA750BBA90A4B95A0D90785 /* SettingsViewModel.swift */,
 				3C8D2F31F6177E41008329D5 /* SyncStatusIndicatorView.swift */,
 				95A4BEC5055EC6135FAA73C5 /* SyncStatusVisual.swift */,
 				33EAC4F2AF02BD67878582E5 /* UiMessageMapping.swift */,
@@ -418,6 +424,7 @@
 				1CA3650E3BAA56D79970A4B7 /* ScaledFormattingTests.swift in Sources */,
 				CA71C8F7CBC028CBA705143E /* SceneBackgroundTrackingTests.swift in Sources */,
 				779E2EF4A48F82A3B8CE94AB /* SettingsPresentationTests.swift in Sources */,
+				F852EA19B6E4BBA331227BFC /* SettingsViewModelTests.swift in Sources */,
 				33AC181BA72957B5CB31F708 /* SyncStatusVisualTests.swift in Sources */,
 				5C4472F3D19B2D3A3D758790 /* UiMessageMappingTests.swift in Sources */,
 				CF91B9C8A45178F10D553060 /* ViewModelLifecycleTests.swift in Sources */,
@@ -441,6 +448,7 @@
 				C1380989263CE94248C4319C /* ScaledFormatting.swift in Sources */,
 				BC6B1D4B10D898BDA4900D8B /* SceneBackgroundTracking.swift in Sources */,
 				A596AB5ED1CA24A8BC2151B2 /* SettingsPresentation.swift in Sources */,
+				5702CB6836FADBB7326AE175 /* SettingsViewModel.swift in Sources */,
 				FCF38D1BEFB167DDA9367206 /* SyncStatusIndicatorView.swift in Sources */,
 				920755EF8BDC39E70A00581B /* SyncStatusVisual.swift in Sources */,
 				7133E5870DF9A75B55AF63F8 /* UiMessageMapping.swift in Sources */,

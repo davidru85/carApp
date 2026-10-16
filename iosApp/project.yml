@@ -44,6 +44,7 @@ targets:
       - path: AppVersion.swift
       - path: SettingsPresentation.swift
       - path: DeparturePresentation.swift
+      - path: SettingsViewModel.swift
       - path: en.lproj
         buildPhase: resources
       - path: es.lproj
