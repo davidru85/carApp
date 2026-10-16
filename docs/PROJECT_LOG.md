@@ -38,6 +38,37 @@
 
 ## Entries
 
+### 2026-10-16 — E4-05 account conversion host surface (bundle E4-B1)
+
+- **Type:** story
+- **Story / Decision:** `E4-05` / `D-224`, `D-227`, `D-228` (and `D-210`, which created the story)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** Settings shows an account-link row to an anonymous session only, hidden while
+  `LOCAL` (`D-224`): Google on Android, Apple and Google on iOS. The row starts
+  `startAccountConversion(provider)`, reuses the native picker that `E4-01` refactored and completes
+  through `completeGoogleSignIn` or `completeAppleSignIn`. A credential collision shows the
+  destructive `Confirmation.AdoptExistingAccount` confirmation; cancelling leaves the anonymous
+  session untouched, and confirming runs the `E2-04` replacement with its progress, typed failures
+  and resume. `docs/SPECIFICATION.md §3.1` lists the row (`D-210`). `docs/CONTRACTS.md §20.10` now
+  states that `clearMessage()` cancels a displayed collision (`D-227`), and the two `E2-04`
+  interruption hazards that this surface makes reachable are accepted residual risks in
+  `docs/SECURITY.md`, closed later by the new follow-up story `E2-10` (`D-228`).
+- **Why:** the `E2-04` conversion had no host entry point while the `D-62` reminders told anonymous
+  users to sign in; the owner chose a separate story over growing `E4-01` (`D-210`, ADR-0211).
+- **Documents touched:** `docs/SPECIFICATION.md §3.1`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0211,
+  ADR-0225; `docs/DESIGN.md §6`; `design/stitch/*/screens/06-settings.md`; `docs/BACKLOG.md`;
+  `docs/handoffs/E4-05.md`; `docs/CONTRACTS.md §20.10 (D-227)`; `docs/SECURITY.md Accepted Residual
+  Risks (D-228)`; ADR-0228, ADR-0229; the `E2-10` backlog story.
+- **Verification:** `94af6cc5`, `168d985a`, `3c060167`, `ab2c9c48`, `a50cf516`, `b581ef0d`,
+  `e25cd274`, `036ed00a`, `f61dd3fc`, `96732fef`, `ce9926ef`, `7d104f91`, `43a56b22`, `ebd28be4`;
+  `AccountConversionSurfaceTest` 12/12, `SettingsAccountConversionTest` 6/6, full connected suite 0
+  failures; iOS `AccountConversionSurfaceTests` 12/12, `AccountConversionUITests` skipped without the
+  App Check debug token (owner-run item M0); the complete `AGENTS.md` command passes.
+- **Follow-ups / risks:** the manual conversion checklist in `docs/handoffs/E4-05.md` is owner-run
+  and still open. `E2-10`, a correctness follow-up, closes the two interruption hazards accepted by
+  `D-228`. `E4-02` continues in bundle `E4-B1`.
+
 ### 2026-10-16 — E4-01 Settings UI and the host departure surface (bundle E4-B1)
 
 - **Type:** story
