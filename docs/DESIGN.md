@@ -125,11 +125,23 @@ backlog story, never the design file.
   Spanish (Spain) with `7,24` / `142.500` number formatting and euro after the value. English is
   required from day one (`docs/SPECIFICATION.md §11`), and localized strings live in resource
   files with English keys, never in these design assets. Layouts must tolerate the longer of the
-  two languages.
-- **Accessibility has not been verified against the design.** `docs/SPECIFICATION.md §11` requires
-  WCAG AA contrast, content labels, and usability at 200% system font size. The designs were drawn
-  for legibility but no contrast audit or 200%-scale reflow test has been run on them. `E4-02` owns
-  this, and may require design changes.
+  two languages. Since `E4-02` (`D-222`) both hosts render numbers and money with the platform
+  locale formatters, so a Spanish device shows this formatting; iOS leaves a four-digit integer part
+  ungrouped under the Spanish CLDR rule (`1234,56 €`).
+- **Accessibility was audited on the implemented screens by `E4-02`, not on the designs.**
+  `docs/SPECIFICATION.md §11` requires WCAG AA contrast, content labels, and usability at 200%
+  system font size. `E4-02` runs the Accessibility Test Framework on Android (`D-216`),
+  `performAccessibilityAudit()` on iOS (`D-217`), a 200% font-scale reachability suite on
+  Android and an AX3 suite on iOS (`D-218`), and fixed only the contrast failures it measured on
+  the shipped themes (`D-223`): the iOS fuel-entry badges (orange 1.95:1, red 2.91:1, purple
+  3.42:1 on their tint) and the iOS error captions (system red 3.55:1) now use accessible text
+  colours, and the iOS row consumption value (accent 4.02:1) uses the primary label colour
+  and the Android fuel-entry litre and derived-total fields, whose
+  clipped labels the audit reported and which now take `.fixedSize` (E402H-31). The remaining iOS audit
+  findings are on SwiftUI-rendered chrome and need an owner decision (S-13, recorded in the E4-02
+  handoff). The design palette was not applied and the design files were not re-measured; a design
+  change that alters colours or type MUST be re-checked with the same suites. Per-screen results are in
+  `docs/handoffs/E4-02.md`.
 - **Three iOS screens have never been rendered in Figma.** `09-ios-forms.figma.js` and
   `10-ios-settings.figma.js` are complete but unrun; Figma's Starter plan allows 20 MCP tool calls
   per month and the quota was exhausted. Their Stitch equivalents exist and are complete.
