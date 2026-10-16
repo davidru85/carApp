@@ -142,11 +142,13 @@ backlog story, never the design file.
 - **Map integration and real-time status updates are not designed.** They appear in no screen and
   are out of MVP scope (`docs/SPECIFICATION.md §3.2`).
 - **Anonymous account conversion has no designed entry point.** `docs/SPECIFICATION.md §7 F-4`
-  starts conversion from settings, and `docs/CONTRACTS.md §20.10` exposes
+  starts conversion from settings, `docs/SPECIFICATION.md §3.1` lists the anonymous-only
+  account-link row (`D-210`), and `docs/CONTRACTS.md §20.10` exposes
   `startAccountConversion(provider)` and `confirmAccountConversion(confirmation)` for it, but the
   settings screens show only sign-out and account deletion under "Cuenta". The conversion row and
-  the credential-collision confirmation are undesigned. `E2-04` owns the flow and will need design
-  before it starts.
+  the credential-collision confirmation are undesigned. `E4-05` owns the host surface (`E2-04`
+  delivered the shared flow) and proposes both designs for the owner's approval before its host
+  work starts.
 
 ## 7. Relationship to the normative documents
 

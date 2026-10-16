@@ -222,6 +222,8 @@ Decision IDs are owned by `docs/DECISION_BOARD.md`. This table mirrors its decis
 | D-206 | Outbox entity type wire value source | `EntityType` moves to `:core:common` with `@HiddenFromObjC`; SQL literals are checked by `EntityTypeWireValueParityTest` | Accepted | `§4` forbids `:core:database -> :core:sync`, so the enum could not be the single source where it was. No schema migration. Needed by `E3-13`. See ADR-0207. |
 | D-207 | Stale `SYNCING` startup reset | Count-gated, one-transaction reset under the sync cycle's exclusion, classifying from the outbox `lastErrorCode` like `failPush` | Accepted | The aggregate stays outbox-derived and push ordering is unchanged; the outbox row keeps its retry context. Needed by `E3-21`. See ADR-0208. |
 | D-208 | Unsupported provider value at the pull boundary | Total integration conversion with a reserved marker; explicit `MalformedPayload` quarantine of marked documents in `:core:sync` | Accepted | Mirrors the `E3-19` push-side totality; no `RemoteSyncSource` type changes. Needed by `E3-20`. See ADR-0209. |
+| D-209 | Phase 4 bundle delivery | `E4-B1` (`E4-01`, `E4-05`, `E4-02`) then `E4-B2` (`E4-04`, `E4-03`), one branch and one pull request each | Accepted | Limited to these two bundles; stories run one at a time and keep their own TDD cycle, handoff and project-log entry; `E4-04` precedes `E4-03` because release builds fail closed until it lands (`D-54`). See ADR-0210. |
+| D-210 | Account conversion entry point | `§3.1` gains an anonymous-only account-link row; the new story `E4-05` runs between `E4-01` and `E4-02` in `E4-B1` | Accepted | The `E2-04` shared flow had no host entry point while the reminders promised one; a separate story keeps the gated authentication review apart from Settings. See ADR-0211. |
 
 Do not use GitLive 3.0 alpha during the MVP. Do not add Ktor during the MVP unless a new ADR introduces an HTTP API implementation. Account deletion hard deletes use the `D-23` Firebase Admin server operation, not a client Firestore exception.
 
@@ -642,7 +644,7 @@ provider decoupling proof, plus E3-13 outbox `entityType` single-source centrali
 
 Status: planned; E4-01 through E4-04 remain.
 
-Settings UI, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
+Settings UI, the account conversion host surface, accessibility, localization, performance, release builds, Crashlytics integration, store requirements.
 
 ## 11. Risks and Mitigations
 

@@ -170,7 +170,9 @@ review.
   its evidence lives in `docs/handoffs/E1-14.md`. `E3-14`, the orphan-cleanup ticket issuance
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
-- **Next:** Phase 4, `E4-01` through `E4-04`, listed below and in `docs/BACKLOG.md`. Phase 3 closed
+- **Next:** Phase 4, delivered as two bundles under `D-209` (ADR-0210): `E4-B1` (`E4-01`, `E4-05`,
+  `E4-02`) is in flight on `story/E4-B1-product-surface`, and `E4-B2` (`E4-04`, `E4-03`) follows its
+  merge. Both are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
   `docs/handoffs/E2-04.md`), and `E2-05`, sign-out and account deletion, which merged on 2026-09-10
@@ -200,6 +202,10 @@ review.
   A red `shared-tests` or `provider-decoupling` is evidence to investigate, not a reason to re-run:
   the deadlock that made that signal ambiguous is fixed, so the reflex "re-run it" rather than
   "investigate it" is now exactly how a real regression gets waved through.
+  `E4-06`, the in-app privacy-policy link, was added on 2026-10-15 under the new `docs/BACKLOG.md`
+  subsection "Store-submission prerequisites": the owner postponed it, it is low priority and not
+  Ready, it is not part of the `D-209` bundles, and it MUST be done before any App Store or Google
+  Play submission.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
   as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
@@ -244,7 +250,13 @@ review.
   option B on 2026-10-14; `E3-18` delivered it inside `E3-B1`. `E3-03`, `E3-04`, `E3-05`, `E3-08`, `E3-09`, `E3-12`, `E3-13`, `E3-15`, `E3-16`, `E3-17`, `E3-18`,
   `E3-19`, `E3-20` and `E3-21` already merged, and `E1-18` landed with `E3-12`; none of them introduced an open decision, so no open
   decision gates merged work.
-- **Remaining Phase 4:** `E4-01` through `E4-04`.
+- **Remaining Phase 4:** `E4-01`, `E4-05`, `E4-02`, `E4-04` and `E4-03`, delivered as two bundles
+  under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
+  account conversion host surface, `E4-02` accessibility and localization), is in flight on
+  `story/E4-B1-product-surface`; its live checkpoint is `docs/handoffs/E4-B1.md`. Bundle `E4-B2`,
+  release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts
+  after `E4-B1` merges. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which places the
+  anonymous account-conversion entry point in Settings.
 - **Post-MVP:** `E5-01` (Electric and Hybrid Energy Model), `E5-02` (Owner-Bound Departure
   Operations), `E5-03` (Departure Tail Graph-Lifecycle Ownership) and `E5-04` (Departure Evaluation
   Auth-State Reconciliation).
@@ -504,9 +516,11 @@ If one of these is missing, stop and escalate. A story that depends on a decisio
 ## Scope Discipline
 
 Work only on the assigned backlog story. `D-205` (ADR-0206) assigns the six remaining Phase 3
-stories as two bundles, `E3-B1` and `E3-B2`, each delivered through one pull request; inside a
-bundle the stories run one at a time, and each keeps its own ready check, handoff and TDD cycle.
-No other story may be bundled without a new decision. The authoritative out-of-scope list is
+stories as two bundles, `E3-B1` and `E3-B2`, and `D-209` (ADR-0210) assigns the Phase 4 stories as
+two bundles, `E4-B1` (`E4-01`, `E4-05`, `E4-02`) and `E4-B2` (`E4-04`, `E4-03`). Each bundle is
+delivered through one pull request; inside a bundle the stories run one at a time, and each keeps
+its own ready check, handoff and TDD cycle. No other story may be bundled without a new decision.
+The authoritative out-of-scope list is
 `docs/SPECIFICATION.md §3.2`, which currently excludes: non-fuel expenses, advanced charts,
 export, receipt and odometer photos and OCR, local or on-device AI text recognition, fuel and
 maintenance reminders, operating-system notifications, shared vehicles, widgets, wearables and

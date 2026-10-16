@@ -214,5 +214,7 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-206 | [ADR-0207](0207-own-the-entity-type-wire-value-in-core-common.md) | Own the outbox entity type wire value in `:core:common`, with SQL literals checked by a parity test. | Accepted |
 | D-207 | [ADR-0208](0208-reset-stale-syncing-rows-from-their-outbox-at-startup.md) | Reset stale `SYNCING` rows at startup to the state their outbox row implies. | Accepted |
 | D-208 | [ADR-0209](0209-carry-unsupported-provider-values-as-a-reserved-marker.md) | Carry an unsupported provider value as a reserved marker and quarantine its document. | Accepted |
+| D-209 | [ADR-0210](0210-deliver-phase-4-in-two-bundles.md) | Deliver Phase 4 as two bundles, one pull request each. | Accepted |
+| D-210 | [ADR-0211](0211-place-the-account-conversion-entry-point-in-settings.md) | Offer anonymous account linking from Settings through the new story `E4-05`. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

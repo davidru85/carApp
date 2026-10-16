@@ -38,7 +38,7 @@ MVP success metric: a user can create a vehicle, log refueling events offline, a
 - Offline-first remote backup to Cloud Firestore for recovery on a new device.
 - Single active device per account. A backup can be restored on a new device, but simultaneous use on multiple devices is not supported in the MVP.
 - Discreet backup status indicator with manual retry.
-- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
+- Settings, exactly: `currency` (editable), `distanceUnit` and `volumeUnit` (visible, read-only in MVP), backup status, analytics opt-in, account linking offered only to an anonymous identity (Google on Android; Apple and Google on iOS, per F-1 and F-4; `D-210`), sign-out or local-data deletion, account deletion, app version. Language is inherited from the system; there is no in-app language switch in the MVP.
 - Spanish and English localization.
 - Firebase App Check enforcement for Authentication and Firestore, using App Attest on iOS, Play
   Integrity on Android and debug providers only in local or CI-specific builds (`D-67`).
@@ -700,6 +700,8 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-206 | Outbox entity type wire value source | `EntityType` lives in `:core:common` and is the only Kotlin source of the outbox `entityType` wire value; the SQL literals are verified against it by an executable parity check. | Accepted |
 | D-207 | Stale `SYNCING` startup reset | Once per app start, a `SYNCING` entity row left by process death returns to the state its outbox row implies: `FAILED_RETRYABLE` after a non-connectivity error, `PENDING` otherwise. | Accepted |
 | D-208 | Unsupported provider value at the pull boundary | A remote value the app cannot represent is carried as a reserved marker and its document is quarantined, so the pull cursor still advances. | Accepted |
+| D-209 | Phase 4 bundle delivery | Phase 4 is delivered as two consecutive bundles, `E4-B1` (`E4-01`, `E4-05`, `E4-02`) and `E4-B2` (`E4-04`, `E4-03`), each through one pull request; every story keeps its own ready check, handoff, TDD cycle and project-log entry. | Accepted |
+| D-210 | Account conversion entry point | Settings offers an anonymous-only account-link row (`§3.1`, `§7 F-4`), delivered by `E4-05` inside bundle `E4-B1`. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 
