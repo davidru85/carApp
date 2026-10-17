@@ -68,14 +68,14 @@ class FuelEntryFlowTest {
         price.performTextInput("9")
         price.assertTextContains("1.549")
 
-        composeRule.onNodeWithTag(FuelEntryTestTags.DERIVED_VALUE).assertTextContains("61.96", substring = true)
+        composeRule.onNodeWithTag(FuelEntryTestTags.DERIVED_VALUE).assertTextContains(derivedTotal(), substring = true)
 
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(FuelEntryTestTags.LITERS).assertTextContains("40,000")
         composeRule.onNodeWithTag(FuelEntryTestTags.PRICE_PER_LITER).assertTextContains("1.549")
-        composeRule.onNodeWithTag(FuelEntryTestTags.DERIVED_VALUE).assertTextContains("61.96", substring = true)
+        composeRule.onNodeWithTag(FuelEntryTestTags.DERIVED_VALUE).assertTextContains(derivedTotal(), substring = true)
     }
 
     @Test
@@ -100,7 +100,7 @@ class FuelEntryFlowTest {
         composeRule.onNodeWithTag(FuelEntryTestTags.PRICE_PER_LITER).performTextReplacement("1.5")
         composeRule
             .onNodeWithTag(FuelEntryTestTags.DERIVED_VALUE)
-            .assertTextContains("60.00", substring = true)
+            .assertTextContains(formatScaledDecimal(6_000L, 2, deviceLocale()), substring = true)
         composeRule.onNodeWithTag(FuelEntryTestTags.FULL_TANK).performScrollTo().performClick()
         composeRule.onNodeWithTag(FuelEntryTestTags.MISSED_ENTRIES).performScrollTo().performClick()
         composeRule.onNodeWithTag(FuelEntryTestTags.SAVE).performClick()
@@ -108,13 +108,16 @@ class FuelEntryFlowTest {
         composeRule.onNodeWithTag(FuelEntryTestTags.ODOMETER_WARNING).assertIsDisplayed()
         composeRule.onNodeWithTag(FuelEntryTestTags.CONFIRM_ODOMETER_WARNING).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithText("No consumption: partial tank.").fetchSemanticsNodes().isNotEmpty()
+            composeRule
+                .onAllNodesWithText(targetString(R.string.consumption_partial_tank))
+                .fetchSemanticsNodes()
+                .isNotEmpty()
         }
 
-        composeRule.onNodeWithText("No consumption: partial tank.").assertIsDisplayed()
-        composeRule.onNodeWithText("Partial tank").assertIsDisplayed()
-        composeRule.onNodeWithText("Missed refuels").assertIsDisplayed()
-        composeRule.onNodeWithText("Inconsistent odometer").assertIsDisplayed()
+        composeRule.onNodeWithText(targetString(R.string.consumption_partial_tank)).assertIsDisplayed()
+        composeRule.onNodeWithText(targetString(R.string.partial_tank)).assertIsDisplayed()
+        composeRule.onNodeWithText(targetString(R.string.missed_entries)).assertIsDisplayed()
+        composeRule.onNodeWithText(targetString(R.string.inconsistent_odometer)).assertIsDisplayed()
     }
 
     @Test
@@ -153,3 +156,6 @@ class FuelEntryFlowTest {
         odometer.assertTextContains("123")
     }
 }
+
+/** `E4-02`: 61.96 printed with the device locale's decimal separator (`61,96` in Spanish). */
+private fun derivedTotal(): String = formatScaledDecimal(6_196L, 2, deviceLocale())

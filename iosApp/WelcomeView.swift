@@ -8,12 +8,22 @@ struct WelcomeView: View {
     let onContinueWithoutAccount: () -> Void
 
     var body: some View {
+        // `E4-02`: `ViewThatFits` renders both branches in the hierarchy, which the accessibility audit
+        // reads as duplicated, partially unsupported Dynamic Type text, so the welcome scrolls.
+        ScrollView {
+            content
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 18) {
             Text("welcome_title")
                 .font(.largeTitle.bold())
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("welcome_title")
             Text("welcome_body")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
 
             SignInWithAppleButton(
@@ -28,10 +38,12 @@ struct WelcomeView: View {
 
             Button(action: signInCoordinator.startGoogleSignIn) {
                 Text("continue_with_google")
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccentOnFill)
             .accessibilityIdentifier("welcome_google")
             .disabled(state.isBusy)
 
@@ -41,16 +53,20 @@ struct WelcomeView: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            .tint(AccessibleColors.controlAccent)
             .accessibilityIdentifier("welcome_guest")
             .disabled(state.isBusy)
 
             if state.isBusy {
                 ProgressView()
+                    .accessibilityLabel(Text("loading"))
             }
             if let message = state.message {
                 Text(message.localizedText)
-                    .foregroundStyle(.red)
-                    .font(.caption)
+                    .foregroundStyle(AccessibleColors.errorText)
+                    .font(.footnote)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .announcedOnAppearance(message.localizedText)
             }
         }
         .padding(24)

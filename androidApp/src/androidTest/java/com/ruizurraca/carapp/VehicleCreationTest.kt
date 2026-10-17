@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
@@ -42,7 +43,7 @@ class VehicleCreationTest {
         composeRule
             .onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT)
             .assertIsDisplayed()
-            .assertTextContains(DEFAULT_FUEL_TYPE_LABEL)
+            .assertTextContains(defaultFuelTypeLabel())
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.NAME).assertTextContains(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("125")
@@ -71,7 +72,7 @@ class VehicleCreationTest {
         // `D-127` offers exactly the five MVP values. Asserting the localized label of each one and
         // the total option count together catches both a missing value and an extra one, which is
         // how an `ELECTRIC`/`HYBRID` leak would appear.
-        MVP_FUEL_TYPE_LABELS.forEach { label ->
+        mvpFuelTypeLabels().forEach { label ->
             assertTrue(
                 "$label must be offered",
                 composeRule.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty(),
@@ -91,29 +92,29 @@ class VehicleCreationTest {
         composeRule.onNodeWithTag(VehicleTestTags.NAME).performTextInput(vehicleName)
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement("125")
         composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).performClick()
-        composeRule.onNodeWithText("Diesel").performClick()
+        composeRule.onNodeWithText(targetString(R.string.fuel_type_diesel)).performClick()
         composeRule
             .onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT)
-            .assertTextContains("Diesel")
+            .assertTextContains(targetString(R.string.fuel_type_diesel))
         composeRule.onNodeWithTag(VehicleTestTags.SAVE).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()
         }
 
         // Edit mode loads the persisted value rather than the creation default.
-        composeRule.onNodeWithText("Edit vehicle").performClick()
+        composeRule.onNodeWithTag(VehicleTestTags.EDIT).performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.FUEL_TYPE_INPUT).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule
             .onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT)
-            .assertTextContains("Diesel")
+            .assertTextContains(targetString(R.string.fuel_type_diesel))
 
         // An updated selection is persisted by the next save. Saving an edit does not navigate
         // away on Android (the form stays open), so the test returns with the back affordance and
         // reopens the form to read the persisted value back.
         composeRule.onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT).performClick()
-        composeRule.onNodeWithText("LPG").performClick()
+        composeRule.onNodeWithText(targetString(R.string.fuel_type_lpg)).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.FUEL_TYPE_OPTION).fetchSemanticsNodes().isEmpty()
         }
@@ -131,13 +132,13 @@ class VehicleCreationTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.DETAIL_NAME).fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Edit vehicle").performClick()
+        composeRule.onNodeWithTag(VehicleTestTags.EDIT).performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(VehicleTestTags.FUEL_TYPE_INPUT).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule
             .onNodeWithTag(VehicleTestTags.FUEL_TYPE_INPUT)
-            .assertTextContains("LPG")
+            .assertTextContains(targetString(R.string.fuel_type_lpg))
     }
 
     @Test
@@ -189,7 +190,7 @@ class VehicleCreationTest {
         composeRule
             .onNodeWithTag(VehicleTestTags.ERROR)
             .assertIsDisplayed()
-            .assertTextEquals("Enter a value within the allowed range.")
+            .assertTextEquals(targetString(R.string.error_out_of_range))
 
         composeRule.onNodeWithTag(VehicleTestTags.ODOMETER).performTextReplacement(overflowingOdometer)
         composeRule
@@ -203,7 +204,7 @@ class VehicleCreationTest {
         composeRule
             .onNodeWithTag(VehicleTestTags.ERROR)
             .assertIsDisplayed()
-            .assertTextEquals("Enter a value within the allowed range.")
+            .assertTextEquals(targetString(R.string.error_out_of_range))
     }
 
     @Test
@@ -239,8 +240,15 @@ class VehicleCreationTest {
     }
 }
 
-/** The five MVP `FuelType` display labels of the English catalogue (`D-127`). */
-private val MVP_FUEL_TYPE_LABELS = listOf("Petrol", "Diesel", "LPG", "CNG", "Other")
+/** The five MVP `FuelType` display labels of the device's catalogue (`D-127`, `E4-02`). */
+private fun mvpFuelTypeLabels(): List<String> =
+    listOf(
+        R.string.fuel_type_gasoline,
+        R.string.fuel_type_diesel,
+        R.string.fuel_type_lpg,
+        R.string.fuel_type_cng,
+        R.string.fuel_type_other,
+    ).map(::targetString)
 
 /** `D-127` keeps `GASOLINE` as the default for a new vehicle. */
-private const val DEFAULT_FUEL_TYPE_LABEL = "Petrol"
+private fun defaultFuelTypeLabel(): String = targetString(R.string.fuel_type_gasoline)

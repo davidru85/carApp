@@ -38,6 +38,142 @@
 
 ## Entries
 
+### 2026-10-17 — D-229 splits the iOS UI tests into their own protected CI job
+
+- **Type:** decision
+- **Story / Decision:** `E4-B1` / `D-229` (ADR-0230)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** `.github/workflows/ci.yml` gains the protected job `ios-ui-tests` with
+  `timeout-minutes: 60`, which repeats the `ios-simulator-build` checkout, Java, Gradle and
+  pinned-Xcode steps, links `:composition:ios:linkDebugFrameworkIosSimulatorArm64` and runs only
+  `-only-testing:carAppUITests`. `ios-simulator-build` keeps 40 minutes and now runs only
+  `-only-testing:carAppTests`; its `:feature:fuel:linkReleaseTestIosArm64` step stays, because that
+  binary serves `E4-03`'s device test (`D-80`). `WorkflowTimeoutContract` keeps 40 as
+  `DEFAULT_JOB_CEILING_MINUTES` and names `ios-ui-tests` at 60 in `JOB_CEILING_MINUTES`, so a job
+  cannot borrow a taller ceiling it did not declare; assertion 28 of `docs/CONTRACTS.md §18` becomes
+  a per-job ceiling and `ios-ui-tests` joins the protected-check set and the required-check list.
+- **Why:** on run 39038842049 the combined job spent 0:24 in setup, 5:28 in the consumption link,
+  ~6:44 in the framework link, ~5:41 compiling the test app, 0:08 in 144 `carAppTests` tests and
+  ~21m48s and still running in `carAppUITests`, so GitHub cancelled it at 14:40:03 against its
+  40-minute limit. The nine `AccessibilityAuditUITests` audits are expensive rather than slow by
+  accident (the `odometer-warning` audit alone spends 126 s in one `XCUIElement` query), so trimming
+  waits cannot recover the breach, and the 40 minutes of `D-176` were sized over a 12.1–23.9 minute
+  distribution that `E4-02` broke. Raising the single ceiling to 60 was rejected because it would
+  widen the hang guard for every job, and moving the audits out of the required checks was rejected
+  because they are the executable form of the `docs/SPECIFICATION.md §11` accessibility criteria.
+- **Documents touched:** `.github/workflows/ci.yml`; `docs/CONTRACTS.md §18`; `AGENTS.md`;
+  `docs/CONTRIBUTING.md`; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0230;
+  `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/contract/WorkflowTimeoutContract.kt`
+  and its test; `docs/handoffs/E4-B1.md`.
+- **Verification:** RED first: the workflow split and its fixtures were committed with the contract
+  unchanged, and `:build-logic:convention:test --tests …WorkflowTimeoutContractTest --rerun-tasks`
+  reported `8 tests completed, 2 failed` (`repositoryWorkflowPasses` with `28: ios-ui-tests declares
+  60 minutes`, and `removingTheUiCheckProtectedNameFails` with `expected:<FAIL> but was:<PASS>`).
+  GREEN after the job-aware ceiling: that suite is `BUILD SUCCESSFUL`, `contractCheck --rerun-tasks`
+  reports 229 decisions, 229 ADRs and assertions 27 to 30 `[PASS]` with assertion 28 reading
+  `no CI job exceeds its own safety limit (default 40 minutes; ios-ui-tests 60)`, `ktlintCheck` and
+  `detekt` are `BUILD SUCCESSFUL`, and the workflow parses under `yaml.safe_load`.
+- **Follow-ups / risks:** the owner must add the `ios-ui-tests` context to `main`'s branch protection;
+  until then the new check is not required and a UI-only failure does not block a merge. Each pull
+  request now spends a second macOS runner on the framework link and the test-app compile.
+
+### 2026-10-16 — E4-02 accessibility and localization (bundle E4-B1)
+
+- **Type:** story
+- **Story / Decision:** `E4-02` / `D-216` to `D-223`, `D-225` and `D-226`
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** F-1 to F-3, Settings, the departure screens and the `E4-05` conversion surface
+  pass automated accessibility checks on both hosts (`D-216`, `D-217`), at 200% text (`D-218`) and
+  in Spanish. Every `AppError`, `CONFIRMATION.*` and `INFO.*` code has explicit Spanish and English
+  copy per user-actionable outcome (`D-219`), guarded by a new `contractCheck` assertion (`D-220`);
+  assertions 42, 43 and 44 make the no-text-in-`UiState` and no-hardcoded-strings rules executable
+  (`D-221`). Numbers and currency follow the device locale (`D-222`), and every measured WCAG AA
+  contrast failure is fixed (`D-223`).
+- **Why:** `docs/SPECIFICATION.md §11` requires accessibility and complete ES/EN localization, and
+  the owner extended the screen-reader audit to the screens this bundle adds (`D-225`) and chose
+  its acceptance method (`D-226`).
+- **Documents touched:** `docs/CONTRACTS.md §6`, `§14.1`, `§14.2`, `§14.3`, `§18`;
+  `docs/versions-matrix.md`; `gradle/libs.versions.toml`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0217 to
+  ADR-0224, ADR-0226, ADR-0227; `docs/DESIGN.md` accessibility note; `docs/BACKLOG.md`;
+  `docs/handoffs/E4-02.md`.
+- **Verification:** fixtures and their rules `a2e719f3`/`a3bb7c1b`, `ac7fc092`/`94138e47`,
+  `f3e9cd16`/`e7b32dcb`, `8a465ddf`/`e5aa7836`, `19e1a2c9`/`b1160587`, `a4c090a4`/`e4789538`,
+  `b8f13a07`/`80102f94`, `d2b40b9d`/`627bc946`; the complete `AGENTS.md` command passes; the Android
+  instrumented suite is 130 tests / 0 failures with 11 ATF states, 9 flow states, 14 font-scale and 7
+  Spanish tests included and no ATF `ERROR` line; `carAppTests` is 144 tests / 0 failures; every new
+  regression test was shown to fail against the unfixed code.
+- **Follow-ups / risks:** the owner-run TalkBack and VoiceOver device walkthrough (`D-226`) is still
+  open; the iOS audit leaves 24 findings on SwiftUI-rendered chrome that need an owner decision (S-13).
+  This completes bundle `E4-B1`.
+### 2026-10-16 — E4-05 account conversion host surface (bundle E4-B1)
+
+- **Type:** story
+- **Story / Decision:** `E4-05` / `D-224`, `D-227`, `D-228` (and `D-210`, which created the story)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** Settings shows an account-link row to an anonymous session only, hidden while
+  `LOCAL` (`D-224`): Google on Android, Apple and Google on iOS. The row starts
+  `startAccountConversion(provider)`, reuses the native picker that `E4-01` refactored and completes
+  through `completeGoogleSignIn` or `completeAppleSignIn`. A credential collision shows the
+  destructive `Confirmation.AdoptExistingAccount` confirmation; cancelling leaves the anonymous
+  session untouched, and confirming runs the `E2-04` replacement with its progress, typed failures
+  and resume. `docs/SPECIFICATION.md §3.1` lists the row (`D-210`). `docs/CONTRACTS.md §20.10` now
+  states that `clearMessage()` cancels a displayed collision (`D-227`), and the two `E2-04`
+  interruption hazards that this surface makes reachable are accepted residual risks in
+  `docs/SECURITY.md`, closed later by the new follow-up story `E2-10` (`D-228`).
+- **Why:** the `E2-04` conversion had no host entry point while the `D-62` reminders told anonymous
+  users to sign in; the owner chose a separate story over growing `E4-01` (`D-210`, ADR-0211).
+- **Documents touched:** `docs/SPECIFICATION.md §3.1`; `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0211,
+  ADR-0225; `docs/DESIGN.md §6`; `design/stitch/*/screens/06-settings.md`; `docs/BACKLOG.md`;
+  `docs/handoffs/E4-05.md`; `docs/CONTRACTS.md §20.10 (D-227)`; `docs/SECURITY.md Accepted Residual
+  Risks (D-228)`; ADR-0228, ADR-0229; the `E2-10` backlog story.
+- **Verification:** `94af6cc5`, `168d985a`, `3c060167`, `ab2c9c48`, `a50cf516`, `b581ef0d`,
+  `e25cd274`, `036ed00a`, `f61dd3fc`, `96732fef`, `ce9926ef`, `7d104f91`, `43a56b22`, `ebd28be4`;
+  `AccountConversionSurfaceTest` 12/12, `SettingsAccountConversionTest` 6/6, full connected suite 0
+  failures; iOS `AccountConversionSurfaceTests` 12/12, `AccountConversionUITests` skipped without the
+  App Check debug token (owner-run item M0); the complete `AGENTS.md` command passes.
+- **Follow-ups / risks:** the manual conversion checklist in `docs/handoffs/E4-05.md` is owner-run
+  and still open. `E2-10`, a correctness follow-up, closes the two interruption hazards accepted by
+  `D-228`. `E4-02` continues in bundle `E4-B1`.
+
+### 2026-10-16 — E4-01 Settings UI and the host departure surface (bundle E4-B1)
+
+- **Type:** story
+- **Story / Decision:** `E4-01` / `D-211` to `D-215` (and `D-209`, the bundle)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** both hosts gained a Settings screen, reachable from the vehicle list, over the
+  new `:shared` `SettingsStateHolder` (`D-211`): the currency picker over `SUPPORTED_CURRENCY_CODES`,
+  the read-only units, the backup status with its retry, the pseudonymous analytics opt-in (off by
+  default, applied immediately), the session rows per phase (`D-215`) and the native app version
+  (`D-212`). The host departure surface is complete: the pending-sync prompt with its count and the
+  wait action of `D-213`, the two-step destructive confirmations, re-authentication through
+  `startReauthentication(provider)`, and the root-level departure screen of `D-214`. The shared
+  holder closes the `E3-09` residual: `SettingsGraphTest` drives the real SQLDelight settings
+  repository into the `§16.1` opt-in gate end to end. `D-209` records the two Phase 4 bundles, and
+  the postponed `E4-06` privacy-policy link was added to the backlog.
+- **Why:** `D-162` left the store-required account deletion without a host surface until this story,
+  and `docs/handoffs/E3-09.md` left the analytics opt-in without a production caller.
+- **Documents touched:** `docs/CONTRACTS.md` (`§14`, `§20.10`); `docs/DECISION_BOARD.md`,
+  `docs/SPECIFICATION.md §12`, `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0210, ADR-0212 to
+  ADR-0216; `AGENTS.md`; `docs/CONTRIBUTING.md`; `docs/BACKLOG.md`; `docs/DESIGN.md`; `docs/handoffs/E3-09.md`,
+  `docs/handoffs/E4-B1.md`, `docs/handoffs/E4-01.md`.
+- **Verification:** shared RED `66cb982e`, GREEN `69f49134`, REFACTOR `6bd37640`, records `77f5f524`;
+  Android host RED `cef3832e`, GREEN `e36874e6`, screens `f811f6d6`, `0ce90d84`, `5e48fc45`,
+  `d2546103`, helper fix `13bda79a`, records `9abc15d0`; iOS host RED `32e2b5ed`, GREEN `df7c45af`,
+  re-authentication `2dee6db4`, view model `7ff8afb1`, settings screen `6df80679`, departure
+  `d18b8153`, UI flows `a1decd5c`, records `2e7195b5`. The complete non-instrumented `AGENTS.md`
+  command passes; the generated Objective-C header equals the updated golden; `:androidApp:testDebugUnitTest`
+  is 80/0; the Android instrumented suite is 71/0 on `E1_07_API_36` (API 36);
+  `carAppTests` is 113/0 and `carAppUITests` 33 with 1 environment-gated skip and 0 failures (iPhone
+  Air simulator, iOS 26.4, Xcode 27.0); the end-to-end analytics opt-in graph test closes the `E3-09`
+  residual.
+- **Follow-ups / risks:** the permanent-account departure checklists in `docs/handoffs/E4-01.md`
+  (Android M1-M9 and iOS IOS-M1-IOS-M12) are owner-run and still open. A pre-existing instrumented
+  helper defect was corrected with the owner's approval (`13bda79a`). `E4-05` and `E4-02` continue in
+  bundle `E4-B1`.
+
 ### 2026-10-15 — E3-B2 record closure and Phase 3 completion
 
 - **Type:** correction (documentation only)

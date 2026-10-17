@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,10 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.ruizurraca.carapp.core.common.Confirmation
@@ -58,40 +60,42 @@ internal fun FuelEntryListContent(
     state: FuelEntryListUiState,
     onEdit: (String) -> Unit,
     modifier: Modifier = Modifier,
+    header: @Composable () -> Unit = {},
 ) {
     val calendarDay = rememberDeviceCalendarDay()
-    when {
-        state.isLoading && state.entries.isEmpty() -> {
-            Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-                CircularProgressIndicator()
+    val locale = currentDisplayLocale()
+    // `E4-02`: the vehicle header scrolls with the entries, so a 200% font scale can never push the
+    // entries off the screen, and the bottom padding keeps the last item clear of the floating button.
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(bottom = FAB_CLEARANCE),
+    ) {
+        item { header() }
+        when {
+            state.isLoading && state.entries.isEmpty() -> {
+                item { LabelledProgressIndicator() }
             }
-        }
 
-        state.message != null && state.entries.isEmpty() -> {
-            FuelEntryErrorText(state.message, modifier)
-        }
+            state.message != null && state.entries.isEmpty() -> {
+                item { FuelEntryErrorText(state.message) }
+            }
 
-        else -> {
-            Column(modifier = modifier.fillMaxWidth()) {
-                state.message?.let { FuelEntryErrorText(it, Modifier.fillMaxWidth()) }
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
+            else -> {
+                state.message?.let { message ->
+                    item { FuelEntryErrorText(message, Modifier.fillMaxWidth()) }
+                }
+                item { ConsumptionSummary(state, locale) }
+                if (state.entries.isEmpty()) {
                     item {
-                        ConsumptionSummary(state)
+                        Text(
+                            text = stringResource(R.string.add_first_fuel_entry_invitation),
+                            modifier = Modifier.testTag(VehicleTestTags.FIRST_FUEL_INVITATION),
+                        )
                     }
-                    if (state.entries.isEmpty()) {
-                        item {
-                            Text(
-                                text = stringResource(R.string.add_first_fuel_entry_invitation),
-                                modifier = Modifier.testTag(VehicleTestTags.FIRST_FUEL_INVITATION),
-                            )
-                        }
-                    } else {
-                        items(state.entries, key = FuelEntryListItemUi::id) { entry ->
-                            FuelEntryRow(entry, calendarDay, onEdit)
-                        }
+                } else {
+                    items(state.entries, key = FuelEntryListItemUi::id) { entry ->
+                        FuelEntryRow(entry, calendarDay, locale, onEdit)
                     }
                 }
             }
@@ -100,13 +104,20 @@ internal fun FuelEntryListContent(
 }
 
 @Composable
-private fun ConsumptionSummary(state: FuelEntryListUiState) {
+private fun ConsumptionSummary(
+    state: FuelEntryListUiState,
+    locale: Locale,
+) {
     val average = state.consumptionAverageScaled
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(stringResource(R.string.consumption_average_title), style = MaterialTheme.typography.labelLarge)
+        Text(
+            text = stringResource(R.string.consumption_average_title),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.screenHeading(),
+        )
         if (average == null) {
             Text(
                 text = stringResource(R.string.consumption_empty),
@@ -117,7 +128,7 @@ private fun ConsumptionSummary(state: FuelEntryListUiState) {
                 text =
                     stringResource(
                         R.string.consumption_value,
-                        formatScaled(average, CONSUMPTION_SCALE),
+                        formatScaledDecimal(average, CONSUMPTION_SCALE, locale),
                     ),
                 style = MaterialTheme.typography.displayMedium,
                 modifier = Modifier.testTag(FuelEntryTestTags.CONSUMPTION_AVERAGE),
@@ -140,6 +151,7 @@ private fun ConsumptionSummary(state: FuelEntryListUiState) {
 private fun FuelEntryRow(
     entry: FuelEntryListItemUi,
     calendarDay: FuelEntryCalendarDay,
+    locale: Locale,
     onEdit: (String) -> Unit,
 ) {
     Column(
@@ -155,7 +167,7 @@ private fun FuelEntryRow(
             Text(calendarDay.format(entry.dateEpochMillis), style = MaterialTheme.typography.titleMedium)
             Text(
                 entry.consumptionScaled?.let { value ->
-                    stringResource(R.string.consumption_value, formatScaled(value, CONSUMPTION_SCALE))
+                    stringResource(R.string.consumption_value, formatScaledDecimal(value, CONSUMPTION_SCALE, locale))
                 } ?: stringResource(entry.invalidReason.explanationResource()),
                 modifier = Modifier.testTag(FuelEntryTestTags.explanation(entry.id)),
             )
@@ -163,10 +175,9 @@ private fun FuelEntryRow(
         Text(
             stringResource(
                 R.string.fuel_entry_facts,
-                entry.odometerKm,
-                formatScaled(entry.litersScaled, FUEL_SCALE),
-                formatScaled(entry.totalCostMinor, MINOR_UNIT_SCALE),
-                entry.currencyCode,
+                formatInteger(entry.odometerKm, locale),
+                formatScaledDecimal(entry.litersScaled, FUEL_SCALE, locale),
+                formatCurrencyAmount(entry.totalCostMinor, MINOR_UNIT_SCALE, entry.currencyCode, locale),
             ),
         )
         if (!entry.isFullTank) FuelIndicator(R.string.partial_tank, entry.id, "partial")
@@ -230,7 +241,7 @@ internal fun FuelEntryFormScreen(
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                CircularProgressIndicator()
+                LabelledProgressIndicator()
             }
         } else {
             FuelEntryForm(
@@ -243,8 +254,12 @@ internal fun FuelEntryFormScreen(
     }
 }
 
+/**
+ * The two-step odometer warning. The body scrolls, so at a 200% font scale the dialog keeps both
+ * actions on screen and the text stays readable (`E4-02`).
+ */
 @Composable
-private fun FuelOdometerWarningDialog(
+internal fun FuelOdometerWarningDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -252,7 +267,11 @@ private fun FuelOdometerWarningDialog(
         onDismissRequest = onDismiss,
         modifier = Modifier.testTag(FuelEntryTestTags.ODOMETER_WARNING),
         title = { Text(stringResource(R.string.odometer_warning_title)) },
-        text = { Text(stringResource(R.string.odometer_warning_body)) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.odometer_warning_body))
+            }
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
@@ -262,7 +281,12 @@ private fun FuelOdometerWarningDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.testTag(FuelEntryTestTags.CANCEL_ODOMETER_WARNING),
+            ) {
+                Text(stringResource(R.string.cancel))
+            }
         },
     )
 }
@@ -278,12 +302,18 @@ private fun FuelEntryFormTopBar(
     TopAppBar(
         title = {
             Text(
-                stringResource(
-                    if (state.entryId == null) R.string.create_fuel_entry_title else R.string.edit_fuel_entry_title,
-                ),
+                text =
+                    stringResource(
+                        if (state.entryId == null) R.string.create_fuel_entry_title else R.string.edit_fuel_entry_title,
+                    ),
+                modifier = Modifier.screenHeading(),
             )
         },
-        navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.close)) } },
+        navigationIcon = {
+            TextButton(onClick = onBack, modifier = Modifier.testTag(FuelEntryTestTags.CLOSE)) {
+                Text(stringResource(R.string.close))
+            }
+        },
         actions = {
             TextButton(
                 onClick = onSave,
@@ -403,16 +433,22 @@ private fun FuelToggle(
     testTag: String,
     onChanged: (Boolean) -> Unit,
 ) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    // `E4-02`: the whole row is the switch, so TalkBack announces the label and the help together
+    // with the switch state instead of an unnamed switch.
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .toggleable(value = checked, role = Role.Switch, onValueChange = onChanged)
+                .testTag(testTag),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(stringResource(labelResource))
             Text(stringResource(helpResource), style = MaterialTheme.typography.bodySmall)
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onChanged,
-            modifier = Modifier.testTag(testTag),
-        )
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -453,7 +489,6 @@ private fun MoneyInputs(
                 tag = FuelEntryTestTags.PRICE_PER_LITER,
                 onValue = stateHolder::setPricePerLiterScaled,
             )
-            ComputedMoneyValue(R.string.calculated_total, state.totalCostMinor, MINOR_UNIT_SCALE, state.currencyCode)
         }
 
         MoneyInputMode.LITERS_AND_TOTAL -> {
@@ -471,7 +506,6 @@ private fun MoneyInputs(
                 tag = FuelEntryTestTags.TOTAL_COST,
                 onValue = stateHolder::setTotalCostMinor,
             )
-            ComputedMoneyValue(R.string.calculated_price, state.pricePerLiterScaled, PRICE_SCALE, state.currencyCode)
         }
 
         MoneyInputMode.PRICE_AND_TOTAL -> {
@@ -489,7 +523,47 @@ private fun MoneyInputs(
                 tag = FuelEntryTestTags.TOTAL_COST,
                 onValue = stateHolder::setTotalCostMinor,
             )
-            ComputedMoneyValue(R.string.calculated_liters, state.litersScaled, FUEL_SCALE, state.currencyCode)
+        }
+    }
+    DerivedMoneyValue(state)
+}
+
+/**
+ * The value the shared holder derived from the two the owner typed, formatted for the display
+ * locale (`E4-02`, `D-222`). Calculated litres are a volume, never money with a currency code.
+ */
+@Composable
+private fun DerivedMoneyValue(state: FuelEntryFormUiState) {
+    val locale = currentDisplayLocale()
+    when (state.moneyInputMode) {
+        MoneyInputMode.LITERS_AND_PRICE -> {
+            ComputedMoneyValue(
+                label = R.string.calculated_total,
+                value =
+                    state.totalCostMinor?.let { total ->
+                        formatCurrencyAmount(total, MINOR_UNIT_SCALE, state.currencyCode, locale)
+                    },
+            )
+        }
+
+        MoneyInputMode.LITERS_AND_TOTAL -> {
+            ComputedMoneyValue(
+                label = R.string.calculated_price,
+                value =
+                    state.pricePerLiterScaled?.let { price ->
+                        formatCurrencyAmount(price, PRICE_SCALE, state.currencyCode, locale)
+                    },
+            )
+        }
+
+        MoneyInputMode.PRICE_AND_TOTAL -> {
+            ComputedMoneyValue(
+                label = R.string.calculated_liters,
+                value =
+                    state.litersScaled?.let { liters ->
+                        stringResource(R.string.liters_value, formatScaledDecimal(liters, FUEL_SCALE, locale))
+                    },
+            )
         }
     }
 }
@@ -502,10 +576,11 @@ private fun ScaledMoneyInput(
     tag: String,
     onValue: (Long?) -> Unit,
 ) {
+    val locale = currentDisplayLocale()
     val input =
         rememberSaveableFormText(
             key = tag,
-            sharedValue = value?.let { formatScaled(it, scale) }.orEmpty(),
+            sharedValue = value?.let { formatScaledInput(it, scale, locale) }.orEmpty(),
             publish = { text -> onValue(parseScaled(text, scale)) },
         )
     OutlinedTextField(
@@ -524,17 +599,14 @@ private fun ScaledMoneyInput(
 @Composable
 private fun ComputedMoneyValue(
     label: Int,
-    value: Long?,
-    scale: Int,
-    currencyCode: String,
+    value: String?,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(12.dp),
     ) {
         Text(stringResource(label), style = MaterialTheme.typography.labelMedium)
         Text(
-            value?.let { stringResource(R.string.money_value, formatScaled(it, scale), currencyCode) }
-                ?: stringResource(R.string.value_pending),
+            text = value ?: stringResource(R.string.value_pending),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.testTag(FuelEntryTestTags.DERIVED_VALUE),
         )
@@ -548,19 +620,11 @@ private fun FuelEntryErrorText(
 ) {
     if (message == null) return
     Text(
-        text = stringResource(message.fuelStringResource()),
+        text = stringResource(message.stringResource()),
         color = MaterialTheme.colorScheme.error,
-        modifier = modifier.testTag(FuelEntryTestTags.ERROR),
+        modifier = modifier.testTag(FuelEntryTestTags.ERROR).announcedError(),
     )
 }
-
-private fun UiMessage.fuelStringResource(): Int =
-    when (code) {
-        "VALIDATION.FUTURE_DATE" -> R.string.error_future_date
-        "VALIDATION.INVALID_MONEY_INPUT" -> R.string.error_money_input
-        "VALIDATION.INVALID_UNIT" -> R.string.error_currency
-        else -> stringResource()
-    }
 
 private fun ConsumptionInvalidReason?.explanationResource(): Int =
     when (this) {
@@ -583,7 +647,7 @@ private fun MoneyInputMode.labelResource(): Int =
 @Composable
 private fun rememberDeviceCalendarDay(): FuelEntryCalendarDay {
     val zoneId = remember { ZoneId.systemDefault() }
-    val locale = remember { Locale.getDefault() }
+    val locale = currentDisplayLocale()
     return remember(zoneId, locale) { FuelEntryCalendarDay(zoneId, locale) }
 }
 
@@ -694,6 +758,8 @@ object FuelEntryTestTags {
     const val ERROR = "fuel_error"
     const val ODOMETER_WARNING = "fuel_odometer_warning"
     const val CONFIRM_ODOMETER_WARNING = "confirm_fuel_odometer_warning"
+    const val CANCEL_ODOMETER_WARNING = "cancel_fuel_odometer_warning"
+    const val CLOSE = "close_fuel_entry"
 
     fun mode(mode: MoneyInputMode): String = "fuel_mode_${mode.name.lowercase()}"
 
@@ -711,3 +777,4 @@ private const val MINOR_UNIT_SCALE = 2
 private const val FUEL_SCALE = 3
 private const val PRICE_SCALE = 3
 private const val CONSUMPTION_SCALE = 2
+private val FAB_CLEARANCE = 96.dp

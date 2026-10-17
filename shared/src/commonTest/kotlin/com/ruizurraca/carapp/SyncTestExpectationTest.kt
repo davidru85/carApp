@@ -133,6 +133,8 @@ private class SyncOnlyGraph(
 
     override fun sessionStateHolder(scope: CoroutineScope): Nothing = error("No holders in the fixture")
 
+    override fun settingsStateHolder(scope: CoroutineScope): Nothing = error("No holders in the fixture")
+
     override fun syncStateHolder(scope: CoroutineScope): Nothing = error("No holders in the fixture")
 
     override fun close(): Unit = error("No database in the expectation fixture")

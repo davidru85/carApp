@@ -214,5 +214,26 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-206 | [ADR-0207](0207-own-the-entity-type-wire-value-in-core-common.md) | Own the outbox entity type wire value in `:core:common`, with SQL literals checked by a parity test. | Accepted |
 | D-207 | [ADR-0208](0208-reset-stale-syncing-rows-from-their-outbox-at-startup.md) | Reset stale `SYNCING` rows at startup to the state their outbox row implies. | Accepted |
 | D-208 | [ADR-0209](0209-carry-unsupported-provider-values-as-a-reserved-marker.md) | Carry an unsupported provider value as a reserved marker and quarantine its document. | Accepted |
+| D-209 | [ADR-0210](0210-deliver-phase-4-in-two-bundles.md) | Deliver Phase 4 as two bundles, one pull request each. | Accepted |
+| D-210 | [ADR-0211](0211-place-the-account-conversion-entry-point-in-settings.md) | Offer anonymous account linking from Settings through the new story `E4-05`. | Accepted |
+| D-211 | [ADR-0212](0212-keep-the-settings-state-holder-in-shared.md) | Keep the Settings state holder in `:shared`, beside the session and sync holders. | Accepted |
+| D-212 | [ADR-0213](0213-read-the-app-version-natively-in-each-host.md) | Read the app version natively in each host. | Accepted |
+| D-213 | [ADR-0214](0214-make-wait-for-sync-withdraw-the-sign-out-and-request-a-cycle.md) | Make "wait for sync" withdraw the sign-out and request a sync cycle. | Accepted |
+| D-214 | [ADR-0215](0215-render-departure-progress-and-failure-at-the-root-route.md) | Render departure progress, failure and retry on a root-level host screen. | Accepted |
+| D-215 | [ADR-0216](0216-show-the-session-rows-per-session-phase.md) | Show the Settings session rows per session phase. | Accepted |
+| D-216 | [ADR-0217](0217-check-android-accessibility-with-the-compose-accessibility-test-framework.md) | Check Android accessibility with the Compose Accessibility Test Framework artifact. | Accepted |
+| D-217 | [ADR-0218](0218-audit-ios-accessibility-with-xctest-on-ios-17.md) | Audit iOS accessibility with the XCTest audit on an iOS 17 or later runtime. | Accepted |
+| D-218 | [ADR-0219](0219-test-ios-200-percent-text-at-accessibility-xl.md) | Test the iOS 200% text requirement at the AX3 content size category. | Accepted |
+| D-219 | [ADR-0220](0220-map-app-error-copy-per-user-actionable-outcome.md) | Map `AppError` copy per user-actionable outcome through an explicit tested table. | Accepted |
+| D-220 | [ADR-0221](0221-check-host-message-mapping-completeness-in-the-contract-check.md) | Check host message-mapping completeness in the contract check. | Accepted |
+| D-221 | [ADR-0222](0222-make-the-ui-text-rules-executable.md) | Make the no-text-in-`UiState` and no-hardcoded-strings rules executable. | Accepted |
+| D-222 | [ADR-0223](0223-format-numbers-and-currency-with-platform-locale-formatters.md) | Format numbers and currency with the platform locale formatters. | Accepted |
+| D-223 | [ADR-0224](0224-fix-only-measured-wcag-aa-contrast-failures.md) | Fix only the WCAG AA contrast failures the audits measure. | Accepted |
+| D-224 | [ADR-0225](0225-hide-the-account-link-row-while-the-owner-is-local.md) | Hide the account-link row while the owner is local. | Accepted |
+| D-225 | [ADR-0226](0226-extend-the-e4-02-screen-reader-audit-to-the-bundle-screens.md) | Extend the `E4-02` screen-reader audit to Settings, the departure screens and the conversion surface. | Accepted |
+| D-226 | [ADR-0227](0227-combine-agent-evidence-with-an-owner-screen-reader-walkthrough.md) | Combine the agent's emulator and simulator evidence with an owner-run screen-reader walkthrough. | Accepted |
+| D-227 | [ADR-0228](0228-cancel-the-credential-collision-through-clear-message.md) | Cancel the credential collision through `clearMessage()`. | Accepted |
+| D-228 | [ADR-0229](0229-defer-the-account-conversion-interruption-hazards.md) | Defer the account conversion interruption hazards to a follow-up story. | Accepted |
+| D-229 | [ADR-0230](0230-split-ios-ui-tests-into-their-own-ci-job.md) | Split the iOS UI tests into their own protected CI job with its own ceiling. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

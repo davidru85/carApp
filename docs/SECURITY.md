@@ -112,6 +112,28 @@ Requirements:
   departure or by uninstalling the app; no remote copy survives. The window is now a single
   round-trip completion rather than a whole tail of network and database work, but it is not zero,
   and no document may describe the departure as fully recoverable across process death.
+- **A confirmed account replacement that fails before the session switch blocks the anonymous
+  owner's backup, and its retry can lose rows** (`D-228`, accepted as option A on
+  2026-10-16). Confirming the credential collision of `docs/CONTRACTS.md §11.3` persists the
+  replacement marker first. If issuing the cleanup ticket or signing into the existing permanent
+  account then fails, or the process dies in that interval, the marker stays in
+  `SNAPSHOT_CAPTURED` while the session is still anonymous. Every sync cycle is then refused,
+  because the replacement can resume only from a permanent session, so the owner's later changes
+  are not backed up until the owner links again, and the manual backup retry cannot clear it. The
+  new link reuses the snapshot captured at the first attempt, as `§11.3` requires, and the local
+  rebuild clears every local row before restoring that snapshot, so vehicles and refuels written
+  between the failure and the retry are lost. A local-data deletion also clears the marker. The
+  window opens only after the owner confirmed a destructive replacement and a network or provider
+  call failed. The correctness follow-up `E2-10` owns the fix; until it merges no document
+  may describe the account replacement as lossless across a failure before the session switch.
+- **A failed resume after the session switch can offer first-vehicle creation over data the
+  replacement will rebuild** (`D-228`, accepted as option A on 2026-10-16). After the switch
+  the local rows still belong to the anonymous UID until the local rebuild. If the resume fails,
+  for example on an offline relaunch, the permanent owner's vehicle list resolves as empty and
+  F-1 presents mandatory first-vehicle creation. A vehicle created there is deleted when the
+  resumed replacement rebuilds the local rows from the snapshot; the device's own vehicles and
+  refuels are not lost, because the resume restores them. The correctness follow-up `E2-10`
+  owns the fix.
 - **One orphan-cleanup authorization can outlive a successful account deletion** (`D-149`, accepted
   as option D on 2026-10-15). `deleteAccount` deletes the remote data, purges the
   `orphanCleanupTickets` records bound to the UID and then deletes the Firebase Auth user. If a

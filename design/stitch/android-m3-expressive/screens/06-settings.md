@@ -40,6 +40,33 @@ At the very bottom, a short centred gesture handle pill. All copy is Spanish.
 | Cuenta | Cerrar sesión · **Eliminar cuenta** (destructive) |
 | Footer | carApp v1.0.0 / Local-First & Safe Tracker |
 
+## Anonymous account conversion (E4-05)
+
+Approved by the owner on 2026-10-16. Shown only while the session is anonymous; local, permanent
+and every other session phase show none of it (`D-224`). The copy below is Spanish sample
+content, like the rest of this screen.
+
+- **Placement:** the first row of the "Cuenta" card, above the local-data deletion row.
+- **Row:** the title "Vincular una cuenta" in semi-bold Deep Forest Ink (#171D1A), exposed as a
+  heading to screen readers; the subtitle "Vincula una cuenta de Google para poder recuperar tus
+  vehículos y repostajes en otro dispositivo. Seguirán también en este dispositivo." in Muted Slate
+  Green (#3F4945); below it a full-width, fully pill-shaped outlined button "Continuar con Google"
+  with a Soft Sage Gray (#6F7975) hairline outline and dark text — the outlined style this system
+  reserves for third-party sign-in.
+- **Busy:** the button is disabled and the loading indicator in Deep Pine Teal (#006A57) appears
+  beneath it; its accessible label is "Vinculando la cuenta…".
+- **Credential collision:** a Material 3 alert dialog titled "Esta cuenta ya tiene datos", with the
+  body "Esto sustituye permanentemente todos los vehículos y repostajes de la cuenta existente por
+  los datos de este dispositivo. No se puede deshacer.", a "Cancelar" text button and a
+  "Sustituir datos" text button in Signal Crimson (#BA1A1A). Tapping outside the dialog or pressing
+  back cancels.
+- **Success:** the row disappears and the permanent-account rows "Cerrar sesión" and
+  "Eliminar cuenta" take its place.
+
+| Section | Rows |
+|---|---|
+| Cuenta (anonymous session only) | Vincular una cuenta → Continuar con Google · local-data deletion row |
+
 ## Refinement prompts
 
 - "Only 'Eliminar cuenta' should be crimson — every other row label stays dark."

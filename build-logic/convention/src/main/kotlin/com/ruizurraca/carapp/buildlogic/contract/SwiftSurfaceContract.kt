@@ -801,6 +801,7 @@ internal class SwiftSurfaceContract(
         val NON_HOLDER_MEMBERS = setOf("close", "syncController", "awaitClosed")
         val HOLDER_SOURCES = listOf(
             "shared/src/commonMain/kotlin/com/ruizurraca/carapp/StateHolders.kt",
+            "shared/src/commonMain/kotlin/com/ruizurraca/carapp/SettingsStateHolder.kt",
             "feature/vehicle/src/commonMain/kotlin/com/ruizurraca/carapp/feature/vehicle/presentation/VehicleStateHolders.kt",
             "feature/fuel/src/commonMain/kotlin/com/ruizurraca/carapp/feature/fuel/presentation/FuelEntryStateHolders.kt",
         )
@@ -848,8 +849,8 @@ internal class SwiftSurfaceContract(
          * A `class <Name>StateHolder` declaration anywhere in the lexically masked source. The
          * modifiers are deliberately not enumerated: the previous pattern listed seven of them and
          * dropped a holder carrying any other word, and the per-source no-parsed-class guard could
-         * not bound that, because it fires only when a source yields no holder at all and each of
-         * the three `HOLDER_SOURCES` declares two. Comments and string literals are already masked
+         * not bound that, because it fires only when a source yields no holder at all and every
+         * `HOLDER_SOURCES` entry declares at least one. Comments and string literals are already masked
          * by `KotlinSourceText.declarations`, so prose naming a holder is not matched.
          */
         val STATE_HOLDER = Regex("""\bclass\s+(\w+StateHolder)\b""")

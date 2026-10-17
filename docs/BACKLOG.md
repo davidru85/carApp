@@ -1342,7 +1342,13 @@ Human review required.
 
 ## Phase 4 - MVP Hardening
 
-### E4-01 - Settings UI - S
+### E4-01 - Settings UI - L
+
+Status: implemented as the first story of bundle `E4-B1` (`D-209`, ADR-0210) through pull request #91, awaiting the owner's gated review.
+Re-estimated from S to L at the bundle intake on 2026-10-16: no host invokes any
+`SessionStateHolder` departure or conversion intent yet, so besides the Settings rows this story owns
+the complete host departure surface that `E2-05` shipped only as a callable contract (`D-162`,
+ADR-0163).
 
 Implement the settings screen over the Phase 1 persistence.
 
@@ -1350,23 +1356,80 @@ Design reference (non-normative): `docs/DESIGN.md §4`, screen 06 settings on bo
 
 Acceptance criteria:
 
-- The screen shows exactly the surface listed in `docs/SPECIFICATION.md §3.1`.
+- The screen shows exactly the surface listed in `docs/SPECIFICATION.md §3.1`, except the
+  anonymous-only account-link row, which `E4-05` adds to this screen (`D-210`, ADR-0211), in the
+  same way `D-162` split the `E2-05` contract from this surface.
 - Units are visible and read-only.
 - The analytics opt-in is off by default and takes effect immediately.
 - Sign-out or local-data deletion, account deletion and app version are reachable.
+- The host departure surface is complete on both hosts: the pending-sync prompt with its count and
+  its wait, cancel and discard actions; the two-step destructive confirmations; re-authentication
+  through `startReauthentication(provider)` before the native picker; and a reachable departure
+  failure with its retry. This discharges the store-compliance obligation that `D-162` assigns to
+  `E4-01`.
+
+### E4-05 - Account Conversion Host Surface - M
+
+Status: implemented as the second story of bundle `E4-B1` (`D-209`, ADR-0210) through pull request #91, awaiting the owner's gated review.
+Created on 2026-10-15 by `D-210` (ADR-0211), which places the anonymous account-conversion entry
+point in Settings. The row's behaviour while the session is `LOCAL` was put to the owner at the
+bundle intake and is recorded at this story's intake; the row and the credential-collision
+confirmation are designed and approved by the owner before host work starts (`docs/DESIGN.md §6`).
+
+Give anonymous users the host entry point to the account conversion that `E2-04` delivered in shared
+code. No host invokes `startAccountConversion` or `confirmAccountConversion` today, while the `D-62`
+reminders tell anonymous users to sign in.
+
+Acceptance criteria:
+
+- Settings shows a "link account" row only while the session is `ANONYMOUS`. It never shows it for
+  `PERMANENT`.
+- While the session is `LOCAL`, the row is hidden; it appears once local owner adoption makes the
+  session `ANONYMOUS` (`D-224`, ADR-0225).
+- Android offers Google; iOS offers Apple and Google (`docs/SPECIFICATION.md §7 F-1`).
+- The host starts with `startAccountConversion(provider)`, runs the existing native picker and
+  completes through `completeGoogleSignIn` or `completeAppleSignIn`. It never calls
+  `startPermanentSignIn` for a conversion, and it contains no conversion logic.
+- A successful link keeps the UID and every vehicle and fuel entry. The session becomes `PERMANENT`,
+  the row disappears and the reminders stop.
+- `AuthError.CredentialAlreadyInUse` shows a destructive confirmation stating that the existing
+  permanent-account data will be replaced by this device's data (`docs/CONTRACTS.md §11.3`).
+  - Cancelling leaves the anonymous session and all data untouched.
+  - Confirming calls `confirmAccountConversion(Confirmation.AdoptExistingAccount)`. The host then
+    renders the progress, the typed failures and the `E2-04` resume behaviour.
+- Every conversion `UiMessage` code and confirmation has Spanish and English copy.
+
+Depends on: E4-01, E2-04.
+
+Human review required.
 
 ### E4-02 - Accessibility and Localization - M
+
+Status: implemented as the third story of bundle `E4-B1` (`D-209`, ADR-0210) through pull request #91, awaiting the owner's gated review.
+The owner accepted its eight technical decisions, its audit scope and its screen-reader acceptance
+method at the bundle intake; they are recorded as `D-216` to `D-223`, `D-225` and `D-226` (ADR-0217
+to ADR-0224, ADR-0226 and ADR-0227).
 
 Harden accessibility and ES/EN localization.
 
 Acceptance criteria:
 
-- TalkBack and VoiceOver audits pass for F-1 through F-3.
+- TalkBack and VoiceOver audits pass for F-1 through F-3, the Settings screen, the departure screens
+  and the `E4-05` account-conversion surface (`D-225`). The owner confirmed this audit scope at the
+  `E4-B1` bundle intake on 2026-10-16.
+- The screen-reader acceptance combines the agent's emulator and simulator evidence with a manual
+  TalkBack and VoiceOver walkthrough that the owner runs on a device from a checklist the agent
+  prepares; both are recorded in `docs/handoffs/E4-02.md` (`D-226`).
 - UI is usable at 200% font size.
 - Spanish and English strings are complete, including every `AppError` and `ConsumptionInvalidReason` mapping.
 - No hardcoded user-facing strings remain, and no user-facing text appears in `UiState`.
 
 ### E4-03 - Performance and Reliability Hardening - M
+
+Status: scheduled, second story of bundle `E4-B2` (`D-209`, ADR-0210), after `E4-04`.
+`E4-B2` starts after bundle `E4-B1` merges. `E4-04` runs first because `D-54` (ADR-0055) keeps
+release builds failing closed until it adds the production configuration, and this story measures
+release builds.
 
 Measure and fix MVP performance.
 
@@ -1377,6 +1440,9 @@ Acceptance criteria:
 - No memory leaks in critical flows; state holder scopes are cancelled.
 
 ### E4-04 - Release Preparation - M
+
+Status: scheduled, first story of bundle `E4-B2` (`D-209`, ADR-0210), which starts after bundle
+`E4-B1` merges.
 
 Prepare release assets and store requirements.
 
@@ -1507,6 +1573,17 @@ gets waved through.
 
 `E1-15` and `E1-16` both change the Vehicle creation and edit flow on Android and iOS. `E1-16`
 merged on 2026-09-28 through pull request #80; `E1-15` remains open.
+
+`E4-06`, the in-app privacy-policy link, was added on 2026-10-15 under "Store-submission
+prerequisites". The owner postponed it because carApp is a portfolio project and store publication
+is not the current objective; it is low priority and not Ready, it is not part of the `D-209`
+bundles, it does not block Phase 4, and it MUST be done before any App Store or Google Play
+submission.
+
+`E2-10`, account conversion interruption hardening, was added on 2026-10-16 under
+"Defects found after Phase 2 closed" by `D-228` during `E4-05`. It is a correctness follow-up
+that closes two `E2-04` hazards the `E4-05` surface made reachable; it is not Ready until its
+intake decision, it is not part of the `D-209` bundles and it does not block Phase 4.
 
 ### Defects found after Phase 1 closed
 
@@ -1918,6 +1995,39 @@ Acceptance criteria:
 
 Human review required.
 
+### Defects found after Phase 2 closed
+
+### E2-10 - Account Conversion Interruption Hardening - M
+
+Status: Not Ready. Created on 2026-10-16 by `D-228` (ADR-0229) during `E4-05`. A
+correctness follow-up: it is not part of the `D-209` bundles and does not block Phase 4. Its intake
+needs a decision for the `docs/CONTRACTS.md §11.3` amendment.
+
+Close the two interruption hazards of the `E2-04` replacement protocol that the `E4-05` host
+surface made reachable. Both are accepted residual risks in `docs/SECURITY.md` until this story
+merges.
+
+Acceptance criteria:
+
+- A confirmed conversion that fails, or whose process dies, before the session switch (marker phase
+  `SNAPSHOT_CAPTURED`, with or without a cleanup ticket) no longer blocks the backup of the
+  still-anonymous owner: no sync cycle is refused because of that marker.
+- A conversion retried after such a failure replaces the permanent account with the anonymous
+  owner's data as it is at the retry, so no vehicle or fuel entry written between the failure and
+  the retry is lost.
+- After the session switch and before the local rebuild, the vehicle list is not reported as a
+  confirmed empty list while the replacement marker exists, so F-1 does not offer first-vehicle
+  creation over rows the replacement will rebuild.
+- Deterministic shared tests cover a failure and a process death at each pre-switch checkpoint
+  (`SNAPSHOT_CAPTURED`, `CLEANUP_TICKET_SAVED`), and an offline relaunch at `SESSION_SWITCHED` and at
+  `REMOTE_REPLACED`.
+- `docs/CONTRACTS.md §11.3` states the corrected semantics, and the two `D-228` entries of
+  `docs/SECURITY.md` are removed or rewritten as closed in the same change.
+
+Depends on: E2-04, E4-05.
+
+Human review required.
+
 ### Deferred scope, now scheduled
 
 ### E1-16 - Vehicle UI Fuel Type Selector - S
@@ -1939,6 +2049,38 @@ Acceptance criteria:
 - Opening an existing vehicle in edit mode loads and displays its persisted `FuelType`, and saving persists any updated selection.
 - Instrumented/UI tests on Android and iOS verify that selecting a non-default fuel type (e.g. `DIESEL`) persists correctly on vehicle creation and edit.
 - No database schema, migration, or sync rule changes are introduced (existing schema and rules already support all 5 values).
+
+### Store-submission prerequisites
+
+### E4-06 - In-App Privacy Policy Link - S
+
+Status: Not Ready. Postponed by the owner on 2026-10-15: carApp is a portfolio project and store
+publication is not the current objective. Low priority. It is not part of the `D-209` bundles and
+does not block Phase 4. It MUST be done before any App Store or Google Play submission.
+
+Both stores require a privacy-policy link inside the app, verified on 2026-10-15:
+
+- App Store Review Guideline 5.1.1(i): "All apps must include a link to their privacy policy in the
+  App Store Connect metadata field and within the app in an easily accessible manner."
+- The Google Play User Data policy requires a privacy-policy link in Play Console and "a privacy
+  policy link or text within the app itself", on an active, public, non-geofenced URL that is not a
+  PDF.
+
+`docs/SPECIFICATION.md §3.1` lists no such row, so delivering it needs a `§3.1` amendment.
+
+Acceptance criteria:
+
+- `docs/SPECIFICATION.md §3.1` is amended to list the link.
+- Settings shows a "Privacy policy" row on both hosts, with Spanish and English labels, that opens
+  the owner-provided public URL outside the app's own data flow.
+- The row passes the `E4-02` accessibility checks.
+
+Readiness: the story needs two inputs from the owner at its intake: the URL, and where the policy is
+hosted. A hosting service that is not already `Accepted` in `docs/DECISION_BOARD.md` needs its own
+`D-n`. The policy content itself stays with `E4-04`. No decision ID is allocated, and no pending
+decision row is added, before that intake.
+
+Depends on: E4-01, E4-02.
 
 ## Outstanding Owner Decisions
 
@@ -1982,6 +2124,8 @@ E0-00 owner decisions (completed)
 E2-02 Firebase Auth integration -> E2-07 anonymous retention notices
 E3-10 deletion service -> E3-11 anonymous cleanup entry points -> E2-04 collision conversion
 E2-02 Firebase Auth integration + E3-04 repository sync wiring -> E3-12 cross-device recovery proof
+E4-01 Settings UI -> E4-05 account conversion surface -> E4-02 accessibility and localization (bundle E4-B1, D-209)
+E4-B1 merged -> E4-04 release preparation -> E4-03 performance and reliability (bundle E4-B2, D-209)
 ```
 
 `E0-08` is a hard prerequisite for `E0-07` because `AppGraphDependencies` requires
@@ -2036,6 +2180,16 @@ touch the same statements, and `E3-B2` runs `E3-15 -> E3-16` after `E3-B1` merge
 decides `D-149` and `D-150`; both conditions were met on 2026-10-15. Inside a bundle every story keeps its own ready check, handoff, TDD cycle
 and project-log entry.
 
+`D-209` (ADR-0210) delivers Phase 4 as two consecutive bundles, each through one pull request:
+`E4-B1` runs `E4-01 -> E4-05 -> E4-02` on `story/E4-B1-product-surface`, because `E4-05` adds its
+row to the Settings screen that `E4-01` builds and `E4-02` audits every screen, both of them
+included; `E4-B2` runs `E4-04 -> E4-03` on `story/E4-B2-release-readiness` after `E4-B1` merges.
+`E4-B2` inverts the original backlog order with the owner's approval: `D-54` (ADR-0055) keeps the
+Firebase configuration debug-only and makes release builds fail closed until `E4-04` adds the
+production configuration, and `E4-03` measures release builds after Crashlytics and the splash have
+changed cold start. `E4-05` was created by `D-210` (ADR-0211). `E4-06` is outside both bundles.
+Inside a bundle every story keeps its own ready check, handoff, TDD cycle and project-log entry.
+
 `D-64` keeps the anonymous lifecycle split across reviewable owners: E0-07 proves the real
 anonymous local/remote Vehicle path only; E2-02 provides permanent providers and creation
 metadata; E2-07 owns notices; E3-10 owns the reusable deletion service; E3-11 owns cleanup entry
@@ -2082,6 +2236,7 @@ proof after E3-04.
 | E2-07 Anonymous sign-in benefit reminders | 2 | S | Yes |
 | E2-08 Anonymous reminder launch and sign-in race fixes | 2 | S | Yes |
 | E2-05 Sign-out and deletion F-5 | 2 | M | — |
+| E2-10 Account conversion interruption hardening | follow-up | M | Yes |
 | E3-01 Firestore rules (completed) | 3 | M | Yes |
 | E3-10 Account deletion server operation | 3 | M | Yes |
 | E3-11 Anonymous identity cleanup entry points | 3 | M | Yes |
@@ -2103,10 +2258,12 @@ proof after E3-04.
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
-| E4-01 Settings UI | 4 | S | — |
-| E4-02 Accessibility and localization | 4 | M | — |
-| E4-03 Performance hardening | 4 | M | — |
-| E4-04 Release preparation | 4 | M | — |
+| E4-01 Settings UI (bundle `E4-B1`, implemented, PR #91) | 4 | L | — |
+| E4-05 Account conversion host surface (bundle `E4-B1`, implemented, PR #91) | 4 | M | Yes |
+| E4-02 Accessibility and localization (bundle `E4-B1`, implemented, PR #91) | 4 | M | — |
+| E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
+| E4-04 Release preparation (bundle `E4-B2`) | 4 | M | — |
+| E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |
 | E5-01 Electric and hybrid vehicle energy model | 5 (Post-MVP) | L | Yes |
 | E5-02 Owner-bound departure operations | 5 (Post-MVP) | M | Yes |
 | E5-03 Departure tail graph-lifecycle ownership | 5 (Post-MVP) | M | Yes |

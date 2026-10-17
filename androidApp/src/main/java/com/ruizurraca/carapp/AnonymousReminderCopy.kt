@@ -55,6 +55,7 @@ internal fun AnonymousReminderBanner(
             Text(
                 text = stringResource(R.string.anonymous_reminder_title),
                 style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.screenHeading(),
             )
             Text(
                 text = stringResource(anonymousReminderBodyResource(index)),

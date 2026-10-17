@@ -105,6 +105,7 @@ class SwiftAppGraphLifecycleTest {
                         "fuelEntryFormStateHolder" to { swiftGraph.fuelEntryFormStateHolder("vehicle-1", null) },
                         "sessionStateHolder" to { swiftGraph.sessionStateHolder() },
                         "syncStateHolder" to { swiftGraph.syncStateHolder() },
+                        "settingsStateHolder" to { swiftGraph.settingsStateHolder() },
                     )
 
                 factories.forEach { (name, factory) ->
@@ -114,6 +115,69 @@ class SwiftAppGraphLifecycleTest {
                 // A second close is idempotent rather than a failure: it is a release, not a read.
                 swiftGraph.close()
             } finally {
+                owningFactory.close()
+            }
+        }
+
+    @Test
+    fun theSettingsHolderIsCachedByTheSwiftGraph() =
+        runTest {
+            val owningFactory = InMemoryDatabaseFactory()
+            val databaseHandle = owningFactory.create()
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(
+                        databaseFactory = fixedDatabaseFactory(databaseHandle),
+                    ),
+                )
+            val swiftGraph =
+                wrapAppGraphForSwift(
+                    buildAppGraph(isDebugBuild = true, providers = testAppProviders(dependencies)),
+                    dependencies.dispatchers,
+                )
+
+            try {
+                assertSame(
+                    swiftGraph.settingsStateHolder(),
+                    swiftGraph.settingsStateHolder(),
+                    "the settings holder is cached for the graph, like the session and sync holders",
+                )
+            } finally {
+                swiftGraph.close()
+                owningFactory.close()
+            }
+        }
+
+    @Test
+    fun closingTheSwiftGraphCancelsTheSettingsHolderScope() =
+        runTest {
+            val owningFactory = InMemoryDatabaseFactory()
+            val databaseHandle = owningFactory.create()
+            val dependencies =
+                confinedGraphDependencies(
+                    testAppGraphDependencies(
+                        databaseFactory = fixedDatabaseFactory(databaseHandle),
+                    ),
+                )
+            val recordingGraph =
+                RecordingSettingsScopesAppGraph(
+                    buildAppGraph(
+                        isDebugBuild = true,
+                        providers = testAppProviders(dependencies),
+                    ),
+                )
+            val swiftGraph = wrapAppGraphForSwift(recordingGraph, dependencies.dispatchers)
+
+            try {
+                swiftGraph.settingsStateHolder()
+                swiftGraph.close()
+
+                assertFalse(
+                    checkNotNull(recordingGraph.settingsScopes.single().coroutineContext[Job]).isActive,
+                    "SwiftAppGraph.close() cancels the child scope it created for the settings holder",
+                )
+            } finally {
+                swiftGraph.close()
                 owningFactory.close()
             }
         }
@@ -190,6 +254,17 @@ private class RecordingVehicleFormScopesAppGraph(
     ): VehicleFormStateHolder {
         vehicleFormScopes += scope
         return delegate.vehicleFormStateHolder(scope, vehicleId)
+    }
+}
+
+private class RecordingSettingsScopesAppGraph(
+    private val delegate: AppGraph,
+) : AppGraph by delegate {
+    val settingsScopes = mutableListOf<CoroutineScope>()
+
+    override fun settingsStateHolder(scope: CoroutineScope): SettingsStateHolder {
+        settingsScopes += scope
+        return delegate.settingsStateHolder(scope)
     }
 }
 

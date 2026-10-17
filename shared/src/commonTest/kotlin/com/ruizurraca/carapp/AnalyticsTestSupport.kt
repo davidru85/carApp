@@ -26,7 +26,7 @@ import kotlin.test.fail
  * Everything runs without a wall-clock wait, so this fixture cannot interfere with the graph tests
  * that legitimately use real waits. The opt-in semantics are exercised by `SharedAnalyticsCadenceTest`
  * over `AnalyticsEmissions` and by the integration's own `FirebaseAnalyticsOptInTest`; the real
- * settings repository is not driven into the gate end to end (see `docs/handoffs/E3-09.md`).
+ * settings repository is driven into the gate end to end by `SettingsGraphTest` (`E4-01`).
  */
 internal fun userSettings(
     analyticsEnabled: Boolean,

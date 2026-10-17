@@ -6,7 +6,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSValue.h>
 
-@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedNativeSignInFailure, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelFuelType, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedDepartureRetry, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
+@class Shared__SkieSuspendWrappersKt, SharedVehicleListUiState, SharedVehicleListStateHolder, SharedVehicleListItemUi, SharedVehicleFormUiState, SharedVehicleFormStateHolder, SharedUiMessageKind, SharedUiMessage, SharedUShort, SharedULong, SharedUInt, SharedUByte, SharedSyncUiState, SharedSyncTrigger, SharedSyncSyncStatusSyncing, SharedSyncSyncStatusPending, SharedSyncSyncStatusIdle, SharedSyncSyncStatusFailed, SharedSyncSyncStatus, SharedSyncStateHolder, SharedSwiftAppGraph, SharedSkie_SuspendResultSuccess, SharedSkie_SuspendResultError, SharedSkie_SuspendResultCanceled, SharedSkie_SuspendResult, SharedSkie_SuspendHandler, SharedSkie_CancellationHandler, SharedSkieKotlinStateFlow<T>, SharedSkieKotlinSharedFlow<T>, SharedSkieKotlinOptionalStateFlow<T>, SharedSkieKotlinOptionalSharedFlow<T>, SharedSkieKotlinOptionalMutableStateFlow<T>, SharedSkieKotlinOptionalMutableSharedFlow<T>, SharedSkieKotlinOptionalFlow<T>, SharedSkieKotlinMutableStateFlow<T>, SharedSkieKotlinMutableSharedFlow<T>, SharedSkieKotlinFlow<T>, SharedSkieColdFlowIterator<E>, SharedShort, SharedSettingsUiState, SharedSettingsStateHolder, SharedSessionUiState, SharedSessionStateHolder, SharedSessionPhase, SharedNumber, SharedNativeSignInFailure, SharedMutableSet<ObjectType>, SharedMutableDictionary<KeyType, ObjectType>, SharedMoneyInputMode, SharedModelVolumeUnit, SharedModelFuelType, SharedModelDistanceUnit, SharedModelConsumptionInvalidReason, SharedLong, SharedKotlinThrowable, SharedKotlinRuntimeException, SharedKotlinIllegalStateException, SharedKotlinException, SharedKotlinEnumCompanion, SharedKotlinEnum<E>, SharedKotlinCancellationException, SharedKotlinArray<T>, SharedInt, SharedFuelEntryListUiState, SharedFuelEntryListStateHolder, SharedFuelEntryListItemUi, SharedFuelEntryFormUiState, SharedFuelEntryFormStateHolder, SharedFloat, SharedDouble, SharedDepartureRetry, SharedCreateSwiftAppGraphKt, SharedConfirmation, SharedByte, SharedBoolean, SharedBase, SharedAuthProvider, NSString, NSSet<ObjectType>, NSObject, NSNumber, NSMutableSet<ObjectType>, NSMutableDictionary<KeyType, ObjectType>, NSMutableArray<ObjectType>, NSError, NSDictionary<KeyType, ObjectType>, NSArray<ObjectType>;
 
 @protocol SharedSkie_DispatcherDelegate, SharedKotlinx_coroutines_coreStateFlow, SharedKotlinx_coroutines_coreSharedFlow, SharedKotlinx_coroutines_coreRunnable, SharedKotlinx_coroutines_coreMutableStateFlow, SharedKotlinx_coroutines_coreMutableSharedFlow, SharedKotlinx_coroutines_coreFlowCollector, SharedKotlinx_coroutines_coreFlow, SharedKotlinIterator, SharedKotlinComparable, NSCopying;
 
@@ -1213,6 +1213,78 @@ __attribute__((swift_name("SessionUiState")))
 @end
 
 
+/**
+ * The Settings surface of `docs/SPECIFICATION.md §3.1`: the currency, the read-only units and the
+ * analytics opt-in (`docs/CONTRACTS.md §20.10`).
+ *
+ * It observes the graph's single settings flow, the one the `§16.1` opt-in gate also observes, so an
+ * opt-in or an opt-out written here reaches the tracker without a restart. Backup status and the
+ * session rows of the Settings screen stay on `SyncStateHolder` and `SessionStateHolder`.
+ */
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SettingsStateHolder")))
+@interface SharedSettingsStateHolder : SharedBase
+@property (readonly) id<SharedKotlinx_coroutines_coreStateFlow> state __attribute__((swift_name("state")));
+- (void)clearMessage __attribute__((swift_name("clearMessage()")));
+- (void)close __attribute__((swift_name("close()")));
+- (void)selectCurrencyCode:(NSString *)code __attribute__((swift_name("selectCurrency(code:)")));
+- (void)setAnalyticsEnabledEnabled:(BOOL)enabled __attribute__((swift_name("setAnalyticsEnabled(enabled:)")));
+@end
+
+
+/**
+ * The state of the Settings screen (`docs/CONTRACTS.md §20.10`).
+ *
+ * [currencyCode] is `null` until the settings repository has emitted the settings once; until then
+ * the other settings fields are placeholders that a host MUST NOT render as known values. Currency
+ * codes cross as `String` and carry no display name: each host resolves the name through its
+ * platform currency API, so this state holds no user-facing text (`docs/CONTRACTS.md §14`).
+ */
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("SettingsUiState")))
+@interface SharedSettingsUiState : SharedBase
+@property (readonly) BOOL analyticsEnabled __attribute__((swift_name("analyticsEnabled")));
+@property (readonly) NSString * _Nullable currencyCode __attribute__((swift_name("currencyCode")));
+@property (readonly) SharedModelDistanceUnit *distanceUnit __attribute__((swift_name("distanceUnit")));
+@property (readonly) BOOL isSaving __attribute__((swift_name("isSaving")));
+@property (readonly) SharedUiMessage * _Nullable message __attribute__((swift_name("message")));
+@property (readonly) NSArray<NSString *> *supportedCurrencyCodes __attribute__((swift_name("supportedCurrencyCodes")));
+@property (readonly) SharedModelVolumeUnit *volumeUnit __attribute__((swift_name("volumeUnit")));
+- (instancetype)initWithCurrencyCode:(NSString * _Nullable)currencyCode supportedCurrencyCodes:(NSArray<NSString *> *)supportedCurrencyCodes distanceUnit:(SharedModelDistanceUnit *)distanceUnit volumeUnit:(SharedModelVolumeUnit *)volumeUnit analyticsEnabled:(BOOL)analyticsEnabled isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("init(currencyCode:supportedCurrencyCodes:distanceUnit:volumeUnit:analyticsEnabled:isSaving:message:)"))) __attribute__((objc_designated_initializer));
+- (SharedSettingsUiState *)doCopyCurrencyCode:(NSString * _Nullable)currencyCode supportedCurrencyCodes:(NSArray<NSString *> *)supportedCurrencyCodes distanceUnit:(SharedModelDistanceUnit *)distanceUnit volumeUnit:(SharedModelVolumeUnit *)volumeUnit analyticsEnabled:(BOOL)analyticsEnabled isSaving:(BOOL)isSaving message:(SharedUiMessage * _Nullable)message __attribute__((swift_name("doCopy(currencyCode:supportedCurrencyCodes:distanceUnit:volumeUnit:analyticsEnabled:isSaving:message:)")));
+
+/**
+ * The state of the Settings screen (`docs/CONTRACTS.md §20.10`).
+ *
+ * [currencyCode] is `null` until the settings repository has emitted the settings once; until then
+ * the other settings fields are placeholders that a host MUST NOT render as known values. Currency
+ * codes cross as `String` and carry no display name: each host resolves the name through its
+ * platform currency API, so this state holds no user-facing text (`docs/CONTRACTS.md §14`).
+ */
+- (BOOL)isEqual:(id _Nullable)other __attribute__((swift_name("isEqual(_:)")));
+
+/**
+ * The state of the Settings screen (`docs/CONTRACTS.md §20.10`).
+ *
+ * [currencyCode] is `null` until the settings repository has emitted the settings once; until then
+ * the other settings fields are placeholders that a host MUST NOT render as known values. Currency
+ * codes cross as `String` and carry no display name: each host resolves the name through its
+ * platform currency API, so this state holds no user-facing text (`docs/CONTRACTS.md §14`).
+ */
+- (NSUInteger)hash __attribute__((swift_name("hash()")));
+
+/**
+ * The state of the Settings screen (`docs/CONTRACTS.md §20.10`).
+ *
+ * [currencyCode] is `null` until the settings repository has emitted the settings once; until then
+ * the other settings fields are placeholders that a host MUST NOT render as known values. Currency
+ * codes cross as `String` and carry no display name: each host resolves the name through its
+ * platform currency API, so this state holds no user-facing text (`docs/CONTRACTS.md §14`).
+ */
+- (NSString *)description __attribute__((swift_name("description()")));
+@end
+
+
 /** Swift-facing application graph facade with graph-owned state-holder scopes (`D-86`). */
 __attribute__((objc_subclassing_restricted))
 __attribute__((swift_name("SwiftAppGraph")))
@@ -1226,6 +1298,7 @@ __attribute__((swift_name("SwiftAppGraph")))
 - (void)releaseFuelEntryListStateHolderVehicleId:(NSString *)vehicleId __attribute__((swift_name("releaseFuelEntryListStateHolder(vehicleId:)")));
 - (void)releaseVehicleFormStateHolderVehicleId:(NSString * _Nullable)vehicleId __attribute__((swift_name("releaseVehicleFormStateHolder(vehicleId:)")));
 - (SharedSessionStateHolder *)sessionStateHolder __attribute__((swift_name("sessionStateHolder()")));
+- (SharedSettingsStateHolder *)settingsStateHolder __attribute__((swift_name("settingsStateHolder()")));
 - (SharedSyncStateHolder *)syncStateHolder __attribute__((swift_name("syncStateHolder()")));
 - (SharedVehicleFormStateHolder *)vehicleFormStateHolderVehicleId:(NSString * _Nullable)vehicleId __attribute__((swift_name("vehicleFormStateHolder(vehicleId:)")));
 - (SharedVehicleListStateHolder *)vehicleListStateHolder __attribute__((swift_name("vehicleListStateHolder()")));
@@ -1714,6 +1787,30 @@ __attribute__((swift_name("KotlinArray")))
 - (T _Nullable)getIndex:(int32_t)index __attribute__((swift_name("get(index:)")));
 - (id<SharedKotlinIterator>)iterator __attribute__((swift_name("iterator()")));
 - (void)setIndex:(int32_t)index value:(T _Nullable)value __attribute__((swift_name("set(index:value:)")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("ModelDistanceUnit")))
+@interface SharedModelDistanceUnit : SharedKotlinEnum<SharedModelDistanceUnit *>
+@property (class, readonly) SharedModelDistanceUnit *km __attribute__((swift_name("km")));
+@property (class, readonly) SharedModelDistanceUnit *miles __attribute__((swift_name("miles")));
+@property (class, readonly) NSArray<SharedModelDistanceUnit *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedModelDistanceUnit *> *)values __attribute__((swift_name("values()")));
+@end
+
+__attribute__((objc_subclassing_restricted))
+__attribute__((swift_name("ModelVolumeUnit")))
+@interface SharedModelVolumeUnit : SharedKotlinEnum<SharedModelVolumeUnit *>
+@property (class, readonly) SharedModelVolumeUnit *liter __attribute__((swift_name("liter")));
+@property (class, readonly) SharedModelVolumeUnit *gallon __attribute__((swift_name("gallon")));
+@property (class, readonly) NSArray<SharedModelVolumeUnit *> *entries __attribute__((swift_name("entries")));
++ (instancetype)alloc __attribute__((unavailable));
++ (instancetype)allocWithZone:(struct _NSZone *)zone __attribute__((unavailable));
+- (instancetype)initWithName:(NSString *)name ordinal:(int32_t)ordinal __attribute__((swift_name("init(name:ordinal:)"))) __attribute__((objc_designated_initializer)) __attribute__((unavailable));
++ (SharedKotlinArray<SharedModelVolumeUnit *> *)values __attribute__((swift_name("values()")));
 @end
 
 
