@@ -495,11 +495,22 @@ extension XCTestCase {
         saveVehicleButton.tap()
     }
 
+    /// Brings `element` into a hittable position, sweeping up first and then down.
+    ///
+    /// One direction is not enough: tests in a run leave their own vehicles behind, so the list can be
+    /// long and already scrolled when a later test looks for a control. A control near the top (for
+    /// example `add_vehicle`) is then moved further away by an upward swipe, which is why the downward
+    /// sweep follows. Both sweeps are bounded, so a genuinely absent element still fails.
     @discardableResult
     func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication, maxSwipes: Int = 8) -> Bool {
         var swipes = 0
         while !(element.exists && element.isHittable) && swipes < maxSwipes {
             app.swipeUp()
+            swipes += 1
+        }
+        swipes = 0
+        while !(element.exists && element.isHittable) && swipes < maxSwipes {
+            app.swipeDown()
             swipes += 1
         }
         return element.exists && element.isHittable
