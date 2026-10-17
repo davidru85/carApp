@@ -19,6 +19,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onFirst
@@ -117,16 +118,42 @@ internal fun ComposeTestRule.checkAccessibilityOfEveryWindow() {
     onAllNodes(isRoot()).onFirst().tryPerformAccessibilityChecks()
 }
 
-/** Scrolls the node into view when it sits in a scrolling container, then asserts it is on screen. */
+/**
+ * Scrolls the node into view, then asserts it is on screen.
+ *
+ * The scroll runs whenever the node is not displayed, not only when it is absent: a lazy container
+ * composes a window beyond the viewport, so a row can already exist below the fold while
+ * `onAllNodes(matcher)` is non-empty, and the absent-node branch alone would then skip every scroll
+ * and fail on the final assertion. Both scroll mechanisms are attempted, bounded by
+ * [ACCESSIBILITY_SCROLL_ATTEMPTS] so an unreachable node still fails with the assertion's own message.
+ */
 internal fun ComposeTestRule.scrollToAndAssertDisplayed(matcher: SemanticsMatcher) {
-    if (onAllNodes(matcher).fetchSemanticsNodes().isEmpty()) {
-        onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(matcher)
-    }
-    if (onAllNodes(matcher and hasAnyAncestor(hasScrollAction())).fetchSemanticsNodes().isNotEmpty()) {
-        onNode(matcher).performScrollTo()
+    repeat(ACCESSIBILITY_SCROLL_ATTEMPTS) {
+        if (isDisplayedNow(matcher)) return
+        if (!scrollTowards(matcher)) return
     }
     onNode(matcher).assertIsDisplayed()
 }
+
+/** Whether [matcher] resolves to a displayed node, without failing when it does not resolve. */
+private fun ComposeTestRule.isDisplayedNow(matcher: SemanticsMatcher): Boolean =
+    runCatching { onNode(matcher).isDisplayed() }.getOrDefault(false)
+
+/** Brings [matcher] closer to the viewport with whichever scroll mechanism applies to its container. */
+internal fun ComposeTestRule.scrollTowards(matcher: SemanticsMatcher): Boolean {
+    val scrolledWithinContainer =
+        runCatching {
+            onAllNodes(matcher and hasAnyAncestor(hasScrollAction())).onFirst().performScrollTo()
+        }.isSuccess
+    val scrolledContainerToNode =
+        runCatching {
+            onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(matcher)
+        }.isSuccess
+    return scrolledWithinContainer || scrolledContainerToNode
+}
+
+/** Bounds the scroll retries so an unreachable node fails rather than looping. */
+private const val ACCESSIBILITY_SCROLL_ATTEMPTS = 8
 
 internal fun ComposeTestRule.scrollToAndAssertDisplayed(tag: String) = scrollToAndAssertDisplayed(hasTestTag(tag))
 
