@@ -245,6 +245,60 @@ enum AccessibilityAuditAllowlist {
 }
 
 extension XCTestCase {
+    /// Leaves the vehicle detail and returns to the vehicle list. A navigation bar can hold more than
+    /// one button, so the back affordance is resolved by identifier rather than by position.
+    func returnToTheListFromTheDetail(in app: XCUIApplication) -> Bool {
+        // A navigation bar can hold more than one button and the Debug diagnostics item comes first, so
+        // the back affordance is resolved by what it is not: a button that is not one of the controls
+        // this app gives an identifier to, sitting in the leading half of the bar.
+        let bar = app.navigationBars.element(boundBy: 0)
+        XCTAssertTrue(bar.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        // The system calls the back affordance `BackButton` on this runtime; a button with no
+        // identifier of the app's own is the fallback, and the app's own controls are excluded.
+        let knownIdentifiers = ["diagnostics_button", "vehicle_more_actions", "add_vehicle", "settings_open"]
+        let candidates =
+            [bar.buttons["BackButton"].firstMatch, bar.buttons["Back"].firstMatch]
+            + bar.buttons.allElementsBoundByIndex.filter { button in
+                !knownIdentifiers.contains(button.identifier) && button.identifier.isEmpty
+            }
+        for back in candidates where back.exists {
+            if back.isHittable || scrollUntilHittable(back, in: app) {
+                back.tap()
+                return true
+            }
+        }
+        return false
+    }
+}
+
+/// A vehicle name that is unique across a whole suite run: two tests can run inside the same second,
+/// and a repeated name is refused by the duplicate-name validation, which would leave the form open.
+func uniqueVehicleName() -> String { "AAA-A11y-\(UUID().uuidString.prefix(8))" }
+
+extension XCTestCase {
+    /// Taps a point away from the keyboard so a covered action becomes hittable again. At AX3 the
+    /// vehicle form is taller than the screen and the numeric keyboard covers its save button.
+    func tapOutsideTheKeyboard(_ app: XCUIApplication) -> Bool {
+        let field = app.textFields["vehicle_name"]
+        guard field.exists, app.keyboards.firstMatch.exists else { return true }
+        let start = field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let above = start.withOffset(CGVector(dx: 0, dy: -120))
+        above.tap()
+        return !app.keyboards.firstMatch.exists
+    }
+}
+
+extension XCUIElement {
+    /// Taps when the element exists; reports whether the tap happened, so a caller can branch on it.
+    @discardableResult
+    func tapIfExists() -> Bool {
+        guard exists else { return false }
+        tap()
+        return true
+    }
+}
+
+extension XCTestCase {
     func launchCarApp(arguments: [String], environment: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += arguments
@@ -297,33 +351,42 @@ extension XCTestCase {
         waitForOnboarding(in: app, destination: "vehicle creation", isComplete: { vehicleNameField.exists })
     }
 
-    /// Creates a vehicle and lands on its detail, whether this is the first-run form (which routes to
-    /// the detail itself) or a later creation (which returns to the list).
-    @discardableResult
-    func createVehicleAndOpenDetail(in app: XCUIApplication, odometer: String) -> String {
-        openVehicleCreationForAccessibility(in: app)
-        let name = "AAA-A11y-\(Int(Date().timeIntervalSince1970))"
-        let nameField = app.textFields["vehicle_name"]
-        nameField.tap()
-        nameField.typeText(name)
-        let odometerField = app.textFields["vehicle_odometer"]
-        odometerField.tap()
-        odometerField.typeText(odometer)
-        let save = app.buttons["save_vehicle"]
-        save.tap()
-        XCTAssertTrue(save.waitForNonExistence(timeout: AccessibilityUITestSupport.timeout))
-
-        let addFuelEntry = app.buttons["add_fuel_entry"]
-        if !addFuelEntry.waitForExistence(timeout: 3) {
-            let row = app.staticTexts[name]
-            if !row.waitForExistence(timeout: 2) {
-                app.swipeDown()
+    /// Reaches the vehicle list from wherever onboarding stands, creating the first vehicle when F-1
+    /// asks for it. The list may already hold vehicles left by an earlier test, in which case nothing
+    /// is created.
+    func reachTheVehicleListForAccessibility(in app: XCUIApplication) {
+        let vehicleNameField = app.textFields["vehicle_name"]
+        let addVehicle = app.buttons["add_vehicle"]
+        var createdTheFirstVehicle = false
+        waitForOnboarding(
+            in: app,
+            destination: "the vehicle list",
+            isComplete: { addVehicle.exists && !vehicleNameField.exists },
+            handleVehicleForm: {
+                guard !createdTheFirstVehicle, vehicleNameField.exists else { return false }
+                createdTheFirstVehicle = true
+                self.fillTheVehicleForm(name: uniqueVehicleName(), odometer: "1000", in: app)
+                // A first vehicle lands on its detail; the list is reached by the back affordance.
+                _ = self.returnToTheListFromTheDetail(in: app)
+                return true
             }
-            XCTAssertTrue(row.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
-            row.tap()
-        }
-        XCTAssertTrue(addFuelEntry.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
-        return name
+        )
+        XCTAssertTrue(addVehicle.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+    }
+
+    func openSettings(in app: XCUIApplication) {
+        let settingsButton = app.buttons[AccessibilityUITestSupport.settingsEntryIdentifier]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        XCTAssertTrue(scrollUntilHittable(settingsButton, in: app), "the Settings entry is unreachable")
+        settingsButton.tap()
+        // The navigation title is what proves Settings is up; the version row sits low on the screen
+        // and at AX3 the list is not scrolled to it yet.
+        let title = app.navigationBars["Settings"]
+        let version = app.staticTexts["settings_version"]
+        let settingsIsUp =
+            title.waitForExistence(timeout: AccessibilityUITestSupport.timeout)
+            || version.waitForExistence(timeout: AccessibilityUITestSupport.timeout)
+        XCTAssertTrue(settingsIsUp, "Settings did not open")
     }
 
     func openFuelEntryForm(in app: XCUIApplication) {
@@ -346,10 +409,88 @@ extension XCTestCase {
         priceField.typeText(price)
     }
 
-    func openSettings(in app: XCUIApplication) {
-        let entry = app.buttons[AccessibilityUITestSupport.settingsEntryIdentifier]
-        XCTAssertTrue(entry.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
-        entry.tap()
+    /// Creates a vehicle named uniquely for this run and lands on its detail. The list may already
+    /// hold vehicles left by an earlier test in the same suite and F-1 may route an empty list to the
+    /// creation form, so both routes are handled and the vehicle is always the one this call created.
+    @discardableResult
+    func createVehicleAndOpenDetail(in app: XCUIApplication, odometer: String) -> String {
+        let name = uniqueVehicleName()
+        let vehicleNameField = app.textFields["vehicle_name"]
+        let odometerField = app.textFields["vehicle_odometer"]
+        let saveVehicleButton = app.buttons["save_vehicle"]
+        var createdTheFirstVehicle = false
+
+        // A first vehicle lands on its detail and a later one on the list, so the waiter waits for the
+        // form to be gone; the destination is resolved afterwards.
+        waitForOnboarding(
+            in: app,
+            destination: "the vehicle list",
+            isComplete: { !vehicleNameField.exists && (app.buttons["add_fuel_entry"].exists || app.buttons["add_vehicle"].exists) },
+            handleVehicleForm: {
+                guard !createdTheFirstVehicle, vehicleNameField.exists else { return false }
+                createdTheFirstVehicle = true
+                self.fillTheVehicleForm(name: name, odometer: odometer, in: app)
+                return true
+            }
+        )
+        if app.buttons["add_fuel_entry"].exists {
+            return name
+        }
+
+        // This run's own vehicle is created when the list did not already carry it, which keeps the
+        // test independent of whatever an earlier test left behind.
+        // The list row is matched by the name in its own label, never by position, so an earlier
+        // test's vehicles cannot be mistaken for this one.
+        let rowMatchingThisVehicle = NSPredicate(
+            format: "identifier BEGINSWITH 'vehicle_row_' AND label CONTAINS %@",
+            name
+        )
+        let ownRow = app.descendants(matching: .any).matching(rowMatchingThisVehicle).firstMatch
+        if !ownRow.waitForExistence(timeout: 3) {
+            _ = self.returnToTheListFromTheDetail(in: app)
+            let addVehicle = app.buttons["add_vehicle"]
+            XCTAssertTrue(addVehicle.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+            XCTAssertTrue(self.scrollUntilHittable(addVehicle, in: app), "add_vehicle is unreachable")
+            addVehicle.tap()
+            XCTAssertTrue(vehicleNameField.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+            vehicleNameField.tap()
+            vehicleNameField.typeText(name)
+            odometerField.tap()
+            odometerField.typeText(odometer)
+            app.navigationBars.element(boundBy: 0).tap()
+            _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 3)
+            XCTAssertTrue(self.scrollUntilHittable(saveVehicleButton, in: app), "save_vehicle is unreachable")
+            saveVehicleButton.tap()
+            XCTAssertTrue(saveVehicleButton.waitForNonExistence(timeout: AccessibilityUITestSupport.timeout))
+            _ = self.returnToTheListFromTheDetail(in: app)
+        }
+
+        // The list may be scrolled away from the top after the creation flow, so it is returned to
+        // the top before the row is looked for again.
+        if !ownRow.exists {
+            for _ in 0..<6 { app.swipeDown() }
+        }
+        XCTAssertTrue(ownRow.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        XCTAssertTrue(scrollUntilHittable(ownRow, in: app), "the vehicle row is not hittable")
+        ownRow.tap()
+        XCTAssertTrue(app.buttons["add_fuel_entry"].waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        return name
+    }
+
+    /// Fills the open vehicle form up to (and including) the save tap. The keypad has no Done key, so
+    /// the keyboard is dismissed by tapping the navigation bar, which lies outside it.
+    func fillTheVehicleForm(name: String, odometer: String, in app: XCUIApplication) {
+        let vehicleNameField = app.textFields["vehicle_name"]
+        let odometerField = app.textFields["vehicle_odometer"]
+        let saveVehicleButton = app.buttons["save_vehicle"]
+        vehicleNameField.tap()
+        vehicleNameField.typeText(name)
+        odometerField.tap()
+        odometerField.typeText(odometer)
+        app.navigationBars.element(boundBy: 0).tap()
+        _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 3)
+        XCTAssertTrue(scrollUntilHittable(saveVehicleButton, in: app), "save_vehicle is unreachable")
+        saveVehicleButton.tap()
     }
 
     @discardableResult

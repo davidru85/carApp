@@ -22,7 +22,9 @@ final class SpanishLocalizationUITests: XCTestCase {
     func testVehicleOdometerUsesSpanishGrouping() {
         let app = launchCarApp(arguments: spanish)
         createVehicleAndOpenDetail(in: app, odometer: "142500")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // The odometer is read on the vehicle list, so the row is opened and left again: the detail is
+        // where a first vehicle lands (F-2), and its back affordance returns to the list.
+        XCTAssertTrue(returnToTheListFromTheDetail(in: app), "the back affordance is not hittable")
         let odometer = app.staticTexts.matching(NSPredicate(format: "label == %@", "142.500 km")).firstMatch
         XCTAssertTrue(odometer.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
         attachAccessibilityEvidence(of: app, named: "es-vehicle-list")
@@ -41,8 +43,8 @@ final class SpanishLocalizationUITests: XCTestCase {
 
     func testSettingsUseSpanishCopy() {
         let app = launchCarApp(arguments: spanish)
-        createVehicleAndOpenDetail(in: app, odometer: "1000")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // Settings lives on the vehicle list, so the list is reached directly.
+        reachTheVehicleListForAccessibility(in: app)
         openSettings(in: app)
         // es.lproj backup_status_idle, read through the backup_status_description label.
         let status = app.descendants(matching: .any)

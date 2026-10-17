@@ -72,8 +72,9 @@ final class LargeContentSizeUITests: XCTestCase {
     @MainActor
     func testSettingsRowsAreReachableAtAx3() throws {
         let app = launchCarApp(arguments: largeEnglish)
-        createVehicleAndOpenDetail(in: app, odometer: "1000")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // Settings lives on the vehicle list, so the list is reached directly rather than by creating
+        // a vehicle the test does not need.
+        reachTheVehicleListForAccessibility(in: app)
         openSettings(in: app)
         let settingsElements = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'settings_'"))
