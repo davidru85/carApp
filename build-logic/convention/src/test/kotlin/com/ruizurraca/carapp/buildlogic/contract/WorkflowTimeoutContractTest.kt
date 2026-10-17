@@ -45,4 +45,44 @@ class WorkflowTimeoutContractTest {
         val mutated = workflow.replace("    name: provider-decoupling\n", "    name: provider-decoupling-renamed\n")
         assertEquals(AssertionResult.Status.FAIL, WorkflowTimeoutContract(mutated).validate().single { it.id == 30 }.status)
     }
+
+    /**
+     * The `ios-ui-tests` ceiling is 60 because the UI suite plus the nine accessibility audits
+     * measured 21m48s and was still running when run 39038842049 was cancelled at 14:40:03. Its own
+     * ceiling, not a raised default: the next minute over it MUST fail.
+     */
+    @Test
+    fun aJobAboveItsOwnCeilingFails() {
+        val mutated = workflow.replaceFirst("    timeout-minutes: 60", "    timeout-minutes: 61")
+        assertNotEquals(workflow, mutated, "The fixture mutation must exceed the ios-ui-tests ceiling")
+        assertEquals(
+            AssertionResult.Status.FAIL,
+            WorkflowTimeoutContract(mutated).validate().single { it.id == 28 }.status,
+        )
+    }
+
+    /**
+     * A raised default would defeat the guard for every other job, so the higher ceiling MUST NOT be
+     * reachable by a job that does not name one: `ktlint` at 60 minutes fails assertion 28.
+     */
+    @Test
+    fun aJobWithoutItsOwnCeilingCannotBorrowATallerOne() {
+        val mutated = workflow.replaceFirst("  ktlint:\n    name: ktlint\n    runs-on: ubuntu-latest\n    timeout-minutes: 40", "  ktlint:\n    name: ktlint\n    runs-on: ubuntu-latest\n    timeout-minutes: 60")
+        assertNotEquals(workflow, mutated, "The fixture mutation must raise ktlint past the default ceiling")
+        assertEquals(
+            AssertionResult.Status.FAIL,
+            WorkflowTimeoutContract(mutated).validate().single { it.id == 28 }.status,
+        )
+    }
+
+    /** A UI check that stops being reported under the protected name silently stops gating merges. */
+    @Test
+    fun removingTheUiCheckProtectedNameFails() {
+        val mutated = workflow.replace("    name: ios-ui-tests\n", "    name: ios-ui-tests-renamed\n")
+        assertNotEquals(workflow, mutated, "The fixture mutation must rename the ios-ui-tests check")
+        assertEquals(
+            AssertionResult.Status.FAIL,
+            WorkflowTimeoutContract(mutated).validate().single { it.id == 30 }.status,
+        )
+    }
 }
