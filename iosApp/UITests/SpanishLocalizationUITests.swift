@@ -51,6 +51,8 @@ final class SpanishLocalizationUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS %@", "Sincronizado localmente"))
             .firstMatch
         XCTAssertTrue(status.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        // The backup row sits below the fold on a shorter device; scroll to it before reading its copy.
+        XCTAssertTrue(scrollUntilHittable(status, in: app), "the backup status row must be reachable")
         attachAccessibilityEvidence(of: app, named: "es-settings")
     }
 

@@ -22,10 +22,15 @@ final class SettingsFlowUITests: XCTestCase {
 
         openSettingsFromTheToolbar(in: app)
 
+        // The screen is proved by a row of its own content, not by its localized title ("Settings" or
+        // "Ajustes") nor by the version row, which sits below the fold on a shorter device and is
+        // scrolled to before it is asserted.
         XCTAssertTrue(
-            app.staticTexts["settings_version"].waitForExistence(timeout: timeout),
-            "Settings must show the app version row"
+            app.buttons["settings_currency_picker"].waitForExistence(timeout: timeout),
+            "Settings must open from the vehicle list"
         )
+        let versionRow = app.staticTexts["settings_version"]
+        XCTAssertTrue(scrollUntilHittable(versionRow, in: app), "Settings must show the app version row")
     }
 
     /// `§3.1`: the distance and volume units are visible and read-only in the MVP. Design 06 draws a

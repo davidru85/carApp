@@ -379,13 +379,13 @@ extension XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
         XCTAssertTrue(scrollUntilHittable(settingsButton, in: app), "the Settings entry is unreachable")
         settingsButton.tap()
-        // The navigation title is what proves Settings is up; the version row sits low on the screen
-        // and at AX3 the list is not scrolled to it yet.
-        let title = app.navigationBars["Settings"]
-        let version = app.staticTexts["settings_version"]
+        // The screen is proved by the back affordance of its navigation bar rather than by its title,
+        // which is localized ("Settings" or "Ajustes"), or by the version row, which sits below the fold
+        // on a shorter device. The bar's back button exists on both hosts' layouts.
+        let backButton = app.navigationBars.buttons.element(boundBy: 0)
         let settingsIsUp =
-            title.waitForExistence(timeout: AccessibilityUITestSupport.timeout)
-            || version.waitForExistence(timeout: AccessibilityUITestSupport.timeout)
+            backButton.waitForExistence(timeout: AccessibilityUITestSupport.timeout)
+            && app.buttons["settings_currency_picker"].waitForExistence(timeout: AccessibilityUITestSupport.timeout)
         XCTAssertTrue(settingsIsUp, "Settings did not open")
     }
 
@@ -465,13 +465,15 @@ extension XCTestCase {
             _ = self.returnToTheListFromTheDetail(in: app)
         }
 
-        // The list may be scrolled away from the top after the creation flow, so it is returned to
-        // the top before the row is looked for again.
+        // The list may be scrolled away from this row after the creation flow, in either direction:
+        // earlier tests in the same run leave their own vehicles behind, and at AX3 only a few rows
+        // fit on screen. Both directions are swept, bounded, before the row is asserted.
         if !ownRow.exists {
-            for _ in 0..<6 { app.swipeDown() }
+            for _ in 0..<4 where !ownRow.exists { app.swipeDown() }
+            for _ in 0..<8 where !ownRow.exists { app.swipeUp() }
         }
         XCTAssertTrue(ownRow.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
-        XCTAssertTrue(scrollUntilHittable(ownRow, in: app), "the vehicle row is not hittable")
+        XCTAssertTrue(self.scrollUntilHittable(ownRow, in: app), "the vehicle row is not hittable")
         ownRow.tap()
         XCTAssertTrue(app.buttons["add_fuel_entry"].waitForExistence(timeout: AccessibilityUITestSupport.timeout))
         return name
