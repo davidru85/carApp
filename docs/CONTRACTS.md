@@ -2120,6 +2120,7 @@ D-31 and D-84 define the exact CI check names. Required checks:
 - `android-assemble`
 - `shared-tests`
 - `ios-simulator-build`
+- `ios-ui-tests`
 - `ktlint`
 - `detekt`
 - `architecture-check`
@@ -2127,6 +2128,13 @@ D-31 and D-84 define the exact CI check names. Required checks:
 - `contract-check`
 - `objc-header-golden-check`
 - `android-instrumented-tests`
+
+The `ios-ui-tests` check runs only the `carAppUITests` test target, the nine `AccessibilityAuditUITests`
+audits included, in its own macOS job with its own 60-minute ceiling (`D-229`, ADR-0230). The
+`ios-simulator-build` check keeps the pinned-Xcode check, the Gradle links and the `carAppTests` unit
+target at 40 minutes. The two are separate because a single job that ran both exceeded its own 40
+minutes and was cancelled with no test result, which is indistinguishable from a real regression;
+they also run in parallel, so separating them costs no wall-clock beyond the second runner.
 
 The `shared-tests` check executes Android-host tests for every KMP module. Its standalone
 `iosSimulatorArm64Test` exception is derived from the project dependency graph (`D-75`): every KMP
@@ -2175,10 +2183,16 @@ Optional checks:
 26. The foundational GitHub Actions are recorded as Node.js 24 generations in the version matrix;
     an obsolete runtime generation fails the check.
 27. Every protected CI job declares a `timeout-minutes` safety limit.
-28. No CI job declares a safety limit above 40 minutes. The limit kills a hung job; it is not a
-    bound on a healthy one and MUST retain headroom over the measured distribution, not sit near its
-    worst observed success. Over 58 sampled runs `ios-simulator-build` succeeded between 12.1 and
-    23.9 minutes, so its duration varies by nearly a factor of two with runner speed.
+28. No CI job declares a safety limit above its own ceiling: 40 minutes by default, and the explicit
+    per-job ceiling `WorkflowTimeoutContract.JOB_CEILING_MINUTES` names when 40 does not fit. The
+    limit kills a hung job; it is not a bound on a healthy one and MUST retain headroom over the
+    measured distribution, not sit near its worst observed success. Over 58 sampled runs
+    `ios-simulator-build` succeeded between 12.1 and 23.9 minutes, so its duration varies by nearly a
+    factor of two with runner speed. A job that genuinely needs more gets its own named ceiling
+    rather than a raised default, because a raised default widens the guard for every job; the only
+    such entry is `ios-ui-tests` at 60 minutes (`D-229`, ADR-0230), whose UI suite and nine
+    accessibility audits measured 21m48s and were still running when run 39038842049 was cancelled at
+    14:40:03.
 29. The `shared-tests` Android-host and Kotlin/Native steps retain stricter platform-specific limits.
 30. Every protected check name required by branch protection remains present in `ci.yml`.
 31. The workflow-level GitHub permission is exactly `contents: read`.

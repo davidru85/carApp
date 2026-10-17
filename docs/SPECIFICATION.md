@@ -720,6 +720,7 @@ Each phase is a separate commit and a separate push. A phase MUST NOT be combine
 | D-226 | Screen-reader acceptance method | Screen-reader acceptance combines the agent's emulator and simulator evidence with an owner-run device walkthrough. | Accepted |
 | D-227 | Credential-collision cancellation | Cancelling a displayed credential collision is `clearMessage()`; nothing is replaced and the anonymous session is kept. | Accepted |
 | D-228 | Account conversion interruption hazards | The two `E2-04` interruption hazards reachable through the `E4-05` surface are accepted residual risks, fixed by the correctness follow-up story `E2-10`. | Accepted |
+| D-229 | iOS UI test job | The `carAppUITests` suite, the nine `AccessibilityAuditUITests` audits included, runs in its own protected `ios-ui-tests` job with a 60-minute ceiling; `ios-simulator-build` keeps 40 minutes with the `carAppTests` unit target and the Gradle links. | Accepted |
 
 Each decision is recorded as an ADR in `docs/adr/`. During Phase 0, ADRs MUST be validated against the selected tool versions and the version catalog, and every `Proposed` or `Pending` decision MUST be confirmed or resolved by the project owner before the story that depends on it starts.
 

@@ -38,6 +38,46 @@
 
 ## Entries
 
+### 2026-10-17 — D-229 splits the iOS UI tests into their own protected CI job
+
+- **Type:** decision
+- **Story / Decision:** `E4-B1` / `D-229` (ADR-0230)
+- **Author:** agent, on behalf of David Ruiz (branch `story/E4-B1-product-surface`)
+- **What changed:** `.github/workflows/ci.yml` gains the protected job `ios-ui-tests` with
+  `timeout-minutes: 60`, which repeats the `ios-simulator-build` checkout, Java, Gradle and
+  pinned-Xcode steps, links `:composition:ios:linkDebugFrameworkIosSimulatorArm64` and runs only
+  `-only-testing:carAppUITests`. `ios-simulator-build` keeps 40 minutes and now runs only
+  `-only-testing:carAppTests`; its `:feature:fuel:linkReleaseTestIosArm64` step stays, because that
+  binary serves `E4-03`'s device test (`D-80`). `WorkflowTimeoutContract` keeps 40 as
+  `DEFAULT_JOB_CEILING_MINUTES` and names `ios-ui-tests` at 60 in `JOB_CEILING_MINUTES`, so a job
+  cannot borrow a taller ceiling it did not declare; assertion 28 of `docs/CONTRACTS.md §18` becomes
+  a per-job ceiling and `ios-ui-tests` joins the protected-check set and the required-check list.
+- **Why:** on run 39038842049 the combined job spent 0:24 in setup, 5:28 in the consumption link,
+  ~6:44 in the framework link, ~5:41 compiling the test app, 0:08 in 144 `carAppTests` tests and
+  ~21m48s and still running in `carAppUITests`, so GitHub cancelled it at 14:40:03 against its
+  40-minute limit. The nine `AccessibilityAuditUITests` audits are expensive rather than slow by
+  accident (the `odometer-warning` audit alone spends 126 s in one `XCUIElement` query), so trimming
+  waits cannot recover the breach, and the 40 minutes of `D-176` were sized over a 12.1–23.9 minute
+  distribution that `E4-02` broke. Raising the single ceiling to 60 was rejected because it would
+  widen the hang guard for every job, and moving the audits out of the required checks was rejected
+  because they are the executable form of the `docs/SPECIFICATION.md §11` accessibility criteria.
+- **Documents touched:** `.github/workflows/ci.yml`; `docs/CONTRACTS.md §18`; `AGENTS.md`;
+  `docs/CONTRIBUTING.md`; `docs/DECISION_BOARD.md`, `docs/SPECIFICATION.md §12`,
+  `docs/TECHNICAL_PLAN.md §2`, `docs/adr/README.md`, ADR-0230;
+  `build-logic/convention/src/main/kotlin/com/ruizurraca/carapp/buildlogic/contract/WorkflowTimeoutContract.kt`
+  and its test; `docs/handoffs/E4-B1.md`.
+- **Verification:** RED first: the workflow split and its fixtures were committed with the contract
+  unchanged, and `:build-logic:convention:test --tests …WorkflowTimeoutContractTest --rerun-tasks`
+  reported `8 tests completed, 2 failed` (`repositoryWorkflowPasses` with `28: ios-ui-tests declares
+  60 minutes`, and `removingTheUiCheckProtectedNameFails` with `expected:<FAIL> but was:<PASS>`).
+  GREEN after the job-aware ceiling: that suite is `BUILD SUCCESSFUL`, `contractCheck --rerun-tasks`
+  reports 229 decisions, 229 ADRs and assertions 27 to 30 `[PASS]` with assertion 28 reading
+  `no CI job exceeds its own safety limit (default 40 minutes; ios-ui-tests 60)`, `ktlintCheck` and
+  `detekt` are `BUILD SUCCESSFUL`, and the workflow parses under `yaml.safe_load`.
+- **Follow-ups / risks:** the owner must add the `ios-ui-tests` context to `main`'s branch protection;
+  until then the new check is not required and a UI-only failure does not block a merge. Each pull
+  request now spends a second macOS runner on the framework link and the test-app compile.
+
 ### 2026-10-16 — E4-02 accessibility and localization (bundle E4-B1)
 
 - **Type:** story

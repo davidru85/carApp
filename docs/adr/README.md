@@ -234,5 +234,6 @@ One ADR per decision ID. The decision ID is stable across project documents; ADR
 | D-226 | [ADR-0227](0227-combine-agent-evidence-with-an-owner-screen-reader-walkthrough.md) | Combine the agent's emulator and simulator evidence with an owner-run screen-reader walkthrough. | Accepted |
 | D-227 | [ADR-0228](0228-cancel-the-credential-collision-through-clear-message.md) | Cancel the credential collision through `clearMessage()`. | Accepted |
 | D-228 | [ADR-0229](0229-defer-the-account-conversion-interruption-hazards.md) | Defer the account conversion interruption hazards to a follow-up story. | Accepted |
+| D-229 | [ADR-0230](0230-split-ios-ui-tests-into-their-own-ci-job.md) | Split the iOS UI tests into their own protected CI job with its own ceiling. | Accepted |
 
 New ADRs start from [0000-template.md](0000-template.md).

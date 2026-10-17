@@ -126,9 +126,9 @@ costs seconds instead of a round trip:
 
 ## Pull Requests
 
-`main` is protected. A change reaches it only through a pull request, and the ten checks of
+`main` is protected. A change reaches it only through a pull request, and the eleven checks of
 `docs/CONTRACTS.md §18` MUST report green: `android-assemble`, `shared-tests`,
-`ios-simulator-build`, `ktlint`, `detekt`, `architecture-check`, `provider-decoupling`,
+`ios-simulator-build`, `ios-ui-tests`, `ktlint`, `detekt`, `architecture-check`, `provider-decoupling`,
 `contract-check`, `objc-header-golden-check`, `android-instrumented-tests`. Force pushes and branch
 deletion are refused.
 

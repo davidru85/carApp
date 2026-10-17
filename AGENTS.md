@@ -260,7 +260,8 @@ review.
   under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
   account conversion host surface, `E4-02` accessibility and localization), is implemented on
   `story/E4-B1-product-surface` through pull request #91 and awaits the owner's gated review; it
-  introduced `D-209` through `D-228`, and its record is `docs/handoffs/E4-B1.md`. Bundle `E4-B2`,
+  introduced `D-209` through `D-229`, and its record is `docs/handoffs/E4-B1.md`. `D-229` (ADR-0230)
+  splits the iOS UI tests into their own protected `ios-ui-tests` job. Bundle `E4-B2`,
   release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts
   after `E4-B1` merges. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which places the
   anonymous account-conversion entry point in Settings.
@@ -395,9 +396,9 @@ the host. It is the one iOS-named command here that owes no cleanup.
 
 ### What is enforced, and what is not
 
-`main` is protected: ten required checks, a pull request, no force pushes, no branch deletion
-(`D-31`, `D-34`, `D-84`). Administrator enforcement is off, so the owner can bypass; nobody else
-can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
+`main` is protected: eleven required checks, a pull request, no force pushes, no branch deletion
+(`D-31`, `D-34`, `D-84`, `D-229`). Administrator enforcement is off, so the owner can bypass; nobody
+else can. D-28 feature-layer package rules and their firing fixtures are executable through Konsist.
 
 E0-07 made the Objective-C golden-header job executable on macOS and made
 `testAppGraphDependencies` parity executable. `E3-08` made the `:wiring:firebase` product-logic rule
@@ -415,6 +416,17 @@ allowlist (`D-221`). `contractCheck` currently reports no `PENDING` assertions.
 
 `provider-decoupling` is executable: the required macOS job excludes the explicit Firebase
 provider registry and tests the remaining graph on Android host and `iosSimulatorArm64` (`D-45`).
+
+`ios-simulator-build` and `ios-ui-tests` are separate protected checks (`D-229`, ADR-0230). The first
+runs the pinned-Xcode check, the `:feature:fuel:linkReleaseTestIosArm64` device-test binary and
+`:composition:ios:linkDebugFrameworkIosSimulatorArm64`, and runs only `-only-testing:carAppTests`
+inside its 40-minute ceiling. The second runs the framework link and only `-only-testing:carAppUITests`
+inside its own 60-minute ceiling, because the UI suite and its nine `AccessibilityAuditUITests` audits
+measured 21m48s and were still running when the combined job was cancelled at 14:40:03 on run
+39038842049. A job may exceed the 40-minute default only through a named entry in
+`WorkflowTimeoutContract.JOB_CEILING_MINUTES`, which assertion 28 enforces; raising the default to fit
+one job is the mistake `D-176` already made once. `ios-ui-tests` is required on `main` only after the
+owner adds it to branch protection.
 
 `contractCheck` prints the live list; trust its output over this one.
 
