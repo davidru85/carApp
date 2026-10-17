@@ -77,11 +77,12 @@ struct DepartureView: View {
             // succeeded (`D-159`).
             Button(action: onRetry) {
                 Text(LocalizedStringKey(departureRetryLabelKey(retry)))
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(AccessibleColors.controlAccent)
+            .tint(AccessibleColors.controlAccentOnFill)
             .accessibilityIdentifier("departure_retry")
         } else {
             Button(action: onDismissMessage) {

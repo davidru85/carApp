@@ -38,11 +38,12 @@ struct WelcomeView: View {
 
             Button(action: signInCoordinator.startGoogleSignIn) {
                 Text("continue_with_google")
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .tint(AccessibleColors.controlAccent)
+            .tint(AccessibleColors.controlAccentOnFill)
             .accessibilityIdentifier("welcome_google")
             .disabled(state.isBusy)
 

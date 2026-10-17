@@ -71,7 +71,16 @@ final class AccessibilityAuditUITests: XCTestCase {
         createVehicleAndOpenDetail(in: app, odometer: "1000")
         openFuelEntryForm(in: app)
         typeFuelEntry(in: app, odometer: "500", liters: "40", price: "2")
+        // The switch is flipped through a coordinate tap on its trailing edge, which is the only
+        // gesture that reliably toggles a SwiftUI `Form` switch here, and the test waits for the new
+        // value so it does not miss the `partial tank` badge it audits.
+        // The same two-step toggle `VehicleAndFuelFlowUITests` uses: the element tap, then the
+        // trailing-edge coordinate tap only if the switch is still on.
         let fullTank = app.switches["fuel_full_tank"]
+        XCTAssertTrue(fullTank.waitForExistence(timeout: AccessibilityUITestSupport.timeout))
+        if (fullTank.value as? String) == "1" {
+            fullTank.tap()
+        }
         if (fullTank.value as? String) == "1" {
             fullTank.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         }

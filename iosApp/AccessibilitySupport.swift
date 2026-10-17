@@ -6,9 +6,18 @@ import UIKit
 enum AccessibleColors {
     /// #B3261E in light appearance (6.54:1 on white, 5.86:1 on the grouped background) and #FF6961
     /// in dark appearance (7.45:1 on black, 6.03:1 on the grouped cell).
-    /// #0040DD, the accent the audit measures at 7.56:1 on white, used on the controls whose system
-    /// accent (system blue, 4.02:1) fails the audit.
-    static let controlAccent = Color(red: 0.0, green: 64.0 / 255.0, blue: 221.0 / 255.0)
+    /// The accent used on the controls whose system accent (system blue, 4.02:1 on white and 2.78:1 on
+    /// black) fails the audit: #0040DD measures 7.56:1 on white in light appearance, and #1E9BFF
+    /// measures 7.19:1 on black and 5.82:1 on the grouped cell in dark appearance.
+    static let controlAccent = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 30.0 / 255.0, green: 155.0 / 255.0, blue: 255.0 / 255.0, alpha: 1.0)
+            : UIColor(red: 0.0, green: 64.0 / 255.0, blue: 221.0 / 255.0, alpha: 1.0)
+    })
+
+    /// The accent under a prominent button's own label. #0040DD keeps the label at 7.56:1 on white,
+    /// so the app sets the label colour explicitly instead of relying on the system's pairing.
+    static let controlAccentOnFill = Color(red: 0.0, green: 64.0 / 255.0, blue: 221.0 / 255.0)
 
     static let errorText = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
