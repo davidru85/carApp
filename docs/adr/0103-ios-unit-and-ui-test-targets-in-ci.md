@@ -6,6 +6,12 @@ Accepted
 
 Selected by the owner on 2026-09-01 for story E1-09.
 
+The clause that runs both test targets in the single protected `ios-simulator-build` job is
+superseded by `D-229` (ADR-0230, `E4-B1`, 2026-10-17): the UI suite moves to its own protected
+`ios-ui-tests` check, while `ios-simulator-build` keeps the `carAppTests` unit target. Both targets
+stay protected and the two protected status check names are still never renamed; only the job that
+reports the UI tests changes.
+
 ## Context
 
 Prior to story E1-09, the Xcode project had a single UI test target (`carAppUITests`) containing only
