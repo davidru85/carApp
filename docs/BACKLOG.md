@@ -1344,7 +1344,7 @@ Human review required.
 
 ### E4-01 - Settings UI - L
 
-Status: in flight, first story of bundle `E4-B1` (`D-209`, ADR-0210).
+Status: implemented as the first story of bundle `E4-B1` (`D-209`, ADR-0210), awaiting the owner's gated review.
 Re-estimated from S to L at the bundle intake on 2026-10-16: no host invokes any
 `SessionStateHolder` departure or conversion intent yet, so besides the Settings rows this story owns
 the complete host departure surface that `E2-05` shipped only as a callable contract (`D-162`,
@@ -1370,7 +1370,7 @@ Acceptance criteria:
 
 ### E4-05 - Account Conversion Host Surface - M
 
-Status: scheduled, second story of bundle `E4-B1` (`D-209`, ADR-0210), after `E4-01`.
+Status: implemented as the second story of bundle `E4-B1` (`D-209`, ADR-0210), awaiting the owner's gated review.
 Created on 2026-10-15 by `D-210` (ADR-0211), which places the anonymous account-conversion entry
 point in Settings. The row's behaviour while the session is `LOCAL` was put to the owner at the
 bundle intake and is recorded at this story's intake; the row and the credential-collision
@@ -1405,9 +1405,10 @@ Human review required.
 
 ### E4-02 - Accessibility and Localization - M
 
-Status: scheduled, third story of bundle `E4-B1` (`D-209`, ADR-0210), after `E4-05`.
-Its audit scope, its screen-reader acceptance method and its eight technical decisions were put to
-the owner at the bundle intake; the decisions are recorded at this story's intake.
+Status: implemented as the third story of bundle `E4-B1` (`D-209`, ADR-0210), awaiting the owner's gated review.
+The owner accepted its eight technical decisions, its audit scope and its screen-reader acceptance
+method at the bundle intake; they are recorded as `D-216` to `D-223`, `D-225` and `D-226` (ADR-0217
+to ADR-0224, ADR-0226 and ADR-0227).
 
 Harden accessibility and ES/EN localization.
 
@@ -2257,9 +2258,9 @@ proof after E3-04.
 | E3-19 Push-boundary payload totality (completed, PR #82) | 3 | S | Yes |
 | E3-20 Pull-boundary quarantine totality for unsupported provider values (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
 | E3-21 Explicit startup reset of stale `SYNCING` rows (bundle `E3-B1`, completed, PR #88) | 3 | S | Yes |
-| E4-01 Settings UI (bundle `E4-B1`) | 4 | L | — |
-| E4-05 Account conversion host surface (bundle `E4-B1`) | 4 | M | Yes |
-| E4-02 Accessibility and localization (bundle `E4-B1`) | 4 | M | — |
+| E4-01 Settings UI (bundle `E4-B1`, implemented) | 4 | L | — |
+| E4-05 Account conversion host surface (bundle `E4-B1`, implemented) | 4 | M | Yes |
+| E4-02 Accessibility and localization (bundle `E4-B1`, implemented) | 4 | M | — |
 | E4-03 Performance hardening (bundle `E4-B2`) | 4 | M | — |
 | E4-04 Release preparation (bundle `E4-B2`) | 4 | M | — |
 | E4-06 In-app privacy policy link (postponed, low priority) | follow-up | S | — |

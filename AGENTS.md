@@ -171,7 +171,8 @@ review.
   hardening, merged on 2026-09-09 through pull request #63. `E3-03`, the `:core:sync` engine, merged
   on 2026-09-17 through pull request #69, after the owner's gated review.
 - **Next:** Phase 4, delivered as two bundles under `D-209` (ADR-0210): `E4-B1` (`E4-01`, `E4-05`,
-  `E4-02`) is in flight on `story/E4-B1-product-surface`, and `E4-B2` (`E4-04`, `E4-03`) follows its
+  `E4-02`) is implemented on `story/E4-B1-product-surface` and awaits the owner's gated review, and
+  `E4-B2` (`E4-04`, `E4-03`) follows its
   merge. Both are listed below and in `docs/BACKLOG.md`. Phase 3 closed
   on 2026-10-15 when bundle `E3-B2` merged through pull request #89. Phase 2 closed with `E2-04`, the anonymous account conversion, which
   merged through pull request #64 and introduced `D-151` through `D-154` (evidence in
@@ -206,6 +207,11 @@ review.
   subsection "Store-submission prerequisites": the owner postponed it, it is low priority and not
   Ready, it is not part of the `D-209` bundles, and it MUST be done before any App Store or Google
   Play submission.
+  `E2-10`, account conversion interruption hardening, was added on 2026-10-16 by `D-228`
+  (ADR-0229) during `E4-05`, under the new `docs/BACKLOG.md` subsection "Defects found after Phase 2
+  closed": it is a correctness follow-up of the conversion flow, outside the `D-209` bundles, that
+  closes two `E2-04` hazards the `E4-05` surface made reachable. They are accepted meanwhile as
+  residual risks in `docs/SECURITY.md`, and the story is not Ready.
 - **Remaining Phase 2:** none. The phase is closed.
 - **Remaining Phase 3:** none. The phase closed on 2026-10-15; its last six stories were delivered
   as two bundles under `D-205` (ADR-0206). Bundle `E3-B1`, client
@@ -252,8 +258,9 @@ review.
   decision gates merged work.
 - **Remaining Phase 4:** `E4-01`, `E4-05`, `E4-02`, `E4-04` and `E4-03`, delivered as two bundles
   under `D-209` (ADR-0210). Bundle `E4-B1`, the product surface (`E4-01` Settings UI, `E4-05`
-  account conversion host surface, `E4-02` accessibility and localization), is in flight on
-  `story/E4-B1-product-surface`; its live checkpoint is `docs/handoffs/E4-B1.md`. Bundle `E4-B2`,
+  account conversion host surface, `E4-02` accessibility and localization), is implemented on
+  `story/E4-B1-product-surface` and awaits the owner's gated review of its pull request; it
+  introduced `D-209` through `D-228`, and its record is `docs/handoffs/E4-B1.md`. Bundle `E4-B2`,
   release readiness (`E4-04` release preparation, then `E4-03` performance and reliability), starts
   after `E4-B1` merges. `E4-05` was created on 2026-10-15 by `D-210` (ADR-0211), which places the
   anonymous account-conversion entry point in Settings.
